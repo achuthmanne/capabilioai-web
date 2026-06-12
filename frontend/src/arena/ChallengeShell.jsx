@@ -19,6 +19,8 @@ import {
 import { getWorkstationMeta, SOURCE_META } from "./workstationMeta"
 import { T, Spinner, Pill, WorkstationBadge, diffColor, diffBg, fmtClock, EmptyDirective } from "./arenaUi"
 import { arenaDb } from "../lib/db"
+import useAntiCheat from "./useAntiCheat"
+import ArenaWatermark from "./ArenaWatermark"
 
 const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
 
@@ -203,6 +205,25 @@ export default function ChallengeShell({
   const [draftBanner, setDraftBanner] = useState(null)
   const [saveState, setSaveState]     = useState("saved")
 
+  // ── anti-cheat ──
+  const [tabHidden, setTabHidden]         = useState(false)
+  const [screenShareAlert, setScreenShareAlert] = useState(false)
+
+  // Activate protection for ranked (non-practice) submissions
+  useAntiCheat({ uid, enabled: !isPractice })
+
+  useEffect(() => {
+    if (isPractice) return
+    const onVis = (e) => setTabHidden(e.detail?.hidden || false)
+    const onSS  = ()  => setScreenShareAlert(true)
+    window.addEventListener("capabilio:visibility_change",  onVis)
+    window.addEventListener("capabilio:screenshare_detected", onSS)
+    return () => {
+      window.removeEventListener("capabilio:visibility_change",  onVis)
+      window.removeEventListener("capabilio:screenshare_detected", onSS)
+    }
+  }, [isPractice])
+
   // ── behavioral tracking (consumed by Arena.handleSubmit) ──
   const pasteRef = useRef(0), keysRef = useRef(0), startRef = useRef(Date.now())
   const starterLenRef = useRef((mission.starterCode || "").length)
@@ -312,8 +333,37 @@ export default function ChallengeShell({
     return steps.map(s => ({ pending: true, input: s }))
   }, [validation, steps])
 
+  // User info for watermark — pulled from uid prop (email preferred)
+  const userLabel = typeof uid === "string" && uid.includes("@") ? uid : (uid ? `uid:${uid.slice(0,8)}` : "capabilio")
+
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: T.bg, fontFamily: "'DM Sans',sans-serif" }}>
+    <div className={!isPractice ? "arena-protected" : undefined}
+      style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: T.bg, fontFamily: "'DM Sans',sans-serif", position: "relative" }}>
+
+      {/* ── Tiled user watermark (always visible in screenshots) ── */}
+      {!isPractice && <ArenaWatermark userEmail={userLabel} userId={uid} />}
+
+      {/* ── Tab-hidden blur overlay ── */}
+      {tabHidden && !isPractice && (
+        <div style={{ position: "absolute", inset: 0, zIndex: 900, backdropFilter: "blur(18px)", background: "rgba(15,23,42,0.7)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
+          <div style={{ fontSize: 32 }}>🔒</div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: "#fff" }}>Workstation Paused</div>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", maxWidth: 280, textAlign: "center", lineHeight: 1.6 }}>
+            Return to this tab to resume. Tab-switching is logged and affects your submission integrity score.
+          </div>
+        </div>
+      )}
+
+      {/* ── Screen-share warning banner ── */}
+      {screenShareAlert && !isPractice && (
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 800, background: "#DC2626", padding: "8px 16px", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          <span style={{ fontSize: 13 }}>🚨</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", flex: 1 }}>
+            Screen sharing detected. Your session is watermarked with your user ID. Sharing Arena content violates the Honor Code.
+          </span>
+          <button onClick={() => setScreenShareAlert(false)} style={{ fontSize: 13, background: "none", border: "none", color: "rgba(255,255,255,0.7)", cursor: "pointer", lineHeight: 1 }}>×</button>
+        </div>
+      )}
 
       {/* ══ TOP BAR · 58px — mission identity bar ══ */}
       <div style={{ height: 58, background: "#fff", borderBottom: `1px solid ${T.border}`, display: "flex", alignItems: "center", gap: 10, padding: "0 14px", flexShrink: 0, zIndex: 20 }}>
@@ -461,7 +511,8 @@ export default function ChallengeShell({
 
         {/* ── CENTER: WORKSTATION RENDERER SLOT ── */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0, background: T.bg }}
-          onPaste={() => { pasteRef.current += 1 }}>
+          onPaste={() => { pasteRef.current += 1 }}
+          onContextMenu={!isPractice ? (e) => e.preventDefault() : undefined}>
           <WorkstationRouter
             mission={mission}
             domain={domain}
