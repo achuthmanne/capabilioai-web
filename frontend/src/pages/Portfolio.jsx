@@ -493,7 +493,7 @@ function ActivityHeatmap({ tasks, streak }) {
 }
 
 // ─── Performance Summary ──────────────────────────────────────────────────────
-function PerformanceSummary({ ud, skills, tasks, interviews, summary, sumLoading }) {
+function PerformanceSummary({ ud, skills, tasks, interviews }) {
   const tier      = getTier(ud.eloRating)
   const avgScore  = tasks.length ? Math.round(tasks.reduce((s,t)=>s+t.score,0)/tasks.length) : 0
   const best      = tasks.reduce((b,t)=>t.score>b?t.score:b,0)
@@ -509,28 +509,6 @@ function PerformanceSummary({ ud, skills, tasks, interviews, summary, sumLoading
     <Card>
       <SectionTitle icon="📊" title="Performance Summary" accent={C.blue}
         sub="ELO rating, challenge scores, and growth trajectory"/>
-
-      {/* AI summary bio */}
-      <div style={{padding:"16px 18px",background:"linear-gradient(135deg,#EFF6FF,#F0FDFA)",
-        borderRadius:14,border:`1px solid rgba(37,99,235,0.12)`,marginBottom:20,position:"relative",overflow:"hidden"}}>
-        <div style={{position:"absolute",top:-30,right:-30,width:120,height:120,
-          borderRadius:"50%",background:"rgba(37,99,235,0.05)"}}/>
-        <div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
-          <div style={{width:34,height:34,borderRadius:10,background:C.blue3,
-            display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>🤖</div>
-          <div>
-            <div style={{fontSize:10,fontWeight:800,color:C.blue,textTransform:"uppercase",letterSpacing:1.2,marginBottom:6}}>
-              AI-Generated Profile Summary
-            </div>
-            <p style={{fontSize:13,color:C.ink2,lineHeight:1.8,margin:0,fontStyle:"italic"}}>
-              {sumLoading
-                ? <span style={{color:C.ink4}}>Crafting your personalised summary…</span>
-                : `"${summary||`${ud.displayName} is a ${ud.path} in ${ud.keyword||"technology"} building skills on Capabilio AI.`}"`
-              }
-            </p>
-          </div>
-        </div>
-      </div>
 
       {/* Score metrics */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
@@ -598,7 +576,6 @@ export default function Portfolio({ username: usernameProp }) {
   const [loading,     setLoading]     = useState(true)
   const [error,       setError]       = useState("")
   const [summary,     setSummary]     = useState("")
-  const [sumLoading,  setSumLoading]  = useState(false)
   const [scrolled,    setScrolled]    = useState(false)
   const [currentUid,  setCurrentUid]  = useState(null)
 
@@ -621,32 +598,38 @@ export default function Portfolio({ username: usernameProp }) {
     if(p.get("pdf")==="1"&&!loading) { const t=setTimeout(()=>window.print(),1200); return ()=>clearTimeout(t) }
   },[loading])
 
+  function buildProfessionalSummary(ud, skills, tasks) {
+    const tier      = getTier(ud.eloRating)
+    const avgScore  = tasks.length ? Math.round(tasks.reduce((s,t)=>s+t.score,0)/tasks.length) : 0
+    const hardCount = tasks.filter(t=>t.difficulty==="Hard"||t.difficulty==="Expert").length
+    const topSkills = skills.slice(0,3).map(s=>s.skill).join(", ")
+    const name      = ud.displayName !== "Anonymous" ? ud.displayName : "This professional"
+    const domain    = ud.keyword || "technology"
+    const pathLabel = ud.path === "authority" ? "expert" : ud.path || "professional"
+
+    // Sentence 1 — identity + tier
+    let s1 = `${name} is a ${tier.label.toLowerCase()} ${pathLabel} in ${domain} with an ELO rating of ${ud.eloRating}, placing them in the ${tier.label} tier on Capabilio.`
+
+    // Sentence 2 — performance record
+    if(tasks.length === 0) {
+      s1 = `${name} is a ${pathLabel} in ${domain} who has joined Capabilio to build and validate their technical skills.`
+      return `${s1} Their Arena journey is just beginning — check back as they complete challenges and grow their rating.`
+    }
+    const hardStr = hardCount > 0 ? `, including ${hardCount} Hard or Expert-level challenge${hardCount>1?"s":""}` : ""
+    const s2 = `They have completed ${tasks.length} Arena challenge${tasks.length>1?"s":""}${hardStr} with an average score of ${avgScore}/100.`
+
+    // Sentence 3 — skills + streak
+    const skillStr = topSkills ? `Their strongest areas include ${topSkills}.` : ""
+    const streakStr = ud.arenaStreak >= 3 ? ` Maintaining a ${ud.arenaStreak}-day streak demonstrates consistent daily practice.` : ""
+    const s3 = (skillStr + streakStr).trim() || `They are actively building expertise through structured, performance-tracked challenges.`
+
+    return `${s1} ${s2} ${s3}`
+  }
+
+  // Legacy stub — kept so any stale references don't crash (unused)
   async function genSummary(ud, skills, tasks) {
-    setSumLoading(true)
-    try {
-      const skillLine   = skills.slice(0,5).map(s=>`${s.skill} ${s.percentage}%`).join(", ")
-      const avgScore    = tasks.length ? Math.round(tasks.reduce((s,t)=>s+t.score,0)/tasks.length) : 0
-      const hardCount   = tasks.filter(t=>t.difficulty==="Hard"||t.difficulty==="Expert").length
-      const tier        = getTier(ud.eloRating)
-      const topSkill    = skills[0]?.skill || "problem-solving"
-      const prompt = `Write a confident 3-sentence professional profile (third person, plain text only, no JSON, no markdown, max 75 words):
-Name: ${ud.displayName}
-Path: ${ud.path} | Domain: ${ud.keyword||"Technology"} | ELO: ${ud.eloRating} (${tier.label} tier)
-Challenges solved: ${tasks.length} | Avg score: ${avgScore}/100 | Hard challenges: ${hardCount}
-Top skill: ${topSkill} | Streak: ${ud.arenaStreak} days
-Skills: ${skillLine||"various technical skills"}
-Focus on their performance level, standout skills, and career readiness. Be specific, not generic.`
-      const key = import.meta.env.VITE_GROQ_API_KEY
-      if(!key) return
-      const res = await fetch("https://api.groq.com/openai/v1/chat/completions",{
-        method:"POST", headers:{"Content-Type":"application/json","Authorization":`Bearer ${key}`},
-        body:JSON.stringify({model:"llama-3.1-8b-instant",messages:[{role:"user",content:prompt}],temperature:0.6,max_tokens:160})
-      })
-      const d = await res.json()
-      const t = d.choices?.[0]?.message?.content?.trim()
-      if(t) setSummary(t)
-    } catch {}
-    setSumLoading(false)
+    // replaced by buildProfessionalSummary — no-op
+    void ud; void skills; void tasks
   }
 
   async function load() {
@@ -659,6 +642,10 @@ Focus on their performance level, standout skills, and career readiness. Be spec
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)
 
       let row = null
+
+      // Fetch auth session once upfront — used for name fallback and ownership check
+      const { data:{ session: authSession } } = await supabase.auth.getSession()
+      const authMeta = authSession?.user?.user_metadata || {}
 
       // 0. UUID in URL — direct ID lookup (most reliable, used when no username set)
       if(isUUID) {
@@ -697,51 +684,38 @@ Focus on their performance level, standout skills, and career readiness. Be spec
         }
       }
 
-      // 4. Auth session fallback — covers camelCase-only profiles (eybchcqwbizjmzyrviri)
-      //    The main DB may store displayName (camelCase) but not display_name (snake_case).
-      //    If the logged-in user is requesting their own portfolio, just use their profile.
-      if(!row) {
-        const { data:{ session } } = await supabase.auth.getSession()
-        if(session?.user?.id) {
-          const {data:bySession} = await supabase.from("profiles").select("*")
-            .eq("id", session.user.id).maybeSingle()
-          if(bySession) {
-            // Check slug against ALL name fields — camelCase and snake_case
-            const allNames = [
-              bySession.display_name,
-              bySession.displayName,   // camelCase column in old schema
-              bySession.username,
-              bySession.name,
-            ].filter(Boolean)
-            const slugs = allNames.map(mkSlug)
-            // Also accept if URL slug starts with first word of any name
-            const firstWord = lower.split("-")[0]
-            const nameMatch = slugs.some(s => s === lower)
-              || allNames.some(n => (n||"").toLowerCase().startsWith(firstWord))
-            if(nameMatch || lower === session.user.id) row = bySession
-          }
+      // 4. Auth session fallback — covers camelCase-only profiles
+      if(!row && authSession?.user?.id) {
+        const {data:bySession} = await supabase.from("profiles").select("*")
+          .eq("id", authSession.user.id).maybeSingle()
+        if(bySession) {
+          const allNames = [
+            bySession.display_name, bySession.displayName,
+            bySession.username, bySession.name,
+            authMeta.full_name, authMeta.name, authMeta.display_name,
+          ].filter(Boolean)
+          const slugs = allNames.map(mkSlug)
+          const firstWord = lower.split("-")[0]
+          const nameMatch = slugs.some(s => s === lower)
+            || allNames.some(n => (n||"").toLowerCase().startsWith(firstWord))
+          if(nameMatch || lower === authSession.user.id) row = bySession
         }
       }
 
-      // 5. Last resort: if logged in and nothing found, show current user's portfolio
-      //    (handles the case where the URL slug was derived from displayName but
-      //     the DB has no matching text column)
-      if(!row) {
-        const { data:{ session } } = await supabase.auth.getSession()
-        if(session?.user?.id) {
-          const {data:mine} = await supabase.from("profiles").select("*")
-            .eq("id", session.user.id).maybeSingle()
-          if(mine) {
-            // Confirm the URL was plausibly generated from this user's data
-            const email = mine.email || session.user.email || ""
-            const emailUser = mkSlug(email.split("@")[0])
-            const possibleSlugs = [
-              mkSlug(mine.display_name||""), mkSlug(mine.displayName||""),
-              mkSlug(mine.username||""), emailUser, mine.id,
-            ].filter(Boolean)
-            if(possibleSlugs.some(s => lower.includes(s.slice(0,5)) || s.includes(lower.slice(0,5)))) {
-              row = mine
-            }
+      // 5. Last resort — session user's own portfolio
+      if(!row && authSession?.user?.id) {
+        const {data:mine} = await supabase.from("profiles").select("*")
+          .eq("id", authSession.user.id).maybeSingle()
+        if(mine) {
+          const email = mine.email || authSession.user.email || ""
+          const emailUser = mkSlug(email.split("@")[0])
+          const possibleSlugs = [
+            mkSlug(mine.display_name||""), mkSlug(mine.displayName||""),
+            mkSlug(mine.username||""), emailUser, mine.id,
+            mkSlug(authMeta.full_name||""), mkSlug(authMeta.name||""),
+          ].filter(Boolean)
+          if(possibleSlugs.some(s => lower.includes(s.slice(0,5)) || s.includes(lower.slice(0,5)))) {
+            row = mine
           }
         }
       }
@@ -754,7 +728,9 @@ Focus on their performance level, standout skills, and career readiness. Be spec
 
       const ud={
         uid:           row.id,
-        displayName:   row.display_name   ||row.displayName    ||"Anonymous",
+        displayName:   row.display_name   ||row.displayName    ||row.full_name||row.name
+                     ||authMeta.full_name||authMeta.name      ||authSession?.user?.email?.split("@")[0]
+                     ||"Anonymous",
         email:         row.email          ||"",
         username:      row.username       ||"",
         path:          row.path           ||"student",
@@ -827,8 +803,9 @@ Focus on their performance level, standout skills, and career readiness. Be spec
 
       setPd({ud,skills,tasks})
       setInterviews(ivs)
-      if(ud.profileSummary) setSummary(ud.profileSummary)
-      else genSummary(ud,skills,tasks)
+      // Always generate a deterministic LinkedIn-style summary — no API dependency
+      const autoSummary = buildProfessionalSummary(ud, skills, tasks)
+      setSummary(ud.profileSummary || autoSummary)
     } catch(e){
       console.error("Portfolio error:",e)
       setError("Failed to load portfolio.")
@@ -975,7 +952,7 @@ Focus on their performance level, standout skills, and career readiness. Be spec
                 {ud.keyword&&<p style={{fontSize:16,color:"rgba(255,255,255,0.7)",margin:"0 0 14px",fontWeight:500}}>{ud.keyword}</p>}
 
                 <p style={{fontSize:14,color:"rgba(255,255,255,0.62)",lineHeight:1.75,maxWidth:520,margin:"0 0 20px"}}>
-                  {sumLoading?"Crafting your summary…":(summary||ud.profileSummary||`${pc.label} building career on Capabilio.`)}
+                  {summary||`${pc.label} building career on Capabilio.`}
                 </p>
 
                 {/* Links + ELO chip */}
@@ -1031,7 +1008,7 @@ Focus on their performance level, standout skills, and career readiness. Be spec
         <div ref={refs.summary} className="ps">
           <PerformanceSummary
             ud={ud} skills={skills} tasks={tasks}
-            interviews={interviews} summary={summary} sumLoading={sumLoading}
+            interviews={interviews}
           />
         </div>
 
