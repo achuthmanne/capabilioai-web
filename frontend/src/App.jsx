@@ -716,7 +716,7 @@ function App() {
         gap: 12,
       }}>
         {/* Logo */}
-        <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, fontWeight: 800, color: "#FFFFFF", letterSpacing: "-0.3px", flexShrink: 0 }}>
+        <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, fontWeight: 800, color: "#0F172A", letterSpacing: "-0.3px", flexShrink: 0 }}>
           Capabilio <span style={{ color: navAccent, fontStyle: "italic" }}>AI</span>
         </span>
 

@@ -821,12 +821,29 @@ function SkeletonCard() {
 }
 
 // ─── Main Launchpad ───────────────────────────────────────────────────────────
+// ── Derive a profile-based job keyword from userData ──────────────────────────
+function getProfileKeyword(userData) {
+  const keyword  = userData?.keyword || userData?.job_role || userData?.target_role || ""
+  const graph    = userData?.skill_graph || userData?.skillGraph || []
+  const topSkills = [...graph]
+    .sort((a, b) => (b.value ?? b.score ?? 0) - (a.value ?? a.score ?? 0))
+    .slice(0, 2)
+    .map(s => s.label || s.skill || "")
+    .filter(Boolean)
+  // Prefer the explicit keyword; supplement with top skills if available
+  const parts = [keyword, ...topSkills].filter(Boolean)
+  return parts.slice(0, 2).join(" ")   // e.g. "DevOps Docker"
+}
+
 export default function Launchpad({ user, userData }) {
+  // Auto-seed search with the user's domain keyword so only relevant jobs show
+  const profileKeyword = useMemo(() => getProfileKeyword(userData), [userData])
+
   const [jobs,         setJobs]         = useState([])
   const [loading,      setLoading]      = useState(true)
   const [total,        setTotal]        = useState(0)
   const [page,         setPage]         = useState(1)
-  const [search,       setSearch]       = useState("")
+  const [search,       setSearch]       = useState(() => getProfileKeyword(userData))
   const [workMode,     setWorkMode]     = useState("")
   const [jobType,      setJobType]      = useState("")
   const [activeTab,    setActiveTab]    = useState("browse")
@@ -838,6 +855,11 @@ export default function Launchpad({ user, userData }) {
 
   const LIMIT = 12
 
+  // Re-seed search if userData loads after mount (async parent fetch)
+  useEffect(() => {
+    if (profileKeyword && !search) setSearch(profileKeyword)
+  }, [profileKeyword]) // eslint-disable-line
+
   // Load user skills separately for match scoring
   useEffect(() => {
     if (userData?.skills) { setUserSkills(userData.skills); return }
@@ -848,14 +870,17 @@ export default function Launchpad({ user, userData }) {
     setLoading(true)
     try {
       const params = { page, limit: LIMIT }
-      if (search)   params.search    = search
-      if (workMode) params.work_mode = workMode
-      if (jobType)  params.job_type  = jobType
+      // Always send at least the profile keyword so the API returns relevant jobs.
+      // If the user clears the search bar it falls back to the profile keyword.
+      const effectiveSearch = search.trim() || profileKeyword
+      if (effectiveSearch) params.search    = effectiveSearch
+      if (workMode)         params.work_mode = workMode
+      if (jobType)          params.job_type  = jobType
       const { jobs: jbs, total: tot } = await jobsApi.list(params)
       setJobs(jbs || []); setTotal(tot || 0)
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
-  }, [page, search, workMode, jobType])
+  }, [page, search, workMode, jobType, profileKeyword])
 
   useEffect(() => { load() }, [load])
 
@@ -948,8 +973,19 @@ export default function Launchpad({ user, userData }) {
             <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
               <FilterChipGroup label="Mode" options={WORK_MODES} value={workMode} onChange={v => { setWorkMode(v); setPage(1) }} />
               <FilterChipGroup label="Type" options={JOB_TYPES} value={jobType} onChange={v => { setJobType(v); setPage(1) }} />
-              {(workMode || jobType || search) && (
-                <button onClick={() => { setWorkMode(""); setJobType(""); setSearch(""); setPage(1) }}
+              {/* Profile-filter indicator */}
+              {profileKeyword && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 10px", background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.18)", borderRadius: 20 }}>
+                  <span style={{ fontSize: 10 }}>🎯</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "#4F46E5" }}>Filtered for: {profileKeyword}</span>
+                  {search !== profileKeyword && (
+                    <button onClick={() => { setSearch(profileKeyword); setPage(1) }}
+                      style={{ fontSize: 10, color: "#4F46E5", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 700 }}>reset</button>
+                  )}
+                </div>
+              )}
+              {(workMode || jobType || search !== profileKeyword) && (
+                <button onClick={() => { setWorkMode(""); setJobType(""); setSearch(profileKeyword); setPage(1) }}
                   style={{ fontSize: 11, color: T.red, background: T.red2, border: "none", borderRadius: 20, padding: "4px 10px", cursor: "pointer", fontWeight: 600 }}>
                   Clear filters ×
                 </button>
