@@ -17,8 +17,9 @@ import { dirname, resolve } from "path"
 const __dirname = dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: resolve(__dirname, "../.env") })
 
-import express from "express"
-import cors    from "cors"
+import express   from "express"
+import cors      from "cors"
+import rateLimit from "express-rate-limit"
 
 // ─── Route modules ────────────────────────────────────────────────────────────
 import resumeRoutes           from "./server/routes/resume.js"
@@ -50,9 +51,47 @@ import orbitPlansRoutes          from "./server/routes/orbitPlans.js"
 const app  = express()
 const PORT = process.env.PORT || 4000
 
+// ─── Rate limiters ────────────────────────────────────────────────────────────
+// General API: 100 requests per minute per IP
+const generalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  message: { error: "Too many requests, please try again in a minute." },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
+// AI routes (expensive): 20 requests per minute per IP
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  message: { error: "AI rate limit reached. Please wait a moment." },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
+// Auth/payment routes: 10 requests per minute per IP
+const strictLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { error: "Too many attempts. Please wait before trying again." },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
+app.use("/api", generalLimiter)
+app.use("/api/arena",        aiLimiter)
+app.use("/api/arena/v2",     aiLimiter)
+app.use("/api/skill-studio", aiLimiter)
+app.use("/api/chat",         aiLimiter)
+app.use("/api/voice",        aiLimiter)
+app.use("/api/verify",       strictLimiter)
+
 app.use(cors({
   origin: [
     process.env.FRONTEND_URL || "https://capabilio.online",
+    "https://capabilio.online",
+    "https://www.capabilio.online",
     "http://localhost:3000",
     "http://localhost:5173",
     "http://localhost:4173",
