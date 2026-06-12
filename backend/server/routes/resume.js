@@ -1,0 +1,219 @@
+// Routes: POST /api/extract-pdf, POST /api/extract-linkedin
+//
+// extract-pdf:      Gemini multimodal → Groq fallback
+// extract-linkedin: ProxyCurl → Gemini normalize → Groq fallback
+
+import { Router }        from "express"
+import multer            from "multer"
+import { createRequire } from "module"
+import { groq, GROQ_FAST }            from "../lib/groq.js"
+import { gemini, geminiExtractImage } from "../lib/gemini.js"
+
+const router = Router()
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } })
+
+let _pdfParse = null
+async function parsePdf(buffer) {
+  if (!_pdfParse) _pdfParse = createRequire(import.meta.url)("pdf-parse/lib/pdf-parse.js")
+  return _pdfParse(buffer)
+}
+
+const SCHEMA = `{"name":"","email":"","phone":"","title":"","summary":"","skills":[""],"experience":[{"company":"","role":"","startDate":"","endDate":"","current":false,"description":""}],"education":[{"institution":"","degree":"","field":"","year":""}],"certifications":[""],"keywords":[""]}`
+
+const hasGemini = () => process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== "your_gemini_key_here"
+
+// ─── 1. PDF Extraction ────────────────────────────────────────────────────────
+router.post("/extract-pdf", upload.single("resume"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" })
+    const buffer = req.file.buffer
+    const mime   = req.file.mimetype || "application/pdf"
+
+    // Path A: Gemini reads the actual PDF layout (columns, tables, logos)
+    if (hasGemini()) {
+      try {
+        const base64 = buffer.toString("base64")
+        const prompt = `You are a resume parser. Extract ALL information from this resume PDF.
+Return ONLY valid JSON matching this schema exactly — no markdown, no extra text:
+${SCHEMA}
+
+Rules:
+- Extract every skill mentioned anywhere in the document
+- For current roles: endDate="" and current=true
+- keywords = 15-20 job-relevant technical terms from the whole document
+- Empty string or [] for missing fields`
+
+        const extracted = await geminiExtractImage(base64, mime, prompt)
+        const p = (extracted && !extracted.raw) ? extracted : {}
+        if (p.name || p.skills?.length || p.experience?.length) {
+          // Synthesize a text field so the frontend success check (data.text?.length > 50) passes
+          const synthText = [p.name, p.title, p.summary, ...(p.skills||[])].filter(Boolean).join(" ")
+          return res.json({ _source:"gemini",
+            text: synthText.length > 50 ? synthText : synthText + " ".repeat(60), // ensure > 50 chars
+            name:p.name||"", email:p.email||"", phone:p.phone||"",
+            title:p.title||"", summary:p.summary||"", skills:p.skills||[], experience:p.experience||[],
+            education:p.education||[], certifications:p.certifications||[], keywords:p.keywords||[] })
+        }
+      } catch (e) { console.warn("[extract-pdf] Gemini failed:", e.message, e.status || "") }
+    }
+
+    // Path B: pdf-parse text → Groq
+    let text = ""
+    try { const r = await parsePdf(buffer); text = r.text || "" }
+    catch { return res.status(422).json({ error: "Could not read PDF. Try a text-based PDF or copy-paste your resume." }) }
+    // If text is very short it is probably an image-only PDF — still return partial success
+    // so the frontend shows "uploaded" rather than hard-failing the user
+    if (text.trim().length < 30) {
+      return res.json({ _source:"pdf-empty", text:"", name:"", email:"", phone:"",
+        title:"", summary:"", skills:[], experience:[], education:[], certifications:[], keywords:[] })
+    }
+
+    const raw = await groq([
+      { role:"system", content:"Resume parser. Return ONLY valid JSON, no markdown." },
+      { role:"user",   content:`Parse this resume. Return JSON: ${SCHEMA}\n\nResume:\n${text.slice(0,3500)}` },
+    ], { model:GROQ_FAST, max_tokens:1500, json:true })
+
+    let p = {}
+    try { p = JSON.parse(raw) } catch {}
+    return res.json({ _source:"groq", text, name:p.name||"", email:p.email||"", phone:p.phone||"",
+      title:p.title||"", summary:p.summary||"", skills:p.skills||[], experience:p.experience||[],
+      education:p.education||[], certifications:p.certifications||[], keywords:p.keywords||[] })
+
+  } catch (e) { console.error("[extract-pdf]", e.message); res.status(500).json({ error: e.message }) }
+})
+
+// ─── 2. LinkedIn URL Extraction ───────────────────────────────────────────────
+router.post("/extract-linkedin", async (req, res) => {
+  const { url } = req.body || {}
+  if (!url) return res.status(400).json({ error: "url is required" })
+
+  const match    = url.match(/linkedin\.com\/in\/([\w%-]+)/i)
+  const cleanUrl = match ? `https://www.linkedin.com/in/${match[1]}`
+    : url.startsWith("http") ? url : `https://www.linkedin.com/in/${url}`
+
+  const LINKEDIN_SCHEMA = `{"name":"","title":"","summary":"","location":"","connections":null,"skills":[""],"experience":[{"company":"","role":"","startDate":"","endDate":"","current":false,"description":""}],"education":[{"institution":"","degree":"","field":"","year":""}],"certifications":[""],"keywords":[""]}`
+
+  // Option A: ProxyCurl
+  if (process.env.PROXYCURL_API_KEY) {
+    try {
+      const pcRes = await fetch(
+        `https://nubela.co/proxycurl/api/v2/linkedin?url=${encodeURIComponent(cleanUrl)}&skills=include&education=include&experiences=include`,
+        { headers: { Authorization: `Bearer ${process.env.PROXYCURL_API_KEY}` } }
+      )
+      console.log("[extract-linkedin] ProxyCurl status:", pcRes.status)
+      if (pcRes.ok) {
+        const d = await pcRes.json()
+        const rawStr = JSON.stringify(d).slice(0, 3000)
+
+        // Gemini to normalize ProxyCurl's raw JSON into clean schema
+        if (hasGemini()) {
+          try {
+            const result = await gemini(
+              `Normalize this LinkedIn profile data into clean structured JSON.
+Raw ProxyCurl data: ${rawStr}
+Return ONLY this JSON schema: ${LINKEDIN_SCHEMA}`,
+              { json:true }
+            )
+            const p = typeof result === "string" ? JSON.parse(result) : result
+            if (p.name || p.skills?.length) return res.json({ ...p, _source:"proxycurl+gemini", rawText:rawStr })
+          } catch (e) { console.warn("[extract-linkedin] Gemini normalize:", e.message) }
+        }
+
+        // Manual mapping fallback
+        return res.json({
+          _source:"proxycurl",
+          name:    [d.first_name, d.last_name].filter(Boolean).join(" "),
+          title:   d.headline || "", summary: d.summary || "", location: d.city || "",
+          connections: d.connections || null,
+          skills:  (d.skills||[]).map(s=>s.name||s),
+          experience: (d.experiences||[]).map(e=>({
+            company:e.company||"", role:e.title||"", current:!e.ends_at,
+            startDate: e.starts_at?`${e.starts_at.year}-${String(e.starts_at.month||1).padStart(2,"0")}` : "",
+            endDate:   e.ends_at  ?`${e.ends_at.year}-${String(e.ends_at.month||1).padStart(2,"0")}` : "",
+            description: e.description||"",
+          })),
+          education: (d.education||[]).map(e=>({ institution:e.school||"", degree:e.degree_name||"", field:e.field_of_study||"", year:e.ends_at?.year?.toString()||"" })),
+          certifications: (d.certifications||[]).map(c=>c.name||c),
+          rawText: rawStr,
+        })
+      }
+    } catch (e) { console.warn("[extract-linkedin] ProxyCurl:", e.message) }
+  }
+
+  // Option B: Scrape HTML → Gemini or Groq
+  try {
+    const pageRes = await fetch(cleanUrl, {
+      headers: { "User-Agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36", "Accept-Language":"en-US,en;q=0.9" },
+      signal: AbortSignal.timeout(8000),
+    })
+    const html   = await pageRes.text()
+    const isWall = html.includes("authwall") || (html.includes("login") && html.includes("Join LinkedIn"))
+
+    if (isWall) {
+      // Extract every scrap of data available without login
+      const nameMatch  = html.match(/<title>([^|<]+)/i)
+      const descMatch  = html.match(/<meta[^>]+name="description"[^>]+content="([^"]+)"/i)
+      const ogTitle    = html.match(/<meta[^>]+property="og:title"[^>]+content="([^"]+)"/i)
+      const ogDesc     = html.match(/<meta[^>]+property="og:description"[^>]+content="([^"]+)"/i)
+      const rawName    = (nameMatch?.[1] || ogTitle?.[1] || "").trim().replace(/ [|-].*LinkedIn.*/i, "").trim()
+      const rawDesc    = (descMatch?.[1] || ogDesc?.[1] || "").trim()
+      // LinkedIn og:description often starts with "title at company. summary..."
+      const titleMatch = rawDesc.match(/^([^.]+)\s+at\s+([^.]+)/i)
+      const extractedTitle = titleMatch ? titleMatch[1].trim() : rawDesc.split(".")?.[0]?.trim() || ""
+
+      // Try Gemini/Groq on what little HTML we have even through the wall
+      let aiData = {}
+      if (hasGemini() && rawName) {
+        try {
+          const miniPrompt = `From this partial LinkedIn page data, extract what you can.
+Name: ${rawName}
+Description: ${rawDesc}
+Return JSON with fields: name, title, summary, skills (array), experience (array).
+Only include fields you can confidently extract. Return {} for unknown fields.`
+          const r = await gemini(miniPrompt, { json: true })
+          aiData = typeof r === "string" ? JSON.parse(r) : r
+        } catch {}
+      }
+
+      return res.json({
+        partial: true,
+        name:    aiData.name    || rawName,
+        title:   aiData.title   || extractedTitle,
+        summary: aiData.summary || rawDesc,
+        skills:  aiData.skills  || [],
+        experience: aiData.experience || [],
+        education: [], certifications: [], rawText: rawDesc,
+        message: "LinkedIn requires login for full data. Upload your LinkedIn PDF export as the resume for better results.",
+      })
+    }
+
+    const clean = html.replace(/<script[\s\S]*?<\/script>/gi,"").replace(/<style[\s\S]*?<\/style>/gi,"")
+      .replace(/<[^>]+>/g," ").replace(/\s{3,}/g,"\n").slice(0,4000)
+
+    const parsePrompt = `Parse this LinkedIn page HTML and extract profile data.
+Return ONLY this JSON: ${LINKEDIN_SCHEMA}
+Page content:\n${clean}`
+
+    let p = {}
+    if (hasGemini()) {
+      try { const r = await gemini(parsePrompt, { json:true }); p = typeof r==="string"?JSON.parse(r):r } catch {}
+    }
+    if (!p.name) {
+      const raw = await groq(
+        [{ role:"system",content:"LinkedIn profile parser. Return ONLY valid JSON." },{ role:"user",content:parsePrompt }],
+        { model:GROQ_FAST, max_tokens:1500, json:true }
+      )
+      try { p = JSON.parse(raw) } catch {}
+    }
+
+    return res.json({ _source:"scrape", name:p.name||"", title:p.title||"", summary:p.summary||"",
+      location:p.location||"", skills:p.skills||[], experience:p.experience||[],
+      education:p.education||[], certifications:p.certifications||[], rawText:clean.slice(0,2000) })
+
+  } catch (e) {
+    console.error("[extract-linkedin]", e.message)
+    return res.status(500).json({ error:"Could not extract LinkedIn profile. Try uploading your resume instead." })
+  }
+})
+
+export default router

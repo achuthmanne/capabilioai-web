@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Dark background square (tabs clip to square anyway) -->
+  <rect width="100" height="100" fill="#0D0D0D"/>
+
+  <!-- White serif C — drawn as a path so it renders reliably without font deps -->
+  <!-- Outer C arc (large) -->
+  <path d="
+    M 72 22
+    C 60 14, 40 13, 26 26
+    C 12 39, 10 58, 18 72
+    C 26 86, 44 93, 62 89
+    C 70 87, 76 83, 80 78
+    L 72 71
+    C 68 76, 62 79, 54 80
+    C 40 82, 28 75, 24 63
+    C 18 49, 24 33, 36 26
+    C 48 19, 62 22, 70 30
+    Z
+  " fill="#FFFFFF"/>
+
+  <!-- Orange ELO arc — sweeps around the top-right of the C -->
+  <path d="M 68 14 C 68 8, 68 4, 68 4" stroke="#FF5701" stroke-width="5" stroke-linecap="round" fill="none"/>
+  <path d="M 66 4 Q 86 6, 94 28 Q 100 46, 94 64 Q 88 80, 74 88" stroke="#FF5701" stroke-width="5" stroke-linecap="round" fill="none"/>
+
+  <!-- Orange dot (period mark) -->
+  <circle cx="80" cy="88" r="6" fill="#FF5701"/>
+</svg>
