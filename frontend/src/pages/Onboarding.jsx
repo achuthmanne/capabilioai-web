@@ -1224,18 +1224,19 @@ export default function Onboarding({ user, onComplete, onBack }) {
       }
       const payload = buildUserSavePayload({ path:"student", user: { ...user, displayName: getUserDisplayName() }, username, data:{ keyword, result, resumeData, resumeFileObj: resumeFile, resumeBase64 } })
       // ✅ Use Supabase via userDoc (user.id, not user.uid)
-      await userDoc.set(user.id, { ...payload, onboarding_complete: true })
+      // ⚠️  Do NOT set onboarding_complete here — that would fire the real-time
+      // listener in App.jsx and unmount Onboarding before the plan step shows.
+      // onComplete() (called after plan confirmation) stamps the flag.
+      await userDoc.set(user.id, { ...payload, onboarding_complete: false })
 
       // ── Guaranteed override: the handle_new_user trigger creates profiles with
       // elo_rating=800 and path='professional'. Always explicitly overwrite the
       // critical fields after the main upsert, even if it partially failed.
       const guaranteedElo = getStudentDisplayElo({ score: result?.score || 0, total: result?.total || 25 })
       await userDoc.update(user.id, {
-        eloRating:           guaranteedElo,
-        path:                "student",
-        keyword:             keyword || payload.keyword || "",
-        onboarding_complete: true,
-        onboardingComplete:  true,
+        eloRating: guaranteedElo,
+        path:      "student",
+        keyword:   keyword || payload.keyword || "",
       })
     } catch (err) { console.warn("Profile save failed:", err) }
     setSavingResult(false); setStep("plan")
@@ -1252,7 +1253,8 @@ export default function Onboarding({ user, onComplete, onBack }) {
       }
       const payload = buildUserSavePayload({ path:"professional", user: { ...user, displayName: getUserDisplayName() }, username, data:{ auraResult, githubUsername, proResumeFileObj: proResumeFile, proResumeBase64 } })
       // ✅ Use Supabase via userDoc
-      await userDoc.set(user.id, { ...payload, onboarding_complete: true })
+      // ⚠️  Do NOT set onboarding_complete here — plan step must show first.
+      await userDoc.set(user.id, { ...payload, onboarding_complete: false })
     } catch (err) { console.warn("Profile save failed:", err) }
     setSavingResult(false); setStep("plan")
   }
@@ -1264,7 +1266,8 @@ export default function Onboarding({ user, onComplete, onBack }) {
       const username = slugifyUsername(getUserDisplayName() || authName)
       const payload = buildUserSavePayload({ path, user: { ...user, displayName: getUserDisplayName() }, username, data:{ authName,authRole,authType,authCompany,authDomain,authBio,authWebsite,authEmail,authLinkedIn } })
       // ✅ Use Supabase via userDoc
-      await userDoc.set(user.id, { ...payload, onboarding_complete: true })
+      // ⚠️  Do NOT set onboarding_complete here — plan step must show first.
+      await userDoc.set(user.id, { ...payload, onboarding_complete: false })
       setAuthAnalyzing(false)
       // Route to path-specific preview before plan
       if (path === "institution") setStep("org-preview")
@@ -1283,7 +1286,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
           await userDoc.update(user.id, {
             subscription: "free",
             subscriptionCycleStart: new Date().toISOString(),
-            onboarding_complete: true,
+            // onboarding_complete is stamped by onComplete() in App.jsx AFTER this runs
           })
         }
       } catch (err) { console.warn("Plan save failed:", err) }

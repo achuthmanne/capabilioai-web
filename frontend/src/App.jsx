@@ -632,17 +632,15 @@ function App() {
       <Onboarding
         user={user}
         onComplete={async () => {
-          // Stamp the flag on completion so all future logins pass the first signal check
-          try { await userDoc.update(user.id, { onboarding_complete: true }) } catch {}
-          // Wait briefly for Supabase writes to propagate, then read fresh
+          // Wait briefly for Supabase writes from the plan step to propagate, then read fresh
           await new Promise(r => setTimeout(r, 400))
           const fresh = await userDoc.get(user.id)
-          if (fresh) {
-            // Guard: the handle_new_user trigger seeds elo_rating=800 and path='professional'.
-            // If the onboarding save succeeded, fresh data should already be correct.
-            // But if it was partially overwritten, we trust the DB value now.
-            setUserData(fresh)
-          }
+          if (fresh) setUserData(fresh)
+          // Stamp the flag LAST — this triggers the real-time listener which also sets
+          // onboardingDone(true). By stamping after the fresh read, both paths (real-time
+          // listener and the explicit setters below) land on the same render cycle.
+          try { await userDoc.update(user.id, { onboarding_complete: true }) } catch {}
+          // These fire synchronously in the same batch — React renders once with both.
           setOnboardingDone(true)
           setCurrentPage("aura")
         }}

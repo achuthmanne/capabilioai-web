@@ -3481,8 +3481,17 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
                   </div>
                   <button onClick={()=>setActiveTab("skillgraph")} style={{padding:"5px 12px",background:T.indigo3,border:`1px solid rgba(61,78,172,0.2)`,borderRadius:8,color:T.indigo,fontSize:11,fontWeight:700,cursor:"pointer"}}>Full View →</button>
                 </div>
-                <div style={{display:"flex",justifyContent:"center",marginBottom:14}}>
+                <div style={{display:"flex",justifyContent:"center",marginBottom:14,position:"relative"}}>
                   <RadarChart data={domainSkillGraph} size={240}/>
+                  {domainSkillGraph.every(d=>d.value===0) && (
+                    <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",pointerEvents:"none"}}>
+                      <div style={{background:"rgba(255,255,255,0.92)",borderRadius:10,padding:"8px 14px",textAlign:"center",boxShadow:"0 2px 8px rgba(0,0,0,0.08)"}}>
+                        <div style={{fontSize:20,marginBottom:4}}>🎯</div>
+                        <div style={{fontSize:11,fontWeight:700,color:T.ink2}}>Take the assessment</div>
+                        <div style={{fontSize:10,color:T.muted,marginTop:2}}>to calibrate your radar</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div style={{display:"flex",flexWrap:"wrap",gap:5,justifyContent:"center"}}>
                   {domainSkillGraph.map((d,i)=>(
@@ -4011,19 +4020,37 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
                     <SectionLabel color={T.indigo}>Your Skill Radar</SectionLabel>
                     <div style={{fontSize:10,color:T.ink4,fontFamily:"'DM Mono',monospace"}}>{keyword}</div>
                   </div>
-                  <div style={{display:"flex",justifyContent:"center",padding:"12px 0"}}>
-                    <RadarChart data={skillGraph.slice(0,8)} size={280}/>
-                  </div>
-                  <div style={{display:"flex",flexWrap:"wrap",gap:5,justifyContent:"center",marginTop:10}}>
-                    {skillGraph.slice(0,8).map((d,i)=>(
-                      <div key={i} style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:T.ink3,
-                        padding:"2px 8px",borderRadius:99,background:C[i%C.length]+"10",border:`1px solid ${C[i%C.length]}30`}}>
-                        <div style={{width:6,height:6,borderRadius:"50%",background:C[i%C.length]}}/>
-                        <span style={{fontWeight:600}}>{d.label||d.skill}</span>
-                        {(d.value||d.score||0)>0&&<strong style={{color:C[i%C.length]}}>{d.value||d.score}%</strong>}
-                      </div>
-                    ))}
-                  </div>
+                  {/* Fall back to domain radar when no personal skill data yet */}
+                  {(() => {
+                    const radarData = skillGraph.length > 0 ? skillGraph.slice(0,8) : domainSkillGraph.slice(0,8)
+                    const allZeroFallback = radarData.every(d=>(d.value||d.score||0)===0)
+                    return (
+                      <>
+                        <div style={{display:"flex",justifyContent:"center",padding:"12px 0",position:"relative"}}>
+                          <RadarChart data={radarData} size={280}/>
+                          {allZeroFallback && (
+                            <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",pointerEvents:"none"}}>
+                              <div style={{background:"rgba(255,255,255,0.92)",borderRadius:10,padding:"10px 16px",textAlign:"center",boxShadow:"0 2px 8px rgba(0,0,0,0.08)"}}>
+                                <div style={{fontSize:24,marginBottom:4}}>🎯</div>
+                                <div style={{fontSize:12,fontWeight:700,color:T.ink2}}>No assessment data yet</div>
+                                <div style={{fontSize:11,color:T.muted,marginTop:3}}>Complete the assessment to calibrate your radar</div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div style={{display:"flex",flexWrap:"wrap",gap:5,justifyContent:"center",marginTop:10}}>
+                          {radarData.map((d,i)=>(
+                            <div key={i} style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:T.ink3,
+                              padding:"2px 8px",borderRadius:99,background:C[i%C.length]+"10",border:`1px solid ${C[i%C.length]}30`}}>
+                              <div style={{width:6,height:6,borderRadius:"50%",background:C[i%C.length]}}/>
+                              <span style={{fontWeight:600}}>{d.label||d.skill}</span>
+                              {(d.value||d.score||0)>0&&<strong style={{color:C[i%C.length]}}>{d.value||d.score}%</strong>}
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )
+                  })()}
                 </Card>
 
                 {/* Actual skill scores */}
