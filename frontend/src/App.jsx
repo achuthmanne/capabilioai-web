@@ -3,6 +3,7 @@ import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/react"
 import { supabase } from "./lib/supabase"
 import { userDoc } from "./lib/db"
+import { Analytics as PH, identifyUser, resetAnalytics } from "./lib/analytics"
 
 import PathNav             from "./components/PathNav"
 import LandingPage         from "./pages/LandingPage"
@@ -503,6 +504,8 @@ function App() {
 
       if (u) {
         setUser(u)
+        if (event === "SIGNED_IN")       PH.signedIn(u.app_metadata?.provider || "email")
+        if (event === "USER_UPDATED")    PH.signedUp(u.app_metadata?.provider || "email")
 
         // Subscribe to profile changes in real-time
         if (profileUnsub) profileUnsub()
@@ -527,6 +530,7 @@ function App() {
               data.onboardingComplete === true
             setOnboardingDone(isDone)
             setUserData(data)
+            identifyUser(u, data)
           } else {
             setOnboardingDone(false)
           }
@@ -555,10 +559,17 @@ function App() {
   }, [])
 
   const handleSignOut = async () => {
+    PH.signedOut()
+    resetAnalytics()
     await supabase.auth.signOut()
     setUser(null); setOnboardingDone(false); setUserData(null)
     setCurrentPage("studentHome"); setAppStage("landing")
   }
+
+  // ── Track page views (SPA — fires on every state-based navigation) ──────────
+  useEffect(() => {
+    if (user && currentPage) PH.pageViewed(currentPage)
+  }, [currentPage]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Path helpers (must be above all early returns so hooks stay stable) ──
   const HOME_PAGE = {
@@ -640,6 +651,12 @@ function App() {
           // onboardingDone(true). By stamping after the fresh read, both paths (real-time
           // listener and the explicit setters below) land on the same render cycle.
           try { await userDoc.update(user.id, { onboarding_complete: true }) } catch {}
+          PH.onboardingCompleted({
+            path:         fresh?.path,
+            keyword:      fresh?.keyword,
+            subscription: fresh?.subscription,
+            eloRating:    fresh?.eloRating || fresh?.elo_rating,
+          })
           // These fire synchronously in the same batch — React renders once with both.
           setOnboardingDone(true)
           setCurrentPage("aura")
