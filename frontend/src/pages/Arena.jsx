@@ -947,21 +947,24 @@ function EvaluationModal({ result, domain, onClose }) {
   const eloGain    = result.eloGain || 0
   const grade      = result.grade  || (score >= 90 ? "A+" : score >= 80 ? "A" : score >= 70 ? "B+" : score >= 60 ? "B" : score >= 50 ? "C" : "D")
   const timedOut   = result.timedOut || false
+  const isFlagged  = !!result.integrityFlag   // ← integrity violation
 
-  const scoreColor = score >= 80 ? "#1A7A4A" : score >= 60 ? "#B8620A" : "#C0392B"
-  const scoreGrad  = score >= 80
-    ? "linear-gradient(135deg,#E8F7EF,#F0FDF4)"
-    : score >= 60
-      ? "linear-gradient(135deg,#FEF3E2,#FFFBEB)"
-      : "linear-gradient(135deg,#FDF0EF,#FEF2F2)"
+  const scoreColor = isFlagged ? "#B91C1C" : score >= 80 ? "#1A7A4A" : score >= 60 ? "#B8620A" : "#C0392B"
+  const scoreGrad  = isFlagged
+    ? "linear-gradient(135deg,#FEF2F2,#FFF1F1)"
+    : score >= 80
+      ? "linear-gradient(135deg,#E8F7EF,#F0FDF4)"
+      : score >= 60
+        ? "linear-gradient(135deg,#FEF3E2,#FFFBEB)"
+        : "linear-gradient(135deg,#FDF0EF,#FEF2F2)"
 
-  // Build rubric from domain if not in result, with stable randomised-looking scores
-  const rubric = result.rubric?.length
+  // Build rubric only when not flagged
+  const rubric = isFlagged ? [] : (result.rubric?.length
     ? result.rubric
     : (domain?.rubric || []).map((r, i) => ({
         criterion: r.criterion,
         score: Math.min(98, Math.max(score - 5 + (i * 7 % 20) - 10, timedOut ? 15 : 35)),
-      }))
+      })))
 
   return (
     <div
@@ -972,137 +975,203 @@ function EvaluationModal({ result, domain, onClose }) {
         style={{ background:"#FFFFFF", borderRadius:24, width:"100%", maxWidth:440, boxShadow:"0 32px 80px rgba(0,0,0,0.25)", overflow:"hidden", fontFamily:"'DM Sans',sans-serif" }}
         onClick={e => e.stopPropagation()}
       >
-        {/* ── Header ── */}
-        <div style={{ padding:"22px 24px 18px", background: scoreGrad, borderBottom:`1px solid ${scoreColor}20` }}>
-          <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-            {/* Grade ring */}
-            <div style={{
-              width:64, height:64, borderRadius:"50%", flexShrink:0,
-              background:"#FFFFFF", border:`3px solid ${scoreColor}`,
-              display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-              boxShadow:`0 0 0 6px ${scoreColor}18`,
-            }}>
-              <div style={{ fontSize:22, fontWeight:900, color:scoreColor, fontFamily:"'DM Mono',monospace", lineHeight:1 }}>{grade}</div>
+
+        {/* ══ INTEGRITY FLAG HEADER (replaces normal header when cheating detected) ══ */}
+        {isFlagged ? (
+          <>
+            {/* Red flag banner */}
+            <div style={{ padding:"22px 24px 18px", background:"linear-gradient(135deg,#FEF2F2,#FFF1F2)", borderBottom:"2px solid #FECACA" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+                {/* VOID badge */}
+                <div style={{
+                  width:64, height:64, borderRadius:"50%", flexShrink:0,
+                  background:"#FEF2F2", border:"3px solid #DC2626",
+                  display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+                  boxShadow:"0 0 0 6px #DC262618",
+                }}>
+                  <div style={{ fontSize:11, fontWeight:900, color:"#DC2626", fontFamily:"'DM Mono',monospace", lineHeight:1, textAlign:"center" }}>VOID</div>
+                </div>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:15, fontWeight:900, color:"#991B1B", marginBottom:4, letterSpacing:-0.3, display:"flex", alignItems:"center", gap:6 }}>
+                    🚨 Integrity Flag Raised
+                  </div>
+                  <div style={{ fontSize:11, color:"#B91C1C", lineHeight:1.5 }}>
+                    This submission was not independently written. ELO awarded: <strong>0 pts</strong>.
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div style={{ flex:1 }}>
-              <div style={{ fontSize:16, fontWeight:900, color:T.ink, marginBottom:3, letterSpacing:-0.3 }}>
-                {timedOut ? "Time's Up — Partial Review" : score >= 80 ? "Mission Complete! 🏆" : score >= 60 ? "Mission Passed ✅" : "Mission Reviewed 📝"}
-              </div>
-              <div style={{ fontSize:11, color:T.ink3, lineHeight:1.5 }}>
-                {result.summary || (timedOut ? "Partial score awarded for work completed." : "Your submission has been evaluated.")}
-              </div>
+            {/* 0 ELO strip */}
+            <div style={{ display:"flex", borderBottom:`1px solid ${T.border}` }}>
+              {[
+                { label:"SCORE",      value:"0",   unit:"/100",  color:"#DC2626", bg:"#FEF2F2" },
+                { label:"ELO GAINED", value:"+0",  unit:"pts",   color:"#DC2626", bg:"#FEF2F2" },
+                { label:"STATUS",     value:"🚩",  unit:"Flagged", color:"#DC2626", bg:"#FEF2F2" },
+              ].map((s,i) => (
+                <div key={i} style={{ flex:1, padding:"14px 10px", textAlign:"center", borderRight: i < 2 ? `1px solid #FECACA` : "none", background:s.bg }}>
+                  <div style={{ fontSize:22, fontWeight:900, color:s.color, fontFamily:"'DM Mono',monospace", lineHeight:1 }}>{s.value}</div>
+                  <div style={{ fontSize:8, color:s.color, fontWeight:700, marginTop:3, letterSpacing:0.8, textTransform:"uppercase" }}>{s.label}</div>
+                  <div style={{ fontSize:9, color:"#EF4444", marginTop:1 }}>{s.unit}</div>
+                </div>
+              ))}
             </div>
-          </div>
-        </div>
 
-        {/* ── Score + ELO + Tier strip ── */}
-        <div style={{ display:"flex", borderBottom:`1px solid ${T.border}` }}>
-          {[
-            { label:"SCORE",     value: score,         unit:"/100", color: scoreColor,   bg: scoreColor+"10",   mono:true  },
-            { label:"ELO GAINED",value: `+${eloGain}`, unit:"pts",  color: "#1A7A4A",    bg: "#E8F7EF",         mono:true  },
-            { label:"TIER",      value: tier.icon,     unit: tier.label, color:tier.color, bg:tier.color+"12", mono:false },
-          ].map((s,i) => (
-            <div key={i} style={{ flex:1, padding:"14px 10px", textAlign:"center", borderRight: i < 2 ? `1px solid ${T.border}` : "none", background:s.bg }}>
-              <div style={{ fontSize: s.mono ? 22 : 24, fontWeight:900, color:s.color, fontFamily: s.mono ? "'DM Mono',monospace" : "inherit", lineHeight:1 }}>
-                {s.value}
-              </div>
-              <div style={{ fontSize:8, color:s.color, fontWeight:700, marginTop:3, letterSpacing:0.8, textTransform:"uppercase" }}>{s.label}</div>
-              <div style={{ fontSize:9, color:T.ink4, marginTop:1 }}>{s.unit}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* ── Rubric breakdown ── */}
-        <div style={{ padding:"16px 22px" }}>
-          <div style={{ fontSize:9, fontWeight:800, color:T.ink4, letterSpacing:2, marginBottom:12 }}>RUBRIC BREAKDOWN</div>
-          <div style={{ display:"flex", flexDirection:"column", gap:9 }}>
-            {rubric.map((r,i) => {
-              const rc = r.score >= 70 ? "#1A7A4A" : r.score >= 50 ? "#B8620A" : "#C0392B"
-              return (
-                <div key={i}>
-                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
-                    <span style={{ fontSize:11, fontWeight:700, color:T.ink2 }}>{r.criterion}</span>
-                    <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                      <div style={{ width:28, height:28, borderRadius:"50%", background:rc+"15", border:`2px solid ${rc}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                        <span style={{ fontSize:9, fontWeight:900, color:rc, fontFamily:"'DM Mono',monospace" }}>{r.score}</span>
-                      </div>
+            {/* Detailed integrity breakdown */}
+            <div style={{ padding:"16px 22px" }}>
+              {/* What was detected */}
+              <div style={{ padding:"12px 14px", background:"#FFF1F2", border:"1.5px solid #FECACA", borderRadius:12, marginBottom:12 }}>
+                <div style={{ fontSize:9, fontWeight:800, color:"#991B1B", letterSpacing:1.5, marginBottom:8 }}>🔍 SIGNALS DETECTED</div>
+                {(result.integrityFlags || []).map((f, i) => (
+                  <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:7, marginBottom:6 }}>
+                    <span style={{ fontSize:10, color:"#DC2626", flexShrink:0, marginTop:1 }}>⚑</span>
+                    <div>
+                      <div style={{ fontSize:10, fontWeight:700, color:"#991B1B" }}>{f.code.replace(/_/g," ")}</div>
+                      <div style={{ fontSize:9.5, color:"#B91C1C" }}>{f.msg}</div>
                     </div>
                   </div>
-                  <div style={{ height:5, borderRadius:99, background:T.cream3, overflow:"hidden" }}>
-                    <div style={{ width:`${r.score}%`, height:"100%", background:`linear-gradient(90deg,${rc},${rc}80)`, borderRadius:99, transition:"width 0.8s ease" }} />
-                  </div>
+                ))}
+                {/* Always show the raw numbers */}
+                <div style={{ marginTop:8, paddingTop:8, borderTop:"1px solid #FECACA", display:"flex", gap:12, flexWrap:"wrap" }}>
+                  <span style={{ fontSize:9.5, color:"#B91C1C" }}>⏱ {Math.floor((result.behavioral?.timeOnTaskSecs||0)/60)}m {(result.behavioral?.timeOnTaskSecs||0)%60}s on task</span>
+                  <span style={{ fontSize:9.5, color:"#B91C1C" }}>⌨️ {result.behavioral?.keystrokeCount||0} keystrokes</span>
+                  <span style={{ fontSize:9.5, color:"#B91C1C" }}>📋 {result.behavioral?.pasteCount||0} paste event(s)</span>
                 </div>
-              )
-            })}
-          </div>
-
-          {/* AI Feedback */}
-          {(result.feedback || result.summary || result.tip) && (
-            <div style={{ marginTop:14, padding:"12px 14px", background:domColor+"08", border:`1px solid ${domColor}20`, borderRadius:12 }}>
-              <div style={{ fontSize:9, fontWeight:800, color:domColor, letterSpacing:1.5, marginBottom:6 }}>🤖 AI FEEDBACK</div>
-              <div style={{ fontSize:12, color:T.ink2, lineHeight:1.75, marginBottom: result.tip ? 8 : 0 }}>{result.summary || result.feedback}</div>
-              {result.tip && result.tip !== result.summary && (
-                <div style={{ fontSize:11, color:T.ink3, fontStyle:"italic", paddingTop:6, borderTop:`1px solid ${domColor}15` }}>💡 {result.tip}</div>
-              )}
-            </div>
-          )}
-
-          {/* Behavioral insight — shown only when signals are meaningful */}
-          {result.behavioral && (result.behavioral.pasteCount > 0 || result.behavioral.timeOnTaskSecs > 0) && (
-            <div style={{ marginTop:10, padding:"10px 12px", background:"#F8F8F5", border:"1px solid rgba(26,26,24,0.08)", borderRadius:10 }}>
-              <div style={{ fontSize:9, fontWeight:800, color:T.ink4, letterSpacing:1.2, marginBottom:6, textTransform:"uppercase" }}>📊 Submission Signals</div>
-              <div style={{ display:"flex", gap:14, flexWrap:"wrap" }}>
-                {result.behavioral.timeOnTaskSecs > 0 && (
-                  <div style={{ fontSize:10, color:T.ink3 }}>
-                    ⏱ <strong style={{ color:T.ink2 }}>{Math.floor(result.behavioral.timeOnTaskSecs/60)}m {result.behavioral.timeOnTaskSecs%60}s</strong> on task
-                  </div>
-                )}
-                {result.behavioral.keystrokeCount > 0 && (
-                  <div style={{ fontSize:10, color:T.ink3 }}>
-                    ⌨️ <strong style={{ color:T.ink2 }}>{result.behavioral.keystrokeCount}</strong> keystrokes
-                  </div>
-                )}
-                {result.behavioral.pasteCount > 0 && (
-                  <div style={{ fontSize:10, color: result.behavioral.pasteCount > 3 ? "#B8620A" : T.ink3 }}>
-                    📋 <strong style={{ color: result.behavioral.pasteCount > 3 ? "#B8620A" : T.ink2 }}>{result.behavioral.pasteCount}</strong> paste{result.behavioral.pasteCount > 1 ? "s" : ""}
-                    {result.behavioral.pasteCount > 3 && <span style={{ color:"#B8620A", marginLeft:4 }}>— heavy paste usage noted</span>}
-                  </div>
-                )}
               </div>
-              {result.behavioral.pasteCount > 3 && (
-                <div style={{ marginTop:6, fontSize:10, color:"#B8620A", lineHeight:1.5 }}>
-                  High paste activity detected. Recruiters value typed, organic solutions — it shows genuine understanding. Try writing from scratch next time.
-                </div>
-              )}
-            </div>
-          )}
 
-          {/* Strengths + Improvements */}
-          {(result.strengths?.length > 0 || result.improvements?.length > 0) && (
-            <div style={{ display:"flex", gap:10, marginTop:10 }}>
-              {result.strengths?.length > 0 && (
-                <div style={{ flex:1, padding:"10px 12px", background:"#F0FDF4", borderRadius:10, border:"1px solid #BBF7D0" }}>
-                  <div style={{ fontSize:9, fontWeight:800, color:"#166534", letterSpacing:1, marginBottom:5 }}>✓ STRENGTHS</div>
-                  {result.strengths.slice(0,2).map((s,i) => <div key={i} style={{ fontSize:10, color:"#15803d", marginBottom:3, lineHeight:1.4 }}>• {s}</div>)}
-                </div>
-              )}
-              {result.improvements?.length > 0 && (
-                <div style={{ flex:1, padding:"10px 12px", background:"#FFFBEB", borderRadius:10, border:"1px solid #FDE68A" }}>
-                  <div style={{ fontSize:9, fontWeight:800, color:"#92400e", letterSpacing:1, marginBottom:5 }}>→ IMPROVE</div>
-                  {result.improvements.slice(0,2).map((s,i) => <div key={i} style={{ fontSize:10, color:"#78350f", marginBottom:3, lineHeight:1.4 }}>• {s}</div>)}
-                </div>
-              )}
-            </div>
-          )}
+              {/* Honest guidance */}
+              <div style={{ padding:"12px 14px", background:"#F8F8F5", border:"1px solid rgba(0,0,0,0.08)", borderRadius:12, marginBottom:12 }}>
+                <div style={{ fontSize:9, fontWeight:800, color:T.ink4, letterSpacing:1.5, marginBottom:6 }}>HOW TO EARN REAL ELO</div>
+                {(result.improvements || []).map((s,i) => (
+                  <div key={i} style={{ fontSize:11, color:T.ink2, lineHeight:1.55, marginBottom:4, display:"flex", gap:6, alignItems:"flex-start" }}>
+                    <span style={{ color:domColor, flexShrink:0 }}>→</span> {s}
+                  </div>
+                ))}
+              </div>
 
-          <button
-            onClick={onClose}
-            style={{ width:"100%", marginTop:16, padding:"13px", background:domColor, border:"none", borderRadius:12, color:"#fff", fontSize:13, fontWeight:800, cursor:"pointer", fontFamily:"inherit", letterSpacing:-0.2 }}
-          >
-            View in History →
-          </button>
-        </div>
+              <button onClick={onClose} style={{ width:"100%", padding:"13px", background:"#DC2626", border:"none", borderRadius:12, color:"#fff", fontSize:13, fontWeight:800, cursor:"pointer", fontFamily:"inherit" }}>
+                Try Again — Write It Yourself →
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* ══ NORMAL HEADER ══ */}
+            <div style={{ padding:"22px 24px 18px", background: scoreGrad, borderBottom:`1px solid ${scoreColor}20` }}>
+              <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+                <div style={{
+                  width:64, height:64, borderRadius:"50%", flexShrink:0,
+                  background:"#FFFFFF", border:`3px solid ${scoreColor}`,
+                  display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+                  boxShadow:`0 0 0 6px ${scoreColor}18`,
+                }}>
+                  <div style={{ fontSize:22, fontWeight:900, color:scoreColor, fontFamily:"'DM Mono',monospace", lineHeight:1 }}>{grade}</div>
+                </div>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:16, fontWeight:900, color:T.ink, marginBottom:3, letterSpacing:-0.3 }}>
+                    {timedOut ? "Time's Up — Partial Review" : score >= 80 ? "Mission Complete! 🏆" : score >= 60 ? "Mission Passed ✅" : "Mission Reviewed 📝"}
+                  </div>
+                  <div style={{ fontSize:11, color:T.ink3, lineHeight:1.5 }}>
+                    {result.summary || (timedOut ? "Partial score awarded for work completed." : "Your submission has been evaluated.")}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Score + ELO + Tier strip ── */}
+            <div style={{ display:"flex", borderBottom:`1px solid ${T.border}` }}>
+              {[
+                { label:"SCORE",     value: score,         unit:"/100", color: scoreColor,   bg: scoreColor+"10",   mono:true  },
+                { label:"ELO GAINED",value: `+${eloGain}`, unit:"pts",  color: "#1A7A4A",    bg: "#E8F7EF",         mono:true  },
+                { label:"TIER",      value: tier.icon,     unit: tier.label, color:tier.color, bg:tier.color+"12", mono:false },
+              ].map((s,i) => (
+                <div key={i} style={{ flex:1, padding:"14px 10px", textAlign:"center", borderRight: i < 2 ? `1px solid ${T.border}` : "none", background:s.bg }}>
+                  <div style={{ fontSize: s.mono ? 22 : 24, fontWeight:900, color:s.color, fontFamily: s.mono ? "'DM Mono',monospace" : "inherit", lineHeight:1 }}>
+                    {s.value}
+                  </div>
+                  <div style={{ fontSize:8, color:s.color, fontWeight:700, marginTop:3, letterSpacing:0.8, textTransform:"uppercase" }}>{s.label}</div>
+                  <div style={{ fontSize:9, color:T.ink4, marginTop:1 }}>{s.unit}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* ── Rubric breakdown ── */}
+            <div style={{ padding:"16px 22px" }}>
+              <div style={{ fontSize:9, fontWeight:800, color:T.ink4, letterSpacing:2, marginBottom:12 }}>RUBRIC BREAKDOWN</div>
+              <div style={{ display:"flex", flexDirection:"column", gap:9 }}>
+                {rubric.map((r,i) => {
+                  const rc = r.score >= 70 ? "#1A7A4A" : r.score >= 50 ? "#B8620A" : "#C0392B"
+                  return (
+                    <div key={i}>
+                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
+                        <span style={{ fontSize:11, fontWeight:700, color:T.ink2 }}>{r.criterion}</span>
+                        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                          <div style={{ width:28, height:28, borderRadius:"50%", background:rc+"15", border:`2px solid ${rc}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                            <span style={{ fontSize:9, fontWeight:900, color:rc, fontFamily:"'DM Mono',monospace" }}>{r.score}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ height:5, borderRadius:99, background:T.cream3, overflow:"hidden" }}>
+                        <div style={{ width:`${r.score}%`, height:"100%", background:`linear-gradient(90deg,${rc},${rc}80)`, borderRadius:99, transition:"width 0.8s ease" }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* AI Feedback */}
+              {(result.feedback || result.summary || result.tip) && (
+                <div style={{ marginTop:14, padding:"12px 14px", background:domColor+"08", border:`1px solid ${domColor}20`, borderRadius:12 }}>
+                  <div style={{ fontSize:9, fontWeight:800, color:domColor, letterSpacing:1.5, marginBottom:6 }}>🤖 AI FEEDBACK</div>
+                  <div style={{ fontSize:12, color:T.ink2, lineHeight:1.75, marginBottom: result.tip ? 8 : 0 }}>{result.summary || result.feedback}</div>
+                  {result.tip && result.tip !== result.summary && (
+                    <div style={{ fontSize:11, color:T.ink3, fontStyle:"italic", paddingTop:6, borderTop:`1px solid ${domColor}15` }}>💡 {result.tip}</div>
+                  )}
+                </div>
+              )}
+
+              {/* Behavioral insight */}
+              {result.behavioral && (result.behavioral.pasteCount > 0 || result.behavioral.timeOnTaskSecs > 0) && (
+                <div style={{ marginTop:10, padding:"10px 12px", background:"#F8F8F5", border:"1px solid rgba(26,26,24,0.08)", borderRadius:10 }}>
+                  <div style={{ fontSize:9, fontWeight:800, color:T.ink4, letterSpacing:1.2, marginBottom:6, textTransform:"uppercase" }}>📊 Submission Signals</div>
+                  <div style={{ display:"flex", gap:14, flexWrap:"wrap" }}>
+                    {result.behavioral.timeOnTaskSecs > 0 && (
+                      <div style={{ fontSize:10, color:T.ink3 }}>⏱ <strong style={{ color:T.ink2 }}>{Math.floor(result.behavioral.timeOnTaskSecs/60)}m {result.behavioral.timeOnTaskSecs%60}s</strong> on task</div>
+                    )}
+                    {result.behavioral.keystrokeCount > 0 && (
+                      <div style={{ fontSize:10, color:T.ink3 }}>⌨️ <strong style={{ color:T.ink2 }}>{result.behavioral.keystrokeCount}</strong> keystrokes</div>
+                    )}
+                    {result.behavioral.pasteCount > 0 && (
+                      <div style={{ fontSize:10, color:T.ink3 }}>📋 <strong style={{ color:T.ink2 }}>{result.behavioral.pasteCount}</strong> paste{result.behavioral.pasteCount > 1 ? "s" : ""}</div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Strengths + Improvements */}
+              {(result.strengths?.length > 0 || result.improvements?.length > 0) && (
+                <div style={{ display:"flex", gap:10, marginTop:10 }}>
+                  {result.strengths?.length > 0 && (
+                    <div style={{ flex:1, padding:"10px 12px", background:"#F0FDF4", borderRadius:10, border:"1px solid #BBF7D0" }}>
+                      <div style={{ fontSize:9, fontWeight:800, color:"#166534", letterSpacing:1, marginBottom:5 }}>✓ STRENGTHS</div>
+                      {result.strengths.slice(0,2).map((s,i) => <div key={i} style={{ fontSize:10, color:"#15803d", marginBottom:3, lineHeight:1.4 }}>• {s}</div>)}
+                    </div>
+                  )}
+                  {result.improvements?.length > 0 && (
+                    <div style={{ flex:1, padding:"10px 12px", background:"#FFFBEB", borderRadius:10, border:"1px solid #FDE68A" }}>
+                      <div style={{ fontSize:9, fontWeight:800, color:"#92400e", letterSpacing:1, marginBottom:5 }}>→ IMPROVE</div>
+                      {result.improvements.slice(0,2).map((s,i) => <div key={i} style={{ fontSize:10, color:"#78350f", marginBottom:3, lineHeight:1.4 }}>• {s}</div>)}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <button onClick={onClose} style={{ width:"100%", marginTop:16, padding:"13px", background:domColor, border:"none", borderRadius:12, color:"#fff", fontSize:13, fontWeight:800, cursor:"pointer", fontFamily:"inherit", letterSpacing:-0.2 }}>
+                View in History →
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
@@ -2708,6 +2777,56 @@ function ArenaDomain({ user, userData, onBack }) {
     })
   }
 
+  // ── Integrity detection — catches copy-paste-and-submit cheating ──────────
+  // Returns { isCheat, flags, verdict } based on behavioral signals.
+  // Conservative thresholds to avoid false positives on fast typists.
+  function detectIntegrity({ pasteCount, keystrokeCount, timeOnTaskSecs, typedLen }) {
+    const flags = []
+
+    // Signal 1: Code exists but almost no keystrokes.
+    // You cannot write >80 non-starter chars with ≤5 onCodeChange events.
+    // Each onCodeChange = one editor value change (one keystroke, or one paste event = +1).
+    // So keystrokeCount ≤ 5 with typedLen > 80 means the content arrived via paste.
+    if (typedLen > 80 && keystrokeCount <= 5) {
+      flags.push({
+        code: "PASTE_NO_KEYS",
+        msg: `${typedLen} chars written with only ${keystrokeCount} editor event(s)`,
+      })
+    }
+
+    // Signal 2: At least one explicit paste AND nearly no typing effort.
+    // pasteCount is incremented by onPaste on the editor wrapper div.
+    // If they pasted AND have ≤10 total change events, they didn't type the answer.
+    if (pasteCount >= 1 && keystrokeCount <= 10 && typedLen > 100) {
+      flags.push({
+        code: "DIRECT_PASTE",
+        msg: `${pasteCount} paste event(s) with only ${keystrokeCount} keystroke(s) for ${typedLen} chars`,
+      })
+    }
+
+    // Signal 3: Typing speed physically impossible.
+    // Professional typists max out at ~120 WPM = ~600 chars/min = 10 chars/sec.
+    // If observed rate > 15 chars/sec for substantial code, it's a paste.
+    const charsPerSec = timeOnTaskSecs > 5 ? typedLen / timeOnTaskSecs : 0
+    if (charsPerSec > 15 && typedLen > 150) {
+      flags.push({
+        code: "IMPOSSIBLE_SPEED",
+        msg: `${Math.round(charsPerSec)} chars/sec (max human rate is ~10)`,
+      })
+    }
+
+    // Confidence: any one "hard" flag (PASTE_NO_KEYS or DIRECT_PASTE) = definite cheat.
+    // IMPOSSIBLE_SPEED alone needs corroboration from another flag.
+    const hardFlags  = flags.filter(f => ["PASTE_NO_KEYS", "DIRECT_PASTE"].includes(f.code))
+    const isCheat    = hardFlags.length >= 1 || flags.length >= 2
+
+    let verdict = "clean"
+    if (isCheat && hardFlags.length >= 1) verdict = "definite_paste"
+    else if (isCheat) verdict = "suspicious"
+
+    return { isCheat, flags, verdict }
+  }
+
   const handleSubmit = async (timedOut = false) => {
     // ── For multi-workstation missions, aggregate all workstation code ──
     const isMulti = activeMission?.isMultiWorkstation && Object.keys(codeMap).length > 0
@@ -2750,6 +2869,9 @@ function ArenaDomain({ user, userData, onBack }) {
     const typedLen       = Math.max(0, allContent.length - starterLen)
     // Suspect if >60% of non-starter code was pasted and keystrokes are low
     const pasteRatio     = typedLen > 0 ? Math.round((pasteCount * 80) / Math.max(typedLen, 1) * 100) / 100 : 0
+
+    // ── Integrity check ──
+    const integrity = detectIntegrity({ pasteCount, keystrokeCount, timeOnTaskSecs, typedLen })
 
     // ── Call AI review endpoint with behavioral context ──
     let aiReview = null
@@ -2825,7 +2947,9 @@ function ArenaDomain({ user, userData, onBack }) {
     // ELO gain — timeouts still earn based on score (AI reviewed) so the gain is meaningful.
     // A student who wrote real code and scored 40+ on timeout shouldn't get the same as blank.
     const isPractice = !!activeMission?._practice
-    const eloGain = isPractice ? 0 : timedOut
+
+    // Integrity override: cheated submissions earn 0 ELO regardless of score
+    const eloGain = isPractice ? 0 : integrity.isCheat ? 0 : timedOut
       ? (finalScore >= 60 ? 8 : finalScore >= 40 ? 4 : meaningful.length >= 5 ? 2 : 0)
       : (finalScore >= 80 ? 25 : finalScore >= 60 ? 12 : finalScore >= 40 ? 5 : 3)
     const newElo = elo + eloGain
@@ -2867,22 +2991,38 @@ function ArenaDomain({ user, userData, onBack }) {
           ? `Good attempt on "${mTitle}". ${category ? `Your ${category} solution covers the core requirement but has room for improvement in ${activeRubric.slice(1,2).map(r=>r.criterion).join(" and ")}.` : "Core requirement met — focus on edge cases and depth next time."}`
           : `"${mTitle}" needs more work. ${category ? `For ${category} challenges, the key is ${activeRubric[0]?.criterion || "correctness"} first — ensure your solution handles the primary scenario completely before optimising.` : "Ensure the core requirement is met before attempting optimisations."}`
 
+    // ── Integrity override — build cheat-specific feedback ──
+    const integritySummary = integrity.isCheat
+      ? `Integrity flag raised on "${activeMission?.title || "this challenge"}". ` +
+        `Our system detected ${typedLen} characters of code submitted with only ${keystrokeCount} editor event(s) and ${pasteCount} paste operation(s) in ${timeOnTaskSecs}s on task. ` +
+        `This pattern indicates the answer was not independently written. ` +
+        `ELO gain: 0 pts (integrity violation). ` +
+        `Capabilio measures genuine professional competence — copy-pasting from an AI tool or Stack Overflow won't build the muscle memory that holds up in a real interview. ` +
+        `Work through the problem from scratch to earn real ELO and develop lasting skills.`
+      : null
+
     const reviewResult = {
-      score:        finalScore,
+      score:          integrity.isCheat ? 0 : finalScore,
       eloGain,
-      eloDelta:     eloGain,
+      eloDelta:       eloGain,
       newElo,
       timedOut,
-      rubric:       rubricRows,
-      grade:        aiReview?.grade        || gradeFor(finalScore),
-      summary:      aiReview?.summary      || fallbackSummary,
-      strengths:    aiReview?.strengths    || (finalScore >= 70 ? [`Completed the core ${category || "challenge"} objective`, "Showed structured thinking"] : []),
-      improvements: aiReview?.improvements || (finalScore < 80 ? [`Deepen ${activeRubric[1]?.criterion || "quality"}`, `Review ${category || domain.label} best practices`] : []),
-      tip:          aiReview?.tip          || fallbackTip,
-      feedback:     aiReview?.summary      || fallbackSummary,
-      challengeType: isDSA ? "dsa" : "domain",
-      answer:       code,
-      behavioral:   { pasteCount, keystrokeCount, timeOnTaskSecs, pasteRatio },
+      rubric:         integrity.isCheat ? [] : rubricRows,
+      grade:          integrity.isCheat ? "VOID" : (aiReview?.grade || gradeFor(finalScore)),
+      summary:        integritySummary || aiReview?.summary || fallbackSummary,
+      strengths:      integrity.isCheat ? [] : (aiReview?.strengths || (finalScore >= 70 ? [`Completed the core ${category || "challenge"} objective`, "Showed structured thinking"] : [])),
+      improvements:   integrity.isCheat
+        ? ["Submit only work you wrote yourself", "Use the Brief and Hints to guide your thinking", "Build your skills through genuine practice"]
+        : (aiReview?.improvements || (finalScore < 80 ? [`Deepen ${activeRubric[1]?.criterion || "quality"}`, `Review ${category || domain.label} best practices`] : [])),
+      tip:            integrity.isCheat ? null : (aiReview?.tip || fallbackTip),
+      feedback:       integritySummary || aiReview?.summary || fallbackSummary,
+      challengeType:  isDSA ? "dsa" : "domain",
+      answer:         code,
+      behavioral:     { pasteCount, keystrokeCount, timeOnTaskSecs, pasteRatio },
+      // Integrity metadata — used by EvaluationModal for the red flag banner
+      integrityFlag:  integrity.isCheat,
+      integrityFlags: integrity.flags,
+      integrityVerdict: integrity.verdict,
     }
 
     // ── Persist: ELO + arena_history + leaderboard ──
