@@ -17,9 +17,35 @@ import { dirname, resolve } from "path"
 const __dirname = dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: resolve(__dirname, "../.env") })
 
-import express   from "express"
-import cors      from "cors"
-import rateLimit from "express-rate-limit"
+import express from "express"
+import cors    from "cors"
+
+// ─── Built-in rate limiter (no external package needed) ───────────────────────
+function createRateLimiter(windowMs, max, message) {
+  const store = new Map()
+  // Clean up old entries every 5 minutes to prevent memory leak
+  setInterval(() => {
+    const cutoff = Date.now() - windowMs
+    for (const [ip, timestamps] of store) {
+      const fresh = timestamps.filter(t => t > cutoff)
+      if (fresh.length === 0) store.delete(ip)
+      else store.set(ip, fresh)
+    }
+  }, 5 * 60 * 1000)
+
+  return (req, res, next) => {
+    const ip = req.ip || req.socket?.remoteAddress || "unknown"
+    const now = Date.now()
+    const cutoff = now - windowMs
+    const hits = (store.get(ip) || []).filter(t => t > cutoff)
+    hits.push(now)
+    store.set(ip, hits)
+    res.setHeader("X-RateLimit-Limit", max)
+    res.setHeader("X-RateLimit-Remaining", Math.max(0, max - hits.length))
+    if (hits.length > max) return res.status(429).json({ error: message })
+    next()
+  }
+}
 
 // ─── Route modules ────────────────────────────────────────────────────────────
 import resumeRoutes           from "./server/routes/resume.js"
@@ -52,32 +78,9 @@ const app  = express()
 const PORT = process.env.PORT || 4000
 
 // ─── Rate limiters ────────────────────────────────────────────────────────────
-// General API: 100 requests per minute per IP
-const generalLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 100,
-  message: { error: "Too many requests, please try again in a minute." },
-  standardHeaders: true,
-  legacyHeaders: false,
-})
-
-// AI routes (expensive): 20 requests per minute per IP
-const aiLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 20,
-  message: { error: "AI rate limit reached. Please wait a moment." },
-  standardHeaders: true,
-  legacyHeaders: false,
-})
-
-// Auth/payment routes: 10 requests per minute per IP
-const strictLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 10,
-  message: { error: "Too many attempts. Please wait before trying again." },
-  standardHeaders: true,
-  legacyHeaders: false,
-})
+const generalLimiter = createRateLimiter(60_000, 100, "Too many requests, please try again in a minute.")
+const aiLimiter      = createRateLimiter(60_000,  20, "AI rate limit reached. Please wait a moment.")
+const strictLimiter  = createRateLimiter(60_000,  10, "Too many attempts. Please wait before trying again.")
 
 app.use("/api", generalLimiter)
 app.use("/api/arena",        aiLimiter)
