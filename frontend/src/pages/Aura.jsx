@@ -10,6 +10,7 @@ import CareerTimelinePro from "../components/CareerTimeline"
 import VaultManagerPro   from "../components/VaultManager"
 import SkillGraphPro     from "../components/SkillGraphView"
 import { interviewApi }  from "../lib/api"
+import SettingsPanel from "./SettingsPanel"
 
 // ─── DESIGN TOKENS — Glassmorphic Cosmos dark theme ─────────────────────────
 const T = {
@@ -4906,95 +4907,13 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
 
         {/* ═══════════ SETTINGS TAB ═══════════ */}
         {activeTab==="settings"&&(
-          <div style={{animation:"fadeUp .3s ease both",maxWidth:600,margin:"0 auto"}}>
-            <div style={{marginBottom:28}}>
-              <SectionLabel color={T.indigo}>⚙️ Settings</SectionLabel>
-              <h2 style={{fontSize:22,fontWeight:800,color:T.ink,margin:"4px 0 0"}}>Profile & Visibility</h2>
-              <p style={{fontSize:13,color:T.ink3,margin:"4px 0 0"}}>Update your display name, username, and page visibility.</p>
-            </div>
-
-            <Card style={{marginBottom:16}}>
-              <SectionLabel color={T.indigo}>Identity</SectionLabel>
-              <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:12}}>
-                <div>
-                  <div style={{fontSize:11,fontWeight:600,color:T.ink3,marginBottom:5,textTransform:"uppercase",letterSpacing:"0.06em"}}>Display Name</div>
-                  <div style={{display:"flex",gap:8}}>
-                    <input
-                      defaultValue={userData?.displayName||user?.user_metadata?.full_name||""}
-                      id="settings-displayName"
-                      style={{flex:1,padding:"10px 12px",borderRadius:9,border:`1px solid ${T.border}`,fontSize:13,color:T.ink,fontFamily:"inherit",outline:"none"}}
-                      onFocus={e=>e.target.style.borderColor=T.indigo}
-                      onBlur={e=>e.target.style.borderColor=T.border}
-                    />
-                    <button onClick={async()=>{
-                      const v=document.getElementById("settings-displayName")?.value?.trim()
-                      if(!v)return
-                      if(save)await save({displayName:v})
-                      if(setUserData)setUserData(d=>({...d,displayName:v}))
-                    }} style={{padding:"10px 16px",background:T.indigo,border:"none",borderRadius:9,color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}}>Save</button>
-                  </div>
-                </div>
-                <div>
-                  <div style={{fontSize:11,fontWeight:600,color:T.ink3,marginBottom:5,textTransform:"uppercase",letterSpacing:"0.06em"}}>Username (Portfolio URL)</div>
-                  <div style={{display:"flex",gap:8}}>
-                    <div style={{flex:1,display:"flex",alignItems:"center",border:`1px solid ${T.border}`,borderRadius:9,overflow:"hidden"}}>
-                      <span style={{padding:"10px 10px",background:T.cream2,fontSize:11,color:T.ink4,whiteSpace:"nowrap",borderRight:`1px solid ${T.border}`}}>{window.location.host}/portfolio/</span>
-                      <input
-                        defaultValue={userData?.username||""}
-                        id="settings-username"
-                        style={{flex:1,padding:"10px 10px",border:"none",fontSize:13,color:T.ink,fontFamily:"'JetBrains Mono',monospace",outline:"none"}}
-                        onChange={e=>{e.target.value=e.target.value.toLowerCase().replace(/[^a-z0-9-]/g,"")}}
-                      />
-                    </div>
-                    <button onClick={async()=>{
-                      const v=document.getElementById("settings-username")?.value?.trim()
-                      if(!v)return
-                      const slug=v.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")
-                      if(save)await save({username:slug})
-                      if(setUserData)setUserData(d=>({...d,username:slug}))
-                    }} style={{padding:"10px 16px",background:T.indigo,border:"none",borderRadius:9,color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",flexShrink:0}}>Save</button>
-                  </div>
-                  <div style={{fontSize:11,color:T.ink4,marginTop:5}}>Lowercase letters, numbers, and hyphens only.</div>
-                </div>
-              </div>
-            </Card>
-
-            <div style={{marginBottom:16,fontSize:13,fontWeight:700,color:T.ink2}}>Page Visibility</div>
-            {(path==="professional" ? [
-              {id:"forge",     icon:"⚒️", label:"Forge",     desc:"5-min skill maintenance tasks to keep ELO fresh"},
-              {id:"pulse",     icon:"📡", label:"Pulse",     desc:"Market signals and community feed"},
-              {id:"arena",     icon:"⚔️", label:"Arena",     desc:"Full skill challenges for ELO gains"},
-              {id:"launchpad", icon:"🚀", label:"Launchpad", desc:"Job matches and applications"},
-            ] : [
-              {id:"arena",      icon:"⚔️", label:"Arena",       desc:"Daily skill challenges and ELO rating"},
-              {id:"pulse",      icon:"📡", label:"Pulse",       desc:"Community feed and updates"},
-              {id:"skillstudio",icon:"🎯", label:"Skill Studio",desc:"Learning resources and courses"},
-              {id:"launchpad",  icon:"🚀", label:"Launchpad",   desc:"Job matches and applications"},
-            ]).map(page=>{
-              const vis=userData?.pageVisibility||{}, isOn=vis[page.id]!==false
-              const toggle=async()=>{ const nv={...(userData?.pageVisibility||{}),[page.id]:!isOn}; if(save) save({pageVisibility:nv}); if(setUserData) setUserData(d=>({...d,pageVisibility:nv})); setLocalUserData(d=>({...d,pageVisibility:nv})) }
-              return (
-                <div key={page.id} style={{display:"flex",alignItems:"center",gap:16,padding:"16px 20px",
-                  background:"#FFFFFF",border:`1px solid ${T.border}`,borderRadius:14,marginBottom:10,boxShadow:T.shadow}}>
-                  <div style={{fontSize:22,width:42,height:42,display:"flex",alignItems:"center",justifyContent:"center",background:T.cream2,borderRadius:11}}>{page.icon}</div>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:14,fontWeight:700,color:T.ink,marginBottom:2}}>{page.label}</div>
-                    <div style={{fontSize:12,color:T.ink3}}>{page.desc}</div>
-                  </div>
-                  <div onClick={toggle} style={{width:44,height:24,borderRadius:12,cursor:"pointer",
-                    background:isOn?T.indigo:T.cream3,border:`1.5px solid ${isOn?"rgba(61,78,172,0.4)":T.border}`,
-                    position:"relative",transition:"all 0.25s",flexShrink:0}}>
-                    <div style={{position:"absolute",top:3,left:isOn?22:3,width:16,height:16,borderRadius:"50%",
-                      background:isOn?"#fff":T.ink4,transition:"left 0.25s",boxShadow:"0 1px 4px rgba(0,0,0,0.2)"}}/>
-                  </div>
-                </div>
-              )
-            })}
-            <div style={{marginTop:20,padding:"16px 20px",background:T.blue2,border:`1.5px solid rgba(21,101,192,0.15)`,borderRadius:14}}>
-              <div style={{fontSize:11,fontWeight:700,color:T.blue,marginBottom:6,textTransform:"uppercase",letterSpacing:1.5}}>ℹ️ Note</div>
-              <div style={{fontSize:12,color:T.ink3,lineHeight:1.6}}>Aura Dashboard is always visible.<br/>Changes take effect immediately across all sessions.</div>
-            </div>
-          </div>
+          <SettingsPanel
+            userData={userData}
+            user={user}
+            save={save}
+            setUserData={setUserData || setLocalUserData}
+            path={path}
+          />
         )}
 
       </div>
