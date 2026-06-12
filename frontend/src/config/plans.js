@@ -9,11 +9,11 @@
 const STUDENT_PLANS = {
   free: {
     id: "free", label: "Free", price: 0, color: "#6B7280", colorBg: "#F6F6F1",
-    arenaTasks: 1, arenaFrequency: "per 15 days", arenaIntervalDays: 15,
+    arenaTasks: 1, arenaFrequency: "per day", arenaIntervalDays: 1,
     interviewSessions: 0, marketReports: 0, reportPrice: 49,
     badge: null, highlight: false,
     features: [
-      "1 Arena task every 15 days",
+      "1 Arena task per day (refreshes every 24 hrs)",
       "Portfolio generation",
       "ELO skill radar",
       "Market analysis at ₹49/report",
@@ -52,7 +52,7 @@ const STUDENT_PLANS = {
 const PROFESSIONAL_PLANS = {
   free: {
     id: "free", label: "Free", price: 0, color: "#111827", colorBg: "#F9FAFB",
-    arenaTasks: 1, arenaFrequency: "per week", arenaIntervalDays: 7,
+    arenaTasks: 1, arenaFrequency: "per day", arenaIntervalDays: 1,
     interviewSessions: 0, marketReports: 0, reportPrice: 49,
     badge: null, highlight: false,
     ctaLabel: "Start Free",

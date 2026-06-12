@@ -2633,6 +2633,76 @@ function ArenaDomain({ user, userData, onBack }) {
   const [streak]        = useState(userData?.streak || userData?.arena_streak || 0)
   const [timeLeft, setTimeLeft]               = useState(null)
   const timerRef                              = useRef(null)
+  const [decayBanner, setDecayBanner]         = useState(null) // { penalty, daysOwed, newElo }
+
+  // ── ELO inactivity decay — -5 ELO/day after 14 consecutive inactive days ──
+  useEffect(() => {
+    const uid = user?.id || user?.uid
+    if (!uid) return
+
+    async function checkEloDecay() {
+      try {
+        // 1. Last mission submission
+        const { data: lastRow } = await supabase
+          .from("arena_history")
+          .select("completed_at")
+          .eq("user_id", uid)
+          .order("completed_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        // 2. Profile for decay cursor + created_at fallback
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("arena_decay_applied_at, created_at, elo_rating")
+          .eq("id", uid)
+          .maybeSingle()
+
+        // Baseline: use last submission date, or account creation if no submissions yet
+        const baseIso = lastRow?.completed_at || profile?.created_at || new Date().toISOString()
+        const baseDay = new Date(baseIso)
+        baseDay.setHours(0, 0, 0, 0)
+
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+
+        const daysSinceActivity = Math.floor((today - baseDay) / 86_400_000)
+        if (daysSinceActivity <= 14) return   // inside grace period — no penalty
+
+        // Decay starts at day 15 from last activity
+        const graceEnd = new Date(baseDay)
+        graceEnd.setDate(graceEnd.getDate() + 14)
+
+        // Where did we last stop applying decay?
+        const lastDecayCursor = profile?.arena_decay_applied_at
+          ? new Date(profile.arena_decay_applied_at)
+          : new Date(graceEnd)
+        lastDecayCursor.setHours(0, 0, 0, 0)
+
+        const daysOwed = Math.floor((today - lastDecayCursor) / 86_400_000)
+        if (daysOwed <= 0) return   // already up-to-date
+
+        const penalty    = daysOwed * 5
+        const currentElo = profile?.elo_rating ?? elo
+        const newElo     = Math.max(0, currentElo - penalty)
+
+        // Apply: update ELO + advance cursor to today
+        await Promise.all([
+          supabase.from("profiles").update({
+            elo_rating:               newElo,
+            arena_decay_applied_at:   today.toISOString(),
+          }).eq("id", uid),
+        ])
+
+        setElo(newElo)
+        setDecayBanner({ penalty, daysOwed, newElo })
+      } catch (e) {
+        console.warn("ELO decay check failed:", e)
+      }
+    }
+
+    checkEloDecay()
+  }, [])  // eslint-disable-line
 
   const domain  = ARENA_DOMAINS[domainKey] || ARENA_DOMAINS.swe
   const modules = domain.modules || []
@@ -3187,6 +3257,32 @@ function ArenaDomain({ user, userData, onBack }) {
 
       {/* ── MAIN CONTENT AREA ── */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
+
+        {/* ELO inactivity decay banner — shown once per session */}
+        {decayBanner && (
+          <div style={{
+            background: "linear-gradient(90deg,#7C3AED,#DC2626)",
+            color: "#fff", padding: "10px 20px",
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            flexShrink: 0, gap: 12, zIndex: 30,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 18 }}>⚠️</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 800 }}>
+                  ELO Decay Applied — {decayBanner.daysOwed} inactive day{decayBanner.daysOwed > 1 ? "s" : ""} detected
+                </div>
+                <div style={{ fontSize: 11, opacity: 0.85, marginTop: 2 }}>
+                  -{decayBanner.penalty} ELO deducted (−5/day after 14-day grace period). New ELO: <strong>{decayBanner.newElo}</strong>. Stay active to protect your rating.
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => setDecayBanner(null)}
+              style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 6, padding: "4px 12px", cursor: "pointer", fontSize: 12, fontWeight: 700, flexShrink: 0 }}
+            >Dismiss</button>
+          </div>
+        )}
 
         {/* Top bar: solve-mode vs normal */}
         {!activeMission && (
