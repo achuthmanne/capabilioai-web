@@ -315,22 +315,53 @@ export default function ChallengeShell({
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: T.bg, fontFamily: "'DM Sans',sans-serif" }}>
 
-      {/* ══ TOP BAR · 48px ══ */}
-      <div style={{ height: 48, background: "#fff", borderBottom: `1px solid ${T.border}`, display: "flex", alignItems: "center", gap: 10, padding: "0 14px", flexShrink: 0, zIndex: 20 }}>
-        <button onClick={onClear} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", background: "none", border: `1px solid ${T.border}`, borderRadius: 6, fontSize: 12, fontWeight: 600, color: T.ink3, cursor: "pointer", fontFamily: "inherit" }}>←</button>
-        <div style={{ fontSize: 11, color: T.ink4, display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
-          <span>Arena</span><span>▸</span>
-          <span style={{ color: domain.color, fontWeight: 700 }}>{domain.label}</span><span>▸</span>
-          <span style={{ color: T.ink, fontWeight: 800, fontSize: 12.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 280 }}>{mission.title}</span>
+      {/* ══ TOP BAR · 58px — mission identity bar ══ */}
+      <div style={{ height: 58, background: "#fff", borderBottom: `1px solid ${T.border}`, display: "flex", alignItems: "center", gap: 10, padding: "0 14px", flexShrink: 0, zIndex: 20 }}>
+
+        {/* Back */}
+        <button onClick={onClear} title="Back to Arena" style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 10px", background: T.bg, border: `1px solid ${T.border}`, borderRadius: 7, fontSize: 11, fontWeight: 700, color: T.ink3, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", flexShrink: 0 }}>
+          ← Arena
+        </button>
+
+        {/* Divider */}
+        <div style={{ width: 1, height: 24, background: T.border, flexShrink: 0 }} />
+
+        {/* Mission identity */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0, flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+            {/* Domain badge */}
+            <span style={{ fontSize: 10, fontWeight: 800, color: domain.color || meta.hue, background: `${domain.color || meta.hue}12`, border: `1px solid ${domain.color || meta.hue}28`, padding: "2px 8px", borderRadius: 5, textTransform: "uppercase", letterSpacing: 0.6, whiteSpace: "nowrap", flexShrink: 0 }}>
+              {domain.label}
+            </span>
+            {/* Workstation type */}
+            <WorkstationBadge meta={meta} />
+            {/* Difficulty */}
+            {mission.difficulty && (
+              <Pill color={diffColor(mission.difficulty)} bg={diffBg(mission.difficulty)}>{mission.difficulty}</Pill>
+            )}
+            {/* Source */}
+            <Pill color={source.hue} bg={`${source.hue}12`}>{source.label}</Pill>
+          </div>
+          {/* Mission title */}
+          <div style={{ fontSize: 13, fontWeight: 800, color: T.ink, lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>
+            {mission.title}
+          </div>
         </div>
-        {mission.difficulty && <Pill color={diffColor(mission.difficulty)} bg={diffBg(mission.difficulty)}>{mission.difficulty}</Pill>}
-        <WorkstationBadge meta={meta} />
-        <Pill color={source.hue} bg={`${source.hue}12`}>{source.label}</Pill>
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
+
+        {/* Right cluster — timer + ELO */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, marginLeft: 8 }}>
           {timeStr && (
-            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 800, color: isDanger ? T.red : isWarn ? T.amber : T.ink4, animation: isDanger ? "shimmer 1s ease-in-out infinite" : "none" }}>⏱ {timeStr}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 7, background: isDanger ? "#FEF2F2" : isWarn ? "#FFFBEB" : T.bg, border: `1px solid ${isDanger ? "#FECACA" : isWarn ? "#FDE68A" : T.border}` }}>
+              <span style={{ fontSize: 10 }}>⏱</span>
+              <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 800, color: isDanger ? T.red : isWarn ? T.amber : T.ink3, animation: isDanger ? "shimmer 1s ease-in-out infinite" : "none" }}>{timeStr}</span>
+            </div>
           )}
-          <span style={{ fontSize: 11, fontWeight: 800, color: isPractice ? T.ink4 : T.green }}>{isPractice ? "unranked" : `+${eloGain} ELO`}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 7, background: isPractice ? T.bg : "#F0FDF4", border: `1px solid ${isPractice ? T.border : "#BBF7D0"}` }}>
+            {!isPractice && <span style={{ fontSize: 10 }}>⚡</span>}
+            <span style={{ fontSize: 11, fontWeight: 800, color: isPractice ? T.ink4 : "#16A34A", fontFamily: "'DM Mono',monospace" }}>
+              {isPractice ? "Practice" : `+${eloGain} ELO`}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -444,65 +475,128 @@ export default function ChallengeShell({
 
         {/* ── RIGHT CONTEXT RAIL ── */}
         {rightOpen ? (
-          <div style={{ width: 300, flexShrink: 0, background: "#fff", borderLeft: `1px solid ${T.border}`, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <div style={{ display: "flex", alignItems: "center", padding: "10px 14px", borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>
-              <span style={{ fontSize: 10, fontWeight: 800, color: T.ink3, textTransform: "uppercase", letterSpacing: 0.8 }}>Mission Control</span>
-              <button onClick={() => setRightOpen(false)} title="Collapse  ]" style={{ marginLeft: "auto", border: "none", background: "none", color: T.ink4, cursor: "pointer", fontSize: 13 }}>⟩</button>
-            </div>
-            <div style={{ flex: 1, overflowY: "auto", padding: "14px 14px" }}>
+          <div style={{ width: 300, flexShrink: 0, background: "#FAFAFA", borderLeft: `1px solid ${T.border}`, display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
-              {/* Live checklist */}
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                  <span style={{ fontSize: 10, fontWeight: 800, color: T.ink3, textTransform: "uppercase", letterSpacing: 0.7 }}>Live checklist</span>
-                  {validation && <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 800, fontFamily: "'DM Mono',monospace", color: passCount === realChecks.length ? T.green : T.amber }}>{passCount}/{realChecks.length}</span>}
-                </div>
-                {checklist.length === 0 && <EmptyDirective icon="✓" label={`Run ${meta.actions.validate} to see how your work measures up — it's free, unlimited, and never affects ELO.`} />}
-                {checklist.map((c, i) => (
-                  <div key={i} style={{ display: "flex", gap: 7, alignItems: "flex-start", padding: "6px 8px", borderRadius: 7, marginBottom: 4, background: c.pending ? T.bg : c.info ? T.bg : c.passed ? T.greenBg : T.redBg }}>
-                    <span style={{ fontSize: 11, flexShrink: 0, marginTop: 1 }}>{c.pending ? "○" : c.info ? "◌" : c.passed ? "✅" : "❌"}</span>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 11, color: c.pending || c.info ? T.ink3 : c.passed ? "#15803D" : T.red, lineHeight: 1.45, fontWeight: c.pending ? 400 : 600 }}>{c.input}</div>
-                      {!c.pending && c.actual && <div style={{ fontSize: 9.5, color: T.ink4, marginTop: 1 }}>{c.actual}</div>}
-                    </div>
-                  </div>
-                ))}
-                {!validation && checklist.length > 0 && (
-                  <div style={{ fontSize: 9.5, color: T.ink4, marginTop: 6, lineHeight: 1.5 }}>Steps from the brief. {meta.actions.validate} turns this into live pass/fail state.</div>
+            {/* Rail header */}
+            <div style={{ display: "flex", alignItems: "center", padding: "10px 14px", borderBottom: `1px solid ${T.border}`, background: "#fff", flexShrink: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: meta.hue }} />
+                <span style={{ fontSize: 10, fontWeight: 800, color: T.ink2, textTransform: "uppercase", letterSpacing: 0.8 }}>Mission Control</span>
+              </div>
+              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+                {validation && (
+                  <span style={{ fontSize: 10, fontWeight: 800, fontFamily: "'DM Mono',monospace",
+                    color: passCount === realChecks.length ? T.green : T.amber,
+                    background: passCount === realChecks.length ? T.greenBg : T.amberBg,
+                    padding: "2px 7px", borderRadius: 99 }}>
+                    {passCount}/{realChecks.length} pass
+                  </span>
                 )}
+                <button onClick={() => setRightOpen(false)} title="Collapse" style={{ border: "none", background: "none", color: T.ink4, cursor: "pointer", fontSize: 13 }}>⟩</button>
+              </div>
+            </div>
+
+            <div style={{ flex: 1, overflowY: "auto", padding: "12px 12px" }}>
+
+              {/* ── STEP CHECKLIST — job cards with status + dependency lines ── */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 10 }}>
+                  <span style={{ fontSize: 9, fontWeight: 800, color: T.ink4, textTransform: "uppercase", letterSpacing: 1 }}>Validation Steps</span>
+                  {!validation && <span style={{ fontSize: 9, color: T.ink4, marginLeft: "auto" }}>run checks to activate</span>}
+                </div>
+
+                {checklist.length === 0 && (
+                  <EmptyDirective icon="✓" label={`Run ${meta.actions.validate} to see how your work measures up — free, unlimited, never affects ELO.`} />
+                )}
+
+                {checklist.map((c, i) => {
+                  const isPass    = c.passed && !c.pending && !c.info
+                  const isFail    = !c.passed && !c.pending && !c.info
+                  const isPending = c.pending || c.info
+                  const dotColor  = isPending ? "#CBD5E1" : isPass ? "#22C55E" : "#EF4444"
+                  const cardBg    = isPending ? "#fff" : isPass ? "#F0FDF4" : "#FFF5F5"
+                  const cardBorder= isPending ? T.border : isPass ? "#BBF7D0" : "#FECACA"
+                  return (
+                    <div key={i} style={{ position: "relative", marginBottom: 6 }}>
+                      {/* Dependency line */}
+                      {i < checklist.length - 1 && (
+                        <div style={{ position: "absolute", left: 10, top: "100%", width: 1, height: 6, background: dotColor, opacity: 0.4, zIndex: 0 }} />
+                      )}
+                      <div style={{ display: "flex", gap: 9, alignItems: "flex-start", padding: "8px 10px", borderRadius: 9, background: cardBg, border: `1px solid ${cardBorder}`, position: "relative", zIndex: 1 }}>
+                        {/* Status dot */}
+                        <div style={{ width: 20, height: 20, borderRadius: "50%", background: dotColor + "22", border: `2px solid ${dotColor}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
+                          <span style={{ fontSize: 9 }}>{isPending ? "·" : isPass ? "✓" : "✕"}</span>
+                        </div>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontSize: 11, fontWeight: isPending ? 500 : 700, color: isPending ? T.ink3 : isPass ? "#15803D" : "#DC2626", lineHeight: 1.4 }}>
+                            {c.input}
+                          </div>
+                          {!isPending && c.actual && (
+                            <div style={{ fontSize: 9.5, color: T.ink4, marginTop: 2, fontFamily: "'DM Mono',monospace" }}>{c.actual}</div>
+                          )}
+                        </div>
+                        {/* Pass/fail pill */}
+                        {!isPending && (
+                          <span style={{ fontSize: 8, fontWeight: 800, padding: "2px 6px", borderRadius: 99, background: isPass ? "#DCFCE7" : "#FEE2E2", color: isPass ? "#15803D" : "#DC2626", flexShrink: 0, marginTop: 2 }}>
+                            {isPass ? "PASS" : "FAIL"}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
 
-              {/* Proof preview card (spec §4.6) */}
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 10, fontWeight: 800, color: T.ink3, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 8 }}>Proof preview</div>
-                <button onClick={handlePreview} style={{ width: "100%", textAlign: "left", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: 10, padding: "12px 13px", cursor: "pointer", fontFamily: "inherit" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 5 }}>
-                    <span style={{ fontSize: 14 }}>{meta.icon}</span>
-                    <span style={{ fontSize: 11.5, fontWeight: 800, color: T.ink }}>{mission.title}</span>
-                  </div>
-                  <div style={{ fontSize: 10, color: T.ink4, lineHeight: 1.5 }}>
-                    Click to see exactly what {meta.actions.submit.toLowerCase()} will freeze into your recruiter-visible proof — before you commit it.
-                  </div>
+              {/* ── PROOF TIMELINE ── */}
+              <div style={{ marginBottom: 16, background: "#fff", border: `1px solid ${T.border}`, borderRadius: 11, padding: "11px 12px" }}>
+                <div style={{ fontSize: 9, fontWeight: 800, color: T.ink4, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Proof Timeline</div>
+                {[
+                  { label: "Draft",            desc: "Work in progress",                  done: !!code?.trim(),  active: !!code?.trim() && !validation },
+                  { label: "Validated",         desc: `${passCount}/${realChecks.length} checks`,  done: validation && passCount > 0, active: validation && passCount < realChecks.length },
+                  { label: "Submitted",         desc: "Locked into proof",                done: false,           active: false },
+                  { label: "Recruiter-visible", desc: "Live on your profile",             done: false,           active: false },
+                ].map((step, i, arr) => {
+                  const dotC = step.done ? "#22C55E" : step.active ? meta.hue : "#CBD5E1"
+                  return (
+                    <div key={i} style={{ display: "flex", gap: 9, alignItems: "flex-start", marginBottom: i < arr.length - 1 ? 0 : 0 }}>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0 }}>
+                        <div style={{ width: 14, height: 14, borderRadius: "50%", background: dotC, border: `2px solid ${step.done ? "#22C55E" : step.active ? meta.hue : "#E2E8F0"}`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          {step.done && <span style={{ fontSize: 7, color: "#fff" }}>✓</span>}
+                        </div>
+                        {i < arr.length - 1 && <div style={{ width: 1, height: 18, background: step.done ? "#22C55E40" : "#E2E8F0" }} />}
+                      </div>
+                      <div style={{ paddingBottom: i < arr.length - 1 ? 4 : 0 }}>
+                        <div style={{ fontSize: 11, fontWeight: step.done || step.active ? 700 : 500, color: step.done ? "#15803D" : step.active ? T.ink : T.ink4 }}>{step.label}</div>
+                        <div style={{ fontSize: 9.5, color: T.ink4 }}>{step.desc}</div>
+                      </div>
+                    </div>
+                  )
+                })}
+                <button onClick={handlePreview} style={{ marginTop: 10, width: "100%", padding: "7px 10px", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: 8, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 7 }}>
+                  <span style={{ fontSize: 12 }}>{meta.icon}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: T.ink2 }}>Preview proof →</span>
                 </button>
               </div>
 
-              {/* Rubric — what's scored at submission */}
+              {/* ── SCORED AT SUBMISSION — grouped by category ── */}
               {(domain.rubric || []).length > 0 && (
-                <div>
-                  <div style={{ fontSize: 10, fontWeight: 800, color: T.ink3, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 8 }}>Scored at submission</div>
+                <div style={{ background: "#fff", border: `1px solid ${T.border}`, borderRadius: 11, padding: "11px 12px" }}>
+                  <div style={{ fontSize: 9, fontWeight: 800, color: T.ink4, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Scored at Submission</div>
                   {(domain.rubric || []).map((r, i) => (
-                    <div key={i} style={{ display: "flex", gap: 7, alignItems: "center", padding: "4px 2px", fontSize: 11, color: T.ink3 }}>
-                      <span style={{ width: 5, height: 5, borderRadius: "50%", background: meta.hue, flexShrink: 0 }} />
-                      {r.criterion}
+                    <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", padding: "5px 8px", borderRadius: 7, marginBottom: 4, background: T.bg }}>
+                      <div style={{ width: 5, height: 5, borderRadius: "50%", background: meta.hue, flexShrink: 0 }} />
+                      <span style={{ fontSize: 11, color: T.ink2, fontWeight: 500 }}>{r.criterion}</span>
                     </div>
                   ))}
-                  <div style={{ fontSize: 9.5, color: T.ink4, marginTop: 6, lineHeight: 1.5 }}>AI-evaluated dimensions are scored only when you submit — validation can't pre-check judgment quality.</div>
+                  <div style={{ fontSize: 9.5, color: T.ink4, marginTop: 8, lineHeight: 1.5, padding: "0 4px" }}>
+                    AI-evaluated at submission only — validation can't pre-check judgment quality.
+                  </div>
                 </div>
               )}
             </div>
           </div>
         ) : (
-          <button onClick={() => setRightOpen(true)} title="Expand  ]" style={{ width: 34, flexShrink: 0, background: "#fff", border: "none", borderLeft: `1px solid ${T.border}`, cursor: "pointer", color: T.ink4, fontSize: 13, writingMode: "vertical-rl" }}>⟨ Checks</button>
+          <button onClick={() => setRightOpen(true)} title="Expand" style={{ width: 34, flexShrink: 0, background: "#fff", border: "none", borderLeft: `1px solid ${T.border}`, cursor: "pointer", color: T.ink4, fontSize: 13, writingMode: "vertical-rl" }}>⟨ Checks</button>
         )}
       </div>
 
