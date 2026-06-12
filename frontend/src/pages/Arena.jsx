@@ -2213,16 +2213,9 @@ function ArenaLanding({ userData, onSelect }) {
       {/* ─── PAGE BODY ─── */}
       <div style={{ maxWidth: 1100, margin: "0 auto", width: "100%", padding: "40px 24px 60px", boxSizing: "border-box" }}>
 
-        {/* ─── MISSIONS SECTION ─── */}
-        <div style={{ animation: "fadeUp 0.4s ease both" }}>
-          {/* Section label */}
-          <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
-            <div style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.03)" }} />
-            <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, fontWeight: 800, color: D.indigo, letterSpacing: "0.12em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
-              TODAY'S MISSIONS
-            </span>
-            <div style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.03)" }} />
-          </div>
+        {/* TODAY'S MISSIONS removed — users discover missions via the domain card below */}
+        <div style={{ display: "none" }}>
+          <div />
 
           {/* 3 Mission Cards */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 20 }}>

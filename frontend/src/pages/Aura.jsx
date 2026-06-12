@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { userDoc } from "../lib/db"
 import { supabase } from "../lib/supabase"
 import { getPlan, interviewsUsedThisMonth, reportsUsedThisMonth } from "../config/plans"
+import { getDomainChallenges } from "../config/domainChallenges"
 import CareerVideoGenerator from "./CareerVideoGenerator"
 // Portfolio themes removed — single universal design
 // ── Professional Path: API-connected components ───────────────────────────────
@@ -2250,6 +2251,74 @@ function ExecutiveAura({ user, userData, onNavigate, onNavigatePricing }) {
   )
 }
 
+// ─── MISSION TICKER ──────────────────────────────────────────────────────────
+// Scrolling bar in the Aura dashboard showing today's Arena mission.
+// Hides once the user completes a task today; reappears the next day with a new mission.
+function MissionTicker({ userData, keyword, onNavigate }) {
+  const todayStr = new Date().toISOString().slice(0, 10)
+
+  // Detect if user already completed a mission today
+  const lastActive    = userData?.arenaLastActive || userData?.arena_last_active || ""
+  const doneToday     = lastActive.slice(0, 10) === todayStr
+
+  // Pick today's mission deterministically (day-of-year rotates through challenges)
+  const challenges    = getDomainChallenges(keyword)
+  const dayOfYear     = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000)
+  const todayMission  = challenges.length > 0 ? challenges[dayOfYear % challenges.length] : null
+
+  if (doneToday || !todayMission) return null
+
+  const diffColor = { easy: "#10B981", medium: "#F59E0B", hard: "#EF4444", expert: "#8B5CF6" }
+  const dc = diffColor[(todayMission.difficulty || "medium").toLowerCase()] || "#F59E0B"
+
+  const tickerText = `🎯  Today's Mission  ·  ${todayMission.title}  ·  ${(todayMission.difficulty||"Medium").toUpperCase()}  ·  +${todayMission.eloGain||20} ELO  ·  ${todayMission.tools?.[0]||""}  ·  ⏱ ${todayMission.timeLimit||"30 min"}  ·  Go to Arena →          `
+  // Repeat text so the scroll feels seamless
+  const repeated = tickerText.repeat(4)
+
+  return (
+    <div
+      onClick={() => onNavigate && onNavigate("arena")}
+      style={{
+        marginBottom: 16,
+        borderRadius: 12,
+        border: `1.5px solid ${dc}35`,
+        background: `linear-gradient(90deg, ${dc}10 0%, ${dc}06 100%)`,
+        overflow: "hidden",
+        cursor: "pointer",
+        position: "relative",
+      }}
+    >
+      <style>{`
+        @keyframes ticker { from { transform: translateX(0) } to { transform: translateX(-50%) } }
+      `}</style>
+      {/* Left fade */}
+      <div style={{ position:"absolute", left:0, top:0, bottom:0, width:40, background:`linear-gradient(90deg, ${dc}15, transparent)`, zIndex:1, pointerEvents:"none" }} />
+      {/* Right fade */}
+      <div style={{ position:"absolute", right:0, top:0, bottom:0, width:40, background:`linear-gradient(270deg, ${dc}15, transparent)`, zIndex:1, pointerEvents:"none" }} />
+
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        whiteSpace: "nowrap",
+        padding: "10px 0",
+        animation: "ticker 28s linear infinite",
+        willChange: "transform",
+      }}>
+        <span style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: 12,
+          fontWeight: 600,
+          color: dc,
+          letterSpacing: "0.03em",
+          paddingRight: 0,
+        }}>
+          {repeated}
+        </span>
+      </div>
+    </div>
+  )
+}
+
 // ─── MAIN AURA COMPONENT ─────────────────────────────────────────────────────
 export default function Aura({ user, activeTab: activeTabProp, setActiveTab: setActiveTabProp, onNavigate, onNavigatePricing, userData: propUserData, setUserData }) {
   // Aura is now self-contained: it owns the tab state and renders its own tab bar.
@@ -3308,6 +3377,11 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
                 </div>
               )
             })()}
+
+            {/* ── Today's Mission ticker — hides when user completes task today ── */}
+            {path !== "professional" && (
+              <MissionTicker userData={userData} keyword={keyword} onNavigate={onNavigate} />
+            )}
 
             {/* ELO + Momentum */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:20}}>
