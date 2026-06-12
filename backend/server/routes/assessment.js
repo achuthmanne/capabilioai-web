@@ -117,23 +117,21 @@ router.post("/generate-mcq", async (req, res) => {
   function repairQuestion(q, idx, skills) {
     if (!q || typeof q !== "object" || !q.question) return null
 
+    // If options came back as an object ({"a":"...","b":"..."}) convert to array
+    if (q.options && !Array.isArray(q.options) && typeof q.options === "object") {
+      q.options = Object.values(q.options).map(String)
+    }
+
     // Strip letter prefixes "A) " / "1. " from options (frontend adds its own)
     if (Array.isArray(q.options)) {
       q.options = q.options
         .map(o => String(o).replace(/^[A-Ea-e1-4][).:\-\s]+\s*/, "").trim())
-        .filter(Boolean)
+        .filter(o => o.length > 1) // filter empty AND single-char leftovers like "A"
     }
 
-    // If options still missing/short — build meaningful ones from question type
+    // If options still missing/short — skip this question rather than show placeholders
     if (!Array.isArray(q.options) || q.options.length < 2) {
-      if (q.type === "code_output" || (q.question || "").toLowerCase().includes("output")) {
-        q.options = ["It prints the expected result", "It throws a runtime error", "It returns undefined", "It produces no output"]
-      } else if ((q.question || "").toLowerCase().includes("true") || (q.question || "").toLowerCase().includes("false")) {
-        q.options = ["True", "False", "Depends on context", "None of the above"]
-      } else {
-        q.options = ["Option A", "Option B", "Option C", "Option D"]
-      }
-      q.correct = 0
+      return null // will be filtered out; Groq fallback batch fills the gap
     }
 
     // Clamp correct index

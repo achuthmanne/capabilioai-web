@@ -430,7 +430,7 @@ export async function geminiGenerateMCQ({ jobTitle, count, domainSkills, mix, su
   const genai    = client()
   const genModel = genai.getGenerativeModel({ model: GEMINI_FLASH })
 
-  const prompt = `Generate exactly ${count} fresher-level MCQ questions for an Indian tech assessment platform.
+  const prompt = `Generate exactly ${count} fresher-level multiple-choice questions for an Indian tech assessment (Wipro/TCS/Infosys campus level).
 
 Role: "${jobTitle}"
 Skills to cover (use EXACTLY as category name):
@@ -441,24 +441,38 @@ Type mix: mcq:${mix.mcq}, code_output:${mix.code_output}, problem_solving:${mix.
 ${summaryLine || ""}
 ${contextLine || ""}
 
-STRICT RULES:
-- Every question MUST have "options" array with EXACTLY 4 plain strings (no "A)", "B)" prefixes)
-- "correct" is the 0-based index (0, 1, 2, or 3)
-- "category" must be one of the exact skill names listed above
-- "code" field only for code_output type (≤6 lines, basics only), omit otherwise
-- Campus-interview level (Wipro/TCS/Infosys), not LeetCode-hard
+CRITICAL RULES — EVERY question MUST follow these or it will be discarded:
+1. "options" MUST be an array of EXACTLY 4 non-empty strings. NEVER omit this field.
+2. Do NOT prefix options with "A)", "B)", "1.", etc. — plain text only.
+3. "correct" is the 0-based index of the right answer (0, 1, 2, or 3).
+4. "category" must be one of the exact skill names listed above.
 
-Return JSON:
+QUESTION PHRASING RULES:
+- NEVER start a question with "Write a..." or "Create a..." — those are open-ended, not MCQ.
+- For code/config topics, phrase as: "Which of the following correctly..." or "What is the output of..." or "Which command/syntax..."
+- For code_output type: show a short code snippet (≤6 lines) in the "question" field and ask "What is the output?" — options are the 4 possible outputs.
+- For fill_blank type: use "___" in the question text, options are 4 completions.
+
+BAD example (never do this):
+  question: "Write a Dockerfile for a Node.js app"
+  options: [] ← WRONG, will be discarded
+
+GOOD example:
+  question: "Which of the following Dockerfiles correctly creates a Node.js application image?"
+  options: ["FROM node:18\\nWORKDIR /app\\nCOPY . .\\nRUN npm install\\nCMD [\\"node\\", \\"server.js\\"]", "FROM node:18\\nRUN npm install\\nCMD node server.js", "COPY . /app\\nFROM node:18\\nCMD node server.js", "FROM ubuntu\\nRUN apt install nodejs\\nCMD node server.js"]
+  correct: 0
+
+Return ONLY this JSON (no markdown, no extra text):
 {
   "questions": [
     {
       "id": 1,
       "type": "mcq",
-      "category": "<exact skill>",
-      "question": "<question text>",
-      "options": ["<opt>", "<opt>", "<opt>", "<opt>"],
+      "category": "<exact skill from list>",
+      "question": "<question text — never 'Write a...' or 'Create a...'>",
+      "options": ["<option 1>", "<option 2>", "<option 3>", "<option 4>"],
       "correct": 0,
-      "explanation": "<2 sentences why correct>"
+      "explanation": "<2 sentences why the correct answer is right>"
     }
   ]
 }`
