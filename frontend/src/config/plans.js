@@ -12,11 +12,46 @@ const STUDENT_PLANS = {
     arenaTasks: 1, arenaFrequency: "per day", arenaIntervalDays: 1,
     interviewSessions: 0, marketReports: 0, reportPrice: 49,
     badge: null, highlight: false,
+    tagline: "Start proving your skills — no cost, no fluff.",
+    description: "Get your ELO score, complete daily missions, and build a verified skill profile from day one.",
+    featureGroups: [
+      {
+        label: "⚔️ Arena",
+        items: [
+          "1 daily mission — refreshes every 24 hrs",
+          "Live ELO score after every submission",
+          "All difficulty tiers: Easy · Medium · Hard",
+        ],
+      },
+      {
+        label: "🧠 Profile & Portfolio",
+        items: [
+          "Public verified skill profile",
+          "ELO-ranked skill radar (6 domains)",
+          "Auto-generated portfolio page",
+        ],
+      },
+      {
+        label: "📊 Market Intel",
+        items: [
+          "Community Pulse feed",
+          "Market analysis reports at ₹49 each",
+        ],
+      },
+    ],
+    notIncluded: [
+      "AI mock interviews",
+      "Skill gap deep-dive",
+      "Personal branding video",
+    ],
     features: [
-      "1 Arena task per day (refreshes every 24 hrs)",
-      "Portfolio generation",
-      "ELO skill radar",
-      "Market analysis at ₹49/report",
+      "1 daily mission (refreshes every 24 hrs)",
+      "Live ELO score after every submission",
+      "Public verified skill profile",
+      "ELO-ranked skill radar (6 domains)",
+      "Auto-generated portfolio page",
+      "Community Pulse feed",
+      "Market reports at ₹49/report",
     ],
   },
   pro: {
@@ -24,12 +59,53 @@ const STUDENT_PLANS = {
     arenaTasks: 3, arenaFrequency: "per day", arenaIntervalDays: 1,
     interviewSessions: 3, marketReports: 1, reportPrice: 49,
     badge: null, highlight: false,
+    tagline: "Serious about getting hired? This is where it starts.",
+    description: "3× more daily missions, real AI interviews with feedback, and a market report every month.",
+    featureGroups: [
+      {
+        label: "⚔️ Arena",
+        items: [
+          "3 daily missions — 3× more ELO velocity",
+          "Full submission history with AI review",
+          "Cross-domain missions unlocked",
+        ],
+      },
+      {
+        label: "🎤 AI Interview",
+        items: [
+          "3 AI mock interview sessions / month",
+          "Role-specific question bank (50+ roles)",
+          "Transcript + structured feedback report",
+        ],
+      },
+      {
+        label: "📊 Market Intel",
+        items: [
+          "1 market analysis report / month (₹599 value)",
+          "Skill gap deep-dive vs. market benchmarks",
+          "Salary range by seniority + location",
+        ],
+      },
+      {
+        label: "✦ Capi Copilot",
+        items: [
+          "Unlimited career questions",
+          "Interview prep & skill gap guidance",
+        ],
+      },
+    ],
+    notIncluded: [
+      "Personal branding video",
+      "Advanced Hard+ missions",
+    ],
     features: [
-      "3 Arena tasks per day",
-      "3 AI mock interview sessions/month",
-      "Portfolio generation",
-      "1 market analysis report/month",
-      "Full Arena access",
+      "3 daily missions (3× ELO velocity)",
+      "3 AI mock interview sessions/month with feedback",
+      "1 market analysis report included/month",
+      "Skill gap deep-dive vs. market benchmarks",
+      "Unlimited Capi Career Copilot",
+      "Full submission history with AI review",
+      "Salary range by seniority + location",
     ],
   },
   elite: {
@@ -37,13 +113,59 @@ const STUDENT_PLANS = {
     arenaTasks: 6, arenaFrequency: "per day", arenaIntervalDays: 1,
     interviewSessions: 5, marketReports: 2, reportPrice: 49,
     badge: "Best Value", highlight: true,
+    tagline: "Built for candidates who refuse to be average.",
+    description: "Maximum ELO growth, 5 AI interviews, 2 market reports, and a personal brand video — everything to stand out.",
+    featureGroups: [
+      {
+        label: "⚔️ Arena",
+        items: [
+          "6 daily missions — maximum ELO acceleration",
+          "Advanced Hard+ missions unlocked",
+          "AI-powered post-submission code review",
+        ],
+      },
+      {
+        label: "🎤 AI Interview",
+        items: [
+          "5 AI mock interview sessions / month",
+          "System design + behavioural rounds",
+          "Recruiter-style scoring rubric",
+        ],
+      },
+      {
+        label: "📊 Market Intel",
+        items: [
+          "2 market analysis reports / month",
+          "Competitor candidate benchmarking",
+          "Role-specific negotiation data",
+        ],
+      },
+      {
+        label: "🎬 Personal Brand",
+        items: [
+          "Personal branding video (AI-generated)",
+          "ELO growth story narration",
+          "Share to LinkedIn & Twitter in one click",
+        ],
+      },
+      {
+        label: "✦ Capi Copilot",
+        items: [
+          "Unlimited career guidance",
+          "90-day career roadmap generation",
+        ],
+      },
+    ],
     features: [
-      "6 Arena tasks per day",
+      "6 daily missions (maximum ELO acceleration)",
       "5 AI mock interview sessions/month",
-      "Portfolio generation",
       "2 market analysis reports/month",
-      "Personal branding video access",
-      "Full advanced Arena access",
+      "Personal branding video (AI-generated)",
+      "Advanced Hard+ missions unlocked",
+      "AI post-submission code review",
+      "Role-specific negotiation data",
+      "90-day career roadmap via Capi",
+      "Competitor candidate benchmarking",
     ],
   },
 }

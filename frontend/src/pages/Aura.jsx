@@ -3350,10 +3350,10 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
                     ? `Unlimited Forge · ${auraPlan.marketReports} Skill Gap reports/mo · No AI interviews`
                     : `Unlimited Forge · Unlimited Skill Gap · ${auraPlan.interviewSessions} AI interviews/mo`
                 : auraPlan.id==="free"
-                  ? "1 Arena task / 15 days · No interview sessions"
+                  ? "1 daily mission · Basic ELO tracking · Community access"
                   : auraPlan.id==="pro"
-                    ? `3 Arena tasks/day · ${auraPlan.interviewSessions} interview sessions/mo · ${auraPlan.marketReports} report/mo`
-                    : `6 Arena tasks/day · ${auraPlan.interviewSessions} interview sessions/mo · ${auraPlan.marketReports} reports/mo`
+                    ? `3 daily missions · ${auraPlan.interviewSessions} AI interview sessions/mo · ${auraPlan.marketReports} market report/mo`
+                    : `6 daily missions · ${auraPlan.interviewSessions} AI interview sessions/mo · ${auraPlan.marketReports} market reports/mo`
               const isMaxPlan=auraPlan.id==="orbit_elite"||auraPlan.id==="elite"||auraPlan.id==="legacy"||auraPlan.id==="university"
               return(
                 <div style={{marginBottom:16,borderRadius:14,padding:"14px 18px",background:auraPlan.colorBg,border:`1.5px solid ${auraPlan.color}30`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
