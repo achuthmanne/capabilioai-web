@@ -15,33 +15,36 @@ import { supabase } from "../lib/supabase"
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   Radar, ResponsiveContainer, Tooltip,
+  LineChart, Line, XAxis, YAxis, Area, AreaChart,
 } from "recharts"
 
-// ─── Design tokens ─────────────────────────────────────────────────────────────
+// ─── Design tokens — full dark mode ────────────────────────────────────────────
 const C = {
-  bg:      "#0F172A",
-  surface: "#FFFFFF",
-  ink:     "#0F172A",
-  ink2:    "#334155",
-  ink3:    "#64748B",
-  ink4:    "#94A3B8",
-  border:  "#E2E8F0",
-  blue:    "#2563EB",
-  blue2:   "#3B82F6",
-  blue3:   "#EFF6FF",
-  teal:    "#0F766E",
-  teal2:   "#14B8A6",
-  teal3:   "#F0FDFA",
-  green:   "#16A34A",
-  green2:  "#DCFCE7",
-  amber:   "#D97706",
-  amber2:  "#FEF9C3",
-  red:     "#DC2626",
-  red2:    "#FEE2E2",
-  purple:  "#7C3AED",
-  purple2: "#EDE9FE",
-  shadow:  "0 1px 3px rgba(0,0,0,0.07),0 1px 2px rgba(0,0,0,0.04)",
-  shadow2: "0 4px 16px rgba(0,0,0,0.08)",
+  bg:      "#0A0F1E",           // page background — deep navy
+  surface: "#111827",           // card surface — dark
+  surface2:"#1E293B",           // elevated card / inner panel
+  ink:     "#F1F5F9",           // primary text
+  ink2:    "#CBD5E1",           // secondary text
+  ink3:    "#94A3B8",           // muted text
+  ink4:    "#64748B",           // very muted
+  border:  "rgba(255,255,255,0.07)", // subtle card border
+  border2: "rgba(255,255,255,0.12)", // slightly more visible
+  blue:    "#3B82F6",
+  blue2:   "#60A5FA",
+  blue3:   "rgba(59,130,246,0.12)",
+  teal:    "#14B8A6",
+  teal2:   "#2DD4BF",
+  teal3:   "rgba(20,184,166,0.12)",
+  green:   "#22C55E",
+  green2:  "rgba(34,197,94,0.12)",
+  amber:   "#F59E0B",
+  amber2:  "rgba(245,158,11,0.12)",
+  red:     "#EF4444",
+  red2:    "rgba(239,68,68,0.12)",
+  purple:  "#A78BFA",
+  purple2: "rgba(167,139,250,0.12)",
+  shadow:  "0 1px 4px rgba(0,0,0,0.4)",
+  shadow2: "0 8px 32px rgba(0,0,0,0.5)",
 }
 
 const PATH_CONFIG = {
@@ -107,10 +110,24 @@ function ScoreRing({ score, size=48 }) {
   )
 }
 
-function Card({ children, style={} }) {
+function Card({ children, style={}, accent=null }) {
   return (
-    <div style={{ background:C.surface, borderRadius:20, border:`1px solid ${C.border}`,
-      boxShadow:C.shadow, padding:"28px 32px", ...style }}>
+    <div style={{
+      background:C.surface, borderRadius:20,
+      border:`1px solid ${C.border}`,
+      boxShadow:C.shadow2,
+      padding:"28px 32px",
+      position:"relative",
+      overflow:"hidden",
+      ...(accent ? { borderTop:`2.5px solid ${accent}` } : {}),
+      ...style,
+    }}>
+      {/* subtle inner glow from accent */}
+      {accent && <div style={{
+        position:"absolute", top:0, left:0, right:0, height:80,
+        background:`linear-gradient(180deg, ${accent}08 0%, transparent 100%)`,
+        pointerEvents:"none",
+      }}/>}
       {children}
     </div>
   )
@@ -125,18 +142,30 @@ function SectionTitle({ icon, title, sub, accent=C.blue }) {
           {icon} {title}
         </span>
       </div>
-      {sub && <p style={{ margin:"4px 0 0 14px", fontSize:13, color:C.ink3, lineHeight:1.5 }}>{sub}</p>}
+      {sub && <p style={{ margin:"4px 0 0 14px", fontSize:13, color:C.ink4, lineHeight:1.5 }}>{sub}</p>}
     </div>
   )
 }
 
 function StatChip({ icon, value, label, color=C.blue }) {
   return (
-    <div style={{ textAlign:"center", padding:"16px 22px", background:C.surface,
-      borderRadius:16, border:`1px solid ${C.border}`, boxShadow:C.shadow, minWidth:88 }}>
-      <div style={{ fontSize:20, marginBottom:4 }}>{icon}</div>
+    <div style={{
+      textAlign:"center", padding:"18px 22px",
+      background:C.surface2,
+      borderRadius:16,
+      border:`1px solid ${C.border2}`,
+      boxShadow:C.shadow,
+      minWidth:92,
+      position:"relative", overflow:"hidden",
+    }}>
+      <div style={{
+        position:"absolute", inset:0,
+        background:`radial-gradient(circle at 50% 0%, ${color}12 0%, transparent 70%)`,
+        pointerEvents:"none",
+      }}/>
+      <div style={{ fontSize:20, marginBottom:5 }}>{icon}</div>
       <div style={{ fontSize:20, fontWeight:900, color, fontFamily:"'JetBrains Mono',monospace", lineHeight:1 }}>{value}</div>
-      <div style={{ fontSize:10, color:C.ink4, marginTop:4, fontWeight:700, textTransform:"uppercase", letterSpacing:0.8 }}>{label}</div>
+      <div style={{ fontSize:10, color:C.ink4, marginTop:5, fontWeight:700, textTransform:"uppercase", letterSpacing:0.8 }}>{label}</div>
     </div>
   )
 }
@@ -144,25 +173,28 @@ function StatChip({ icon, value, label, color=C.blue }) {
 function SkillBar({ label, pct, color=C.blue }) {
   const p = Math.min(100, Math.max(0, pct))
   return (
-    <div style={{ marginBottom:12 }}>
-      <div style={{ display:"flex", justifyContent:"space-between", marginBottom:5 }}>
+    <div style={{ marginBottom:14 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
         <span style={{ fontSize:13, fontWeight:600, color:C.ink2 }}>{label}</span>
-        <span style={{ fontSize:12, fontWeight:700, color, fontFamily:"monospace" }}>{p}%</span>
+        <span style={{ fontSize:12, fontWeight:800, color, fontFamily:"monospace" }}>{p}%</span>
       </div>
-      <div style={{ height:5, background:C.border, borderRadius:99 }}>
-        <div style={{ height:"100%", width:`${p}%`, background:color, borderRadius:99 }} />
+      <div style={{ height:6, background:C.surface2, borderRadius:99 }}>
+        <div style={{
+          height:"100%", width:`${p}%`,
+          background:`linear-gradient(90deg, ${color}aa, ${color})`,
+          borderRadius:99,
+          boxShadow:`0 0 8px ${color}44`,
+        }} />
       </div>
     </div>
   )
 }
 
-// Timeline entry with connecting line
-// Simple timeline row (for experience/education)
 function TLine({ icon, title, sub, score, time, meta, last }) {
   return (
     <div style={{ display:"flex", gap:14, position:"relative" }}>
-      {!last && <div style={{ position:"absolute", left:19, top:40, bottom:0, width:2, background:C.border, zIndex:0 }} />}
-      <div style={{ width:40, height:40, borderRadius:12, background:C.blue3, border:`2px solid ${C.border}`,
+      {!last && <div style={{ position:"absolute", left:19, top:40, bottom:0, width:2, background:C.border2, zIndex:0 }} />}
+      <div style={{ width:40, height:40, borderRadius:12, background:C.surface2, border:`1px solid ${C.border2}`,
         display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, flexShrink:0, zIndex:1 }}>
         {icon}
       </div>
@@ -171,7 +203,7 @@ function TLine({ icon, title, sub, score, time, meta, last }) {
           <span style={{ fontSize:14, fontWeight:700, color:C.ink, flex:1 }}>{title}</span>
           {score!=null && <ScoreRing score={score} size={44} />}
         </div>
-        {sub && <div style={{ fontSize:12, color:C.ink3, marginTop:3, lineHeight:1.55 }}>{sub}</div>}
+        {sub && <div style={{ fontSize:13, color:C.ink3, marginTop:4, lineHeight:1.6 }}>{sub}</div>}
         <div style={{ display:"flex", gap:8, alignItems:"center", marginTop:6, flexWrap:"wrap" }}>
           {meta}
           {time && <span style={{ fontSize:11, color:C.ink4 }}>📅 {fmt(time)}</span>}
@@ -188,9 +220,9 @@ function ChallengeCard({ t, last }) {
   return (
     <div style={{ position:"relative" }}>
       {!last && <div style={{ position:"absolute", left:19, top:52, bottom:0, width:2,
-        background:C.border, zIndex:0 }} />}
-      <div style={{ border:`1px solid ${C.border}`, borderRadius:14, overflow:"hidden",
-        background:C.surface, boxShadow:C.shadow, marginBottom: last?0:16, position:"relative", zIndex:1 }}>
+        background:C.border2, zIndex:0 }} />}
+      <div style={{ border:`1px solid ${C.border2}`, borderRadius:14, overflow:"hidden",
+        background:C.surface2, boxShadow:C.shadow, marginBottom: last?0:16, position:"relative", zIndex:1 }}>
 
         {/* Header row */}
         <div style={{ padding:"14px 18px", display:"flex", alignItems:"center", gap:12,
@@ -324,7 +356,7 @@ function InterviewCard({ iv }) {
   const [open, setOpen] = useState(false)
   const score = iv.overall_score || 0
   return (
-    <div style={{ border:`1px solid ${C.border}`, borderRadius:14, overflow:"hidden", background:C.surface, boxShadow:C.shadow }}>
+    <div style={{ border:`1px solid ${C.border2}`, borderRadius:14, overflow:"hidden", background:C.surface2, boxShadow:C.shadow }}>
       <div style={{ padding:"16px 20px", display:"flex", alignItems:"center", gap:14, cursor:"pointer" }}
         onClick={() => setOpen(o=>!o)}>
         <ScoreRing score={score} size={52} />
@@ -346,7 +378,7 @@ function InterviewCard({ iv }) {
       </div>
 
       {open && (
-        <div style={{ borderTop:`1px solid ${C.border}`, padding:"18px 20px", background:C.bg }}>
+        <div style={{ borderTop:`1px solid ${C.border2}`, padding:"18px 20px", background:C.bg }}>
           {iv.strengths?.length>0 && (
             <div style={{ marginBottom:14 }}>
               <div style={{ fontSize:11, fontWeight:800, color:C.green, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>✓ Strengths</div>
@@ -507,25 +539,34 @@ function PerformanceSummary({ ud, skills, tasks, interviews }) {
   const tierProg  = tierNext ? Math.round(((ud.eloRating-tier.min)/(tierNext.min-tier.min))*100) : 100
 
   return (
-    <Card>
-      <SectionTitle icon="📊" title="Performance Summary" accent={C.blue}
+    <Card accent={accent||C.blue}>
+      <SectionTitle icon="📊" title="Performance Summary" accent={accent||C.blue}
         sub="ELO rating, challenge scores, and growth trajectory"/>
 
-      {/* Score metrics */}
+      {/* Score metrics — large dark metric cards */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
         {[
           {icon:"⚡",label:"ELO Rating", value:ud.eloRating,sub:tier.label,     color:tier.color,  bar:Math.min((ud.eloRating/1500)*100,100)},
           {icon:"🎯",label:"Avg Score",  value:`${avgScore}/100`,sub:`${passRate}% pass rate`,color:scoreColor(avgScore),bar:avgScore},
           {icon:"🏆",label:"Best Score", value:best>0?`${best}/100`:"–",sub:best>=90?"Excellent":best>=80?"Strong":best>=60?"Good":"No data",color:scoreColor(best),bar:best},
         ].map((m,i)=>(
-          <div key={i} style={{padding:"14px",background:C.bg,borderRadius:12,border:`1px solid ${C.border}`,textAlign:"center"}}>
-            <div style={{fontSize:18,marginBottom:5}}>{m.icon}</div>
-            <div style={{fontSize:18,fontWeight:900,color:m.color,fontFamily:"monospace",lineHeight:1}}>{m.value}</div>
-            <div style={{fontSize:11,color:C.ink3,marginTop:3,fontWeight:500}}>{m.sub}</div>
-            <div style={{height:4,background:C.border,borderRadius:99,marginTop:8}}>
-              <div style={{height:"100%",width:`${m.bar}%`,background:m.color,borderRadius:99}}/>
+          <div key={i} style={{
+            padding:"18px 14px",background:C.surface2,borderRadius:14,
+            border:`1px solid ${C.border2}`,textAlign:"center",
+            position:"relative",overflow:"hidden",
+          }}>
+            <div style={{
+              position:"absolute",inset:0,
+              background:`radial-gradient(circle at 50% 0%, ${m.color}10 0%, transparent 70%)`,
+              pointerEvents:"none",
+            }}/>
+            <div style={{fontSize:20,marginBottom:6}}>{m.icon}</div>
+            <div style={{fontSize:22,fontWeight:900,color:m.color,fontFamily:"'JetBrains Mono',monospace",lineHeight:1}}>{m.value}</div>
+            <div style={{fontSize:11,color:C.ink4,marginTop:4,fontWeight:500}}>{m.sub}</div>
+            <div style={{height:4,background:"rgba(255,255,255,0.06)",borderRadius:99,marginTop:10}}>
+              <div style={{height:"100%",width:`${m.bar}%`,background:m.color,borderRadius:99,boxShadow:`0 0 6px ${m.color}66`}}/>
             </div>
-            <div style={{fontSize:10,color:C.ink4,fontWeight:700,textTransform:"uppercase",letterSpacing:0.8,marginTop:4}}>{m.label}</div>
+            <div style={{fontSize:9,color:C.ink4,fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginTop:5}}>{m.label}</div>
           </div>
         ))}
       </div>
@@ -539,8 +580,10 @@ function PerformanceSummary({ ud, skills, tasks, interviews }) {
           interviews.length>0&&{icon:"🎤",text:`${interviews.length} interviews · avg ${avgIv}/100`,color:C.purple},
           ud.arenaStreak>0&&{icon:"🔥",text:`${ud.arenaStreak}-day streak`,color:C.amber},
         ].filter(Boolean).map((h,i)=>(
-          <div key={i} style={{display:"flex",alignItems:"center",gap:7,padding:"7px 12px",
-            background:C.surface,border:`1px solid ${C.border}`,borderRadius:99,boxShadow:C.shadow}}>
+          <div key={i} style={{
+            display:"flex",alignItems:"center",gap:7,padding:"7px 14px",
+            background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:99,
+          }}>
             <span style={{fontSize:13}}>{h.icon}</span>
             <span style={{fontSize:12,color:C.ink2,fontWeight:500}}>{h.text}</span>
           </div>
@@ -549,16 +592,18 @@ function PerformanceSummary({ ud, skills, tasks, interviews }) {
 
       {/* ELO progress to next tier */}
       {tierNext && (
-        <div style={{padding:"14px 16px",background:C.bg,borderRadius:12,border:`1px solid ${C.border}`}}>
-          <div style={{display:"flex",justifyContent:"space-between",marginBottom:8,alignItems:"center"}}>
-            <span style={{fontSize:12,fontWeight:700,color:tier.color}}>● {tier.label} · {ud.eloRating}</span>
+        <div style={{padding:"16px 18px",background:C.surface2,borderRadius:14,border:`1px solid ${C.border2}`}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:10,alignItems:"center"}}>
+            <span style={{fontSize:13,fontWeight:700,color:tier.color}}>● {tier.label} · {ud.eloRating}</span>
             <span style={{fontSize:12,color:C.ink4}}>{tierNext.min-ud.eloRating} ELO to <strong style={{color:tierNext.color}}>{tierNext.label}</strong></span>
           </div>
-          <div style={{height:8,background:C.border,borderRadius:99,overflow:"hidden"}}>
+          <div style={{height:8,background:"rgba(255,255,255,0.06)",borderRadius:99,overflow:"hidden"}}>
             <div style={{height:"100%",width:`${tierProg}%`,
-              background:`linear-gradient(90deg,${tier.color},${tierNext.color})`,borderRadius:99,transition:"width 1.2s ease"}}/>
+              background:`linear-gradient(90deg,${tier.color},${tierNext.color})`,
+              borderRadius:99,transition:"width 1.2s ease",
+              boxShadow:`0 0 10px ${tier.color}55`}}/>
           </div>
-          <div style={{fontSize:11,color:C.ink4,marginTop:5,textAlign:"center"}}>{tierProg}% progress to {tierNext.label}</div>
+          <div style={{fontSize:11,color:C.ink4,marginTop:6,textAlign:"center"}}>{tierProg}% progress to {tierNext.label}</div>
         </div>
       )}
     </Card>
@@ -818,16 +863,17 @@ export default function Portfolio({ username: usernameProp }) {
 
   // ─── Loading ──────────────────────────────────────────────────────────────
   if(loading) return (
-    <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap');@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-      <div style={{width:44,height:44,border:`3px solid ${C.border}`,borderTopColor:C.blue,borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
-      <p style={{color:C.ink3,fontSize:14,margin:0}}>Loading portfolio…</p>
+    <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:20}}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap');body{background:${C.bg}}@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      <div style={{width:48,height:48,border:`3px solid ${C.border2}`,borderTopColor:C.blue,borderRadius:"50%",animation:"spin 0.7s linear infinite"}}/>
+      <p style={{color:C.ink4,fontSize:14,margin:0,fontWeight:500}}>Loading portfolio…</p>
     </div>
   )
 
   if(error||!pd) return (
-    <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}}>
-      <div style={{fontSize:48}}>🔒</div>
+    <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:14}}>
+      <style>{`body{background:${C.bg}}`}</style>
+      <div style={{fontSize:52}}>🔒</div>
       <p style={{color:C.red,fontSize:16,fontWeight:700,margin:0}}>{error||"Portfolio not found"}</p>
       <p style={{color:C.ink4,fontSize:13,margin:0}}>This profile may be private or the username doesn't exist.</p>
     </div>
@@ -872,17 +918,21 @@ export default function Portfolio({ username: usernameProp }) {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap');
         *{box-sizing:border-box}
-        ::selection{background:#DBEAFE}
-        @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
-        .ps{animation:fadeUp 0.45s ease both}
+        body{background:${C.bg}}
+        ::selection{background:rgba(59,130,246,0.35)}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+        .ps{animation:fadeUp 0.5s ease both}
         @media print{.np{display:none!important}}
+        ::-webkit-scrollbar{width:6px}
+        ::-webkit-scrollbar-track{background:${C.bg}}
+        ::-webkit-scrollbar-thumb{background:${C.border2};border-radius:99px}
       `}</style>
 
       {/* ── Sticky nav ─────────────────────────────────────────────────────── */}
       <nav className="np" style={{
         position:"sticky",top:0,zIndex:100,
-        background:scrolled?"rgba(255,255,255,0.95)":"transparent",
-        backdropFilter:scrolled?"blur(14px)":"none",
+        background:scrolled?"rgba(10,15,30,0.92)":"transparent",
+        backdropFilter:scrolled?"blur(20px)":"none",
         borderBottom:scrolled?`1px solid ${C.border}`:"none",
         transition:"all 0.3s",
         padding:scrolled?"10px 32px":"14px 32px",
@@ -910,8 +960,8 @@ export default function Portfolio({ username: usernameProp }) {
         </div>
         {isOwner&&(
           <button onClick={()=>window.print()} className="np"
-            style={{padding:"6px 16px",borderRadius:99,border:`1.5px solid ${C.border}`,
-              background:C.surface,color:C.ink3,fontSize:12,fontWeight:600,cursor:"pointer"}}>
+            style={{padding:"7px 16px",borderRadius:99,border:`1px solid ${C.border2}`,
+              background:C.surface2,color:C.ink3,fontSize:12,fontWeight:600,cursor:"pointer"}}>
             ⬇ PDF
           </button>
         )}
@@ -921,95 +971,138 @@ export default function Portfolio({ username: usernameProp }) {
       {/* HERO                                                              */}
       {/* ══════════════════════════════════════════════════════════════════ */}
       <div ref={refs.overview}>
-        <div style={{background:heroBg,padding:"56px 32px 72px",position:"relative",overflow:"hidden"}}>
-          {/* Subtle dot overlay */}
-          <div style={{position:"absolute",inset:0,opacity:0.04,
-            backgroundImage:"radial-gradient(circle,#fff 1px,transparent 1px)",backgroundSize:"28px 28px"}}/>
-          {/* Glow */}
-          <div style={{position:"absolute",top:-120,right:-120,width:400,height:400,
-            background:"rgba(0,0,0,0.02)",borderRadius:"50%",filter:"blur(60px)"}}/>
+        {/* ── CINEMATIC HERO ──────────────────────────────────────────────── */}
+        <div style={{background:heroBg,padding:"72px 32px 80px",position:"relative",overflow:"hidden",minHeight:380}}>
+          {/* Mesh dot pattern */}
+          <div style={{position:"absolute",inset:0,opacity:0.06,
+            backgroundImage:"radial-gradient(circle,#fff 1px,transparent 1px)",backgroundSize:"24px 24px"}}/>
+          {/* Large background glow using archetype accent */}
+          <div style={{
+            position:"absolute",top:-200,right:-200,width:600,height:600,
+            background:aConfig?.palette?.accent||"rgba(255,255,255,0.05)",
+            borderRadius:"50%",filter:"blur(100px)",opacity:0.18,
+          }}/>
+          <div style={{
+            position:"absolute",bottom:-100,left:-100,width:400,height:400,
+            background:"rgba(255,255,255,0.03)",
+            borderRadius:"50%",filter:"blur(80px)",
+          }}/>
 
-          <div style={{position:"relative",maxWidth:860,margin:"0 auto"}}>
-            {/* Path badge + Archetype badge */}
-            <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:28}}>
-              <div style={{display:"inline-flex",alignItems:"center",gap:6,
-                background:"rgba(0,0,0,0.07)",backdropFilter:"blur(8px)",
-                padding:"4px 14px",borderRadius:99,
-                border:"1px solid rgba(255,255,255,0.2)"}}>
-                <span>{pc.icon}</span>
-                <span style={{fontSize:11,fontWeight:800,color:"rgba(255,255,255,0.9)",textTransform:"uppercase",letterSpacing:1.5}}>
-                  {pc.label}
+          <div style={{position:"relative",maxWidth:900,margin:"0 auto"}}>
+
+            {/* Top: archetype tagline — the lead copy */}
+            {aConfig?.heroTagline&&(
+              <div style={{
+                display:"inline-flex",alignItems:"center",gap:8,
+                marginBottom:24,
+                background:"rgba(255,255,255,0.05)",
+                backdropFilter:"blur(12px)",
+                padding:"6px 18px",borderRadius:99,
+                border:"1px solid rgba(255,255,255,0.12)",
+              }}>
+                <span style={{fontSize:13}}>{aConfig.icon}</span>
+                <span style={{fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.8)",letterSpacing:0.4,fontStyle:"italic"}}>
+                  {aConfig.heroTagline}
                 </span>
               </div>
-              {aConfig&&(
-                <div style={{display:"inline-flex",alignItems:"center",gap:6,
-                  background:"rgba(255,255,255,0.08)",backdropFilter:"blur(8px)",
-                  padding:"4px 14px",borderRadius:99,
-                  border:"1px solid rgba(255,255,255,0.15)"}}>
-                  <span style={{fontSize:12}}>{aConfig.icon}</span>
-                  <span style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.85)",letterSpacing:0.5}}>
-                    {aConfig.name}
-                  </span>
-                </div>
-              )}
-            </div>
+            )}
 
-            <div style={{display:"flex",gap:28,alignItems:"flex-start",flexWrap:"wrap"}}>
-              {/* Avatar with tier ring */}
+            <div style={{display:"flex",gap:32,alignItems:"flex-start",flexWrap:"wrap"}}>
+              {/* Avatar — larger, with glowing ring */}
               <div style={{position:"relative",flexShrink:0}}>
-                <div style={{width:108,height:108,borderRadius:"50%",padding:3,
-                  background:"linear-gradient(135deg,rgba(255,255,255,0.5),rgba(0,0,0,0.05))"}}>
-                  <Avatar name={ud.displayName} url={ud.avatarUrl} size={102} fontSize={34}/>
+                <div style={{
+                  width:120,height:120,borderRadius:"50%",padding:3,
+                  background:`linear-gradient(135deg, ${aConfig?.palette?.accent||"#3B82F6"}, rgba(255,255,255,0.2))`,
+                  boxShadow:`0 0 40px ${aConfig?.palette?.accent||"#3B82F6"}55`,
+                }}>
+                  <Avatar name={ud.displayName} url={ud.avatarUrl} size={114} fontSize={36}/>
                 </div>
-                <div style={{position:"absolute",bottom:0,right:0,
-                  background:tier.color,color:"#fff",fontSize:10,fontWeight:800,
-                  padding:"3px 8px",borderRadius:99,border:"2px solid white",whiteSpace:"nowrap"}}>
+                <div style={{
+                  position:"absolute",bottom:4,right:4,
+                  background:tier.color,color:"#fff",fontSize:9,fontWeight:900,
+                  padding:"3px 8px",borderRadius:99,
+                  border:"2px solid rgba(0,0,0,0.4)",
+                  whiteSpace:"nowrap",letterSpacing:0.5,textTransform:"uppercase",
+                }}>
                   {tier.label}
                 </div>
               </div>
 
               {/* Identity block */}
-              <div style={{flex:1,minWidth:220}}>
-                <h1 style={{fontSize:38,fontWeight:900,color:"#fff",margin:"0 0 6px",
-                  letterSpacing:"-0.03em",lineHeight:1.05}}>
+              <div style={{flex:1,minWidth:240}}>
+                <h1 style={{
+                  fontSize:52,fontWeight:900,color:"#fff",margin:"0 0 8px",
+                  letterSpacing:"-0.04em",lineHeight:1.0,
+                  textShadow:"0 2px 20px rgba(0,0,0,0.4)",
+                }}>
                   {ud.displayName}
                 </h1>
-                {ud.keyword&&<p style={{fontSize:16,color:"rgba(255,255,255,0.7)",margin:"0 0 6px",fontWeight:500}}>{ud.keyword}</p>}
-                {aConfig?.heroTagline&&(
-                  <p style={{fontSize:13,color:"rgba(255,255,255,0.45)",margin:"0 0 14px",fontWeight:500,fontStyle:"italic",letterSpacing:0.3}}>
-                    {aConfig.heroTagline}
+                {ud.keyword&&(
+                  <p style={{
+                    fontSize:17,color:"rgba(255,255,255,0.65)",
+                    margin:"0 0 16px",fontWeight:500,letterSpacing:0.2,
+                  }}>
+                    {ud.keyword}
+                    {aConfig&&(
+                      <span style={{
+                        marginLeft:10,fontSize:12,fontWeight:700,
+                        color:aConfig.palette.accent,
+                        background:`${aConfig.palette.accent}20`,
+                        padding:"2px 10px",borderRadius:99,
+                        border:`1px solid ${aConfig.palette.accent}40`,
+                      }}>
+                        {aConfig.name}
+                      </span>
+                    )}
                   </p>
                 )}
 
-                <p style={{fontSize:14,color:"rgba(255,255,255,0.62)",lineHeight:1.75,maxWidth:520,margin:"0 0 20px"}}>
+                {/* Summary text */}
+                <p style={{
+                  fontSize:14,color:"rgba(255,255,255,0.55)",
+                  lineHeight:1.8,maxWidth:540,margin:"0 0 24px",
+                }}>
                   {summary||archetypeSummary||`${pc.label} building career on Capabilio.`}
                 </p>
 
-                {/* Links + ELO chip */}
-                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                {/* Action links + ELO pill */}
+                <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
                   {ud.linkedInUrl&&(
                     <a href={ud.linkedInUrl} target="_blank" rel="noreferrer"
-                      style={{display:"inline-flex",alignItems:"center",gap:5,
-                        padding:"7px 16px",borderRadius:99,
-                        background:"rgba(0,0,0,0.07)",border:"1px solid rgba(255,255,255,0.22)",
-                        color:"rgba(255,255,255,0.9)",fontSize:12,fontWeight:700,textDecoration:"none"}}>
-                      in LinkedIn
+                      style={{
+                        display:"inline-flex",alignItems:"center",gap:6,
+                        padding:"9px 18px",borderRadius:99,
+                        background:"rgba(255,255,255,0.08)",
+                        border:"1px solid rgba(255,255,255,0.18)",
+                        color:"#fff",fontSize:12,fontWeight:700,textDecoration:"none",
+                        backdropFilter:"blur(8px)",
+                        transition:"background 0.2s",
+                      }}>
+                      in LinkedIn ↗
                     </a>
                   )}
                   {(ud.githubUrl||ud.githubUsername)&&(
                     <a href={ud.githubUrl||`https://github.com/${ud.githubUsername}`} target="_blank" rel="noreferrer"
-                      style={{display:"inline-flex",alignItems:"center",gap:5,
-                        padding:"7px 16px",borderRadius:99,
-                        background:"rgba(0,0,0,0.07)",border:"1px solid rgba(255,255,255,0.22)",
-                        color:"rgba(255,255,255,0.9)",fontSize:12,fontWeight:700,textDecoration:"none"}}>
-                      ⌥ GitHub
+                      style={{
+                        display:"inline-flex",alignItems:"center",gap:6,
+                        padding:"9px 18px",borderRadius:99,
+                        background:"rgba(255,255,255,0.08)",
+                        border:"1px solid rgba(255,255,255,0.18)",
+                        color:"#fff",fontSize:12,fontWeight:700,textDecoration:"none",
+                        backdropFilter:"blur(8px)",
+                      }}>
+                      ⌥ GitHub ↗
                     </a>
                   )}
-                  <div style={{display:"inline-flex",alignItems:"center",gap:6,
-                    padding:"7px 16px",borderRadius:99,
-                    background:"rgba(0,0,0,0.07)",border:"1px solid rgba(255,255,255,0.22)",
-                    color:"rgba(255,255,255,0.9)",fontSize:12,fontWeight:700}}>
-                    ⚡ {ud.eloRating} ELO
+                  {/* ELO pill — styled with tier color */}
+                  <div style={{
+                    display:"inline-flex",alignItems:"center",gap:7,
+                    padding:"9px 18px",borderRadius:99,
+                    background:`${tier.color}22`,
+                    border:`1px solid ${tier.color}55`,
+                    color:tier.color,fontSize:13,fontWeight:800,
+                  }}>
+                    ⚡ {ud.eloRating} ELO · {tier.label}
                   </div>
                 </div>
               </div>
@@ -1017,66 +1110,109 @@ export default function Portfolio({ username: usernameProp }) {
           </div>
         </div>
 
-        {/* Stats bar */}
-        <div style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:"20px 32px"}}>
-          <div style={{maxWidth:860,margin:"0 auto",display:"flex",gap:12,flexWrap:"wrap",justifyContent:"center"}}>
+        {/* ── STATS BAR ───────────────────────────────────────────────────── */}
+        <div style={{
+          background:`linear-gradient(180deg, ${C.bg} 0%, ${C.surface} 100%)`,
+          borderBottom:`1px solid ${C.border}`,
+          padding:"24px 32px",
+        }}>
+          <div style={{maxWidth:900,margin:"0 auto",display:"flex",gap:12,flexWrap:"wrap",justifyContent:"center"}}>
             <StatChip icon="⚡" value={ud.eloRating} label="ELO Score" color={tier.color}/>
             <StatChip icon="✅" value={tasks.length} label="Challenges" color={C.green}/>
             <StatChip icon="🔥" value={ud.arenaStreak||0} label="Day Streak" color={C.amber}/>
             {interviews.length>0&&<StatChip icon="🎤" value={interviews.length} label="Interviews" color={C.purple}/>}
             {skills.length>0&&<StatChip icon="🧠" value={`${Math.round(skills.reduce((s,k)=>s+k.percentage,0)/skills.length)}%`} label="Avg Skill" color={C.teal}/>}
-            {avgScore>0&&<StatChip icon="📊" value={`${avgScore}`} label="Avg Score" color={C.blue}/>}
+            {avgScore>0&&<StatChip icon="📊" value={`${avgScore}`} label="Avg Score" color={aConfig?.palette?.accent||C.blue}/>}
             {ud.jobReadiness>0&&<StatChip icon="🚀" value={`${ud.jobReadiness}%`} label="Job Ready" color={C.blue2}/>}
           </div>
         </div>
       </div>
 
       {/* ── Main content ─────────────────────────────────────────────────────── */}
-      <div style={{maxWidth:860,margin:"36px auto",padding:"0 24px 80px",display:"flex",flexDirection:"column",gap:28}}>
+      <div style={{maxWidth:900,margin:"36px auto",padding:"0 24px 80px",display:"flex",flexDirection:"column",gap:24}}>
 
-        {/* ══ ARCHETYPE IDENTITY CARD ═════════════════════════════════════════ */}
+        {/* ══ ARCHETYPE ROLE CONTEXT BANNER ══════════════════════════════════ */}
         {aConfig&&(
           <div className="ps" style={{
-            background:`linear-gradient(135deg, ${C.bg} 0%, rgba(30,27,75,0.96) 100%)`,
-            borderRadius:16, padding:"20px 24px",
-            border:`1px solid rgba(255,255,255,0.06)`,
-            display:"flex", alignItems:"center", justifyContent:"space-between",
-            flexWrap:"wrap", gap:16,
+            background:`linear-gradient(135deg, ${C.surface} 0%, ${C.surface2} 100%)`,
+            borderRadius:20,
+            border:`1px solid ${C.border}`,
+            borderLeft:`4px solid ${aConfig.palette.accent}`,
+            boxShadow:C.shadow2,
+            overflow:"hidden",
+            position:"relative",
           }}>
-            <div style={{display:"flex",alignItems:"center",gap:16}}>
-              <div style={{
-                width:52, height:52, borderRadius:14,
-                background: aConfig.palette.accentSoft,
-                display:"flex", alignItems:"center", justifyContent:"center",
-                fontSize:24, flexShrink:0,
-              }}>
-                {aConfig.icon}
-              </div>
-              <div>
-                <div style={{fontSize:11,fontWeight:800,color:"rgba(255,255,255,0.35)",textTransform:"uppercase",letterSpacing:1.5,marginBottom:3}}>
-                  Portfolio Archetype
-                </div>
-                <div style={{fontSize:17,fontWeight:800,color:"#fff",marginBottom:2}}>
-                  {aConfig.name}
-                </div>
-                <div style={{fontSize:12,color:"rgba(255,255,255,0.45)",fontStyle:"italic"}}>
-                  {aConfig.tagline}
-                </div>
-              </div>
-            </div>
-            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-              {/* Top proof badges for this archetype */}
-              {aConfig.proofElements.slice(0,3).map((pe,i)=>(
-                <div key={i} style={{
-                  padding:"5px 12px",
-                  background:"rgba(255,255,255,0.05)",
-                  border:`1px solid rgba(255,255,255,0.1)`,
-                  borderRadius:99,
-                  fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.55)",
+            {/* Accent glow */}
+            <div style={{
+              position:"absolute", top:0, left:0, width:300, height:"100%",
+              background:`linear-gradient(90deg, ${aConfig.palette.accent}0a 0%, transparent 100%)`,
+              pointerEvents:"none",
+            }}/>
+            <div style={{
+              padding:"24px 28px",
+              display:"flex", alignItems:"stretch", gap:0, flexWrap:"wrap",
+              position:"relative",
+            }}>
+              {/* Left: Archetype identity */}
+              <div style={{display:"flex",alignItems:"center",gap:18,flex:1,minWidth:260,paddingRight:28,borderRight:`1px solid ${C.border}`}}>
+                <div style={{
+                  width:56, height:56, borderRadius:16,
+                  background:`${aConfig.palette.accent}18`,
+                  border:`1px solid ${aConfig.palette.accent}30`,
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                  fontSize:26, flexShrink:0,
                 }}>
-                  {pe.replace(/_/g," ")}
+                  {aConfig.icon}
                 </div>
-              ))}
+                <div>
+                  <div style={{fontSize:10,fontWeight:800,color:aConfig.palette.accent,textTransform:"uppercase",letterSpacing:2,marginBottom:4}}>
+                    Portfolio Archetype
+                  </div>
+                  <div style={{fontSize:18,fontWeight:800,color:C.ink,lineHeight:1.1,marginBottom:4}}>
+                    {aConfig.name}
+                  </div>
+                  <div style={{fontSize:12,color:C.ink4,fontStyle:"italic",lineHeight:1.5}}>
+                    {aConfig.tagline}
+                  </div>
+                </div>
+              </div>
+              {/* Right: Proof signal chips */}
+              <div style={{
+                flex:1, minWidth:240,
+                paddingLeft:28,
+                display:"flex", flexDirection:"column", justifyContent:"center", gap:10,
+              }}>
+                <div style={{fontSize:10,fontWeight:700,color:C.ink4,textTransform:"uppercase",letterSpacing:1.5}}>
+                  Key Proof Signals
+                </div>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                  {aConfig.proofElements.slice(0,4).map((pe,i)=>(
+                    <div key={i} style={{
+                      padding:"5px 13px",
+                      background:C.surface2,
+                      border:`1px solid ${C.border2}`,
+                      borderRadius:99,
+                      fontSize:11, fontWeight:600,
+                      color:i===0?aConfig.palette.accent:C.ink3,
+                    }}>
+                      {pe.replace(/_/g," ")}
+                    </div>
+                  ))}
+                </div>
+                {/* Seniority indicator */}
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:11,color:C.ink4}}>Seniority:</span>
+                  <span style={{
+                    fontSize:11,fontWeight:800,
+                    color:seniority==="senior"?C.purple:seniority==="mid"?C.blue:C.amber,
+                    textTransform:"capitalize",
+                  }}>
+                    {seniority} level
+                  </span>
+                  <span style={{fontSize:11,color:C.ink4}}>·</span>
+                  <span style={{fontSize:11,color:C.ink3}}>ELO {ud.eloRating} · {tier.label}</span>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -1086,13 +1222,14 @@ export default function Portfolio({ username: usernameProp }) {
           <PerformanceSummary
             ud={ud} skills={skills} tasks={tasks}
             interviews={interviews}
+            accent={aConfig?.palette?.accent}
           />
         </div>
 
         {/* ══ ACTIVITY HEATMAP ════════════════════════════════════════════════ */}
         {tasks.length>0&&(
           <div ref={refs.activity} className="ps">
-            <Card>
+            <Card accent={C.amber}>
               <SectionTitle icon="📅" title="Activity & Streak Consistency" accent={C.amber}
                 sub="90-day challenge activity — hover a square to see the date"/>
               <ActivityHeatmap tasks={tasks} streak={ud.arenaStreak||0}/>
@@ -1100,32 +1237,75 @@ export default function Portfolio({ username: usernameProp }) {
           </div>
         )}
 
+        {/* ══ ELO JOURNEY SPARKLINE (all archetypes) ══════════════════════════ */}
+        {tasks.length>=2&&(()=>{
+          const sorted=[...tasks].sort((a,b)=>new Date(a.completedAt)-new Date(b.completedAt))
+          let runningElo=Math.max(400,ud.eloRating-sorted.reduce((s,t)=>s+(t.eloDelta||0),0))
+          const eloData=sorted.map((t,i)=>{
+            runningElo=runningElo+(t.eloDelta||0)
+            return { i:i+1, elo:runningElo, label:fmt(t.completedAt) }
+          })
+          const accent=aConfig?.palette?.accent||C.blue
+          const minElo=Math.min(...eloData.map(d=>d.elo))-20
+          const maxElo=Math.max(...eloData.map(d=>d.elo))+20
+          return (
+            <div className="ps">
+              <Card accent={accent}>
+                <SectionTitle icon="📈" title="ELO Journey" accent={accent}
+                  sub={`From ${eloData[0]?.elo} → ${ud.eloRating} ELO across ${tasks.length} challenges`}/>
+                <ResponsiveContainer width="100%" height={180}>
+                  <AreaChart data={eloData} margin={{top:8,right:12,left:-10,bottom:0}}>
+                    <defs>
+                      <linearGradient id="eloGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={accent} stopOpacity={0.25}/>
+                        <stop offset="95%" stopColor={accent} stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="i" tick={{fill:C.ink4,fontSize:10}} tickLine={false} axisLine={false}
+                      label={{value:"Challenge #",position:"insideBottom",fill:C.ink4,fontSize:10,offset:-2}}/>
+                    <YAxis domain={[minElo,maxElo]} tick={{fill:C.ink4,fontSize:10}} tickLine={false} axisLine={false}/>
+                    <Tooltip
+                      contentStyle={{background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:10,fontSize:12,color:C.ink}}
+                      formatter={(v)=>[`${v} ELO`,"Rating"]}
+                      labelFormatter={i=>`Challenge #${i}`}
+                    />
+                    <Area type="monotone" dataKey="elo" stroke={accent} strokeWidth={2.5}
+                      fill="url(#eloGrad)" dot={false} activeDot={{r:5,fill:accent,strokeWidth:0}}/>
+                  </AreaChart>
+                </ResponsiveContainer>
+              </Card>
+            </div>
+          )
+        })()}
+
         {/* ══ SKILLS ══════════════════════════════════════════════════════════ */}
         {skills.length>0&&(
           <div ref={refs.skills} className="ps">
-            <Card>
-              <SectionTitle icon="🧠" title="Skills & Expertise" accent={C.teal}
+            <Card accent={aConfig?.palette?.accent||C.teal}>
+              <SectionTitle icon="🧠" title="Skills & Expertise" accent={aConfig?.palette?.accent||C.teal}
                 sub={`${skills.length} skills tracked from Arena challenges and assessments`}/>
               <div style={{display:"grid",gridTemplateColumns:radarData.length>=3?"1fr 1fr":"1fr",gap:32,alignItems:"start"}}>
                 {radarData.length>=3&&(
                   <div>
-                    <div style={{fontSize:11,fontWeight:800,color:C.ink4,textTransform:"uppercase",letterSpacing:1,marginBottom:14}}>Skill Radar</div>
+                    <div style={{fontSize:11,fontWeight:700,color:C.ink4,textTransform:"uppercase",letterSpacing:1.2,marginBottom:14}}>Skill Radar</div>
                     <ResponsiveContainer width="100%" height={220}>
                       <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="75%">
-                        <PolarGrid stroke={C.border}/>
+                        <PolarGrid stroke={C.border2}/>
                         <PolarAngleAxis dataKey="subject" tick={{fill:C.ink3,fontSize:11}}/>
                         <PolarRadiusAxis domain={[0,100]} tick={false} axisLine={false}/>
                         <Radar name="Score" dataKey="score"
                           stroke={aConfig?.palette?.accent||C.teal}
                           fill={aConfig?.palette?.accent||C.teal}
-                          fillOpacity={0.12} strokeWidth={2.5}/>
-                        <Tooltip formatter={v=>[`${v}%`,"Score"]}/>
+                          fillOpacity={0.15} strokeWidth={2.5}/>
+                        <Tooltip
+                          contentStyle={{background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:10,fontSize:12,color:C.ink}}
+                          formatter={v=>[`${v}%`,"Score"]}/>
                       </RadarChart>
                     </ResponsiveContainer>
                   </div>
                 )}
                 <div>
-                  <div style={{fontSize:11,fontWeight:800,color:C.ink4,textTransform:"uppercase",letterSpacing:1,marginBottom:14}}>Skill Levels</div>
+                  <div style={{fontSize:11,fontWeight:700,color:C.ink4,textTransform:"uppercase",letterSpacing:1.2,marginBottom:14}}>Skill Levels</div>
                   {skills.slice(0,9).map((s,i)=>(
                     <SkillBar key={i} label={s.skill} pct={s.percentage}
                       color={i%2===0?(aConfig?.palette?.accent||C.blue):(aConfig?.palette?.tag||C.teal)}/>
@@ -1139,8 +1319,8 @@ export default function Portfolio({ username: usernameProp }) {
         {/* ══ STRENGTHS & WEAKNESSES ══════════════════════════════════════════ */}
         {(ud.strengths?.length>0||ud.weakAreas?.length>0)&&(
           <div className="ps">
-            <Card>
-              <SectionTitle icon="⚖️" title="Strengths & Focus Areas" accent={C.blue}/>
+            <Card accent={aConfig?.palette?.accent}>
+              <SectionTitle icon="⚖️" title="Strengths & Focus Areas" accent={aConfig?.palette?.accent||C.blue}/>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
                 {ud.strengths?.length>0&&(
                   <div>
@@ -1180,7 +1360,7 @@ export default function Portfolio({ username: usernameProp }) {
         {/* ══ CHALLENGES ══════════════════════════════════════════════════════ */}
         {tasks.length>0&&(
           <div ref={refs.challenges} className="ps">
-            <Card>
+            <Card accent={aConfig?.palette?.accent||C.blue}>
               <SectionTitle icon="⚔️"
                 title={aConfig?.proofBadgeLabel ? `Arena Challenges · ${aConfig.proofBadgeLabel}` : "Arena Challenges"}
                 accent={aConfig?.palette?.accent||C.blue}
@@ -1230,7 +1410,7 @@ export default function Portfolio({ username: usernameProp }) {
         {/* ══ INTERVIEW SESSIONS ══════════════════════════════════════════════ */}
         {interviews.length>0&&(
           <div ref={refs.interviews} className="ps">
-            <Card>
+            <Card accent={C.purple}>
               <SectionTitle icon="🎤" title="Interview Sessions" accent={C.purple}
                 sub={`${interviews.length} sessions completed — click any card to expand feedback`}/>
               <div style={{display:"flex",flexDirection:"column",gap:12}}>
@@ -1243,7 +1423,7 @@ export default function Portfolio({ username: usernameProp }) {
         {/* ══ EXPERIENCE — professionals & authority + project-heavy archetypes */}
         {(isPro||[ARCHETYPES.CRAFTSMAN,ARCHETYPES.FULLSTACK,ARCHETYPES.MOBILE,ARCHETYPES.ARCHITECT].includes(archetype))&&(ud.experiences?.length>0||ud.resumeProjects?.length>0)&&(
           <div ref={refs.experience} className="ps">
-            <Card>
+            <Card accent={aConfig?.palette?.accent}>
               <SectionTitle icon="💼"
                 title={
                   archetype===ARCHETYPES.MOBILE?"Published Apps & Experience":
