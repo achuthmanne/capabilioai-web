@@ -526,7 +526,7 @@ function ActivityHeatmap({ tasks, streak }) {
 }
 
 // ─── Performance Summary ──────────────────────────────────────────────────────
-function PerformanceSummary({ ud, skills, tasks, interviews }) {
+function PerformanceSummary({ ud, skills, tasks, interviews, accent }) {
   const tier      = getTier(ud.eloRating)
   const avgScore  = tasks.length ? Math.round(tasks.reduce((s,t)=>s+t.score,0)/tasks.length) : 0
   const best      = tasks.reduce((b,t)=>t.score>b?t.score:b,0)
