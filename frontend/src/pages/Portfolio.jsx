@@ -1,14 +1,15 @@
 /**
- * Portfolio.jsx — Universal Professional Portfolio
+ * Portfolio.jsx — Role-Aware Professional Portfolio
  *
- * One design for all users. Path-specific section ordering and emphasis.
- * Sections: Hero → Stats → Skills → Strengths/Weaknesses → Challenges Timeline
- *           → Interview Sessions → Experience/Projects (professionals)
+ * Archetype-driven rendering: each role (Frontend, Backend, DevOps, Data,
+ * Designer, PM, Founder, Student, Full Stack, Mobile) gets a distinct
+ * visual identity, section order, proof emphasis, and recruiter summary.
  *
- * No themes, no purchases — one clean, cinematic layout.
+ * Archetype detection: userData.archetype > path > keyword/job_role > ELO
  */
 
 import { useEffect, useState, useRef } from "react"
+import { getPortfolioConfig, ARCHETYPES } from "../config/portfolioArchetypes"
 import { userDoc } from "../lib/db"
 import { supabase } from "../lib/supabase"
 import {
@@ -838,6 +839,17 @@ export default function Portfolio({ username: usernameProp }) {
   const isOwner = !!(ud.uid&&currentUid&&currentUid===ud.uid)
   const isPro   = ud.path==="professional"||ud.path==="authority"
 
+  // ── Archetype detection ────────────────────────────────────────────────────
+  const { archetype, seniority, config: aConfig } = getPortfolioConfig(ud)
+
+  // Archetype-aware hero background — override PATH_CONFIG heroBg
+  const heroBg = aConfig?.palette?.hero || pc.heroBg
+
+  // Role-specific recruiter summary (only if no custom profileSummary)
+  const archetypeSummary = (aConfig && tasks.length > 0)
+    ? aConfig.recruiterSummary(ud, tier, tasks.length)
+    : null
+
   // challenge_type: "dsa"/"common" = algorithm/DSA challenge, "domain" = role-specific
   const isCommonTask = t => {
     const ct = (t.challenge_type || "").toLowerCase()
@@ -909,7 +921,7 @@ export default function Portfolio({ username: usernameProp }) {
       {/* HERO                                                              */}
       {/* ══════════════════════════════════════════════════════════════════ */}
       <div ref={refs.overview}>
-        <div style={{background:pc.heroBg,padding:"56px 32px 72px",position:"relative",overflow:"hidden"}}>
+        <div style={{background:heroBg,padding:"56px 32px 72px",position:"relative",overflow:"hidden"}}>
           {/* Subtle dot overlay */}
           <div style={{position:"absolute",inset:0,opacity:0.04,
             backgroundImage:"radial-gradient(circle,#fff 1px,transparent 1px)",backgroundSize:"28px 28px"}}/>
@@ -918,15 +930,28 @@ export default function Portfolio({ username: usernameProp }) {
             background:"rgba(0,0,0,0.02)",borderRadius:"50%",filter:"blur(60px)"}}/>
 
           <div style={{position:"relative",maxWidth:860,margin:"0 auto"}}>
-            {/* Path badge */}
-            <div style={{display:"inline-flex",alignItems:"center",gap:6,
-              background:"rgba(0,0,0,0.07)",backdropFilter:"blur(8px)",
-              padding:"4px 14px",borderRadius:99,marginBottom:28,
-              border:"1px solid rgba(255,255,255,0.2)"}}>
-              <span>{pc.icon}</span>
-              <span style={{fontSize:11,fontWeight:800,color:"rgba(255,255,255,0.9)",textTransform:"uppercase",letterSpacing:1.5}}>
-                {pc.label}
-              </span>
+            {/* Path badge + Archetype badge */}
+            <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:28}}>
+              <div style={{display:"inline-flex",alignItems:"center",gap:6,
+                background:"rgba(0,0,0,0.07)",backdropFilter:"blur(8px)",
+                padding:"4px 14px",borderRadius:99,
+                border:"1px solid rgba(255,255,255,0.2)"}}>
+                <span>{pc.icon}</span>
+                <span style={{fontSize:11,fontWeight:800,color:"rgba(255,255,255,0.9)",textTransform:"uppercase",letterSpacing:1.5}}>
+                  {pc.label}
+                </span>
+              </div>
+              {aConfig&&(
+                <div style={{display:"inline-flex",alignItems:"center",gap:6,
+                  background:"rgba(255,255,255,0.08)",backdropFilter:"blur(8px)",
+                  padding:"4px 14px",borderRadius:99,
+                  border:"1px solid rgba(255,255,255,0.15)"}}>
+                  <span style={{fontSize:12}}>{aConfig.icon}</span>
+                  <span style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.85)",letterSpacing:0.5}}>
+                    {aConfig.name}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div style={{display:"flex",gap:28,alignItems:"flex-start",flexWrap:"wrap"}}>
@@ -949,10 +974,15 @@ export default function Portfolio({ username: usernameProp }) {
                   letterSpacing:"-0.03em",lineHeight:1.05}}>
                   {ud.displayName}
                 </h1>
-                {ud.keyword&&<p style={{fontSize:16,color:"rgba(255,255,255,0.7)",margin:"0 0 14px",fontWeight:500}}>{ud.keyword}</p>}
+                {ud.keyword&&<p style={{fontSize:16,color:"rgba(255,255,255,0.7)",margin:"0 0 6px",fontWeight:500}}>{ud.keyword}</p>}
+                {aConfig?.heroTagline&&(
+                  <p style={{fontSize:13,color:"rgba(255,255,255,0.45)",margin:"0 0 14px",fontWeight:500,fontStyle:"italic",letterSpacing:0.3}}>
+                    {aConfig.heroTagline}
+                  </p>
+                )}
 
                 <p style={{fontSize:14,color:"rgba(255,255,255,0.62)",lineHeight:1.75,maxWidth:520,margin:"0 0 20px"}}>
-                  {summary||`${pc.label} building career on Capabilio.`}
+                  {summary||archetypeSummary||`${pc.label} building career on Capabilio.`}
                 </p>
 
                 {/* Links + ELO chip */}
@@ -1004,6 +1034,53 @@ export default function Portfolio({ username: usernameProp }) {
       {/* ── Main content ─────────────────────────────────────────────────────── */}
       <div style={{maxWidth:860,margin:"36px auto",padding:"0 24px 80px",display:"flex",flexDirection:"column",gap:28}}>
 
+        {/* ══ ARCHETYPE IDENTITY CARD ═════════════════════════════════════════ */}
+        {aConfig&&(
+          <div className="ps" style={{
+            background:`linear-gradient(135deg, ${C.bg} 0%, rgba(30,27,75,0.96) 100%)`,
+            borderRadius:16, padding:"20px 24px",
+            border:`1px solid rgba(255,255,255,0.06)`,
+            display:"flex", alignItems:"center", justifyContent:"space-between",
+            flexWrap:"wrap", gap:16,
+          }}>
+            <div style={{display:"flex",alignItems:"center",gap:16}}>
+              <div style={{
+                width:52, height:52, borderRadius:14,
+                background: aConfig.palette.accentSoft,
+                display:"flex", alignItems:"center", justifyContent:"center",
+                fontSize:24, flexShrink:0,
+              }}>
+                {aConfig.icon}
+              </div>
+              <div>
+                <div style={{fontSize:11,fontWeight:800,color:"rgba(255,255,255,0.35)",textTransform:"uppercase",letterSpacing:1.5,marginBottom:3}}>
+                  Portfolio Archetype
+                </div>
+                <div style={{fontSize:17,fontWeight:800,color:"#fff",marginBottom:2}}>
+                  {aConfig.name}
+                </div>
+                <div style={{fontSize:12,color:"rgba(255,255,255,0.45)",fontStyle:"italic"}}>
+                  {aConfig.tagline}
+                </div>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              {/* Top proof badges for this archetype */}
+              {aConfig.proofElements.slice(0,3).map((pe,i)=>(
+                <div key={i} style={{
+                  padding:"5px 12px",
+                  background:"rgba(255,255,255,0.05)",
+                  border:`1px solid rgba(255,255,255,0.1)`,
+                  borderRadius:99,
+                  fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.55)",
+                }}>
+                  {pe.replace(/_/g," ")}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* ══ PERFORMANCE SUMMARY ═════════════════════════════════════════════ */}
         <div ref={refs.summary} className="ps">
           <PerformanceSummary
@@ -1038,7 +1115,10 @@ export default function Portfolio({ username: usernameProp }) {
                         <PolarGrid stroke={C.border}/>
                         <PolarAngleAxis dataKey="subject" tick={{fill:C.ink3,fontSize:11}}/>
                         <PolarRadiusAxis domain={[0,100]} tick={false} axisLine={false}/>
-                        <Radar name="Score" dataKey="score" stroke={C.teal} fill={C.teal} fillOpacity={0.12} strokeWidth={2.5}/>
+                        <Radar name="Score" dataKey="score"
+                          stroke={aConfig?.palette?.accent||C.teal}
+                          fill={aConfig?.palette?.accent||C.teal}
+                          fillOpacity={0.12} strokeWidth={2.5}/>
                         <Tooltip formatter={v=>[`${v}%`,"Score"]}/>
                       </RadarChart>
                     </ResponsiveContainer>
@@ -1047,7 +1127,8 @@ export default function Portfolio({ username: usernameProp }) {
                 <div>
                   <div style={{fontSize:11,fontWeight:800,color:C.ink4,textTransform:"uppercase",letterSpacing:1,marginBottom:14}}>Skill Levels</div>
                   {skills.slice(0,9).map((s,i)=>(
-                    <SkillBar key={i} label={s.skill} pct={s.percentage} color={i%2===0?C.blue:C.teal}/>
+                    <SkillBar key={i} label={s.skill} pct={s.percentage}
+                      color={i%2===0?(aConfig?.palette?.accent||C.blue):(aConfig?.palette?.tag||C.teal)}/>
                   ))}
                 </div>
               </div>
@@ -1100,7 +1181,9 @@ export default function Portfolio({ username: usernameProp }) {
         {tasks.length>0&&(
           <div ref={refs.challenges} className="ps">
             <Card>
-              <SectionTitle icon="⚔️" title="Arena Challenges" accent={C.blue}
+              <SectionTitle icon="⚔️"
+                title={aConfig?.proofBadgeLabel ? `Arena Challenges · ${aConfig.proofBadgeLabel}` : "Arena Challenges"}
+                accent={aConfig?.palette?.accent||C.blue}
                 sub={`${tasks.length} challenges completed · avg score ${avgScore}/100`}/>
 
               {/* Difficulty summary */}
@@ -1157,11 +1240,20 @@ export default function Portfolio({ username: usernameProp }) {
           </div>
         )}
 
-        {/* ══ EXPERIENCE — professionals & authority ══════════════════════════ */}
-        {isPro&&(ud.experiences?.length>0||ud.resumeProjects?.length>0)&&(
+        {/* ══ EXPERIENCE — professionals & authority + project-heavy archetypes */}
+        {(isPro||[ARCHETYPES.CRAFTSMAN,ARCHETYPES.FULLSTACK,ARCHETYPES.MOBILE,ARCHETYPES.ARCHITECT].includes(archetype))&&(ud.experiences?.length>0||ud.resumeProjects?.length>0)&&(
           <div ref={refs.experience} className="ps">
             <Card>
-              <SectionTitle icon="💼" title="Experience & Projects" accent={C.teal}/>
+              <SectionTitle icon="💼"
+                title={
+                  archetype===ARCHETYPES.MOBILE?"Published Apps & Experience":
+                  archetype===ARCHETYPES.CRAFTSMAN?"Built Projects & Work History":
+                  archetype===ARCHETYPES.ANALYST?"Analytics Projects & Case Studies":
+                  archetype===ARCHETYPES.DESIGNER?"Case Studies & Work History":
+                  archetype===ARCHETYPES.PM?"Product Work & Outcomes":
+                  "Experience & Projects"
+                }
+                accent={aConfig?.palette?.accent||C.teal}/>
               {ud.experiences?.length>0&&(
                 <div style={{marginBottom:ud.resumeProjects?.length>0?28:0}}>
                   <div style={{fontSize:11,fontWeight:800,color:C.ink4,textTransform:"uppercase",letterSpacing:1,marginBottom:16}}>Work History</div>
