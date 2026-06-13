@@ -1785,7 +1785,7 @@ function ExecutiveAura({ user, userData, onNavigate, onNavigatePricing }) {
   // ── Photo upload ─────────────────────────────────────────────────────────────
   const handlePhotoUpload = (e) => {
     const file = e.target.files[0]; if (!file) return
-    if (file.size > 2 * 1024 * 1024) { alert("Photo must be under 2 MB. Compress and retry."); return }
+    if (file.size > 5 * 1024 * 1024) { alert("Photo must be under 5 MB. Please use a smaller image and try again."); return }
     setPhotoUploading(true)
     const reader = new FileReader()
     reader.onload = async (ev) => {
@@ -2496,7 +2496,7 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
 
   const handleCoverUpload = async (e) => {
     const file=e.target.files[0]; if(!file) return
-    if(file.size > 2*1024*1024) { alert("Cover photo must be under 2MB. Please compress the image and try again."); return }
+    if(file.size > 5*1024*1024) { alert("Cover photo must be under 5MB. Please use a smaller image and try again."); return }
     setCoverUploading(true)
     try {
       const base64=await fileToBase64(file)
@@ -2510,7 +2510,7 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
   // Handle avatar upload
   const handleAvatarUpload = async (e) => {
     const file=e.target.files[0]; if(!file) return
-    if(file.size > 1*1024*1024) { alert("Profile photo must be under 1MB. Please compress the image and try again."); return }
+    if(file.size > 5*1024*1024) { alert("Profile photo must be under 5MB. Please use a smaller image and try again."); return }
     setAvatarUploading(true)
     try {
       const base64=await fileToBase64(file)
