@@ -3303,7 +3303,6 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
           {id:"pro-skills",   label:"Skill Graph Pro",   icon:"🧠"},
           {id:"interview",    label:"AI Interview",      icon:"□"},
           {id:"skillgap",     label:"Skill Gaps",        icon:"⚡"},
-          {id:"settings",     label:"Settings",          icon:"⚙️"},
         ] : [
           // Students + others: full tab set
           {id:"dashboard",  label:"Dashboard",    icon:"▦"},
@@ -3314,7 +3313,6 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
           {id:"resilience", label:"Resilience",    icon:"💪"},
           {id:"fingerprint",label:"Code DNA",      icon:"🧬"},
           {id:"voucher",    label:"Voucher",        icon:"🎫"},
-          {id:"settings",   label:"Settings",       icon:"⚙️"},
         ]).map(tab=>{
           const active=activeTab===tab.id
           return(

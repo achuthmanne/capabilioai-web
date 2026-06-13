@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/react"
 import { supabase } from "./lib/supabase"
@@ -489,6 +489,8 @@ function App() {
   const [appStage,       setAppStage]       = useState("landing")
   const [showAuth,       setShowAuth]       = useState(false)
   const [authMode,       setAuthMode]       = useState("login")
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const profileMenuRef = useRef(null)
 
   // Portfolio standalone route
   useEffect(() => {
@@ -565,6 +567,18 @@ function App() {
     setUser(null); setOnboardingDone(false); setUserData(null)
     setCurrentPage("studentHome"); setAppStage("landing")
   }
+
+  // Close profile dropdown on outside click
+  useEffect(() => {
+    if (!profileMenuOpen) return
+    const handler = (e) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
+        setProfileMenuOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [profileMenuOpen])
 
   // ── Track page views (SPA — fires on every state-based navigation) ──────────
   useEffect(() => {
@@ -746,28 +760,99 @@ function App() {
           </nav>
         )}
 
-        {/* Right: ELO + avatar + name + sign out */}
+        {/* Right: ELO + profile dropdown */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
           {!isAuthority && userData?.eloRating ? (
             <div style={{ padding: "4px 10px", background: navPath === "student" ? "#FFF1E8" : `${navAccent}10`, border: `1px solid ${navAccent}30`, borderRadius: 100, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700, color: navAccent }}>
               ELO {userData.eloRating.toLocaleString()}
             </div>
           ) : null}
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <div style={{ width: 28, height: 28, borderRadius: "50%", overflow: "hidden", border: `2px solid ${navAccent}44`, background: "#F9FAFB", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              {avatarUrl
-                ? <img src={avatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                : <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 12, fontWeight: 700, color: navAccent }}>{initials}</span>
-              }
-            </div>
-            <span style={{ fontSize: 13, fontWeight: 600, color: "#374151", fontFamily: "'DM Sans', sans-serif", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</span>
+
+          {/* Profile button + dropdown */}
+          <div ref={profileMenuRef} style={{ position: "relative" }}>
+            <button
+              onClick={() => setProfileMenuOpen(o => !o)}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "4px 10px 4px 4px",
+                background: profileMenuOpen ? `${navAccent}10` : "#fff",
+                border: `1px solid ${profileMenuOpen ? navAccent + "50" : "#E5E7EB"}`,
+                borderRadius: 99, cursor: "pointer",
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={e => { if (!profileMenuOpen) { e.currentTarget.style.borderColor = navAccent + "50"; e.currentTarget.style.background = `${navAccent}08` } }}
+              onMouseLeave={e => { if (!profileMenuOpen) { e.currentTarget.style.borderColor = "#E5E7EB"; e.currentTarget.style.background = "#fff" } }}
+            >
+              <div style={{ width: 26, height: 26, borderRadius: "50%", overflow: "hidden", border: `2px solid ${navAccent}44`, background: "#F9FAFB", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                {avatarUrl
+                  ? <img src={avatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  : <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 11, fontWeight: 700, color: navAccent }}>{initials}</span>
+                }
+              </div>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#374151", fontFamily: "'DM Sans', sans-serif", maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</span>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0, transition: "transform 0.2s", transform: profileMenuOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
+                <path d="M2 4l4 4 4-4" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+
+            {/* Dropdown */}
+            {profileMenuOpen && (
+              <div style={{
+                position: "absolute", top: "calc(100% + 8px)", right: 0,
+                background: "#fff", border: "1px solid #E5E7EB",
+                borderRadius: 12, boxShadow: "0 8px 24px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)",
+                minWidth: 200, overflow: "hidden", zIndex: 200,
+              }}>
+                {/* User info header */}
+                <div style={{ padding: "12px 14px", borderBottom: "1px solid #F3F4F6" }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#111827", fontFamily: "'DM Sans', sans-serif" }}>{displayName}</div>
+                  <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 2 }}>{user?.email || ""}</div>
+                </div>
+
+                {/* Settings */}
+                <button
+                  onClick={() => {
+                    setCurrentPage("aura")
+                    setActiveTab("settings")
+                    setActiveNavItem("aura")
+                    setProfileMenuOpen(false)
+                  }}
+                  style={{
+                    width: "100%", display: "flex", alignItems: "center", gap: 10,
+                    padding: "11px 14px", border: "none", background: "transparent",
+                    cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+                    fontSize: 13, fontWeight: 600, color: "#374151",
+                    textAlign: "left", transition: "background 0.1s",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "#F9FAFB" }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "transparent" }}
+                >
+                  <span style={{ fontSize: 15 }}>⚙️</span>
+                  Settings
+                </button>
+
+                {/* Divider */}
+                <div style={{ height: 1, background: "#F3F4F6", margin: "2px 0" }} />
+
+                {/* Sign out */}
+                <button
+                  onClick={() => { setProfileMenuOpen(false); handleSignOut() }}
+                  style={{
+                    width: "100%", display: "flex", alignItems: "center", gap: 10,
+                    padding: "11px 14px", border: "none", background: "transparent",
+                    cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+                    fontSize: 13, fontWeight: 600, color: "#EF4444",
+                    textAlign: "left", transition: "background 0.1s",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "#FFF5F5" }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "transparent" }}
+                >
+                  <span style={{ fontSize: 15 }}>🚪</span>
+                  Sign out
+                </button>
+              </div>
+            )}
           </div>
-          <button
-            onClick={handleSignOut}
-            style={{ padding: "5px 12px", background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8, color: "#6B7280", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = navAccent; e.currentTarget.style.color = navAccent }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = "#E5E7EB"; e.currentTarget.style.color = "#6B7280" }}
-          >Sign out</button>
         </div>
       </header>
 
