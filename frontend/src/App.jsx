@@ -39,6 +39,7 @@ import RecruiterDashboard  from "./pages/RecruiterDashboard"
 import HiringPipeline      from "./pages/HiringPipeline"
 import JobPostings         from "./pages/JobPostings"
 import { PageLoader } from "./components/CapUI"
+import CopilotWidget   from "./components/CopilotWidget"
 
 const API = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
 
@@ -918,6 +919,9 @@ function App() {
         {currentPage === "pipeline"      && <HiringPipeline     user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
         {currentPage === "jobPostings"   && <JobPostings        user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
       </div>
+
+      {/* Capi — AI Career Copilot floating widget (shown to all logged-in users) */}
+      {user && <CopilotWidget user={user} userData={userData} />}
 
       <Analytics />
       <SpeedInsights />
