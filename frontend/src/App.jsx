@@ -602,16 +602,19 @@ function App() {
     return "student"
   })()
 
-  // Navigate to the correct home whenever the user's path is first known
+  // Navigate to the correct home whenever the user's path is first known OR onboarding finishes.
+  // NOTE: onboardingDone is intentionally in deps — the path-aware onComplete handler above is the
+  // primary routing mechanism; this effect is a safety net for re-login sessions where path is
+  // already known and the onComplete handler is not involved.
   useEffect(() => {
-    if (userData?.path) {
-      const home = HOME_PAGE[navPath] || "studentHome"
+    if (userData?.path && onboardingDone) {
+      const home = navPath === "student" ? "aura" : (HOME_PAGE[navPath] || "studentHome")
       setCurrentPage(home)
       // Match nav item id to home page
       const navId = navPath === "professional" ? "orbit" : "home"
       setActiveNavItem(navId)
     }
-  }, [userData?.path]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [userData?.path, onboardingDone]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Portfolio standalone route ────────────────────────────────
   if (window.location.pathname.startsWith("/portfolio/")) {
@@ -674,7 +677,13 @@ function App() {
           })
           // These fire synchronously in the same batch — React renders once with both.
           setOnboardingDone(true)
-          setCurrentPage("aura")
+          // Route to the correct home based on path — do NOT default to "aura" (student page).
+          // The useEffect([userData?.path]) won't re-fire here because the path was already
+          // saved to Supabase earlier in onboarding, so userData.path didn't "change".
+          const targetPath = fresh?.path || "student"
+          const home = targetPath === "student" ? "aura" : (HOME_PAGE[targetPath] || "studentHome")
+          setCurrentPage(home)
+          setActiveNavItem(targetPath === "professional" ? "orbit" : "home")
         }}
         onBack={() => { setUser(null); setOnboardingDone(false) }}
       />
