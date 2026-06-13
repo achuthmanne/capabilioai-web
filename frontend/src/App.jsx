@@ -246,7 +246,7 @@ function AuthModal({ show, onClose, mode, setMode }) {
   // ── Shared input style ────────────────────────────────────────────
   const inputStyle = {
     width: "100%", padding: "12px 14px", background: "#F9FAFB",
-    border: "1.5px solid #E5E7EB", borderRadius: 8, color: "#FFFFFF",
+    border: "1.5px solid #E5E7EB", borderRadius: 8, color: "#111827",
     fontSize: 14, fontFamily: "Inter,sans-serif", outline: "none",
     boxSizing: "border-box", transition: "border-color 0.15s",
   }
