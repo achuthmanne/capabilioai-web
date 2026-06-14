@@ -1255,6 +1255,19 @@ export default function Onboarding({ user, onComplete, onBack }) {
       // ✅ Use Supabase via userDoc
       // ⚠️  Do NOT set onboarding_complete here — plan step must show first.
       await userDoc.set(user.id, { ...payload, onboarding_complete: false })
+
+      // ── Guaranteed override: ensures path='professional' and correct ELO are
+      // written even if the main upsert silently failed (unknown columns, etc.).
+      // Mirrors the same safety pattern used in handleGoToDashboard (student path).
+      const guaranteedElo = getProfessionalInitialElo({
+        suggestedElo: auraResult?.analysis?.eloRating,
+        auraScore:    auraResult?.profileScore?.total,
+      })
+      await userDoc.update(user.id, {
+        path:     "professional",
+        eloRating: guaranteedElo,
+        keyword:  auraResult?.analysis?.domain || auraResult?.extractedData?.title || payload.keyword || "",
+      })
     } catch (err) { console.warn("Profile save failed:", err) }
     setSavingResult(false); setStep("plan")
   }
@@ -1283,14 +1296,17 @@ export default function Onboarding({ user, onComplete, onBack }) {
       try {
         if (user?.id) {
           // ✅ Use Supabase userDoc.update (profile already created in previous step)
+          // Also re-stamp 'path' here so onComplete()'s fresh read always finds it,
+          // even if the earlier profile save partially failed.
           await userDoc.update(user.id, {
             subscription: "free",
             subscriptionCycleStart: new Date().toISOString(),
+            path: path || "student",
             // onboarding_complete is stamped by onComplete() in App.jsx AFTER this runs
           })
         }
       } catch (err) { console.warn("Plan save failed:", err) }
-      setSavingPlan(false); onComplete?.()
+      setSavingPlan(false); onComplete?.(path || "student")
       return
     }
 
@@ -1313,7 +1329,13 @@ export default function Onboarding({ user, onComplete, onBack }) {
         currency:  order.currency,
         userEmail: user?.email || "",
         userName:  user?.user_metadata?.full_name || user?.user_metadata?.name || "",
-        onSuccess: () => { onComplete?.() },
+        onSuccess: async () => {
+          // Re-stamp path so onComplete()'s fresh read always finds the correct value
+          if (user?.id && path) {
+            await userDoc.update(user.id, { path }).catch(() => {})
+          }
+          onComplete?.(path || "student")
+        },
         onError:   (msg) => {
           // If payment cancelled, let user stay on plan step to retry or choose free
           if (msg !== "Payment cancelled.") console.warn("Payment error:", msg)

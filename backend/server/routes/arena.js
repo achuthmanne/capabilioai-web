@@ -127,13 +127,16 @@ router.post("/daily", async (req, res) => {
   const {
     keyword="Software Development", domainKey="swe",
     eloRating=800, weakAreas=[], path="student",
-    recentSkills=[], requestedSlots=1, slotIndex=0,
+    recentSkills=[], completedMissions=[],
+    requestedSlots=1, slotIndex=0,
   } = req.body
 
-  const diff   = eloRating < 700 ? "Easy" : eloRating < 1000 ? "Medium" : eloRating < 1300 ? "Medium-Hard" : "Hard"
-  const eloMin = Math.round(eloRating * 0.02)
-  const eloMax = Math.round(eloRating * 0.05)
-  const eloGain = eloMin + Math.floor(Math.random() * (eloMax - eloMin))
+  // Student path: cap difficulty at Medium even if ELO says otherwise
+  const rawDiff  = eloRating < 700 ? "Easy" : eloRating < 1000 ? "Medium" : eloRating < 1300 ? "Medium-Hard" : "Hard"
+  const diff     = path === "student" && rawDiff === "Hard" ? "Medium-Hard" : rawDiff
+  const eloMin   = Math.round(eloRating * 0.02)
+  const eloMax   = Math.round(eloRating * 0.05)
+  const eloGain  = eloMin + Math.floor(Math.random() * (eloMax - eloMin))
   const difficulty = diff.split("-")[0]
 
   // ── Attempt 1: Gemini 2.5 Flash ──────────────────────────────────────────────
@@ -141,6 +144,7 @@ router.post("/daily", async (req, res) => {
     const mission = await geminiGenerateMission({
       keyword, domainKey, eloRating, difficulty,
       weakAreas, path, recentSkills, eloGain,
+      completedMissions: (completedMissions || []).slice(0, 30),
     })
     console.log(`[arena/daily] Gemini: generated mission for ${keyword} ELO:${eloRating} slot:${slotIndex}`)
     return res.json({ tasks: [mission] })
@@ -155,11 +159,15 @@ router.post("/daily", async (req, res) => {
       { role: "user",   content:
 `Domain: ${keyword} | ELO: ${eloRating} | Difficulty: ${difficulty} | Path: ${path}
 Weak areas: ${weakAreas.slice(0,3).join(", ")||"fundamentals"}
+${path === "student" ? "STUDENT PATH: fresher/entry-level user — keep scope simple and beginner-appropriate, ONE skill only." : ""}
+${completedMissions.length ? `Avoid repeating these already-completed missions: ${completedMissions.slice(0,10).join(", ")}` : ""}
 
 Use a REAL Indian company (Swiggy, Razorpay, CRED, Zepto, Zomato, PhonePe, Meesho, Flipkart, Paytm, etc.).
 
+CRITICAL: Do NOT include solution steps, algorithm names, or approach hints in any field. Hints must be guiding questions only.
+
 Return ONE JSON object (concise strings):
-{"id":"slug","title":"short title","company":"Indian co","difficulty":"${difficulty}","type":"Software Engineering","scenario":"1-2 sentences","taskDescription":"1 sentence","objective":"1 sentence","workstation":"code_editor","starterCode":"// starter","expectedOutput":"brief","eloGain":${eloGain},"timeLimit":30,"tags":["t1","t2"],"hints":["h1","h2"]}` },
+{"id":"slug","title":"short task-specific title","company":"Indian co","difficulty":"${difficulty}","type":"Software Engineering","scenario":"1-2 sentences of context only — no solution hints","taskDescription":"what to build only — not how","objective":"1 measurable outcome","workstation":"code_editor","starterCode":"// scaffold only","expectedOutput":"what correct output looks like","eloGain":${eloGain},"timeLimit":${difficulty === "Hard" ? 55 : difficulty === "Medium" ? 30 : 20},"tags":["t1","t2"],"hints":["guiding question 1","guiding question 2"]}` },
     ], { max_tokens: 1200, json: false })
 
     const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim()

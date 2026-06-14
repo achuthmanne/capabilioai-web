@@ -660,30 +660,43 @@ function App() {
     return (
       <Onboarding
         user={user}
-        onComplete={async () => {
+        onComplete={async (pathHint) => {
+          // pathHint is passed directly from Onboarding's plan confirmation step,
+          // so it always reflects the path the user actually selected.
           // Wait briefly for Supabase writes from the plan step to propagate, then read fresh
           await new Promise(r => setTimeout(r, 400))
           const fresh = await userDoc.get(user.id)
-          if (fresh) setUserData(fresh)
+          // pathHint comes directly from the user's path selection in Onboarding —
+          // it is the most authoritative source. Use it as the primary value.
+          // fresh?.path is the DB value, which might reflect a previous session.
+          const confirmedPath = pathHint || fresh?.path || "student"
+          // Bake confirmedPath into userData NOW, before setOnboardingDone(true).
+          // The useEffect([userData?.path, onboardingDone]) fires immediately when
+          // onboardingDone flips to true, and it reads userData.path to pick the
+          // home page. If we don't override path here, a stale userData.path="student"
+          // from a previous session would overwrite setCurrentPage("orbit") → "aura".
+          if (fresh) setUserData({ ...fresh, path: confirmedPath })
           // Stamp the flag LAST — this triggers the real-time listener which also sets
-          // onboardingDone(true). By stamping after the fresh read, both paths (real-time
-          // listener and the explicit setters below) land on the same render cycle.
-          try { await userDoc.update(user.id, { onboarding_complete: true }) } catch {}
+          // onboardingDone(true). Re-stamp path here as a final safety net so the DB
+          // always has the correct path value even if earlier saves partially failed.
+          try {
+            await userDoc.update(user.id, {
+              onboarding_complete: true,
+              path: confirmedPath,
+            })
+          } catch {}
           PH.onboardingCompleted({
-            path:         fresh?.path,
+            path:         confirmedPath,
             keyword:      fresh?.keyword,
             subscription: fresh?.subscription,
             eloRating:    fresh?.eloRating || fresh?.elo_rating,
           })
           // These fire synchronously in the same batch — React renders once with both.
           setOnboardingDone(true)
-          // Route to the correct home based on path — do NOT default to "aura" (student page).
-          // The useEffect([userData?.path]) won't re-fire here because the path was already
-          // saved to Supabase earlier in onboarding, so userData.path didn't "change".
-          const targetPath = fresh?.path || "student"
-          const home = targetPath === "student" ? "aura" : (HOME_PAGE[targetPath] || "studentHome")
+          // Route to the correct home based on the confirmed path.
+          const home = confirmedPath === "student" ? "aura" : (HOME_PAGE[confirmedPath] || "studentHome")
           setCurrentPage(home)
-          setActiveNavItem(targetPath === "professional" ? "orbit" : "home")
+          setActiveNavItem(confirmedPath === "professional" ? "orbit" : "home")
         }}
         onBack={() => { setUser(null); setOnboardingDone(false) }}
       />

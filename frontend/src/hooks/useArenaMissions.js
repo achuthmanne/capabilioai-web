@@ -102,13 +102,28 @@ async function loadRecentSkills(uid) {
   return data?.recent_skills || []
 }
 
-async function pushRecentSkills(uid, newTags = [], domainSkillCount = 12) {
+async function pushRecentSkills(uid, newTags = [], domainSkillCount = 20) {
   const existing = await loadRecentSkills(uid)
-  const updated = [...new Set([...newTags, ...existing])].slice(0, 8)
-  const cycleComplete = updated.length >= Math.min(domainSkillCount, 8)
+  const updated = [...new Set([...newTags, ...existing])].slice(0, 12)
+  // Reset cycle after covering a wider window so skills repeat less often
+  const cycleComplete = updated.length >= Math.min(domainSkillCount, 12)
   const final = cycleComplete ? [] : updated
   await supabase.from("profiles").update({ recent_skills: final }).eq("id", uid)
   return final
+}
+
+// ── Completed mission tracking — prevents ever repeating the same mission title ──
+async function loadCompletedMissions(uid) {
+  const { data } = await supabase.from("profiles").select("completed_mission_titles").eq("id", uid).single()
+  return data?.completed_mission_titles || []
+}
+
+async function appendCompletedMission(uid, missionTitle) {
+  if (!missionTitle) return
+  const existing = await loadCompletedMissions(uid)
+  // Deduplicate and keep last 60 titles (well beyond any role's skill set)
+  const updated = [...new Set([missionTitle, ...existing])].slice(0, 60)
+  await supabase.from("profiles").update({ completed_mission_titles: updated }).eq("id", uid)
 }
 
 function bumpCoverage(coverage, skillTags = []) {
@@ -140,20 +155,22 @@ async function callDailyAPI(serverUrl, payload) {
   throw new Error("No valid mission in response")
 }
 
-async function fetchMissions({ keyword, domainKey, eloRating, skillGraph, weakAreas, path, skillCoverage, recentSkills, slotIndex }, retries = 1) {
+async function fetchMissions({ keyword, domainKey, eloRating, skillGraph, weakAreas, path, skillCoverage, recentSkills, slotIndex, completedMissions }, retries = 1) {
   const safeGraph = (skillGraph || []).map(n => ({ label: String(n.label || ""), value: Number(n.value || 50) }))
   const payload   = {
-    keyword:       keyword || "Software Development",
-    domainKey:     domainKey || "swe",
-    eloRating:     eloRating || 800,
-    skillGraph:    safeGraph,
-    weakAreas:     (weakAreas || []).map(String),
-    path:          path || "student",
-    completedTopics: [],
-    skillCoverage: skillCoverage || {},
-    recentSkills:  (recentSkills || []).map(String),
-    requestedSlots: 1,
-    slotIndex:     slotIndex ?? 0,
+    keyword:          keyword || "Software Development",
+    domainKey:        domainKey || "swe",
+    eloRating:        eloRating || 800,
+    skillGraph:       safeGraph,
+    weakAreas:        (weakAreas || []).map(String),
+    path:             path || "student",
+    completedTopics:  [],
+    skillCoverage:    skillCoverage || {},
+    recentSkills:     (recentSkills || []).map(String),
+    // Send completed mission titles so the backend/AI avoids repeating them
+    completedMissions: (completedMissions || []).slice(0, 30),
+    requestedSlots:   1,
+    slotIndex:        slotIndex ?? 0,
   }
 
   // Try local server first, then production fallback
@@ -293,10 +310,11 @@ export function useArenaMissions() {
     const eloRating  = ud?.elo_rating || ud?.elo_score || 800
     const weakAreas  = ud?.skill_gaps || ud?.weak_areas || []
     const skillGraph = ud?.skill_graph || []
-    const path       = ud?.path_type || "student"
-    const recentSkills = await loadRecentSkills(u.id)
+    const path       = ud?.path || ud?.path_type || "student"
+    const recentSkills      = await loadRecentSkills(u.id)
+    const completedMissions = await loadCompletedMissions(u.id)
 
-    const { mission, error: fetchError } = await fetchMissions({ keyword, domainKey, eloRating, skillGraph, weakAreas, path, skillCoverage: coverage, recentSkills, slotIndex: idx })
+    const { mission, error: fetchError } = await fetchMissions({ keyword, domainKey, eloRating, skillGraph, weakAreas, path, skillCoverage: coverage, recentSkills, slotIndex: idx, completedMissions })
     const slot = mission
       ? { status: "active", task: { ...mission, slotId: `slot_${idx}_${Date.now()}` }, slotIndex: idx, createdAt: new Date().toISOString(), completedAt: null, cooldownUntil: null }
       : { ...makeEmptySlot(idx), status: "error", errorMsg: fetchError || "Server unreachable" }
@@ -350,10 +368,13 @@ export function useArenaMissions() {
       await applySkillUpdates({ uid: user.id, userData, task, review: reviewResult })
     } catch (e) { console.warn("Skill update failed:", e.message) }
 
+    // Track completed mission title — prevents ever repeating the same mission
+    await appendCompletedMission(user.id, task?.title || "").catch(() => {})
+
     // Update skill coverage + rotation
     const currentCoverage = await loadSkillCoverage(user.id)
     await saveSkillCoverage(user.id, bumpCoverage(currentCoverage, completedSkillTags))
-    await pushRecentSkills(user.id, completedSkillTags, 12)
+    await pushRecentSkills(user.id, completedSkillTags, 20)
 
     // Update profile — ELO, streak, last active
     const currentElo = Number(userData?.elo_rating || 800)
