@@ -581,7 +581,7 @@ function CareerTimeline({ experiences, onAdd, onEdit, onDelete }) {
         const endLabel   = e.isCurrent ? "Present" : fmtDate(e.endDate)
         const dateStr    = startLabel && endLabel ? `${startLabel} — ${endLabel}` : startLabel ? `${startLabel} — Present` : endLabel || null
         const dur        = getDuration(e.startDate, e.endDate, e.isCurrent)
-        const skillList  = Array.isArray(e.skills) ? e.skills.filter(Boolean) : (e.skills ? String(e.skills).split(",").map(s=>s.trim()).filter(Boolean) : [])
+        const skillList  = (Array.isArray(e.skills) ? e.skills.filter(Boolean) : (e.skills ? String(e.skills).split(",").map(s=>s.trim()).filter(Boolean) : [])).slice(0, 6)
         const descLines  = (e.description||"").split("\n").filter(Boolean)
         return (
           <div key={ei} style={{ display:"flex", gap:0 }}>
@@ -2605,7 +2605,7 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
               endDate:parts[1]?.toLowerCase().includes("present")?"":parts[1]?.trim()||e.endDate||"",
               current:dur.toLowerCase().includes("present")||e.current||false,
               responsibilities:Array.isArray(e.responsibilities)?e.responsibilities.join("\n"):(e.description||e.responsibilities||""),
-              skills:(e.skills||[]).filter(Boolean).slice(0,10).join(", ") || (extractData.skills||[]).slice(0,8).join(", ")
+              skills:(e.skills||[]).filter(Boolean).slice(0,6).join(", ")
             }]
           }
         })

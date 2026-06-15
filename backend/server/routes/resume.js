@@ -84,7 +84,7 @@ Rules:
 // ─── 2. Professional Resume Parse (Orbit dashboard "Import Resume" modal) ────
 // Same fast extraction as /extract-pdf but returns the shape ResumeModal expects:
 // { experiences, skills, projects, certifications, summary }
-const PROF_SCHEMA = `{"name":"","title":"","summary":"","skills":[""],"experience":[{"company":"","role":"","startDate":"","endDate":"","current":false,"description":"","responsibilities":[""],"skills":[""]}],"projects":[{"title":"","description":"","techStack":[""],"url":""}],"education":[{"institution":"","degree":"","field":"","year":""}],"certifications":[""],"keywords":[""]}`
+const PROF_SCHEMA = `{"name":"","title":"","summary":"","skills":[""],"experience":[{"company":"","role":"","startDate":"","endDate":"","current":false,"description":"","responsibilities":[""],"roleSkills":[""]}],"projects":[{"title":"","description":"","techStack":[""],"url":""}],"education":[{"institution":"","degree":"","field":"","year":""}],"certifications":[""],"keywords":[""]}`
 
 router.post("/professional/parse-resume", upload.single("resume"), async (req, res) => {
   try {
@@ -100,7 +100,14 @@ router.post("/professional/parse-resume", upload.single("resume"), async (req, r
     let raw = null
     if (text.trim().length >= 30) {
       raw = await groq([
-        { role:"system", content:"Resume parser. Return ONLY valid JSON matching the schema exactly, no markdown." },
+        { role:"system", content:`Resume parser. Return ONLY valid JSON matching the schema exactly, no markdown, no extra text.
+
+CRITICAL RULES FOR roleSkills:
+- For each experience entry, the "roleSkills" array must contain ONLY skills, tools, or technologies that are explicitly mentioned or directly demonstrated in THAT SPECIFIC role's own description or responsibilities.
+- Do NOT copy skills from the top-level "skills" array or other sections into roleSkills.
+- Do NOT add skills that are not written in that specific role's description.
+- Maximum 6 items in roleSkills per experience. If fewer are explicitly mentioned, use fewer.
+- The top-level "skills" array is for GLOBAL/OVERALL skills found in the document (skills section, top skills, etc.).` },
         { role:"user",   content:`Parse this professional resume. Include separate projects array for any project entries. Return JSON: ${PROF_SCHEMA}\n\nResume:\n${text.slice(0,4000)}` },
       ], { model:GROQ_FAST, max_tokens:2500, json:true })
     }
@@ -111,7 +118,9 @@ router.post("/professional/parse-resume", upload.single("resume"), async (req, r
         const base64 = buffer.toString("base64")
         const extracted = await geminiExtractImage(base64, mime,
           `You are a resume parser. Extract ALL information from this resume.
-Return ONLY valid JSON: ${PROF_SCHEMA}. No markdown.`)
+Return ONLY valid JSON: ${PROF_SCHEMA}. No markdown.
+
+CRITICAL: For each experience, "roleSkills" must ONLY contain skills explicitly mentioned in THAT role's own description (max 6). Do NOT copy global skills into roleSkills.`)
         if (extracted && !extracted.raw && (extracted.name || extracted.skills?.length || extracted.experience?.length)) {
           const p = extracted
           return res.json({
@@ -169,6 +178,12 @@ function _toExp(e, i) {
   const description = Array.isArray(e.responsibilities)
     ? e.responsibilities.join("\n")
     : (e.description || "")
+  // Use roleSkills (role-specific), falling back to skills only if roleSkills is absent.
+  // Cap at 6 to prevent AI from dumping the global skill list into every entry.
+  const rawSkills = Array.isArray(e.roleSkills) ? e.roleSkills
+    : Array.isArray(e.skills) ? e.skills
+    : []
+  const skills = rawSkills.filter(Boolean).slice(0, 6)
   return {
     id: `exp-${i}-${Date.now()}`,
     company: e.company || "Previous Company",
@@ -179,7 +194,7 @@ function _toExp(e, i) {
     description, outcomes: "",
     location: e.location || "",
     industry: "Technology",
-    skills: Array.isArray(e.skills) ? e.skills.filter(Boolean) : [],
+    skills,
     verificationStatus: "self-claimed",
     _source: "resume",
   }
