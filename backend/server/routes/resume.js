@@ -29,7 +29,25 @@ router.post("/extract-pdf", upload.single("resume"), async (req, res) => {
     const buffer = req.file.buffer
     const mime   = req.file.mimetype || "application/pdf"
 
-    // Path A: Gemini reads the actual PDF layout (columns, tables, logos)
+    // Path A: pdf-parse → Groq (fast ~3s for text-based PDFs — always try first)
+    let text = ""
+    try { const r = await parsePdf(buffer); text = r.text || "" }
+    catch (e) { console.warn("[extract-pdf] pdf-parse failed:", e.message) }
+
+    if (text.trim().length >= 30) {
+      const raw = await groq([
+        { role:"system", content:"Resume parser. Return ONLY valid JSON, no markdown." },
+        { role:"user",   content:`Parse this resume. Return JSON: ${SCHEMA}\n\nResume:\n${text.slice(0,4000)}` },
+      ], { model:GROQ_FAST, max_tokens:2000, json:true })
+
+      let p = {}
+      try { p = JSON.parse(raw) } catch {}
+      return res.json({ _source:"groq", text, name:p.name||"", email:p.email||"", phone:p.phone||"",
+        title:p.title||"", summary:p.summary||"", skills:p.skills||[], experience:p.experience||[],
+        education:p.education||[], certifications:p.certifications||[], keywords:p.keywords||[] })
+    }
+
+    // Path B: Gemini multimodal — only for image-only / scanned PDFs (text < 30 chars)
     if (hasGemini()) {
       try {
         const base64 = buffer.toString("base64")
@@ -46,10 +64,9 @@ Rules:
         const extracted = await geminiExtractImage(base64, mime, prompt)
         const p = (extracted && !extracted.raw) ? extracted : {}
         if (p.name || p.skills?.length || p.experience?.length) {
-          // Synthesize a text field so the frontend success check (data.text?.length > 50) passes
           const synthText = [p.name, p.title, p.summary, ...(p.skills||[])].filter(Boolean).join(" ")
           return res.json({ _source:"gemini",
-            text: synthText.length > 50 ? synthText : synthText + " ".repeat(60), // ensure > 50 chars
+            text: synthText.length > 50 ? synthText : synthText + " ".repeat(60),
             name:p.name||"", email:p.email||"", phone:p.phone||"",
             title:p.title||"", summary:p.summary||"", skills:p.skills||[], experience:p.experience||[],
             education:p.education||[], certifications:p.certifications||[], keywords:p.keywords||[] })
@@ -57,27 +74,9 @@ Rules:
       } catch (e) { console.warn("[extract-pdf] Gemini failed:", e.message, e.status || "") }
     }
 
-    // Path B: pdf-parse text → Groq
-    let text = ""
-    try { const r = await parsePdf(buffer); text = r.text || "" }
-    catch { return res.status(422).json({ error: "Could not read PDF. Try a text-based PDF or copy-paste your resume." }) }
-    // If text is very short it is probably an image-only PDF — still return partial success
-    // so the frontend shows "uploaded" rather than hard-failing the user
-    if (text.trim().length < 30) {
-      return res.json({ _source:"pdf-empty", text:"", name:"", email:"", phone:"",
-        title:"", summary:"", skills:[], experience:[], education:[], certifications:[], keywords:[] })
-    }
-
-    const raw = await groq([
-      { role:"system", content:"Resume parser. Return ONLY valid JSON, no markdown." },
-      { role:"user",   content:`Parse this resume. Return JSON: ${SCHEMA}\n\nResume:\n${text.slice(0,3500)}` },
-    ], { model:GROQ_FAST, max_tokens:1500, json:true })
-
-    let p = {}
-    try { p = JSON.parse(raw) } catch {}
-    return res.json({ _source:"groq", text, name:p.name||"", email:p.email||"", phone:p.phone||"",
-      title:p.title||"", summary:p.summary||"", skills:p.skills||[], experience:p.experience||[],
-      education:p.education||[], certifications:p.certifications||[], keywords:p.keywords||[] })
+    // Fallback: image-only PDF with no Gemini key — return partial so frontend doesn't hard-fail
+    return res.json({ _source:"pdf-empty", text:"", name:"", email:"", phone:"",
+      title:"", summary:"", skills:[], experience:[], education:[], certifications:[], keywords:[] })
 
   } catch (e) { console.error("[extract-pdf]", e.message); res.status(500).json({ error: e.message }) }
 })

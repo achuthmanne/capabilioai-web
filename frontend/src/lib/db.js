@@ -57,6 +57,14 @@ const CAMEL_TO_SNAKE = {
   personalInfo:         'personal_info',
   subscriptionCycleStart: 'subscription_cycle_start',
   eloHistory:           'raw_data',           // stored in raw_data jsonb
+  // Assessment (student path)
+  assessmentType:       'assessment_type',
+  assessmentScore:      'assessment_score',
+  assessmentTotal:      'assessment_total',
+  // Resume tracking
+  lastResumeUpload:     'last_resume_upload',
+  // Recommendations
+  recommendedTasks:     'recommended_tasks',
 }
 
 /**
@@ -124,6 +132,18 @@ const toCompat = (data) => {
     // Profile photo
     profilePhotoURL:      data.profile_photo_url    || data.profilePhotoURL     || null,
     coverPhotoURL:        data.cover_photo_url      || data.coverPhotoURL       || null,
+    // Career data — these columns are snake_case = camelCase so spread already
+    // brings them in, but alias here for any code that might expect camelCase
+    experiences:          data.experiences          || [],
+    education:            data.education            || [],
+    certifications:       data.certifications       || [],
+    skills:               data.skills               || [],
+    strengths:            data.strengths            || [],
+    weakAreas:            data.weak_areas           || data.weakAreas           || [],
+    auraScoreBreakdown:   data.aura_score_breakdown || data.auraScoreBreakdown  || {},
+    subscriptionCycleStart: data.subscription_cycle_start || data.subscriptionCycleStart || null,
+    lastResumeUpload:     data.last_resume_upload   || data.lastResumeUpload    || null,
+    resumeUploadedAt:     data.resume_uploaded_at   || data.resumeUploadedAt    || null,
   }
 }
 
@@ -153,10 +173,12 @@ export const userDoc = {
     if (!error) return true
     // If upsert still fails, try with only the guaranteed core columns
     console.warn('Profile upsert failed:', error.message)
+    // Only include columns guaranteed to exist in all environments.
+    // Columns like github_username, skill_graph, aura_score_breakdown etc.
+    // may be missing in older schema versions and would cause the fallback to fail too.
     const CORE_COLS = ['id','email','display_name','username','path','keyword',
       'elo_rating','arena_completed','arena_streak','onboarding_complete',
-      'skill_graph','strengths','weak_areas','profile_summary','job_readiness',
-      'github_username','vault_files','subscription','updated_at']
+      'subscription','updated_at']
     const core = {}
     for (const k of CORE_COLS) { if (normalised[k] !== undefined) core[k] = normalised[k] }
     const { error: err2 } = await supabase.from('profiles').upsert(core)
