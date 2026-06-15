@@ -38,7 +38,7 @@ const G=`
 ::-webkit-scrollbar{width:5px;height:5px} ::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.07);border-radius:3px}
 `
 
-// ─── ELO Engine ────────────────────────────────────────────────────────────────
+// ─── Career Score Engine ──────────────────────────────────────────────────────
 function parseYear(s){if(!s)return null;const m=String(s).match(/\b(20\d{2}|19\d{2})\b/);return m?parseInt(m[1]):null}
 function inferYoe(ud){
   const exps=ud?.experiences||[]
@@ -68,7 +68,9 @@ function computeSignals(ud){
     meta:{yoe,skills:skills.length,verified,hasVault,hasCerts,hasProj,hasUAN,hasSummary,hasTarget,expsCount:exps.length}
   }
 }
-function eloLabel(s){if(s>=1800)return{label:"Elite",color:DS.purple};if(s>=1500)return{label:"Expert",color:DS.blue};if(s>=1200)return{label:"Senior",color:DS.green};if(s>=1000)return{label:"Mid",color:DS.amber};if(s>=800)return{label:"Entry",color:DS.ink3};return{label:"Unrated",color:DS.ink4}}
+function scoreLabel(s){if(s>=1800)return{label:"Elite",color:DS.purple};if(s>=1500)return{label:"Expert",color:DS.blue};if(s>=1200)return{label:"Strong",color:DS.green};if(s>=1000)return{label:"Growing",color:DS.amber};if(s>=800)return{label:"Early",color:DS.ink3};return{label:"Building",color:DS.ink4}}
+// Keep backward compat alias
+const eloLabel = scoreLabel
 
 // ─── Atoms ────────────────────────────────────────────────────────────────────
 function Spin({color=DS.primary,size=14}){return<div style={{width:size,height:size,border:`2px solid ${color}33`,borderTopColor:color,borderRadius:"50%",animation:"spin .8s linear infinite",flexShrink:0}}/>}
@@ -116,9 +118,12 @@ function Inp({label,value,onChange,placeholder,type="text",mono=false}){
 }
 
 // ─── Tab Bar ──────────────────────────────────────────────────────────────────
-// Orbit has 3 internal sub-tabs only — Forge/Launchpad/Pulse/Nexus are in the top nav
 const TABS=[
-  {id:"orbit",    label:"Orbit",    icon:"◎"},
+  {id:"orbit",        label:"Overview",     icon:"◎"},
+  {id:"timeline",     label:"Timeline",     icon:"📋"},
+  {id:"vault",        label:"Verification", icon:"🔐"},
+  {id:"comp",         label:"Compensation", icon:"💰"},
+  {id:"readiness",    label:"Readiness",    icon:"🎯"},
 ]
 function TabBar({active,setActive,sig}){
   const avg=sig?Math.round((sig.role.score+sig.market.score+sig.proof.score+sig.mobility.score)/4):null
@@ -140,7 +145,7 @@ function usePlan(ud) {
   const isPro   = sub === "orbit_pro" || isElite
   return {
     sub, isFree, isPro, isElite,
-    label:   isElite ? "Orbit Elite" : isPro ? "Orbit Pro" : "Free",
+    label:   isElite ? "Capabilio Elite" : isPro ? "Capabilio Pro" : "Free",
     color:   isElite ? DS.amber : isPro ? DS.purple : DS.ink3,
     colorBg: isElite ? DS.aBg   : isPro ? DS.purBg  : DS.surface2,
     comp:        isPro,    // Compensation Intelligence
@@ -163,12 +168,12 @@ function PlanBanner({ plan, onUpgrade }) {
   if (plan.isElite) return (
     <div style={{marginBottom:18,padding:"12px 18px",background:`linear-gradient(135deg,${DS.aBg},${DS.surface})`,border:`1.5px solid ${DS.aBd}`,borderRadius:DS.r2,display:"flex",alignItems:"center",gap:10}}>
       <span style={{fontSize:18}}>⭐</span>
-      <div style={{flex:1}}><span style={{fontFamily:DS.mono,fontSize:11,fontWeight:800,color:DS.amber,letterSpacing:1}}>ORBIT ELITE</span><span style={{fontSize:12,color:DS.ink3,marginLeft:8}}>All features unlocked · Priority Launchpad · AI Interviews · Mentor Hub</span></div>
+      <div style={{flex:1}}><span style={{fontFamily:DS.mono,fontSize:11,fontWeight:800,color:DS.amber,letterSpacing:1}}>CAPABILIO ELITE</span><span style={{fontSize:12,color:DS.ink3,marginLeft:8}}>All features unlocked · Priority Launchpad · AI Interviews · Mentor Hub</span></div>
       <Tag color={DS.amber} bg={DS.aBg} border={DS.aBd}>Active</Tag>
     </div>
   )
-  const upgradeTo = plan.isFree ? "Orbit Pro" : "Orbit Elite"
-  const price     = plan.isFree ? "₹399/mo" : "₹799/mo"
+  const upgradeTo = plan.isFree ? "Capabilio Pro" : "Capabilio Elite"
+  const price     = plan.isFree ? "₹499/mo" : "₹999/mo"
   const hint      = plan.isFree
     ? "Compensation Intelligence, Gap Analysis, unlimited Forge"
     : "AI Interviews, Mentor Hub, Transition Tracks, Return Sprint"
@@ -191,8 +196,8 @@ function PlanBanner({ plan, onUpgrade }) {
 
 // ─── Locked Card overlay ──────────────────────────────────────────────────────
 function LockedCard({ children, title, desc, requiredPlan="orbit_pro", onUpgrade }) {
-  const rLabel = requiredPlan === "orbit_elite" ? "Orbit Elite" : "Orbit Pro"
-  const rPrice = requiredPlan === "orbit_elite" ? "₹799/mo"    : "₹399/mo"
+  const rLabel = requiredPlan === "orbit_elite" ? "Capabilio Elite" : "Capabilio Pro"
+  const rPrice = requiredPlan === "orbit_elite" ? "₹999/mo"        : "₹499/mo"
   return (
     <div style={{position:"relative",borderRadius:DS.r2,overflow:"hidden"}}>
       <div style={{filter:"blur(4px)",pointerEvents:"none",userSelect:"none",opacity:0.45}}>{children}</div>
@@ -209,11 +214,11 @@ function LockedCard({ children, title, desc, requiredPlan="orbit_pro", onUpgrade
   )
 }
 
-// ─── ELO Card ─────────────────────────────────────────────────────────────────
+// ─── Score Card ───────────────────────────────────────────────────────────────
 function EloCard({name,icon,score,trend,confidence,color,cBg,cBd,desc,drivers=[],drags=[],action,actionLabel,onAction}){
   const[open,setOpen]=useState(false)
-  const{label}=eloLabel(score)
-  const nextLevel=score<800?"800 (Entry)":score<1000?"1000 (Mid)":score<1200?"1200 (Senior)":score<1500?"1500 (Expert)":"1800 (Elite)"
+  const{label}=scoreLabel(score)
+  const nextLevel=score<800?"Early":score<1000?"Growing":score<1200?"Strong":score<1500?"Expert":"Elite"
   const toNext=score<800?800-score:score<1000?1000-score:score<1200?1200-score:score<1500?1500-score:score<1800?1800-score:0
   return<Card style={{borderTop:`3px solid ${color}`}}>
     <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:10}}>
@@ -227,8 +232,8 @@ function EloCard({name,icon,score,trend,confidence,color,cBg,cBd,desc,drivers=[]
     <Bar value={score} max={2000} color={color} h={4} style={{marginBottom:9}}/>
     <div style={{fontSize:11,color:DS.ink3,marginBottom:8}}><span style={{fontWeight:600,color:DS.ink4}}>Confidence: </span><span style={{color:confidence==="High"?DS.green:confidence==="Medium"?DS.amber:DS.red,fontWeight:700}}>{confidence}</span><span style={{color:DS.ink4}}> · {desc}</span></div>
     {toNext>0&&<div style={{marginBottom:9,padding:"6px 10px",background:cBg,border:`1px solid ${cBd}`,borderRadius:DS.r,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <span style={{fontSize:11,color:DS.ink3}}>Next tier: {nextLevel}</span>
-      <span style={{fontFamily:DS.mono,fontSize:11,fontWeight:700,color}}>+{toNext} needed</span>
+      <span style={{fontSize:11,color:DS.ink3}}>Next level: {nextLevel}</span>
+      <span style={{fontFamily:DS.mono,fontSize:11,fontWeight:700,color}}>{Math.round((score/1800)*100)}% there</span>
     </div>}
     {open&&<div style={{animation:"fadeUp .2s ease"}}>
       {drivers.length>0&&<div style={{marginBottom:9}}>
@@ -371,7 +376,7 @@ function RiskCard({sig,onLayoff}){
   const res=Math.round((sig.mobility.score/2000)*100)
   return<Card style={{borderTop:`3px solid ${rc}`}}>
     <SL color={rc}>🛡 Career Resilience</SL>
-    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:9}}><div><div style={{fontFamily:DS.mono,fontSize:17,fontWeight:700,color:rc}}>Layoff Risk: {risk}</div><div style={{fontSize:11,color:DS.ink3,marginTop:1}}>Mobility ELO {sig.mobility.score} · {res}% resilience</div></div><Ring score={res} max={100} color={rc} size={50} label="RES"/></div>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:9}}><div><div style={{fontFamily:DS.mono,fontSize:17,fontWeight:700,color:rc}}>Layoff Risk: {risk}</div><div style={{fontSize:11,color:DS.ink3,marginTop:1}}>Career Mobility {sig.mobility.score} · {res}% resilience</div></div><Ring score={res} max={100} color={rc} size={50} label="RES"/></div>
     <Bar value={res} color={rc} h={4} style={{marginBottom:11}}/>
     <div style={{padding:"8px 11px",background:risk==="High"?DS.rBg:risk==="Medium"?DS.aBg:DS.gBg,border:`1px solid ${risk==="High"?DS.rBd:risk==="Medium"?DS.aBd:DS.gBd}`,borderRadius:DS.r,fontSize:11,color:rc,marginBottom:10}}>{risk==="High"?"⚠️ Low mobility. A layoff today means a 4–8 month search.":risk==="Medium"?"⚡ Moderate resilience. Improve proof and skills.":"✓ Well-positioned to transition within 60 days."}</div>
     <Btn onClick={onLayoff} variant="danger" full>Activate Layoff Mode →</Btn>
@@ -418,9 +423,9 @@ function HealthCard({sig,onNav}){
 // ─── Action Card ──────────────────────────────────────────────────────────────
 function ActionCard({sig,ud,onNav}){
   const acts=[]
-  if(!sig.meta.hasUAN)acts.push({icon:"🔐",title:"Verify employment via EPFO/UAN",roi:"Adds +120 Proof ELO, unlocks recruiter trust badge",tab:"vault",imp:"critical"})
-  if(!sig.meta.hasSummary)acts.push({icon:"✍️",title:"Write your professional summary",roi:"Adds +40 Market ELO, improves recruiter visibility 3×",tab:"timeline",imp:"high"})
-  if(sig.meta.skills<8)acts.push({icon:"⚡",title:`Document ${8-sig.meta.skills} more verified skills`,roi:"+15 Market ELO per skill, improves comp band ~8%",tab:"forge",imp:"high"})
+  if(!sig.meta.hasUAN)acts.push({icon:"🔐",title:"Verify employment via EPFO/UAN",roi:"Boosts Proof Strength significantly, unlocks recruiter trust badge",tab:"vault",imp:"critical"})
+  if(!sig.meta.hasSummary)acts.push({icon:"✍️",title:"Write your professional summary",roi:"Improves Role Fit Score and recruiter visibility 3×",tab:"timeline",imp:"high"})
+  if(sig.meta.skills<8)acts.push({icon:"⚡",title:`Document ${8-sig.meta.skills} more verified skills`,roi:"Improves Market Standing per skill, boosts comp band ~8%",tab:"forge",imp:"high"})
   if(!sig.meta.hasTarget)acts.push({icon:"🎯",title:"Set your target role",roi:"Enables accurate market gap analysis and comp benchmarking",tab:"orbit",imp:"medium"})
   acts.push({icon:"💰",title:"Update current CTC for comp benchmarking",roi:"Reveals underpayment gaps, enables negotiation guidance",tab:"orbit",imp:"medium"})
   const top=acts[0]
@@ -705,7 +710,7 @@ function TimelineTab({ud,user,onSave}){
       {e.description&&<div style={{fontSize:12,color:DS.ink3,lineHeight:1.6,marginBottom:8,whiteSpace:"pre-line"}}>{e.description}</div>}
       {Array.isArray(e.skills)&&e.skills.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:8}}>{e.skills.slice(0,10).map((s,si)=><span key={si} style={{padding:"2px 9px",background:DS.pBg,border:`1px solid ${DS.pBd||DS.border}`,borderRadius:99,fontSize:10,fontWeight:600,color:DS.primary}}>{s}</span>)}</div>}
       {e.outcomes&&<div style={{padding:"6px 10px",background:DS.gBg,border:`1px solid ${DS.gBd}`,borderRadius:8,fontSize:11,color:DS.green,fontWeight:500}}>↑ Impact: {e.outcomes}</div>}
-      {e.verificationStatus==="unverified"&&<div style={{marginTop:9,padding:"6px 11px",background:DS.aBg,border:`1px solid ${DS.aBd}`,borderRadius:8,fontSize:11,color:DS.amber,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span>Verify via EPFO/UAN to earn +80 Proof ELO</span><button style={{fontSize:11,fontWeight:700,color:DS.amber,background:"none",border:"none",cursor:"pointer",outline:"none"}}>Verify →</button></div>}
+      {e.verificationStatus==="unverified"&&<div style={{marginTop:9,padding:"6px 11px",background:DS.aBg,border:`1px solid ${DS.aBd}`,borderRadius:8,fontSize:11,color:DS.amber,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span>Verify via EPFO/UAN to boost your Proof Strength</span><button style={{fontSize:11,fontWeight:700,color:DS.amber,background:"none",border:"none",cursor:"pointer",outline:"none"}}>Verify →</button></div>}
       </Card>
     </div>)}
     <Modal show={showAdd} onClose={()=>{setShowAdd(false);setEdit(null);setForm(blank)}} title={edit?"Edit Employment Entry":"Add Employment Entry"}>
@@ -768,7 +773,7 @@ function VaultTab({ud,user,onSave}){
     <div style={{fontSize:13,color:DS.ink3,marginBottom:18}}>Verification center, document store, and profile evidence layer</div>
     <Card style={{marginBottom:14,borderTop:`3px solid ${ud?.uanVerified?DS.green:DS.amber}`}}>
       <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:10}}>
-        <div><SL color={ud?.uanVerified?DS.green:DS.amber}>🔐 EPFO / UAN Verification</SL><div style={{fontSize:13,fontWeight:700,color:DS.ink}}>{ud?.uanVerified?"Employment Verified ✓":"Unverified — Complete to earn +120 Proof ELO"}</div><div style={{fontSize:11,color:DS.ink3,marginTop:1}}>Links your career history to government-verified EPFO records</div></div>
+        <div><SL color={ud?.uanVerified?DS.green:DS.amber}>🔐 EPFO / UAN Verification</SL><div style={{fontSize:13,fontWeight:700,color:DS.ink}}>{ud?.uanVerified?"Employment Verified ✓":"Unverified — Complete to unlock your Proof Strength"}</div><div style={{fontSize:11,color:DS.ink3,marginTop:1}}>Links your career history to government-verified EPFO records</div></div>
         {ud?.uanVerified?<Tag color={DS.green} bg={DS.gBg} border={DS.gBd}>✓ VERIFIED</Tag>:<Btn onClick={()=>setUanModal(true)} variant="amber">Verify Now</Btn>}
       </div>
       {ud?.uanVerified&&<div style={{padding:"9px 13px",background:DS.gBg,border:`1px solid ${DS.gBd}`,borderRadius:DS.r,fontSize:12,color:DS.green}}>✓ EPFO records matched to your career timeline. Employers and recruiters see your verified badge.</div>}
@@ -790,7 +795,7 @@ function VaultTab({ud,user,onSave}){
     </Card>
     <Card>
       <SL>◈ Verification Coverage</SL>
-      {[{l:"EPFO/UAN employment records",done:!!ud?.uanVerified,badge:"CRITICAL",impact:"+120 Proof ELO"},{l:"LinkedIn profile linked",done:!!(ud?.linkedinUrl),badge:"HIGH",impact:"+40 Market ELO"},{l:"Resume in Vault",done:files.some(f=>f.name?.match(/resume|cv/i)),badge:"HIGH",impact:"Enables ingestion"},{l:"Certifications uploaded",done:(ud?.certifications||[]).length>0,badge:"MEDIUM",impact:"+30 Proof ELO"},{l:"Project proof document",done:(ud?.resumeProjects||[]).length>0,badge:"MEDIUM",impact:"+25 Proof ELO"}].map((c,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 0",borderBottom:`1px solid ${DS.border}`}}>
+      {[{l:"EPFO/UAN employment records",done:!!ud?.uanVerified,badge:"CRITICAL",impact:"Proof Strength ↑"},{l:"LinkedIn profile linked",done:!!(ud?.linkedinUrl),badge:"HIGH",impact:"Market Standing ↑"},{l:"Resume in Vault",done:files.some(f=>f.name?.match(/resume|cv/i)),badge:"HIGH",impact:"Enables ingestion"},{l:"Certifications uploaded",done:(ud?.certifications||[]).length>0,badge:"MEDIUM",impact:"Proof Strength ↑"},{l:"Project proof document",done:(ud?.resumeProjects||[]).length>0,badge:"MEDIUM",impact:"Proof Strength ↑"}].map((c,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 0",borderBottom:`1px solid ${DS.border}`}}>
         <span style={{fontSize:13,color:c.done?DS.green:DS.ink4,flexShrink:0}}>{c.done?"✓":"○"}</span>
         <span style={{flex:1,fontSize:12,fontWeight:c.done?600:400,color:c.done?DS.ink2:DS.ink3}}>{c.l}</span>
         {!c.done&&<Tag color={DS.amber} bg={DS.aBg} border={DS.aBd}>{c.badge}</Tag>}
@@ -823,26 +828,26 @@ function OrbitDash({ud,user,onSave,onNav,onPricing}){
   const goUpgrade=()=>onPricing&&onPricing()
 
   const CARDS=[
-    {name:"Role ELO",icon:"🎯",key:"role",color:DS.primary,cBg:DS.pBg,cBd:DS.pBd,desc:"Strength for current/target role",
+    {name:"Role Fit Score",icon:"🎯",key:"role",color:DS.primary,cBg:DS.pBg,cBd:DS.pBd,desc:"How well your profile matches your target role",
       actionLabel:"Improve in Forge →",actionTab:"forge",
       drivers:[`${sig.meta.yoe.toFixed(1)} years experience`,sig.meta.skills>0&&`${sig.meta.skills} skills documented`,sig.meta.verified>0&&`${sig.meta.verified} employer(s) verified`,sig.meta.hasProj&&"Projects documented"].filter(Boolean),
       drags:[!sig.meta.hasSummary&&"No professional summary",sig.meta.verified===0&&"No employment verification",sig.meta.skills<5&&"Fewer than 5 skills"].filter(Boolean),
-      action:"Write your professional summary and add 5 verified skills for fastest Role ELO gain."},
-    {name:"Market ELO",icon:"📈",key:"market",color:DS.blue,cBg:DS.blBg,cBd:DS.blBd,desc:"Competitiveness against market demand",
+      action:"Write your professional summary and add 5 verified skills for the fastest Role Fit Score improvement."},
+    {name:"Market Standing",icon:"📈",key:"market",color:DS.blue,cBg:DS.blBg,cBd:DS.blBd,desc:"How competitive you are in the current market",
       actionLabel:"View Gap Report →",actionTab:"orbit",
       drivers:[sig.meta.skills>=8&&"Strong skill profile (8+ skills)",sig.meta.yoe>4&&"Senior experience band",sig.meta.hasTarget&&"Target role defined"].filter(Boolean),
       drags:[!sig.meta.hasTarget&&"Target role not set",sig.meta.skills<8&&"Below 8 skills",sig.meta.yoe<2&&"Below market seniority threshold"].filter(Boolean),
-      action:"Set your target role and document 10+ skills for maximum market ELO accuracy."},
-    {name:"Proof ELO",icon:"🔐",key:"proof",color:DS.purple,cBg:DS.purBg,cBd:DS.purBd,desc:"Verified evidence backing your claims",
-      actionLabel:"Go to Vault →",actionTab:"aura",
+      action:"Set your target role and document 10+ skills for maximum Market Standing accuracy."},
+    {name:"Proof Strength",icon:"🔐",key:"proof",color:DS.purple,cBg:DS.purBg,cBd:DS.purBd,desc:"Verified evidence that backs your claims",
+      actionLabel:"Go to Verification →",actionTab:"vault",
       drivers:[sig.meta.hasUAN&&"EPFO/UAN verified",sig.meta.verified>0&&"Employer verification complete",sig.meta.hasVault&&"Documents in Vault",sig.meta.hasCerts&&"Certifications listed"].filter(Boolean),
       drags:[!sig.meta.hasUAN&&"EPFO/UAN not verified (highest impact)",sig.meta.verified===0&&"No employer verification",!sig.meta.hasVault&&"No documents in Vault"].filter(Boolean),
-      action:"Complete EPFO/UAN verification in Vault for a +120 Proof ELO gain in one step."},
-    {name:"Mobility ELO",icon:"🔀",key:"mobility",color:DS.green,cBg:DS.gBg,cBd:DS.gBd,desc:"Readiness to switch, negotiate, or recover",
+      action:"Complete EPFO/UAN verification in the Verification tab for the single biggest Proof Strength gain."},
+    {name:"Career Mobility",icon:"🔀",key:"mobility",color:DS.green,cBg:DS.gBg,cBd:DS.gBd,desc:"Readiness to switch, negotiate, or recover",
       actionLabel:"Plan Switch →",actionTab:"forge",
       drivers:[sig.meta.verified>0&&"Verified employment history",sig.meta.hasTarget&&"Clear target role set",sig.meta.yoe>3&&"Sufficient seniority for lateral moves"].filter(Boolean),
       drags:[!sig.meta.hasTarget&&"No target role",!sig.meta.hasSummary&&"Missing summary weakens mobility",sig.meta.verified===0&&"Unverified history limits switch leverage"].filter(Boolean),
-      action:"Define your target role and complete employment verification to unlock full mobility."},
+      action:"Define your target role and complete employment verification to unlock full Career Mobility."},
   ]
 
   return<div style={{maxWidth:1200,margin:"0 auto",padding:"24px",animation:"fadeUp .3s ease"}}>
@@ -888,26 +893,26 @@ function OrbitDash({ud,user,onSave,onNav,onPricing}){
 
     {/* Resume banner */}
     {!hasHistory&&<div style={{marginBottom:18,padding:"15px 19px",background:`linear-gradient(135deg,${DS.pBg},${DS.surface})`,border:`1.5px solid ${DS.pBd}`,borderRadius:DS.r2,display:"flex",alignItems:"center",justifyContent:"space-between",gap:11,flexWrap:"wrap"}}>
-      <div><div style={{fontFamily:DS.display,fontSize:15,fontWeight:800,color:DS.ink}}>Import your resume to activate Orbit</div><div style={{fontSize:12,color:DS.ink3,marginTop:1}}>Upload once. Orbit populates Timeline, Skills, and all four ELO signals automatically.</div></div>
+      <div><div style={{fontFamily:DS.display,fontSize:15,fontWeight:800,color:DS.ink}}>Import your resume to activate Orbit</div><div style={{fontSize:12,color:DS.ink3,marginTop:1}}>Upload once. Capabilio populates your Timeline, Skills, and all four career scores automatically.</div></div>
       <Btn onClick={()=>setShowResume(true)}>Import Resume →</Btn>
     </div>}
 
-    {/* ELO Summary bar */}
+    {/* Career Health Panel */}
     <Card style={{marginBottom:18,padding:"15px 20px"}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:14}}>
         <div>
-          <div style={{fontSize:10,fontWeight:700,color:DS.ink4,letterSpacing:2.2,fontFamily:DS.mono,textTransform:"uppercase"}}>Orbit Score · Overall Career ELO</div>
+          <div style={{fontSize:10,fontWeight:700,color:DS.ink4,letterSpacing:2.2,fontFamily:DS.mono,textTransform:"uppercase"}}>Career Health Score</div>
           <div style={{fontFamily:DS.mono,fontSize:30,fontWeight:700,color:DS.primary,lineHeight:1.1}}>{avg}</div>
           <div style={{fontSize:10,color:DS.ink4,marginTop:2,fontFamily:DS.mono}}>
-            {avg<800?"Entry → work on skills & verification":avg<1000?"Mid → add proof & verification":avg<1200?"Senior → expand breadth & projects":avg<1500?"Expert → leadership & impact signals":"Elite · market leader profile"}
+            {avg<800?"Build skills & verify employment to grow":avg<1000?"Add proof & verifications to progress":avg<1200?"Broaden skills & add project evidence":avg<1500?"Add leadership & impact signals":"Elite · market-leading profile"}
           </div>
         </div>
         <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
-          {[{l:"Role",s:sig.role.score,c:DS.primary,tab:"forge"},{l:"Market",s:sig.market.score,c:DS.blue,tab:"timeline"},{l:"Proof",s:sig.proof.score,c:DS.purple,tab:"vault"},{l:"Mobility",s:sig.mobility.score,c:DS.green,tab:"forge"}].map((x,i)=>(
+          {[{l:"Role Fit",s:sig.role.score,c:DS.primary,tab:"forge"},{l:"Market",s:sig.market.score,c:DS.blue,tab:"orbit"},{l:"Proof",s:sig.proof.score,c:DS.purple,tab:"vault"},{l:"Mobility",s:sig.mobility.score,c:DS.green,tab:"forge"}].map((x,i)=>(
             <div key={i} style={{textAlign:"center",cursor:"pointer"}} onClick={()=>onNav(x.tab)}>
               <div style={{fontFamily:DS.mono,fontSize:17,fontWeight:700,color:x.c}}>{x.s}</div>
               <div style={{fontSize:9,fontWeight:700,color:DS.ink4,textTransform:"uppercase",letterSpacing:1,fontFamily:DS.mono}}>{x.l}</div>
-              <div style={{fontSize:9,color:DS.ink4,marginTop:1}}>→ fix</div>
+              <div style={{fontSize:9,color:DS.ink4,marginTop:1}}>→ view</div>
             </div>
           ))}
         </div>
@@ -952,7 +957,7 @@ function OrbitDash({ud,user,onSave,onNav,onPricing}){
     {/* ELITE-only row: AI Interview + Mentor Hub + Transition Tracks */}
     <div style={{marginBottom:8}}>
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
-        <div style={{fontFamily:DS.mono,fontSize:10,fontWeight:800,color:DS.amber,letterSpacing:2,textTransform:"uppercase"}}>⭐ Orbit Elite Features</div>
+        <div style={{fontFamily:DS.mono,fontSize:10,fontWeight:800,color:DS.amber,letterSpacing:2,textTransform:"uppercase"}}>⭐ Capabilio Elite Features</div>
         {!plan.isElite&&<Tag color={DS.amber} bg={DS.aBg} border={DS.aBd}>Upgrade to unlock</Tag>}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14}}>
@@ -964,6 +969,100 @@ function OrbitDash({ud,user,onSave,onNav,onPricing}){
 
     <ResumeModal show={showResume} onClose={()=>setShowResume(false)} user={user} ud={ud} onSave={onSave}/>
     {showLayoff&&<LayoffMode ud={ud} sig={sig} onClose={()=>setShowLayoff(false)}/>}
+  </div>
+}
+
+// ─── Compensation Tab ─────────────────────────────────────────────────────────
+function CompTab({ud,user,onSave,onNav,onPricing}){
+  const sig=computeSignals(ud)
+  const plan=usePlan(ud)
+  const goUpgrade=()=>onPricing&&onPricing()
+  return<div style={{maxWidth:900,margin:"0 auto",padding:"24px",animation:"fadeUp .3s ease"}}>
+    <div style={{marginBottom:20}}>
+      <div style={{fontFamily:DS.display,fontSize:22,fontWeight:800,color:DS.ink,letterSpacing:"-.5px"}}>Compensation Intelligence</div>
+      <div style={{fontSize:13,color:DS.ink3,marginTop:2}}>Market bands, underpayment detection, and negotiation strategy</div>
+    </div>
+    {plan.comp
+      ?<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+        <CompCard ud={ud} sig={sig} locked={false} onUpgrade={goUpgrade}/>
+        <GapCard ud={ud} sig={sig} locked={false} onUpgrade={goUpgrade} onNav={onNav}/>
+      </div>
+      :<div style={{padding:"48px 24px",textAlign:"center",background:DS.surface,border:`1.5px solid ${DS.purBd}`,borderRadius:DS.r2,boxShadow:DS.sh}}>
+        <div style={{fontSize:40,marginBottom:14}}>💰</div>
+        <div style={{fontFamily:DS.display,fontSize:20,fontWeight:800,color:DS.ink,marginBottom:8}}>Compensation Intelligence</div>
+        <div style={{fontSize:13,color:DS.ink3,lineHeight:1.7,maxWidth:420,margin:"0 auto 20px"}}>See your exact market band, underpayment detection, and AI-guided negotiation scripts. Available on <strong>Capabilio Pro</strong> and above.</div>
+        <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap",marginBottom:24}}>
+          {["Market Low/Mid/High bands for your role","Underpayment detection vs. market","Switch gain estimate","Negotiation anchor scripts"].map((f,i)=><div key={i} style={{padding:"6px 14px",background:DS.purBg,border:`1px solid ${DS.purBd}`,borderRadius:99,fontSize:12,fontWeight:600,color:DS.purple}}>✓ {f}</div>)}
+        </div>
+        <Btn onClick={goUpgrade} style={{background:DS.purple,color:"#0F172A",border:"none",boxShadow:`0 4px 14px ${DS.purple}30`}}>Upgrade to Capabilio Pro — ₹499/mo →</Btn>
+      </div>
+    }
+    <div style={{marginTop:18,padding:"14px 18px",background:DS.blBg,border:`1px solid ${DS.blBd}`,borderRadius:DS.r,fontSize:12,color:DS.blue}}>
+      💡 <strong>India comp tip:</strong> AmbitionBox, Glassdoor IN, and LinkedIn Salary India are the best cross-reference sources for India-specific CTC bands. Always compare CTC vs take-home and factor notice period costs into switch decisions.
+    </div>
+  </div>
+}
+
+// ─── Readiness Tab ────────────────────────────────────────────────────────────
+function ReadinessTab({ud,user,onSave,onNav}){
+  const sig=computeSignals(ud)
+  const checks=[
+    {cat:"Profile",items:[
+      {l:"Professional summary written",done:sig.meta.hasSummary,action:"forge",hint:"A clear 3–5 sentence narrative is the #1 recruiter read"},
+      {l:"Employment history documented",done:sig.meta.expsCount>0,action:"timeline",hint:"At least one complete employment entry needed"},
+      {l:"5+ skills documented",done:sig.meta.skills>=5,action:"forge",hint:"Minimum threshold for market matching algorithms"},
+      {l:"Target role set",done:sig.meta.hasTarget,action:"orbit",hint:"Anchors all market gap and comp benchmarking"},
+    ]},
+    {cat:"Verification",items:[
+      {l:"Employment verified (EPFO/UAN)",done:sig.meta.hasUAN,action:"vault",hint:"Single highest-impact verification action available"},
+      {l:"At least 1 employer verification",done:sig.meta.verified>0,action:"vault",hint:"Verified history dramatically increases recruiter trust"},
+      {l:"Document in Vault",done:sig.meta.hasVault,action:"vault",hint:"Resume, offer letter, or any proof document counts"},
+    ]},
+    {cat:"Proof",items:[
+      {l:"Certifications listed",done:sig.meta.hasCerts,action:"aura",hint:"AWS, Google, Microsoft certs carry highest signal weight"},
+      {l:"Project outcomes documented",done:sig.meta.hasProj,action:"aura",hint:"Each quantified outcome adds Proof Strength"},
+    ]},
+  ]
+  const totalDone=checks.flatMap(c=>c.items).filter(i=>i.done).length
+  const totalAll=checks.flatMap(c=>c.items).length
+  const pct=Math.round((totalDone/totalAll)*100)
+  const pc=pct>=80?DS.green:pct>=50?DS.amber:DS.red
+  const status=pct>=80?"Switch-ready":pct>=60?"Nearly ready":pct>=40?"Building":"Early stage"
+  return<div style={{maxWidth:820,margin:"0 auto",padding:"24px",animation:"fadeUp .3s ease"}}>
+    <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:11}}>
+      <div>
+        <div style={{fontFamily:DS.display,fontSize:22,fontWeight:800,color:DS.ink,letterSpacing:"-.5px"}}>Career Readiness</div>
+        <div style={{fontSize:13,color:DS.ink3,marginTop:2}}>How ready you are to switch, negotiate, or be found by recruiters</div>
+      </div>
+      <div style={{textAlign:"right"}}>
+        <div style={{fontFamily:DS.mono,fontSize:28,fontWeight:700,color:pc}}>{pct}%</div>
+        <div style={{fontSize:12,fontWeight:700,color:pc}}>{status}</div>
+      </div>
+    </div>
+    <Card style={{marginBottom:18,padding:"14px 18px"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+        <div style={{flex:1}}>
+          <Bar value={pct} color={pc} h={8}/>
+        </div>
+        <span style={{fontFamily:DS.mono,fontSize:13,fontWeight:700,color:pc}}>{totalDone}/{totalAll}</span>
+      </div>
+      <div style={{fontSize:12,color:DS.ink3}}>{pct<50?"Complete the critical items below to become recruiter-visible and switch-ready.":pct<80?"You're on track — verify employment and add proof to reach Elite readiness.":"Your profile is strong and switch-ready. Keep verifications current."}</div>
+    </Card>
+    {checks.map((cat,ci)=><Card key={ci} style={{marginBottom:14}}>
+      <SL color={DS.primary}>{cat.cat}</SL>
+      {cat.items.map((item,ii)=><div key={ii} style={{display:"flex",alignItems:"flex-start",gap:11,padding:"9px 0",borderBottom:`1px solid ${DS.border}`}}>
+        <span style={{fontSize:14,color:item.done?DS.green:DS.ink4,flexShrink:0,marginTop:1}}>{item.done?"✓":"○"}</span>
+        <div style={{flex:1}}>
+          <div style={{fontSize:13,fontWeight:item.done?600:500,color:item.done?DS.ink2:DS.ink}}>{item.l}</div>
+          {!item.done&&<div style={{fontSize:11,color:DS.ink4,marginTop:2}}>{item.hint}</div>}
+        </div>
+        {!item.done&&<button onClick={()=>onNav(item.action)} style={{padding:"4px 12px",background:DS.pBg,border:`1px solid ${DS.pBd}`,borderRadius:99,fontSize:11,fontWeight:700,color:DS.primary,cursor:"pointer",flexShrink:0,fontFamily:DS.mono}}>Fix →</button>}
+        {item.done&&<Tag color={DS.green} bg={DS.gBg} border={DS.gBd}>Done ✓</Tag>}
+      </div>)}
+    </Card>)}
+    <div style={{padding:"14px 18px",background:DS.aBg,border:`1px solid ${DS.aBd}`,borderRadius:DS.r,fontSize:12,color:DS.amber}}>
+      ⚡ <strong>Switch-ready benchmark:</strong> 80%+ on this readiness check correlates with receiving recruiter outreach within 30 days of activating visibility on Launchpad.
+    </div>
   </div>
 }
 
@@ -997,6 +1096,10 @@ export default function Orbit({user,userData,setUserData,activeTab,setActiveTab,
   return<div style={{background:DS.bg,flex:1,minHeight:0,overflowY:"auto",fontFamily:DS.body}}>
     <style>{G}</style>
     <TabBar active={tab} setActive={setTab} sig={sig}/>
-    {tab==="orbit"&&<OrbitDash ud={userData} user={user} onSave={onSave} onNav={handleNav} onPricing={onNavigatePricing}/>}
+    {tab==="orbit"    &&<OrbitDash       ud={userData} user={user} onSave={onSave} onNav={handleNav} onPricing={onNavigatePricing}/>}
+    {tab==="timeline" &&<CareerTimeline  ud={userData} user={user} onSave={onSave}/>}
+    {tab==="vault"    &&<VaultTab        ud={userData} user={user} onSave={onSave}/>}
+    {tab==="comp"     &&<CompTab         ud={userData} user={user} onSave={onSave} onNav={handleNav} onPricing={onNavigatePricing}/>}
+    {tab==="readiness"&&<ReadinessTab    ud={userData} user={user} onSave={onSave} onNav={handleNav}/>}
   </div>
 }

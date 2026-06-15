@@ -151,7 +151,7 @@ export default function OrbitDashboard({user,userData,setUserData,onNavigate}){
     :(!p.name||!p.profile_photo_url)
     ?{title:"Complete Your Profile",desc:"Missing name or photo reduces recruiter visibility by 60%.",cta:"Edit Profile",action:()=>onNavigate("aura"),urgent:true}
     :!isPro
-    ?{title:"Upgrade to Orbit Pro",desc:"Unlock compensation intel, AI interviews, full Forge and reports.",cta:"See Plans",action:()=>onNavigate("pricing")}
+    ?{title:"Upgrade to Capabilio Pro",desc:"Unlock compensation intel, AI interviews, full Forge and reports.",cta:"See Plans",action:()=>onNavigate("pricing")}
     :(doneForge<3)
     ?{title:"Complete 3 Forge Missions",desc:"Forge proof improves profile trust and role match scores.",cta:"Open Forge",action:()=>onNavigate("forge")}
     :{title:"Apply to Matched Jobs",desc:`${pendingApps.length} active applications. Keep momentum going.`,cta:"Open Launchpad",action:()=>onNavigate("launchpad")}
@@ -185,7 +185,7 @@ export default function OrbitDashboard({user,userData,setUserData,onNavigate}){
                 <h1 style={{fontSize:20,fontWeight:800,color:T.ink,margin:0,fontFamily:T.display}}>{NAME}</h1>
                 <Pill color={vm.c} bg={vm.c+"22"}>{vm.l}</Pill>
                 {isElite&&<Pill color={T.gold}>⭐ Elite</Pill>}
-                {isPro&&!isElite&&<Pill color={T.purpleL}>Orbit Pro</Pill>}
+                {isPro&&!isElite&&<Pill color={T.purpleL}>Capabilio Pro</Pill>}
               </div>
               <div style={{fontSize:14,color:T.ink2,marginBottom:6}}>{ROLE}{CO!=="—"?` · ${CO}`:""}</div>
               <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
@@ -310,7 +310,7 @@ export default function OrbitDashboard({user,userData,setUserData,onNavigate}){
               <button onClick={()=>intelApi.generateReport("compensation").then(()=>alert("Comp report queued!")).catch(e=>alert(e.message))} style={{width:"100%",marginTop:12,padding:"9px",background:`${T.gold}22`,border:`1px solid ${T.gold}44`,borderRadius:8,color:T.gold,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:T.mono}}>GENERATE COMP REPORT →</button>
             </>
           ):(
-            <div style={{textAlign:"center",padding:"20px 0"}}><div style={{fontSize:32,marginBottom:8}}>🔒</div><div style={{fontSize:13,color:T.ink2,marginBottom:4}}>Requires Orbit Pro</div><button onClick={()=>onNavigate("pricing")} style={{padding:"8px 16px",background:T.purple,border:"none",borderRadius:8,color:"#FFFFFF",fontWeight:700,fontSize:12,cursor:"pointer"}}>Upgrade</button></div>
+            <div style={{textAlign:"center",padding:"20px 0"}}><div style={{fontSize:32,marginBottom:8}}>🔒</div><div style={{fontSize:13,color:T.ink2,marginBottom:4}}>Requires Capabilio Pro</div><button onClick={()=>onNavigate("pricing")} style={{padding:"8px 16px",background:T.purple,border:"none",borderRadius:8,color:"#FFFFFF",fontWeight:700,fontSize:12,cursor:"pointer"}}>Upgrade</button></div>
           )}
         </Card>
 
@@ -399,7 +399,7 @@ export default function OrbitDashboard({user,userData,setUserData,onNavigate}){
               ))}
             </div>
           ):(
-            <div style={{textAlign:"center",padding:"20px 0"}}><div style={{fontSize:28,marginBottom:8}}>📊</div><div style={{fontSize:13,color:T.ink2,marginBottom:12}}>Requires Orbit Pro or Elite.</div><button onClick={()=>onNavigate("pricing")} style={{padding:"8px 16px",background:T.purple,border:"none",borderRadius:8,color:"#FFFFFF",fontWeight:700,fontSize:12,cursor:"pointer"}}>Upgrade to Pro</button></div>
+            <div style={{textAlign:"center",padding:"20px 0"}}><div style={{fontSize:28,marginBottom:8}}>📊</div><div style={{fontSize:13,color:T.ink2,marginBottom:12}}>Requires Capabilio Pro or Elite.</div><button onClick={()=>onNavigate("pricing")} style={{padding:"8px 16px",background:T.purple,border:"none",borderRadius:8,color:"#FFFFFF",fontWeight:700,fontSize:12,cursor:"pointer"}}>Upgrade to Pro</button></div>
           )}
         </Card>
 

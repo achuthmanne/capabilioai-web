@@ -202,7 +202,7 @@ export default function ProfessionalHome({ user, userData, onNavigate, onNavigat
             Unlock your full career OS
           </div>
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.72)", marginBottom: 16, lineHeight: 1.55 }}>
-            Orbit Pro gives you compensation intelligence, unlimited Forge, layoff shield score, peer benchmarking, and gap narrative — starting at <strong style={{ color: "#fff" }}>₹399/month</strong>.
+            Capabilio Pro gives you compensation intelligence, unlimited Forge, layoff shield score, peer benchmarking, and gap narrative — starting at <strong style={{ color: "#fff" }}>₹499/month</strong>.
           </div>
 
           {/* Feature pills */}
@@ -217,7 +217,7 @@ export default function ProfessionalHome({ user, userData, onNavigate, onNavigat
               onClick={() => (onNavigatePricing || onNavigate)("pricing")}
               style={{ flex: 1, padding: "12px", background: "#FFFFFF", border: "none", borderRadius: 12, color: "#6D28D9", fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "'Playfair Display', serif" }}
             >
-              Upgrade to Orbit Pro →
+              Upgrade to Capabilio Pro →
             </button>
             <button
               onClick={() => onNavigate("orbit")}
@@ -234,7 +234,7 @@ export default function ProfessionalHome({ user, userData, onNavigate, onNavigat
         <div style={{ margin: "20px 0 0", padding: "14px 16px", background: C.greenL, border: `1px solid ${C.green}30`, borderRadius: 14, display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 20 }}>✅</span>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: C.green }}>You're on {userData.subscription === "orbit_elite" ? "Orbit Elite" : "Orbit Pro"}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.green }}>You're on {userData.subscription === "orbit_elite" ? "Capabilio Elite" : "Capabilio Pro"}</div>
             <div style={{ fontSize: 12, color: C.ink3, marginTop: 1 }}>All career intelligence features unlocked.</div>
           </div>
         </div>

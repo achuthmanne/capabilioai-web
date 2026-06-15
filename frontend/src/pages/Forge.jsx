@@ -35,6 +35,9 @@ const DS = {
   red:"#F43F5E",
   rBg:"rgba(244,63,94,0.12)",
   rBd:"rgba(244,63,94,0.28)",
+  teal:"#06B6D4",
+  tBg:"rgba(6,182,212,0.12)",
+  tBd:"rgba(6,182,212,0.28)",
   display:"'Inter', sans-serif",
   mono:"'JetBrains Mono', monospace",
   body:"'Inter', system-ui, sans-serif",
@@ -141,8 +144,8 @@ function TransparencyBanner(){
   return<div style={{marginBottom:16,padding:"11px 14px",background:DS.blBg,border:`1px solid ${DS.blBd}`,borderRadius:DS.r,display:"flex",gap:10,alignItems:"flex-start"}}>
     <span style={{fontSize:15,flexShrink:0}}>🔒</span>
     <div style={{flex:1}}>
-      <div style={{fontSize:12,fontWeight:700,color:DS.blue,marginBottom:3}}>How ELO gains work in Forge</div>
-      <div style={{fontSize:12,color:DS.ink2,lineHeight:1.65}}><strong>Auto-verified tasks</strong> update when you complete the real action — ELO is earned, not self-reported. <strong>Action-required tasks</strong> link to the actual workflow. <strong>Self-reported tasks</strong> record intent but carry no ELO weight alone.</div>
+      <div style={{fontSize:12,fontWeight:700,color:DS.blue,marginBottom:3}}>How career score gains work in Forge</div>
+      <div style={{fontSize:12,color:DS.ink2,lineHeight:1.65}}><strong>Auto-verified tasks</strong> update when you complete the real action — scores improve from real data, not self-reporting. <strong>Action-required tasks</strong> link to the actual workflow. <strong>Self-reported tasks</strong> record intent but carry no score weight alone.</div>
     </div>
     <button onClick={()=>setShow(false)} style={{fontSize:14,color:DS.ink4,background:"none",border:"none",cursor:"pointer",flexShrink:0,outline:"none"}}>×</button>
   </div>
@@ -159,11 +162,11 @@ function ProofForge({ud,onSave,onNav}){
   const skills=(ud?.skills||[]).map(s=>typeof s==="string"?s:s?.name||"").filter(Boolean)
 
   const tasks=[
-    {id:"p1",type:"AUTO",title:"Write your professional summary",subtitle:"A 3–5 sentence narrative covering role, domain, and impact",eloImpact:"+40 Proof ELO",verify:u=>!!(u?.profileSummary),detail:"Your summary is the first signal recruiters read. Include current role, domain expertise, one quantified outcome, and target direction."},
-    {id:"p2",type:"AUTO",title:"Document 5+ verified skills",subtitle:"Skills added to your profile",eloImpact:"+60 Proof ELO",verify:u=>(u?.skills||[]).length>=5,detail:"Add skills using the input below. Skills are auto-verified by your employer history and project evidence when available."},
-    {id:"p3",type:"AUTO",title:"Document your top 3 project outcomes",subtitle:"Projects with measurable results — from your Timeline",eloImpact:"+45 Proof ELO",verify:u=>(u?.resumeProjects||[]).length>=3,detail:"Each project must have a measurable result (%, ₹ value, scale, uptime, users impacted)."},
-    {id:"p4",type:"AUTO",title:"Upload a proof document to Vault",subtitle:"Resume, offer letter, or project report",eloImpact:"+35 Proof ELO",verify:u=>(u?.vaultFiles||[]).length>0,detail:"Even one document significantly increases recruiter trust."},
-    {id:"p5",type:"ACTION",title:"Verify employment via EPFO/UAN",subtitle:"Highest single-action ROI on the platform",eloImpact:"+120 Proof ELO",actionTarget:"vault",actionLabel:"Go to Vault → Verify →",verify:u=>!!(u?.uanVerified),detail:"UAN verification links your work history to official EPFO records. Strongest proof signal — cannot be self-reported."},
+    {id:"p1",type:"AUTO",title:"Write your professional summary",subtitle:"A 3–5 sentence narrative covering role, domain, and impact",eloImpact:"Proof Strength ↑",verify:u=>!!(u?.profileSummary),detail:"Your summary is the first signal recruiters read. Include current role, domain expertise, one quantified outcome, and target direction."},
+    {id:"p2",type:"AUTO",title:"Document 5+ verified skills",subtitle:"Skills added to your profile",eloImpact:"Proof Strength ↑↑",verify:u=>(u?.skills||[]).length>=5,detail:"Add skills using the input below. Skills are auto-verified by your employer history and project evidence when available."},
+    {id:"p3",type:"AUTO",title:"Document your top 3 project outcomes",subtitle:"Projects with measurable results — from your Timeline",eloImpact:"Proof Strength ↑",verify:u=>(u?.resumeProjects||[]).length>=3,detail:"Each project must have a measurable result (%, ₹ value, scale, uptime, users impacted)."},
+    {id:"p4",type:"AUTO",title:"Upload a proof document to Vault",subtitle:"Resume, offer letter, or project report",eloImpact:"Proof Strength ↑",verify:u=>(u?.vaultFiles||[]).length>0,detail:"Even one document significantly increases recruiter trust."},
+    {id:"p5",type:"ACTION",title:"Verify employment via EPFO/UAN",subtitle:"Highest single-action ROI on the platform",eloImpact:"Proof Strength ↑↑↑",actionTarget:"vault",actionLabel:"Go to Vault → Verify →",verify:u=>!!(u?.uanVerified),detail:"UAN verification links your work history to official EPFO records. Strongest proof signal — cannot be self-reported."},
     {id:"p6",type:"AUTO",title:"List at least 2 certifications",subtitle:"Certifications added via Timeline",eloImpact:"+30 Proof ELO",verify:u=>(u?.certifications||[]).length>=2,detail:"Include provider, year, and credential ID. AWS, Google, Microsoft certs carry highest signal."},
   ].map(t=>({...t,done:t.verify?t.verify(ud):false}))
 
@@ -235,12 +238,12 @@ function SwitchForge({ud,onSave,onNav}){
   const[saving2,setSaving2]=useState(false)
 
   const tasks=[
-    {id:"s1",type:"AUTO",title:"Define and save your target role",subtitle:"Auto-verified from your Career Settings",eloImpact:"+30 Mobility ELO",verify:u=>!!(u?.targetRole),detail:"Set your target role. This anchors market gap analysis, Market ELO, and comp benchmarking."},
-    {id:"s2",type:"AUTO",title:"Reach 80%+ profile health",subtitle:"Computed from employment, skills, summary, and Vault",eloImpact:"+45 Mobility ELO",verify:u=>{const c=[(u?.experiences||[]).length>0,(u?.skills||[]).length>=5,!!(u?.profileSummary),(u?.vaultFiles||[]).length>0];return c.filter(Boolean).length>=3},detail:"Profile health: employment history, 5+ skills, profile summary, and at least one Vault document."},
-    {id:"s3",type:"SELF",title:"Identify 3 adjacent transition roles",subtitle:"Self-reported research task",eloImpact:"+20 Mobility ELO",done:!!(ud?.switchForgeTasks?.find(t=>t.id==="s3")?.done),detail:"Adjacent roles are positions where 70%+ of your skills transfer directly. Usually 10–25% comp uplifts with shorter ramp times."},
-    {id:"s4",type:"SELF",title:"Write your top 3 value statements",subtitle:"Proof-backed claims you can defend in any interview",eloImpact:"+25 Mobility ELO",done:!!(ud?.switchForgeTasks?.find(t=>t.id==="s4")?.done),detail:"A value statement: 'I [did X] using [skill Y], resulting in [measurable outcome Z], which impacted [business metric].'"},
-    {id:"s5",type:"SELF",title:"Research 5 target companies",subtitle:"Validate tech stack, culture, hiring signals",eloImpact:"+15 Mobility ELO",done:!!(ud?.switchForgeTasks?.find(t=>t.id==="s5")?.done),detail:"Research each company's tech stack, recent news, Glassdoor sentiment, and decision-makers."},
-    {id:"s6",type:"ACTION",title:"Activate recruiter visibility on Launchpad",subtitle:"Requires navigating to Launchpad",eloImpact:"+40 Mobility ELO",actionTarget:"launchpad",actionLabel:"Go to Launchpad →",verify:u=>!!(u?.recruiterVisible),detail:"Activating recruiter visibility puts your verified profile in front of employers matching your target role."},
+    {id:"s1",type:"AUTO",title:"Define and save your target role",subtitle:"Auto-verified from your Career Settings",eloImpact:"Career Mobility ↑",verify:u=>!!(u?.targetRole),detail:"Set your target role. This anchors market gap analysis, Market ELO, and comp benchmarking."},
+    {id:"s2",type:"AUTO",title:"Reach 80%+ profile health",subtitle:"Computed from employment, skills, summary, and Vault",eloImpact:"Career Mobility ↑↑",verify:u=>{const c=[(u?.experiences||[]).length>0,(u?.skills||[]).length>=5,!!(u?.profileSummary),(u?.vaultFiles||[]).length>0];return c.filter(Boolean).length>=3},detail:"Profile health: employment history, 5+ skills, profile summary, and at least one Vault document."},
+    {id:"s3",type:"SELF",title:"Identify 3 adjacent transition roles",subtitle:"Self-reported research task",eloImpact:"Career Mobility ↑",done:!!(ud?.switchForgeTasks?.find(t=>t.id==="s3")?.done),detail:"Adjacent roles are positions where 70%+ of your skills transfer directly. Usually 10–25% comp uplifts with shorter ramp times."},
+    {id:"s4",type:"SELF",title:"Write your top 3 value statements",subtitle:"Proof-backed claims you can defend in any interview",eloImpact:"Career Mobility ↑",done:!!(ud?.switchForgeTasks?.find(t=>t.id==="s4")?.done),detail:"A value statement: 'I [did X] using [skill Y], resulting in [measurable outcome Z], which impacted [business metric].'"},
+    {id:"s5",type:"SELF",title:"Research 5 target companies",subtitle:"Validate tech stack, culture, hiring signals",eloImpact:"Career Mobility ↑",done:!!(ud?.switchForgeTasks?.find(t=>t.id==="s5")?.done),detail:"Research each company's tech stack, recent news, Glassdoor sentiment, and decision-makers."},
+    {id:"s6",type:"ACTION",title:"Activate recruiter visibility on Launchpad",subtitle:"Requires navigating to Launchpad",eloImpact:"Career Mobility ↑↑",actionTarget:"launchpad",actionLabel:"Go to Launchpad →",verify:u=>!!(u?.recruiterVisible),detail:"Activating recruiter visibility puts your verified profile in front of employers matching your target role."},
   ].map(t=>({...t,done:t.verify?t.verify(ud):!!(ud?.switchForgeTasks?.find(st=>st.id===t.id)?.done)}))
 
   const done=tasks.filter(t=>t.done).length
@@ -282,8 +285,8 @@ function CompForge({ud,onSave}){
 
   const tasks=[
     {id:"c1",type:"AUTO",title:"Enter your current CTC",subtitle:"Auto-verified once saved",eloImpact:"Unlocks insights",verify:u=>!!(u?.currentCTC),detail:"Your CTC powers underpayment detection. Only visible to you."},
-    {id:"c2",type:"SELF",title:"Research market comp from 3 sources",subtitle:"Glassdoor, LinkedIn Salary, AmbitionBox",eloImpact:"+25 Market ELO",done:!!(ud?.compForgeTasks?.find(t=>t.id==="c2")?.done),detail:"Note P25, P50, P75 bands for your role and location."},
-    {id:"c3",type:"SELF",title:"Write your negotiation anchor statement",subtitle:"Practiced statement linking experience, proof, and market band",eloImpact:"+20 Mobility ELO",done:!!(ud?.compForgeTasks?.find(t=>t.id==="c3")?.done),detail:"'Based on my [X yrs] in [domain], verified [outcomes], and market benchmarks showing a midpoint of [₹X], I'm targeting [₹Y].'"},
+    {id:"c2",type:"SELF",title:"Research market comp from 3 sources",subtitle:"Glassdoor, LinkedIn Salary, AmbitionBox",eloImpact:"Market Standing ↑",done:!!(ud?.compForgeTasks?.find(t=>t.id==="c2")?.done),detail:"Note P25, P50, P75 bands for your role and location."},
+    {id:"c3",type:"SELF",title:"Write your negotiation anchor statement",subtitle:"Practiced statement linking experience, proof, and market band",eloImpact:"Career Mobility ↑",done:!!(ud?.compForgeTasks?.find(t=>t.id==="c3")?.done),detail:"'Based on my [X yrs] in [domain], verified [outcomes], and market benchmarks showing a midpoint of [₹X], I'm targeting [₹Y].'"},
     {id:"c4",type:"SELF",title:"Identify 3 highest-leverage proof points",subtitle:"Quantified outcomes that justify above-midpoint pay",eloImpact:"+15 Comp leverage",done:!!(ud?.compForgeTasks?.find(t=>t.id==="c4")?.done),detail:"'Reduced infra costs by ₹40L/yr', 'Scaled DAU from 50K to 400K', 'Led team of 8 engineers'."},
     {id:"c5",type:"SELF",title:"Map raise vs switch scenarios",subtitle:"Calculate the financial case for each path",eloImpact:"+30 Financial clarity",done:!!(ud?.compForgeTasks?.find(t=>t.id==="c5")?.done),detail:"Switch gain est: avg +28%. Raise probability after strong proof: 10–20% if in role >12 months."},
   ].map(t=>({...t,done:t.verify?t.verify(ud):!!(ud?.compForgeTasks?.find(st=>st.id===t.id)?.done)}))
@@ -333,11 +336,11 @@ function ReturnForge({ud,onSave,onNav}){
   const[editNarr,setEditNarr]=useState(false)
 
   const tasks=[
-    {id:"r1",type:"AUTO",title:"Define your return narrative",subtitle:"Auto-verified once saved below",eloImpact:"+30 Mobility ELO",verify:u=>!!(u?.returnNarrative),detail:"'[I took time off] for [honest reason]. During this time, I [maintained/improved X skill]. I'm returning with [specific direction].'"},
+    {id:"r1",type:"AUTO",title:"Define your return narrative",subtitle:"Auto-verified once saved below",eloImpact:"Career Mobility ↑",verify:u=>!!(u?.returnNarrative),detail:"'[I took time off] for [honest reason]. During this time, I [maintained/improved X skill]. I'm returning with [specific direction].'"},
     {id:"r2",type:"ACTION",title:"Repair and update your career timeline",subtitle:"Add gap entries in Timeline to close unexplained voids",eloImpact:"+25 Proof ELO",actionTarget:"timeline",actionLabel:"Go to Timeline →",verify:u=>(u?.experiences||[]).some(e=>e.breakNote||e.isCurrent),detail:"For gaps, add a timeline entry explaining what you were doing. Honesty signals self-awareness."},
-    {id:"r3",type:"AUTO",title:"Rebuild your skill graph (6+ skills)",subtitle:"Auto-verified from your actual skill list",eloImpact:"+35 Market ELO",verify:u=>(u?.skills||[]).length>=6,detail:"Mark skills as Current, Rusty, or Stale. Add 1–2 new skills that emerged since your break."},
-    {id:"r4",type:"SELF",title:"Identify 2 return-ready adjacent roles",subtitle:"Roles designed for re-entry",eloImpact:"+20 Mobility ELO",done:!!(ud?.returnForgeTasks?.find(t=>t.id==="r4")?.done),detail:"Search 'returnship programs', 'back to work', 'career returners'. Tata, Infosys, Goldman Sachs, Google have formal India returnship programs."},
-    {id:"r5",type:"AUTO",title:"Generate one proof artifact from break period",subtitle:"Project, article, or cert from during your break",eloImpact:"+40 Proof ELO",verify:u=>(u?.resumeProjects||[]).some(p=>p.duringBreak)||!!(u?.breakArtifact),detail:"Even one proof artifact dramatically changes recruiter perception. Add via Timeline → Projects."},
+    {id:"r3",type:"AUTO",title:"Rebuild your skill graph (6+ skills)",subtitle:"Auto-verified from your actual skill list",eloImpact:"Market Standing ↑↑",verify:u=>(u?.skills||[]).length>=6,detail:"Mark skills as Current, Rusty, or Stale. Add 1–2 new skills that emerged since your break."},
+    {id:"r4",type:"SELF",title:"Identify 2 return-ready adjacent roles",subtitle:"Roles designed for re-entry",eloImpact:"Career Mobility ↑",done:!!(ud?.returnForgeTasks?.find(t=>t.id==="r4")?.done),detail:"Search 'returnship programs', 'back to work', 'career returners'. Tata, Infosys, Goldman Sachs, Google have formal India returnship programs."},
+    {id:"r5",type:"AUTO",title:"Generate one proof artifact from break period",subtitle:"Project, article, or cert from during your break",eloImpact:"Proof Strength ↑",verify:u=>(u?.resumeProjects||[]).some(p=>p.duringBreak)||!!(u?.breakArtifact),detail:"Even one proof artifact dramatically changes recruiter perception. Add via Timeline → Projects."},
     {id:"r6",type:"ACTION",title:"Activate Return-Ready Sprint on Launchpad",subtitle:"Filters for employers open to career returners",eloImpact:"Unlocks Sprint",actionTarget:"launchpad",actionLabel:"Go to Launchpad →",verify:u=>!!(u?.returnSprintActive),detail:"Return-Ready Sprint filters for returnship programs and employers with re-entry policies."},
   ].map(t=>({...t,done:t.verify?t.verify(ud):!!(ud?.returnForgeTasks?.find(st=>st.id===t.id)?.done)}))
 
@@ -386,12 +389,135 @@ function ReturnForge({ud,onSave,onNav}){
   </div>
 }
 
+// ─── TRUST FORGE ──────────────────────────────────────────────────────────────
+function TrustForge({ud,onSave,onNav}){
+  const[saving,setSaving]=useState(false)
+  const tasks=[
+    {id:"t1",type:"AUTO",title:"Complete EPFO/UAN employment verification",subtitle:"Highest-trust signal available in India",eloImpact:"Proof Strength ↑↑↑",verify:u=>!!(u?.uanVerified),detail:"UAN verification links your work history to official government EPFO records. No other action delivers this level of trust signal to recruiters and hiring managers."},
+    {id:"t2",type:"AUTO",title:"Upload a resume or offer letter to Vault",subtitle:"Core proof document that anchors all other claims",eloImpact:"Proof Strength ↑↑",verify:u=>(u?.vaultFiles||[]).length>0,detail:"A resume or offer letter in Vault is the baseline trust anchor. Recruiters with access to your Vault see this document."},
+    {id:"t3",type:"AUTO",title:"Add LinkedIn profile URL",subtitle:"Cross-platform identity confirmation",eloImpact:"Market Standing ↑",verify:u=>!!(u?.linkedinUrl),detail:"A linked LinkedIn profile confirms your professional identity across platforms and signals consistency."},
+    {id:"t4",type:"AUTO",title:"Document 2+ certifications with provider and year",subtitle:"Third-party credentialing",eloImpact:"Proof Strength ↑",verify:u=>(u?.certifications||[]).length>=2,detail:"Certifications from AWS, Google, Microsoft, or domain-specific bodies carry the highest signal weight."},
+    {id:"t5",type:"AUTO",title:"Add measurable outcomes to at least 2 experiences",subtitle:"Quantified impact — %, ₹, scale, or time saved",eloImpact:"Proof Strength ↑",verify:u=>(u?.experiences||[]).filter(e=>e.outcomes?.trim()).length>=2,detail:"'Reduced latency by 40%', 'Led team of 8', 'Shipped to 200K users'. Outcomes without numbers are weak. Outcomes with numbers are proof."},
+    {id:"t6",type:"SELF",title:"Get at least one professional recommendation written",subtitle:"LinkedIn recommendation or reference letter",eloImpact:"Trust layer complete",done:!!(ud?.trustForgeTasks?.find(t=>t.id==="t6")?.done),detail:"A written recommendation from a manager or senior colleague is one of the strongest offline trust signals. Store it in Vault."},
+  ].map(t=>({...t,done:t.verify?t.verify(ud):!!(ud?.trustForgeTasks?.find(st=>st.id===t.id)?.done)}))
+
+  const done=tasks.filter(t=>t.done).length
+  const verified=tasks.filter(t=>(t.type==="AUTO")&&t.done).length
+
+  const toggleSelf=async id=>{
+    setSaving(true)
+    const prev=ud?.trustForgeTasks||[]
+    const exists=prev.find(t=>t.id===id)
+    const updated=exists?prev.map(t=>t.id===id?{...t,done:!t.done}:t):[...prev,{id,done:true}]
+    await onSave({trustForgeTasks:updated});setSaving(false)
+  }
+
+  return<div>
+    <TransparencyBanner/>
+    <ModeHeader mode="Trust Forge" done={done} total={tasks.length} verified={verified} color={DS.green} icon="🛡" subtitle="Build the verified trust layer that makes recruiters confident in your profile"/>
+    <Card style={{marginBottom:14,padding:"13px 16px"}}>
+      <SL color={DS.green}>Why Trust Forge Matters</SL>
+      <div style={{fontSize:12,color:DS.ink2,lineHeight:1.7}}>Unverified profiles are filtered out by 73% of Indian recruiters in the first pass. Trust Forge systematically builds every layer of verification — government, platform, documentary, and social — so your profile survives every filter.</div>
+    </Card>
+    <SL>Trust Forge Tasks</SL>
+    {tasks.map(t=><TaskItem key={t.id} task={t} ud={ud} onToggle={t.type==="SELF"?toggleSelf:null} onAction={onNav} saving={saving}/>)}
+  </div>
+}
+
+// ─── PROMOTION FORGE ──────────────────────────────────────────────────────────
+function PromotionForge({ud,onSave,onNav}){
+  const[saving,setSaving]=useState(false)
+  const[proofText,setProofText]=useState(ud?.promotionProof||"")
+  const[savingProof,setSavingProof]=useState(false)
+
+  const tasks=[
+    {id:"pm1",type:"AUTO",title:"Document quantified impact in current role",subtitle:"At least 2 outcomes with measurable results",eloImpact:"Role Fit Score ↑↑",verify:u=>(u?.experiences||[]).filter(e=>e.outcomes?.trim()).length>=2,detail:"Before any promotion conversation, you need documented outcomes. 'Delivered X' is not a outcome. '₹40L ARR, grew from 0' is."},
+    {id:"pm2",type:"AUTO",title:"Write a leadership evidence statement",subtitle:"Team impact — size, mentorship, cross-functional leadership",eloImpact:"Role Fit Score ↑",verify:u=>!!(u?.promotionLeadership),detail:"Promotions require evidence that you're already operating at the next level. Document any team lead, mentorship, or cross-functional project ownership."},
+    {id:"pm3",type:"SELF",title:"Map current role to next-level job description",subtitle:"Find 3 gaps between your current work and the promotion target",eloImpact:"Clarity ↑",done:!!(ud?.promotionForgeTasks?.find(t=>t.id==="pm3")?.done),detail:"Pull the JD for the role one level up. Identify 3 responsibilities you're not yet doing. Plan how to own each in the next 90 days."},
+    {id:"pm4",type:"SELF",title:"Schedule a documented scope conversation with manager",subtitle:"Ask to own a specific scope at the next level",eloImpact:"Promotion velocity ↑",done:!!(ud?.promotionForgeTasks?.find(t=>t.id==="pm4")?.done),detail:"'I want to be considered for [role]. What would I need to demonstrate over the next 6 months?' — documented conversations create accountability."},
+    {id:"pm5",type:"SELF",title:"Build a 90-day impact sprint plan",subtitle:"Concrete deliverables, owners, and success metrics for each",eloImpact:"Evidence ↑",done:!!(ud?.promotionForgeTasks?.find(t=>t.id==="pm5")?.done),detail:"A 90-day sprint plan owned by you (not assigned by a manager) signals next-level ownership thinking. Write it, share it, track it."},
+    {id:"pm6",type:"SELF",title:"Document peer validation",subtitle:"Testimonials, shared project outcomes, or peer feedback",eloImpact:"Trust layer ↑",done:!!(ud?.promotionForgeTasks?.find(t=>t.id==="pm6")?.done),detail:"360 feedback or written peer recognition in a shared project doc is evidence. Screenshots of appreciation in Slack or Teams also count."},
+  ].map(t=>({...t,done:t.verify?t.verify(ud):!!(ud?.promotionForgeTasks?.find(st=>st.id===t.id)?.done)}))
+
+  const done=tasks.filter(t=>t.done).length
+  const verified=tasks.filter(t=>t.type==="AUTO"&&t.done).length
+
+  const toggleSelf=async id=>{
+    setSaving(true)
+    const prev=ud?.promotionForgeTasks||[]
+    const exists=prev.find(t=>t.id===id)
+    const updated=exists?prev.map(t=>t.id===id?{...t,done:!t.done}:t):[...prev,{id,done:true}]
+    await onSave({promotionForgeTasks:updated});setSaving(false)
+  }
+  const saveProof=async()=>{if(!proofText.trim())return;setSavingProof(true);await onSave({promotionProof:proofText.trim()});setSavingProof(false)}
+
+  return<div>
+    <TransparencyBanner/>
+    <ModeHeader mode="Promotion Forge" done={done} total={tasks.length} verified={verified} color={DS.amber} icon="🚀" subtitle="Build the evidence and strategy to get promoted at your current employer"/>
+    <Card style={{marginBottom:14}}>
+      <SL color={DS.amber}>Leadership Evidence Statement {ud?.promotionLeadership&&<span style={{color:DS.green,fontSize:9}}>SAVED ✓</span>}</SL>
+      <div style={{fontSize:12,color:DS.ink3,marginBottom:8}}>Write a statement covering any team you've led, mentored, or influenced — even informally.</div>
+      <textarea value={proofText} onChange={e=>setProofText(e.target.value)} rows={3} placeholder="e.g. Led a team of 4 engineers on the checkout redesign. Mentored 2 junior devs. Ran weekly syncs with design and product." style={{width:"100%",padding:"9px 12px",background:DS.surface2,border:`1.5px solid ${DS.border}`,borderRadius:DS.r,fontSize:13,fontFamily:"'Inter', system-ui, sans-serif",color:DS.ink,outline:"none",resize:"vertical",lineHeight:1.6,boxSizing:"border-box"}} onFocus={e=>e.target.style.borderColor=DS.amber} onBlur={e=>e.target.style.borderColor=DS.border}/>
+      <div style={{display:"flex",gap:8,marginTop:8}}><Btn onClick={saveProof} loading={savingProof} size="sm" variant="amber">Save Statement →</Btn></div>
+    </Card>
+    <SL>Promotion Forge Tasks</SL>
+    {tasks.map(t=><TaskItem key={t.id} task={t} ud={ud} onToggle={t.type==="SELF"?toggleSelf:null} onAction={onNav} saving={saving}/>)}
+  </div>
+}
+
+// ─── INTERVIEW FORGE ──────────────────────────────────────────────────────────
+function InterviewForge({ud,onSave,onNav}){
+  const[saving,setSaving]=useState(false)
+  const[prep,setPrep]=useState({company:"",role:"",round:""})
+  const[savingPrep,setSavingPrep]=useState(false)
+
+  const tasks=[
+    {id:"i1",type:"SELF",title:"Write 5 STAR stories from your experience",subtitle:"Situation · Task · Action · Result — one per major project",eloImpact:"Interview readiness ↑↑",done:!!(ud?.interviewForgeTasks?.find(t=>t.id==="i1")?.done),detail:"Each STAR story should be < 2 minutes spoken. Lead with the result: 'I reduced costs by ₹40L by redesigning…' Results first, context second."},
+    {id:"i2",type:"SELF",title:"Research the company's tech stack and recent news",subtitle:"Glassdoor, LinkedIn, company blog, product announcements",eloImpact:"Fit score ↑",done:!!(ud?.interviewForgeTasks?.find(t=>t.id==="i2")?.done),detail:"At minimum: tech stack used, one recent product announcement, and one genuine question about direction or team structure."},
+    {id:"i3",type:"SELF",title:"Prepare your compensation anchor",subtitle:"Know your number, the market midpoint, and your floor",eloImpact:"Negotiation leverage ↑",done:!!(ud?.interviewForgeTasks?.find(t=>t.id==="i3")?.done),detail:"Open at Market Midpoint + 15%. Hold firm at Midpoint + 5%. Never go first on comp — ask what their band is."},
+    {id:"i4",type:"SELF",title:"Prepare for 3 likely technical screening questions",subtitle:"Role-specific — algorithms, system design, or domain expertise",eloImpact:"Technical confidence ↑",done:!!(ud?.interviewForgeTasks?.find(t=>t.id==="i4")?.done),detail:"For tech roles: Big-O, system design fundamentals, one domain deep-dive. For product: metrics question, prioritisation framework, one customer problem."},
+    {id:"i5",type:"SELF",title:"Write out your 'why us' statement",subtitle:"Specific, honest, and connected to their direction",eloImpact:"Culture fit ↑",done:!!(ud?.interviewForgeTasks?.find(t=>t.id==="i5")?.done),detail:"'I've been tracking your [product] for 6 months. Your bet on [specific direction] aligns with where I see [domain] going, and I want to help build that.' Generic answers lose."},
+    {id:"i6",type:"AUTO",title:"Complete AI Practice interview via Launchpad",subtitle:"Simulate a real interview round with AI feedback",eloImpact:"Career Mobility ↑↑",verify:u=>!!(u?.lastAiInterview),actionTarget:"launchpad",actionLabel:"Go to Launchpad →",detail:"AI practice interviews give scored feedback on clarity, structure, and technical accuracy. Available on Elite plan."},
+  ].map(t=>({...t,done:t.verify?t.verify(ud):!!(ud?.interviewForgeTasks?.find(st=>st.id===t.id)?.done)}))
+
+  const done=tasks.filter(t=>t.done).length
+  const verified=tasks.filter(t=>(t.type==="AUTO")&&t.done).length
+
+  const toggleSelf=async id=>{
+    setSaving(true)
+    const prev=ud?.interviewForgeTasks||[]
+    const exists=prev.find(t=>t.id===id)
+    const updated=exists?prev.map(t=>t.id===id?{...t,done:!t.done}:t):[...prev,{id,done:true}]
+    await onSave({interviewForgeTasks:updated});setSaving(false)
+  }
+  const savePrep=async()=>{if(!prep.company)return;setSavingPrep(true);await onSave({currentInterviewPrep:prep});setSavingPrep(false)}
+
+  return<div>
+    <TransparencyBanner/>
+    <ModeHeader mode="Interview Forge" done={done} total={tasks.length} verified={verified} color={DS.teal} icon="🎤" subtitle="Structured interview prep — from research to STAR stories to comp negotiation"/>
+    <Card style={{marginBottom:14}}>
+      <SL color={DS.teal}>Current Interview Context</SL>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:9,marginBottom:9}}>
+        <div><div style={{fontSize:11,fontWeight:600,color:DS.ink3,marginBottom:4}}>Target Company</div><input value={prep.company} onChange={e=>setPrep(p=>({...p,company:e.target.value}))} placeholder="e.g. Flipkart" style={{width:"100%",padding:"8px 11px",background:DS.surface2,border:`1.5px solid ${DS.border}`,borderRadius:DS.r,fontSize:12,fontFamily:"'Inter', system-ui, sans-serif",color:DS.ink,outline:"none",boxSizing:"border-box"}} onFocus={e=>e.target.style.borderColor=DS.teal} onBlur={e=>e.target.style.borderColor=DS.border}/></div>
+        <div><div style={{fontSize:11,fontWeight:600,color:DS.ink3,marginBottom:4}}>Role</div><input value={prep.role} onChange={e=>setPrep(p=>({...p,role:e.target.value}))} placeholder="e.g. Senior PM" style={{width:"100%",padding:"8px 11px",background:DS.surface2,border:`1.5px solid ${DS.border}`,borderRadius:DS.r,fontSize:12,fontFamily:"'Inter', system-ui, sans-serif",color:DS.ink,outline:"none",boxSizing:"border-box"}} onFocus={e=>e.target.style.borderColor=DS.teal} onBlur={e=>e.target.style.borderColor=DS.border}/></div>
+        <div style={{display:"flex",alignItems:"flex-end"}}><Btn onClick={savePrep} loading={savingPrep} size="sm" style={{background:DS.tBg,color:DS.teal,border:`1px solid ${DS.tBd}`}}>Save</Btn></div>
+      </div>
+      {ud?.currentInterviewPrep?.company&&<div style={{padding:"7px 11px",background:DS.tBg,border:`1px solid ${DS.tBd}`,borderRadius:DS.r,fontSize:11,color:DS.teal}}>✓ Prepping for <strong>{ud.currentInterviewPrep.role}</strong> at <strong>{ud.currentInterviewPrep.company}</strong></div>}
+    </Card>
+    <SL>Interview Forge Tasks</SL>
+    {tasks.map(t=><TaskItem key={t.id} task={t} ud={ud} onToggle={t.type==="SELF"?toggleSelf:null} onAction={onNav} saving={saving}/>)}
+  </div>
+}
+
 // ─── Mode Selector ────────────────────────────────────────────────────────────
 const MODES=[
-  {id:"proof",label:"Proof Forge",icon:"🔐",desc:"Build verifiable evidence for every claim",color:DS.purple,cBg:DS.purBg,cBd:DS.purBd,eloImpact:"Up to +280 Proof ELO"},
-  {id:"switch",label:"Switch Forge",icon:"🔀",desc:"Structured, evidence-backed transition prep",color:DS.blue,cBg:DS.blBg,cBd:DS.blBd,eloImpact:"Up to +175 Mobility ELO"},
+  {id:"proof",label:"Proof Forge",icon:"🔐",desc:"Build verifiable evidence for every claim",color:DS.purple,cBg:DS.purBg,cBd:DS.purBd,eloImpact:"Proof Strength ↑↑↑"},
+  {id:"switch",label:"Switch Forge",icon:"🔀",desc:"Structured, evidence-backed transition prep",color:DS.blue,cBg:DS.blBg,cBd:DS.blBd,eloImpact:"Career Mobility ↑↑"},
   {id:"comp",label:"Comp Forge",icon:"💰",desc:"Negotiate and position for better pay",color:DS.primary,cBg:DS.pBg,cBd:DS.pBd,eloImpact:"Up to ₹3L+ comp uplift"},
-  {id:"return",label:"Return Forge",icon:"🌱",desc:"Structured re-entry after layoff or break",color:DS.amber,cBg:DS.aBg,cBd:DS.aBd,eloImpact:"Up to +150 Mobility ELO"},
+  {id:"return",label:"Return Forge",icon:"🌱",desc:"Structured re-entry after layoff or break",color:DS.amber,cBg:DS.aBg,cBd:DS.aBd,eloImpact:"Career Mobility ↑↑"},
+  {id:"trust",label:"Trust Forge",icon:"🛡",desc:"Build government & platform verified trust layer",color:DS.green,cBg:DS.gBg,cBd:DS.gBd,eloImpact:"Proof Strength ↑↑↑"},
+  {id:"promotion",label:"Promotion Forge",icon:"🚀",desc:"Evidence-backed strategy to get promoted",color:DS.amber,cBg:DS.aBg,cBd:DS.aBd,eloImpact:"Role Fit Score ↑↑"},
+  {id:"interview",label:"Interview Forge",icon:"🎤",desc:"STAR stories, comp anchors, and AI practice",color:DS.teal,cBg:DS.tBg,cBd:DS.tBd,eloImpact:"Career Mobility ↑↑"},
 ]
 
 export default function Forge({user,userData,onNavigate}){
@@ -422,7 +548,7 @@ export default function Forge({user,userData,onNavigate}){
       </div>
 
       {!mode&&<>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:20}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:14,marginBottom:20}}>
           {MODES.map(m=><div key={m.id} onClick={()=>setMode(m.id)} style={{padding:"20px 22px",background:DS.surface,border:`1.5px solid ${m.cBd}`,borderRadius:DS.r2,cursor:"pointer",transition:"all .18s",boxShadow:DS.sh}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow=DS.sh2}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow=DS.sh}}>
             <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:10}}><div style={{fontSize:28}}>{m.icon}</div><Tag color={m.color} bg={m.cBg} bd={m.cBd}>{m.eloImpact}</Tag></div>
             <div style={{fontFamily:DS.display,fontSize:16,fontWeight:800,color:DS.ink,marginBottom:4}}>{m.label}</div>
@@ -431,11 +557,11 @@ export default function Forge({user,userData,onNavigate}){
           </div>)}
         </div>
         <Card>
-          <SL>ELO Transparency — How Forge Works</SL>
+          <SL>How Forge Works</SL>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:12}}>
-            {[{icon:"🔒",title:"Auto-verified",desc:"Computed from your real profile data. ELO updates automatically when you complete the actual action.",color:DS.green},{icon:"⚡",title:"Action-required",desc:"Links to the real workflow. Verified automatically once the action is completed in the target section.",color:DS.amber},{icon:"📋",title:"Self-reported",desc:"Records your intent. No ELO weight on its own — gains come when backed by evidence in your profile.",color:DS.ink4}].map((x,i)=><div key={i} style={{padding:"12px",background:DS.surface2,border:`1px solid ${DS.border}`,borderRadius:DS.r}}><div style={{fontSize:18,marginBottom:5}}>{x.icon}</div><div style={{fontSize:12,fontWeight:700,color:x.color,marginBottom:3}}>{x.title}</div><div style={{fontSize:11,color:DS.ink3,lineHeight:1.5}}>{x.desc}</div></div>)}
+            {[{icon:"🔒",title:"Auto-verified",desc:"Computed from your real profile data. Career scores update automatically when you complete the actual action.",color:DS.green},{icon:"⚡",title:"Action-required",desc:"Links to the real workflow. Verified automatically once the action is completed in the target section.",color:DS.amber},{icon:"📋",title:"Self-reported",desc:"Records your intent. No score weight on its own — gains come when backed by evidence in your profile.",color:DS.ink4}].map((x,i)=><div key={i} style={{padding:"12px",background:DS.surface2,border:`1px solid ${DS.border}`,borderRadius:DS.r}}><div style={{fontSize:18,marginBottom:5}}>{x.icon}</div><div style={{fontSize:12,fontWeight:700,color:x.color,marginBottom:3}}>{x.title}</div><div style={{fontSize:11,color:DS.ink3,lineHeight:1.5}}>{x.desc}</div></div>)}
           </div>
-          <div style={{padding:"10px 13px",background:DS.blBg,border:`1px solid ${DS.blBd}`,borderRadius:DS.r,fontSize:12,color:DS.blue}}>Orbit ELO signals are computed from your actual profile data — never from task toggles. Forge tasks guide you to real actions, not score shortcuts.</div>
+          <div style={{padding:"10px 13px",background:DS.blBg,border:`1px solid ${DS.blBd}`,borderRadius:DS.r,fontSize:12,color:DS.blue}}>Career scores are computed from your actual profile data — never from task toggles. Forge tasks guide you to real actions, not score shortcuts.</div>
         </Card>
       </>}
 
@@ -443,6 +569,9 @@ export default function Forge({user,userData,onNavigate}){
       {mode==="switch"&&<SwitchForge ud={userData} onSave={onSave} onNav={handleNav}/>}
       {mode==="comp"&&<CompForge ud={userData} onSave={onSave}/>}
       {mode==="return"&&<ReturnForge ud={userData} onSave={onSave} onNav={handleNav}/>}
+      {mode==="trust"&&<TrustForge ud={userData} onSave={onSave} onNav={handleNav}/>}
+      {mode==="promotion"&&<PromotionForge ud={userData} onSave={onSave} onNav={handleNav}/>}
+      {mode==="interview"&&<InterviewForge ud={userData} onSave={onSave} onNav={handleNav}/>}
     </div>
   </div>
 }

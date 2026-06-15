@@ -506,8 +506,8 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       note: "Monthly plans · Cancel anytime · Powered by Razorpay · Prices in INR",
       plans: [
         { label:"Free",        price:null,      accent:"#6B7280", featured:false, features:["Basic Orbit dashboard","1 Forge challenge/week","Public verified profile","UAN verification"], cta:"START FREE →", ctaStyle:{ background:"#111827", color:"#fff" } },
-        { label:"Orbit Pro",   price:"₹399/mo", sub:"₹3,999/yr — save 16%", accent:"#8B5CF6", featured:true,  features:["Full Orbit — all 4 career signals","Unlimited Forge challenges","Signal — 3 market reports/mo","Compensation Intelligence","Gap Mode + Gap Narrative Engine","Vault full verification","Nexus verified network"], cta:"GO ORBIT PRO →", ctaStyle:{ background:"#8B5CF6", color:"#fff" } },
-        { label:"Orbit Elite", price:"₹799/mo", sub:"₹7,999/yr — save 17%", accent:"#4F46E5", featured:false, features:["Everything in Orbit Pro","AI Interview — 5 sessions/mo","Mentor Hub listing (15% commission)","Transition Tracks access","Return-Ready Sprint","Signal — unlimited reports","Priority Launchpad matching"], cta:"GO ORBIT ELITE →", ctaStyle:{ background:"#4F46E5", color:"#fff" } },
+        { label:"Capabilio Pro",   price:"₹499/mo", sub:"₹3,999/yr — save 33%", accent:"#8B5CF6", featured:true,  features:["Full Orbit — all 4 career signals","Unlimited Forge challenges","Signal — 3 market reports/mo","Compensation Intelligence","Gap Mode + Gap Narrative Engine","Vault full verification","Nexus verified network"], cta:"GO CAPABILIO PRO →", ctaStyle:{ background:"#8B5CF6", color:"#fff" } },
+        { label:"Capabilio Elite", price:"₹999/mo", sub:"₹7,999/yr — save 33%", accent:"#4F46E5", featured:false, features:["Everything in Capabilio Pro","AI Interview — 5 sessions/mo","Mentor Hub listing (15% commission)","Transition Tracks access","Return-Ready Sprint","Signal — unlimited reports","Priority Launchpad matching"], cta:"GO CAPABILIO ELITE →", ctaStyle:{ background:"#4F46E5", color:"#fff" } },
       ],
     },
     executive: {
@@ -844,7 +844,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
           <div className="pricing-tiles-row">
             {[
               { key:"student",      icon:"🎓", label:"Student",      tagline:"Prove skill, get first job",      from:"Free – ₹599/mo",      color:"#FF5701", bg:"linear-gradient(135deg,#FFF1E8,#FFE8D6)", glow:"rgba(255,87,1,0.22)"  },
-              { key:"professional", icon:"💼", label:"Professional",  tagline:"Maintain relevance, grow salary",  from:"Free – ₹799/mo",      color:"#8B5CF6", bg:"linear-gradient(135deg,#F4F0FF,#EDE8FF)", glow:"rgba(139,92,246,0.22)" },
+              { key:"professional", icon:"💼", label:"Professional",  tagline:"Maintain relevance, grow salary",  from:"Free – ₹999/mo",      color:"#8B5CF6", bg:"linear-gradient(135deg,#F4F0FF,#EDE8FF)", glow:"rgba(139,92,246,0.22)" },
               { key:"executive",    icon:"✦",  label:"Executive",     tagline:"Monetize authority & time",        from:"₹1,499 – ₹7,999/mo", color:"#C9A84C", bg:"linear-gradient(135deg,#FFFDF5,#FFF4CC)", glow:"rgba(201,168,76,0.28)"  },
               { key:"institution",  icon:"🏛️", label:"Organisation",  tagline:"College & company intelligence",   from:"Free – Custom",       color:"#D97706", bg:"linear-gradient(135deg,#FFF7E8,#FFECCC)", glow:"rgba(217,119,6,0.22)"  },
             ].map(tile => {

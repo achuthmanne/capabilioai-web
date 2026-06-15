@@ -1,5 +1,5 @@
 // Pricing.jsx — Capabilio Subscription Plans
-// Free · Pro (₹299/mo) · Elite (₹599/mo)
+// Free · Capabilio Pro (₹499/mo) · Capabilio Elite (₹999/mo)
 
 import { userDoc } from "../lib/db";
 import { useState } from "react"

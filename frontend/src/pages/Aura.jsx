@@ -1212,11 +1212,11 @@ function AIInterviewPanel({ user, userData, save, setUserData, onNavigatePricing
                   const isPro=userData?.path==="professional"
                   if(interviewLocked){
                     return isPro
-                      ?"Free Orbit plan does not include AI interview sessions. Upgrade to Orbit Elite (₹799/mo) for 5 AI mock interview sessions per month."
+                      ?"Free Orbit plan does not include AI interview sessions. Upgrade to Capabilio Elite (₹999/mo) for 5 AI mock interview sessions per month."
                       :"Free plan does not include AI interview sessions. Upgrade to Pro (₹299/mo) for 3 Starter Interview Pack sessions per month."
                   }
                   return isPro
-                    ?`You've used all ${interviewQuota} interview sessions this month. Upgrade to Orbit Elite for 5 sessions/month.`
+                    ?`You've used all ${interviewQuota} interview sessions this month. Upgrade to Capabilio Elite for 5 sessions/month.`
                     :`You've used all ${interviewQuota} sessions this month. Upgrade to ${plan.id==="pro"?"Elite (₹599/mo) for 5":"Elite"} sessions/month.`
                 })()}
               </div>
@@ -1226,8 +1226,8 @@ function AIInterviewPanel({ user, userData, save, setUserData, onNavigatePricing
                   const isPro=userData?.path==="professional"
                   if(isPro){
                     return(<>
-                      <div style={{padding:"12px 20px",background:"#F5F3FF",borderRadius:12,fontSize:13,color:"#6D28D9",fontWeight:700}}>Orbit Pro: ₹399/mo · 0 sessions</div>
-                      <div style={{padding:"12px 20px",background:T.amber2,borderRadius:12,fontSize:13,color:T.amber,fontWeight:700}}>Orbit Elite: ₹799/mo · 5 sessions/mo</div>
+                      <div style={{padding:"12px 20px",background:"#F5F3FF",borderRadius:12,fontSize:13,color:"#6D28D9",fontWeight:700}}>Capabilio Pro: ₹499/mo · 0 sessions</div>
+                      <div style={{padding:"12px 20px",background:T.amber2,borderRadius:12,fontSize:13,color:T.amber,fontWeight:700}}>Capabilio Elite: ₹999/mo · 5 sessions/mo</div>
                     </>)
                   }
                   return(<>
@@ -3439,7 +3439,7 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
                   {!isMaxPlan&&onNavigatePricing&&(
                     <button onClick={onNavigatePricing} style={{padding:"7px 16px",background:auraPlan.id==="free"?T.indigo:T.amber,border:"none",borderRadius:9,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0}}>
                       {isPro
-                        ? auraPlan.id==="free"?"Upgrade to Orbit Pro →":"Upgrade to Orbit Elite →"
+                        ? auraPlan.id==="free"?"Upgrade to Capabilio Pro →":"Upgrade to Capabilio Elite →"
                         : auraPlan.id==="free"?"Upgrade to Pro →":"Upgrade to Elite →"}
                     </button>
                   )}
