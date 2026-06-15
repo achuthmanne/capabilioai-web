@@ -409,16 +409,24 @@ const buildStudentSavePayload = ({ path, user, username, data }) => {
   const resumeExperiences = professionalExps.map((e, i) => {
     const dur = e.duration || ""
     const parts = dur.split(/\s*[-–]\s*/)
+    const startDate = parts[0]?.trim() || e.startDate || e.start || e.startYear || ""
+    const rawEnd = parts[1]?.trim() || e.endDate || e.end || e.endYear || ""
+    const isCurrent = dur.toLowerCase().includes("present") || !!e.current || rawEnd.toLowerCase() === "present"
+    const endDate = isCurrent ? "" : rawEnd
+    const description = Array.isArray(e.responsibilities)
+      ? e.responsibilities.join("\n")
+      : (e.description || "")
     return {
-      id: `resume-${i}-${Date.now()}`, company: e.company || "Previous Company",
-      industry: e.industry || "Technology", location: e.location || "",
-      verificationStatus: "self-claimed", _source: "resume", resumeFile: resumeFileObj?.name || "",
-      roles: [{ title: e.role || e.title || keyword || "Student",
-        startDate: parts[0]?.trim() || e.startDate || e.start || "",
-        endDate: parts[1]?.toLowerCase().includes("present") ? "" : parts[1]?.trim() || e.endDate || e.end || "",
-        current: dur.toLowerCase().includes("present") || !!e.current,
-        responsibilities: Array.isArray(e.responsibilities) ? e.responsibilities.join("\n") : (e.description || ""),
-        skills: normalizeSkills(resumeData?.skills).join(", ") }],
+      id: `resume-${i}-${Date.now()}`,
+      company: e.company || "Previous Company",
+      role: e.role || e.title || keyword || "Student",
+      startDate, endDate, isCurrent,
+      description, outcomes: "",
+      location: e.location || "",
+      industry: e.industry || "Technology",
+      skills: normalizeSkills(e.skills || []),
+      verificationStatus: "self-claimed",
+      _source: "resume", resumeFile: resumeFileObj?.name || "",
     }
   })
   const resumeProjects = buildResumeProjects(allExp, resumeData?.projects, resumeFileObj?.name)
@@ -452,20 +460,26 @@ const buildProfessionalSavePayload = ({ path, user, username, data }) => {
 
   const allExp = extractedData?.experience || []
   const professionalExps = allExp.filter(e => !isProjectEntry(e))
-  const experiences = professionalExps.map((e, i) => ({
-    id: `exp-${i}-${Date.now()}`, company: e.company || "Previous Company",
-    industry: "Technology", location: "",
-    verificationStatus: "self-claimed", _source: "resume", resumeFile: proResumeFileObj?.name || "",
-    current: !!e.current || i === 0,
-    startYear: e.startyear || e.startYear || e.from || "", endYear: e.endyear || e.endYear || e.to || "",
-    description: e.description || "",
-    roles: [{ title: e.role || e.title || "Professional",
-      startDate: e.startyear || e.startYear || e.from || "",
-      endDate: e.endyear || e.endYear || e.to || "",
-      current: !!e.current || i === 0,
-      responsibilities: Array.isArray(e.responsibilities) ? e.responsibilities.join("\n") : (e.description || ""),
-      skills: normalizeSkills(extractedData?.skills).join(", ") }],
-  }))
+  const experiences = professionalExps.map((e, i) => {
+    const startDate = e.startDate || e.startyear || e.startYear || e.from || ""
+    const endDate   = e.endDate   || e.endyear  || e.endYear   || e.to   || ""
+    const isCurrent = !!e.current || (!endDate && i === 0)
+    const description = Array.isArray(e.responsibilities)
+      ? e.responsibilities.join("\n")
+      : (e.description || "")
+    return {
+      id: `exp-${i}-${Date.now()}`,
+      company: e.company || "Previous Company",
+      role: e.role || e.title || "Professional",
+      startDate, endDate, isCurrent,
+      description, outcomes: "",
+      location: e.location || "",
+      industry: "Technology",
+      skills: normalizeSkills(e.skills || []),
+      verificationStatus: "self-claimed",
+      _source: "resume", resumeFile: proResumeFileObj?.name || "",
+    }
+  })
   const resumeProjects = buildResumeProjects(allExp, extractedData?.projects, proResumeFileObj?.name)
   const vaultEntry = buildVaultEntry(proResumeFileObj, proResumeBase64)
 

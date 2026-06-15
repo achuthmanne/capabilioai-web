@@ -655,7 +655,21 @@ function TimelineTab({ud,user,onSave}){
   const[saving,setSaving]=useState(false)
   const blank={company:"",role:"",startDate:"",endDate:"",isCurrent:false,description:"",outcomes:"",verificationStatus:"unverified"}
   const[form,setForm]=useState(blank)
-  const exps=ud?.experiences||[]
+  // Normalise both legacy (roles[] array) and new flat structure so both render correctly
+  const exps=(ud?.experiences||[]).map(e=>{
+    if(e.role) return e  // already flat — new format
+    const r0=e.roles?.[0]||{}
+    return{
+      ...e,
+      role: r0.title||"",
+      startDate: e.startDate||e.startYear||r0.startDate||"",
+      endDate: e.endDate||e.endYear||r0.endDate||"",
+      isCurrent: !!(e.isCurrent??e.current??r0.current??false),
+      description: e.description||(Array.isArray(r0.responsibilities)?r0.responsibilities.join("\n"):r0.responsibilities)||"",
+      skills: e.skills||(r0.skills?r0.skills.split(",").map(s=>s.trim()).filter(Boolean):[]),
+      location: e.location||"",
+    }
+  })
 
   const handleSave=async()=>{
     if(!form.company||!form.role)return
@@ -676,10 +690,15 @@ function TimelineTab({ud,user,onSave}){
       <div style={{position:"absolute",left:9,top:0,bottom:-18,width:2,background:i<exps.length-1?DS.border2:"transparent"}}/>
       <div style={{position:"absolute",left:3,top:9,width:13,height:13,borderRadius:"50%",background:e.verificationStatus==="verified"?DS.green:DS.border2,border:`2px solid ${DS.surface}`,boxShadow:DS.sh}}/>
       <Card><div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:7}}>
-        <div><div style={{fontFamily:DS.display,fontSize:14,fontWeight:800,color:DS.ink}}>{e.role}</div><div style={{fontSize:13,color:DS.ink2,fontWeight:600}}>{e.company}</div><div style={{fontSize:11,color:DS.ink4,marginTop:1}}>{e.startDate} — {e.isCurrent?"Present":e.endDate}</div></div>
+        <div>
+          <div style={{fontFamily:DS.display,fontSize:14,fontWeight:800,color:DS.ink}}>{e.role}</div>
+          <div style={{fontSize:13,color:DS.ink2,fontWeight:600}}>{e.company}{e.location&&<span style={{fontWeight:400,color:DS.ink4}}> · {e.location}</span>}</div>
+          <div style={{fontSize:11,color:DS.ink4,marginTop:1}}>{e.startDate}{(e.startDate||e.endDate||e.isCurrent)?" — ":""}{e.isCurrent?"Present":e.endDate}</div>
+        </div>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>{vBadge(e.verificationStatus)}<button onClick={()=>{setForm({...e});setEdit(e);setShowAdd(true)}} style={{padding:"4px 11px",background:DS.surface2,border:`1px solid ${DS.border}`,borderRadius:DS.r,fontSize:11,fontWeight:600,color:DS.ink3,cursor:"pointer",outline:"none"}}>Edit</button></div>
       </div>
-      {e.description&&<div style={{fontSize:12,color:DS.ink3,lineHeight:1.6,marginBottom:5}}>{e.description}</div>}
+      {e.description&&<div style={{fontSize:12,color:DS.ink3,lineHeight:1.6,marginBottom:8,whiteSpace:"pre-line"}}>{e.description}</div>}
+      {Array.isArray(e.skills)&&e.skills.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:8}}>{e.skills.slice(0,10).map((s,si)=><span key={si} style={{padding:"2px 9px",background:DS.pBg,border:`1px solid ${DS.pBd||DS.border}`,borderRadius:99,fontSize:10,fontWeight:600,color:DS.primary}}>{s}</span>)}</div>}
       {e.outcomes&&<div style={{padding:"6px 10px",background:DS.gBg,border:`1px solid ${DS.gBd}`,borderRadius:8,fontSize:11,color:DS.green,fontWeight:500}}>↑ Impact: {e.outcomes}</div>}
       {e.verificationStatus==="unverified"&&<div style={{marginTop:9,padding:"6px 11px",background:DS.aBg,border:`1px solid ${DS.aBd}`,borderRadius:8,fontSize:11,color:DS.amber,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span>Verify via EPFO/UAN to earn +80 Proof ELO</span><button style={{fontSize:11,fontWeight:700,color:DS.amber,background:"none",border:"none",cursor:"pointer",outline:"none"}}>Verify →</button></div>}
       </Card>

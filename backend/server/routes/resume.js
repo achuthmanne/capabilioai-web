@@ -165,18 +165,23 @@ function _isProject(e) {
   return false
 }
 function _toExp(e, i) {
+  const isCurrent = !!e.current || (!e.endDate && i === 0)
+  const description = Array.isArray(e.responsibilities)
+    ? e.responsibilities.join("\n")
+    : (e.description || "")
   return {
-    id: `exp-${i}-${Date.now()}`, company: e.company || "Previous Company",
-    industry: "Technology", location: "",
-    verificationStatus: "self-claimed", _source: "resume",
-    current: !!e.current || (i === 0 && !e.endDate),
-    startYear: e.startDate || "", endYear: e.endDate || "",
-    description: e.description || "",
-    roles: [{ title: e.role || e.title || "Professional",
-      startDate: e.startDate || "", endDate: e.endDate || "",
-      current: !!e.current || (i === 0 && !e.endDate),
-      responsibilities: Array.isArray(e.responsibilities) ? e.responsibilities.join("\n") : (e.description || ""),
-      skills: Array.isArray(e.skills) ? e.skills.join(", ") : "" }],
+    id: `exp-${i}-${Date.now()}`,
+    company: e.company || "Previous Company",
+    role: e.role || e.title || "Professional",
+    startDate: e.startDate || "",
+    endDate: isCurrent ? "" : (e.endDate || ""),
+    isCurrent,
+    description, outcomes: "",
+    location: e.location || "",
+    industry: "Technology",
+    skills: Array.isArray(e.skills) ? e.skills.filter(Boolean) : [],
+    verificationStatus: "self-claimed",
+    _source: "resume",
   }
 }
 
