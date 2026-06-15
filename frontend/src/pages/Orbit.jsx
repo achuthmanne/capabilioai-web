@@ -1,6 +1,7 @@
 /**
  * Orbit.jsx — Professional Career Intelligence OS
- * Tabs: Orbit (ELO dashboard) · Timeline · Vault
+ * Tab: Orbit (ELO dashboard)
+ * Career Timeline and Vault are in Profile → Career & Vault / Vault tabs
  * Supabase-native: uses userDoc.update() from lib/db
  */
 import { useState, useCallback, useRef } from "react"
@@ -118,8 +119,6 @@ function Inp({label,value,onChange,placeholder,type="text",mono=false}){
 // Orbit has 3 internal sub-tabs only — Forge/Launchpad/Pulse/Nexus are in the top nav
 const TABS=[
   {id:"orbit",    label:"Orbit",    icon:"◎"},
-  {id:"timeline", label:"Timeline", icon:"⟳"},
-  {id:"vault",    label:"Vault",    icon:"◈"},
 ]
 function TabBar({active,setActive,sig}){
   const avg=sig?Math.round((sig.role.score+sig.market.score+sig.proof.score+sig.mobility.score)/4):null
@@ -299,11 +298,11 @@ function GapCard({ud,sig,locked,onUpgrade,onNav}){
   const[modal,setModal]=useState(false)
   const role=ud?.targetRole||ud?.currentRole||"Software Engineer"
   const gaps=[
-    {sev:"high",  item:"Employment Verification", impact:"Unverified history reduces trust score 40%.", fix:"Verify via EPFO/UAN in Vault",          navTarget:"vault"},
-    {sev:"high",  item:"Impact Language",          impact:"Profile lacks quantified outcomes (%, ₹, scale).", fix:"Add measurable outcomes to Timeline", navTarget:"timeline"},
+    {sev:"high",  item:"Employment Verification", impact:"Unverified history reduces trust score 40%.", fix:"Verify via EPFO/UAN in Profile → Vault",     navTarget:"aura"},
+    {sev:"high",  item:"Impact Language",          impact:"Profile lacks quantified outcomes (%, ₹, scale).", fix:"Add measurable outcomes in Profile → Career & Vault", navTarget:"aura"},
     {sev:"medium",item:"Cloud Skills (AWS/GCP)",   impact:"Requested in 78% of target role JDs.",   fix:"Add cloud skills in Forge → Proof Forge",    navTarget:"forge"},
-    {sev:"medium",item:"System Design Proof",       impact:"Required for Senior+ roles.",             fix:"Add a Systems Design project to Vault",       navTarget:"vault"},
-    {sev:"low",   item:"Leadership Evidence",       impact:"No team lead or mentorship proof.",       fix:"Document leadership in Timeline",             navTarget:"timeline"},
+    {sev:"medium",item:"System Design Proof",       impact:"Required for Senior+ roles.",             fix:"Add a Systems Design project in Profile → Vault", navTarget:"aura"},
+    {sev:"low",   item:"Leadership Evidence",       impact:"No team lead or mentorship proof.",       fix:"Document leadership in Profile → Career & Vault", navTarget:"aura"},
     {sev:"low",   item:"TypeScript / Modern Stack", impact:"Growing demand, low substitution cost.",  fix:"Add to skill graph in Forge",                 navTarget:"forge"},
   ]
   const hi=gaps.filter(g=>g.sev==="high").length
@@ -385,11 +384,11 @@ function HealthCard({sig,onNav}){
     {l:"Professional summary",done:sig.meta.hasSummary,  tab:"timeline"},
     {l:"Employment history",  done:sig.meta.expsCount>0, tab:"timeline"},
     {l:"5+ skills documented",done:sig.meta.skills>=5,   tab:"forge"},
-    {l:"Employment verified", done:sig.meta.verified>0,  tab:"vault"},
+    {l:"Employment verified", done:sig.meta.verified>0,  tab:"aura"},
     {l:"Target role set",     done:sig.meta.hasTarget,   tab:"orbit"},
-    {l:"Projects / proof",    done:sig.meta.hasProj,     tab:"timeline"},
-    {l:"Certifications",      done:sig.meta.hasCerts,    tab:"timeline"},
-    {l:"Vault documents",     done:sig.meta.hasVault,    tab:"vault"},
+    {l:"Projects / proof",    done:sig.meta.hasProj,     tab:"aura"},
+    {l:"Certifications",      done:sig.meta.hasCerts,    tab:"aura"},
+    {l:"Vault documents",     done:sig.meta.hasVault,    tab:"aura"},
   ]
   const done=checks.filter(c=>c.done).length,pct=Math.round((done/checks.length)*100)
   const pc=pct>=80?DS.green:pct>=50?DS.amber:DS.red
@@ -620,6 +619,12 @@ function ResumeModal({show,onClose,user,ud,onSave}){
       if(parsed?.projects?.length)u.resumeProjects=parsed.projects
       if(parsed?.certifications?.length)u.certifications=parsed.certifications
       u.lastResumeUpload=new Date().toISOString()
+      // Add resume file to vaultFiles so it appears in Career & Vault simple vault
+      if(file){
+        const vaultEntry={id:Date.now().toString(),name:file.name,category:"Resume",size:file.size,url:null,uploadedAt:new Date().toISOString(),_source:"resume"}
+        const existing=(ud?.vaultFiles||[]).filter(f=>!(f.category==="Resume"&&f.name===file.name))
+        u.vaultFiles=[vaultEntry,...existing]
+      }
       await onSave(u);setStage("done")
     }catch(e){setErr("Save failed. Retry.");setStage("review")}
   }
@@ -644,7 +649,7 @@ function ResumeModal({show,onClose,user,ud,onSave}){
       <div style={{display:"flex",gap:9,marginTop:14}}><Btn onClick={reset} variant="ghost" style={{flex:1}}>Re-upload</Btn><Btn onClick={save} full style={{flex:2}}>Save as Draft Entries →</Btn></div>
     </div>}
     {stage==="saving"&&<div style={{textAlign:"center",padding:"40px"}}><Spin size={36}/><div style={{fontSize:13,fontWeight:600,color:DS.ink,marginTop:13}}>Saving to profile…</div></div>}
-    {stage==="done"&&<div style={{textAlign:"center",padding:"30px"}}><div style={{fontSize:38,marginBottom:11}}>✓</div><div style={{fontFamily:DS.display,fontSize:17,fontWeight:800,color:DS.green}}>Profile updated successfully</div><div style={{fontSize:12,color:DS.ink3,marginTop:7,marginBottom:18}}>Draft Timeline entries created. Review and approve in the Timeline tab.</div><Btn onClick={()=>{reset();onClose()}} variant="success">Go to Timeline →</Btn></div>}
+    {stage==="done"&&<div style={{textAlign:"center",padding:"30px"}}><div style={{fontSize:38,marginBottom:11}}>✓</div><div style={{fontFamily:DS.display,fontSize:17,fontWeight:800,color:DS.green}}>Profile updated successfully</div><div style={{fontSize:12,color:DS.ink3,marginTop:7,marginBottom:18}}>Experience and skills saved. View them in your Profile → Career & Vault tab.</div><Btn onClick={()=>{reset();onClose()}} variant="success">Done ✓</Btn></div>}
   </Modal>
 }
 
@@ -708,8 +713,8 @@ function TimelineTab({ud,user,onSave}){
         <Inp label="Company" value={form.company} onChange={v=>setForm(p=>({...p,company:v}))} placeholder="Company name"/>
         <Inp label="Role / Title" value={form.role} onChange={v=>setForm(p=>({...p,role:v}))} placeholder="Your job title"/>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:11}}>
-          <Inp label="Start Date" value={form.startDate} onChange={v=>setForm(p=>({...p,startDate:v}))} placeholder="e.g. Jan 2021"/>
-          <Inp label="End Date" value={form.endDate} onChange={v=>setForm(p=>({...p,endDate:v}))} placeholder="e.g. Mar 2024"/>
+          <Inp label="Start Date" type="month" value={form.startDate} onChange={v=>setForm(p=>({...p,startDate:v}))} placeholder=""/>
+          <Inp label="End Date" type="month" value={form.endDate} onChange={v=>setForm(p=>({...p,endDate:v}))} placeholder=""/>
         </div>
         <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}><input type="checkbox" checked={form.isCurrent} onChange={e=>setForm(p=>({...p,isCurrent:e.target.checked}))}/><span style={{fontSize:13,color:DS.ink2}}>Currently working here</span></label>
         <div><div style={{fontSize:12,fontWeight:600,color:DS.ink3,marginBottom:5}}>Key responsibilities</div><textarea value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))} rows={3} placeholder="Brief role description…" style={{width:"100%",padding:"10px 12px",background:DS.surface2,border:`1.5px solid ${DS.border}`,borderRadius:DS.r,fontSize:13,color:DS.ink,outline:"none",resize:"vertical",lineHeight:1.6,boxSizing:"border-box",fontFamily:DS.body}} onFocus={e=>e.target.style.borderColor=DS.primary} onBlur={e=>e.target.style.borderColor=DS.border}/></div>
@@ -829,7 +834,7 @@ function OrbitDash({ud,user,onSave,onNav,onPricing}){
       drags:[!sig.meta.hasTarget&&"Target role not set",sig.meta.skills<8&&"Below 8 skills",sig.meta.yoe<2&&"Below market seniority threshold"].filter(Boolean),
       action:"Set your target role and document 10+ skills for maximum market ELO accuracy."},
     {name:"Proof ELO",icon:"🔐",key:"proof",color:DS.purple,cBg:DS.purBg,cBd:DS.purBd,desc:"Verified evidence backing your claims",
-      actionLabel:"Go to Vault →",actionTab:"vault",
+      actionLabel:"Go to Vault →",actionTab:"aura",
       drivers:[sig.meta.hasUAN&&"EPFO/UAN verified",sig.meta.verified>0&&"Employer verification complete",sig.meta.hasVault&&"Documents in Vault",sig.meta.hasCerts&&"Certifications listed"].filter(Boolean),
       drags:[!sig.meta.hasUAN&&"EPFO/UAN not verified (highest impact)",sig.meta.verified===0&&"No employer verification",!sig.meta.hasVault&&"No documents in Vault"].filter(Boolean),
       action:"Complete EPFO/UAN verification in Vault for a +120 Proof ELO gain in one step."},
@@ -993,7 +998,5 @@ export default function Orbit({user,userData,setUserData,activeTab,setActiveTab,
     <style>{G}</style>
     <TabBar active={tab} setActive={setTab} sig={sig}/>
     {tab==="orbit"&&<OrbitDash ud={userData} user={user} onSave={onSave} onNav={handleNav} onPricing={onNavigatePricing}/>}
-    {tab==="timeline"&&<TimelineTab ud={userData} user={user} onSave={onSave}/>}
-    {tab==="vault"&&<VaultTab ud={userData} user={user} onSave={onSave}/>}
   </div>
 }

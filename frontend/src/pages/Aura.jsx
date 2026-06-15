@@ -100,6 +100,8 @@ const domainSkillsMap = {
   "DevOps":           ["Docker","Kubernetes","CI/CD Pipelines","Terraform / IaC","Linux & Bash","Monitoring (Prometheus/Grafana)","Helm Charts","SRE Practices","Incident Management","Cloud Platforms","Networking","Security & Secrets"],
   // ── DATABASE ADMINISTRATOR ────────────────────────────────────────────────
   "DBA":              ["Query Optimisation","Index Strategy","Schema Design","Stored Procedures","Performance Tuning","Backup & Recovery","Replication","Schema Migration","EXPLAIN / Query Plans","PL/SQL / T-SQL","Data Integrity","High Availability"],
+  // ── CYBER SECURITY ───────────────────────────────────────────────────────
+  "Cyber Security":   ["Network Security","Penetration Testing","SIEM & Log Analysis","Vulnerability Assessment","Incident Response","Threat Intelligence","Endpoint Security","Firewall & IDS/IPS","Cloud Security","Cryptography","Risk & Compliance","Identity & Access Management"],
 }
 
 // Normalize keyword → canonical domain name (Phase 1 domains)
@@ -125,6 +127,12 @@ function normalizeDomain(keyword) {
   // Full-Stack / SWE
   if ((k.includes("full") && k.includes("stack")) || k.includes("software engineer") ||
       k.includes("software developer") || k.includes("swe")) return "Full-Stack"
+  // Cyber Security — check broadly for security-related keywords
+  if (k.includes("cyber") || k.includes("security") || k.includes("infosec") ||
+      k.includes("penetration") || k.includes("pentest") || k.includes("soc analyst") ||
+      k.includes("appsec") || k.includes("netsec") || k.includes("siem") ||
+      k.includes("threat intel") || k.includes("vulnerability") || k.includes("ethical hack"))
+    return "Cyber Security"
   // Exact key match fallback
   return Object.keys(domainSkillsMap).find(d => d.toLowerCase() === k) || "Full-Stack"
 }
@@ -509,10 +517,53 @@ function AddExperienceModal({ onSave, onClose, existing }) {
 
 // ─── CAREER TIMELINE ─────────────────────────────────────────────────────────
 function CareerTimeline({ experiences, onAdd, onEdit, onDelete }) {
-  const fmtDate = d => { if(!d) return ""; const p=d.split("-"); if(p.length<2) return d; try{return new Date(+p[0],+p[1]-1).toLocaleDateString("en-US",{month:"short",year:"numeric"})}catch{return d} }
-  const getDuration = (start,end,current) => { if(!start) return ""; try{const sp=start.split("-"),s=new Date(+sp[0],+sp[1]-1);const e=current?new Date():(end?(()=>{const ep=end.split("-");return new Date(+ep[0],+ep[1]-1)})():new Date());const months=(e.getFullYear()-s.getFullYear())*12+(e.getMonth()-s.getMonth());if(months<=0) return "";const y=Math.floor(months/12),mo=months%12;return (y>0?y+"yr ":"")+(mo>0?mo+"mo":"")}catch{return ""} }
+  // fmtDate: handles "YYYY-MM", "YYYY", free-text "Jan 2021", "January 2021", etc.
+  const fmtDate = d => {
+    if (!d) return ""
+    const s = String(d).trim()
+    // Already formatted "Mon YYYY" — pass through
+    if (/^[A-Za-z]{3,9}\s+\d{4}$/.test(s)) return s
+    // "YYYY-MM" → "Jan 2021"
+    const p = s.split("-")
+    if (p.length >= 2 && /^\d{4}$/.test(p[0]) && /^\d{1,2}$/.test(p[1])) {
+      try { return new Date(+p[0], +p[1]-1).toLocaleDateString("en-US",{month:"short",year:"numeric"}) } catch { return s }
+    }
+    // "YYYY" alone
+    if (/^\d{4}$/.test(s)) return s
+    // Any other text — return as-is
+    return s
+  }
+  const getDuration = (start, end, current) => {
+    if (!start) return ""
+    try {
+      const parseD = v => { const p=String(v).split("-"); return new Date(+p[0], +(p[1]||1)-1) }
+      const s = parseD(start)
+      const e = current ? new Date() : (end ? parseD(end) : new Date())
+      const months = (e.getFullYear()-s.getFullYear())*12 + (e.getMonth()-s.getMonth())
+      if (months <= 0) return ""
+      const y = Math.floor(months/12), mo = months%12
+      return (y > 0 ? y+"yr " : "") + (mo > 0 ? mo+"mo" : "")
+    } catch { return "" }
+  }
 
-  if (experiences.length === 0) return (
+  // Compat shim — normalise legacy roles[] format to flat structure
+  // Always run normalisation (even flat entries may have old date field names)
+  const exps = (experiences||[]).map(e => {
+    const r0 = e.roles?.[0] || {}
+    const skillsRaw = r0.skills || ""
+    return {
+      ...e,
+      role:        e.role || r0.title || "",
+      startDate:   e.startDate || e.startYear || r0.startDate || "",
+      endDate:     e.endDate   || e.endYear   || r0.endDate   || "",
+      isCurrent:   !!(e.isCurrent ?? e.current ?? r0.current ?? false),
+      description: e.description || (Array.isArray(r0.responsibilities) ? r0.responsibilities.join("\n") : (r0.responsibilities || "")),
+      skills:      e.skills?.length ? e.skills : (typeof skillsRaw === "string" ? skillsRaw.split(",").map(s=>s.trim()).filter(Boolean) : (Array.isArray(skillsRaw) ? skillsRaw : [])),
+      location:    e.location || "",
+    }
+  })
+
+  if (exps.length === 0) return (
     <div style={{ textAlign:"center", padding:"52px 24px" }}>
       <div style={{ width:64, height:64, borderRadius:16, background:"linear-gradient(135deg,#EEF0FB 0%,#F4F0FF 100%)", border:"1.5px solid rgba(61,78,172,0.12)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, margin:"0 auto 18px" }}>💼</div>
       <div style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:700, color:T.ink, marginBottom:8 }}>No experience yet</div>
@@ -525,100 +576,79 @@ function CareerTimeline({ experiences, onAdd, onEdit, onDelete }) {
 
   return (
     <div style={{ paddingTop:4 }}>
-      {experiences.map((exp, ei) => (
-        <div key={ei} style={{ display:"flex", gap:0, marginBottom: ei < experiences.length - 1 ? 0 : 0 }}>
-          {/* Left: logo + connector line */}
-          <div style={{ flexShrink:0, display:"flex", flexDirection:"column", alignItems:"center", width:56, paddingTop:2 }}>
-            <div style={{
-              width:44, height:44, borderRadius:12,
-              background:"linear-gradient(135deg,#EEF0FB 0%,#F4F0FF 100%)",
-              border:"1.5px solid rgba(61,78,172,0.18)",
-              display:"flex", alignItems:"center", justifyContent:"center",
-              fontSize:17, fontWeight:900, color:T.indigo, flexShrink:0,
-              fontFamily:"'Playfair Display',serif",
-              boxShadow:"0 2px 8px rgba(61,78,172,0.10)"
-            }}>
-              {exp.company?.charAt(0)?.toUpperCase()||"C"}
-            </div>
-            {ei < experiences.length - 1 && (
-              <div style={{ width:2, flex:1, background:`linear-gradient(to bottom, rgba(61,78,172,0.18) 0%, rgba(61,78,172,0.04) 100%)`, marginTop:6, minHeight:32, borderRadius:2 }}/>
-            )}
-          </div>
-
-          {/* Right: content */}
-          <div style={{ flex:1, paddingLeft:16, paddingBottom: ei < experiences.length - 1 ? 32 : 0 }}>
-            {/* Company header */}
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:12, flexWrap:"wrap", gap:8 }}>
-              <div>
-                <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom:4 }}>
-                  <span style={{ fontFamily:"'Playfair Display',serif", fontSize:17, fontWeight:700, color:T.ink }}>{exp.company}</span>
-                  {exp.verificationStatus==="verified"
-                    ? <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 9px", borderRadius:100, background:T.green2, color:T.green, fontSize:10, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", letterSpacing:"0.06em", textTransform:"uppercase" }}>✓ VERIFIED</span>
-                    : <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 9px", borderRadius:100, background:T.amber2, color:T.amber, fontSize:10, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", letterSpacing:"0.06em", textTransform:"uppercase" }}>SELF-CLAIMED</span>}
-                </div>
-                <div style={{ fontSize:11, color:T.ink4, display:"flex", gap:6, flexWrap:"wrap", fontFamily:"'JetBrains Mono',monospace", letterSpacing:"0.04em" }}>
-                  {exp.industry&&<span>{exp.industry}</span>}
-                  {exp.location&&<><span>·</span><span>📍 {exp.location}</span></>}
-                </div>
+      {exps.map((e, ei) => {
+        const startLabel = fmtDate(e.startDate)
+        const endLabel   = e.isCurrent ? "Present" : fmtDate(e.endDate)
+        const dateStr    = startLabel && endLabel ? `${startLabel} — ${endLabel}` : startLabel ? `${startLabel} — Present` : endLabel || null
+        const dur        = getDuration(e.startDate, e.endDate, e.isCurrent)
+        const skillList  = Array.isArray(e.skills) ? e.skills.filter(Boolean) : (e.skills ? String(e.skills).split(",").map(s=>s.trim()).filter(Boolean) : [])
+        const descLines  = (e.description||"").split("\n").filter(Boolean)
+        return (
+          <div key={ei} style={{ display:"flex", gap:0 }}>
+            {/* Left: avatar + connector */}
+            <div style={{ flexShrink:0, display:"flex", flexDirection:"column", alignItems:"center", width:56, paddingTop:2 }}>
+              <div style={{ width:44, height:44, borderRadius:12, background:"linear-gradient(135deg,#EEF0FB 0%,#F4F0FF 100%)", border:"1.5px solid rgba(61,78,172,0.18)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:17, fontWeight:900, color:T.indigo, flexShrink:0, fontFamily:"'Playfair Display',serif", boxShadow:"0 2px 8px rgba(61,78,172,0.10)" }}>
+                {e.company?.charAt(0)?.toUpperCase()||"C"}
               </div>
-              <div style={{ display:"flex", gap:6 }}>
-                <button onClick={()=>onEdit(ei)} style={{ background:T.indigo3, border:`1px solid rgba(61,78,172,0.18)`, borderRadius:8, padding:"5px 13px", color:T.indigo, fontSize:11, cursor:"pointer", fontWeight:700, fontFamily:"'JetBrains Mono',monospace", letterSpacing:"0.04em" }}>EDIT</button>
-                <button onClick={()=>onDelete(ei)} style={{ background:T.red2, border:`1px solid rgba(192,57,43,0.15)`, borderRadius:8, padding:"5px 13px", color:T.red, fontSize:11, cursor:"pointer", fontWeight:700, fontFamily:"'JetBrains Mono',monospace", letterSpacing:"0.04em" }}>DEL</button>
-              </div>
+              {ei < exps.length - 1 && <div style={{ width:2, flex:1, background:"linear-gradient(to bottom, rgba(61,78,172,0.18) 0%, rgba(61,78,172,0.04) 100%)", marginTop:6, minHeight:32, borderRadius:2 }}/>}
             </div>
 
-            {/* Roles */}
-            {exp.roles?.map((role, ri) => (
-              <div key={ri} style={{ display:"flex", gap:10, marginBottom: ri < exp.roles.length - 1 ? 10 : 0 }}>
-                {exp.roles.length > 1 && (
-                  <div style={{ flexShrink:0, display:"flex", flexDirection:"column", alignItems:"center", width:16, paddingTop:7 }}>
-                    <div style={{ width:8, height:8, borderRadius:"50%", background: ri===0 ? T.indigo : T.cream3, border:`2px solid ${ri===0 ? T.indigo : T.cream3}`, flexShrink:0 }}/>
-                    {ri < exp.roles.length - 1 && <div style={{ width:1, flex:1, background:T.cream3, minHeight:16, marginTop:3 }}/>}
+            {/* Right: content */}
+            <div style={{ flex:1, paddingLeft:16, paddingBottom: ei < exps.length - 1 ? 32 : 0 }}>
+              {/* Company row + edit/del */}
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10, flexWrap:"wrap", gap:8 }}>
+                <div>
+                  <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom:3 }}>
+                    <span style={{ fontFamily:"'Playfair Display',serif", fontSize:17, fontWeight:700, color:T.ink }}>{e.company}</span>
+                    {e.verificationStatus==="verified"
+                      ? <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 9px", borderRadius:100, background:T.green2, color:T.green, fontSize:10, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", letterSpacing:"0.06em", textTransform:"uppercase" }}>✓ VERIFIED</span>
+                      : <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 9px", borderRadius:100, background:T.amber2, color:T.amber, fontSize:10, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", letterSpacing:"0.06em", textTransform:"uppercase" }}>SELF-CLAIMED</span>}
+                    {e.isCurrent && <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 8px", borderRadius:100, background:T.green2, color:T.green, fontSize:10, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", letterSpacing:"0.06em" }}>● CURRENT</span>}
+                  </div>
+                  <div style={{ fontSize:11, color:T.ink4, display:"flex", gap:6, flexWrap:"wrap", fontFamily:"'JetBrains Mono',monospace", letterSpacing:"0.04em" }}>
+                    {e.industry&&<span>{e.industry}</span>}
+                    {e.location&&<><span>·</span><span>📍 {e.location}</span></>}
+                  </div>
+                </div>
+                <div style={{ display:"flex", gap:6 }}>
+                  <button onClick={()=>onEdit(ei)} style={{ background:T.indigo3, border:`1px solid rgba(61,78,172,0.18)`, borderRadius:8, padding:"5px 13px", color:T.indigo, fontSize:11, cursor:"pointer", fontWeight:700, fontFamily:"'JetBrains Mono',monospace", letterSpacing:"0.04em" }}>EDIT</button>
+                  <button onClick={()=>onDelete(ei)} style={{ background:T.red2, border:`1px solid rgba(192,57,43,0.15)`, borderRadius:8, padding:"5px 13px", color:T.red, fontSize:11, cursor:"pointer", fontWeight:700, fontFamily:"'JetBrains Mono',monospace", letterSpacing:"0.04em" }}>DEL</button>
+                </div>
+              </div>
+
+              {/* Role card */}
+              <div style={{ background:"#FAFAFE", border:"1.5px solid rgba(61,78,172,0.12)", borderRadius:14, padding:"14px 16px", boxShadow:"0 2px 12px rgba(61,78,172,0.06)" }}>
+                <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:8, marginBottom:4, flexWrap:"wrap" }}>
+                  <span style={{ fontFamily:"'Playfair Display',serif", fontSize:15, fontWeight:700, color:T.ink }}>{e.role||"Job Title"}</span>
+                </div>
+                <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:11, color: dateStr ? T.ink4 : T.ink3, letterSpacing:"0.04em", marginBottom:8, fontStyle: dateStr ? "normal" : "italic" }}>
+                  {dateStr
+                    ? <>{dateStr}{dur&&<span style={{ marginLeft:8, color:T.indigo, fontWeight:600 }}>{dur}</span>}</>
+                    : "Date not set · click EDIT to add dates"
+                  }
+                </div>
+                {descLines.length > 0 && (
+                  <div style={{ marginBottom:skillList.length>0?10:0 }}>
+                    {descLines.map((line,li) => (
+                      <div key={li} style={{ fontSize:13, color:T.ink2, lineHeight:1.7, display:"flex", gap:8, marginBottom:2 }}>
+                        <span style={{ color:T.indigo, flexShrink:0, marginTop:1, fontSize:10 }}>▸</span>
+                        <span>{line.replace(/^[•\-▸]\s*/,"")}</span>
+                      </div>
+                    ))}
                   </div>
                 )}
-                <div style={{
-                  flex:1,
-                  background: ri===0 ? "#FAFAFE" : T.cream,
-                  border:`1.5px solid ${ri===0 ? "rgba(61,78,172,0.12)" : T.border}`,
-                  borderRadius:14, padding:"14px 16px",
-                  boxShadow: ri===0 ? "0 2px 12px rgba(61,78,172,0.06)" : "none"
-                }}>
-                  <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:8, marginBottom:6, flexWrap:"wrap" }}>
-                    <div>
-                      <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom:3 }}>
-                        <span style={{ fontFamily:"'Playfair Display',serif", fontSize:15, fontWeight:700, color:T.ink }}>{role.title||"Job Title"}</span>
-                        {ri===0 && role.current && <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 8px", borderRadius:100, background:T.green2, color:T.green, fontSize:10, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", letterSpacing:"0.06em" }}>● CURRENT</span>}
-                        {ri > 0 && <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 8px", borderRadius:100, background:T.indigo3, color:T.indigo, fontSize:10, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", letterSpacing:"0.06em" }}>↑ PROMOTED</span>}
-                      </div>
-                      <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:11, color:T.ink4, letterSpacing:"0.04em" }}>
-                        {fmtDate(role.startDate)}{role.startDate?" — ":""}{role.current?"Present":fmtDate(role.endDate)}
-                        {role.startDate && <span style={{ marginLeft:8, color:T.indigo, fontWeight:600 }}>{getDuration(role.startDate,role.endDate,role.current)}</span>}
-                      </div>
-                    </div>
+                {skillList.length > 0 && (
+                  <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginTop:8 }}>
+                    {skillList.map((sk,si) => (
+                      <span key={si} style={{ background:T.indigo3, border:`1px solid rgba(61,78,172,0.15)`, borderRadius:100, padding:"3px 10px", fontSize:11, color:T.indigo, fontWeight:600, fontFamily:"'JetBrains Mono',monospace", letterSpacing:"0.03em" }}>{sk}</span>
+                    ))}
                   </div>
-                  {role.responsibilities && (
-                    <div style={{ marginBottom:10, marginTop:8 }}>
-                      {role.responsibilities.split("\n").filter(Boolean).map((line,li) => (
-                        <div key={li} style={{ fontSize:13, color:T.ink2, lineHeight:1.7, display:"flex", gap:8, marginBottom:2 }}>
-                          <span style={{ color:T.indigo, flexShrink:0, marginTop:1, fontSize:10 }}>▸</span>
-                          <span>{line.replace(/^[•\-▸]\s*/,"")}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {role.skills && (
-                    <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginTop:8 }}>
-                      {role.skills.split(",").map(s=>s.trim()).filter(Boolean).map((sk,si) => (
-                        <span key={si} style={{ background:T.indigo3, border:`1px solid rgba(61,78,172,0.15)`, borderRadius:100, padding:"3px 10px", fontSize:11, color:T.indigo, fontWeight:600, fontFamily:"'JetBrains Mono',monospace", letterSpacing:"0.03em" }}>{sk}</span>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
-            ))}
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
@@ -2376,7 +2406,8 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
     if (propUserData) {
       setLocalUserData(propUserData)
       setVaultFiles(propUserData.vaultFiles||[])
-      setExperiences(propUserData.experiences||[])
+      // Guard: only overwrite if incoming data has experiences; keep existing state if not
+      setExperiences(prev => (propUserData.experiences?.length > 0) ? propUserData.experiences : (prev.length > 0 ? prev : []))
       setLoading(false)
 
       // Auto-fix username if it doesn't match displayName (wrong extraction during onboarding)
@@ -2409,7 +2440,9 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
     const unsub = userDoc.subscribe(uid, (d) => {
       setLocalUserData(d)
       setVaultFiles(d.vaultFiles||[])
-      setExperiences(d.experiences||[])
+      // Only overwrite local experiences if DB has data — prevents subscription from
+      // clearing in-memory state when experiences column is empty in DB
+      setExperiences(prev => (d.experiences?.length > 0) ? d.experiences : (prev.length > 0 ? prev : []))
       if(d.coverPosition) setCoverPosition(d.coverPosition)
       if(setUserData) setUserData(d)
       // Auto-update strengths and weakAreas from skillGraph if arena tasks have run
@@ -3077,6 +3110,22 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
     })
   })
 
+  // User's actual skills from resume (or profile) — used in the Arena Practice Skills card
+  const userActualSkills = (() => {
+    const fromProfile = (userData?.skills || []).filter(Boolean)
+    // Also pull skills from experiences (skills field on each exp)
+    const fromExps = (userData?.experiences || []).flatMap(e =>
+      Array.isArray(e.skills) ? e.skills : (e.skills ? String(e.skills).split(",").map(s=>s.trim()) : [])
+    ).filter(Boolean)
+    // Merge, deduplicate (case-insensitive), cap at 24
+    const seen = new Set()
+    return [...fromProfile, ...fromExps].filter(s => {
+      const k = s.toLowerCase().trim()
+      if (seen.has(k)) return false
+      seen.add(k); return true
+    }).slice(0, 24)
+  })()
+
   // Domain-filtered radar: each axis is a real domain skill.
   // Score priority: skillGraph > Arena history avg > 0
   const domainSkillGraph = domainSkills.map(skill => {
@@ -3097,6 +3146,27 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
     // cases where arena tags don't exactly match skill names
     return { label: skill, value: Math.max(skillGraphScore, arenaEntry) }
   })
+
+  // Practice skill graph — uses ACTUAL user skills from resume/profile as the source list.
+  // Falls back to domainSkillGraph when user has no extracted skills.
+  const practiceSkillGraph = (() => {
+    const sourceSkills = userActualSkills.length >= 3 ? userActualSkills : domainSkills
+    return sourceSkills.map(skill => {
+      const dl = skill.toLowerCase().replace(/[^a-z0-9 ]/g, "")
+      const dlWords = dl.split(/\s+/).filter(w => w.length >= 2)
+      const match = rawSkillGraph.find(s => {
+        const sl = (s.label||s.skill||"").toLowerCase().replace(/[^a-z0-9 ]/g, "")
+        return sl === dl || dlWords.some(w => sl.includes(w) || w.includes(sl))
+      })
+      const arenaEntry = dlWords.reduce((best, w) => {
+        const found = Object.entries(arenaScoreBySkill).find(([k]) => k.includes(w) || w.includes(k))
+        if (found) { const avg = Math.round(found[1].total / found[1].count); return avg > best ? avg : best }
+        return best
+      }, 0)
+      const skillGraphScore = match ? Math.round(match.value || match.score || 0) : 0
+      return { label: skill, value: Math.max(skillGraphScore, arenaEntry), _fromResume: userActualSkills.length >= 3 }
+    })
+  })()
 
   // Synthesize ELO history from arena_history rows (Supabase) when eloHistory is sparse
   const eloHistoryDisplay = (() => {
@@ -3657,8 +3727,8 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
                 <div>
                   <SectionLabel color={T.indigo}>🎮 Practice a Skill</SectionLabel>
                   <div style={{fontSize:15,fontWeight:800,color:T.ink}}>
-                    {resolvedKeyword}
-                    <span style={{fontSize:12,fontWeight:500,color:T.ink4,marginLeft:8}}>· {domainSkills.length} role-specific skills</span>
+                    {userActualSkills.length >= 3 ? "Your Resume Skills" : resolvedKeyword}
+                    <span style={{fontSize:12,fontWeight:500,color:T.ink4,marginLeft:8}}>· {practiceSkillGraph.length} skills</span>
                   </div>
                 </div>
                 {practiceSkill&&(
@@ -3670,10 +3740,10 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
               </div>
 
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:8,marginBottom:14}}>
-                {domainSkills.map((skill,i)=>{
+                {practiceSkillGraph.map((entry,i)=>{
+                  const skill = entry.label
                   const active = practiceSkill === skill
-                  const scoreEntry = domainSkillGraph.find(d => d.label === skill)
-                  const score = scoreEntry?.value || 0
+                  const score = entry.value || 0
                   const scoreCol = score >= 70 ? T.green : score >= 40 ? T.amber : score > 0 ? T.indigo : T.ink4
                   return (
                     <button key={i} onClick={()=>setPracticeSkill(active?"":skill)} style={{
@@ -4159,16 +4229,22 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
               </div>
             )}
 
-            {/* Domain skills to practice (Arena targets) — shown as secondary section */}
+            {/* Practice Skills — sourced from user's actual resume skills, with Arena scores */}
             <Card style={{marginBottom:20}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
                 <div>
-                  <SectionLabel color={T.indigo}>Arena Practice Skills — {normalizeDomain(keyword)}</SectionLabel>
-                  <p style={{fontSize:11,color:T.ink4,margin:0}}>These are the skills Arena will test you on. Complete tasks to earn verified scores.</p>
+                  <SectionLabel color={T.indigo}>
+                    {userActualSkills.length >= 3 ? "Your Skills — from resume & profile" : `Arena Practice Skills — ${normalizeDomain(keyword)}`}
+                  </SectionLabel>
+                  <p style={{fontSize:11,color:T.ink4,margin:0}}>
+                    {userActualSkills.length >= 3
+                      ? `${userActualSkills.length} skills extracted from your resume. Complete Arena tasks to earn verified scores.`
+                      : "These are the skills Arena will test you on. Complete tasks to earn verified scores."}
+                  </p>
                 </div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:8}}>
-                {domainSkillGraph.map((s,i)=>{
+                {practiceSkillGraph.map((s,i)=>{
                   const col=s.value>=70?T.green:s.value>=40?T.amber:s.value>0?C[i%C.length]:T.ink4
                   return(
                     <div key={i} style={{background:s.value>0?`${col}08`:T.cream2,border:`1px solid ${s.value>0?col+"25":T.border}`,borderRadius:10,padding:"10px 12px"}}>
