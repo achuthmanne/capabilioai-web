@@ -81,7 +81,106 @@ Rules:
   } catch (e) { console.error("[extract-pdf]", e.message); res.status(500).json({ error: e.message }) }
 })
 
-// ─── 2. LinkedIn URL Extraction ───────────────────────────────────────────────
+// ─── 2. Professional Resume Parse (Orbit dashboard "Import Resume" modal) ────
+// Same fast extraction as /extract-pdf but returns the shape ResumeModal expects:
+// { experiences, skills, projects, certifications, summary }
+const PROF_SCHEMA = `{"name":"","title":"","summary":"","skills":[""],"experience":[{"company":"","role":"","startDate":"","endDate":"","current":false,"description":"","responsibilities":[""],"skills":[""]}],"projects":[{"title":"","description":"","techStack":[""],"url":""}],"education":[{"institution":"","degree":"","field":"","year":""}],"certifications":[""],"keywords":[""]}`
+
+router.post("/professional/parse-resume", upload.single("resume"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" })
+    const buffer = req.file.buffer
+    const mime   = req.file.mimetype || "application/pdf"
+
+    // Path A: pdf-parse → Groq (fast ~3s for text PDFs)
+    let text = ""
+    try { const r = await parsePdf(buffer); text = r.text || "" }
+    catch (e) { console.warn("[parse-resume] pdf-parse failed:", e.message) }
+
+    let raw = null
+    if (text.trim().length >= 30) {
+      raw = await groq([
+        { role:"system", content:"Resume parser. Return ONLY valid JSON matching the schema exactly, no markdown." },
+        { role:"user",   content:`Parse this professional resume. Include separate projects array for any project entries. Return JSON: ${PROF_SCHEMA}\n\nResume:\n${text.slice(0,4000)}` },
+      ], { model:GROQ_FAST, max_tokens:2500, json:true })
+    }
+
+    // Path B: Gemini multimodal for image-only PDFs
+    if (!raw && hasGemini()) {
+      try {
+        const base64 = buffer.toString("base64")
+        const extracted = await geminiExtractImage(base64, mime,
+          `You are a resume parser. Extract ALL information from this resume.
+Return ONLY valid JSON: ${PROF_SCHEMA}. No markdown.`)
+        if (extracted && !extracted.raw && (extracted.name || extracted.skills?.length || extracted.experience?.length)) {
+          const p = extracted
+          return res.json({
+            experiences: (p.experience||[]).filter(e => !_isProject(e)).map((e,i) => _toExp(e, i)),
+            skills: p.skills || [],
+            projects: [...(p.projects||[]), ...(p.experience||[]).filter(_isProject).map(e => ({
+              title: e.role||e.title||"Project", description: e.description||"",
+              techStack: e.skills||[], url: ""
+            }))],
+            certifications: p.certifications || [],
+            summary: p.summary || "",
+            name: p.name || "", _source: "gemini",
+          })
+        }
+      } catch (e) { console.warn("[parse-resume] Gemini failed:", e.message) }
+    }
+
+    // Parse the Groq output
+    let p = {}
+    if (raw) try { p = JSON.parse(raw) } catch {}
+
+    // Separate project entries from experience entries
+    const allExp = p.experience || []
+    const expEntries = allExp.filter(e => !_isProject(e))
+    const projFromExp = allExp.filter(_isProject).map(e => ({
+      title: e.role||e.title||"Project", description: e.description||"",
+      techStack: e.skills||[], url: ""
+    }))
+
+    return res.json({
+      experiences: expEntries.map((e, i) => _toExp(e, i)),
+      skills: p.skills || [],
+      projects: [...(p.projects||[]), ...projFromExp],
+      certifications: p.certifications || [],
+      summary: p.summary || "",
+      name: p.name || "", _source: text.trim().length >= 30 ? "groq" : "pdf-empty",
+    })
+
+  } catch (e) { console.error("[parse-resume]", e.message); res.status(500).json({ error: e.message }) }
+})
+
+// Helpers for parse-resume
+function _isProject(e) {
+  const co = (e.company || "").toLowerCase().trim()
+  const title = (e.role || e.title || "").toLowerCase()
+  if (!co || co === "unknown") return true
+  if (/university|college|institute|school|iit|nit|iim|iiit|academy|polytechnic/.test(co)) return true
+  if (/\bproject\b|capstone|thesis|dissertation|final year|hackathon/.test(title)) return true
+  const hasJobTitle = /engineer|developer|analyst|manager|intern|lead|head|consultant|architect|designer|officer|specialist|director|associate|executive/.test(title)
+  if (!hasJobTitle && !e.startDate && !e.endDate) return true
+  return false
+}
+function _toExp(e, i) {
+  return {
+    id: `exp-${i}-${Date.now()}`, company: e.company || "Previous Company",
+    industry: "Technology", location: "",
+    verificationStatus: "self-claimed", _source: "resume",
+    current: !!e.current || (i === 0 && !e.endDate),
+    startYear: e.startDate || "", endYear: e.endDate || "",
+    description: e.description || "",
+    roles: [{ title: e.role || e.title || "Professional",
+      startDate: e.startDate || "", endDate: e.endDate || "",
+      current: !!e.current || (i === 0 && !e.endDate),
+      responsibilities: Array.isArray(e.responsibilities) ? e.responsibilities.join("\n") : (e.description || ""),
+      skills: Array.isArray(e.skills) ? e.skills.join(", ") : "" }],
+  }
+}
+
+// ─── 3. LinkedIn URL Extraction ───────────────────────────────────────────────
 router.post("/extract-linkedin", async (req, res) => {
   const { url } = req.body || {}
   if (!url) return res.status(400).json({ error: "url is required" })
