@@ -693,7 +693,7 @@ function TimelineTab({ud,user,onSave}){
         <div>
           <div style={{fontFamily:DS.display,fontSize:14,fontWeight:800,color:DS.ink}}>{e.role}</div>
           <div style={{fontSize:13,color:DS.ink2,fontWeight:600}}>{e.company}{e.location&&<span style={{fontWeight:400,color:DS.ink4}}> · {e.location}</span>}</div>
-          <div style={{fontSize:11,color:DS.ink4,marginTop:1}}>{e.startDate}{(e.startDate||e.endDate||e.isCurrent)?" — ":""}{e.isCurrent?"Present":e.endDate}</div>
+          <div style={{fontSize:11,color:DS.ink4,marginTop:1}}>{(()=>{const s=e.startDate||"";const end=e.isCurrent?"Present":(e.endDate||"");if(!s&&!end)return null;if(s&&end)return`${s} — ${end}`;return s||end})()}</div>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>{vBadge(e.verificationStatus)}<button onClick={()=>{setForm({...e});setEdit(e);setShowAdd(true)}} style={{padding:"4px 11px",background:DS.surface2,border:`1px solid ${DS.border}`,borderRadius:DS.r,fontSize:11,fontWeight:600,color:DS.ink3,cursor:"pointer",outline:"none"}}>Edit</button></div>
       </div>
