@@ -1346,6 +1346,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
         org_current_ats: orgCurrentATS,
         org_key_roles: orgKeyRoles,
         org_gst_cin: orgGstCin,
+        authorityType: orgSubType === "college" ? "College" : "Company",
         verifiedAuthority: false, verificationStatus: "pending",
         followers: 0, following: 0, posts: 0,
         onboardingComplete: false, onboarding_complete: false,
