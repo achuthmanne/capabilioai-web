@@ -1097,7 +1097,7 @@ export default function Orbit({user,userData,setUserData,activeTab,setActiveTab,
     <style>{G}</style>
     <TabBar active={tab} setActive={setTab} sig={sig}/>
     {tab==="orbit"    &&<OrbitDash       ud={userData} user={user} onSave={onSave} onNav={handleNav} onPricing={onNavigatePricing}/>}
-    {tab==="timeline" &&<CareerTimeline  ud={userData} user={user} onSave={onSave}/>}
+    {tab==="timeline" &&<TimelineTab     ud={userData} user={user} onSave={onSave}/>}
     {tab==="vault"    &&<VaultTab        ud={userData} user={user} onSave={onSave}/>}
     {tab==="comp"     &&<CompTab         ud={userData} user={user} onSave={onSave} onNav={handleNav} onPricing={onNavigatePricing}/>}
     {tab==="readiness"&&<ReadinessTab    ud={userData} user={user} onSave={onSave} onNav={handleNav}/>}
