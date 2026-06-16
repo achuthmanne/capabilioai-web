@@ -268,46 +268,34 @@ const EXECUTIVE_PLANS = {
 }
 
 // ─── ORGANISATION plans ───────────────────────────────────────────────────────
+// Single free-trial plan — full access for all org types (college + company).
+// Pricing tiers will be added once ready; swap PLANS_BY_PATH.institution to
+// the paid plan IDs and they appear automatically on the plan screen.
 const ORGANISATION_PLANS = {
-  startup: {
-    id: "startup", label: "Startup", price: 1499, color: "#0F766E", colorBg: "#F0FDFA",
-    arenaTasks: 0, arenaFrequency: null, arenaIntervalDays: 0,
-    interviewSessions: 0, marketReports: 2, reportPrice: 49,
-    badge: null, highlight: false,
-    features: [
-      "Up to 10 seats",
-      "Hiring dashboard",
-      "Candidate ELO assessment",
-      "2 market reports/month",
-      "Basic placement tracking",
-    ],
-  },
-  campus: {
-    id: "campus", label: "Campus", price: 2499, color: "#1D4ED8", colorBg: "#EFF6FF",
-    arenaTasks: 0, arenaFrequency: null, arenaIntervalDays: 0,
-    interviewSessions: 0, marketReports: 5, reportPrice: 49,
-    badge: "Most Popular", highlight: true,
-    features: [
-      "Up to 50 student seats",
-      "Placement tracking & analytics",
-      "Bulk ELO assessments",
-      "5 market reports/month",
-      "Recruiter portal access",
-      "Cohort performance dashboard",
-    ],
-  },
-  university: {
-    id: "university", label: "University", price: 6999, color: "#7C3AED", colorBg: "#F5F3FF",
+  org_trial: {
+    id: "org_trial", label: "All Features — Free Trial", price: 0,
+    color: "#06B6D4", colorBg: "rgba(6,182,212,0.08)",
     arenaTasks: 0, arenaFrequency: null, arenaIntervalDays: 0,
     interviewSessions: 0, marketReports: 999, reportPrice: 0,
-    badge: "Enterprise", highlight: false,
+    badge: "All Features Included", highlight: true,
+    ctaLabel: "Start Free Trial",
+    tagline: "Everything unlocked during the free trial. No credit card. No limits.",
     features: [
-      "Unlimited student seats",
-      "Full placement intelligence",
-      "Unlimited market reports",
-      "API + LMS integration",
-      "Dedicated account manager",
-      "Custom branding",
+      // College features
+      "Live cohort ELO dashboard — per student, per batch, per dept",
+      "Professor Task Engine — AI-graded tasks → student ELO",
+      "Placement Command Center — real-time offer tracking",
+      "One-click NAAC report — auto-populated from placement data",
+      "Recruiter portal — companies filter & reach your batch directly",
+      "Student invite link — one link, instant onboarding",
+      // Company features
+      "Verified talent pool access from Launchpad",
+      "Company ELO — built from anonymous verified ratings",
+      "Anonymous Day-30 + exit review system (6 dimensions)",
+      "ATS integration — Workday, Greenhouse, Keka, Darwinbox",
+      // Platform
+      "Unlimited admins and seats",
+      "Priority onboarding support",
     ],
   },
 }
@@ -325,7 +313,7 @@ export const PLANS_BY_PATH = {
   student:      ["free", "pro", "elite"],
   professional: ["free", "orbit_pro", "orbit_elite"],
   authority:    ["authority", "luminary", "legacy"],
-  institution:  ["startup", "campus", "university"],
+  institution:  ["org_trial"],
 }
 
 export const getPlansByPath = (path) =>
@@ -340,7 +328,7 @@ export const getPlan = (userData) => {
 // ─── Helper: default free plan id per path ───────────────────────────────────
 export const getDefaultPlanForPath = (path) => {
   if (path === "authority")   return "authority"
-  if (path === "institution") return "startup"
+  if (path === "institution") return "org_trial"
   return "free"
 }
 

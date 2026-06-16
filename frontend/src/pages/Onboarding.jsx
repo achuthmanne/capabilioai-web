@@ -1346,10 +1346,6 @@ export default function Onboarding({ user, onComplete, onBack }) {
         org_current_ats: orgCurrentATS,
         org_key_roles: orgKeyRoles,
         org_gst_cin: orgGstCin,
-        // Legacy fields kept for org-preview compatibility
-        authorityType: orgSubType === "college" ? "College" : "Company",
-        company: orgInstName,
-        role: orgAdminRole,
         verifiedAuthority: false, verificationStatus: "pending",
         followers: 0, following: 0, posts: 0,
         onboardingComplete: false, onboarding_complete: false,
@@ -1368,7 +1364,9 @@ export default function Onboarding({ user, onComplete, onBack }) {
   // ── Plan selection handler ───────────────────────────────────────
   const handlePlanConfirm = async () => {
     // Free plan — save directly and proceed
-    if (planChoice === "free") {
+    // Free plans: "free" (student/professional) or "org_trial" (institution) or any price=0 plan
+    const planIsFree = planChoice === "free" || PLANS[planChoice]?.price === 0
+    if (planIsFree) {
       setSavingPlan(true)
       try {
         if (user?.id) {
@@ -1376,7 +1374,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
           // Also re-stamp 'path' here so onComplete()'s fresh read always finds it,
           // even if the earlier profile save partially failed.
           await userDoc.update(user.id, {
-            subscription: "free",
+            subscription: planChoice || "free",
             subscriptionCycleStart: new Date().toISOString(),
             path: path || "student",
             // onboarding_complete is stamped by onComplete() in App.jsx AFTER this runs
@@ -1448,7 +1446,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
       student:      { title: "Start your career journey", sub: "Free forever — upgrade anytime as you grow." },
       professional: { title: "Unlock your market value", sub: "Full Orbit intelligence. Cancel whenever you like." },
       authority:    { title: "Build your thought leadership", sub: "Signal Room, ghostwriter AI, and deep analytics." },
-      institution:  { title: "Accelerate placements", sub: "ELO-verified talent pipelines for your institution." },
+      institution:  { title: "You're all set.", sub: "Full access — free during the trial. No credit card required." },
     }
     const heading = pathHeadings[path] || pathHeadings.student
     const isFree  = activePlan === "free"
@@ -1472,7 +1470,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
             <p style={{ fontSize:15, color:T.muted, maxWidth:500, margin:"0 auto", lineHeight:1.8 }}>{heading.sub}</p>
           </div>
 
-          <div style={{ display:"grid", gridTemplateColumns:`repeat(${pathPlans.length}, minmax(260px,1fr))`, gap:20, marginBottom:40 }}>
+          <div style={{ display:"grid", gridTemplateColumns: pathPlans.length === 1 ? "minmax(280px,480px)" : `repeat(${pathPlans.length}, minmax(260px,1fr))`, gap:20, marginBottom:40, justifyContent:"center" }}>
             {pathPlans.map(p => {
               const selected = activePlan === p.id
               const ac = p.color
@@ -1515,7 +1513,9 @@ export default function Onboarding({ user, onComplete, onBack }) {
                 : `${PLANS[activePlan]?.ctaLabel || "Continue"} → Enter Dashboard`}
             </button>
             <div style={{ marginTop:16, fontSize:12, color:T.hint, fontFamily:T.mono }}>
-              {isFree ? "No credit card required." : "Powered by Razorpay · Cancel anytime."}
+              {path === "institution"
+                ? "No credit card required · All features active · Paid plans coming soon"
+                : isFree ? "No credit card required." : "Powered by Razorpay · Cancel anytime."}
             </div>
           </div>
         </div>

@@ -243,7 +243,7 @@ export default function Pricing({ user, userData, setUserData, onBack }) {
   const [error,     setError]     = useState("")
   const { openCheckout }          = useRazorpay()
 
-  const FREE_IDS = new Set(["free", "authority", "startup"])
+  const FREE_IDS = new Set(["free", "authority", "org_trial"])
 
   const handleUpgrade = async (planId) => {
     if (planId === "free") return
