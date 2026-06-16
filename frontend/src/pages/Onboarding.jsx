@@ -74,7 +74,7 @@ const PATH_THEME = {
     heroSub:    "Two institution types.",
     bg:         "radial-gradient(ellipse at 20% 60%, rgba(6,182,212,0.15) 0%, transparent 55%), radial-gradient(ellipse at 75% 30%, rgba(16,185,129,0.08) 0%, transparent 45%), #FFFFFF",
     stepLabel:  "ORGANISATION ONBOARDING",
-    steps:      ["Profile", "Setup", "Plan"],
+    steps:      ["Type", "Details", "Preview", "Plan"],
   },
 }
 
@@ -894,6 +894,26 @@ export default function Onboarding({ user, onComplete, onBack }) {
   const [authAnalyzing, setAuthAnalyzing] = useState(false)
   const [authError, setAuthError] = useState("")
 
+  // Organisation-specific (institution path — new flow)
+  const [orgSubType, setOrgSubType] = useState("")           // "college" | "company"
+  const [orgInstName, setOrgInstName] = useState("")         // institution or company name
+  const [orgAdminName, setOrgAdminName] = useState("")       // admin's full name
+  const [orgAdminRole, setOrgAdminRole] = useState("")       // admin's job title / role
+  const [orgInstType, setOrgInstType] = useState("")         // University/College/etc (college only)
+  const [orgLocation, setOrgLocation] = useState("")         // state / city
+  const [orgBatchSize, setOrgBatchSize] = useState("")       // annual batch size (college)
+  const [orgDepts, setOrgDepts] = useState([])               // selected departments (college)
+  const [orgNaacGrade, setOrgNaacGrade] = useState("")       // NAAC grade optional
+  const [orgWebsite, setOrgWebsite] = useState("")           // institution or company website
+  const [orgIndustry, setOrgIndustry] = useState("")         // company industry
+  const [orgCompanySize, setOrgCompanySize] = useState("")   // company headcount range
+  const [orgHiringVolume, setOrgHiringVolume] = useState("") // annual hires
+  const [orgCurrentATS, setOrgCurrentATS] = useState("")     // current ATS tool
+  const [orgKeyRoles, setOrgKeyRoles] = useState("")         // key roles hiring for
+  const [orgGstCin, setOrgGstCin] = useState("")             // GST / CIN (optional)
+  const [orgSubmitting, setOrgSubmitting] = useState(false)
+  const [orgError, setOrgError] = useState("")
+
   // Quiz
   const [questions, setQuestions] = useState([])
   const [qIdx, setQIdx] = useState(0)
@@ -1302,6 +1322,49 @@ export default function Onboarding({ user, onComplete, onBack }) {
     } catch { setAuthError("Failed to create profile. Please try again."); setAuthAnalyzing(false) }
   }
 
+  const handleOrgSubmit = async () => {
+    setOrgSubmitting(true); setOrgError("")
+    try {
+      const displayName = user?.user_metadata?.full_name || user?.user_metadata?.name || orgAdminName || user?.email?.split("@")[0] || ""
+      const username = slugifyUsername(displayName || orgInstName)
+      const payload = {
+        displayName, email: user?.email || "", username,
+        path: "institution", accountType: "institution",
+        org_type: orgSubType,
+        org_name: orgInstName,
+        org_admin_name: orgAdminName,
+        org_admin_role: orgAdminRole,
+        org_inst_type: orgInstType,
+        org_location: orgLocation,
+        org_batch_size: orgBatchSize,
+        org_departments: orgDepts,
+        org_naac_grade: orgNaacGrade,
+        org_website: orgWebsite,
+        org_industry: orgIndustry,
+        org_company_size: orgCompanySize,
+        org_hiring_volume: orgHiringVolume,
+        org_current_ats: orgCurrentATS,
+        org_key_roles: orgKeyRoles,
+        org_gst_cin: orgGstCin,
+        // Legacy fields kept for org-preview compatibility
+        authorityType: orgSubType === "college" ? "College" : "Company",
+        company: orgInstName,
+        role: orgAdminRole,
+        verifiedAuthority: false, verificationStatus: "pending",
+        followers: 0, following: 0, posts: 0,
+        onboardingComplete: false, onboarding_complete: false,
+        createdAt: new Date().toISOString(),
+      }
+      await userDoc.set(user.id, payload)
+      setOrgSubmitting(false)
+      transition("org-preview")
+    } catch (err) {
+      console.warn("Org profile save failed:", err)
+      setOrgError("Failed to save profile. Please try again.")
+      setOrgSubmitting(false)
+    }
+  }
+
   // ── Plan selection handler ───────────────────────────────────────
   const handlePlanConfirm = async () => {
     // Free plan — save directly and proceed
@@ -1486,7 +1549,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
         id: "institution", theme: PATH_THEME.institution,
         title: "Organisation", subtitle: "Colleges track cohort ELO, run professor-assigned tasks, automate placements. Companies post verified profiles and build Company ELO.",
         badge: "College · Company", details: ["Professor Task Engine + Cohort Intelligence", "Placement Command Center", "Anonymous Rating System (company)", "ATS integration: Workday, Greenhouse, Keka"],
-        action: () => { setPath("institution"); transition("authority") },
+        action: () => { setPath("institution"); transition("org-type") },
       },
     ]
     return (
@@ -1977,7 +2040,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
 
   // ══ SCREEN: ORGANISATION PREVIEW ═════════════════════════════════
   if (step === "org-preview") {
-    const isCollege = authType === "University" || authType === "College" || authType === "Bootcamp" || !["Company","Corporate"].includes(authType)
+    const isCollege = orgSubType === "college" || (orgSubType !== "company" && (authType === "University" || authType === "College" || authType === "Bootcamp" || !["Company","Corporate"].includes(authType)))
     const pt = getPathTheme("institution")
 
     const COLLEGE_MODULES = [
@@ -2010,7 +2073,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
               <div style={{ width:52, height:52, borderRadius:14, background:pt.accentBg, border:`1px solid ${pt.accentBd}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, flexShrink:0 }}>🏛️</div>
               <div style={{ flex:1 }}>
                 <div style={{ fontFamily:T.display, fontSize:22, fontWeight:800, color:T.text, marginBottom:3 }}>
-                  {authName || "Your organisation"} is set up.
+                  {orgInstName || authName || "Your organisation"} is set up.
                 </div>
                 <div style={{ fontSize:13, color:T.muted, fontFamily:T.body }}>
                   {isCollege
@@ -2082,6 +2145,330 @@ export default function Onboarding({ user, onComplete, onBack }) {
 
             <PrimaryBtn onClick={()=>transition("plan")} color={pt.accent}>
               Choose Your Plan →
+            </PrimaryBtn>
+          </Card>
+        </div>
+      </Screen>
+    )
+  }
+
+  // ══ SCREEN: ORG TYPE SELECTION ═══════════════════════════════════
+  if (step === "org-type") {
+    const pt = getPathTheme("institution")
+    return (
+      <Screen style={{ background: pt.bg }}>
+        <style>{ONBOARDING_STYLES}</style>
+        <div style={{ width:"100%", maxWidth:720 }}>
+          <Card accent={pt.accentBd} style={{ padding:"28px 28px 32px" }}>
+            <BackBtn onClick={()=>transition("path")} />
+            <PathBanner pathKey="institution" stepIndex={0} />
+
+            <div style={{ background:pt.accentBg, border:`1px solid ${pt.accentBd}`, borderRadius:14, padding:"14px 18px", marginBottom:24 }}>
+              <div style={{ fontSize:18, fontWeight:800, color:T.text, marginBottom:4 }}>One platform, built for two types of organisations.</div>
+              <div style={{ fontSize:13, color:T.muted, lineHeight:1.6 }}>Your setup, modules, and pricing differ based on what you are. Tell us first — you can change this later.</div>
+            </div>
+
+            <H2>What best describes your organisation?</H2>
+            <Sub>College / University or Company / Corporate — pick the one that fits.</Sub>
+
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:24 }}>
+              {/* College / University card */}
+              <div
+                onClick={() => { setOrgSubType("college"); transition("org-college") }}
+                style={{ borderRadius:16, border:"1.5px solid rgba(217,119,6,0.3)", background:"rgba(0,0,0,0.02)", padding:"22px 20px", cursor:"pointer", transition:"all 0.18s" }}
+                onMouseEnter={e=>{ e.currentTarget.style.borderColor="#D97706"; e.currentTarget.style.background="rgba(217,119,6,0.05)"; e.currentTarget.style.boxShadow="0 0 24px rgba(217,119,6,0.15)" }}
+                onMouseLeave={e=>{ e.currentTarget.style.borderColor="rgba(217,119,6,0.3)"; e.currentTarget.style.background="rgba(0,0,0,0.02)"; e.currentTarget.style.boxShadow="none" }}
+              >
+                <div style={{ fontSize:32, marginBottom:10 }}>🏛️</div>
+                <div style={{ fontSize:16, fontWeight:800, color:T.text, marginBottom:6 }}>College / University</div>
+                <div style={{ fontSize:12, color:T.muted, lineHeight:1.6, marginBottom:14 }}>
+                  Track cohort ELO live, run professor-assigned tasks, automate placements, generate NAAC reports in one click.
+                </div>
+                {["📊 Live cohort placement dashboard", "📋 NAAC-ready auto reports", "🎓 Students join via single invite link", "🏢 Recruiter portal for your verified batch"].map((f,i)=>(
+                  <div key={i} style={{ fontSize:11, color:T.muted, marginBottom:5 }}>{f}</div>
+                ))}
+                <div style={{ marginTop:14, display:"inline-flex", alignItems:"center", background:"rgba(217,119,6,0.1)", border:"1px solid rgba(217,119,6,0.25)", borderRadius:999, padding:"4px 12px", fontSize:10, fontWeight:700, color:"#D97706", fontFamily:T.mono }}>
+                  NAAC · NBA · Placement tracking
+                </div>
+              </div>
+
+              {/* Company / Organisation card */}
+              <div
+                onClick={() => { setOrgSubType("company"); transition("org-company") }}
+                style={{ borderRadius:16, border:"1.5px solid rgba(5,150,105,0.3)", background:"rgba(0,0,0,0.02)", padding:"22px 20px", cursor:"pointer", transition:"all 0.18s" }}
+                onMouseEnter={e=>{ e.currentTarget.style.borderColor="#059669"; e.currentTarget.style.background="rgba(5,150,105,0.05)"; e.currentTarget.style.boxShadow="0 0 24px rgba(5,150,105,0.15)" }}
+                onMouseLeave={e=>{ e.currentTarget.style.borderColor="rgba(5,150,105,0.3)"; e.currentTarget.style.background="rgba(0,0,0,0.02)"; e.currentTarget.style.boxShadow="none" }}
+              >
+                <div style={{ fontSize:32, marginBottom:10 }}>🏢</div>
+                <div style={{ fontSize:16, fontWeight:800, color:T.text, marginBottom:6 }}>Company / Organisation</div>
+                <div style={{ fontSize:12, color:T.muted, lineHeight:1.6, marginBottom:14 }}>
+                  Access verified talent from Launchpad, build Company ELO, run anonymous ratings, integrate your ATS.
+                </div>
+                {["🧬 Company ELO from verified ratings", "🔌 ATS integration (Workday, Keka…)", "👥 Verified talent pool access", "⭐ Anonymous Day-30 + exit reviews"].map((f,i)=>(
+                  <div key={i} style={{ fontSize:11, color:T.muted, marginBottom:5 }}>{f}</div>
+                ))}
+                <div style={{ marginTop:14, display:"inline-flex", alignItems:"center", background:"rgba(5,150,105,0.1)", border:"1px solid rgba(5,150,105,0.25)", borderRadius:999, padding:"4px 12px", fontSize:10, fontWeight:700, color:"#059669", fontFamily:T.mono }}>
+                  GST/CIN verified · ATS ready
+                </div>
+              </div>
+            </div>
+
+            <div style={{ textAlign:"center", fontSize:11, color:T.muted, fontFamily:T.mono, padding:"10px 14px", background:"rgba(0,0,0,0.02)", borderRadius:8, border:`1px solid ${T.border}` }}>
+              Both types are on the same Institution path · Pricing differs by organisation size
+            </div>
+          </Card>
+        </div>
+      </Screen>
+    )
+  }
+
+  // ══ SCREEN: ORG COLLEGE PROFILE ══════════════════════════════════
+  if (step === "org-college") {
+    const amberAccent = "#D97706"
+    const amberBg    = "rgba(217,119,6,0.10)"
+    const amberBd    = "rgba(217,119,6,0.28)"
+    const canSubmit  = orgInstName.trim() && orgAdminName.trim() && orgAdminRole.trim() && orgInstType && orgLocation.trim() && orgBatchSize
+    const DEPTS = ["CSE","IT","ECE","EEE","Mechanical","Civil","MBA","BCA","MCA","Data Science","AI/ML","Biotech","Other"]
+    const toggleDept = (d) => setOrgDepts(prev => prev.includes(d) ? prev.filter(x=>x!==d) : [...prev, d])
+
+    return (
+      <Screen style={{ background:`radial-gradient(ellipse at 20% 50%, rgba(217,119,6,0.12) 0%, transparent 55%), #FFFFFF` }}>
+        <style>{ONBOARDING_STYLES}</style>
+        <div style={{ width:"100%", maxWidth:720 }}>
+          <Card accent={amberBd} style={{ padding:"28px 28px 32px" }}>
+            <BackBtn onClick={()=>transition("org-type")} />
+            <PathBanner pathKey="institution" stepIndex={1} />
+
+            <div style={{ background:amberBg, border:`1px solid ${amberBd}`, borderRadius:14, padding:"14px 18px", marginBottom:22, display:"flex", alignItems:"center", gap:14 }}>
+              <div style={{ fontSize:28, flexShrink:0 }}>🏛️</div>
+              <div>
+                <div style={{ fontSize:17, fontWeight:800, color:T.text, marginBottom:3 }}>Set up your College / University</div>
+                <div style={{ fontSize:12, color:T.muted, lineHeight:1.6 }}>Takes 2 minutes. Students join via invite link — no IT setup needed.</div>
+              </div>
+            </div>
+
+            {orgError && <div style={{ background:"rgba(244,63,94,0.08)", border:"1px solid rgba(244,63,94,0.25)", borderRadius:T.radius, padding:"12px 14px", color:"#F43F5E", fontSize:13, marginBottom:16 }}>{orgError}</div>}
+
+            <div style={{ fontSize:10, fontWeight:700, color:T.muted, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:12 }}>Institution Details</div>
+
+            <FieldRow label="Institution Name *">
+              <FieldInput value={orgInstName} onChange={e=>setOrgInstName(e.target.value)} placeholder="e.g. VIT Vellore, BITS Pilani, RGIPT" />
+            </FieldRow>
+
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+              <FieldRow label="Institution Type *">
+                <FieldSelect value={orgInstType} onChange={e=>setOrgInstType(e.target.value)}>
+                  <option value="">Select type</option>
+                  <option value="University">University (Deemed/Central/State)</option>
+                  <option value="Engineering College">Engineering College</option>
+                  <option value="Autonomous College">Autonomous College</option>
+                  <option value="Affiliated College">Affiliated College</option>
+                  <option value="Institute">Institute (IIT/NIT/IIIT)</option>
+                  <option value="Bootcamp">Bootcamp / Academy</option>
+                  <option value="Online Platform">Online Learning Platform</option>
+                </FieldSelect>
+              </FieldRow>
+              <FieldRow label="State / City *">
+                <FieldInput value={orgLocation} onChange={e=>setOrgLocation(e.target.value)} placeholder="e.g. Tamil Nadu, Vellore" />
+              </FieldRow>
+            </div>
+
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+              <FieldRow label="Annual Batch Size *" hint="Approx. students graduating per year">
+                <FieldSelect value={orgBatchSize} onChange={e=>setOrgBatchSize(e.target.value)}>
+                  <option value="">Select batch size</option>
+                  <option value="under-100">Under 100</option>
+                  <option value="100-300">100 – 300</option>
+                  <option value="300-600">300 – 600</option>
+                  <option value="600-1000">600 – 1,000</option>
+                  <option value="1000-3000">1,000 – 3,000</option>
+                  <option value="3000+">3,000+</option>
+                </FieldSelect>
+              </FieldRow>
+              <FieldRow label="NAAC Grade" hint="Optional — shown on recruiter portal">
+                <FieldSelect value={orgNaacGrade} onChange={e=>setOrgNaacGrade(e.target.value)}>
+                  <option value="">Select grade (optional)</option>
+                  <option value="A++">A++ (3.75 – 4.00)</option>
+                  <option value="A+">A+ (3.51 – 3.75)</option>
+                  <option value="A">A (3.26 – 3.50)</option>
+                  <option value="B++">B++ (3.01 – 3.25)</option>
+                  <option value="B+">B+ (2.76 – 3.00)</option>
+                  <option value="B">B (2.51 – 2.75)</option>
+                  <option value="Not accredited">Not yet accredited</option>
+                </FieldSelect>
+              </FieldRow>
+            </div>
+
+            <FieldRow label="Departments with active placement" hint="Select all that apply">
+              <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginTop:4 }}>
+                {DEPTS.map(d => (
+                  <button key={d} onClick={()=>toggleDept(d)} type="button" style={{ padding:"5px 12px", borderRadius:999, border:`1px solid ${orgDepts.includes(d)?amberAccent:"rgba(0,0,0,0.12)"}`, background:orgDepts.includes(d)?amberBg:"transparent", color:orgDepts.includes(d)?amberAccent:T.muted, fontSize:12, fontWeight:600, cursor:"pointer", transition:"all 0.15s", fontFamily:T.body }}>
+                    {orgDepts.includes(d) ? "✓ " : ""}{d}
+                  </button>
+                ))}
+              </div>
+            </FieldRow>
+
+            <div style={{ fontSize:10, fontWeight:700, color:T.muted, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:12, marginTop:4 }}>Your Details (Placement Admin)</div>
+
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+              <FieldRow label="Your Name *">
+                <FieldInput value={orgAdminName} onChange={e=>setOrgAdminName(e.target.value)} placeholder="e.g. Dr. Ramesh Kumar" />
+              </FieldRow>
+              <FieldRow label="Your Role *">
+                <FieldInput value={orgAdminRole} onChange={e=>setOrgAdminRole(e.target.value)} placeholder="e.g. TPO, Head of Placements, Dean" />
+              </FieldRow>
+            </div>
+
+            <FieldRow label="Institution Website" hint="Optional">
+              <FieldInput value={orgWebsite} onChange={e=>setOrgWebsite(e.target.value)} placeholder="https://yourinstitution.ac.in" />
+            </FieldRow>
+
+            <div style={{ background:amberBg, border:`1px solid ${amberBd}`, borderRadius:12, padding:"12px 16px", marginBottom:20 }}>
+              <div style={{ fontSize:10, fontWeight:800, color:amberAccent, letterSpacing:"0.12em", textTransform:"uppercase", fontFamily:T.mono, marginBottom:8 }}>After setup, you get:</div>
+              {[
+                "📧 Unique invite link for students (e.g. capabilio.online/join/vit-2025)",
+                "📊 Live cohort dashboard — ELO, placement status, skill gaps per student",
+                "🏢 Recruiter portal — companies filter and reach your batch directly",
+                "📋 One-click NAAC report with all placement data auto-collected",
+              ].map((f,i)=><div key={i} style={{ fontSize:12, color:T.muted, marginBottom:4 }}>{f}</div>)}
+            </div>
+
+            <PrimaryBtn onClick={handleOrgSubmit} disabled={!canSubmit} loading={orgSubmitting} color={amberAccent}>
+              Create College Profile →
+            </PrimaryBtn>
+          </Card>
+        </div>
+      </Screen>
+    )
+  }
+
+  // ══ SCREEN: ORG COMPANY PROFILE ══════════════════════════════════
+  if (step === "org-company") {
+    const greenAccent = "#059669"
+    const greenBg    = "rgba(5,150,105,0.10)"
+    const greenBd    = "rgba(5,150,105,0.28)"
+    const canSubmit  = orgInstName.trim() && orgAdminName.trim() && orgAdminRole.trim() && orgIndustry && orgCompanySize && orgHiringVolume
+
+    return (
+      <Screen style={{ background:`radial-gradient(ellipse at 20% 50%, rgba(5,150,105,0.10) 0%, transparent 55%), #FFFFFF` }}>
+        <style>{ONBOARDING_STYLES}</style>
+        <div style={{ width:"100%", maxWidth:720 }}>
+          <Card accent={greenBd} style={{ padding:"28px 28px 32px" }}>
+            <BackBtn onClick={()=>transition("org-type")} />
+            <PathBanner pathKey="institution" stepIndex={1} />
+
+            <div style={{ background:greenBg, border:`1px solid ${greenBd}`, borderRadius:14, padding:"14px 18px", marginBottom:22, display:"flex", alignItems:"center", gap:14 }}>
+              <div style={{ fontSize:28, flexShrink:0 }}>🏢</div>
+              <div>
+                <div style={{ fontSize:17, fontWeight:800, color:T.text, marginBottom:3 }}>Set up your Company Profile</div>
+                <div style={{ fontSize:12, color:T.muted, lineHeight:1.6 }}>Access verified talent, build Company ELO, and integrate your ATS.</div>
+              </div>
+            </div>
+
+            {orgError && <div style={{ background:"rgba(244,63,94,0.08)", border:"1px solid rgba(244,63,94,0.25)", borderRadius:T.radius, padding:"12px 14px", color:"#F43F5E", fontSize:13, marginBottom:16 }}>{orgError}</div>}
+
+            <div style={{ fontSize:10, fontWeight:700, color:T.muted, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:12 }}>Company Details</div>
+
+            <FieldRow label="Company Name *">
+              <FieldInput value={orgInstName} onChange={e=>setOrgInstName(e.target.value)} placeholder="e.g. Razorpay, Infosys, Zoho" />
+            </FieldRow>
+
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+              <FieldRow label="Industry *">
+                <FieldSelect value={orgIndustry} onChange={e=>setOrgIndustry(e.target.value)}>
+                  <option value="">Select industry</option>
+                  <option value="Product / SaaS">Product / SaaS</option>
+                  <option value="IT Services">IT Services / Consulting</option>
+                  <option value="Banking / NBFC">Banking / NBFC</option>
+                  <option value="Fintech">Fintech</option>
+                  <option value="E-commerce">E-commerce</option>
+                  <option value="Edtech">Edtech</option>
+                  <option value="Healthtech">Healthtech</option>
+                  <option value="Manufacturing">Manufacturing</option>
+                  <option value="FMCG">FMCG / Retail</option>
+                  <option value="Media / Gaming">Media / Gaming</option>
+                  <option value="Startup">Early-stage Startup</option>
+                  <option value="PSU">PSU / Government</option>
+                  <option value="Other">Other</option>
+                </FieldSelect>
+              </FieldRow>
+              <FieldRow label="Company Size *">
+                <FieldSelect value={orgCompanySize} onChange={e=>setOrgCompanySize(e.target.value)}>
+                  <option value="">Select size</option>
+                  <option value="1-20">1 – 20 (Seed stage)</option>
+                  <option value="21-100">21 – 100 (Early)</option>
+                  <option value="101-500">101 – 500 (Growth)</option>
+                  <option value="501-2000">501 – 2,000 (Scale)</option>
+                  <option value="2001-10000">2,001 – 10,000</option>
+                  <option value="10000+">10,000+ (Enterprise)</option>
+                </FieldSelect>
+              </FieldRow>
+            </div>
+
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+              <FieldRow label="Annual Hiring Volume *" hint="Hires per year">
+                <FieldSelect value={orgHiringVolume} onChange={e=>setOrgHiringVolume(e.target.value)}>
+                  <option value="">Hires per year</option>
+                  <option value="1-10">1 – 10</option>
+                  <option value="11-50">11 – 50</option>
+                  <option value="51-200">51 – 200</option>
+                  <option value="201-500">201 – 500</option>
+                  <option value="500+">500+</option>
+                </FieldSelect>
+              </FieldRow>
+              <FieldRow label="Current ATS" hint="Optional — we'll help integrate">
+                <FieldSelect value={orgCurrentATS} onChange={e=>setOrgCurrentATS(e.target.value)}>
+                  <option value="">Current ATS (optional)</option>
+                  <option value="None">None / Manual process</option>
+                  <option value="Workday">Workday</option>
+                  <option value="Greenhouse">Greenhouse</option>
+                  <option value="Lever">Lever</option>
+                  <option value="Keka">Keka</option>
+                  <option value="Darwinbox">Darwinbox</option>
+                  <option value="Zoho Recruit">Zoho Recruit</option>
+                  <option value="BambooHR">BambooHR</option>
+                  <option value="Naukri RMS">Naukri RMS</option>
+                  <option value="Other">Other</option>
+                </FieldSelect>
+              </FieldRow>
+            </div>
+
+            <FieldRow label="Key Roles You're Hiring For" hint="Optional — helps surface relevant candidates">
+              <FieldInput value={orgKeyRoles} onChange={e=>setOrgKeyRoles(e.target.value)} placeholder="e.g. Backend Engineer, Data Analyst, DevOps" />
+            </FieldRow>
+
+            <FieldRow label="GST / CIN Number" hint="Optional — adds Verified badge to company profile">
+              <FieldInput value={orgGstCin} onChange={e=>setOrgGstCin(e.target.value)} placeholder="e.g. 22AAAAA0000A1Z5" />
+            </FieldRow>
+
+            <div style={{ fontSize:10, fontWeight:700, color:T.muted, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:12, marginTop:4 }}>Your Details (HR / Talent Lead)</div>
+
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+              <FieldRow label="Your Name *">
+                <FieldInput value={orgAdminName} onChange={e=>setOrgAdminName(e.target.value)} placeholder="e.g. Priya Menon" />
+              </FieldRow>
+              <FieldRow label="Your Role *">
+                <FieldInput value={orgAdminRole} onChange={e=>setOrgAdminRole(e.target.value)} placeholder="e.g. Head of Talent, HR Manager, CTO" />
+              </FieldRow>
+            </div>
+
+            <FieldRow label="Company Website" hint="Optional">
+              <FieldInput value={orgWebsite} onChange={e=>setOrgWebsite(e.target.value)} placeholder="https://yourcompany.com" />
+            </FieldRow>
+
+            <div style={{ background:greenBg, border:`1px solid ${greenBd}`, borderRadius:12, padding:"12px 16px", marginBottom:20 }}>
+              <div style={{ fontSize:10, fontWeight:800, color:greenAccent, letterSpacing:"0.12em", textTransform:"uppercase", fontFamily:T.mono, marginBottom:8 }}>After setup, you get:</div>
+              {[
+                "🔍 Search & shortlist EPFO-verified candidates from Launchpad",
+                "🧬 Company ELO built from verified ratings — not self-reported",
+                "⭐ Anonymous Day-30 + exit review system (6 dimensions)",
+                "🔌 ATS integration (Workday, Greenhouse, Keka, Darwinbox)",
+              ].map((f,i)=><div key={i} style={{ fontSize:12, color:T.muted, marginBottom:4 }}>{f}</div>)}
+            </div>
+
+            <PrimaryBtn onClick={handleOrgSubmit} disabled={!canSubmit} loading={orgSubmitting} color={greenAccent}>
+              Create Company Profile →
             </PrimaryBtn>
           </Card>
         </div>
