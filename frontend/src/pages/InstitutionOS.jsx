@@ -34,16 +34,24 @@ const T = {
   ink3:     "#64748B",
   ink4:     "#94A3B8",
   ink5:     "#CBD5E1",
-  bg:       "#F8FAFC",
+  bg:       "#F1F5F9",
   surface:  "#FFFFFF",
   border:   "rgba(15,23,42,0.07)",
   borderM:  "rgba(15,23,42,0.12)",
-  navW:     220,
+  // Dark nav tokens
+  navBg:    "#0A0F1E",
+  navBg2:   "#0F1729",
+  navText:  "rgba(255,255,255,0.50)",
+  navTextH: "rgba(255,255,255,0.85)",
+  navTextA: "#FFFFFF",
+  navActiveGlow: "rgba(14,165,233,0.18)",
+  navW:     224,
   tabH:     60,
   radius:   14,
   radiusS:  8,
   shadow:   "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)",
   shadowM:  "0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)",
+  shadowGlow: (color) => `0 0 0 1px ${color}30, 0 4px 20px ${color}18`,
 }
 const FONT = "Inter, -apple-system, sans-serif"
 const MONO = "'JetBrains Mono', 'Fira Mono', monospace"
@@ -58,7 +66,7 @@ const NAV = [
   { id: "groups",        label: "Groups",        icon: "🗂",  mobileShow: false },
   { id: "cohorts",       label: "Cohorts",       icon: "🎓", mobileShow: false },
   { id: "events",        label: "Events",        icon: "📅", mobileShow: false },
-  { id: "opportunities", label: "Opportunities", icon: "💼", mobileShow: false },
+  { id: "companies",     label: "Companies",     icon: "🏢", mobileShow: false },
   { id: "outcomes",      label: "Outcomes",      icon: "🏆", mobileShow: false },
   { id: "settings",      label: "Settings",      icon: "⚙", mobileShow: false },
 ]
@@ -167,6 +175,24 @@ function useOrgAuditLog(orgId, limit = 20) {
   }, [orgId, limit])
   useEffect(() => { load() }, [load])
   return { data, loading, reload: load }
+}
+
+function useOrgCompanyLinks(orgId) {
+  const [data, setData]       = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState(null)
+  const load = useCallback(async () => {
+    if (!orgId) { setLoading(false); return }
+    setLoading(true)
+    const { data: rows, error: err } = await supabase
+      .from("org_company_links").select("*").eq("institution_org_id", orgId)
+      .order("created_at", { ascending: false })
+    setLoading(false)
+    if (err) setError(err.message)
+    else { setData(rows || []); setError(null) }
+  }, [orgId])
+  useEffect(() => { load() }, [load])
+  return { data, loading, error, reload: load }
 }
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
@@ -345,22 +371,35 @@ function VerificationBanner({ level, onVerify }) {
 
 // ─── KPI card ─────────────────────────────────────────────────────────────────
 function KPICard({ value, label, trend, trendDir = "up", context, action, color, onClick }) {
+  const c = color || T.sky
   const trendColor = trendDir === "up" ? T.green : trendDir === "down" ? T.red : T.amber
   const trendIcon  = trendDir === "up" ? "↑" : trendDir === "down" ? "↓" : "→"
   return (
-    <Card onClick={onClick} style={{ flex: 1, minWidth: 130, padding: 16, cursor: onClick ? "pointer" : "default" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-        <div style={{ fontFamily: MONO, fontSize: 26, fontWeight: 700, color: color || T.sky, lineHeight: 1 }}>{value}</div>
+    <div onClick={onClick} style={{
+      flex: 1, minWidth: 130, padding: "16px 18px",
+      background: T.surface,
+      borderRadius: T.radius,
+      border: `1px solid ${T.border}`,
+      borderTop: `3px solid ${c}`,
+      boxShadow: `0 1px 3px rgba(0,0,0,0.06), 0 4px 16px ${c}0C`,
+      cursor: onClick ? "pointer" : "default",
+      transition: "transform 0.15s, box-shadow 0.15s",
+    }}
+      onMouseEnter={e => { if (onClick) { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 4px 20px ${c}22` }}}
+      onMouseLeave={e => { if (onClick) { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = `0 1px 3px rgba(0,0,0,0.06), 0 4px 16px ${c}0C` }}}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+        <div style={{ fontFamily: MONO, fontSize: 28, fontWeight: 700, color: c, lineHeight: 1, letterSpacing: "-0.03em" }}>{value}</div>
         {trend && (
-          <span style={{ fontSize: 12, fontWeight: 700, color: trendColor, background: `${trendColor}15`, padding: "2px 7px", borderRadius: 6 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: trendColor, background: `${trendColor}15`, padding: "2px 7px", borderRadius: 6, marginTop: 2 }}>
             {trendIcon} {trend}
           </span>
         )}
       </div>
-      <div style={{ fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>{label}</div>
       {context && <div style={{ fontSize: 11, color: T.ink4, lineHeight: 1.4 }}>{context}</div>}
-      {action && <div style={{ fontSize: 11, color: T.sky, fontWeight: 600, marginTop: 6 }}>{action}</div>}
-    </Card>
+      {action && <div style={{ fontSize: 11, color: c, fontWeight: 600, marginTop: 6 }}>{action}</div>}
+    </div>
   )
 }
 
@@ -371,53 +410,76 @@ function InstSidebar({ active, onNav, userData }) {
   return (
     <div style={{
       width: T.navW, minWidth: T.navW, height: "100%",
-      background: T.surface, borderRight: `1px solid ${T.border}`,
+      background: `linear-gradient(180deg, ${T.navBg} 0%, ${T.navBg2} 100%)`,
       display: "flex", flexDirection: "column", flexShrink: 0,
+      borderRight: "1px solid rgba(255,255,255,0.04)",
     }}>
-      <div style={{ padding: "18px 16px 14px", borderBottom: `1px solid ${T.border}` }}>
+      {/* Header */}
+      <div style={{ padding: "18px 14px 14px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{
-            width: 36, height: 36, borderRadius: 10, background: T.skyL,
+            width: 38, height: 38, borderRadius: 10,
+            background: "linear-gradient(135deg, #0EA5E9 0%, #6366F1 100%)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 14, fontWeight: 800, color: T.sky, fontFamily: MONO, flexShrink: 0,
+            fontSize: 14, fontWeight: 800, color: "#fff", fontFamily: MONO, flexShrink: 0,
+            boxShadow: "0 4px 14px rgba(14,165,233,0.45)",
           }}>{initials || "OS"}</div>
           <div style={{ overflow: "hidden" }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: T.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{orgName}</div>
-            <div style={{ fontSize: 11, color: T.sky, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              {userData?.org_type === "company" ? "Company" : "Institution"}
+            <div style={{ fontSize: 13, fontWeight: 700, color: T.navTextA, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{orgName}</div>
+            <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: T.sky }}>
+              {userData?.org_type === "company" ? "Company OS" : "Institution OS"}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Nav */}
       <nav style={{ flex: 1, overflowY: "auto", padding: "10px 8px" }}>
+        <style>{`
+          .inst-nav-btn { transition: background 0.12s, color 0.12s; }
+          .inst-nav-btn:hover { background: rgba(255,255,255,0.06) !important; color: rgba(255,255,255,0.85) !important; }
+          ::-webkit-scrollbar { width: 4px; }
+          ::-webkit-scrollbar-track { background: transparent; }
+          ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+        `}</style>
         {NAV.map(item => {
           const isActive = active === item.id
           return (
-            <button key={item.id} onClick={() => onNav(item.id)} style={{
-              display: "flex", alignItems: "center", gap: 10, width: "100%",
-              padding: "9px 10px", borderRadius: T.radiusS, border: "none",
-              background: isActive ? T.skyL : "transparent",
-              color: isActive ? T.sky : T.ink3, fontSize: 13,
-              fontWeight: isActive ? 700 : 500, fontFamily: FONT,
-              cursor: "pointer", transition: "background 0.12s, color 0.12s",
-            }}
-              onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = T.bg; e.currentTarget.style.color = T.ink2 }}}
-              onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = T.ink3 }}}
+            <button key={item.id} onClick={() => onNav(item.id)}
+              className="inst-nav-btn"
+              style={{
+                display: "flex", alignItems: "center", gap: 10, width: "100%",
+                padding: "9px 10px", borderRadius: T.radiusS, border: "none",
+                background: isActive ? T.navActiveGlow : "transparent",
+                color: isActive ? T.navTextA : T.navText,
+                fontSize: 13, fontWeight: isActive ? 600 : 400, fontFamily: FONT,
+                cursor: "pointer",
+                borderLeft: isActive ? `2px solid ${T.sky}` : "2px solid transparent",
+                marginBottom: 1,
+              }}
             >
-              <span style={{ fontSize: 16, width: 20, textAlign: "center" }}>{item.icon}</span>
-              <span>{item.label}</span>
+              <span style={{ fontSize: 15, width: 20, textAlign: "center", filter: isActive ? "none" : "grayscale(0.3)", opacity: isActive ? 1 : 0.7 }}>{item.icon}</span>
+              <span style={{ letterSpacing: "-0.01em" }}>{item.label}</span>
+              {isActive && <span style={{ marginLeft: "auto", width: 5, height: 5, borderRadius: "50%", background: T.sky, boxShadow: `0 0 6px ${T.sky}` }} />}
             </button>
           )
         })}
       </nav>
-      <div style={{ padding: "12px 16px", borderTop: `1px solid ${T.border}` }}>
+
+      {/* Footer */}
+      <div style={{ padding: "10px 14px 14px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 28, height: 28, borderRadius: "50%", background: T.skyL, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: T.sky }}>
+          <div style={{
+            width: 30, height: 30, borderRadius: "50%",
+            background: "linear-gradient(135deg, #0EA5E9, #6366F1)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 12, fontWeight: 700, color: "#fff",
+          }}>
             {(userData?.name || "A").charAt(0)}
           </div>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: T.ink }}>{userData?.name || "Admin"}</div>
-            <div style={{ fontSize: 10, color: T.ink4 }}>Admin</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: T.navTextA }}>{userData?.name || "Admin"}</div>
+            <div style={{ fontSize: 10, color: T.navText }}>Institution Admin</div>
           </div>
         </div>
       </div>
@@ -823,6 +885,8 @@ function TasksPage({ userData, user, tasks, tasksLoading, tasksError, reloadTask
 
   const [form, setForm] = useState({ title: "", type: "assignment", subject: "", assignedTo: "All Students", dueDate: "", priority: "medium", description: "" })
   const setF = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const [attachment, setAttachment]   = useState(null)   // File object
+  const [uploadProgress, setUploadProgress] = useState("")
 
   // Build structured assign-to options from real member batches + departments
   const assignOptions = useMemo(() => {
@@ -840,6 +904,22 @@ function TasksPage({ userData, user, tasks, tasksLoading, tasksError, reloadTask
   async function handlePublish() {
     if (!form.title.trim()) { setSaveError("Task title is required."); return }
     setSaving(true); setSaveError(null)
+
+    // Upload file attachment if present
+    let attachmentUrl = ""
+    let attachmentName = ""
+    if (attachment) {
+      setUploadProgress("Uploading file…")
+      const path = `${user.id}/${Date.now()}_${attachment.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`
+      const { error: upErr } = await supabase.storage
+        .from("task-attachments").upload(path, attachment, { upsert: false })
+      if (upErr) { setSaveError("File upload failed: " + upErr.message); setSaving(false); setUploadProgress(""); return }
+      const { data: urlData } = supabase.storage.from("task-attachments").getPublicUrl(path)
+      attachmentUrl  = urlData?.publicUrl || ""
+      attachmentName = attachment.name
+      setUploadProgress("")
+    }
+
     const { data: row, error } = await supabase.from("org_tasks").insert({
       org_id:            user.id,
       title:             form.title.trim(),
@@ -852,6 +932,8 @@ function TasksPage({ userData, user, tasks, tasksLoading, tasksError, reloadTask
       published_by_name: userData?.name || "Admin",
       status:            "active",
       priority:          form.priority,
+      attachment_url:    attachmentUrl,
+      attachment_name:   attachmentName,
     }).select().single()
     setSaving(false)
     if (error) { setSaveError(error.message); return }
@@ -859,6 +941,7 @@ function TasksPage({ userData, user, tasks, tasksLoading, tasksError, reloadTask
       `Published task "${form.title.trim()}"`, "task.published", "task", row.id, { type: form.type })
     setShowCreate(false)
     setForm({ title: "", type: "assignment", subject: "", assignedTo: "All Students", dueDate: "", priority: "medium", description: "" })
+    setAttachment(null)
     reloadTasks()
   }
 
@@ -911,10 +994,16 @@ function TasksPage({ userData, user, tasks, tasksLoading, tasksError, reloadTask
                         <Chip color={typeColor[task.type] || T.sky} bg={`${typeColor[task.type] || T.sky}15`}>{task.type}</Chip>
                         {task.priority === "urgent" && <Badge color={T.red}>URGENT</Badge>}
                       </div>
-                      <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
                         {task.subject && <span style={{ fontSize: 12, color: T.ink3, fontWeight: 600 }}>📖 {task.subject}</span>}
                         {task.assigned_to_label && <span style={{ fontSize: 12, color: T.ink4 }}>👥 {task.assigned_to_label}</span>}
                         {task.due_date && <span style={{ fontSize: 12, color: T.ink4 }}>📅 Due {task.due_date}</span>}
+                        {task.attachment_url && (
+                          <a href={task.attachment_url} target="_blank" rel="noreferrer"
+                            style={{ fontSize: 12, color: T.sky, fontWeight: 600, textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
+                            📎 {task.attachment_name || "Attachment"}
+                          </a>
+                        )}
                         {task.total_assigned > 0 && (
                           <span style={{ fontSize: 12, fontWeight: 700, fontFamily: MONO, color: T.sky }}>
                             {task.submission_count}/{task.total_assigned} submitted
@@ -1000,10 +1089,39 @@ function TasksPage({ userData, user, tasks, tasksLoading, tasksError, reloadTask
                 style={{ width: "100%", padding: "9px 12px", border: `1px solid ${T.border}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: T.bg, resize: "vertical" }} />
             </div>
 
+            {/* File attachment */}
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 6 }}>
+                Attach File (PDF, DOCX, PPTX, Image — max 10MB)
+              </label>
+              <label style={{
+                display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
+                border: `1.5px dashed ${attachment ? T.sky : T.border}`,
+                borderRadius: 10, cursor: "pointer",
+                background: attachment ? T.skyL : T.bg,
+                transition: "all 0.15s",
+              }}>
+                <span style={{ fontSize: 18 }}>{attachment ? "📎" : "☁️"}</span>
+                <span style={{ fontSize: 12, color: attachment ? T.sky : T.ink4, fontWeight: attachment ? 600 : 400 }}>
+                  {attachment ? attachment.name : "Click to attach a file"}
+                </span>
+                {attachment && (
+                  <button onClick={e => { e.preventDefault(); setAttachment(null) }}
+                    style={{ marginLeft: "auto", fontSize: 12, color: T.red, background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>
+                    ✕ Remove
+                  </button>
+                )}
+                <input type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.gif"
+                  style={{ display: "none" }}
+                  onChange={e => setAttachment(e.target.files?.[0] || null)} />
+              </label>
+              {uploadProgress && <div style={{ fontSize: 11, color: T.sky, marginTop: 4 }}>{uploadProgress}</div>}
+            </div>
+
             {saveError && <div style={{ fontSize: 12, color: T.red }}>{saveError}</div>}
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <Btn variant="outline" onClick={() => setShowCreate(false)}>Cancel</Btn>
-              <Btn onClick={handlePublish} disabled={saving}>{saving ? "Publishing…" : "Publish Task"}</Btn>
+              <Btn onClick={handlePublish} disabled={saving}>{saving ? (uploadProgress || "Publishing…") : "Publish Task"}</Btn>
             </div>
           </div>
         </Modal>
@@ -1396,93 +1514,178 @@ function EventsPage({ userData, user, events, eventsLoading, eventsError, reload
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// PAGE 9 — OPPORTUNITIES
+// PAGE 9 — COMPANIES (Partner Talent Network)
 // ═══════════════════════════════════════════════════════════════════════════════
-function OpportunitiesPage({ userData, user, opportunities, oppsLoading, oppsError, reloadOpps }) {
-  const [tab, setTab]               = useState("active")
-  const [showCreate, setShowCreate] = useState(false)
-  const [saving, setSaving]         = useState(false)
-  const [saveError, setSaveError]   = useState(null)
-  const [form, setForm]             = useState({ title: "", company: "", role_type: "fulltime", eligibility: "", ctc: "", deadline: "", description: "" })
+function CompaniesPage({ userData, user }) {
+  const { data: companies, loading, error, reload } = useOrgCompanyLinks(user?.id)
+  const [showInvite, setShowInvite]   = useState(false)
+  const [saving, setSaving]           = useState(false)
+  const [saveError, setSaveError]     = useState(null)
+  const [tab, setTab]                 = useState("active")
+  const [form, setForm]               = useState({ company_name: "", company_email: "", company_website: "", company_size: "", industry: "", notes: "" })
   const setF = (k, v) => setForm(f => ({ ...f, [k]: v }))
-  const isCollege = (userData?.org_type || "college") !== "company"
 
-  const activeOpps = opportunities.filter(o => tab === "active" ? o.status === "active" : o.status === "closed" || o.status === "draft")
+  const filtered = companies.filter(c => tab === "active" ? c.status === "active" || c.status === "invited" : c.status === "paused" || c.status === "rejected")
 
-  async function handlePost() {
-    if (!form.title.trim()) { setSaveError("Title is required."); return }
+  const visibilityLabel = { roster: "Roster only", elo: "Roster + ELO", placements: "Placement data", full: "Full access" }
+  const visibilityColor = { roster: T.ink3, elo: T.amber, placements: T.sky, full: T.green }
+  const statusColor     = { invited: T.amber, active: T.green, paused: T.ink4, rejected: T.red }
+
+  async function handleInvite() {
+    if (!form.company_name.trim()) { setSaveError("Company name is required."); return }
     setSaving(true); setSaveError(null)
-    const { data: row, error } = await supabase.from("org_opportunities").insert({
-      org_id:      user.id,
-      title:       form.title.trim(),
-      company:     form.company,
-      role_type:   form.role_type,
-      eligibility: form.eligibility,
-      ctc:         form.ctc,
-      deadline:    form.deadline || null,
-      description: form.description,
-      status:      "active",
-      created_by:  user.id,
+    const { data: row, error: err } = await supabase.from("org_company_links").insert({
+      institution_org_id: user.id,
+      company_name:       form.company_name.trim(),
+      company_email:      form.company_email.trim(),
+      company_website:    form.company_website.trim(),
+      company_size:       form.company_size,
+      industry:           form.industry,
+      notes:              form.notes,
+      status:             "invited",
+      invited_by:         user.id,
     }).select().single()
     setSaving(false)
-    if (error) { setSaveError(error.message); return }
+    if (err) { setSaveError(err.message); return }
     await auditLog(user.id, user.id, userData?.name || "Admin",
-      `Posted JD "${form.title.trim()}"`, "opportunity.created", "opportunity", row.id, { company: form.company })
-    setShowCreate(false)
-    setForm({ title: "", company: "", role_type: "fulltime", eligibility: "", ctc: "", deadline: "", description: "" })
-    reloadOpps()
+      `Invited company "${form.company_name.trim()}" to talent network`,
+      "company.invited", "company", row.id, { company: form.company_name })
+    setShowInvite(false)
+    setForm({ company_name: "", company_email: "", company_website: "", company_size: "", industry: "", notes: "" })
+    reload()
   }
 
-  async function handleClose(opp) {
-    await supabase.from("org_opportunities").update({ status: "closed" }).eq("id", opp.id)
-    await auditLog(user.id, user.id, userData?.name || "Admin",
-      `Closed opportunity "${opp.title}"`, "opportunity.closed", "opportunity", opp.id)
-    reloadOpps()
+  async function handleActivate(c) {
+    await supabase.from("org_company_links").update({ status: "active", linked_at: new Date().toISOString() }).eq("id", c.id)
+    await auditLog(user.id, user.id, userData?.name || "Admin", `Activated link with ${c.company_name}`, "company.activated", "company", c.id)
+    reload()
   }
 
-  const roleTypeLabel = { fulltime: "Full Time", internship: "Internship", contract: "Contract", parttime: "Part Time" }
+  async function handleVisibility(c, vis) {
+    await supabase.from("org_company_links").update({ visibility: vis }).eq("id", c.id)
+    await auditLog(user.id, user.id, userData?.name || "Admin", `Updated ${c.company_name} visibility to ${vis}`, "company.visibility_updated", "company", c.id)
+    reload()
+  }
+
+  async function handlePause(c) {
+    await supabase.from("org_company_links").update({ status: c.status === "paused" ? "active" : "paused" }).eq("id", c.id)
+    reload()
+  }
+
+  const activeCount  = companies.filter(c => c.status === "active").length
+  const invitedCount = companies.filter(c => c.status === "invited").length
 
   return (
     <PageShell>
       <PageHeader
-        title="Opportunities"
-        sub={isCollege ? "Live job postings and internships" : "Open roles and JD management"}
-        actions={[<Btn key="c" onClick={() => setShowCreate(true)}>+ Post JD</Btn>]}
+        title="Talent Network"
+        sub="Companies with access to your student talent pool"
+        actions={[<Btn key="i" onClick={() => setShowInvite(true)}>+ Invite Company</Btn>]}
       />
 
+      {/* KPIs */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 20, overflowX: "auto" }}>
+        <KPICard value={activeCount || "—"} label="Active Partners" color={T.green} context="Companies with access" />
+        <KPICard value={invitedCount || "—"} label="Invited" color={T.amber} context="Awaiting confirmation" />
+        <KPICard value={companies.length || "—"} label="Total Network" color={T.sky} context="All company links" />
+      </div>
+
+      {/* How it works */}
+      {companies.length === 0 && (
+        <Card style={{ marginBottom: 16, background: `linear-gradient(135deg, ${T.skyL}, rgba(99,102,241,0.06))`, border: `1px solid ${T.sky}20` }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: T.ink, marginBottom: 8 }}>🏢 How the Talent Network works</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
+            {[
+              { step: "1", title: "Invite a company", desc: "Add company name and email. They receive a link request." },
+              { step: "2", title: "Set data visibility", desc: "Control what they see: roster, ELO scores, placements, or full access." },
+              { step: "3", title: "Companies hire", desc: "Recruiters browse your verified student pool and reach out directly." },
+            ].map(s => (
+              <div key={s.step} style={{ padding: "12px 14px", background: "rgba(255,255,255,0.7)", borderRadius: 10 }}>
+                <div style={{ fontFamily: MONO, fontSize: 20, fontWeight: 800, color: T.sky, marginBottom: 4 }}>{s.step}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: T.ink, marginBottom: 3 }}>{s.title}</div>
+                <div style={{ fontSize: 11, color: T.ink4, lineHeight: 1.5 }}>{s.desc}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
-        {["active", "closed"].map(t => (
+        {["active", "inactive"].map(t => (
           <button key={t} onClick={() => setTab(t)} style={tabStyle(tab === t)}>
-            {t.charAt(0).toUpperCase() + t.slice(1)} ({opportunities.filter(o => t === "active" ? o.status === "active" : o.status !== "active").length})
+            {t === "active" ? `Active / Invited (${companies.filter(c => c.status === "active" || c.status === "invited").length})` : `Paused / Rejected (${companies.filter(c => c.status === "paused" || c.status === "rejected").length})`}
           </button>
         ))}
       </div>
 
-      {oppsLoading ? <Spinner /> : oppsError ? <ErrorBanner msg={oppsError} onRetry={reloadOpps} /> : (
-        activeOpps.length === 0 ? (
-          <EmptyState icon="💼" title={`No ${tab} opportunities`} sub={tab === "active" ? "Post your first JD to attract candidates." : "Closed JDs appear here."} action={tab === "active" ? () => setShowCreate(true) : undefined} actionLabel="+ Post JD" />
+      {loading ? <Spinner /> : error ? <ErrorBanner msg={error} onRetry={reload} /> : (
+        filtered.length === 0 ? (
+          <EmptyState icon="🏢" title="No companies yet"
+            sub="Invite your first company partner to give them access to your talent pool."
+            action={() => setShowInvite(true)} actionLabel="+ Invite Company" />
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {activeOpps.map(jd => (
-              <Card key={jd.id} style={{ padding: "15px 16px", opacity: jd.status === "closed" ? 0.7 : 1 }}>
+            {filtered.map(c => (
+              <Card key={c.id} style={{ padding: "16px 18px" }}>
                 <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: T.skyL, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: T.sky, flexShrink: 0 }}>
-                    {(jd.company || jd.title).charAt(0).toUpperCase()}
+                  {/* Logo initial */}
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                    background: `linear-gradient(135deg, ${T.sky}20, ${T.purple}20)`,
+                    border: `1px solid ${T.sky}30`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 15, fontWeight: 800, color: T.sky,
+                  }}>
+                    {c.company_name.charAt(0).toUpperCase()}
                   </div>
+
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: T.ink, marginBottom: 3 }}>{jd.title}</div>
-                    <div style={{ fontSize: 12, color: T.sky, fontWeight: 600, marginBottom: 4 }}>
-                      {jd.company || "Internal"} · {jd.ctc || "CTC not listed"} · <Chip color={T.teal} bg={T.tealL}>{roleTypeLabel[jd.role_type] || jd.role_type}</Chip>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 4 }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>{c.company_name}</span>
+                      <Chip color={statusColor[c.status] || T.ink3} bg={`${statusColor[c.status] || T.ink3}15`}>
+                        {c.status === "active" ? "✓ Active" : c.status === "invited" ? "⏳ Invited" : c.status === "paused" ? "⏸ Paused" : "✗ Rejected"}
+                      </Chip>
                     </div>
-                    {jd.eligibility && <div style={{ fontSize: 11, color: T.ink4, marginBottom: 6 }}>{jd.eligibility}</div>}
-                    <div style={{ display: "flex", gap: 14 }}>
-                      {jd.deadline && <span style={{ fontSize: 11, color: T.ink3 }}>📅 Deadline: {jd.deadline}</span>}
-                      {jd.applicant_count > 0 && <span style={{ fontSize: 11, fontWeight: 700, fontFamily: MONO, color: T.sky }}>{jd.applicant_count} applied</span>}
+                    <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+                      {c.industry && <span style={{ fontSize: 11, color: T.ink4 }}>🏭 {c.industry}</span>}
+                      {c.company_size && <span style={{ fontSize: 11, color: T.ink4 }}>👥 {c.company_size}</span>}
+                      {c.company_email && <span style={{ fontSize: 11, color: T.ink4 }}>✉️ {c.company_email}</span>}
                     </div>
+
+                    {/* Visibility control */}
+                    {c.status === "active" && (
+                      <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 11, color: T.ink3, fontWeight: 600 }}>DATA ACCESS:</span>
+                        {["roster", "elo", "placements", "full"].map(vis => (
+                          <button key={vis} onClick={() => handleVisibility(c, vis)} style={{
+                            padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer",
+                            border: `1px solid ${c.visibility === vis ? visibilityColor[vis] : T.border}`,
+                            background: c.visibility === vis ? `${visibilityColor[vis]}15` : "transparent",
+                            color: c.visibility === vis ? visibilityColor[vis] : T.ink4,
+                            transition: "all 0.12s",
+                          }}>
+                            {visibilityLabel[vis]}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {c.notes && <div style={{ fontSize: 11, color: T.ink4, marginTop: 6, fontStyle: "italic" }}>{c.notes}</div>}
                   </div>
-                  {jd.status === "active" && (
-                    <Btn variant="outline" onClick={() => handleClose(jd)} style={{ fontSize: 11, padding: "5px 10px" }}>Close JD</Btn>
-                  )}
+
+                  {/* Actions */}
+                  <div style={{ display: "flex", gap: 6, flexShrink: 0, flexDirection: "column", alignItems: "flex-end" }}>
+                    {c.status === "invited" && (
+                      <Btn onClick={() => handleActivate(c)} style={{ fontSize: 11, padding: "5px 12px" }}>Activate ✓</Btn>
+                    )}
+                    {(c.status === "active" || c.status === "paused") && (
+                      <Btn variant="outline" onClick={() => handlePause(c)} style={{ fontSize: 11, padding: "5px 10px" }}>
+                        {c.status === "paused" ? "Resume" : "Pause"}
+                      </Btn>
+                    )}
+                    {c.linked_at && (
+                      <span style={{ fontSize: 10, color: T.ink4 }}>Linked {timeSince(c.linked_at)}</span>
+                    )}
+                  </div>
                 </div>
               </Card>
             ))}
@@ -1490,31 +1693,31 @@ function OpportunitiesPage({ userData, user, opportunities, oppsLoading, oppsErr
         )
       )}
 
-      {showCreate && (
-        <Modal title="Post Opportunity" onClose={() => { setShowCreate(false); setSaveError(null) }}>
+      {showInvite && (
+        <Modal title="Invite Company to Talent Network" onClose={() => { setShowInvite(false); setSaveError(null) }} width={520}>
+          <div style={{ fontSize: 12, color: T.ink3, marginBottom: 16, padding: "10px 14px", background: T.skyL, borderRadius: 10 }}>
+            🔔 The company will be notified and can browse your student pool based on the data access level you set after activation.
+          </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <FieldInput label="Role / Job Title" value={form.title} onChange={v => setF("title", v)} required />
-            <FieldInput label="Company" value={form.company} onChange={v => setF("company", v)} placeholder={isCollege ? "e.g. Amazon, TCS, Razorpay" : "Leave blank for internal role"} />
-            <FieldSelect label="Type" value={form.role_type} onChange={v => setF("role_type", v)} options={[
-              { value: "fulltime",    label: "Full Time"   },
-              { value: "internship",  label: "Internship"  },
-              { value: "contract",    label: "Contract"    },
-              { value: "parttime",    label: "Part Time"   },
-            ]} />
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <FieldInput label="CTC / Stipend" value={form.ctc} onChange={v => setF("ctc", v)} placeholder="e.g. ₹14L or ₹25k/mo" />
-              <FieldInput label="Deadline" value={form.deadline} onChange={v => setF("deadline", v)} type="date" />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <FieldInput label="Company Name *" value={form.company_name} onChange={v => setF("company_name", v)} required />
+              <FieldInput label="Contact Email" value={form.company_email} onChange={v => setF("company_email", v)} placeholder="hr@company.com" />
             </div>
-            <FieldInput label="Eligibility Criteria" value={form.eligibility} onChange={v => setF("eligibility", v)} placeholder="e.g. B.Tech any, ELO ≥ 800" />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <FieldInput label="Industry" value={form.industry} onChange={v => setF("industry", v)} placeholder="IT / Manufacturing / Finance" />
+              <FieldInput label="Company Size" value={form.company_size} onChange={v => setF("company_size", v)} placeholder="e.g. 500–5000" />
+            </div>
+            <FieldInput label="Website" value={form.company_website} onChange={v => setF("company_website", v)} placeholder="https://company.com" />
             <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 6 }}>Description</label>
-              <textarea value={form.description} onChange={e => setF("description", e.target.value)} rows={3}
+              <label style={{ fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 6 }}>Notes (optional)</label>
+              <textarea value={form.notes} onChange={e => setF("notes", e.target.value)} rows={2}
+                placeholder="e.g. Mass hiring partner, visited campus before, focus on CSE students"
                 style={{ width: "100%", padding: "9px 12px", border: `1px solid ${T.border}`, borderRadius: 10, fontSize: 13, fontFamily: FONT, outline: "none", background: T.bg, resize: "vertical", color: T.ink }} />
             </div>
             {saveError && <div style={{ fontSize: 12, color: T.red }}>{saveError}</div>}
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <Btn variant="outline" onClick={() => setShowCreate(false)}>Cancel</Btn>
-              <Btn onClick={handlePost} disabled={saving}>{saving ? "Posting…" : "Post JD"}</Btn>
+              <Btn variant="outline" onClick={() => setShowInvite(false)}>Cancel</Btn>
+              <Btn onClick={handleInvite} disabled={saving}>{saving ? "Saving…" : "Add to Network"}</Btn>
             </div>
           </div>
         </Modal>
@@ -1856,7 +2059,6 @@ export default function InstitutionOS({ user, userData, onNavigate }) {
   const { data: members,       loading: membersLoading,  error: membersError,  reload: reloadMembers  } = useOrgMembers(user?.id)
   const { data: tasks,         loading: tasksLoading,    error: tasksError,    reload: reloadTasks    } = useOrgTasks(user?.id)
   const { data: events,        loading: eventsLoading,   error: eventsError,   reload: reloadEvents   } = useOrgEvents(user?.id)
-  const { data: opportunities, loading: oppsLoading,     error: oppsError,     reload: reloadOpps     } = useOrgOpportunities(user?.id)
   const { data: auditLogs,     loading: auditLoading,    reload: reloadAudit   } = useOrgAuditLog(user?.id, 50)
 
   function onNav(page) {
@@ -1871,7 +2073,7 @@ export default function InstitutionOS({ user, userData, onNavigate }) {
     setActivePage("settings")
   }
 
-  const shared = { user, userData, onNav, members, membersLoading, membersError, reloadMembers, tasks, tasksLoading, tasksError, reloadTasks, events, eventsLoading, eventsError, reloadEvents, opportunities, oppsLoading, oppsError, reloadOpps, auditLogs, auditLoading, reloadAudit }
+  const shared = { user, userData, onNav, members, membersLoading, membersError, reloadMembers, tasks, tasksLoading, tasksError, reloadTasks, events, eventsLoading, eventsError, reloadEvents, auditLogs, auditLoading, reloadAudit }
 
   const PAGE_MAP = {
     home:          <HomePage          {...shared} onVerify={handleVerify} />,
@@ -1882,7 +2084,7 @@ export default function InstitutionOS({ user, userData, onNavigate }) {
     groups:        <GroupsPage />,
     cohorts:       <CohortsPage       members={members} />,
     events:        <EventsPage        {...shared} />,
-    opportunities: <OpportunitiesPage {...shared} />,
+    companies:     <CompaniesPage     user={user} userData={userData} />,
     outcomes:      <OutcomesPage      userData={userData} members={members} />,
     settings:      <SettingsPage      user={user} userData={userData} initialTab={settingsTab} reloadAudit={reloadAudit} auditLogs={auditLogs} auditLoading={auditLoading} />,
   }
