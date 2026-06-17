@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Capabilio for Students</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,700;0,800;1,700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;background:#0D0A00;font-family:'Inter',sans-serif;}
+#shell{width:100vw;height:100vh;position:relative;overflow:hidden;}
+.scene{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:32px 24px;
+  opacity:0;transform:translateX(60px);transition:opacity .55s ease,transform .55s ease;pointer-events:none;}
+.scene.active{opacity:1;transform:translateX(0);pointer-events:all;}
+.scene.exit{opacity:0;transform:translateX(-60px);}
+#pbar{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,#FF5701,#FBBF24);z-index:100;transition:width .4s;}
+#nav{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;z-index:100;
+  background:rgba(0,0,0,.55);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.1);border-radius:100px;padding:8px 18px;}
+.dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.2);cursor:pointer;transition:all .3s;border:none;}
+.dot.on{background:#FF5701;width:22px;border-radius:4px;}
+#pbtn{width:32px;height:32px;border-radius:50%;background:#FF5701;border:none;cursor:pointer;color:#fff;font-size:13px;flex-shrink:0;}
+#secs{font-size:11px;color:rgba(255,255,255,.4);font-weight:600;min-width:24px;}
+/* audience badge fixed top */
+#badge{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:100;
+  background:rgba(255,87,1,.15);border:1px solid rgba(255,87,1,.35);color:#FF7A33;
+  font-size:11px;font-weight:800;letter-spacing:1.5px;padding:5px 14px;border-radius:100px;text-transform:uppercase;}
+/* util */
+@keyframes up{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.u{animation:up .5s ease forwards;opacity:0;}
+.d1{animation-delay:.1s}.d2{animation-delay:.22s}.d3{animation-delay:.34s}.d4{animation-delay:.46s}.d5{animation-delay:.58s}.d6{animation-delay:.7s}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+.fl{animation:float 3s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes fillBar{from{width:0}to{width:var(--w)}}
+.bar-fill{animation:fillBar 1.2s .4s cubic-bezier(.4,0,.2,1) forwards;width:0!important;}
+@keyframes countUp{from{opacity:.3}to{opacity:1}}
+@keyframes glow{0%,100%{box-shadow:0 0 20px rgba(255,87,1,.3)}50%{box-shadow:0 0 40px rgba(255,87,1,.6)}}
+/* phone mockup */
+.phone{width:220px;height:420px;border-radius:32px;background:#1A1A1A;border:2px solid #333;position:relative;overflow:hidden;flex-shrink:0;box-shadow:0 20px 60px rgba(0,0,0,.5);}
+.phone-screen{position:absolute;inset:0;border-radius:30px;overflow:hidden;}
+.phone-notch{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:60px;height:4px;background:#333;border-radius:2px;z-index:10;}
+/* glass card */
+.gc{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;}
+/* step pill */
+.step{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:100px;font-size:11px;font-weight:800;letter-spacing:.5px;}
+</style>
+</head>
+<body>
+<div id="shell">
+<div id="pbar"></div>
+<div id="badge">🎓 For Students</div>
+
+<!-- ════ S0: PROBLEM ════ -->
+<div class="scene active" id="s0" style="background:linear-gradient(135deg,#0D0800 0%,#1A0F00 60%,#0D0A1A 100%);">
+  <div style="max-width:820px;width:100%;display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;">
+    <div>
+      <div class="step u" style="background:rgba(255,87,1,.15);color:#FF7A33;border:1px solid rgba(255,87,1,.3);margin-bottom:20px;">THE PROBLEM</div>
+      <h1 class="u d1" style="font-family:'Playfair Display',serif;font-size:clamp(28px,3.5vw,48px);color:#fff;line-height:1.1;margin-bottom:16px;">
+        You have a degree.<br/>
+        <span style="color:#FF5701;">But can you prove<br/>your skills?</span>
+      </h1>
+      <p class="u d2" style="color:rgba(255,255,255,.6);font-size:14px;line-height:1.7;margin-bottom:24px;">
+        Every student says "Python", "React", "Machine Learning" on their resume.<br/>Recruiters see 500 identical CVs. <strong style="color:#fff;">Yours looks exactly like everyone else's.</strong>
+      </p>
+      <div class="u d3" style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;align-items:center;gap:10px;padding:12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;">
+          <span style="font-size:18px;">😩</span><span style="font-size:13px;color:rgba(255,255,255,.7);">Recruiters can't tell who actually knows what</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;">
+          <span style="font-size:18px;">📄</span><span style="font-size:13px;color:rgba(255,255,255,.7);">78% of resumes contain exaggerated skills</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;">
+          <span style="font-size:18px;">📉</span><span style="font-size:13px;color:rgba(255,255,255,.7);">51% of India's graduates are considered unemployable</span>
+        </div>
+      </div>
+    </div>
+    <div class="u d3 fl" style="display:flex;flex-direction:column;align-items:center;gap:16px;">
+      <div style="font-size:80px;filter:grayscale(0.2);">📄</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.3);text-align:center;max-width:180px;">Your resume looks like<br/>every other resume</div>
+      <div style="padding:14px 22px;background:rgba(255,87,1,.15);border:1px solid rgba(255,87,1,.3);border-radius:12px;text-align:center;">
+        <div style="font-size:28px;font-weight:900;color:#FF5701;">500+</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5);">identical CVs for<br/>every job post</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ S1: SOLUTION INTRO ════ -->
+<div class="scene" id="s1" style="background:linear-gradient(135deg,#0D0800 0%,#1F1000 100%);">
+  <div style="max-width:820px;width:100%;text-align:center;">
+    <div class="step u" style="background:rgba(255,87,1,.15);color:#FF7A33;border:1px solid rgba(255,87,1,.3);margin-bottom:20px;">THE SOLUTION</div>
+    <h2 class="u d1" style="font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,52px);color:#fff;margin-bottom:14px;line-height:1.1;">
+      Stop claiming skills.<br/><span style="color:#FF5701;">Prove them — live, daily.</span>
+    </h2>
+    <p class="u d2" style="color:rgba(255,255,255,.6);font-size:15px;margin-bottom:36px;max-width:500px;margin-left:auto;margin-right:auto;">
+      Capabilio Arena gives you daily skill challenges. Complete them and earn a <strong style="color:#fff;">verified career score</strong> that recruiters trust more than any resume.
+    </p>
+    <!-- 3 pillars -->
+    <div class="u d3" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;max-width:700px;margin:0 auto;">
+      <div class="gc" style="padding:22px;text-align:center;">
+        <div style="font-size:36px;margin-bottom:10px;">⚔️</div>
+        <div style="font-size:14px;font-weight:800;color:#fff;margin-bottom:6px;">Daily Arena Missions</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.5);line-height:1.5;">Skill challenges that prove what you can actually do</div>
+      </div>
+      <div class="gc" style="padding:22px;text-align:center;border-color:rgba(255,87,1,.3);">
+        <div style="font-size:36px;margin-bottom:10px;">📊</div>
+        <div style="font-size:14px;font-weight:800;color:#FF7A33;margin-bottom:6px;">Live Career Score</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.5);line-height:1.5;">A real number that grows every day you practice</div>
+      </div>
+      <div class="gc" style="padding:22px;text-align:center;">
+        <div style="font-size:36px;margin-bottom:10px;">🔐</div>
+        <div style="font-size:14px;font-weight:800;color:#fff;margin-bottom:6px;">Verified Profile</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.5);line-height:1.5;">Recruiters see proof, not promises</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ S2: STEP 1 — SIGNUP & RESUME ════ -->
+<div class="scene" id="s2" style="background:linear-gradient(135deg,#0D0800 0%,#1A1000 100%);">
+  <div style="max-width:860px;width:100%;display:grid;grid-template-columns:1fr 1.1fr;gap:36px;align-items:center;">
+    <div>
+      <div class="step u" style="background:rgba(255,87,1,.2);color:#FF7A33;border:1px solid rgba(255,87,1,.4);margin-bottom:16px;">STEP 1 OF 5</div>
+      <h2 class="u d1" style="font-family:'Playfair Display',serif;font-size:clamp(24px,3vw,40px);color:#fff;margin-bottom:12px;line-height:1.2;">
+        Sign up in 2 minutes.<br/><span style="color:#FF5701;">Upload your resume.</span>
+      </h2>
+      <p class="u d2" style="color:rgba(255,255,255,.6);font-size:14px;line-height:1.7;margin-bottom:20px;">
+        Our AI reads your resume and instantly builds your starter profile — skills, education, projects. <strong style="color:#fff;">No manual filling.</strong>
+      </p>
+      <div class="u d3" style="display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:#FF5701;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">1</div>
+          <span style="font-size:13px;color:rgba(255,255,255,.75);">Create free account with email or Google</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:#FF5701;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">2</div>
+          <span style="font-size:13px;color:rgba(255,255,255,.75);">Upload your resume PDF — AI extracts everything</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:#FF5701;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">3</div>
+          <span style="font-size:13px;color:rgba(255,255,255,.75);">Pick your path: Student → Arena</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:rgba(255,87,1,.3);border:1px solid rgba(255,87,1,.5);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:rgba(255,255,255,.5);flex-shrink:0;">4</div>
+          <span style="font-size:13px;color:rgba(255,255,255,.4);">Your dashboard is ready. No card needed.</span>
+        </div>
+      </div>
+    </div>
+    <!-- phone mockup: onboarding screen -->
+    <div class="u d2" style="display:flex;justify-content:center;">
+      <div class="phone" style="animation:glow 3s infinite;">
+        <div class="phone-notch"></div>
+        <div class="phone-screen" style="background:#111;padding:32px 14px 14px;">
+          <div style="text-align:center;margin-bottom:14px;">
+            <div style="font-size:22px;font-weight:900;color:#FF5701;">capabilio</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.4);">Prove your skills.</div>
+          </div>
+          <div style="background:#1A1A1A;border-radius:10px;padding:12px;margin-bottom:10px;border:1px solid #2A2A2A;">
+            <div style="font-size:9px;color:rgba(255,255,255,.4);margin-bottom:4px;">NAME</div>
+            <div style="font-size:12px;color:#fff;font-weight:600;">Aditya Kumar</div>
+          </div>
+          <div style="background:#1A1A1A;border-radius:10px;padding:12px;margin-bottom:10px;border:1px solid #2A2A2A;">
+            <div style="font-size:9px;color:rgba(255,255,255,.4);margin-bottom:4px;">COLLEGE</div>
+            <div style="font-size:12px;color:#fff;font-weight:600;">VIT Vellore · CSE · 2025</div>
+          </div>
+          <div style="background:rgba(255,87,1,.15);border:1px dashed rgba(255,87,1,.4);border-radius:10px;padding:14px;text-align:center;margin-bottom:10px;">
+            <div style="font-size:18px;margin-bottom:4px;">📄</div>
+            <div style="font-size:10px;color:#FF7A33;font-weight:600;">Drop resume here</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.3);margin-top:2px;">PDF · AI will read it</div>
+          </div>
+          <div style="background:#FF5701;border-radius:8px;padding:10px;text-align:center;">
+            <div style="font-size:11px;font-weight:800;color:#fff;">START FREE →</div>
+          </div>
+          <div style="text-align:center;margin-top:8px;">
+            <div style="font-size:9px;color:rgba(255,255,255,.3);">No credit card needed</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ S3: STEP 2 — ARENA MISSIONS ════ -->
+<div class="scene" id="s3" style="background:linear-gradient(135deg,#0D0800 0%,#1A0F00 100%);">
+  <div style="max-width:860px;width:100%;display:grid;grid-template-columns:1.1fr 1fr;gap:36px;align-items:center;">
+    <!-- phone mockup: arena mission -->
+    <div class="u" style="display:flex;justify-content:center;">
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="phone-screen" style="background:#0F0F0F;padding:28px 12px 12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div style="font-size:10px;font-weight:800;color:#FF5701;">⚔️ TODAY'S MISSION</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.4);">🔥 Day 14</div>
+          </div>
+          <div style="background:#1A1200;border:1px solid rgba(255,87,1,.3);border-radius:10px;padding:12px;margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+              <span style="font-size:9px;color:#FF7A33;font-weight:700;">MEDIUM</span>
+              <span style="font-size:9px;color:rgba(255,255,255,.4);">Python · Arrays</span>
+            </div>
+            <div style="font-size:11px;color:#fff;font-weight:600;line-height:1.4;">Find the maximum subarray sum using Kadane's algorithm</div>
+          </div>
+          <div style="background:#111;border:1px solid #222;border-radius:8px;padding:8px;margin-bottom:8px;font-family:monospace;">
+            <div style="font-size:9px;color:#8B5CF6;">def</div>
+            <div style="font-size:9px;color:#fff;"> max_subarray(nums):</div>
+            <div style="font-size:9px;color:#8B5CF6;">  max_sum = curr = <span style="color:#FF7A33;">nums[0]</span></div>
+            <div style="font-size:9px;color:rgba(255,255,255,.3);">  # your code...</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
+            <div style="background:#0F1F0F;border:1px solid rgba(16,185,129,.3);border-radius:6px;padding:6px;text-align:center;">
+              <div style="font-size:8px;color:#34D399;">Test 1 ✅</div>
+            </div>
+            <div style="background:#0F1F0F;border:1px solid rgba(16,185,129,.3);border-radius:6px;padding:6px;text-align:center;">
+              <div style="font-size:8px;color:#34D399;">Test 2 ✅</div>
+            </div>
+          </div>
+          <div style="background:#FF5701;border-radius:8px;padding:8px;text-align:center;">
+            <div style="font-size:10px;font-weight:800;color:#fff;">SUBMIT →  +32 score</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="step u" style="background:rgba(255,87,1,.2);color:#FF7A33;border:1px solid rgba(255,87,1,.4);margin-bottom:16px;">STEP 2 OF 5</div>
+      <h2 class="u d1" style="font-family:'Playfair Display',serif;font-size:clamp(24px,3vw,40px);color:#fff;margin-bottom:12px;line-height:1.2;">
+        Complete daily<br/><span style="color:#FF5701;">Arena missions.</span>
+      </h2>
+      <p class="u d2" style="color:rgba(255,255,255,.6);font-size:14px;line-height:1.7;margin-bottom:20px;">
+        Every day you get fresh skill challenges — coding problems, system questions, domain scenarios. Solve them in the app. <strong style="color:#fff;">Each submission is proof.</strong>
+      </p>
+      <div class="u d3" style="display:flex;flex-direction:column;gap:8px;">
+        <div class="gc" style="padding:12px 14px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:20px;">🎯</span>
+          <div><div style="font-size:12px;font-weight:700;color:#fff;">All skill levels</div><div style="font-size:11px;color:rgba(255,255,255,.4);">Easy → Medium → Hard → Hard+</div></div>
+        </div>
+        <div class="gc" style="padding:12px 14px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:20px;">🌐</span>
+          <div><div style="font-size:12px;font-weight:700;color:#fff;">50+ domains</div><div style="font-size:11px;color:rgba(255,255,255,.4);">DSA, Web Dev, Data, ML, DevOps & more</div></div>
+        </div>
+        <div class="gc" style="padding:12px 14px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:20px;">🔥</span>
+          <div><div style="font-size:12px;font-weight:700;color:#fff;">Daily streaks build momentum</div><div style="font-size:11px;color:rgba(255,255,255,.4);">14+ day streak = recruiter visibility boost</div></div>
+        </div>
+        <div class="gc" style="padding:12px 14px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:20px;">🤖</span>
+          <div><div style="font-size:12px;font-weight:700;color:#fff;">AI review after every submission</div><div style="font-size:11px;color:rgba(255,255,255,.4);">Learn what to improve, instantly</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ S4: STEP 3 — CAREER SCORE ════ -->
+<div class="scene" id="s4" style="background:linear-gradient(135deg,#0D0800 0%,#1A0F00 100%);">
+  <div style="max-width:860px;width:100%;display:grid;grid-template-columns:1fr 1.1fr;gap:36px;align-items:center;">
+    <div>
+      <div class="step u" style="background:rgba(255,87,1,.2);color:#FF7A33;border:1px solid rgba(255,87,1,.4);margin-bottom:16px;">STEP 3 OF 5</div>
+      <h2 class="u d1" style="font-family:'Playfair Display',serif;font-size:clamp(24px,3vw,40px);color:#fff;margin-bottom:12px;line-height:1.2;">
+        Watch your career<br/><span style="color:#FF5701;">score grow daily.</span>
+      </h2>
+      <p class="u d2" style="color:rgba(255,255,255,.6);font-size:14px;line-height:1.7;margin-bottom:20px;">
+        Your career score starts the moment you join and goes up with every mission completed. It's a <strong style="color:#fff;">live number recruiters can see</strong> — not a certificate that sits on your shelf.
+      </p>
+      <div class="u d3" style="display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(255,87,1,.08);border:1px solid rgba(255,87,1,.2);border-radius:10px;">
+          <div style="text-align:center;min-width:52px;">
+            <div style="font-size:18px;font-weight:900;color:rgba(255,255,255,.3);">800</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.3);">Day 0</div>
+          </div>
+          <div style="height:2px;flex:1;background:linear-gradient(90deg,rgba(255,255,255,.1),#FF5701);border-radius:1px;"></div>
+          <div style="text-align:center;min-width:52px;">
+            <div style="font-size:18px;font-weight:900;color:#FF5701;">1480</div>
+            <div style="font-size:9px;color:#FF7A33;">30 days</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <div class="gc" style="padding:10px;text-align:center;">
+            <div style="font-size:16px;font-weight:900;color:rgba(255,255,255,.35);">Building</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.3);margin-top:2px;">800–999</div>
+          </div>
+          <div class="gc" style="padding:10px;text-align:center;border-color:rgba(217,119,6,.3);">
+            <div style="font-size:16px;font-weight:900;color:#FBBF24;">Strong</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.3);margin-top:2px;">1200–1499</div>
+          </div>
+          <div class="gc" style="padding:10px;text-align:center;border-color:rgba(139,92,246,.3);">
+            <div style="font-size:16px;font-weight:900;color:#A78BFA;">Expert</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.3);margin-top:2px;">1500–1799</div>
+          </div>
+        </div>
+        <div style="padding:12px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:10px;font-size:12px;color:#34D399;font-weight:600;">
+          💡 Students in top 20% get <strong>priority placement</strong> on the recruiter portal
+        </div>
+      </div>
+    </div>
+    <!-- score ring display -->
+    <div class="u d2" style="display:flex;flex-direction:column;align-items:center;gap:16px;">
+      <div style="position:relative;display:inline-flex;align-items:center;justify-content:center;" class="fl">
+        <svg width="180" height="180" viewBox="0 0 180 180">
+          <circle cx="90" cy="90" r="76" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="14"/>
+          <circle cx="90" cy="90" r="76" fill="none" stroke="url(#sg)" stroke-width="14"
+            stroke-dasharray="477" stroke-dashoffset="120" stroke-linecap="round" transform="rotate(-90 90 90)"/>
+          <defs><linearGradient id="sg" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#FF5701"/><stop offset="100%" style="stop-color:#FBBF24"/>
+          </linearGradient></defs>
+        </svg>
+        <div style="position:absolute;text-align:center;">
+          <div style="font-size:40px;font-weight:900;color:#fff;">1480</div>
+          <div style="font-size:13px;font-weight:800;color:#FBBF24;">Expert Level</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;max-width:280px;">
+        <div class="gc" style="padding:12px;text-align:center;">
+          <div style="font-size:20px;font-weight:900;color:#FF5701;">142</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.4);">missions done</div>
+        </div>
+        <div class="gc" style="padding:12px;text-align:center;">
+          <div style="font-size:20px;font-weight:900;color:#FF5701;">Top 12%</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.4);">nationally</div>
+        </div>
+        <div class="gc" style="padding:12px;text-align:center;">
+          <div style="font-size:20px;font-weight:900;color:#FBBF24;">🔥 22</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.4);">day streak</div>
+        </div>
+        <div class="gc" style="padding:12px;text-align:center;">
+          <div style="font-size:20px;font-weight:900;color:#34D399;">+28</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.4);">this week</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ S5: STEP 4 — AI INTERVIEW ════ -->
+<div class="scene" id="s5" style="background:linear-gradient(135deg,#0D0800 0%,#1A0F00 100%);">
+  <div style="max-width:860px;width:100%;display:grid;grid-template-columns:1.1fr 1fr;gap:36px;align-items:center;">
+    <!-- phone mockup: interview -->
+    <div class="u" style="display:flex;justify-content:center;">
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="phone-screen" style="background:#0D0D14;padding:28px 12px 12px;">
+          <div style="text-align:center;margin-bottom:10px;">
+            <div style="font-size:10px;font-weight:800;color:#8B5CF6;">🎤 AI INTERVIEW</div>
+          </div>
+          <div style="background:#1A1A2E;border:1px solid rgba(139,92,246,.3);border-radius:10px;padding:10px;margin-bottom:8px;">
+            <div style="font-size:9px;color:rgba(255,255,255,.4);margin-bottom:4px;">AI INTERVIEWER</div>
+            <div style="font-size:10px;color:#fff;line-height:1.4;">"Tell me about a project where you solved a performance bottleneck."</div>
+          </div>
+          <div style="background:#111;border:1px solid #222;border-radius:8px;padding:8px;margin-bottom:8px;">
+            <div style="font-size:9px;color:rgba(255,255,255,.3);margin-bottom:4px;">YOUR ANSWER</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.7);line-height:1.4;">"I used Redis caching to reduce DB queries from 200ms to 12ms on our college project..."<span style="display:inline-block;width:2px;height:10px;background:#8B5CF6;margin-left:2px;animation:pulse 1s infinite;"></span></div>
+          </div>
+          <!-- feedback panel -->
+          <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:8px;">
+            <div style="font-size:9px;font-weight:700;color:#34D399;margin-bottom:4px;">AI FEEDBACK</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <span style="font-size:8px;background:rgba(16,185,129,.15);color:#34D399;padding:2px 6px;border-radius:4px;">✓ STAR format</span>
+              <span style="font-size:8px;background:rgba(16,185,129,.15);color:#34D399;padding:2px 6px;border-radius:4px;">✓ Quantified</span>
+              <span style="font-size:8px;background:rgba(217,119,6,.15);color:#FBBF24;padding:2px 6px;border-radius:4px;">Add result</span>
+            </div>
+          </div>
+          <div style="margin-top:8px;display:flex;gap:6px;">
+            <div style="flex:1;background:#8B5CF6;border-radius:6px;padding:7px;text-align:center;font-size:9px;font-weight:800;color:#fff;">NEXT QUESTION</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="step u" style="background:rgba(255,87,1,.2);color:#FF7A33;border:1px solid rgba(255,87,1,.4);margin-bottom:16px;">STEP 4 OF 5</div>
+      <h2 class="u d1" style="font-family:'Playfair Display',serif;font-size:clamp(24px,3vw,40px);color:#fff;margin-bottom:12px;line-height:1.2;">
+        Practice interviews<br/><span style="color:#FF5701;">with real AI feedback.</span>
+      </h2>
+      <p class="u d2" style="color:rgba(255,255,255,.6);font-size:14px;line-height:1.7;margin-bottom:20px;">
+        Get 3–5 AI mock interviews per month. Role-specific questions. Instant feedback on your answers. Your interview score is added to your profile.
+      </p>
+      <div class="u d3" style="display:flex;flex-direction:column;gap:8px;">
+        <div class="gc" style="padding:12px 14px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:20px;">🎯</span>
+          <div><div style="font-size:12px;font-weight:700;color:#fff;">50+ role-specific question banks</div><div style="font-size:11px;color:rgba(255,255,255,.4);">SDE, Data Analyst, Product, ML & more</div></div>
+        </div>
+        <div class="gc" style="padding:12px 14px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:20px;">📝</span>
+          <div><div style="font-size:12px;font-weight:700;color:#fff;">Transcript + feedback report</div><div style="font-size:11px;color:rgba(255,255,255,.4);">Know exactly what you did right and wrong</div></div>
+        </div>
+        <div class="gc" style="padding:12px 14px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:20px;">🏆</span>
+          <div><div style="font-size:12px;font-weight:700;color:#fff;">Interview score on your public profile</div><div style="font-size:11px;color:rgba(255,255,255,.4);">Recruiter sees "84/100 Interview Score"</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ S6: STEP 5 — HOW RECRUITERS FIND YOU ════ -->
+<div class="scene" id="s6" style="background:linear-gradient(135deg,#001A10 0%,#002818 100%);">
+  <div style="max-width:860px;width:100%;display:grid;grid-template-columns:1fr 1.1fr;gap:36px;align-items:center;">
+    <div>
+      <div class="step u" style="background:rgba(16,185,129,.15);color:#34D399;border:1px solid rgba(16,185,129,.3);margin-bottom:16px;">STEP 5 OF 5 — THE PAYOFF</div>
+      <h2 class="u d1" style="font-family:'Playfair Display',serif;font-size:clamp(24px,3vw,40px);color:#fff;margin-bottom:12px;line-height:1.2;">
+        Recruiters search for<br/><span style="color:#10B981;">you by score & skill.</span>
+      </h2>
+      <p class="u d2" style="color:rgba(255,255,255,.6);font-size:14px;line-height:1.7;margin-bottom:20px;">
+        Companies on Capabilio Launchpad filter candidates by career score, skill domain, location, and interview performance. <strong style="color:#fff;">Your verified profile shows up — your resume doesn't get ignored.</strong>
+      </p>
+      <div class="u d3" style="display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:10px;">
+          <span style="font-size:20px;">🔍</span>
+          <span style="font-size:13px;color:rgba(255,255,255,.75);">Recruiter filters: <strong style="color:#fff;">Score &gt;1400 · Python · Bengaluru</strong></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:10px;">
+          <span style="font-size:20px;">✅</span>
+          <span style="font-size:13px;color:rgba(255,255,255,.75);"><strong style="color:#10B981;">Your profile appears</strong> — employment, skills, score all verified</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:10px;">
+          <span style="font-size:20px;">📞</span>
+          <span style="font-size:13px;color:rgba(255,255,255,.75);">Recruiter contacts you <strong style="color:#fff;">directly</strong> — no middleman, no agency fee</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:10px;">
+          <span style="font-size:20px;">💸</span>
+          <span style="font-size:13px;color:rgba(255,255,255,.75);">Negotiate salary with <strong style="color:#fff;">real market comp data</strong> behind you</span>
+        </div>
+      </div>
+    </div>
+    <!-- recruiter view mockup -->
+    <div class="u d2 gc" style="padding:20px;">
+      <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:1px;margin-bottom:14px;">RECRUITER VIEW · LAUNCHPAD</div>
+      <!-- your card highlighted -->
+      <div style="background:rgba(16,185,129,.08);border:2px solid #10B981;border-radius:12px;padding:14px;margin-bottom:10px;position:relative;">
+        <div style="position:absolute;top:-10px;right:12px;background:#10B981;color:#fff;font-size:9px;font-weight:800;padding:2px 8px;border-radius:100px;">YOUR PROFILE</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#FF5701,#FBBF24);display:flex;align-items:center;justify-content:center;font-size:16px;">👨‍💻</div>
+          <div style="flex:1;">
+            <div style="font-size:12px;font-weight:700;color:#fff;">Aditya Kumar</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.5);">VIT · CSE · 2025 · Bengaluru</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:18px;font-weight:900;color:#FF5701;">1480</div>
+            <div style="font-size:9px;color:#FBBF24;">Expert</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+          <span style="font-size:9px;background:rgba(16,185,129,.2);color:#34D399;padding:2px 7px;border-radius:4px;font-weight:700;">✅ Python</span>
+          <span style="font-size:9px;background:rgba(16,185,129,.2);color:#34D399;padding:2px 7px;border-radius:4px;font-weight:700;">✅ React</span>
+          <span style="font-size:9px;background:rgba(16,185,129,.2);color:#34D399;padding:2px 7px;border-radius:4px;font-weight:700;">✅ SQL</span>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <div style="flex:1;font-size:9px;color:rgba(255,255,255,.4);">Interview: <strong style="color:#fff;">84/100</strong></div>
+          <div style="flex:1;font-size:9px;color:rgba(255,255,255,.4);">Missions: <strong style="color:#fff;">142</strong></div>
+          <div style="flex:1;font-size:9px;color:rgba(255,255,255,.4);">Streak: <strong style="color:#FF5701;">🔥22</strong></div>
+        </div>
+      </div>
+      <!-- other candidates dimmed -->
+      <div style="opacity:.35;font-size:9px;color:rgba(255,255,255,.4);margin-bottom:4px;">Other candidates (unverified resumes):</div>
+      <div style="opacity:.25;background:#1A1A1A;border-radius:8px;padding:8px;margin-bottom:4px;">
+        <div style="font-size:10px;color:rgba(255,255,255,.4);">Candidate #2 — No score · Self-claimed skills</div>
+      </div>
+      <div style="opacity:.2;background:#1A1A1A;border-radius:8px;padding:8px;">
+        <div style="font-size:10px;color:rgba(255,255,255,.4);">Candidate #3 — No score · PDF only</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ S7: CTA ════ -->
+<div class="scene" id="s7" style="background:linear-gradient(135deg,#0D0800 0%,#1A0F00 60%,#0A0A1A 100%);">
+  <div style="text-align:center;max-width:640px;">
+    <div style="font-size:60px;margin-bottom:16px;" class="fl">🚀</div>
+    <h2 class="u" style="font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,52px);color:#fff;margin-bottom:14px;line-height:1.1;">
+      Your first career score<br/>is <span style="color:#FF5701;">5 minutes away.</span>
+    </h2>
+    <p class="u d1" style="color:rgba(255,255,255,.6);font-size:15px;margin-bottom:32px;line-height:1.6;">Free forever. No credit card. Start with your resume today.</p>
+    <div class="u d2" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:36px;">
+      <a href="https://capabilio.online" target="_blank" style="padding:16px 36px;background:linear-gradient(135deg,#FF5701,#FF7A33);border-radius:100px;color:#fff;font-size:16px;font-weight:800;text-decoration:none;box-shadow:0 4px 24px rgba(255,87,1,.45);">Start Free → capabilio.online</a>
+    </div>
+    <div class="u d3" style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;">
+      <div style="padding:10px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:100px;font-size:12px;color:rgba(255,255,255,.6);">🆓 Free plan available</div>
+      <div style="padding:10px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:100px;font-size:12px;color:rgba(255,255,255,.6);">⚔️ 1 daily mission free</div>
+      <div style="padding:10px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:100px;font-size:12px;color:rgba(255,255,255,.6);">🔐 No fake shortcuts</div>
+      <div style="padding:10px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:100px;font-size:12px;color:rgba(255,255,255,.6);">📊 Live score from day 1</div>
+    </div>
+  </div>
+</div>
+
+<div id="nav">
+  <button id="pbtn" onclick="tp()">⏸</button>
+  <div id="dots"></div>
+  <div id="secs">9s</div>
+</div>
+</div>
+<script>
+const N=8,D=9500;let c=0,p=true,t=null,ct=null,sl=9;
+const pb=document.getElementById('pbar'),de=document.getElementById('dots'),pb2=document.getElementById('pbtn'),se=document.getElementById('secs');
+for(let i=0;i<N;i++){const d=document.createElement('button');d.className='dot'+(i===0?' on':'');d.onclick=()=>gt(i);de.appendChild(d);}
+function gt(n){
+  const pv=document.getElementById('s'+c);pv.classList.remove('active');pv.classList.add('exit');
+  setTimeout(()=>pv.classList.remove('exit'),700);
+  c=((n%N)+N)%N;const nx=document.getElementById('s'+c);nx.classList.add('active');
+  nx.querySelectorAll('.u').forEach(e=>{e.style.animation='none';e.offsetHeight;e.style.animation='';});
+  pb.style.width=((c+1)/N*100)+'%';
+  de.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('on',i===c));
+  rc();if(p)sn();
+}
+function sn(){clearTimeout(t);t=setTimeout(()=>gt(c+1),D);}
+function rc(){clearInterval(ct);sl=Math.round(D/1000);se.textContent=sl+'s';ct=setInterval(()=>{sl--;se.textContent=sl+'s';if(sl<=0)clearInterval(ct);},1000);}
+function tp(){p=!p;pb2.textContent=p?'⏸':'▶';if(p){sn();rc();}else{clearTimeout(t);clearInterval(ct);se.textContent='—';}}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')gt(c+1);if(e.key==='ArrowLeft')gt(c-1);});
+gt(0);
+</script>
+</body>
+</html>

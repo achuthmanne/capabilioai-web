@@ -72,6 +72,7 @@ const NAV_GROUPS = [
     items: [
       { id:"path",         icon:"🧭", label:"Path & Roles",    desc:"Career path, keywords" },
       { id:"arena",        icon:"⚔️", label:"Arena Prefs",     desc:"Domain, difficulty" },
+      { id:"employment",   icon:"🏛️", label:"Employment Verify",desc:"UAN / EPFO verification" },
     ],
   },
   {
@@ -721,6 +722,380 @@ function ProofSection({ userData, save, setUserData }) {
 
       <div style={{ marginTop:20, display:"flex", justifyContent:"flex-end" }}>
         <SaveBtn onClick={handleSave} saved={saved} loading={loading} />
+      </div>
+    </div>
+  )
+}
+
+// ── Section: UAN / EPFO Verification ─────────────────────────────────────────
+// Calls verify-uan Edge Function → Eko Employee Details API
+// (POST https://staging.eko.in:25004/ekoapi/v3/tools/kyc/advance-employment)
+// Lookup is by phone number → returns uan_details[] + recent_employment_details
+function UANVerificationSection({ userData, user, save, setUserData }) {
+  const defaultPhone = user?.phone || userData?.phone || ""
+  const [phone,  setPhone]  = useState(defaultPhone.replace(/^(\+91|91)/, ""))
+  const [step,   setStep]   = useState(userData?.uan_verified ? "verified" : "form")
+  const [result, setResult] = useState(null)   // { uan_details, recent_employment_details }
+  const [error,  setError]  = useState(null)
+  const [saving, setSaving] = useState(false)
+
+  // ── Profile fields for comparison ─────────────────────────────────────────
+  const profileName   = userData?.displayName || userData?.display_name || ""
+  const profileGender = userData?.gender || ""
+  const profileDob    = userData?.dob    || ""
+  const profileUan    = userData?.uan_number || ""
+
+  function matchIcon(a, b) {
+    if (!a || !b) return { icon: "—", color: T.ink3 }
+    return a.toLowerCase().trim() === b.toLowerCase().trim()
+      ? { icon: "✓ Match",    color: T.green }
+      : { icon: "≠ Mismatch", color: T.amber }
+  }
+
+  const fieldRow = (label, profileVal, epfoVal) => {
+    const m = matchIcon(profileVal, epfoVal)
+    return (
+      <div key={label} style={{
+        display:"grid", gridTemplateColumns:"110px 1fr 1fr 88px",
+        gap:8, alignItems:"center", padding:"9px 0",
+        borderBottom:`1px solid ${T.border}`, fontSize:12,
+      }}>
+        <span style={{ color:T.ink4, fontWeight:600 }}>{label}</span>
+        <span style={{ color:T.ink2 }}>{profileVal || <em style={{color:T.ink3}}>—</em>}</span>
+        <span style={{ color:T.indigo, fontWeight:700 }}>{epfoVal || <em style={{color:T.ink3}}>—</em>}</span>
+        <span style={{ color:m.color, fontWeight:700, fontSize:10 }}>{m.icon}</span>
+      </div>
+    )
+  }
+
+  // ── Lookup via Edge Function ──────────────────────────────────────────────
+  async function handleVerify() {
+    setError(null)
+    const cleaned = phone.replace(/\D/g,"").replace(/^91/,"")
+    if (!/^\d{10}$/.test(cleaned)) {
+      setError("Enter a valid 10-digit Indian mobile number.")
+      return
+    }
+    setStep("loading")
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-uan`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":  "application/json",
+            "Authorization": `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({ phone: cleaned, user_id: user.id }),
+        }
+      )
+      const json = await res.json()
+      if (!json.ok) { setError(json.error || "Verification failed."); setStep("form"); return }
+      setResult(json)
+      setStep("result")
+    } catch (e) {
+      setError(String(e))
+      setStep("form")
+    }
+  }
+
+  // ── Confirm: sync mismatches → mark verified ──────────────────────────────
+  async function handleAccept() {
+    if (!result) return
+    setSaving(true)
+    // Pick best UAN record (highest source_score)
+    const best = (result.uan_details || []).sort((a, b) => (b.source_score||0) - (a.source_score||0))[0] || {}
+    const patch = {
+      uan_number:      best.uan          || profileUan,
+      uan_verified:    true,
+      uan_verified_at: new Date().toISOString(),
+    }
+    // Sync mismatches from EPFO → profile
+    if (best.employee_name && profileName !== best.employee_name)
+      patch.displayName = best.employee_name
+    if (best.gender && profileGender !== best.gender)
+      patch.gender = best.gender
+    if (best.dob && profileDob !== best.dob)
+      patch.dob = best.dob
+
+    if (save) await save(patch)
+    if (setUserData) setUserData(d => ({ ...d, ...patch }))
+    setSaving(false)
+    setStep("verified")
+  }
+
+  // ─── VERIFIED STATE ───────────────────────────────────────────────────────
+  if (step === "verified") {
+    const uanList  = userData?.epfo_raw?.uan_details  || result?.uan_details  || []
+    const recent   = userData?.epfo_raw?.recent_employment_details || result?.recent_employment_details || {}
+    const best     = uanList.sort((a, b) => (b.source_score||0) - (a.source_score||0))[0] || {}
+
+    return (
+      <div>
+        <SectionTitle icon="🏛️" title="Employment Verification" subtitle="Identity confirmed via EPFO / Eko" />
+
+        {/* Badge */}
+        <div style={{
+          background:"linear-gradient(135deg,#0F172A,#1E293B)", borderRadius:14,
+          padding:"18px 22px", marginBottom:16, color:"#fff",
+          display:"flex", alignItems:"center", gap:14,
+        }}>
+          <span style={{ fontSize:28 }}>✅</span>
+          <div>
+            <div style={{ fontSize:14, fontWeight:800 }}>EPFO Verified</div>
+            <div style={{ fontSize:11, color:"rgba(255,255,255,0.55)", marginTop:3 }}>
+              UAN {userData?.uan_number || best.uan || "—"} · Verified via Eko
+            </div>
+          </div>
+          <span style={{
+            marginLeft:"auto", fontSize:10, fontWeight:800, padding:"4px 12px",
+            background:T.green, color:"#fff", borderRadius:99, letterSpacing:0.5,
+          }}>EPFO VERIFIED</span>
+        </div>
+
+        {/* Best record summary */}
+        {best.employee_name && (
+          <Card style={{ marginBottom:14 }}>
+            <div style={{ fontSize:11, fontWeight:800, color:T.ink3, textTransform:"uppercase", letterSpacing:1.2, marginBottom:10 }}>
+              EPFO Record
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+              {[
+                ["Name",   best.employee_name],
+                ["Gender", best.gender],
+                ["DOB",    best.dob],
+                ["UAN",    best.uan],
+              ].filter(([,v]) => v).map(([l,v]) => (
+                <div key={l}>
+                  <div style={{ fontSize:10, color:T.ink4, fontWeight:600 }}>{l}</div>
+                  <div style={{ fontSize:12, fontWeight:700, color:T.ink, marginTop:2 }}>{v}</div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {/* Current employer from recent_employment_details */}
+        {recent.establishment_name && (
+          <Card style={{ marginBottom:14 }}>
+            <div style={{ fontSize:11, fontWeight:800, color:T.ink3, textTransform:"uppercase", letterSpacing:1.2, marginBottom:10 }}>
+              Recent Employer
+            </div>
+            <div style={{ fontWeight:800, fontSize:14, color:T.ink, marginBottom:6 }}>
+              {recent.establishment_name}
+            </div>
+            <div style={{ fontSize:11, color:T.ink4, display:"flex", flexWrap:"wrap", gap:12 }}>
+              {recent.joining_date && <span>Joined: {recent.joining_date}</span>}
+              {recent.exit_date    && <span>Exit: {recent.exit_date}</span>}
+              {recent.establishment_id && <span>Est. ID: {recent.establishment_id}</span>}
+              <span style={{
+                color: recent.employed ? T.green : T.ink4,
+                fontWeight: 700,
+              }}>
+                {recent.employed ? "● Currently Employed" : "○ Not currently employed"}
+              </span>
+            </div>
+          </Card>
+        )}
+
+        {/* All UAN records (employment history) */}
+        {uanList.length > 0 && (
+          <Card>
+            <div style={{ fontSize:11, fontWeight:800, color:T.ink3, textTransform:"uppercase", letterSpacing:1.2, marginBottom:12 }}>
+              All Employment Records ({uanList.length})
+            </div>
+            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+              {uanList.map((u, i) => (
+                <div key={i} style={{
+                  padding:"10px 14px", borderRadius:10,
+                  background:`${T.indigo}06`, border:`1px solid ${T.indigo}14`,
+                }}>
+                  <div style={{ fontWeight:800, fontSize:13, color:T.ink }}>{u.employer_name || "—"}</div>
+                  <div style={{ fontSize:11, color:T.ink4, marginTop:3, display:"flex", flexWrap:"wrap", gap:10 }}>
+                    <span>UAN: {u.uan}</span>
+                    {u.joining_date && <span>Joined: {u.joining_date}</span>}
+                    {u.exit_date    && <span>Exit: {u.exit_date}</span>}
+                    {u.member_id    && <span>Member ID: {u.member_id}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        <div style={{ marginTop:12 }}>
+          <button onClick={() => { setStep("form"); setResult(null) }}
+            style={{
+              fontSize:11, color:T.ink4, background:"none",
+              border:`1px solid ${T.border}`, borderRadius:8,
+              padding:"5px 12px", cursor:"pointer",
+            }}>
+            Re-verify with a different number
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ─── LOADING ──────────────────────────────────────────────────────────────
+  if (step === "loading") {
+    return (
+      <div>
+        <SectionTitle icon="🏛️" title="Employment Verification" subtitle="Querying EPFO records via Eko…" />
+        <div style={{ padding:48, textAlign:"center", color:T.ink4, fontSize:13 }}>
+          <div style={{ fontSize:30, marginBottom:12, animation:"spin 1.2s linear infinite", display:"inline-block" }}>⟳</div>
+          <div style={{ fontWeight:600 }}>Contacting EPFO via Eko API…</div>
+          <div style={{ fontSize:11, marginTop:6, color:T.ink3 }}>Usually takes 5–15 seconds</div>
+        </div>
+      </div>
+    )
+  }
+
+  // ─── RESULT: field comparison ─────────────────────────────────────────────
+  if (step === "result" && result) {
+    const uanList = result.uan_details || []
+    const recent  = result.recent_employment_details || {}
+    const best    = [...uanList].sort((a,b) => (b.source_score||0)-(a.source_score||0))[0] || {}
+
+    return (
+      <div>
+        <SectionTitle icon="🏛️" title="Employment Verification" subtitle="Review EPFO data before confirming" />
+
+        <InfoBox icon="ℹ️" text={`Found ${uanList.length} EPFO record(s) linked to this number. Review each field — any mismatch will be corrected from the official EPFO data.`} />
+
+        {/* Field comparison table */}
+        <Card style={{ marginBottom:16 }}>
+          <div style={{
+            display:"grid", gridTemplateColumns:"110px 1fr 1fr 88px",
+            gap:8, padding:"6px 0 10px", borderBottom:`1px solid ${T.border}`,
+            fontSize:10, fontWeight:800, color:T.ink4, textTransform:"uppercase", letterSpacing:1,
+          }}>
+            <span>Field</span><span>Your Profile</span><span>EPFO (Best Match)</span><span>Status</span>
+          </div>
+          {fieldRow("Full Name",    profileName,   best.employee_name)}
+          {fieldRow("Gender",       profileGender, best.gender)}
+          {fieldRow("Date of Birth",profileDob,    best.dob)}
+          {fieldRow("UAN",          profileUan,    best.uan)}
+        </Card>
+
+        {/* Recent employer */}
+        {recent.establishment_name && (
+          <Card style={{ marginBottom:16 }}>
+            <div style={{ fontSize:11, fontWeight:800, color:T.ink3, textTransform:"uppercase", letterSpacing:1.2, marginBottom:8 }}>
+              Recent Employer
+            </div>
+            <div style={{ fontWeight:800, fontSize:13, color:T.ink }}>{recent.establishment_name}</div>
+            <div style={{ fontSize:11, color:T.ink4, marginTop:4, display:"flex", flexWrap:"wrap", gap:10 }}>
+              {recent.joining_date && <span>Joined: {recent.joining_date}</span>}
+              {recent.exit_date    && <span>Exit: {recent.exit_date}</span>}
+              <span style={{ color: recent.employed ? T.green : T.ink4, fontWeight:600 }}>
+                {recent.employed ? "Currently employed" : "No longer at this org"}
+              </span>
+            </div>
+          </Card>
+        )}
+
+        {/* All records */}
+        {uanList.length > 1 && (
+          <Card style={{ marginBottom:16 }}>
+            <div style={{ fontSize:11, fontWeight:800, color:T.ink3, textTransform:"uppercase", letterSpacing:1.2, marginBottom:10 }}>
+              All Employers ({uanList.length} records)
+            </div>
+            {uanList.map((u, i) => (
+              <div key={i} style={{
+                padding:"8px 12px", borderRadius:8, marginBottom:6,
+                background:`${T.indigo}05`, border:`1px solid ${T.indigo}12`,
+              }}>
+                <div style={{ fontWeight:700, fontSize:12, color:T.ink }}>{u.employer_name || "—"}</div>
+                <div style={{ fontSize:11, color:T.ink4, marginTop:2 }}>
+                  {u.joining_date || "?"} → {u.exit_date || "Present"}
+                  {u.establishment_id ? ` · Est. ${u.establishment_id}` : ""}
+                </div>
+              </div>
+            ))}
+          </Card>
+        )}
+
+        <InfoBox icon="⚠️" text="Mismatched fields will be updated to match official EPFO data. Matching fields stay untouched." />
+
+        <div style={{ display:"flex", gap:10, marginTop:16, justifyContent:"flex-end" }}>
+          <button onClick={() => setStep("form")}
+            style={{
+              padding:"9px 18px", borderRadius:10, border:`1px solid ${T.border}`,
+              background:"#fff", color:T.ink2, fontSize:13, cursor:"pointer",
+            }}>
+            Cancel
+          </button>
+          <button onClick={handleAccept} disabled={saving}
+            style={{
+              padding:"9px 24px", borderRadius:10, border:"none",
+              background:T.green, color:"#fff", fontSize:13,
+              fontWeight:700, cursor:saving ? "not-allowed" : "pointer", opacity:saving?0.7:1,
+            }}>
+            {saving ? "Saving…" : "✅ Confirm & Verify"}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ─── FORM ─────────────────────────────────────────────────────────────────
+  return (
+    <div>
+      <SectionTitle icon="🏛️" title="Employment Verification" subtitle="Verify your identity & employment history via EPFO / Eko API" />
+
+      <InfoBox icon="ℹ️" text="Enter your EPFO-registered mobile number. Eko will look up your UAN records from the government EPFO database and return your employment history." />
+
+      {error && (
+        <div style={{
+          background:T.red2, border:`1px solid ${T.red}30`, borderRadius:10,
+          padding:"10px 14px", color:T.red, fontSize:12, fontWeight:600, marginBottom:14,
+        }}>
+          {error}
+        </div>
+      )}
+
+      <Card style={{ marginBottom:16 }}>
+        <FieldLabel>Mobile Number (EPFO-registered)</FieldLabel>
+        <Input
+          value={phone}
+          onChange={setPhone}
+          placeholder="10-digit mobile number"
+          type="tel"
+          maxLength={10}
+        />
+        <div style={{ fontSize:10, color:T.ink4, marginTop:5 }}>
+          This must be the mobile number linked to your EPFO / UAN account.
+          Your UAN, name, gender, DOB, and employment history will be fetched via Eko.
+        </div>
+      </Card>
+
+      {/* What gets verified */}
+      <div style={{ marginBottom:16 }}>
+        <div style={{ fontSize:11, fontWeight:700, color:T.ink3, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>
+          What we fetch from EPFO
+        </div>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+          {["UAN","Employee Name","Gender","Date of Birth","Employer Name","Joining Date","Exit Date","Member ID","Confidence Score"].map(f => (
+            <span key={f} style={{
+              fontSize:11, padding:"4px 10px", borderRadius:20,
+              background:T.indigo3, color:T.indigo, fontWeight:600,
+            }}>{f}</span>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display:"flex", justifyContent:"flex-end" }}>
+        <button onClick={handleVerify}
+          style={{
+            padding:"10px 28px", borderRadius:10, border:"none",
+            background:`linear-gradient(135deg,${T.indigo},${T.blue})`,
+            color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer",
+            boxShadow:`0 4px 14px ${T.indigo}38`,
+          }}>
+          🔍 Fetch EPFO Records
+        </button>
       </div>
     </div>
   )
@@ -1475,6 +1850,11 @@ function ContextPanel({ userData, activeSection }) {
       "LinkedIn + GitHub boosts your trust score significantly",
       "Recruiters check certifications — keep them visible",
     ],
+    employment: [
+      "UAN verification adds an EPFO-verified badge to your profile",
+      "Employment history from EPFO is trusted by recruiters as ground truth",
+      "Mismatched details are automatically corrected to match EPFO records",
+    ],
     arena: [
       "Consistent daily practice prevents ELO decay",
       "Hard/Expert challenges give the highest ELO gains",
@@ -1605,6 +1985,7 @@ export default function SettingsPanel({ userData, user, save, setUserData, path 
       case "arena":         return <ArenaSection {...props} />
       case "privacy":       return <PrivacySection {...props} />
       case "proof":         return <ProofSection {...props} />
+      case "employment":    return <UANVerificationSection {...props} />
       case "notifications": return <NotificationsSection {...props} />
       case "appearance":    return <AppearanceSection {...props} />
       case "ai":            return <AISection {...props} />

@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Capabilio for Recruiters & HR</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,700;0,800;1,700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;background:#010D04;font-family:'Inter',sans-serif;}
+#shell{width:100vw;height:100vh;position:relative;overflow:hidden;}
+.scene{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:32px 24px;
+  opacity:0;transform:translateX(60px);transition:opacity .55s ease,transform .55s ease;pointer-events:none;}
+.scene.active{opacity:1;transform:translateX(0);pointer-events:all;}
+.scene.exit{opacity:0;transform:translateX(-60px);}
+#pbar{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,#059669,#34D399);z-index:100;transition:width .4s;}
+#nav{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;z-index:100;
+  background:rgba(0,0,0,.55);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.1);border-radius:100px;padding:8px 18px;}
+.dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.2);cursor:pointer;transition:all .3s;border:none;}
+.dot.on{background:#10B981;width:22px;border-radius:4px;}
+#pbtn{width:32px;height:32px;border-radius:50%;background:#059669;border:none;cursor:pointer;color:#fff;font-size:13px;flex-shrink:0;}
+#secs{font-size:11px;color:rgba(255,255,255,.4);font-weight:600;min-width:24px;}
+#badge{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:100;
+  background:rgba(5,150,105,.12);border:1px solid rgba(52,211,153,.3);color:#34D399;
+  font-size:11px;font-weight:800;letter-spacing:1.5px;padding:5px 14px;border-radius:100px;text-transform:uppercase;}
+@keyframes up{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.u{animation:up .5s ease forwards;opacity:0;}
+.d1{animation-delay:.1s}.d2{animation-delay:.22s}.d3{animation-delay:.34s}.d4{animation-delay:.46s}.d5{animation-delay:.58s}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}.fl{animation:float 3s ease-in-out infinite;}
+.gc{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:14px;}
+.step{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:100px;font-size:11px;font-weight:800;letter-spacing:.5px;}
+.badge-v{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:100px;font-size:9px;font-weight:800;background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.3);color:#34D399;}
+</style>
+</head>
+<body>
+<div id="shell">
+<div id="pbar"></div>
+<div id="badge">🏢 For Recruiters & HR</div>
+
+<!-- ════ S0: THE PROBLEM ════ -->
+<div class="scene active" id="s0" style="background:linear-gradient(135deg,#010D04 0%,#001A08 60%,#050510 100%);">
+  <div style="max-width:820px;width:100%;display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;">
+    <div>
+      <div class="step u" style="background:rgba(239,68,68,.1);color:#FCA5A5;border:1px solid rgba(239,68,68,.25);margin-bottom:20px;">THE PROBLEM</div>
+      <h1 class="u d1" style="font-family:'Playfair Display',serif;font-size:clamp(26px,3.5vw,44px);color:#fff;line-height:1.15;margin-bottom:16px;">
+        Hired 3 engineers.<br/>All 3 lied on<br/><span style="color:#EF4444;">their resume.</span>
+      </h1>
+      <p class="u d2" style="color:rgba(255,255,255,.6);font-size:14px;line-height:1.7;margin-bottom:24px;">
+        Every recruiter knows: candidates exaggerate, resumes are fabricated, and reference checks are theater. You can't verify skills until it's too late.
+      </p>
+      <div class="u d3" style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;align-items:center;gap:10px;padding:12px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:10px;">
+          <span style="font-size:18px;">📄</span><span style="font-size:13px;color:rgba(255,255,255,.7);">Candidates claim "5 years of React" with no proof</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:12px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:10px;">
+          <span style="font-size:18px;">💼</span><span style="font-size:13px;color:rgba(255,255,255,.7);">Previous employment is impossible to verify quickly</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:12px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:10px;">
+          <span style="font-size:18px;">⏱️</span><span style="font-size:13px;color:rgba(255,255,255,.7);">Months wasted screening — only to fail in probation</span>
+        </div>
+      </div>
+    </div>
+    <div class="u d3 fl" style="display:flex;flex-direction:column;gap:12px;align-items:center;">
+      <div style="font-size:56px;">🤯</div>
+      <div style="display:flex;flex-direction:column;gap:8px;width:100%;max-width:220px;">
+        <div style="padding:10px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;">
+          <div style="font-size:10px;color:#FCA5A5;font-weight:700;">RESUME SAYS</div>
+          <div style="font-size:12px;color:#fff;margin-top:2px;">"5 years Python, AWS Expert"</div>
+        </div>
+        <div style="font-size:18px;text-align:center;">↓</div>
+        <div style="padding:10px;background:rgba(217,119,6,.08);border:1px solid rgba(217,119,6,.2);border-radius:8px;">
+          <div style="font-size:10px;color:#FBBF24;font-weight:700;">FIRST SPRINT REVEALS</div>
+          <div style="font-size:12px;color:#fff;margin-top:2px;">Can't write a basic SQL query 😬</div>
+        </div>
+        <div style="font-size:18px;text-align:center;">↓</div>
+        <div style="padding:10px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;">
+          <div style="font-size:10px;color:#FCA5A5;font-weight:700;">COST TO COMPANY</div>
+          <div style="font-size:12px;color:#fff;margin-top:2px;">₹8–12 lakhs in hiring + lost time</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ S1: CAPABILIO LAUNCHPAD ════ -->
+<div class="scene" id="s1" style="background:linear-gradient(135deg,#010D04 0%,#001A08 100%);">
+  <div style="max-width:820px;width:100%;text-align:center;">
+    <div class="step u" style="background:rgba(5,150,105,.12);color:#34D399;border:1px solid rgba(5,150,105,.3);margin-bottom:20px;">CAPABILIO LAUNCHPAD</div>
+    <h2 class="u d1" style="font-family:'Playfair Display',serif;font-size:clamp(26px,4vw,50px);color:#fff;margin-bottom:14px;line-height:1.1;">
+      Find candidates whose skills<br/><span style="color:#10B981;">are already verified.</span>
+    </h2>
+    <p class="u d2" style="color:rgba(255,255,255,.6);font-size:15px;margin-bottom:36px;max-width:540px;margin-left:auto;margin-right:auto;">
+      Capabilio Launchpad is a talent pool where every candidate has proven their skills through real missions and verified their employment through EPFO/UAN. <strong style="color:#fff;">Not claimed. Proven.</strong>
+    </p>
+    <div class="u d3" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;max-width:760px;margin:0 auto;">
+      <div class="gc" style="padding:18px;text-align:center;border-color:rgba(5,150,105,.3);">
+        <div style="font-size:28px;margin-bottom:6px;">🎯</div>
+        <div style="font-size:12px;font-weight:800;color:#34D399;margin-bottom:4px;">Skill-proven</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.4);line-height:1.5;">Missions prove skills — not just words</div>
+      </div>
+      <div class="gc" style="padding:18px;text-align:center;border-color:rgba(37,99,235,.25);">
+        <div style="font-size:28px;margin-bottom:6px;">🏛️</div>
+        <div style="font-size:12px;font-weight:800;color:#60A5FA;margin-bottom:4px;">Employment verified</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.4);line-height:1.5;">EPFO/UAN for ex-employees</div>
+      </div>
+      <div class="gc" style="padding:18px;text-align:center;border-color:rgba(139,92,246,.25);">
+        <div style="font-size:28px;margin-bottom:6px;">📊</div>
+        <div style="font-size:12px;font-weight:800;color:#A78BFA;margin-bottom:4px;">Live career score</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.4);line-height:1.5;">4 objective scores, not star ratings</div>
+      </div>
+      <div class="gc" style="padding:18px;text-align:center;border-color:rgba(217,119,6,.25);">
+        <div style="font-size:28px;margin-bottom:6px;">🔍</div>
+        <div style="font-size:12px;font-weight:800;color:#FBBF24;margin-bottom:4px;">Smart filters</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.4);line-height:1.5;">Filter by score, skill, location, notice</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ S2: SEARCH & FILTER ════ -->
+<div class="scene" id="s2" style="background:linear-gradient(135deg,#010D04 0%,#001A08 100%);">
+  <div style="max-width:900px;width:100%;">
+    <div style="text-align:center;margin-bottom:24px;">
+      <div class="step u" style="background:rgba(5,150,105,.12);color:#34D399;border:1px solid rgba(5,150,105,.3);margin-bottom:14px;">STEP 1 OF 5</div>
+      <h2 class="u d1" style="font-family:'Playfair Display',serif;font-size:clamp(24px,3.5vw,44px);color:#fff;margin-bottom:8px;">
+        Search. Filter. <span style="color:#10B981;">Find the right fit.</span>
+      </h2>
+      <p class="u d2" style="color:rgba(255,255,255,.6);font-size:14px;">Not a keyword search. A verified-talent search.</p>
+    </div>
+    <div class="u d2" style="display:grid;grid-template-columns:1.3fr 1fr;gap:20px;align-items:start;">
+      <!-- search panel -->
+      <div class="gc" style="padding:20px;">
+        <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:1px;margin-bottom:14px;">🔍 LAUNCHPAD SEARCH</div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+          <div style="background:rgba(255,255,255,.07);border:1px solid rgba(5,150,105,.3);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:8px;">
+            <span style="font-size:13px;">🎯</span>
+            <div>
+              <div style="font-size:9px;color:rgba(255,255,255,.4);">Role</div>
+              <div style="font-size:12px;color:#fff;">Backend Engineer · Python</div>
+            </div>
+          </div>
+          <div style="background:rgba(255,255,255,.07);border:1px solid rgba(5,150,105,.3);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:8px;">
+            <span style="font-size:13px;">📊</span>
+            <div>
+              <div style="font-size:9px;color:rgba(255,255,255,.4);">Min Capabilio Score</div>
+              <div style="font-size:12px;color:#fff;">1300+</div>
+            </div>
+          </div>
+          <div style="background:rgba(255,255,255,.07);border:1px solid rgba(5,150,105,.3);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:8px;">
+            <span style="font-size:13px;">📍</span>
+            <div>
+              <div style="font-size:9px;color:rgba(255,255,255,.4);">Location</div>
+              <div style="font-size:12px;color:#fff;">Bangalore · Remote-OK</div>
+            </div>
+          </div>
+          <div style="background:rgba(255,255,255,.07);border:1px solid rgba(5,150,105,.3);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:8px;">
+            <span style="font-size:13px;">✅</span>
+            <div>
+              <div style="font-size:9px;color:rgba(255,255,255,.4);">Verification</div>
+              <div style="font-size:12px;color:#fff;">EPFO-verified only</div>
+            </div>
+          </div>
+        </div>
+        <button style="width:100%;padding:12px;background:linear-gradient(90deg,#059669,#34D399);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:800;cursor:pointer;">
+          Search Verified Candidates →
+        </button>
+      </div>
+      <!-- result summary -->
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="padding:14px;background:rgba(5,150,105,.08);border:1px solid rgba(5,150,105,.25);border-radius:10px;">
+          <div style="font-size:11px;font-weight:700;color:#34D399;margin-bottom:4px;">✅ 143 verified matches</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.5);">Python · Score 1300+ · Bangalore</div>
+        </div>
+        <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.4);margin-top:4px;margin-bottom:4px;">FILTER QUICK-ADDS:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          <div style="padding:5px 10px;background:rgba(5,150,105,.08);border:1px solid rgba(5,150,105,.2);border-radius:100px;font-size:10px;color:#34D399;cursor:pointer;">🏢 Open to work</div>
+          <div style="padding:5px 10px;background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.2);border-radius:100px;font-size:10px;color:#60A5FA;cursor:pointer;">⚡ &lt;30 day notice</div>
+          <div style="padding:5px 10px;background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.2);border-radius:100px;font-size:10px;color:#A78BFA;cursor:pointer;">🎓 IIT/NIT</div>
+          <div style="padding:5px 10px;background:rgba(217,119,6,.08);border:1px solid rgba(217,119,6,.2);border-radius:100px;font-size:10px;color:#FBBF24;cursor:pointer;">🏅 Top 5% score</div>
+        </div>
+        <div class="gc" style="padding:12px;margin-top:4px;">
+          <div style="font-size:10px;color:rgba(255,255,255,.4);margin-bottom:6px;">COMPARED TO JOB BOARDS:</div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.06);">
+            <span style="color:rgba(255,255,255,.5);">LinkedIn / Naukri</span>
+            <span style="color:#EF4444;">Unverified resumes</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;padding:5px 0;">
+            <span style="color:#34D399;font-weight:700;">Capabilio Launchpad</span>
+            <span style="color:#34D399;font-weight:700;">Proven skills ✓</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ S3: CANDIDATE PROFILE ════ -->
+<div class="scene" id="s3" style="background:linear-gradient(135deg,#010D04 0%,#001A08 100%);">
+  <div style="max-width:900px;width:100%;display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:start;">
+    <div>
+      <div class="step u" style="background:rgba(5,150,105,.12);color:#34D399;border:1px solid rgba(5,150,105,.3);margin-bottom:16px;">STEP 2 OF 5</div>
+      <h2 class="u d1" style="font-family:'Playfair Display',serif;font-size:clamp(22px,3vw,38px);color:#fff;margin-bottom:12px;line-height:1.2;">
+        Every profile shows<br/><span style="color:#10B981;">proof, not promises.</span>
+      </h2>
+      <p class="u d2" style="color:rgba(255,255,255,.6);font-size:14px;line-height:1.7;margin-bottom:20px;">
+        Open any candidate. See their live career score, skill badges earned through missions, and EPFO-verified employment history. No guesswork.
+      </p>
+      <div class="u d3" style="display:flex;flex-direction:column;gap:8px;">
+        <div class="gc" style="padding:12px 14px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:18px;">🎯</span>
+          <div><div style="font-size:12px;font-weight:700;color:#fff;">4 career scores visible</div><div style="font-size:11px;color:rgba(255,255,255,.4);">Role Fit · Market Standing · Proof Strength · Mobility</div></div>
+        </div>
+        <div class="gc" style="padding:12px 14px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:18px;">🏛️</span>
+          <div><div style="font-size:12px;font-weight:700;color:#fff;">EPFO/UAN verified employment</div><div style="font-size:11px;color:rgba(255,255,255,.4);">Government-grade verification — not self-reported</div></div>
+        </div>
+        <div class="gc" style="padding:12px 14px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:18px;">🏅</span>
+          <div><div style="font-size:12px;font-weight:700;color:#fff;">Skill badges from Arena</div><div style="font-size:11px;color:rgba(255,255,255,.4);">Each badge = a real coding or system design mission completed</div></div>
+        </div>
+        <div class="gc" style="padding:12px 14px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:18px;">📈</span>
+          <div><div style="font-size:12px;font-weight:700;color:#fff;">Score trend</div><div style="font-size:11px;color:rgba(255,255,255,.4);">See if they're improving — not just a snapshot</div></div>
+        </div>
+      </div>
+    </div>
+    <!-- profile card -->
+    <div class="u d2 gc" style="padding:20px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,.08);">
+        <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#059669,#34D399);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">👨‍💻</div>
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:800;color:#fff;">Pradeep Ramesh</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.5);">Backend Engineer · Bangalore</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
+            <div class="badge-v">✅ EPFO Verified</div>
+            <div style="padding:3px 8px;border-radius:100px;font-size:9px;font-weight:800;background:rgba(5,150,105,.12);border:1px solid rgba(5,150,105,.3);color:#34D399;">Open to work</div>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:26px;font-weight:900;color:#FBBF24;">1487</div>
+          <div style="font-size:9px;color:rgba(255,255,255,.4);">Capabilio Score</div>
+        </div>
+      </div>
+      <!-- 4 scores -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+        <div style="padding:10px;background:rgba(5,150,105,.08);border:1px solid rgba(5,150,105,.2);border-radius:8px;">
+          <div style="font-size:9px;color:rgba(255,255,255,.4);">Role Fit</div>
+          <div style="font-size:16px;font-weight:900;color:#34D399;">91%</div>
+          <div style="height:4px;background:rgba(255,255,255,.07);border-radius:2px;margin-top:4px;"><div style="width:91%;height:100%;background:#10B981;border-radius:2px;"></div></div>
+        </div>
+        <div style="padding:10px;background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.2);border-radius:8px;">
+          <div style="font-size:9px;color:rgba(255,255,255,.4);">Market Standing</div>
+          <div style="font-size:16px;font-weight:900;color:#60A5FA;">Top 12%</div>
+          <div style="height:4px;background:rgba(255,255,255,.07);border-radius:2px;margin-top:4px;"><div style="width:88%;height:100%;background:#2563EB;border-radius:2px;"></div></div>
+        </div>
+        <div style="padding:10px;background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.2);border-radius:8px;">
+          <div style="font-size:9px;color:rgba(255,255,255,.4);">Proof Strength</div>
+          <div style="font-size:16px;font-weight:900;color:#A78BFA;">Strong</div>
+          <div style="height:4px;background:rgba(255,255,255,.07);border-radius:2px;margin-top:4px;"><div style="width:83%;height:100%;background:#8B5CF6;border-radius:2px;"></div></div>
+        </div>
+        <div style="padding:10px;background:rgba(217,119,6,.08);border:1px solid rgba(217,119,6,.2);border-radius:8px;">
+          <div style="font-size:9px;color:rgba(255,255,255,.4);">Career Mobility</div>
+          <div style="font-size:16px;font-weight:900;color:#FBBF24;">High</div>
+          <div style="height:4px;background:rgba(255,255,255,.07);border-radius:2px;margin-top:4px;"><div style="width:78%;height:100%;background:#D97706;border-radius:2px;"></div></div>
+        </div>
+      </div>
+      <!-- skills -->
+      <div style="font-size:10px;color:rgba(255,255,255,.4);margin-bottom:6px;">PROVEN SKILLS</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px;">
+        <div class="badge-v">🐍 Python · Expert</div>
+        <div class="badge-v">🗄️ PostgreSQL · Advanced</div>
+        <div class="badge-v">☁️ AWS · Intermediate</div>
+        <div class="badge-v">🔴 Redis · Intermediate</div>
+        <div class="badge-v">🐳 Docker · Advanced</div>
+      </div>
+      <!-- employment -->
+      <div style="font-size:10px;color:rgba(255,255,255,.4);margin-bottom:6px;">EMPLOYMENT HISTORY <span style="color:#34D399;">(EPFO Verified)</span></div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <div style="display:flex;justify-content:space-between;font-size:10px;padding:6px 8px;background:rgba(5,150,105,.05);border-radius:6px;">
+          <span style="color:#fff;">Swiggy — Backend Eng II</span><span style="color:rgba(255,255,255,.4);">2021–2024 ✅</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;padding:6px 8px;background:rgba(5,150,105,.05);border-radius:6px;">
+          <span style="color:#fff;">Zoho — SDE I</span><span style="color:rgba(255,255,255,.4);">2019–2021 ✅</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ S4: ZERO FRAUD ════ -->
+<div class="scene" id="s4" style="background:linear-gradient(135deg,#010D04 0%,#001A08 100%);">
+  <div style="max-width:820px;width:100%;text-align:center;">
+    <div class="step u" style="background:rgba(5,150,105,.12);color:#34D399;border:1px solid rgba(5,150,105,.3);margin-bottom:20px;">STEP 3 OF 5 — THE BIG DIFFERENTIATOR</div>
+    <h2 class="u d1" style="font-family:'Playfair Display',serif;font-size:clamp(26px,4vw,48px);color:#fff;margin-bottom:14px;line-height:1.15;">
+      Zero fraud hiring.<br/><span style="color:#10B981;">Guaranteed.</span>
+    </h2>
+    <p class="u d2" style="color:rgba(255,255,255,.6);font-size:15px;margin-bottom:32px;max-width:580px;margin-left:auto;margin-right:auto;">
+      Every claim on a Capabilio profile is verified — skills through live missions, employment through EPFO data, education through platform records. If it's on their profile, it's real.
+    </p>
+    <div class="u d3" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;max-width:720px;margin:0 auto 24px;">
+      <div class="gc" style="padding:20px;border-color:rgba(5,150,105,.3);">
+        <div style="font-size:32px;margin-bottom:8px;">⚔️</div>
+        <div style="font-size:13px;font-weight:800;color:#34D399;margin-bottom:6px;">Arena Missions</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.45);line-height:1.5;">Skills verified through live coding & system design challenges — can't be faked or memorized</div>
+      </div>
+      <div class="gc" style="padding:20px;border-color:rgba(37,99,235,.25);">
+        <div style="font-size:32px;margin-bottom:8px;">🏛️</div>
+        <div style="font-size:13px;font-weight:800;color:#60A5FA;margin-bottom:6px;">EPFO/UAN Vault</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.45);line-height:1.5;">Employment history pulled from government EPFO records — not self-reported</div>
+      </div>
+      <div class="gc" style="padding:20px;border-color:rgba(217,119,6,.25);">
+        <div style="font-size:32px;margin-bottom:8px;">🤖</div>
+        <div style="font-size:13px;font-weight:800;color:#FBBF24;margin-bottom:6px;">AI Interview Score</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.45);line-height:1.5;">AI mock interview results tell you how they actually communicate under pressure</div>
+      </div>
+    </div>
+    <div class="u d4" style="padding:16px 24px;background:rgba(5,150,105,.08);border:1px solid rgba(5,150,105,.25);border-radius:12px;max-width:560px;margin:0 auto;">
+      <div style="font-size:14px;font-weight:800;color:#34D399;margin-bottom:4px;">The Capabilio Guarantee</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.6);">If a candidate misrepresented anything we marked verified, we'll help you replace them — at no additional screening cost.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ S5: SHORTLISTING ════ -->
+<div class="scene" id="s5" style="background:linear-gradient(135deg,#010D04 0%,#001A08 100%);">
+  <div style="max-width:900px;width:100%;display:grid;grid-template-columns:1.1fr 1fr;gap:32px;align-items:center;">
+    <!-- shortlist panel -->
+    <div class="u gc" style="padding:20px;">
+      <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:1px;margin-bottom:14px;">📋 YOUR SHORTLIST — SDE II (Python)</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px;background:rgba(5,150,105,.06);border:1px solid rgba(5,150,105,.2);border-radius:8px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#059669,#34D399);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">👨‍💻</div>
+          <div style="flex:1;">
+            <div style="font-size:11px;font-weight:700;color:#fff;">Pradeep Ramesh</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.4);">Swiggy → Open · ✅ EPFO</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:15px;font-weight:900;color:#FBBF24;">1487</div>
+            <div style="font-size:8px;color:#34D399;">Best match</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:10px;background:rgba(5,150,105,.06);border:1px solid rgba(5,150,105,.2);border-radius:8px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#1D4ED8,#60A5FA);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">👩‍💻</div>
+          <div style="flex:1;">
+            <div style="font-size:11px;font-weight:700;color:#fff;">Kavitha Suresh</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.4);">Freshworks → Open · ✅ EPFO</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:15px;font-weight:900;color:#FBBF24;">1441</div>
+            <div style="font-size:8px;color:#34D399;">Strong fit</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:10px;background:rgba(5,150,105,.06);border:1px solid rgba(5,150,105,.2);border-radius:8px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#D97706,#FBBF24);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">👨‍💻</div>
+          <div style="flex:1;">
+            <div style="font-size:11px;font-weight:700;color:#fff;">Arjun Krishnan</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.4);">Zepto → Open · ✅ EPFO</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:15px;font-weight:900;color:#FBBF24;">1398</div>
+            <div style="font-size:8px;color:#34D399;">Good fit</div>
+          </div>
+        </div>
+      </div>
+      <button style="width:100%;padding:12px;background:linear-gradient(90deg,#059669,#34D399);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:800;cursor:pointer;margin-bottom:8px;">
+        📨 Message All 3 Candidates
+      </button>
+      <button style="width:100%;padding:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:rgba(255,255,255,.7);font-size:12px;font-weight:700;cursor:pointer;">
+        📤 Export to ATS / CSV
+      </button>
+    </div>
+    <div>
+      <div class="step u" style="background:rgba(5,150,105,.12);color:#34D399;border:1px solid rgba(5,150,105,.3);margin-bottom:16px;">STEP 4 OF 5</div>
+      <h2 class="u d1" style="font-family:'Playfair Display',serif;font-size:clamp(22px,3vw,38px);color:#fff;margin-bottom:12px;line-height:1.2;">
+        Shortlist. Message.<br/><span style="color:#10B981;">Hire.</span>
+      </h2>
+      <p class="u d2" style="color:rgba(255,255,255,.6);font-size:14px;line-height:1.7;margin-bottom:20px;">
+        Add candidates to shortlist. Contact them directly. No agency. No middleman. No percentage fee. Export to your ATS in one click.
+      </p>
+      <div class="u d3" style="display:flex;flex-direction:column;gap:8px;">
+        <div class="gc" style="padding:12px 14px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:18px;">📨</span>
+          <div><div style="font-size:12px;font-weight:700;color:#fff;">Direct messaging</div><div style="font-size:11px;color:rgba(255,255,255,.4);">Contact candidates within Capabilio — no LinkedIn InMail credits needed</div></div>
+        </div>
+        <div class="gc" style="padding:12px 14px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:18px;">📤</span>
+          <div><div style="font-size:12px;font-weight:700;color:#fff;">ATS integration</div><div style="font-size:11px;color:rgba(255,255,255,.4);">Export verified profiles to Workday, Greenhouse, Lever</div></div>
+        </div>
+        <div class="gc" style="padding:12px 14px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:18px;">🚫</span>
+          <div><div style="font-size:12px;font-weight:700;color:#fff;">No agency fees</div><div style="font-size:11px;color:rgba(255,255,255,.4);">You pay for access — not a % of the candidate's salary</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ S6: ROI ════ -->
+<div class="scene" id="s6" style="background:linear-gradient(135deg,#010D04 0%,#001A08 100%);">
+  <div style="max-width:820px;width:100%;text-align:center;">
+    <div class="step u" style="background:rgba(5,150,105,.12);color:#34D399;border:1px solid rgba(5,150,105,.3);margin-bottom:20px;">STEP 5 OF 5 — THE NUMBERS</div>
+    <h2 class="u d1" style="font-family:'Playfair Display',serif;font-size:clamp(26px,4vw,46px);color:#fff;margin-bottom:12px;">
+      Cut time-to-hire by 60%.<br/><span style="color:#10B981;">Zero bad hires.</span>
+    </h2>
+    <p class="u d2" style="color:rgba(255,255,255,.6);font-size:14px;margin-bottom:32px;max-width:500px;margin-left:auto;margin-right:auto;">
+      The math is simple. Bad hires are expensive. Verified hires are not.
+    </p>
+    <div class="u d3" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;max-width:720px;margin:0 auto 24px;">
+      <div style="padding:20px;background:rgba(5,150,105,.08);border:1px solid rgba(5,150,105,.25);border-radius:12px;text-align:center;">
+        <div style="font-size:32px;font-weight:900;color:#34D399;margin-bottom:4px;">60%</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5);">Faster screening</div>
+      </div>
+      <div style="padding:20px;background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.2);border-radius:12px;text-align:center;">
+        <div style="font-size:32px;font-weight:900;color:#60A5FA;margin-bottom:4px;">0%</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5);">Fraud hires</div>
+      </div>
+      <div style="padding:20px;background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.2);border-radius:12px;text-align:center;">
+        <div style="font-size:32px;font-weight:900;color:#A78BFA;margin-bottom:4px;">0%</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5);">Agency commission</div>
+      </div>
+      <div style="padding:20px;background:rgba(217,119,6,.08);border:1px solid rgba(217,119,6,.2);border-radius:12px;text-align:center;">
+        <div style="font-size:32px;font-weight:900;color:#FBBF24;margin-bottom:4px;">4×</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5);">Better retention</div>
+      </div>
+    </div>
+    <div class="u d4" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:600px;margin:0 auto;">
+      <div style="padding:16px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:10px;text-align:left;">
+        <div style="font-size:12px;font-weight:800;color:#FCA5A5;margin-bottom:8px;">Traditional Hiring</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5);line-height:1.7;">
+          Job post → 500 applicants<br/>
+          Screen → 3 weeks<br/>
+          Interview → 2 weeks<br/>
+          Discover lies → month 3<br/>
+          Repeat 💀
+        </div>
+      </div>
+      <div style="padding:16px;background:rgba(5,150,105,.08);border:1px solid rgba(5,150,105,.2);border-radius:10px;text-align:left;">
+        <div style="font-size:12px;font-weight:800;color:#34D399;margin-bottom:8px;">With Capabilio</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5);line-height:1.7;">
+          Search verified pool → 1 day<br/>
+          Review proof profiles → 2 hrs<br/>
+          Short interview → 1 day<br/>
+          Hire with confidence ✅<br/>
+          Done in 2 weeks
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ S7: CTA ════ -->
+<div class="scene" id="s7" style="background:linear-gradient(135deg,#010D04 0%,#001A08 60%,#050510 100%);">
+  <div style="text-align:center;max-width:640px;">
+    <div style="font-size:60px;margin-bottom:16px;" class="fl">🏢</div>
+    <h2 class="u" style="font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,52px);color:#fff;margin-bottom:14px;line-height:1.1;">
+      Hire people who are<br/><span style="color:#10B981;">actually what they claim.</span>
+    </h2>
+    <p class="u d1" style="color:rgba(255,255,255,.6);font-size:15px;margin-bottom:32px;line-height:1.6;">Join 200+ companies already hiring faster with zero fraud on Capabilio Launchpad.</p>
+    <div class="u d2" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:32px;">
+      <a href="https://capabilio.online" target="_blank" style="padding:16px 32px;background:linear-gradient(135deg,#059669,#34D399);border-radius:100px;color:#fff;font-size:15px;font-weight:800;text-decoration:none;box-shadow:0 4px 24px rgba(5,150,105,.4);">Access Launchpad → capabilio.online</a>
+      <a href="mailto:hr@capabilio.com" style="padding:16px 24px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:100px;color:#fff;font-size:14px;font-weight:700;text-decoration:none;">📩 Talk to sales</a>
+    </div>
+    <div class="u d3" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">
+      <div style="padding:8px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:100px;font-size:11px;color:rgba(255,255,255,.6);">✅ Verified profiles only</div>
+      <div style="padding:8px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:100px;font-size:11px;color:rgba(255,255,255,.6);">🏛️ EPFO employment proof</div>
+      <div style="padding:8px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:100px;font-size:11px;color:rgba(255,255,255,.6);">🚫 Zero agency fees</div>
+      <div style="padding:8px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:100px;font-size:11px;color:rgba(255,255,255,.6);">⚡ Hire in 2 weeks</div>
+    </div>
+  </div>
+</div>
+
+<div id="nav">
+  <button id="pbtn" onclick="tp()">⏸</button>
+  <div id="dots"></div>
+  <div id="secs">9s</div>
+</div>
+</div>
+<script>
+const N=8,D=9500;let c=0,p=true,t=null,ct=null,sl=9;
+const pb=document.getElementById('pbar'),de=document.getElementById('dots'),pb2=document.getElementById('pbtn'),se=document.getElementById('secs');
+for(let i=0;i<N;i++){const d=document.createElement('button');d.className='dot'+(i===0?' on':'');d.onclick=()=>gt(i);de.appendChild(d);}
+function gt(n){
+  const pv=document.getElementById('s'+c);pv.classList.remove('active');pv.classList.add('exit');
+  setTimeout(()=>pv.classList.remove('exit'),700);
+  c=((n%N)+N)%N;const nx=document.getElementById('s'+c);nx.classList.add('active');
+  nx.querySelectorAll('.u').forEach(e=>{e.style.animation='none';e.offsetHeight;e.style.animation='';});
+  pb.style.width=((c+1)/N*100)+'%';
+  de.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('on',i===c));
+  rc();if(p)sn();
+}
+function sn(){clearTimeout(t);t=setTimeout(()=>gt(c+1),D);}
+function rc(){clearInterval(ct);sl=Math.round(D/1000);se.textContent=sl+'s';ct=setInterval(()=>{sl--;se.textContent=sl+'s';if(sl<=0)clearInterval(ct);},1000);}
+function tp(){p=!p;pb2.textContent=p?'⏸':'▶';if(p){sn();rc();}else{clearTimeout(t);clearInterval(ct);se.textContent='—';}}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')gt(c+1);if(e.key==='ArrowLeft')gt(c-1);});
+gt(0);
+</script>
+</body>
+</html>
