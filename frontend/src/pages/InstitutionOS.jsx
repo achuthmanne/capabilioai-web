@@ -8,7 +8,7 @@
  * Run institution-migration.sql + supabase-org-columns-migration.sql first.
  */
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { supabase } from "../lib/supabase"
 
 // ─── Design Tokens ─────────────────────────────────────────────────────────────
@@ -814,15 +814,28 @@ function IntelligencePage({ userData, user, members, tasks, auditLogs, auditLoad
 // ═══════════════════════════════════════════════════════════════════════════════
 // PAGE 3 — TASKS
 // ═══════════════════════════════════════════════════════════════════════════════
-function TasksPage({ userData, user, tasks, tasksLoading, tasksError, reloadTasks }) {
+function TasksPage({ userData, user, tasks, tasksLoading, tasksError, reloadTasks, members }) {
   const [tab, setTab]         = useState("active")
   const [showCreate, setShowCreate] = useState(false)
   const [saving, setSaving]   = useState(false)
   const [saveError, setSaveError] = useState(null)
   const isCollege = (userData?.org_type || "college") !== "company"
 
-  const [form, setForm] = useState({ title: "", type: "assignment", assignedTo: "", dueDate: "", priority: "medium", description: "" })
+  const [form, setForm] = useState({ title: "", type: "assignment", subject: "", assignedTo: "All Students", dueDate: "", priority: "medium", description: "" })
   const setF = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  // Build structured assign-to options from real member batches + departments
+  const assignOptions = useMemo(() => {
+    const batches = [...new Set((members || []).filter(m => m.batch?.trim()).map(m => m.batch.trim()))]
+    const depts   = [...new Set((members || []).filter(m => m.department?.trim()).map(m => m.department.trim()))]
+    return [
+      { value: "All Students",  label: "👥 All Students"        },
+      { value: "All Faculty",   label: "🎓 All Faculty"         },
+      { value: "All Members",   label: "🏢 All Members"         },
+      ...batches.map(b  => ({ value: b,         label: `📚 ${b}` })),
+      ...depts.map(d    => ({ value: d,         label: `🏫 ${d} Dept.` })),
+    ]
+  }, [members])
 
   async function handlePublish() {
     if (!form.title.trim()) { setSaveError("Task title is required."); return }
@@ -832,7 +845,8 @@ function TasksPage({ userData, user, tasks, tasksLoading, tasksError, reloadTask
       title:             form.title.trim(),
       description:       form.description,
       type:              form.type,
-      assigned_to_label: form.assignedTo || "All",
+      subject:           form.subject.trim(),
+      assigned_to_label: form.assignedTo || "All Students",
       due_date:          form.dueDate || null,
       published_by:      user.id,
       published_by_name: userData?.name || "Admin",
@@ -844,7 +858,7 @@ function TasksPage({ userData, user, tasks, tasksLoading, tasksError, reloadTask
     await auditLog(user.id, user.id, userData?.name || "Admin",
       `Published task "${form.title.trim()}"`, "task.published", "task", row.id, { type: form.type })
     setShowCreate(false)
-    setForm({ title: "", type: "assignment", assignedTo: "", dueDate: "", priority: "medium", description: "" })
+    setForm({ title: "", type: "assignment", subject: "", assignedTo: "All Students", dueDate: "", priority: "medium", description: "" })
     reloadTasks()
   }
 
@@ -898,6 +912,7 @@ function TasksPage({ userData, user, tasks, tasksLoading, tasksError, reloadTask
                         {task.priority === "urgent" && <Badge color={T.red}>URGENT</Badge>}
                       </div>
                       <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                        {task.subject && <span style={{ fontSize: 12, color: T.ink3, fontWeight: 600 }}>📖 {task.subject}</span>}
                         {task.assigned_to_label && <span style={{ fontSize: 12, color: T.ink4 }}>👥 {task.assigned_to_label}</span>}
                         {task.due_date && <span style={{ fontSize: 12, color: T.ink4 }}>📅 Due {task.due_date}</span>}
                         {task.total_assigned > 0 && (
@@ -928,28 +943,63 @@ function TasksPage({ userData, user, tasks, tasksLoading, tasksError, reloadTask
       {showCreate && (
         <Modal title="Create Task" onClose={() => { setShowCreate(false); setSaveError(null) }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <FieldInput label="Task Title" value={form.title} onChange={v => setF("title", v)} required />
-            <FieldSelect label="Type" value={form.type} onChange={v => setF("type", v)} options={[
-              { value: "assignment", label: "Assignment" },
-              { value: "lab",        label: "Lab"        },
-              { value: "project",    label: "Project"    },
-              { value: "remedial",   label: "Remedial"   },
-              { value: "assessment", label: "Assessment" },
-              { value: "challenge",  label: "Challenge"  },
-            ]} />
-            <FieldInput label="Assign To (batch / cohort / group)" value={form.assignedTo} onChange={v => setF("assignedTo", v)} placeholder="e.g. B.Tech CSE 2026 or All Students" />
-            <FieldInput label="Due Date" value={form.dueDate} onChange={v => setF("dueDate", v)} type="date" />
-            <FieldSelect label="Priority" value={form.priority} onChange={v => setF("priority", v)} options={[
-              { value: "urgent", label: "🔴 Urgent" },
-              { value: "high",   label: "🟠 High"   },
-              { value: "medium", label: "🔵 Medium" },
-              { value: "low",    label: "⚪ Low"    },
-            ]} />
+
+            {/* Row 1: Title + Type */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <FieldInput label="Task Title *" value={form.title} onChange={v => setF("title", v)} placeholder="e.g. Data Structures Assignment 3" required />
+              <FieldSelect label="Type" value={form.type} onChange={v => setF("type", v)} options={[
+                { value: "assignment", label: "📝 Assignment" },
+                { value: "lab",        label: "🔬 Lab Work"   },
+                { value: "project",    label: "🏗️ Project"    },
+                { value: "remedial",   label: "🔁 Remedial"   },
+                { value: "assessment", label: "📊 Assessment" },
+                { value: "challenge",  label: "🏆 Challenge"  },
+              ]} />
+            </div>
+
+            {/* Row 2: Subject + Priority */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <FieldInput label="Subject / Course" value={form.subject} onChange={v => setF("subject", v)} placeholder="e.g. Data Structures, OS Lab" />
+              <FieldSelect label="Priority" value={form.priority} onChange={v => setF("priority", v)} options={[
+                { value: "urgent", label: "🔴 Urgent" },
+                { value: "high",   label: "🟠 High"   },
+                { value: "medium", label: "🔵 Medium" },
+                { value: "low",    label: "⚪ Low"    },
+              ]} />
+            </div>
+
+            {/* Row 3: Assign To (structured dropdown) + Due Date */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 6 }}>
+                  Assign To *
+                </label>
+                <select
+                  value={form.assignedTo}
+                  onChange={e => setF("assignedTo", e.target.value)}
+                  style={{ width: "100%", padding: "9px 12px", border: `1px solid ${T.border}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: "#fff", cursor: "pointer" }}
+                >
+                  {assignOptions.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+                {(members || []).length === 0 && (
+                  <div style={{ fontSize: 11, color: T.ink4, marginTop: 4 }}>
+                    Add members first to see batch/dept options
+                  </div>
+                )}
+              </div>
+              <FieldInput label="Due Date" value={form.dueDate} onChange={v => setF("dueDate", v)} type="date" />
+            </div>
+
+            {/* Description */}
             <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 6 }}>Description (optional)</label>
+              <label style={{ fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 6 }}>Instructions / Description (optional)</label>
               <textarea value={form.description} onChange={e => setF("description", e.target.value)} rows={3}
+                placeholder="What should students do? Include links, references, submission format…"
                 style={{ width: "100%", padding: "9px 12px", border: `1px solid ${T.border}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: T.bg, resize: "vertical" }} />
             </div>
+
             {saveError && <div style={{ fontSize: 12, color: T.red }}>{saveError}</div>}
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <Btn variant="outline" onClick={() => setShowCreate(false)}>Cancel</Btn>
@@ -1561,6 +1611,30 @@ function SettingsPage({ userData, user, initialTab = "profile", reloadAudit, aud
   // Update initialTab when it changes (VerificationBanner click)
   useEffect(() => { setTab(initialTab) }, [initialTab])
 
+  // Local verification level state — updated optimistically on click
+  const [localVLevelBoost, setLocalVLevelBoost] = useState(0)
+  const [verifyMsg, setVerifyMsg] = useState(null)
+  const [verifyError, setVerifyError] = useState(null)
+
+  async function handleEmailVerify() {
+    setVerifyMsg(null); setVerifyError(null)
+    // User is authenticated → their email IS confirmed. Mark email_verified in profiles.
+    const { error } = await supabase.from("profiles")
+      .update({ verificationStatus: "email_verified" })
+      .eq("id", user.id)
+    if (error) { setVerifyError("Verification failed: " + error.message); return }
+    await auditLog(user.id, user.id, userData?.name || "Admin",
+      "Completed Level 1 Email Verification", "verification.email_verified", "setting", "verification")
+    setLocalVLevelBoost(1)
+    setVerifyMsg("✅ Email verified! Level 1 complete.")
+    reloadAudit()
+  }
+
+  async function handleDomainVerify() {
+    // Level 2 — opens email to ops team
+    window.location.href = `mailto:verify@capabilio.com?subject=Domain Verification Request — ${userData?.org_name || "Institution"}&body=Hi Capabilio team,%0A%0APlease initiate domain verification for our institution.%0A%0AOrganisation: ${userData?.org_name || ""}%0AWebsite: ${userData?.org_website || ""}%0AAdmin: ${userData?.org_admin_name || ""}%0A%0AThank you.`
+  }
+
   async function handleSave() {
     setSaving(true); setSaveError(null); setSaved(false)
     const payload = isCollege ? {
@@ -1590,7 +1664,7 @@ function SettingsPage({ userData, user, initialTab = "profile", reloadAudit, aud
     reloadAudit()
   }
 
-  const vLevel = verificationLevel(userData)
+  const vLevel = Math.max(verificationLevel(userData), localVLevelBoost)
 
   const verificationSteps = [
     { level: 1, label: "Email Verification",   done: vLevel >= 1, note: "Required to create tasks and invite members" },
@@ -1654,6 +1728,14 @@ function SettingsPage({ userData, user, initialTab = "profile", reloadAudit, aud
             </div>
             <div style={{ fontSize: 12, color: T.ink3 }}>Complete all 4 levels to get the Verified Institution badge and unlock full platform features.</div>
           </Card>
+
+          {verifyMsg && (
+            <div style={{ padding: "10px 14px", background: T.greenL, borderRadius: 10, fontSize: 13, color: T.green, fontWeight: 600 }}>
+              {verifyMsg}
+            </div>
+          )}
+          {verifyError && <ErrorBanner msg={verifyError} />}
+
           {verificationSteps.map((v, i) => (
             <Card key={i} style={{ padding: "14px 16px", borderLeft: `3px solid ${v.done ? T.green : v.level === vLevel + 1 ? T.sky : T.border}` }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -1662,12 +1744,38 @@ function SettingsPage({ userData, user, initialTab = "profile", reloadAudit, aud
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>Level {v.level}: {v.label}</div>
                     <div style={{ fontSize: 11, color: T.ink4, marginTop: 2 }}>{v.note}</div>
+                    {/* Show action hint for the active step */}
+                    {!v.done && v.level === vLevel + 1 && v.level === 1 && (
+                      <div style={{ fontSize: 11, color: T.sky, marginTop: 4 }}>
+                        Your account email: <strong>{user?.email}</strong>
+                      </div>
+                    )}
+                    {!v.done && v.level === vLevel + 1 && v.level === 2 && (
+                      <div style={{ fontSize: 11, color: T.sky, marginTop: 4 }}>
+                        We'll send a verification link to your institution domain email.
+                      </div>
+                    )}
+                    {!v.done && v.level === vLevel + 1 && v.level === 3 && (
+                      <div style={{ fontSize: 11, color: T.sky, marginTop: 4 }}>
+                        Email your NAAC certificate / incorporation docs to verify@capabilio.com
+                      </div>
+                    )}
+                    {!v.done && v.level === vLevel + 1 && v.level === 4 && (
+                      <div style={{ fontSize: 11, color: T.sky, marginTop: 4 }}>
+                        Our team will review and approve within 24h after Step 3 is done.
+                      </div>
+                    )}
                   </div>
                 </div>
                 {v.done ? (
                   <span style={{ fontSize: 12, color: T.green, fontWeight: 700 }}>Verified ✓</span>
                 ) : v.level === vLevel + 1 ? (
-                  <Btn style={{ fontSize: 11, padding: "5px 12px" }}>Start →</Btn>
+                  <Btn
+                    style={{ fontSize: 11, padding: "5px 12px" }}
+                    onClick={v.level === 1 ? handleEmailVerify : v.level === 2 ? handleDomainVerify : undefined}
+                  >
+                    {v.level === 1 ? "Verify Email →" : v.level === 2 ? "Request →" : v.level === 3 ? "Email Docs →" : "Awaiting Review"}
+                  </Btn>
                 ) : (
                   <span style={{ fontSize: 11, color: T.ink4 }}>Locked</span>
                 )}
