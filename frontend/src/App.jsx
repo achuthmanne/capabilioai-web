@@ -937,8 +937,8 @@ function App() {
         {currentPage === "jobPostings"   && <JobPostings        user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
       </div>
 
-      {/* Capi — AI Career Copilot floating widget (shown to all logged-in users) */}
-      {user && <CopilotWidget user={user} userData={userData} />}
+      {/* Capi — AI Career Copilot floating widget (hidden on institution path — they have InstitutionOS) */}
+      {user && navPath !== "institution" && <CopilotWidget user={user} userData={userData} />}
 
       <Analytics />
       <SpeedInsights />
