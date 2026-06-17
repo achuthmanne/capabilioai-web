@@ -22,7 +22,6 @@ import Pricing             from "./pages/Pricing"
 import StudentHome         from "./pages/StudentHome"
 import ProfessionalHome    from "./pages/ProfessionalHome"
 import ExecutiveHome       from "./pages/ExecutiveHome"
-import OrgHome             from "./pages/OrgHome"
 // ── Professional pages ────────────────────────────────────────────────────────
 import Forge               from "./pages/Forge"
 import Orbit               from "./pages/Orbit"
@@ -30,10 +29,7 @@ import Orbit               from "./pages/Orbit"
 import SignalRooms         from "./pages/SignalRooms"
 import ExecutiveNetwork    from "./pages/ExecutiveNetwork"
 // ── Organisation pages ────────────────────────────────────────────────────────
-import OrgIntelligence     from "./pages/OrgIntelligence"
-import OrgTasks            from "./pages/OrgTasks"
-import OrgPeople           from "./pages/OrgPeople"
-import OrgSettings         from "./pages/OrgSettings"
+import InstitutionOS       from "./pages/InstitutionOS"
 // ── Recruiter pages ───────────────────────────────────────────────────────────
 import RecruiterDashboard  from "./pages/RecruiterDashboard"
 import HiringPipeline      from "./pages/HiringPipeline"
@@ -879,8 +875,8 @@ function App() {
         </div>
       </header>
 
-      {/* PathNav only for non-student paths */}
-      {navPath !== "student" && (
+      {/* PathNav — hidden for student (uses bottom tab) and institution (InstitutionOS has own nav) */}
+      {navPath !== "student" && navPath !== "institution" && (
         <PathNav
           path={navPath}
           activeItem={activeNavItem}
@@ -896,7 +892,10 @@ function App() {
         {currentPage === "studentHome"      && <StudentHome      user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
         {currentPage === "professionalHome" && <ProfessionalHome user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} onNavigatePricing={() => { setCurrentPage("pricing"); setActiveNavItem("") }} />}
         {currentPage === "executiveHome"    && <ExecutiveHome    user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
-        {currentPage === "orgHome"          && <OrgHome          user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
+        {/* InstitutionOS — handles all org pages internally */}
+        {["orgHome","orgIntel","orgTasks","orgPeople","orgSettings","orgCommunity","orgGroups","orgCohorts","orgEvents","orgOpportunities","orgOutcomes"].includes(currentPage) && (
+          <InstitutionOS user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />
+        )}
 
         {/* ── Shared core pages ──────────────────────────────── */}
 
@@ -930,11 +929,7 @@ function App() {
         {currentPage === "signalrooms" && <SignalRooms     user={user} userData={userData} />}
         {currentPage === "execnetwork" && <ExecutiveNetwork user={user} userData={userData} />}
 
-        {/* ── Organisation pages ─────────────────────────────── */}
-        {currentPage === "orgIntel"    && <OrgIntelligence user={user} userData={userData} />}
-        {currentPage === "orgTasks"    && <OrgTasks        user={user} userData={userData} />}
-        {currentPage === "orgPeople"   && <OrgPeople       user={user} userData={userData} />}
-        {currentPage === "orgSettings" && <OrgSettings     user={user} userData={userData} />}
+        {/* ── Organisation pages → handled by InstitutionOS above ── */}
 
         {/* ── Recruiter pages ────────────────────────────────── */}
         {currentPage === "recruiterHome" && <RecruiterDashboard user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
