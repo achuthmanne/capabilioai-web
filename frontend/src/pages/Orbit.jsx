@@ -734,7 +734,7 @@ function TimelineTab({ud,user,onSave}){
 function VaultTab({ud,user,onSave}){
   const[uploading,setUploading]=useState(false)
   const[uanModal,setUanModal]=useState(false)
-  const[uan,setUan]=useState(ud?.uanNumber||"")
+  const[uan,setUan]=useState(ud?.phone||"")   // phone number for EPFO lookup
   const[verifying,setVerifying]=useState(false)
   const[vResult,setVResult]=useState(null)
   const files=ud?.vaultFiles||[]
@@ -757,14 +757,26 @@ function VaultTab({ud,user,onSave}){
     setUploading(false)
   }
   const verifyUAN=async()=>{
-    if(!uan.trim())return
+    const cleaned=uan.replace(/\D/g,"").replace(/^91/,"")
+    if(cleaned.length!==10){setVResult({error:"Enter a valid 10-digit EPFO-registered mobile number."});return}
     setVerifying(true);setVResult(null)
     try{
-      const res=await fetch(`${API}/api/verify/uan`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({uan:uan.trim(),uid})})
+      const session=await import("../lib/supabase").then(m=>m.supabase.auth.getSession())
+      const token=session?.data?.session?.access_token||""
+      const res=await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-uan`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":`Bearer ${token}`},
+        body:JSON.stringify({phone:cleaned,user_id:uid})
+      })
       const d=await res.json()
-      setVResult(d)
-      if(d.verified)await onSave({uanNumber:uan.trim(),uanVerified:true,uanData:d.data||{}})
-    }catch{setVResult({error:"Verification service unavailable. Try again."})}
+      if(d.ok){
+        const best=(d.uan_details||[]).sort((a,b)=>(b.source_score||0)-(a.source_score||0))[0]
+        setVResult({verified:true,name:best?.employee_name,uan:best?.uan,employer:best?.employer_name})
+        await onSave({uanNumber:best?.uan||"",uanVerified:true,uanVerifiedAt:new Date().toISOString()})
+      }else{
+        setVResult({error:d.error||"Verification failed. Check the mobile number and retry."})
+      }
+    }catch(e){setVResult({error:"Verification service unavailable. Try again."})}
     setVerifying(false)
   }
 
@@ -803,10 +815,14 @@ function VaultTab({ud,user,onSave}){
       </div>)}
     </Card>
     <Modal show={uanModal} onClose={()=>setUanModal(false)} title="Verify Employment via EPFO/UAN">
-      <div style={{marginBottom:12,padding:"9px 13px",background:DS.blBg,border:`1px solid ${DS.blBd}`,borderRadius:DS.r,fontSize:12,color:DS.blue}}>ℹ️ Your UAN is a 12-digit number on your PF passbook, payslip, or at epfindia.gov.in.</div>
-      <Inp label="UAN Number" value={uan} onChange={v=>setUan(v.replace(/\D/g,"").slice(0,12))} placeholder="12-digit UAN" mono/>
-      {vResult&&<div style={{marginBottom:12,marginTop:10,padding:"9px 13px",background:vResult.verified?DS.gBg:DS.rBg,border:`1px solid ${vResult.verified?DS.gBd:DS.rBd}`,borderRadius:DS.r,fontSize:12,color:vResult.verified?DS.green:DS.red}}>{vResult.verified?"✓ Employment records verified and linked.":vResult.error||"Could not verify. Check your UAN and retry."}</div>}
-      <Btn onClick={verifyUAN} loading={verifying} full style={{marginTop:12}}>{verifying?"Verifying with EPFO…":"Verify Employment →"}</Btn>
+      <div style={{marginBottom:12,padding:"9px 13px",background:DS.blBg,border:`1px solid ${DS.blBd}`,borderRadius:DS.r,fontSize:12,color:DS.blue}}>ℹ️ Enter the mobile number registered with your EPFO / UAN account. Your employment history will be fetched from the government EPFO database via Eko.</div>
+      <Inp label="EPFO-Registered Mobile Number" value={uan} onChange={v=>setUan(v.replace(/\D/g,"").slice(0,10))} placeholder="10-digit mobile number" mono/>
+      {vResult&&<div style={{marginBottom:12,marginTop:10,padding:"9px 13px",background:vResult.verified?DS.gBg:DS.rBg,border:`1px solid ${vResult.verified?DS.gBd:DS.rBd}`,borderRadius:DS.r,fontSize:12,color:vResult.verified?DS.green:DS.red}}>
+        {vResult.verified
+          ?<>✓ Employment verified — {vResult.name}{vResult.employer?` at ${vResult.employer}`:""}{vResult.uan?` · UAN ${vResult.uan}`:""}</>
+          :vResult.error||"Could not verify. Check the mobile number and retry."}
+      </div>}
+      <Btn onClick={verifyUAN} loading={verifying} full style={{marginTop:12}}>{verifying?"Contacting EPFO via Eko…":"Fetch EPFO Records →"}</Btn>
     </Modal>
   </div>
 }
