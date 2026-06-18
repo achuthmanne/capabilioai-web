@@ -200,6 +200,33 @@ function useOrgAuditLog(orgId, limit = 20) {
   return { data, loading, reload: load }
 }
 
+function useOrgPosts(orgId) {
+  const [data, setData]       = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState(null)
+  const load = useCallback(async () => {
+    if (!orgId) { setLoading(false); return }
+    setLoading(true)
+    const { data: rows, error: err } = await supabase
+      .from("org_events").select("*").eq("org_id", orgId).eq("type", "post")
+      .order("created_at", { ascending: false })
+    setLoading(false)
+    if (err) setError(err.message)
+    else { setData(rows || []); setError(null) }
+  }, [orgId])
+  useEffect(() => { load() }, [load])
+  return { data, loading, error, reload: load }
+}
+
+async function uploadOrgPhoto(userId, file, type) {
+  const ext = file.name.split(".").pop()
+  const path = `${userId}/${type}_${Date.now()}.${ext}`
+  const { error: upErr } = await supabase.storage.from("org-media").upload(path, file, { upsert: true })
+  if (upErr) throw new Error(upErr.message)
+  const { data: { publicUrl } } = supabase.storage.from("org-media").getPublicUrl(path)
+  return publicUrl
+}
+
 function useOrgCompanyLinks(orgId) {
   const [data, setData]       = useState([])
   const [loading, setLoading] = useState(true)
@@ -1455,24 +1482,195 @@ function PeoplePage({ userData, user, members, membersLoading, membersError, rel
 // ═══════════════════════════════════════════════════════════════════════════════
 // PAGE 5 — COMMUNITY (beta gate on post creation)
 // ═══════════════════════════════════════════════════════════════════════════════
-function CommunityPage() {
-  const [tab, setTab] = useState("feed")
+function CommunityPage({ userData, user }) {
+  const [tab, setTab] = useState("posts")
+  const orgId = user?.id
+  const { data: posts, loading: postsLoading } = useOrgPosts(orgId)
+  const { data: members } = useOrgMembers(orgId)
+
+  const orgName     = userData?.org_name || "Your Institution"
+  const orgLocation = userData?.org_location || ""
+  const orgType     = userData?.org_inst_type || userData?.org_industry || "Institution"
+  const memberCount = members.filter(m => m.status === "active").length
+  const coverPhoto  = userData?.org_cover_photo
+  const profilePhoto= userData?.org_profile_photo
+  const initials    = orgName.split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase()
+
   return (
-    <PageShell>
-      <PageHeader title="Community" sub="Institution-wide feed and announcements"
-        actions={[
-          <div key="p" style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", background: T.bg, border: `1px solid ${T.border}`, borderRadius: 10, fontSize: 12, color: T.ink4 }}>
-            ✏️ Posts via mobile app during beta
+    <div style={{ flex: 1, overflow: "auto", background: "transparent" }}>
+      {/* Cover photo */}
+      <div style={{
+        width: "100%", height: 200, position: "relative",
+        background: coverPhoto
+          ? `url(${coverPhoto}) center/cover no-repeat`
+          : "linear-gradient(135deg,rgba(220,139,24,.3),rgba(116,168,255,.2),rgba(11,10,8,1))",
+        borderBottom: `1px solid ${T.border}`,
+      }}>
+        {/* Edit cover hint */}
+        <button
+          onClick={() => {}}
+          style={{
+            position: "absolute", bottom: 10, right: 14, padding: "6px 12px",
+            background: "rgba(0,0,0,.55)", backdropFilter: "blur(8px)",
+            border: `1px solid ${T.border}`, borderRadius: 10,
+            color: T.ink3, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: FONT,
+          }}
+        >
+          ✏ Edit cover · go to Settings → Media
+        </button>
+      </div>
+
+      {/* Profile strip */}
+      <div style={{ padding: "0 24px 16px", borderBottom: `1px solid ${T.border}`, background: "rgba(255,255,255,.015)" }}>
+        {/* Profile photo — overlaps cover */}
+        <div style={{ marginTop: -44, marginBottom: 10, display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div style={{
+            width: 88, height: 88, borderRadius: 20,
+            background: profilePhoto ? "transparent" : "linear-gradient(135deg,#dc8b18,#f6c453)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 28, fontWeight: 900, color: "#23170a",
+            border: `3px solid #0b0a08`, flexShrink: 0, overflow: "hidden",
+            boxShadow: "0 4px 20px rgba(0,0,0,.5)",
+          }}>
+            {profilePhoto
+              ? <img src={profilePhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              : initials
+            }
           </div>
-        ]}
-      />
-      <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
-        {["feed", "announcements"].map(t => (
-          <button key={t} onClick={() => setTab(t)} style={tabStyle(tab === t)}>{t.charAt(0).toUpperCase() + t.slice(1)}</button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button style={{
+              padding: "8px 18px", borderRadius: 12, fontSize: 13, fontWeight: 800,
+              background: "linear-gradient(135deg,#dc8b18,#f6c453)", color: "#23170a",
+              border: "none", cursor: "pointer", fontFamily: FONT,
+            }}>+ Follow</button>
+            <button style={{
+              padding: "8px 18px", borderRadius: 12, fontSize: 13, fontWeight: 700,
+              background: "transparent", color: T.ink3,
+              border: `1px solid ${T.border}`, cursor: "pointer", fontFamily: FONT,
+            }}>Message</button>
+          </div>
+        </div>
+
+        {/* Name + meta */}
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <h2 style={{
+              margin: 0, fontFamily: "'Instrument Serif', Georgia, serif",
+              fontStyle: "italic", fontWeight: 400, fontSize: 28,
+              letterSpacing: "-0.02em", color: T.ink,
+            }}>{orgName}</h2>
+            {userData?.verified && (
+              <span style={{
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                width: 20, height: 20, background: T.sky, borderRadius: "50%",
+                fontSize: 11, color: "#fff", fontWeight: 900,
+              }}>✓</span>
+            )}
+          </div>
+          <div style={{ fontSize: 13, color: T.ink3, marginBottom: 6 }}>
+            {orgType}{orgLocation ? ` · ${orgLocation}` : ""}
+          </div>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 12, color: T.ink4 }}>
+              <span style={{ fontWeight: 700, color: T.ink2 }}>{memberCount}</span> members
+            </span>
+            {userData?.org_website && (
+              <a href={userData.org_website} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: T.sky, textDecoration: "none" }}>
+                🌐 {userData.org_website.replace(/https?:\/\//, "")}
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Tab bar */}
+      <div style={{ display: "flex", gap: 0, borderBottom: `1px solid ${T.border}`, padding: "0 24px", background: "rgba(255,255,255,.01)" }}>
+        {["posts", "about", "alumni"].map(t => (
+          <button key={t} onClick={() => setTab(t)} style={{
+            padding: "14px 16px 12px", background: "none", border: "none",
+            fontSize: 13, fontWeight: 700, fontFamily: FONT, cursor: "pointer",
+            color: tab === t ? T.ink : T.ink4,
+            borderBottom: `2px solid ${tab === t ? T.gold : "transparent"}`,
+            transition: "color .12s",
+          }}>
+            {t.charAt(0).toUpperCase() + t.slice(1)}
+          </button>
         ))}
       </div>
-      <EmptyState icon="💬" title="Community coming soon" sub="Your institution feed will show posts from faculty and admins. Members can post from the Capabilio mobile app." />
-    </PageShell>
+
+      {/* Tab content */}
+      <div style={{ padding: "20px 24px", maxWidth: 680 }}>
+        {tab === "posts" && (
+          postsLoading ? <Spinner /> : posts.length === 0 ? (
+            <div style={{ padding: "32px 0", textAlign: "center", color: T.ink4, fontSize: 13 }}>
+              No posts yet. Go to <b style={{ color: T.gold }}>Posts</b> in the sidebar to publish your first one.
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {posts.map(post => {
+                const pPhoto = profilePhoto
+                const pInit  = initials
+                return (
+                  <div key={post.id} style={{
+                    border: `1px solid ${T.border}`, borderRadius: 22,
+                    background: "linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.03))",
+                    padding: 18,
+                  }}>
+                    <div style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 12 }}>
+                      <div style={{
+                        width: 44, height: 44, borderRadius: 14, flexShrink: 0,
+                        background: pPhoto ? "transparent" : "linear-gradient(135deg,#dc8b18,#f6c453)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 15, fontWeight: 900, color: "#23170a",
+                        overflow: "hidden", border: `1px solid ${T.border}`,
+                      }}>
+                        {pPhoto ? <img src={pPhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : pInit}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{orgName}</div>
+                        <div style={{ fontSize: 11, color: T.ink4 }}>{memberCount} followers · {timeSince(post.created_at)}</div>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 13.5, color: T.ink2, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{post.title}</div>
+                    {post.description && post.description.startsWith("http") && (
+                      <img src={post.description} alt="" style={{ width: "100%", marginTop: 12, borderRadius: 14, objectFit: "cover", maxHeight: 320 }} />
+                    )}
+                    <div style={{ display: "flex", gap: 16, marginTop: 14, paddingTop: 12, borderTop: `1px solid ${T.border}` }}>
+                      <button style={{ fontSize: 12, color: T.ink4, background: "none", border: "none", cursor: "pointer", fontFamily: FONT }}>👍 Like</button>
+                      <button style={{ fontSize: 12, color: T.ink4, background: "none", border: "none", cursor: "pointer", fontFamily: FONT }}>💬 Comment</button>
+                      <button style={{ fontSize: 12, color: T.ink4, background: "none", border: "none", cursor: "pointer", fontFamily: FONT }}>↗ Share</button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        )}
+
+        {tab === "about" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {[
+              { label: "Institution type", value: orgType },
+              { label: "Location",         value: orgLocation || "—" },
+              { label: "Website",          value: userData?.org_website || "—" },
+              { label: "NAAC Grade",       value: userData?.org_naac_grade || "—" },
+              { label: "Members",          value: memberCount },
+            ].map((r, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: `1px solid ${T.border}` }}>
+                <span style={{ fontSize: 12, color: T.ink4, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em" }}>{r.label}</span>
+                <span style={{ fontSize: 13, color: T.ink, fontWeight: 600 }}>{r.value}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {tab === "alumni" && (
+          <div style={{ padding: "20px 0", textAlign: "center", color: T.ink4, fontSize: 13 }}>
+            Alumni directory coming soon.
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -1511,138 +1709,218 @@ function CohortsPage({ members }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// PAGE 8 — EVENTS
+// PAGE 8 — POSTS (Institution LinkedIn-style feed)
 // ═══════════════════════════════════════════════════════════════════════════════
-function EventsPage({ userData, user, events, eventsLoading, eventsError, reloadEvents }) {
-  const [tab, setTab]               = useState("upcoming")
-  const [showCreate, setShowCreate] = useState(false)
-  const [saving, setSaving]         = useState(false)
-  const [saveError, setSaveError]   = useState(null)
-  const [form, setForm]             = useState({ title: "", type: "general", event_date: "", event_time: "", venue: "", description: "" })
-  const setF = (k, v) => setForm(f => ({ ...f, [k]: v }))
-  const isCollege = (userData?.org_type || "college") !== "company"
+function EventsPage({ userData, user }) {
+  const orgId = user?.id
+  const { data: posts, loading, error, reload } = useOrgPosts(orgId)
 
-  const today = new Date().toISOString().split("T")[0]
-  const upcoming = events.filter(e => e.event_date >= today && e.status !== "cancelled")
-  const past     = events.filter(e => e.event_date < today || e.status === "completed")
+  const [text, setText]             = useState("")
+  const [imgFile, setImgFile]       = useState(null)
+  const [imgPreview, setImgPreview] = useState(null)
+  const [publishing, setPublishing] = useState(false)
+  const [pubError, setPubError]     = useState(null)
+  const fileRef                     = useRef(null)
 
-  async function handleCreate() {
-    if (!form.title.trim() || !form.event_date) { setSaveError("Title and date are required."); return }
-    setSaving(true); setSaveError(null)
-    const { data: row, error } = await supabase.from("org_events").insert({
-      org_id:      user.id,
-      title:       form.title.trim(),
-      type:        form.type,
-      event_date:  form.event_date,
-      event_time:  form.event_time,
-      venue:       form.venue,
-      description: form.description,
-      status:      "upcoming",
-      created_by:  user.id,
-    }).select().single()
-    setSaving(false)
-    if (error) { setSaveError(error.message); return }
-    await auditLog(user.id, user.id, userData?.name || "Admin",
-      `Created event "${form.title.trim()}"`, "event.created", "event", row.id, { date: form.event_date, type: form.type })
-    setShowCreate(false)
-    setForm({ title: "", type: "general", event_date: "", event_time: "", venue: "", description: "" })
-    reloadEvents()
+  const orgName  = userData?.org_name || "Your Institution"
+  const initials = orgName.split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase()
+  const profilePhoto = userData?.org_profile_photo
+
+  function handleImagePick(e) {
+    const f = e.target.files?.[0]
+    if (!f) return
+    setImgFile(f)
+    setImgPreview(URL.createObjectURL(f))
   }
 
-  async function handleCancel(event) {
-    await supabase.from("org_events").update({ status: "cancelled" }).eq("id", event.id)
-    await auditLog(user.id, user.id, userData?.name || "Admin",
-      `Cancelled event "${event.title}"`, "event.cancelled", "event", event.id, {}, "warning")
-    reloadEvents()
+  async function handlePublish() {
+    if (!text.trim()) return
+    setPublishing(true); setPubError(null)
+    try {
+      let imageUrl = null
+      if (imgFile) {
+        try { imageUrl = await uploadOrgPhoto(orgId, imgFile, "post") } catch (_) { /* skip image on failure */ }
+      }
+      const today = new Date().toISOString().split("T")[0]
+      const { error: insertErr } = await supabase.from("org_events").insert({
+        org_id:      orgId,
+        title:       text.trim(),
+        description: imageUrl || "",
+        type:        "post",
+        event_date:  today,
+        status:      "published",
+        created_by:  orgId,
+      })
+      if (insertErr) throw new Error(insertErr.message)
+      await auditLog(orgId, orgId, userData?.name || "Admin",
+        `Published a post`, "post.created", "post", "", {})
+      setText(""); setImgFile(null); setImgPreview(null)
+      reload()
+    } catch (e) {
+      setPubError(e.message)
+    } finally {
+      setPublishing(false)
+    }
   }
 
-  const displayEvents = tab === "upcoming" ? upcoming : past
-  const typeColor = { drive: T.sky, review: T.amber, lecture: T.purple, assessment: T.green, seminar: T.teal, general: T.blue }
+  async function handleDelete(post) {
+    await supabase.from("org_events").delete().eq("id", post.id)
+    reload()
+  }
 
   return (
     <PageShell>
-      <PageHeader
-        title="Events"
-        sub="Campus drives, sessions, and milestones"
-        actions={[<Btn key="c" onClick={() => setShowCreate(true)}>+ Create Event</Btn>]}
-      />
-
-      <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
-        {["upcoming", "past"].map(t => (
-          <button key={t} onClick={() => setTab(t)} style={tabStyle(tab === t)}>
-            {t.charAt(0).toUpperCase() + t.slice(1)} {t === "upcoming" ? `(${upcoming.length})` : `(${past.length})`}
-          </button>
-        ))}
+      <div style={{ marginBottom: 22 }}>
+        <h1 style={{
+          margin: 0, fontFamily: "'Instrument Serif', Georgia, serif",
+          fontStyle: "italic", fontWeight: 400, fontSize: 36,
+          letterSpacing: "-0.02em", lineHeight: 0.95, color: T.ink,
+        }}>
+          Institution <span style={{ color: T.gold }}>posts</span>
+        </h1>
+        <p style={{ margin: "6px 0 0", fontSize: 12, color: T.ink4 }}>Visible to anyone who views your institution's public profile</p>
       </div>
 
-      {eventsLoading ? <Spinner /> : eventsError ? <ErrorBanner msg={eventsError} onRetry={reloadEvents} /> : (
-        displayEvents.length === 0 ? (
-          <EmptyState icon="📅" title={`No ${tab} events`} sub={tab === "upcoming" ? "Create your first event to get started." : "Past events will appear here."} action={tab === "upcoming" ? () => setShowCreate(true) : undefined} actionLabel="Create Event" />
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {displayEvents.map(e => {
-              const dateParts = (e.event_date || "").split("-")
-              const month = dateParts[1] ? new Date(e.event_date).toLocaleString("default", { month: "short" }) : "—"
-              const day   = dateParts[2] || "—"
-              return (
-                <Card key={e.id} style={{ padding: "16px 18px" }}>
-                  <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-                    <div style={{ textAlign: "center", background: T.skyL, borderRadius: 10, padding: "8px 12px", flexShrink: 0, minWidth: 52 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: T.sky, textTransform: "uppercase" }}>{month}</div>
-                      <div style={{ fontSize: 22, fontWeight: 800, color: T.sky, fontFamily: MONO, lineHeight: 1 }}>{day}</div>
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 5, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>{e.title}</span>
-                        <Chip color={typeColor[e.type] || T.sky} bg={`${typeColor[e.type] || T.sky}15`}>{e.type}</Chip>
-                        {e.status === "cancelled" && <Badge color={T.red}>Cancelled</Badge>}
-                      </div>
-                      <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-                        {e.event_time && <span style={{ fontSize: 12, color: T.ink4 }}>⏰ {e.event_time}</span>}
-                        {e.venue && <span style={{ fontSize: 12, color: T.ink4 }}>📍 {e.venue}</span>}
-                        {e.attendee_count > 0 && <span style={{ fontSize: 12, color: T.sky, fontWeight: 600 }}>👥 {e.attendee_count} attendees</span>}
-                      </div>
-                    </div>
-                    {tab === "upcoming" && e.status !== "cancelled" && (
-                      <Btn variant="outline" onClick={() => handleCancel(e)} style={{ fontSize: 11, padding: "5px 10px", color: T.red, borderColor: T.red }}>Cancel</Btn>
-                    )}
-                  </div>
-                </Card>
-              )
-            })}
+      {/* Post composer */}
+      <div style={{
+        border: `1px solid ${T.border}`, borderRadius: 22,
+        background: "linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.03))",
+        padding: 18, marginBottom: 20,
+      }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+          {/* Avatar */}
+          <div style={{
+            width: 44, height: 44, borderRadius: 14, flexShrink: 0,
+            background: profilePhoto ? "transparent" : "linear-gradient(135deg,#dc8b18,#f6c453)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 15, fontWeight: 900, color: "#23170a",
+            overflow: "hidden", border: `1px solid ${T.border}`,
+          }}>
+            {profilePhoto ? <img src={profilePhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initials}
           </div>
-        )
-      )}
 
-      {showCreate && (
-        <Modal title="Create Event" onClose={() => { setShowCreate(false); setSaveError(null) }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <FieldInput label="Event Title" value={form.title} onChange={v => setF("title", v)} required />
-            <FieldSelect label="Type" value={form.type} onChange={v => setF("type", v)} options={[
-              { value: "drive",      label: "Campus Drive"  },
-              { value: "review",     label: "Review"        },
-              { value: "lecture",    label: "Guest Lecture" },
-              { value: "assessment", label: "Assessment"    },
-              { value: "seminar",    label: "Seminar"       },
-              { value: "general",    label: "General"       },
-            ]} />
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <FieldInput label="Date" value={form.event_date} onChange={v => setF("event_date", v)} type="date" required />
-              <FieldInput label="Time" value={form.event_time} onChange={v => setF("event_time", v)} type="time" />
-            </div>
-            <FieldInput label="Venue" value={form.venue} onChange={v => setF("venue", v)} placeholder="e.g. Auditorium 1 or Online" />
-            <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 6 }}>Description</label>
-              <textarea value={form.description} onChange={e => setF("description", e.target.value)} rows={3}
-                style={{ width: "100%", padding: "9px 12px", border: `1px solid ${T.border}`, borderRadius: 10, fontSize: 13, fontFamily: FONT, outline: "none", background: T.bg, resize: "vertical", color: T.ink }} />
-            </div>
-            {saveError && <div style={{ fontSize: 12, color: T.red }}>{saveError}</div>}
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <Btn variant="outline" onClick={() => setShowCreate(false)}>Cancel</Btn>
-              <Btn onClick={handleCreate} disabled={saving}>{saving ? "Creating…" : "Create Event"}</Btn>
+          {/* Text area */}
+          <div style={{ flex: 1 }}>
+            <textarea
+              value={text}
+              onChange={e => setText(e.target.value)}
+              placeholder={`Share an update from ${orgName}…`}
+              rows={3}
+              style={{
+                width: "100%", padding: "10px 14px", border: `1px solid ${T.border}`,
+                borderRadius: 14, fontSize: 13.5, fontFamily: FONT, outline: "none",
+                background: "rgba(255,255,255,.04)", resize: "none", color: T.ink,
+                lineHeight: 1.55, boxSizing: "border-box",
+              }}
+              onFocus={e => e.target.style.borderColor = T.gold}
+              onBlur={e => e.target.style.borderColor = T.border}
+            />
+
+            {imgPreview && (
+              <div style={{ position: "relative", marginTop: 10, display: "inline-block" }}>
+                <img src={imgPreview} alt="preview" style={{ maxHeight: 200, maxWidth: "100%", borderRadius: 12, border: `1px solid ${T.border}` }} />
+                <button onClick={() => { setImgFile(null); setImgPreview(null) }} style={{
+                  position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,.6)",
+                  border: "none", borderRadius: "50%", width: 22, height: 22,
+                  color: T.ink, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                }}>✕</button>
+              </div>
+            )}
+
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12, gap: 8 }}>
+              <div style={{ display: "flex", gap: 6 }}>
+                <input ref={fileRef} type="file" accept="image/*" onChange={handleImagePick} style={{ display: "none" }} />
+                <button onClick={() => fileRef.current?.click()} style={{
+                  display: "flex", alignItems: "center", gap: 5, padding: "7px 12px",
+                  border: `1px solid ${T.border}`, borderRadius: 10, background: "transparent",
+                  color: T.ink4, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: FONT,
+                }}
+                  onMouseEnter={e => e.currentTarget.style.color = T.ink}
+                  onMouseLeave={e => e.currentTarget.style.color = T.ink4}
+                >
+                  📷 Photo
+                </button>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                {pubError && <span style={{ fontSize: 11, color: T.red }}>{pubError}</span>}
+                <Btn onClick={handlePublish} disabled={publishing || !text.trim()}>
+                  {publishing ? "Publishing…" : "Publish post"}
+                </Btn>
+              </div>
             </div>
           </div>
-        </Modal>
+        </div>
+      </div>
+
+      {/* Posts feed */}
+      {loading ? <Spinner /> : error ? (
+        <div style={{ padding: 16, color: T.red, fontSize: 13 }}>Failed to load posts: {error}</div>
+      ) : posts.length === 0 ? (
+        <div style={{ border: `1px solid ${T.border}`, borderRadius: 18, padding: "32px 24px", textAlign: "center" }}>
+          <div style={{ fontSize: 32, marginBottom: 10 }}>✍️</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, marginBottom: 6 }}>No posts yet</div>
+          <div style={{ fontSize: 13, color: T.ink4 }}>Write your first post above. It'll appear on your public profile.</div>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {posts.map(post => (
+            <div key={post.id} style={{
+              border: `1px solid ${T.border}`, borderRadius: 22,
+              background: "linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.03))",
+              padding: 18,
+            }}>
+              <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: 14, flexShrink: 0,
+                  background: profilePhoto ? "transparent" : "linear-gradient(135deg,#dc8b18,#f6c453)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 15, fontWeight: 900, color: "#23170a",
+                  overflow: "hidden", border: `1px solid ${T.border}`,
+                }}>
+                  {profilePhoto ? <img src={profilePhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initials}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                    <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{orgName}</span>
+                    {userData?.verified && <span style={{ fontSize: 11, color: T.sky }}>✓</span>}
+                  </div>
+                  <div style={{ fontSize: 11, color: T.ink4 }}>Institution · {timeSince(post.created_at)}</div>
+                </div>
+                <button onClick={() => handleDelete(post)} style={{
+                  background: "none", border: "none", color: T.ink4, fontSize: 14,
+                  cursor: "pointer", padding: "2px 6px", borderRadius: 6,
+                }}
+                  onMouseEnter={e => e.currentTarget.style.color = T.red}
+                  onMouseLeave={e => e.currentTarget.style.color = T.ink4}
+                  title="Delete post"
+                >✕</button>
+              </div>
+
+              <div style={{ marginTop: 14, fontSize: 13.5, color: T.ink2, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                {post.title}
+              </div>
+
+              {post.description && post.description.startsWith("http") && (
+                <img src={post.description} alt="post" style={{
+                  width: "100%", marginTop: 12, borderRadius: 14, objectFit: "cover", maxHeight: 320,
+                  border: `1px solid ${T.border}`,
+                }} />
+              )}
+
+              <div style={{ display: "flex", gap: 16, marginTop: 14, paddingTop: 12, borderTop: `1px solid ${T.border}` }}>
+                <button style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: T.ink4, background: "none", border: "none", cursor: "pointer", fontFamily: FONT, padding: 0 }}>
+                  👍 Like
+                </button>
+                <button style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: T.ink4, background: "none", border: "none", cursor: "pointer", fontFamily: FONT, padding: 0 }}>
+                  💬 Comment
+                </button>
+                <button style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: T.ink4, background: "none", border: "none", cursor: "pointer", fontFamily: FONT, padding: 0 }}>
+                  ↗ Share
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </PageShell>
   )
@@ -1909,6 +2187,91 @@ function OutcomesPage({ userData, members }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // PAGE 11 — SETTINGS
 // ═══════════════════════════════════════════════════════════════════════════════
+function MediaTab({ user, userData }) {
+  const [profileUploading, setProfileUploading] = useState(false)
+  const [coverUploading, setCoverUploading]     = useState(false)
+  const [profileUrl, setProfileUrl]             = useState(userData?.org_profile_photo || "")
+  const [coverUrl, setCoverUrl]                 = useState(userData?.org_cover_photo   || "")
+  const [msg, setMsg]   = useState(null)
+  const [err, setErr]   = useState(null)
+  const profileRef = useRef(null)
+  const coverRef   = useRef(null)
+
+  async function handleUpload(file, type) {
+    const setter = type === "profile" ? setProfileUploading : setCoverUploading
+    setter(true); setMsg(null); setErr(null)
+    try {
+      const url = await uploadOrgPhoto(user.id, file, type)
+      const field = type === "profile" ? "org_profile_photo" : "org_cover_photo"
+      const { error: dbErr } = await supabase.from("profiles").update({ [field]: url }).eq("id", user.id)
+      if (dbErr) throw new Error(dbErr.message)
+      if (type === "profile") setProfileUrl(url)
+      else setCoverUrl(url)
+      setMsg(`✅ ${type === "profile" ? "Profile photo" : "Cover photo"} updated!`)
+    } catch (e) {
+      setErr(e.message.includes("bucket") ? "Storage not configured. Ask admin to create 'org-media' bucket in Supabase." : e.message)
+    } finally {
+      setter(false)
+    }
+  }
+
+  const PhotoSlot = ({ label, sublabel, url, aspect, onPick, uploading, inputRef, accepts }) => (
+    <div style={{ border: `1px solid ${T.border}`, borderRadius: 18, overflow: "hidden", marginBottom: 14 }}>
+      {/* Preview */}
+      <div style={{
+        width: "100%", aspectRatio: aspect, background: url
+          ? `url(${url}) center/cover no-repeat`
+          : "linear-gradient(135deg,rgba(220,139,24,.15),rgba(116,168,255,.10))",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        position: "relative", minHeight: aspect === "4/1" ? 100 : 80,
+      }}>
+        {!url && <span style={{ fontSize: 12, color: T.ink4 }}>No photo set</span>}
+        {uploading && (
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Spinner />
+          </div>
+        )}
+      </div>
+      {/* Controls */}
+      <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,.02)" }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>{label}</div>
+          <div style={{ fontSize: 11, color: T.ink4, marginTop: 2 }}>{sublabel}</div>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input ref={inputRef} type="file" accept={accepts || "image/*"} style={{ display: "none" }}
+            onChange={e => { const f = e.target.files?.[0]; if (f) onPick(f) }} />
+          <Btn onClick={() => inputRef.current?.click()} disabled={uploading}>
+            {uploading ? "Uploading…" : "Upload photo"}
+          </Btn>
+        </div>
+      </div>
+    </div>
+  )
+
+  return (
+    <div>
+      {msg && <div style={{ padding: "10px 14px", background: "rgba(79,212,163,.10)", border: `1px solid ${T.green}30`, borderRadius: 10, fontSize: 12, color: T.green, marginBottom: 14 }}>{msg}</div>}
+      {err && <div style={{ padding: "10px 14px", background: "rgba(255,129,119,.10)", border: `1px solid ${T.red}30`, borderRadius: 10, fontSize: 12, color: T.red, marginBottom: 14 }}>{err}</div>}
+
+      <PhotoSlot
+        label="Profile photo" sublabel="Shown on your public page and sidebar · Square, min 200×200px"
+        url={profileUrl} aspect="1/1" uploading={profileUploading} inputRef={profileRef}
+        onPick={f => handleUpload(f, "profile")}
+      />
+      <PhotoSlot
+        label="Cover photo" sublabel="Banner at top of your public profile · 1400×350px recommended"
+        url={coverUrl} aspect="4/1" uploading={coverUploading} inputRef={coverRef}
+        onPick={f => handleUpload(f, "cover")}
+      />
+
+      <div style={{ padding: "10px 14px", background: "rgba(116,168,255,.08)", border: `1px solid rgba(116,168,255,.20)`, borderRadius: 10, fontSize: 12, color: T.sky }}>
+        ℹ️ Photos are stored in Supabase and appear immediately on your public profile. Requires <code>org-media</code> storage bucket — run the migration SQL if uploads fail.
+      </div>
+    </div>
+  )
+}
+
 function SettingsPage({ userData, user, initialTab = "profile", reloadAudit, auditLogs, auditLoading }) {
   const [tab, setTab]         = useState(initialTab)
   const [saving, setSaving]   = useState(false)
@@ -2016,10 +2379,12 @@ function SettingsPage({ userData, user, initialTab = "profile", reloadAudit, aud
       <PageHeader title="Settings" sub="Organisation profile, verification, and integrations" />
 
       <div style={{ display: "flex", gap: 4, marginBottom: 20, flexWrap: "wrap" }}>
-        {["profile", "verification", "integrations", "audit"].map(t => (
+        {["profile", "media", "verification", "integrations", "audit"].map(t => (
           <button key={t} onClick={() => setTab(t)} style={tabStyle(tab === t)}>{t.charAt(0).toUpperCase() + t.slice(1)}</button>
         ))}
       </div>
+
+      {tab === "media" && <MediaTab user={user} userData={userData} />}
 
       {tab === "profile" && (
         <Card>
@@ -2215,7 +2580,7 @@ export default function InstitutionOS({ user, userData, onNavigate }) {
     intelligence:  <IntelligencePage  {...shared} />,
     tasks:         <TasksPage         {...shared} />,
     people:        <PeoplePage        {...shared} />,
-    community:     <CommunityPage />,
+    community:     <CommunityPage userData={userData} user={user} />,
     groups:        <GroupsPage />,
     cohorts:       <CohortsPage       members={members} />,
     events:        <EventsPage        {...shared} />,
