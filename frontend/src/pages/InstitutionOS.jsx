@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { supabase } from "../lib/supabase"
+import InstitutionPublicProfile from "./InstitutionPublicProfile"
 
 // ─── Design Tokens — Futuristic dark theme (matches institution-path-prototype) ─
 const T = {
@@ -71,7 +72,8 @@ const NAV_GROUPS = [
     label: "Visibility",
     items: [
       { id: "home",      label: "Institution home", badge: "Live", mobileShow: true },
-      { id: "community", label: "Public profile",   mobileShow: true  },
+      { id: "pubprofile",label: "Institution Profile", mobileShow: true  },
+      { id: "community", label: "Public profile",   mobileShow: false  },
       { id: "events",    label: "Posts",            mobileShow: false },
       { id: "outcomes",  label: "Search presence",  mobileShow: false },
     ],
@@ -2599,6 +2601,7 @@ export default function InstitutionOS({ user, userData, onNavigate }) {
 
   const PAGE_MAP = {
     home:          <HomePage          {...shared} onVerify={handleVerify} />,
+    pubprofile:    <InstitutionPublicProfile onAction={(a)=>{ if(a==='back') setActivePage('home') }} onBack={()=>setActivePage('home')} />,
     intelligence:  <IntelligencePage  {...shared} />,
     tasks:         <TasksPage         {...shared} />,
     people:        <PeoplePage        {...shared} />,

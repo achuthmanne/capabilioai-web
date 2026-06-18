@@ -1,0 +1,273 @@
+/**
+ * InstitutionPublicProfile.jsx — the public, recruiter-facing institution profile.
+ * Self-contained: injects its own scoped `ip-*` styles and runs a canvas particle
+ * hero + orbital stats + live ticker. Mirrors the institution-path prototype.
+ *
+ * Props:
+ *   onBack()   — optional, called by the "← Search" breadcrumb
+ *   onAction(name) — optional, called for follow / request-access / brochure
+ */
+import { useEffect, useRef } from "react"
+
+const IP_CSS = `
+.ipx{--bg:#0b0a08;--bg2:#13100c;--line:rgba(255,255,255,.10);--line2:rgba(255,255,255,.16);
+  --amber:#dc8b18;--gold:#f6c453;--green:#4fd4a3;--blue:#74a8ff;--purple:#ab93ff;--cyan:#54d9e0;--pink:#ff8db1;--red:#ff8177;--teal:#34d4bf;
+  --txt:#f7f2ea;--mut:rgba(247,242,234,.68);--mut2:rgba(247,242,234,.44);
+  color:var(--txt);font-family:Inter,sans-serif;height:100%;overflow-y:auto;}
+.ipx *{box-sizing:border-box;}
+.ipx .ip-hero{position:relative;min-height:430px;display:grid;grid-template-columns:55% 45%;overflow:hidden;background:#0b0a08;}
+.ipx .ip-hero-bg{position:absolute;inset:0;z-index:0;}
+.ipx .ipCanvas{position:absolute;inset:0;width:100%;height:100%;}
+.ipx .ip-fg-left{position:absolute;inset:0;background:linear-gradient(105deg,rgba(11,10,8,.97) 42%,rgba(11,10,8,.55) 75%,transparent);z-index:1;}
+.ipx .ip-fg-right{position:absolute;inset:0;background:linear-gradient(270deg,rgba(11,10,8,.82) 0%,transparent 50%);z-index:1;}
+.ipx .ip-hero-left{position:relative;z-index:2;padding:36px 36px 36px 32px;display:flex;flex-direction:column;justify-content:center;}
+.ipx .ip-hero-right{position:relative;z-index:2;padding:28px;display:flex;align-items:center;justify-content:center;}
+.ipx .ip-nav-bar{position:relative;z-index:3;display:flex;align-items:center;gap:12px;padding:0 0 20px;}
+.ipx .ip-breadcrumb{font-size:11px;color:var(--mut2);display:flex;align-items:center;gap:6px;}
+.ipx .ip-breadcrumb button{background:none;border:none;color:var(--mut2);font-size:11px;cursor:pointer;padding:0;font-family:inherit;}
+.ipx .ip-breadcrumb button:hover{color:var(--gold);}
+.ipx .ip-tier-badge{display:inline-flex;align-items:center;gap:7px;background:rgba(246,196,83,.10);border:1px solid rgba(246,196,83,.28);border-radius:999px;padding:7px 14px;font-size:10.5px;font-weight:800;color:var(--gold);margin-bottom:16px;width:fit-content;}
+.ipx .ip-tier-badge .livdot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 7px var(--green);animation:ippl 1.8s infinite;}
+.ipx .ip-name{font-size:56px;font-weight:900;letter-spacing:-.04em;line-height:.88;margin-bottom:16px;}
+.ipx .ip-name .serif-part{font-family:'Instrument Serif',serif;font-weight:400;font-style:italic;color:var(--gold);}
+.ipx .ip-tagline{font-size:13px;color:var(--mut);margin-bottom:18px;max-width:400px;line-height:1.6;}
+.ipx .ip-meta-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;}
+.ipx .ip-meta-row span{font-size:11.5px;color:var(--mut2);display:flex;align-items:center;gap:5px;}
+.ipx .ip-meta-row span b{color:var(--txt);}
+.ipx .ip-meta-row .live-badge{color:var(--green);font-weight:800;display:flex;align-items:center;gap:5px;}
+.ipx .pulse{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(79,212,163,.6);animation:ippl 1.8s infinite;flex-shrink:0;}
+@keyframes ippl{0%{box-shadow:0 0 0 0 rgba(79,212,163,.5)}70%{box-shadow:0 0 0 7px rgba(79,212,163,0)}100%{box-shadow:0 0 0 0 rgba(79,212,163,0)}}
+.ipx .ip-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.ipx .btnP{padding:10px 17px;border-radius:12px;background:linear-gradient(135deg,var(--amber),var(--gold));color:#23170a;font-weight:800;font-size:12.5px;border:none;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(220,139,24,.18);}
+.ipx .btnG{padding:10px 15px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--line2);color:var(--txt);font-weight:700;font-size:12.5px;cursor:pointer;font-family:inherit;}
+.ipx .ip-orbit{position:relative;width:320px;height:320px;flex-shrink:0;}
+.ipx .ip-ring1,.ipx .ip-ring2,.ipx .ip-ring3{position:absolute;top:50%;left:50%;border-radius:50%;transform:translate(-50%,-50%);}
+.ipx .ip-ring1{width:100px;height:100px;border:1px solid rgba(246,196,83,.28);}
+.ipx .ip-ring2{width:200px;height:200px;border:1px dashed rgba(116,168,255,.16);}
+.ipx .ip-ring3{width:290px;height:290px;border:1px dashed rgba(255,255,255,.07);}
+.ipx .ip-orbit-core{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:82px;height:82px;border-radius:50%;background:radial-gradient(circle,rgba(246,196,83,.22),rgba(220,139,24,.07));border:1.5px solid rgba(246,196,83,.4);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;z-index:2;}
+.ipx .ip-orbit-core .cn{font-size:22px;font-weight:900;color:var(--gold);line-height:1;}
+.ipx .ip-orbit-core .cl{font-size:8.5px;font-weight:800;color:var(--mut2);text-transform:uppercase;letter-spacing:.1em;margin-top:2px;}
+.ipx .ip-orb-node{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:3px;z-index:2;}
+.ipx .ip-orb-node .on-chip{height:42px;min-width:56px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px 8px;backdrop-filter:blur(8px);border:1px solid;}
+.ipx .ip-orb-node .on-n{font-size:14px;font-weight:900;line-height:1;}
+.ipx .ip-orb-node .on-l{font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;opacity:.7;line-height:1;margin-top:2px;}
+.ipx .ip-ticker{background:rgba(0,0,0,.6);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px 0;overflow:hidden;}
+.ipx .ip-ticker-track{display:flex;white-space:nowrap;animation:iptick 32s linear infinite;}
+.ipx .ip-ticker-track:hover{animation-play-state:paused;}
+@keyframes iptick{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.ipx .ip-tick-item{display:inline-flex;align-items:center;gap:7px;padding:0 24px;font-size:11px;font-weight:700;border-right:1px solid var(--line);}
+.ipx .ip-tick-item .tid{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.ipx .ip-body{padding:28px 30px 60px;max-width:1160px;margin:0 auto;}
+.ipx .ip-statstrip{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:18px;overflow:hidden;margin-bottom:30px;}
+.ipx .ip-stat{background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.025));padding:20px 18px;}
+.ipx .ip-stat .sn{font-size:34px;font-weight:900;letter-spacing:-.04em;line-height:1;}
+.ipx .ip-stat .sl{font-size:9.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--mut2);margin-top:5px;}
+.ipx .ip-stat .sd{font-size:10px;font-weight:700;margin-top:6px;display:flex;align-items:center;gap:4px;color:var(--green);}
+.ipx .ip-sh{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.ipx .ip-sh h2{font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--mut2);white-space:nowrap;}
+.ipx .ip-sh .hl{flex:1;height:1px;background:linear-gradient(90deg,var(--line2),transparent);}
+.ipx .ip-sh .badge{font-size:10px;font-weight:800;padding:3px 10px;border-radius:999px;white-space:nowrap;}
+.ipx .ip-dept-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px;margin-bottom:30px;}
+.ipx .ip-dept{border:1px solid var(--line);border-radius:18px;padding:18px 16px;background:linear-gradient(160deg,rgba(255,255,255,.048),rgba(255,255,255,.018));position:relative;overflow:hidden;}
+.ipx .ip-dept.feat{border-color:rgba(246,196,83,.3);background:linear-gradient(160deg,rgba(220,139,24,.11),rgba(246,196,83,.04));}
+.ipx .ip-dept .dd-ghost{position:absolute;right:-6px;bottom:-12px;font-size:58px;font-weight:900;opacity:.055;pointer-events:none;letter-spacing:-.04em;line-height:1;}
+.ipx .ip-dept .dd-code{font-size:24px;font-weight:900;letter-spacing:-.04em;margin-bottom:3px;}
+.ipx .ip-dept .dd-sub{font-size:10.5px;color:var(--mut2);margin-bottom:12px;line-height:1.4;}
+.ipx .ip-dept .dd-track{height:3px;background:rgba(255,255,255,.07);border-radius:999px;overflow:hidden;margin-bottom:12px;}
+.ipx .ip-dept .dd-fill{height:100%;border-radius:999px;}
+.ipx .ip-dept .dd-placed{font-size:30px;font-weight:900;letter-spacing:-.03em;line-height:1;}
+.ipx .ip-dept .dd-elo{font-size:11px;color:var(--mut);margin-bottom:8px;}
+.ipx .ip-rec-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-bottom:30px;}
+.ipx .ip-rec{border:1px solid var(--line);border-radius:14px;padding:14px 10px;background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.015));display:flex;flex-direction:column;align-items:center;gap:5px;position:relative;}
+.ipx .ip-rec.live-now::before{content:'';position:absolute;top:9px;right:9px;width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:ippl 1.8s infinite;}
+.ipx .ip-rec .ric{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px;}
+.ipx .ip-rec .rn{font-size:10.5px;font-weight:800;text-align:center;}
+.ipx .ip-rec .rs{font-size:9px;color:var(--mut2);font-weight:700;text-align:center;}
+.ipx .ip-bottom-row{display:grid;grid-template-columns:280px 1fr;gap:14px;margin-bottom:28px;}
+.ipx .ip-trust{background:linear-gradient(135deg,rgba(79,212,163,.07),rgba(116,168,255,.04));border:1px solid rgba(79,212,163,.20);border-radius:18px;padding:20px;}
+.ipx .ip-trust-score{font-size:58px;font-weight:900;color:var(--green);letter-spacing:-.05em;line-height:1;}
+.ipx .ip-trust-label{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--mut2);margin-top:3px;margin-bottom:16px;}
+.ipx .ip-tcheck{display:flex;align-items:center;gap:8px;margin-bottom:7px;font-size:11.5px;}
+.ipx .ip-tcheck .tc{width:18px;height:18px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:9.5px;flex-shrink:0;}
+.ipx .ip-tcheck .tc.y{background:rgba(79,212,163,.2);color:var(--green);}
+.ipx .ip-tcheck .tc.p{background:rgba(246,196,83,.16);color:var(--gold);}
+.ipx .ip-tcheck .tc.n{background:rgba(255,129,119,.12);color:var(--red);}
+.ipx .ip-hl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}
+.ipx .ip-hl{border:1px solid var(--line);border-radius:14px;padding:14px;background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.015));position:relative;overflow:hidden;}
+.ipx .ip-hl .hy{font-size:9px;font-weight:800;color:var(--mut2);letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px;}
+.ipx .ip-hl .hv{font-size:26px;font-weight:900;letter-spacing:-.03em;line-height:1.05;}
+.ipx .ip-hl .hs{font-size:10.5px;color:var(--mut);margin-top:4px;line-height:1.45;}
+.ipx .ip-hl .hglow{position:absolute;right:-6px;bottom:-6px;width:54px;height:54px;border-radius:50%;opacity:.14;}
+.ipx .ip-cta{border:1px solid rgba(246,196,83,.22);border-radius:18px;background:linear-gradient(135deg,rgba(220,139,24,.09),rgba(171,147,255,.05));padding:22px 24px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+.ipx .ip-cta .cta-text h3{font-size:15px;font-weight:800;margin-bottom:4px;}
+.ipx .ip-cta .cta-text p{font-size:12px;color:var(--mut);}
+.ipx .tag{font-size:10px;font-weight:800;padding:4px 9px;border-radius:999px;white-space:nowrap;}
+.ipx .tag.gy{background:rgba(255,255,255,.07);color:var(--mut);}
+@media(max-width:940px){.ipx .ip-hero{grid-template-columns:1fr;}.ipx .ip-hero-right{display:none;}.ipx .ip-dept-grid{grid-template-columns:1fr 1fr;}.ipx .ip-rec-grid{grid-template-columns:repeat(3,1fr);}.ipx .ip-statstrip{grid-template-columns:1fr 1fr;}.ipx .ip-bottom-row{grid-template-columns:1fr;}.ipx .ip-hl-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:600px){.ipx .ip-name{font-size:36px;}.ipx .ip-dept-grid,.ipx .ip-hl-grid,.ipx .ip-statstrip{grid-template-columns:1fr;}.ipx .ip-rec-grid{grid-template-columns:repeat(2,1fr);}.ipx .ip-body{padding:18px 16px 50px;}.ipx .ip-hero-left{padding:24px 20px;}}
+`
+
+const C = { am:'#dc8b18',gold:'#f6c453',green:'#4fd4a3',blue:'#74a8ff',purple:'#ab93ff',cyan:'#54d9e0',pink:'#ff8db1',red:'#ff8177',teal:'#34d4bf' }
+
+function buildBody() {
+  const DEPTS=[
+    {code:'CSE',full:'Computer Science & Engineering',students:182,elo:1410,delta:'+120',placed:78,col:C.gold,skills:['DSA 79%','Web 71%','SysDesign 46%'],feat:true},
+    {code:'IT',full:'Information Technology',students:96,elo:1280,delta:'+88',placed:64,col:C.green,skills:['DSA 68%','Web 74%'],feat:false},
+    {code:'AI&DS',full:'AI & Data Science',students:71,elo:1190,delta:'+60',placed:52,col:C.purple,skills:['ML 71%','DSA 55%'],feat:false},
+    {code:'ECE',full:'Electronics & Comm',students:138,elo:980,delta:'-10',placed:31,col:C.red,skills:['Embedded 62%','Signal 44%'],feat:false},
+  ]
+  const RECS=[
+    {ic:'G',name:'Google',sub:'Round 2',col:C.blue,live:true},{ic:'F',name:'Flipkart',sub:'Shortlisting',col:C.am,live:true},
+    {ic:'M',name:'Microsoft',sub:'3 offers',col:C.green,live:false},{ic:'D',name:'Deloitte',sub:'Offers',col:C.purple,live:false},
+    {ic:'A',name:'Amazon',sub:'Screening',col:C.cyan,live:true},{ic:'T',name:'TCS',sub:'12 hires',col:C.teal,live:false},
+    {ic:'W',name:'Wipro',sub:'8 hires',col:C.pink,live:false},{ic:'Z',name:'Zomato',sub:'Live drive',col:C.red,live:true},
+    {ic:'S',name:'Stripe',sub:'3 offers',col:C.gold,live:false},{ic:'I',name:'Infosys',sub:'Upcoming',col:C.blue,live:false},
+  ]
+  const HLS=[
+    {yr:'2024-25',v:'₹38L',s:'Highest package ever · Microsoft SDE',c:C.gold},
+    {yr:'2024-25',v:'312',s:'Offers in a single placement cycle',c:C.green},
+    {yr:'Term avg',v:'+141',s:'ELO points lifted across cohorts',c:C.blue},
+    {yr:'YoY',v:'9%',s:'Placement rate improvement',c:C.purple},
+    {yr:'Platform high',v:'1542',s:'Top student ELO — Riya Sharma · CSE',c:C.cyan},
+    {yr:'Case data',v:'68%',s:'At-risk students fully recovered',c:C.green},
+  ]
+  const TRUST=[
+    ['✓','Domain & email verified','y'],['✓','Website DNS match confirmed','y'],['✓','NAAC A+ certificate on file','y'],
+    ['✓','NBA accreditation linked','y'],['✓','Admin identity verified','y'],['⏳','Trust Seal Level 3 in review','p'],['○','Research output not yet linked','n'],
+  ]
+  const deptCards=DEPTS.map(d=>`<div class="ip-dept ${d.feat?'feat':''}"><div class="dd-ghost">${d.code}</div><div class="dd-code" style="color:${d.col}">${d.code}</div><div class="dd-sub">${d.full}<br><span style="opacity:.7">${d.students} students</span></div><div class="dd-elo">Avg ELO <b style="color:${d.col}">${d.elo.toLocaleString()}</b> <span style="font-size:9.5px;color:${d.delta[0]==='-'?C.red:C.green}">${d.delta} term</span></div><div class="dd-track"><div class="dd-fill" style="width:${d.placed}%;background:${d.col}"></div></div><div class="dd-placed" style="color:${d.col}">${d.placed}%<span style="font-size:11px;font-weight:600;color:var(--mut);margin-left:5px">placed</span></div>${d.feat?`<div style="display:flex;gap:5px;margin-top:11px;flex-wrap:wrap">${d.skills.map(sk=>'<span class="tag gy" style="font-size:9.5px">'+sk+'</span>').join('')}</div>`:''}</div>`).join('')
+  const recCards=RECS.map(r=>`<div class="ip-rec ${r.live?'live-now':''}"><div class="ric" style="background:linear-gradient(135deg,${r.col}44,${r.col}18);border:1px solid ${r.col}33"><span style="color:${r.col};font-size:15px;font-weight:900">${r.ic}</span></div><div class="rn">${r.name}</div><div class="rs">${r.sub}</div></div>`).join('')
+  const hlCards=HLS.map(h=>`<div class="ip-hl"><div class="hy">${h.yr}</div><div class="hv" style="color:${h.c}">${h.v}</div><div class="hs">${h.s}</div><div class="hglow" style="background:${h.c}"></div></div>`).join('')
+  const trustChecks=TRUST.map(t=>`<div class="ip-tcheck"><div class="tc ${t[2]}">${t[0]}</div><span>${t[1]}</span></div>`).join('')
+  return `<div class="ip-hero">
+    <div class="ip-hero-bg"><canvas class="ipCanvas"></canvas><div class="ip-fg-left"></div><div class="ip-fg-right"></div></div>
+    <div class="ip-hero-left">
+      <div class="ip-nav-bar"><div class="ip-breadcrumb"><button data-ip="back">← Search</button><span>›</span><span>Institutions</span><span>›</span><b style="color:var(--txt)">VIT Vellore</b></div></div>
+      <div class="ip-tier-badge"><span class="livdot"></span>✦ Capabilio Verified · Level 2 · NAAC A+ · NBA Accredited</div>
+      <div class="ip-name">VIT<br><span class="serif-part">Vellore</span></div>
+      <div class="ip-tagline">Where ideas move at a different pace — 2,400 students, 64 verified recruiter partners, and a live talent signal updated in real time.</div>
+      <div class="ip-meta-row"><span>🏛️ Higher Education · Est. 1984</span><span>📍 Vellore, Tamil Nadu</span><span>👥 <b>2,400</b> students</span><span>🎓 <b>4</b> departments</span></div>
+      <div class="ip-meta-row"><span class="live-badge"><span class="pulse"></span>12 recruiters active now</span><span>🤝 <b>64</b> partner companies</span><span>📅 On Capabilio since 2024</span></div>
+      <div class="ip-actions"><button class="btnP" data-ip="reqAccess">⚡ Request Recruiter Access</button><button class="btnG" data-ip="follow">+ Follow</button><button class="btnG" data-ip="brochure">📥 Download Brochure</button></div>
+    </div>
+    <div class="ip-hero-right"><div class="ip-orbit" data-orbit><div class="ip-ring3"></div><div class="ip-ring2"></div><div class="ip-ring1"></div><div class="ip-orbit-core"><div class="cn">64%</div><div class="cl">Placed</div></div></div></div>
+  </div>
+  <div class="ip-ticker"><div class="ip-ticker-track" data-ticker></div></div>
+  <div class="ip-body">
+    <div class="ip-statstrip">
+      <div class="ip-stat"><div class="sn" style="color:var(--green)">312</div><div class="sl">Offers this cycle</div><div class="sd">▲ +9% YoY</div></div>
+      <div class="ip-stat"><div class="sn" style="color:var(--gold)">₹6.2L</div><div class="sl">Avg Package</div><div class="sd">▲ +₹0.4L MoM</div></div>
+      <div class="ip-stat"><div class="sn" style="color:var(--blue)">1,342</div><div class="sl">Cohort Avg ELO</div><div class="sd">▲ +141 this term</div></div>
+      <div class="ip-stat"><div class="sn" style="color:var(--cyan)">64</div><div class="sl">Recruiter Partners</div><div class="sd">▲ +8 this year</div></div>
+    </div>
+    <div class="ip-sh"><h2>Departments</h2><div class="hl"></div><span class="badge" style="background:rgba(246,196,83,.12);color:var(--gold)">4 active</span></div>
+    <div class="ip-dept-grid">${deptCards}</div>
+    <div class="ip-sh"><h2>Recruiter Network</h2><div class="hl"></div><span class="badge" style="background:rgba(79,212,163,.12);color:var(--green)">● 12 active now</span></div>
+    <div class="ip-rec-grid">${recCards}</div>
+    <div class="ip-bottom-row">
+      <div class="ip-trust"><div class="ip-trust-score">82</div><div class="ip-trust-label">Trust Score / 100</div>${trustChecks}</div>
+      <div><div class="ip-sh"><h2>Landmark Outcomes</h2><div class="hl"></div></div><div class="ip-hl-grid">${hlCards}</div></div>
+    </div>
+    <div class="ip-cta"><div class="cta-text" style="flex:1"><h3>Partner with VIT Vellore</h3><p>Access verified, skill-scored talent. NDA-gated. Sign a data agreement and receive curated shortlists in 48 hours.</p></div><button class="btnP" data-ip="reqAccess" style="white-space:nowrap">⚡ Request Access</button><button class="btnG" data-ip="follow" style="white-space:nowrap">+ Follow Institution</button></div>
+  </div>`
+}
+
+function initInstPage(root) {
+  // canvas particle field
+  const cv = root.querySelector(".ipCanvas")
+  let raf1, raf2, capTimer
+  if (cv) {
+    const ctx = cv.getContext("2d")
+    let W, H, DPR = Math.min(window.devicePixelRatio || 1, 2), t2 = 0
+    const rsz = () => { W = cv.offsetWidth; H = cv.offsetHeight; cv.width = W * DPR; cv.height = H * DPR; ctx.setTransform(DPR, 0, 0, DPR, 0, 0) }
+    rsz()
+    const PTS = []
+    for (let i = 0; i < 110; i++) PTS.push({ x: Math.random() * W, y: Math.random() * H, vx: (Math.random() - .5) * .28, vy: (Math.random() - .5) * .28, r: Math.random() < .15 ? 2.5 : Math.random() < .4 ? 1.5 : 1, col: ['#f6c453', '#74a8ff', '#4fd4a3', '#ab93ff', '#54d9e0'][Math.floor(Math.random() * 5)], bright: Math.random() })
+    const hx = (col, a) => { const n = parseInt(col.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')' }
+    const loop = () => {
+      if (!root.isConnected) return
+      t2++; ctx.clearRect(0, 0, W, H)
+      ctx.strokeStyle = 'rgba(255,255,255,.025)'; ctx.lineWidth = 1
+      for (let i = 0; i < W; i += 56) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, H); ctx.stroke() }
+      for (let i = 0; i < H; i += 56) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(W, i); ctx.stroke() }
+      PTS.forEach(p => {
+        p.x += p.vx; p.y += p.vy
+        if (p.x < 0) p.x = W; if (p.x > W) p.x = 0; if (p.y < 0) p.y = H; if (p.y > H) p.y = 0
+        const pulse = p.bright * .4 + .3 + Math.sin(t2 * .025 + p.bright * 6.28) * .25
+        PTS.forEach(q => { const d = Math.hypot(p.x - q.x, p.y - q.y); if (d < 90 && d > 1) { ctx.strokeStyle = hx(p.col, (.9 - d / 90) * .10); ctx.lineWidth = .7; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke() } })
+        if (p.r > 1.8) { const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 4); g.addColorStop(0, hx(p.col, pulse * .7)); g.addColorStop(1, hx(p.col, 0)); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 4, 0, 7); ctx.fill() }
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fillStyle = hx(p.col, pulse * .9); ctx.fill()
+      })
+      raf1 = requestAnimationFrame(loop)
+    }
+    loop()
+  }
+  // orbit nodes
+  const orbit = root.querySelector("[data-orbit]")
+  if (orbit) {
+    const CX = 160, CY = 160
+    const ONODES = [
+      { angle: 0, r: 82, n: '2,400', l: 'Students', col: '#74a8ff' },
+      { angle: 180, r: 82, n: '64', l: 'Partners', col: '#54d9e0' },
+      { angle: 75, r: 128, n: '₹6.2L', l: 'Avg Pkg', col: '#f6c453' },
+      { angle: 255, r: 128, n: '#1', l: 'CSE Rank', col: '#ab93ff' },
+      { angle: 330, r: 152, n: '82', l: 'Trust', col: '#4fd4a3' },
+      { angle: 150, r: 152, n: '+141', l: 'ELO Lift', col: '#dc8b18' },
+    ]
+    ONODES.forEach(o => {
+      const rad = o.angle * Math.PI / 180, px = CX + o.r * Math.cos(rad), py = CY + o.r * Math.sin(rad)
+      const el = document.createElement("div"); el.className = "ip-orb-node"; el.style.cssText = 'left:' + px + 'px;top:' + py + 'px;'
+      el.innerHTML = '<div class="on-chip" style="background:' + o.col + '18;border-color:' + o.col + '44;"><div class="on-n" style="color:' + o.col + '">' + o.n + '</div><div class="on-l" style="color:' + o.col + '">' + o.l + '</div></div>'
+      orbit.appendChild(el)
+    })
+    const r2 = orbit.querySelector(".ip-ring2"), r3 = orbit.querySelector(".ip-ring3")
+    if (r2) r2.style.animation = 'ipOrb 18s linear infinite'
+    if (r3) r3.style.animation = 'ipOrb 28s linear infinite reverse'
+    if (!document.getElementById("ipOrbKeyframes")) { const s = document.createElement("style"); s.id = "ipOrbKeyframes"; s.textContent = '@keyframes ipOrb{to{transform:translate(-50%,-50%) rotate(360deg)}}'; document.head.appendChild(s) }
+  }
+  // ticker
+  const track = root.querySelector("[data-ticker]")
+  if (track) {
+    const TICKS = [
+      { col: '#4fd4a3', txt: 'Riya Sharma → Google SDE-1 · ₹38L offered' },
+      { col: '#f6c453', txt: 'Google moved 12 CSE students to Round 2' },
+      { col: '#74a8ff', txt: 'ELO 1,542 — VITs current platform high' },
+      { col: '#ab93ff', txt: 'Prof. Mehta published "LRU Cache Design" to 62 students' },
+      { col: '#54d9e0', txt: 'Flipkart shortlisted 92 students for SDE Intern' },
+      { col: '#dc8b18', txt: 'Zomato drive opened — 48h to apply' },
+      { col: '#4fd4a3', txt: '3 offers logged today · avg ₹7.1L' },
+      { col: '#ff8db1', txt: 'System Design Recovery track: IT cohort +8% ready' },
+      { col: '#f6c453', txt: 'Annual Tech Fest 2026 — 4,000+ attendees' },
+      { col: '#74a8ff', txt: 'Stripe pipeline: 3 offer letters pending signatures' },
+    ]
+    track.innerHTML = TICKS.concat(TICKS).map(t => '<span class="ip-tick-item"><span class="tid" style="background:' + t.col + '"></span>' + t.txt + '</span>').join('')
+  }
+  return () => { cancelAnimationFrame(raf1); cancelAnimationFrame(raf2); clearTimeout(capTimer) }
+}
+
+export default function InstitutionPublicProfile({ onBack, onAction }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    const root = ref.current
+    if (!root) return
+    root.innerHTML = buildBody()
+    const cleanup = initInstPage(root)
+    const onClick = (e) => {
+      const b = e.target.closest("[data-ip]")
+      if (!b) return
+      const act = b.dataset.ip
+      if (act === "back" && onBack) onBack()
+      else if (onAction) onAction(act)
+    }
+    root.addEventListener("click", onClick)
+    return () => { root.removeEventListener("click", onClick); cleanup && cleanup() }
+  }, [onBack, onAction])
+
+  return (
+    <>
+      <style>{IP_CSS}</style>
+      <div className="ipx" ref={ref} />
+    </>
+  )
+}
