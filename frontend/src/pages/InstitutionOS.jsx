@@ -11,55 +11,56 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { supabase } from "../lib/supabase"
 
-// ─── Design Tokens ─────────────────────────────────────────────────────────────
+// ─── Design Tokens — Landing page light theme ──────────────────────────────────
 const T = {
-  // accent palette — kept for functional colors
-  sky:      "#74a8ff",
-  skyL:     "rgba(116,168,255,0.12)",
-  skyB:     "rgba(116,168,255,0.28)",
-  skyDark:  "#5a8fe0",
-  green:    "#4fd4a3",
-  greenL:   "rgba(79,212,163,0.12)",
-  amber:    "#dc8b18",
-  amberL:   "rgba(220,139,24,0.12)",
-  gold:     "#f6c453",
-  goldL:    "rgba(246,196,83,0.12)",
-  red:      "#ff8177",
-  redL:     "rgba(255,129,119,0.12)",
-  purple:   "#ab93ff",
-  purpleL:  "rgba(171,147,255,0.12)",
-  blue:     "#74a8ff",
-  blueL:    "rgba(116,168,255,0.12)",
-  teal:     "#54d9e0",
-  tealL:    "rgba(84,217,224,0.12)",
-  cyan:     "#54d9e0",
-  // dark theme surface tokens
-  ink:      "#f7f2ea",
-  ink2:     "rgba(247,242,234,0.82)",
-  ink3:     "rgba(247,242,234,0.54)",
-  ink4:     "rgba(247,242,234,0.38)",
-  ink5:     "rgba(247,242,234,0.20)",
-  bg:       "#0b0a08",
-  surface:  "rgba(255,255,255,0.048)",
-  surface2: "rgba(255,255,255,0.026)",
-  border:   "rgba(255,255,255,0.10)",
-  borderM:  "rgba(255,255,255,0.16)",
-  // sidebar tokens — now matches dark theme
-  navBg:    "rgba(255,255,255,0.028)",
-  navBg2:   "rgba(255,255,255,0.008)",
-  navText:  "rgba(247,242,234,0.44)",
-  navTextH: "rgba(247,242,234,0.82)",
-  navTextA: "#f7f2ea",
-  navActiveGlow: "rgba(220,139,24,0.18)",
-  navW:     246,
+  // accent palette — matches LandingPage.jsx exactly
+  sky:      "#4F46E5",
+  skyL:     "rgba(79,70,229,0.08)",
+  skyB:     "rgba(79,70,229,0.20)",
+  skyDark:  "#4338CA",
+  green:    "#16A34A",
+  greenL:   "rgba(22,163,74,0.08)",
+  amber:    "#D97706",
+  amberL:   "rgba(217,119,6,0.08)",
+  gold:     "#FF5701",   // primary orange — same as LandingPage primary button
+  goldL:    "rgba(255,87,1,0.08)",
+  red:      "#DC2626",
+  redL:     "rgba(220,38,38,0.08)",
+  purple:   "#8B5CF6",
+  purpleL:  "rgba(139,92,246,0.08)",
+  blue:     "#4F46E5",
+  blueL:    "rgba(79,70,229,0.08)",
+  teal:     "#0891B2",
+  tealL:    "rgba(8,145,178,0.08)",
+  cyan:     "#0891B2",
+  // light surface tokens
+  ink:      "#111827",
+  ink2:     "#374151",
+  ink3:     "#4B5563",
+  ink4:     "#6B7280",
+  ink5:     "#9CA3AF",
+  bg:       "#F9FAFB",
+  surface:  "#FFFFFF",
+  surface2: "#F9FAFB",
+  border:   "rgba(17,24,39,0.08)",
+  borderM:  "rgba(17,24,39,0.14)",
+  // sidebar tokens
+  navBg:    "#FFFFFF",
+  navBg2:   "#F9FAFB",
+  navText:  "#6B7280",
+  navTextH: "#374151",
+  navTextA: "#111827",
+  navActiveGlow: "rgba(255,87,1,0.08)",
+  navW:     252,
   tabH:     60,
   radius:   18,
   radiusS:  10,
-  shadow:   "0 2px 12px rgba(0,0,0,0.32), 0 1px 3px rgba(0,0,0,0.24)",
-  shadowM:  "0 6px 28px rgba(0,0,0,0.40), 0 2px 8px rgba(0,0,0,0.28)",
-  shadowGlow: (color) => `0 0 0 1px ${color}30, 0 4px 20px ${color}22`,
+  shadow:   "0 8px 24px rgba(17,24,39,0.05), 0 1px 3px rgba(17,24,39,0.04)",
+  shadowM:  "0 14px 32px rgba(17,24,39,0.08), 0 4px 10px rgba(17,24,39,0.04)",
+  shadowGlow: (color) => `0 0 0 1px ${color}20, 0 4px 20px ${color}18`,
 }
 const FONT = "Inter, -apple-system, sans-serif"
+const FONT_SERIF = "'Playfair Display', Georgia, serif"
 const MONO = "'JetBrains Mono', 'Fira Mono', monospace"
 
 // ─── Nav structure (grouped) ──────────────────────────────────────────────────
@@ -249,7 +250,7 @@ function useOrgCompanyLinks(orgId) {
 function Card({ children, style = {}, onClick }) {
   return (
     <div onClick={onClick} style={{
-      background: "linear-gradient(180deg,rgba(255,255,255,.052),rgba(255,255,255,.024))",
+      background: T.surface,
       border: `1px solid ${T.border}`,
       borderRadius: T.radius, padding: 20, boxShadow: T.shadow, ...style,
       cursor: onClick ? "pointer" : undefined,
@@ -286,11 +287,11 @@ function Btn({ children, variant = "primary", onClick, style = {}, disabled, typ
     border: "none", transition: "opacity 0.15s", opacity: disabled ? 0.5 : 1,
   }
   const variants = {
-    primary:  { background: "linear-gradient(135deg,#dc8b18,#f6c453)", color: "#23170a", fontWeight: 700, boxShadow: "0 4px 18px rgba(220,139,24,0.30)" },
-    outline:  { background: "transparent", border: `1px solid ${T.borderM}`, color: T.ink2 },
+    primary:  { background: "#FF5701", color: "#FFFFFF", fontWeight: 700, boxShadow: "0 8px 20px rgba(255,87,1,0.22)", fontFamily: MONO, letterSpacing: "0.04em", fontSize: 12 },
+    outline:  { background: "#FFFFFF", border: `1px solid ${T.border}`, color: T.ink2 },
     ghost:    { background: "transparent", border: "none", color: T.ink3 },
-    danger:   { background: T.red,     color: "#fff" },
-    success:  { background: T.green,   color: "#23170a", fontWeight: 700 },
+    danger:   { background: T.red,   color: "#fff" },
+    success:  { background: T.green, color: "#fff", fontWeight: 700 },
   }
   return (
     <button type={type} onClick={onClick} disabled={disabled}
@@ -302,8 +303,8 @@ function Btn({ children, variant = "primary", onClick, style = {}, disabled, typ
 function SectionHead({ title, action, actionLabel }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-      <h3 style={{ margin: 0, fontSize: 8.5, fontWeight: 800, color: T.ink4, textTransform: "uppercase", letterSpacing: "0.16em", whiteSpace: "nowrap" }}>{title}</h3>
-      <div style={{ flex: 1, height: 1, background: "linear-gradient(90deg,rgba(255,255,255,.14),transparent)", minWidth: 20 }} />
+      <h3 style={{ margin: 0, fontSize: 9, fontWeight: 800, color: T.ink5, textTransform: "uppercase", letterSpacing: "0.16em", whiteSpace: "nowrap", fontFamily: MONO }}>{title}</h3>
+      <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg,${T.border},transparent)`, minWidth: 20 }} />
       {action && <Btn variant="ghost" onClick={action} style={{ padding: "4px 10px", fontSize: 11, color: T.gold, flexShrink: 0 }}>{actionLabel || "See all →"}</Btn>}
     </div>
   )
@@ -325,7 +326,7 @@ function Spinner() {
     <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "40px 0" }}>
       <div style={{
         width: 24, height: 24, borderRadius: "50%",
-        border: `3px solid rgba(246,196,83,.18)`, borderTopColor: T.gold,
+        border: `3px solid rgba(255,87,1,0.15)`, borderTopColor: T.gold,
         animation: "spin 0.7s linear infinite",
       }} />
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
@@ -353,7 +354,7 @@ function FieldInput({ label, value, onChange, placeholder, type = "text", requir
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder || `Enter ${label}`}
-        style={{ width: "100%", padding: "9px 12px", border: `1px solid ${T.border}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: "rgba(255,255,255,.06)", boxSizing: "border-box" }}
+        style={{ width: "100%", padding: "9px 12px", border: `1px solid ${T.border}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: "#FFFFFF", boxSizing: "border-box" }}
       />
     </div>
   )
@@ -366,7 +367,7 @@ function FieldSelect({ label, value, onChange, options }) {
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
-        style={{ width: "100%", padding: "9px 12px", border: `1px solid ${T.border}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: "rgba(255,255,255,.06)" }}
+        style={{ width: "100%", padding: "9px 12px", border: `1px solid ${T.border}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: "#FFFFFF" }}
       >
         {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
@@ -429,28 +430,27 @@ function KPICard({ value, label, trend, trendDir = "up", context, action, color,
   return (
     <div onClick={onClick} style={{
       flex: 1, minWidth: 130, padding: "18px 20px",
-      background: "linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02))",
+      background: "#FFFFFF",
       borderRadius: T.radius,
       border: `1px solid ${T.border}`,
-      borderTop: `2px solid ${c}`,
-      boxShadow: `0 2px 12px rgba(0,0,0,0.3), 0 4px 20px ${c}10`,
+      boxShadow: "0 8px 24px rgba(17,24,39,0.05)",
       cursor: onClick ? "pointer" : "default",
-      transition: "transform 0.15s, box-shadow 0.15s",
+      transition: "transform 0.18s cubic-bezier(0.16,1,0.3,1), box-shadow 0.18s",
     }}
-      onMouseEnter={e => { if (onClick) { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 6px 28px ${c}28` }}}
-      onMouseLeave={e => { if (onClick) { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = `0 2px 12px rgba(0,0,0,0.3), 0 4px 20px ${c}10` }}}
+      onMouseEnter={e => { if (onClick) { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.borderColor = `rgba(255,87,1,0.22)`; e.currentTarget.style.boxShadow = `0 14px 30px rgba(255,87,1,0.10)` }}}
+      onMouseLeave={e => { if (onClick) { e.currentTarget.style.transform = "none"; e.currentTarget.style.borderColor = T.border; e.currentTarget.style.boxShadow = "0 8px 24px rgba(17,24,39,0.05)" }}}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-        <div style={{ fontFamily: FONT, fontSize: 34, fontWeight: 900, color: c, lineHeight: 1, letterSpacing: "-0.05em" }}>{value}</div>
+        <div style={{ fontFamily: MONO, fontSize: 32, fontWeight: 800, color: c, lineHeight: 1, letterSpacing: "-0.04em" }}>{value}</div>
         {trend && (
-          <span style={{ fontSize: 10, fontWeight: 700, color: trendColor, background: `${trendColor}18`, padding: "2px 7px", borderRadius: 6, marginTop: 4 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: trendColor, background: `${trendColor}10`, padding: "2px 7px", borderRadius: 6, marginTop: 4, fontFamily: MONO }}>
             {trendIcon} {trend}
           </span>
         )}
       </div>
-      <div style={{ fontSize: 8.5, fontWeight: 800, color: T.ink4, textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 4 }}>{label}</div>
-      {context && <div style={{ fontSize: 10.5, color: T.ink3, lineHeight: 1.4, fontWeight: 500 }}>{context}</div>}
-      {action && <div style={{ fontSize: 10.5, color: c, fontWeight: 700, marginTop: 6 }}>{action}</div>}
+      <div style={{ fontSize: 9, fontWeight: 800, color: T.ink5, textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 4, fontFamily: MONO }}>{label}</div>
+      {context && <div style={{ fontSize: 11, color: T.ink4, lineHeight: 1.4, fontWeight: 500 }}>{context}</div>}
+      {action && <div style={{ fontSize: 11, color: c, fontWeight: 700, marginTop: 6, fontFamily: MONO }}>{action}</div>}
     </div>
   )
 }
@@ -471,32 +471,42 @@ function InstSidebar({ active, onNav, userData, members, tasks }) {
   return (
     <div style={{
       width: T.navW, minWidth: T.navW, height: "100%",
-      background: "linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01))",
+      background: "#FFFFFF",
       display: "flex", flexDirection: "column", flexShrink: 0,
       borderRight: `1px solid ${T.border}`,
     }}>
       {/* Header card */}
-      <div style={{ padding: "16px 14px 14px" }}>
-        <div style={{
-          padding: 14, borderRadius: 18, border: `1px solid ${T.border}`,
-          background: "rgba(255,255,255,.03)",
-        }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: T.ink, marginBottom: 4 }}>{orgName}</div>
-          <div style={{ fontSize: 11.5, color: T.ink3, lineHeight: 1.4 }}>
-            {userData?.org_type === "company" ? "Company control layer · operations + visibility" : "Institution control layer · public identity + operations + placement intelligence"}
+      <div style={{ padding: "18px 16px 14px" }}>
+        {/* Org dot + name */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: 12, flexShrink: 0,
+            background: "#FFF1E8", border: "1px solid rgba(255,87,1,0.16)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 14, fontWeight: 800, color: "#FF5701",
+          }}>
+            {orgName.charAt(0)}
+          </div>
+          <div style={{ overflow: "hidden" }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: T.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{orgName}</div>
+            <div style={{ fontSize: 10, color: T.ink5, fontFamily: MONO, letterSpacing: "0.06em", textTransform: "uppercase", marginTop: 2 }}>
+              {userData?.org_type === "company" ? "Company OS" : "Institution OS"}
+            </div>
           </div>
         </div>
+        {/* Divider */}
+        <div style={{ height: 1, background: T.border }} />
       </div>
 
       {/* Grouped nav */}
-      <nav style={{ flex: 1, overflowY: "auto", padding: "4px 14px 16px" }}>
+      <nav style={{ flex: 1, overflowY: "auto", padding: "0 12px 16px" }}>
         <style>{`
           .inst-nav-link { transition: background 0.12s, color 0.12s; }
-          .inst-nav-link:hover:not(.inst-nav-link-active) { background: rgba(255,255,255,.055) !important; color: rgba(247,242,234,.85) !important; }
+          .inst-nav-link:hover:not(.inst-nav-link-active) { background: #F9FAFB !important; color: #111827 !important; }
         `}</style>
         {NAV_GROUPS.map(group => (
-          <div key={group.label} style={{ marginTop: 16 }}>
-            <div style={{ padding: "0 10px 8px", fontSize: 10, fontWeight: 800, letterSpacing: ".16em", textTransform: "uppercase", color: T.ink5 }}>
+          <div key={group.label} style={{ marginTop: 20 }}>
+            <div style={{ padding: "0 8px 6px", fontSize: 9.5, fontWeight: 800, letterSpacing: ".18em", textTransform: "uppercase", color: T.ink5, fontFamily: MONO }}>
               {group.label}
             </div>
             {group.items.map(item => {
@@ -507,20 +517,21 @@ function InstSidebar({ active, onNav, userData, members, tasks }) {
                   className={`inst-nav-link${isActive ? " inst-nav-link-active" : ""}`}
                   style={{
                     display: "flex", alignItems: "center", justifyContent: "space-between",
-                    gap: 10, width: "100%", padding: "10px 12px", borderRadius: 14,
-                    border: `1px solid ${isActive ? "rgba(246,196,83,.20)" : "transparent"}`,
-                    background: isActive ? "rgba(246,196,83,.10)" : "transparent",
-                    color: isActive ? T.gold : T.ink3,
-                    fontSize: 13, fontWeight: 700, fontFamily: FONT,
-                    cursor: "pointer", marginBottom: 3, textAlign: "left",
+                    gap: 10, width: "100%", padding: "9px 10px", borderRadius: 12,
+                    border: `1px solid ${isActive ? "rgba(255,87,1,0.20)" : "transparent"}`,
+                    background: isActive ? "#FFF1E8" : "transparent",
+                    color: isActive ? T.gold : T.navText,
+                    fontSize: 13, fontWeight: isActive ? 700 : 500, fontFamily: FONT,
+                    cursor: "pointer", marginBottom: 2, textAlign: "left",
                   }}
                 >
                   <span>{item.label}</span>
                   {badge && (
                     <span style={{
-                      padding: "3px 7px", fontSize: 10, fontWeight: 900,
-                      borderRadius: 999, color: "#281909",
-                      background: "linear-gradient(135deg,#dc8b18,#f6c453)",
+                      padding: "2px 7px", fontSize: 10, fontWeight: 800,
+                      borderRadius: 999, color: "#FFFFFF",
+                      background: "#FF5701",
+                      fontFamily: MONO,
                     }}>{badge}</span>
                   )}
                 </button>
@@ -531,19 +542,19 @@ function InstSidebar({ active, onNav, userData, members, tasks }) {
       </nav>
 
       {/* Footer */}
-      <div style={{ padding: "10px 14px 16px", borderTop: `1px solid ${T.border}` }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={{ padding: "12px 16px 18px", borderTop: `1px solid ${T.border}` }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{
-            width: 30, height: 30, borderRadius: "50%",
-            background: "linear-gradient(135deg,#dc8b18,#f6c453)",
+            width: 32, height: 32, borderRadius: "50%",
+            background: "#FFF1E8", border: "1px solid rgba(255,87,1,0.18)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 11, fontWeight: 800, color: "#23170a",
+            fontSize: 12, fontWeight: 800, color: "#FF5701",
           }}>
             {(userData?.name || "A").charAt(0)}
           </div>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: T.navTextA }}>{userData?.name || "Admin"}</div>
-            <div style={{ fontSize: 10, color: T.navText }}>Institution Admin</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: T.ink }}>{userData?.name || "Admin"}</div>
+            <div style={{ fontSize: 10, color: T.ink5, fontFamily: MONO }}>Institution Admin</div>
           </div>
         </div>
       </div>
@@ -554,7 +565,7 @@ function InstSidebar({ active, onNav, userData, members, tasks }) {
 // ─── Tab bar (mobile) ─────────────────────────────────────────────────────────
 function InstTabBar({ active, onNav }) {
   return (
-    <div style={{ height: T.tabH, borderTop: `1px solid ${T.border}`, background: "rgba(11,10,8,.95)", backdropFilter: "blur(20px)", display: "flex", flexShrink: 0 }}>
+    <div style={{ height: T.tabH, borderTop: `1px solid ${T.border}`, background: "#FFFFFF", display: "flex", flexShrink: 0 }}>
       {NAV.filter(n => n.mobileShow).map(item => {
         const isActive = active === item.id
         return (
@@ -563,9 +574,10 @@ function InstTabBar({ active, onNav }) {
             justifyContent: "center", gap: 2, border: "none",
             background: "transparent", cursor: "pointer",
             color: isActive ? T.gold : T.ink4, fontFamily: FONT,
+            borderTop: isActive ? `2px solid ${T.gold}` : "2px solid transparent",
           }}>
-            <span style={{ fontSize: 20 }}>{item.icon}</span>
-            <span style={{ fontSize: 10, fontWeight: isActive ? 700 : 500 }}>{item.label}</span>
+            <span style={{ fontSize: 18 }}>{item.icon}</span>
+            <span style={{ fontSize: 10, fontWeight: isActive ? 700 : 500, fontFamily: MONO }}>{item.label}</span>
           </button>
         )
       })}
@@ -580,9 +592,9 @@ function PageHeader({ title, sub, actions }) {
     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 22, flexWrap: "wrap", gap: 10 }}>
       <div>
         <h2 style={{
-          margin: 0, fontFamily: "'Instrument Serif', Georgia, serif",
-          fontStyle: "italic", fontWeight: 400, fontSize: 38,
-          letterSpacing: "-0.02em", lineHeight: 0.94, color: T.ink,
+          margin: 0, fontFamily: FONT_SERIF,
+          fontStyle: "italic", fontWeight: 700, fontSize: 36,
+          letterSpacing: "-0.02em", lineHeight: 1.0, color: T.ink,
         }}>
           {parts.length > 0 && <>{parts.join(" ")} </>}
           <span style={{ color: T.gold }}>{last}</span>
@@ -597,29 +609,20 @@ function PageHeader({ title, sub, actions }) {
 function PageShell({ children }) {
   return (
     <div style={{
-      flex: 1, minHeight: 0, overflowY: "auto", padding: "24px 22px 36px", fontFamily: FONT,
-      background: "radial-gradient(ellipse at top left,rgba(246,196,83,.09),transparent 32%),radial-gradient(ellipse at top right,rgba(116,168,255,.07),transparent 30%),#0b0a08",
+      flex: 1, minHeight: 0, overflowY: "auto", padding: "28px 26px 40px", fontFamily: FONT,
+      background: "#F9FAFB",
       position: "relative",
     }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,700;0,800;1,700;1,800&family=JetBrains+Mono:wght@400;600;700;800&display=swap');
         * { box-sizing: border-box; }
         button:focus-visible { outline: 2px solid ${T.gold}; outline-offset: 2px; }
-        input:focus, select:focus, textarea:focus { border-color: ${T.gold} !important; box-shadow: 0 0 0 3px ${T.goldL}; }
-        input, select, textarea { color-scheme: dark; }
-        .inst-page-grid::before {
-          content: '';
-          position: fixed; inset: 0; pointer-events: none; z-index: 0;
-          background-image: linear-gradient(rgba(255,255,255,.012) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.012) 1px,transparent 1px);
-          background-size: 52px 52px;
-        }
+        input:focus, select:focus, textarea:focus { border-color: ${T.gold} !important; box-shadow: 0 0 0 3px rgba(255,87,1,0.12); }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.10); border-radius: 6px; }
+        ::-webkit-scrollbar-thumb { background: rgba(17,24,39,0.12); border-radius: 6px; }
       `}</style>
-      <div className="inst-page-grid" style={{ position: "relative", zIndex: 1 }}>
-        {children}
-      </div>
+      {children}
     </div>
   )
 }
@@ -627,11 +630,12 @@ function PageShell({ children }) {
 function tabStyle(active) {
   return {
     padding: "7px 14px", borderRadius: 9,
-    border: `1px solid ${active ? T.gold : T.border}`,
-    background: active ? "rgba(246,196,83,.12)" : "rgba(255,255,255,.04)",
-    color: active ? T.gold : T.ink3,
-    fontSize: 12, fontWeight: active ? 700 : 500, cursor: "pointer", fontFamily: FONT,
-    whiteSpace: "nowrap",
+    border: `1px solid ${active ? "rgba(255,87,1,0.22)" : T.border}`,
+    background: active ? "#FFF1E8" : "#FFFFFF",
+    color: active ? T.gold : T.ink4,
+    fontSize: 12, fontWeight: active ? 700 : 500, cursor: "pointer", fontFamily: MONO,
+    whiteSpace: "nowrap", letterSpacing: "0.02em",
+    boxShadow: active ? "0 4px 14px rgba(255,87,1,0.10)" : "none",
   }
 }
 
@@ -722,9 +726,9 @@ function HomePage({ userData, user, onNav, members, tasks, events, auditLogs, au
           {greeting}, {firstName}
         </p>
         <h1 style={{
-          margin: 0, fontFamily: "'Instrument Serif', Georgia, serif",
-          fontStyle: "italic", fontWeight: 400, fontSize: 38,
-          letterSpacing: "-0.02em", lineHeight: 0.95, color: T.ink,
+          margin: 0, fontFamily: FONT_SERIF,
+          fontStyle: "italic", fontWeight: 700, fontSize: 36,
+          letterSpacing: "-0.02em", lineHeight: 1.05, color: T.ink,
         }}>
           What needs <span style={{ color: T.gold }}>attention</span> now?
         </h1>
@@ -739,12 +743,12 @@ function HomePage({ userData, user, onNav, members, tasks, events, auditLogs, au
           { label: "Events",          value: upcomingEvents || 0, sub: "upcoming",               nav: "events" },
         ].map((k, i) => (
           <div key={i} onClick={() => onNav(k.nav)} style={{
-            background: "rgba(255,255,255,.04)", border: `1px solid ${T.border}`,
+            background: "#FFFFFF", border: `1px solid ${T.border}`,
             borderRadius: 18, padding: 16, minHeight: 110, cursor: "pointer",
             transition: "border-color .15s, background .15s",
           }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(246,196,83,.28)"; e.currentTarget.style.background = "rgba(255,255,255,.06)" }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.background = "rgba(255,255,255,.04)" }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,87,1,0.28)"; e.currentTarget.style.background = "#FFF1E8" }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.background = "#FFFFFF" }}
           >
             <div style={{ fontSize: 11, color: T.ink4, textTransform: "uppercase", letterSpacing: ".14em", fontWeight: 700 }}>{k.label}</div>
             <div style={{ margin: "10px 0 4px", fontSize: 32, fontWeight: 900, letterSpacing: "-0.04em", color: T.ink, lineHeight: 1 }}>{k.value}</div>
@@ -759,7 +763,7 @@ function HomePage({ userData, user, onNav, members, tasks, events, auditLogs, au
         {/* LEFT col */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {/* Workflow queue */}
-          <div style={{ border: `1px solid ${T.border}`, borderRadius: 22, background: "linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.03))", padding: 18 }}>
+          <div style={{ border: `1px solid ${T.border}`, borderRadius: 22, background: "#FFFFFF", padding: 18 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <span style={{ fontSize: 13, fontWeight: 800, color: T.ink }}>Workflow queue</span>
               <button onClick={() => onNav("tasks")} style={{ fontSize: 11, fontWeight: 700, color: T.gold, background: "none", border: "none", cursor: "pointer", padding: 0 }}>View all →</button>
@@ -789,7 +793,7 @@ function HomePage({ userData, user, onNav, members, tasks, events, auditLogs, au
                   ...(t.priority === "urgent"
                     ? { color: T.red,   background: "rgba(255,129,119,.10)" }
                     : t.priority === "high"
-                    ? { color: T.gold,  background: "rgba(246,196,83,.08)" }
+                    ? { color: T.gold,  background: "#FFF1E8" }
                     : { color: T.green, background: "rgba(79,212,163,.08)" }
                   ),
                 }}>
@@ -800,7 +804,7 @@ function HomePage({ userData, user, onNav, members, tasks, events, auditLogs, au
           </div>
 
           {/* Performance strip */}
-          <div style={{ border: `1px solid ${T.border}`, borderRadius: 22, background: "linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.03))", padding: 18 }}>
+          <div style={{ border: `1px solid ${T.border}`, borderRadius: 22, background: "#FFFFFF", padding: 18 }}>
             <div style={{ fontSize: 13, fontWeight: 800, color: T.ink, marginBottom: 14 }}>Performance</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               {[
@@ -809,7 +813,7 @@ function HomePage({ userData, user, onNav, members, tasks, events, auditLogs, au
                 { label: "Pending reviews", value: pendingMembers },
                 { label: "Urgent tasks",   value: urgentTasks },
               ].map((s, i) => (
-                <div key={i} style={{ padding: "10px 12px", background: "rgba(255,255,255,.03)", borderRadius: 12, border: `1px solid ${T.border}` }}>
+                <div key={i} style={{ padding: "10px 12px", background: "#F9FAFB", borderRadius: 12, border: `1px solid ${T.border}` }}>
                   <div style={{ fontSize: 10, color: T.ink4, textTransform: "uppercase", letterSpacing: ".12em", fontWeight: 700 }}>{s.label}</div>
                   <div style={{ fontSize: 22, fontWeight: 900, color: T.ink, letterSpacing: "-0.03em", marginTop: 6 }}>{s.value}</div>
                 </div>
@@ -821,7 +825,7 @@ function HomePage({ userData, user, onNav, members, tasks, events, auditLogs, au
         {/* RIGHT col */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {/* At-risk cases */}
-          <div style={{ border: `1px solid ${T.border}`, borderRadius: 22, background: "linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.03))", padding: 18 }}>
+          <div style={{ border: `1px solid ${T.border}`, borderRadius: 22, background: "#FFFFFF", padding: 18 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <span style={{ fontSize: 13, fontWeight: 800, color: T.ink }}>At-risk cases</span>
               <button onClick={() => onNav("cohorts")} style={{ fontSize: 11, fontWeight: 700, color: T.gold, background: "none", border: "none", cursor: "pointer", padding: 0 }}>View all →</button>
@@ -857,7 +861,7 @@ function HomePage({ userData, user, onNav, members, tasks, events, auditLogs, au
           </div>
 
           {/* Activity feed */}
-          <div style={{ border: `1px solid ${T.border}`, borderRadius: 22, background: "linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.03))", padding: 18 }}>
+          <div style={{ border: `1px solid ${T.border}`, borderRadius: 22, background: "#FFFFFF", padding: 18 }}>
             <div style={{ fontSize: 13, fontWeight: 800, color: T.ink, marginBottom: 14 }}>Recent activity</div>
             {auditLoading ? <Spinner /> : auditItems.length === 0 ? (
               <div style={{ padding: "20px 0", textAlign: "center", color: T.ink4, fontSize: 12 }}>No activity yet</div>
@@ -1529,8 +1533,8 @@ function CommunityPage({ userData, user }) {
             background: profilePhoto ? "transparent" : "linear-gradient(135deg,#dc8b18,#f6c453)",
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: 28, fontWeight: 900, color: "#23170a",
-            border: `3px solid #0b0a08`, flexShrink: 0, overflow: "hidden",
-            boxShadow: "0 4px 20px rgba(0,0,0,.5)",
+            border: `3px solid #FFFFFF`, flexShrink: 0, overflow: "hidden",
+            boxShadow: T.shadowM,
           }}>
             {profilePhoto
               ? <img src={profilePhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -1555,8 +1559,8 @@ function CommunityPage({ userData, user }) {
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
             <h2 style={{
-              margin: 0, fontFamily: "'Instrument Serif', Georgia, serif",
-              fontStyle: "italic", fontWeight: 400, fontSize: 28,
+              margin: 0, fontFamily: FONT_SERIF,
+              fontStyle: "italic", fontWeight: 700, fontSize: 28,
               letterSpacing: "-0.02em", color: T.ink,
             }}>{orgName}</h2>
             {userData?.verified && (
@@ -1613,7 +1617,7 @@ function CommunityPage({ userData, user }) {
                 return (
                   <div key={post.id} style={{
                     border: `1px solid ${T.border}`, borderRadius: 22,
-                    background: "linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.03))",
+                    background: "#FFFFFF",
                     padding: 18,
                   }}>
                     <div style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 12 }}>
@@ -1772,9 +1776,9 @@ function EventsPage({ userData, user }) {
     <PageShell>
       <div style={{ marginBottom: 22 }}>
         <h1 style={{
-          margin: 0, fontFamily: "'Instrument Serif', Georgia, serif",
-          fontStyle: "italic", fontWeight: 400, fontSize: 36,
-          letterSpacing: "-0.02em", lineHeight: 0.95, color: T.ink,
+          margin: 0, fontFamily: FONT_SERIF,
+          fontStyle: "italic", fontWeight: 700, fontSize: 34,
+          letterSpacing: "-0.02em", lineHeight: 1.05, color: T.ink,
         }}>
           Institution <span style={{ color: T.gold }}>posts</span>
         </h1>
@@ -1784,7 +1788,7 @@ function EventsPage({ userData, user }) {
       {/* Post composer */}
       <div style={{
         border: `1px solid ${T.border}`, borderRadius: 22,
-        background: "linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.03))",
+        background: "#FFFFFF",
         padding: 18, marginBottom: 20,
       }}>
         <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
@@ -1809,7 +1813,7 @@ function EventsPage({ userData, user }) {
               style={{
                 width: "100%", padding: "10px 14px", border: `1px solid ${T.border}`,
                 borderRadius: 14, fontSize: 13.5, fontFamily: FONT, outline: "none",
-                background: "rgba(255,255,255,.04)", resize: "none", color: T.ink,
+                background: "#F9FAFB", resize: "none", color: T.ink,
                 lineHeight: 1.55, boxSizing: "border-box",
               }}
               onFocus={e => e.target.style.borderColor = T.gold}
@@ -1866,7 +1870,7 @@ function EventsPage({ userData, user }) {
           {posts.map(post => (
             <div key={post.id} style={{
               border: `1px solid ${T.border}`, borderRadius: 22,
-              background: "linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.03))",
+              background: "#FFFFFF",
               padding: 18,
             }}>
               <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
@@ -2593,7 +2597,7 @@ export default function InstitutionOS({ user, userData, onNavigate }) {
     <div style={{
       display: "flex", flexDirection: isMobile ? "column" : "row",
       height: "100%", width: "100%",
-      background: "radial-gradient(ellipse at top left,rgba(246,196,83,.12),transparent 32%),radial-gradient(ellipse at top right,rgba(116,168,255,.08),transparent 30%),linear-gradient(180deg,#120f0b,#0b0a08 60%)",
+      background: "#F9FAFB",
       overflow: "hidden", fontFamily: FONT,
     }}>
       {!isMobile && (
