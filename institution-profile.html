@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>VIT Vellore · Capabilio — Verified Institution</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --ink:#020208; --ink2:#07060f; --ink3:#0d0c1c;
+  --glass:rgba(255,255,255,.04); --glass2:rgba(255,255,255,.07);
+  --wire:rgba(255,255,255,.07); --wire2:rgba(255,255,255,.13);
+  --gold:#f0b429; --gold2:#ffd166; --gold-glow:rgba(240,180,41,.26); --gold-dim:rgba(240,180,41,.11);
+  --elec:#00e5ff; --elec-glow:rgba(0,229,255,.2);
+  --plasma:#9b59ff; --plasma-glow:rgba(155,89,255,.22);
+  --neo:#00ff9d; --neo-glow:rgba(0,255,157,.2);
+  --hot:#ff3cac;
+  --t1:#f0ede8; --t2:rgba(240,237,232,.58); --t3:rgba(240,237,232,.34);
+  --mono:'JetBrains Mono',monospace;
+}
+html{scroll-behavior:smooth;background:var(--ink);}
+body{color:var(--t1);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden;}
+a{color:inherit;text-decoration:none;}
+button{font-family:inherit;cursor:pointer;}
+::-webkit-scrollbar{width:7px;}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.09);border-radius:4px;}
+
+/* ── AMBIENT BACKGROUND ──────────────────────────────────────── */
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='52'%3E%3Cpolygon points='30,2 58,17 58,47 30,62 2,47 2,17' fill='none' stroke='rgba(255,255,255,.025)' stroke-width='1'/%3E%3C/svg%3E");
+  background-size:60px 52px;
+}
+body::after{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 80% 55% at 15% 0%,rgba(155,89,255,.08),transparent 50%),
+    radial-gradient(ellipse 65% 45% at 85% 100%,rgba(0,229,255,.06),transparent 50%),
+    radial-gradient(ellipse 50% 40% at 50% 55%,rgba(240,180,41,.04),transparent 55%);
+}
+#root{position:relative;z-index:1;}
+
+/* ── TOP BAR ─────────────────────────────────────────────────── */
+#top{
+  position:sticky;top:0;z-index:100;height:56px;
+  background:rgba(2,2,8,.84);backdrop-filter:blur(22px) saturate(1.4);
+  border-bottom:1px solid var(--wire);
+}
+.wrap{max-width:1160px;margin:0 auto;padding:0 26px;}
+#top .wrap{display:flex;align-items:center;justify-content:space-between;height:56px;gap:14px;}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:15px;letter-spacing:-.2px;white-space:nowrap;}
+.brand .mk{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--gold),var(--gold2));display:flex;align-items:center;justify-content:center;font-weight:900;color:#180f00;font-size:14px;box-shadow:0 0 14px var(--gold-glow);}
+.brand i{color:var(--gold);font-style:italic;}
+.tnav{display:flex;gap:26px;font-size:13px;color:var(--t2);}
+.tnav a:hover{color:var(--t1);}
+.tbtn{padding:8px 18px;border-radius:999px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#180f00;font-weight:800;font-size:12.5px;border:none;box-shadow:0 0 18px var(--gold-glow);white-space:nowrap;transition:.2s;}
+.tbtn:hover{box-shadow:0 0 28px rgba(240,180,41,.48);}
+
+/* ── SEARCH CONTEXT PILL ─────────────────────────────────────── */
+.srchpill{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.04);border:1px solid var(--wire);border-radius:999px;padding:6px 14px;font-size:12px;color:var(--t2);margin-bottom:24px;}
+.srchpill .q{color:var(--gold);font-weight:700;font-family:var(--mono);}
+.srchpill .badge{color:var(--neo);font-size:10px;font-weight:800;}
+
+/* ── HERO ────────────────────────────────────────────────────── */
+#hero{position:relative;overflow:hidden;min-height:460px;}
+#hero canvas#hcv{position:absolute;inset:0;width:100%;height:100%;display:block;}
+#hero .ov{position:absolute;inset:0;background:linear-gradient(180deg,rgba(2,2,8,.15) 0%,rgba(2,2,8,.82) 70%,var(--ink) 100%);}
+.hcontent{position:relative;padding:56px 0 0;}
+
+/* Identity block */
+.identity{display:flex;align-items:flex-end;gap:28px;padding-bottom:26px;}
+.logo-ring{position:relative;flex-shrink:0;width:108px;height:108px;}
+.logo-ring svg.ring{position:absolute;inset:-11px;width:calc(100% + 22px);height:calc(100% + 22px);pointer-events:none;}
+.inst-logo{
+  width:108px;height:108px;border-radius:24px;
+  background:linear-gradient(135deg,#2d1b69,#1e3a8a 55%,#14100a);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:900;font-size:36px;color:var(--gold);
+  border:1.5px solid rgba(240,180,41,.28);
+  box-shadow:0 0 40px rgba(155,89,255,.28),0 20px 56px rgba(0,0,0,.65);
+  position:relative;z-index:1;letter-spacing:-1px;
+  font-family:var(--mono);
+}
+.hmeta{flex:1;padding-bottom:2px;}
+.hname-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:9px;}
+.hname-row h1{
+  font-size:clamp(26px,4vw,44px);font-weight:900;letter-spacing:-.8px;
+  background:linear-gradient(135deg,var(--t1) 35%,var(--gold2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.vtier{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:10.5px;font-weight:800;
+  color:var(--gold);background:var(--gold-dim);
+  border:1px solid rgba(240,180,41,.38);
+  padding:4px 11px;border-radius:999px;
+  font-family:var(--mono);
+}
+.vtier-dot{width:5px;height:5px;border-radius:50%;background:var(--gold);animation:gpl 1.6s infinite;}
+@keyframes gpl{0%,100%{opacity:1;box-shadow:0 0 0 0 var(--gold-glow)}50%{box-shadow:0 0 0 4px rgba(240,180,41,0)}}
+.hsub{font-size:13.5px;color:var(--t2);line-height:1.6;}
+.hsub b{color:var(--t1);}
+.hsub .live{color:var(--neo);font-weight:800;}
+.hactions{display:flex;gap:9px;margin-top:15px;flex-wrap:wrap;}
+.btn-primary{display:inline-flex;align-items:center;gap:7px;padding:10px 20px;border-radius:12px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#180f00;font-weight:800;font-size:13px;border:none;box-shadow:0 0 22px var(--gold-glow);transition:.2s;}
+.btn-primary:hover{box-shadow:0 0 34px rgba(240,180,41,.52);transform:translateY(-1px);}
+.btn-ghost{display:inline-flex;align-items:center;gap:7px;padding:10px 18px;border-radius:12px;background:var(--glass);border:1px solid var(--wire2);color:var(--t1);font-weight:700;font-size:13px;transition:.2s;}
+.btn-ghost:hover{background:var(--glass2);}
+
+/* ── NAV TABS ────────────────────────────────────────────────── */
+.navtabs{display:flex;gap:2px;margin:18px 0 0;border-bottom:1px solid var(--wire);overflow-x:auto;}
+.navtabs a{padding:10px 16px;font-size:13px;color:var(--t2);font-weight:600;border-bottom:2px solid transparent;margin-bottom:-1px;transition:.15s;border-radius:8px 8px 0 0;white-space:nowrap;}
+.navtabs a.on{color:var(--gold);border-color:var(--gold);}
+.navtabs a:hover:not(.on){color:var(--t1);background:rgba(255,255,255,.03);}
+
+/* ── STATS STRIP ─────────────────────────────────────────────── */
+.stats-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--wire);border:1px solid var(--wire);border-radius:20px;overflow:hidden;margin-top:24px;}
+.stat-cell{background:var(--ink2);padding:20px 22px;position:relative;overflow:hidden;transition:background .2s;}
+.stat-cell:hover{background:var(--ink3);}
+.stat-cell::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.02),transparent);}
+.stat-cell .sval{font-size:clamp(22px,2.8vw,32px);font-weight:900;letter-spacing:-1.5px;font-family:var(--mono);}
+.stat-cell .slbl{font-size:10.5px;color:var(--t3);margin-top:5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;font-family:var(--mono);}
+.stat-cell .sdelta{font-size:10px;font-weight:700;margin-top:9px;display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font-family:var(--mono);}
+.neopulse{width:5px;height:5px;border-radius:50%;animation:npls 1.8s infinite;}
+@keyframes npls{0%{box-shadow:0 0 0 0 currentColor}70%{box-shadow:0 0 0 6px transparent}100%{box-shadow:0 0 0 0 transparent}}
+
+/* ── SECTION HEADERS ─────────────────────────────────────────── */
+.shead{margin:64px 0 20px;}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--elec);font-family:var(--mono);margin-bottom:12px;}
+.eyebrow::before{content:'';display:inline-block;width:18px;height:1px;background:var(--elec);opacity:.7;}
+.shead h2{font-size:clamp(22px,3.2vw,36px);font-weight:900;letter-spacing:-.6px;line-height:1.1;max-width:700px;}
+.shead p{color:var(--t2);font-size:14px;margin-top:10px;max-width:620px;line-height:1.65;}
+.shead-row{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+.badge-only{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:800;padding:5px 13px;border-radius:999px;white-space:nowrap;font-family:var(--mono);}
+.badge-elec{background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.28);color:var(--elec);}
+.badge-neo{background:rgba(0,255,157,.08);border:1px solid rgba(0,255,157,.28);color:var(--neo);}
+
+/* ── TALENT MAP ──────────────────────────────────────────────── */
+#mapzone{
+  position:relative;border:1px solid rgba(0,229,255,.16);border-radius:24px;
+  overflow:hidden;background:radial-gradient(ellipse 110% 90% at 50% 0%,#06051a,var(--ink) 78%);
+  height:560px;
+}
+#mapzone::before{
+  content:'';position:absolute;inset:0;z-index:2;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 59px,rgba(0,229,255,.038) 60px),
+             repeating-linear-gradient(90deg,transparent,transparent 59px,rgba(0,229,255,.038) 60px);
+}
+#tmap{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:crosshair;z-index:1;}
+.map-scan{position:absolute;inset:0;z-index:3;pointer-events:none;background:linear-gradient(180deg,transparent 49%,rgba(0,229,255,.055) 50%,transparent 51%);animation:mapscan 8s linear infinite;}
+@keyframes mapscan{0%{transform:translateY(-100%)}100%{transform:translateY(200%)}}
+.hud-tl{position:absolute;left:18px;top:18px;z-index:4;background:rgba(2,2,8,.76);backdrop-filter:blur(12px);border:1px solid rgba(0,229,255,.18);border-radius:14px;padding:14px 16px;}
+.hud-label{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.16em;color:var(--elec);margin-bottom:10px;text-transform:uppercase;}
+.lg{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--t2);margin-bottom:5px;}
+.lg .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.hud-tr{position:absolute;right:18px;top:18px;z-index:4;font-family:var(--mono);font-size:10px;color:var(--t3);background:rgba(2,2,8,.6);border:1px solid var(--wire);border-radius:999px;padding:5px 12px;}
+.liveband{position:absolute;left:18px;bottom:18px;z-index:4;display:flex;align-items:center;gap:8px;background:rgba(2,2,8,.76);backdrop-filter:blur(10px);border:1px solid rgba(0,255,157,.28);border-radius:999px;padding:7px 16px;font-size:11.5px;color:var(--neo);font-weight:700;font-family:var(--mono);}
+#nodecard{
+  position:absolute;z-index:6;width:224px;
+  background:rgba(2,2,8,.96);backdrop-filter:blur(16px);
+  border:1px solid rgba(240,180,41,.38);border-radius:14px;
+  padding:14px;pointer-events:none;
+  opacity:0;transform:translateY(8px);transition:opacity .15s,transform .15s;
+  box-shadow:0 0 30px rgba(0,0,0,.8),inset 0 0 0 1px rgba(255,255,255,.04);
+}
+#nodecard.show{opacity:1;transform:translateY(0);}
+#nodecard .nc-top{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+#nodecard .nc-av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+#nodecard .nc-nm{font-size:13px;font-weight:700;}
+#nodecard .nc-br{font-size:10px;color:var(--t3);}
+#nodecard .nc-elo{margin-left:auto;text-align:right;font-family:var(--mono);}
+#nodecard .nc-elo b{font-size:20px;color:var(--gold);}
+#nodecard .nc-elo span{font-size:9px;color:var(--t3);display:block;}
+#nodecard .nc-skills{display:flex;flex-wrap:wrap;gap:5px;margin-top:2px;}
+#nodecard .sk{font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;border:1px solid;}
+#nodecard .nc-st{margin-top:9px;font-size:10.5px;font-weight:800;display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;font-family:var(--mono);}
+
+/* ── INTEL COLUMNS ───────────────────────────────────────────── */
+.intel-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:16px;align-items:start;}
+.terminal{background:var(--ink2);border:1px solid var(--wire);border-radius:20px;overflow:hidden;}
+.term-head{display:flex;align-items:center;gap:10px;padding:12px 16px;background:rgba(0,229,255,.05);border-bottom:1px solid rgba(0,229,255,.12);}
+.tdots{display:flex;gap:5px;}
+.tdots span{width:10px;height:10px;border-radius:50%;}
+.term-title{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--elec);margin-left:4px;}
+.live-badge{margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;font-weight:800;padding:3px 9px;border-radius:999px;background:rgba(0,255,157,.1);border:1px solid rgba(0,255,157,.28);color:var(--neo);}
+.term-body{padding:8px;}
+.fitem{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:11px;transition:.15s;}
+.fitem:hover{background:rgba(255,255,255,.03);}
+.fitem .co{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;color:#fff;flex-shrink:0;}
+.fitem .fw{font-size:12.5px;font-weight:700;}
+.fitem .fs{font-size:11.5px;color:var(--t2);}
+.fitem .tm{font-family:var(--mono);font-size:10px;color:var(--t3);white-space:nowrap;margin-left:auto;padding-left:8px;}
+.radar-card{background:var(--ink2);border:1px solid var(--wire);border-radius:20px;padding:20px;}
+.radar-card h4{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:16px;font-family:var(--mono);}
+#radarCv{display:block;width:100%;max-width:290px;margin:0 auto;}
+.gap-note{margin-top:14px;padding:12px 13px;background:rgba(240,180,41,.08);border:1px solid rgba(240,180,41,.2);border-radius:11px;font-size:11.5px;color:var(--gold);line-height:1.55;}
+
+/* ── PLACEMENT RIBBON ────────────────────────────────────────── */
+.ribbon-wrap{border:1px solid var(--wire);border-radius:16px;overflow:hidden;-webkit-mask:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent);mask:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent);}
+.ribbon{display:flex;gap:10px;padding:14px 0;}
+.ribtrack{display:flex;gap:10px;animation:rbsl 40s linear infinite;}
+@keyframes rbsl{to{transform:translateX(-50%);}}
+.plac{display:flex;align-items:center;gap:11px;background:var(--ink2);border:1px solid var(--wire);border-radius:12px;padding:11px 16px;white-space:nowrap;flex-shrink:0;transition:.2s;}
+.plac:hover{border-color:rgba(240,180,41,.3);}
+.plac .av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;}
+.plac .pname{font-size:12.5px;font-weight:700;}
+.plac .pco{font-size:11.5px;color:var(--t2);}
+.plac .pkg{font-family:var(--mono);font-size:11.5px;font-weight:800;color:var(--neo);margin-left:4px;}
+
+/* ── DEPARTMENTS ─────────────────────────────────────────────── */
+.dept-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.dept-tile{
+  background:var(--ink2);border:1px solid var(--wire);border-radius:18px;
+  padding:22px 20px;position:relative;overflow:hidden;
+  transition:.22s;
+}
+.dept-tile:hover{border-color:var(--dc, rgba(240,180,41,.4));transform:translateY(-4px);box-shadow:0 16px 44px rgba(0,0,0,.4),inset 0 0 0 1px rgba(255,255,255,.04);}
+.dept-tile::after{content:'';position:absolute;right:-24px;top:-24px;width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,var(--dc) 0%,transparent 70%);opacity:.3;transition:.22s;}
+.dept-tile:hover::after{opacity:.55;}
+.dept-code{font-family:var(--mono);font-size:20px;font-weight:900;color:var(--dc);margin-bottom:6px;letter-spacing:.04em;}
+.dept-name{font-size:11px;color:var(--t3);margin-bottom:14px;font-family:var(--mono);}
+.dept-elo{font-size:28px;font-weight:900;font-family:var(--mono);color:var(--t1);letter-spacing:-1.5px;}
+.dept-elo-l{font-size:9px;color:var(--t3);font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;margin-top:2px;}
+.dept-placed{margin-top:12px;font-size:11.5px;font-weight:800;font-family:var(--mono);}
+.dept-bar{margin-top:7px;height:3px;background:rgba(255,255,255,.06);border-radius:2px;}
+.dept-fill{height:100%;border-radius:2px;background:var(--dc);}
+
+/* ── FEATURE GRID ────────────────────────────────────────────── */
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.feat-card{background:var(--ink2);border:1px solid var(--wire);border-radius:18px;padding:24px;position:relative;overflow:hidden;transition:.22s;}
+.feat-card:hover{border-color:rgba(240,180,41,.32);transform:translateY(-3px);}
+.feat-card .glow{position:absolute;right:-36px;top:-36px;width:110px;height:110px;border-radius:50%;background:radial-gradient(circle,rgba(240,180,41,.13),transparent 70%);}
+.feat-card .icon{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:17px;margin-bottom:14px;background:var(--gold-dim);border:1px solid rgba(240,180,41,.22);}
+.feat-card h3{font-size:14.5px;font-weight:800;margin-bottom:7px;}
+.feat-card p{font-size:12.5px;color:var(--t2);line-height:1.65;}
+
+/* ── TRUST TILES ─────────────────────────────────────────────── */
+.trust-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.trust-tile{background:var(--ink2);border:1px solid var(--wire);border-radius:16px;padding:18px;display:flex;align-items:flex-start;gap:13px;}
+.trust-tile .ti{width:40px;height:40px;border-radius:11px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;}
+.trust-tile .th{font-size:13px;font-weight:800;margin-bottom:4px;}
+.trust-tile .td{font-size:11.5px;color:var(--t2);line-height:1.55;}
+
+/* ── CTA ─────────────────────────────────────────────────────── */
+#cta{
+  margin:72px 0 40px;position:relative;overflow:hidden;
+  border:1px solid rgba(240,180,41,.26);border-radius:28px;
+  padding:60px 40px;text-align:center;
+  background:
+    radial-gradient(ellipse 140% 110% at 50% -10%,rgba(155,89,255,.13),transparent 55%),
+    radial-gradient(ellipse 90% 70% at 85% 110%,rgba(0,229,255,.08),transparent 55%),
+    var(--ink2);
+}
+#cta::before{content:'';position:absolute;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='52'%3E%3Cpolygon points='30,2 58,17 58,47 30,62 2,47 2,17' fill='none' stroke='rgba(255,255,255,.04)' stroke-width='1'/%3E%3C/svg%3E");background-size:60px 52px;pointer-events:none;}
+#cta>*{position:relative;}
+#cta .clabel{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.22em;color:var(--elec);margin-bottom:16px;text-transform:uppercase;}
+#cta h2{font-size:clamp(26px,4vw,48px);font-weight:900;letter-spacing:-.8px;line-height:1.08;max-width:580px;margin:0 auto 16px;}
+#cta p{color:var(--t2);font-size:14.5px;max-width:460px;margin:0 auto 32px;line-height:1.65;}
+#cta .crow{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+.foot{padding:28px 0;border-top:1px solid var(--wire);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--t3);}
+
+/* ── RESPONSIVE ──────────────────────────────────────────────── */
+@media(max-width:920px){
+  .stats-strip,.dept-grid{grid-template-columns:1fr 1fr;}
+  .intel-grid,.feat-grid{grid-template-columns:1fr;}
+  .identity{flex-direction:column;align-items:flex-start;}
+  .tnav{display:none;}
+}
+@media(max-width:520px){
+  .stats-strip{grid-template-columns:1fr 1fr;}
+  .trust-grid{grid-template-columns:1fr;}
+  #mapzone{height:420px;}
+  #cta{padding:36px 22px;}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+</style>
+</head>
+<body>
+<div id="root">
+
+<!-- ══ TOP BAR ══════════════════════════════════════════════════ -->
+<div id="top"><div class="wrap">
+  <div class="brand"><span class="mk">C</span>Capabil<i>io</i></div>
+  <div class="tnav">
+    <a href="#map">Talent Map</a>
+    <a href="#intel">Live Intel</a>
+    <a href="#proof">Placements</a>
+    <a href="#why">About</a>
+  </div>
+  <a class="tbtn" href="#cta">Partner →</a>
+</div></div>
+
+<!-- ══ HERO ═════════════════════════════════════════════════════ -->
+<div id="hero">
+  <canvas id="hcv"></canvas>
+  <div class="ov"></div>
+  <div class="wrap hcontent">
+
+    <div class="srchpill">
+      <span>Search result for</span>
+      <span class="q">"VIT Vellore"</span>
+      <span style="color:var(--t3)">·</span>
+      <span class="badge">✦ Verified Institution</span>
+    </div>
+
+    <div class="identity">
+      <!-- Animated ring logo -->
+      <div class="logo-ring">
+        <svg class="ring" viewBox="0 0 148 148" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="74" cy="74" r="67" stroke="rgba(240,180,41,.12)" stroke-width="1.5"/>
+          <circle cx="74" cy="74" r="67" stroke="url(#rg1)" stroke-width="2.5"
+            stroke-dasharray="421" stroke-dashoffset="104" stroke-linecap="round">
+            <animateTransform attributeName="transform" type="rotate" from="0 74 74" to="360 74 74" dur="9s" repeatCount="indefinite"/>
+          </circle>
+          <!-- second ring, opposite direction -->
+          <circle cx="74" cy="74" r="58" stroke="rgba(0,229,255,.1)" stroke-width="1"
+            stroke-dasharray="364" stroke-dashoffset="260" stroke-linecap="round">
+            <animateTransform attributeName="transform" type="rotate" from="360 74 74" to="0 74 74" dur="14s" repeatCount="indefinite"/>
+          </circle>
+          <defs>
+            <linearGradient id="rg1" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#f0b429" stop-opacity="0"/>
+              <stop offset="45%" stop-color="#f0b429"/>
+              <stop offset="100%" stop-color="#ffd166" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="inst-logo">VIT</div>
+      </div>
+
+      <div class="hmeta">
+        <div class="hname-row">
+          <h1>VIT Vellore</h1>
+          <span class="vtier"><span class="vtier-dot"></span>Verified · Tier 2</span>
+        </div>
+        <div class="hsub">
+          Engineering &amp; Technology · Tamil Nadu, India ·
+          <b>487 verified students</b> · <b>64 recruiters engaged</b> ·
+          <span class="live">⬤ 12 active right now</span>
+        </div>
+        <div class="hactions">
+          <button class="btn-primary">+ Follow this page</button>
+          <button class="btn-ghost">📩 Message TPO</button>
+          <button class="btn-ghost">📋 NAAC Report</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="navtabs">
+      <a class="on" href="#map">Talent Map</a>
+      <a href="#intel">Live Intel</a>
+      <a href="#proof">Placements</a>
+      <a href="#depts">Departments</a>
+      <a href="#why">About</a>
+    </div>
+
+    <!-- ── STATS STRIP ── -->
+    <div class="stats-strip">
+      <div class="stat-cell">
+        <div class="sval" style="color:var(--gold)">487</div>
+        <div class="slbl">Verified Students</div>
+        <div class="sdelta" style="background:rgba(0,255,157,.1);color:var(--neo)">
+          <span class="neopulse" style="background:var(--neo);color:var(--neo)"></span>12 verified today
+        </div>
+      </div>
+      <div class="stat-cell">
+        <div class="sval" style="color:var(--neo)">64%</div>
+        <div class="slbl">Placement Rate</div>
+        <div class="sdelta" style="background:rgba(0,255,157,.1);color:var(--neo)">
+          <span class="neopulse" style="background:var(--neo);color:var(--neo)"></span>+9% vs last batch
+        </div>
+      </div>
+      <div class="stat-cell">
+        <div class="sval" style="color:var(--elec)">1,342</div>
+        <div class="slbl">Avg Readiness ELO</div>
+        <div class="sdelta" style="background:rgba(0,229,255,.1);color:var(--elec)">
+          <span class="neopulse" style="background:var(--elec);color:var(--elec)"></span>rising live
+        </div>
+      </div>
+      <div class="stat-cell">
+        <div class="sval" style="color:var(--plasma)">12</div>
+        <div class="slbl">Recruiters Active Now</div>
+        <div class="sdelta" style="background:rgba(155,89,255,.12);color:var(--plasma)">
+          <span class="neopulse" style="background:var(--plasma);color:var(--plasma)"></span>real-time signal
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /hero -->
+
+<div class="wrap">
+
+<!-- ══ TALENT MAP ════════════════════════════════════════════════ -->
+<div id="map" class="shead">
+  <div class="shead-row">
+    <div>
+      <div class="eyebrow">The Living Talent Map</div>
+      <h2>Your entire campus — alive. Every node a verified human.</h2>
+      <p>Skill clusters glow by strength. Brighter nodes are switch-ready. Recruiter orbitals show companies scanning your batch in real-time. Hover any node to open a verified profile.</p>
+    </div>
+    <div class="badge-only badge-elec">⚡ Only on Capabilio</div>
+  </div>
+</div>
+
+<div id="mapzone">
+  <canvas id="tmap"></canvas>
+  <div class="map-scan"></div>
+  <div class="hud-tl">
+    <div class="hud-label">Skill Clusters</div>
+    <div class="lg"><span class="dot" style="background:#A78BFA"></span> DSA / CP</div>
+    <div class="lg"><span class="dot" style="background:#34D399"></span> Web &amp; Mobile</div>
+    <div class="lg"><span class="dot" style="background:#60A5FA"></span> AI / ML</div>
+    <div class="lg"><span class="dot" style="background:#22D3EE"></span> Cloud / DevOps</div>
+    <div class="lg"><span class="dot" style="background:#F472B6"></span> Product / Design</div>
+    <div class="lg"><span class="dot" style="background:#FBBF24"></span> Data / Analytics</div>
+  </div>
+  <div class="hud-tr">◓ drag to shift focus · hover a node</div>
+  <div class="liveband">
+    <span class="neopulse" style="background:var(--neo);color:var(--neo)"></span>
+    <span id="livetxt">Google is scanning the AI/ML cluster…</span>
+  </div>
+  <div id="nodecard"></div>
+</div>
+
+<!-- ══ LIVE INTEL ════════════════════════════════════════════════ -->
+<div id="intel" class="shead">
+  <div class="shead-row">
+    <div>
+      <div class="eyebrow">Live Recruiter Intel</div>
+      <h2>Companies are orbiting your batch right now.</h2>
+      <p>This is what a verified institution page unlocks — inbound discovery from real hiring pipelines.</p>
+    </div>
+    <div class="badge-only badge-neo">⬤ Live feed</div>
+  </div>
+</div>
+
+<div class="intel-grid">
+  <div class="terminal">
+    <div class="term-head">
+      <div class="tdots">
+        <span style="background:#ff5f57"></span>
+        <span style="background:#febc2e"></span>
+        <span style="background:#28c840"></span>
+      </div>
+      <span class="term-title">// RECRUITER_ACTIVITY.stream</span>
+      <span class="live-badge"><span class="neopulse" style="background:var(--neo);color:var(--neo)"></span>LIVE</span>
+    </div>
+    <div class="term-body" id="feed"></div>
+  </div>
+
+  <div class="radar-card">
+    <h4>Cohort Skill Readiness</h4>
+    <canvas id="radarCv" width="290" height="250"></canvas>
+    <div class="gap-note">
+      ⚠ <b>System Design</b> is the widest gap — 131 students are one mission from "nearly ready." Capabilio auto-nudges them.
+    </div>
+  </div>
+</div>
+
+<!-- ══ PLACEMENT PROOF ══════════════════════════════════════════ -->
+<div id="proof" class="shead">
+  <div class="shead-row">
+    <div>
+      <div class="eyebrow">Placement Proof Wall</div>
+      <h2>312 verified placements this batch.</h2>
+      <p>Every offer tied to a verified student and a real company — not a claim on a brochure.</p>
+    </div>
+    <div style="text-align:right">
+      <div style="font-family:var(--mono);font-size:40px;font-weight:900;color:var(--gold);letter-spacing:-2px;line-height:1">₹6.2L</div>
+      <div style="font-size:9px;color:var(--t3);font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;margin-top:3px">Avg Package</div>
+    </div>
+  </div>
+</div>
+
+<div class="ribbon-wrap">
+  <div class="ribbon"><div class="ribtrack" id="ribtrack"></div></div>
+</div>
+
+<!-- ══ DEPARTMENTS ═══════════════════════════════════════════════ -->
+<div id="depts" class="shead">
+  <div class="eyebrow">Department Intelligence</div>
+  <h2>Four branches. One readiness engine.</h2>
+  <p>Average readiness ELO, placement rates, and skill gap signals — updated live from Arena activity.</p>
+</div>
+
+<div class="dept-grid">
+  <div class="dept-tile" style="--dc:#f0b429">
+    <div class="dept-code">CSE</div>
+    <div class="dept-name">COMPUTER SCIENCE</div>
+    <div class="dept-elo">1,410</div>
+    <div class="dept-elo-l">AVG ELO</div>
+    <div class="dept-placed" style="color:var(--neo)">↑ 78% placed</div>
+    <div class="dept-bar"><div class="dept-fill" style="width:78%"></div></div>
+  </div>
+  <div class="dept-tile" style="--dc:#34D399">
+    <div class="dept-code">IT</div>
+    <div class="dept-name">INFORMATION TECH</div>
+    <div class="dept-elo">1,280</div>
+    <div class="dept-elo-l">AVG ELO</div>
+    <div class="dept-placed" style="color:var(--neo)">↑ 64% placed</div>
+    <div class="dept-bar"><div class="dept-fill" style="width:64%"></div></div>
+  </div>
+  <div class="dept-tile" style="--dc:#9b59ff">
+    <div class="dept-code">AI&DS</div>
+    <div class="dept-name">AI & DATA SCIENCE</div>
+    <div class="dept-elo">1,190</div>
+    <div class="dept-elo-l">AVG ELO</div>
+    <div class="dept-placed" style="color:var(--neo)">↑ 52% placed</div>
+    <div class="dept-bar"><div class="dept-fill" style="width:52%"></div></div>
+  </div>
+  <div class="dept-tile" style="--dc:#ff4d6d">
+    <div class="dept-code">ECE</div>
+    <div class="dept-name">ELECTRONICS</div>
+    <div class="dept-elo">980</div>
+    <div class="dept-elo-l">AVG ELO</div>
+    <div class="dept-placed" style="color:#ff4d6d">⚠ 31% placed</div>
+    <div class="dept-bar"><div class="dept-fill" style="width:31%;background:#ff4d6d"></div></div>
+  </div>
+</div>
+
+<!-- ══ WHY CAPABILIO ════════════════════════════════════════════ -->
+<div id="why" class="shead">
+  <div class="eyebrow">What no other platform gives an institution</div>
+  <h2>Not a job board. Not a dashboard.<br/>A living proof engine.</h2>
+  <p>LinkedIn shows claims. Spreadsheets show guesses. Capabilio shows what your students can actually do — verified, live, and discoverable.</p>
+</div>
+
+<div class="feat-grid">
+  <div class="feat-card"><div class="glow"></div>
+    <div class="icon">✦</div>
+    <h3>Verified, not self-reported</h3>
+    <p>Every skill earned through real missions and graded execution — recruiters trust the badge because it can't be faked.</p>
+  </div>
+  <div class="feat-card"><div class="glow"></div>
+    <div class="icon">◉</div>
+    <h3>A campus recruiters orbit</h3>
+    <p>Companies discover and filter your cohort directly — by proven skill, readiness, and availability. No job fair, no middleman.</p>
+  </div>
+  <div class="feat-card"><div class="glow"></div>
+    <div class="icon">∿</div>
+    <h3>Readiness updates itself</h3>
+    <p>The map breathes daily as students complete missions. See skill gaps forming weeks before placement season.</p>
+  </div>
+  <div class="feat-card"><div class="glow"></div>
+    <div class="icon">⬡</div>
+    <h3>NAAC reports, auto-written</h3>
+    <p>Criterion-V placement data assembles itself from live activity. One click, audit-ready export.</p>
+  </div>
+  <div class="feat-card"><div class="glow"></div>
+    <div class="icon">⊹</div>
+    <h3>Free for every student</h3>
+    <p>Students never pay. The institution plan unlocks the map, the recruiter portal, and the reports.</p>
+  </div>
+  <div class="feat-card"><div class="glow"></div>
+    <div class="icon">↗</div>
+    <h3>A profile that compounds</h3>
+    <p>Each verified placement strengthens your institution page — the brand recruiters return to, year after year.</p>
+  </div>
+</div>
+
+<!-- ══ TRUST INFRA ═══════════════════════════════════════════════ -->
+<div class="shead" style="margin-bottom:16px">
+  <div class="eyebrow">Trust Infrastructure</div>
+  <h2>Why recruiters trust this page.</h2>
+</div>
+<div class="trust-grid">
+  <div class="trust-tile">
+    <div class="ti" style="background:rgba(240,180,41,.1);border:1px solid rgba(240,180,41,.22)">🏛️</div>
+    <div><div class="th">Institution Verification</div><div class="td">DNS, accreditation documents &amp; admin identity confirmed. VIT Vellore is Tier 2 verified on Capabilio.</div></div>
+  </div>
+  <div class="trust-tile">
+    <div class="ti" style="background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.22)">⚔️</div>
+    <div><div class="th">Skill Proof via Arena</div><div class="td">Every badge earned by solving real missions — not self-reported. Recruiters see only what students prove.</div></div>
+  </div>
+  <div class="trust-tile">
+    <div class="ti" style="background:rgba(0,255,157,.1);border:1px solid rgba(0,255,157,.22)">🤝</div>
+    <div><div class="th">Recruiter NDA Layer</div><div class="td">Companies sign a data agreement before viewing your cohort. Scope, expiry, and revocation are enforced automatically.</div></div>
+  </div>
+  <div class="trust-tile">
+    <div class="ti" style="background:rgba(155,89,255,.1);border:1px solid rgba(155,89,255,.22)">📋</div>
+    <div><div class="th">NAAC / NBA Ready</div><div class="td">All placement data timestamped, company-verified, and formatted for Criterion V — on demand.</div></div>
+  </div>
+</div>
+
+<!-- ══ CTA ═══════════════════════════════════════════════════════ -->
+<div id="cta">
+  <div class="clabel">For Institutions</div>
+  <h2>Build the campus<br/>recruiters come back to.</h2>
+  <p>Your students get verified. Recruiters discover them on the map. Your NAAC reports write themselves.</p>
+  <div class="crow">
+    <a class="btn-primary" href="https://capabilio.online" target="_blank">Claim your institution page →</a>
+    <a class="btn-ghost" href="mailto:partnerships@capabilio.online">📩 Talk to partnerships</a>
+  </div>
+</div>
+
+<div class="foot">
+  <div>Capabil<i style="color:var(--gold);font-style:italic">io</i> · Institution OS · capabilio.online</div>
+  <div>🆓 Free for students · 📋 NAAC-ready · 🤝 Recruiter network · ✦ Verified talent</div>
+</div>
+
+</div><!-- /wrap -->
+</div><!-- /root -->
+
+<script>
+/* ══ HERO CANVAS — nebula + star field ══════════════════════════ */
+(function(){
+  const cv=document.getElementById('hcv'),x=cv.getContext('2d');
+  const hero=document.getElementById('hero');
+  let W,H,ps=[];
+  function rs(){
+    W=cv.width=hero.offsetWidth*(devicePixelRatio||1);
+    H=cv.height=hero.offsetHeight*(devicePixelRatio||1);
+    cv.style.width=hero.offsetWidth+'px';cv.style.height=hero.offsetHeight+'px';
+  }
+  rs();addEventListener('resize',rs);
+  for(let i=0;i<130;i++)ps.push({
+    x:Math.random()*3000,y:Math.random()*2000,
+    r:Math.random()*1.6+.3,s:(Math.random()*.22+.04)*(Math.random()<.5?1:-1),
+    o:Math.random()*.55+.08,t:Math.random()*100,a:Math.random()*Math.PI*2,
+    col:Math.random()<.28?'240,180,41':Math.random()<.5?'0,229,255':'255,255,255'
+  });
+  const blobs=[{x:.18,y:.28,r:.4,c:'155,89,255'},{x:.78,y:.18,r:.3,c:'0,229,255'},{x:.5,y:.65,r:.25,c:'240,180,41'}];
+  (function lp(){
+    x.clearRect(0,0,W,H);
+    blobs.forEach(b=>{
+      const g=x.createRadialGradient(b.x*W,b.y*H,0,b.x*W,b.y*H,b.r*Math.max(W,H));
+      g.addColorStop(0,'rgba('+b.c+',.12)');g.addColorStop(1,'rgba('+b.c+',0)');
+      x.fillStyle=g;x.fillRect(0,0,W,H);
+    });
+    for(const p of ps){
+      p.t+=.5;p.y+=p.s;
+      if(p.y<0)p.y=H;if(p.y>H)p.y=0;
+      const tw=.5+.5*Math.sin(p.t*.08+p.a);
+      x.beginPath();x.arc(p.x%(W||1),p.y,p.r,0,7);
+      x.fillStyle='rgba('+p.col+','+p.o*tw+')';x.fill();
+    }
+    requestAnimationFrame(lp);
+  })();
+})();
+
+/* ══ LIVING TALENT MAP ═══════════════════════════════════════════ */
+(function(){
+  const cv=document.getElementById('tmap'),x=cv.getContext('2d');
+  const card=document.getElementById('nodecard');
+  let W,H,DPR=Math.min(devicePixelRatio,2);
+  function rs(){W=cv.offsetWidth;H=cv.offsetHeight;cv.width=W*DPR;cv.height=H*DPR;x.setTransform(DPR,0,0,DPR,0,0);place();}
+
+  const CL=[
+    {name:'DSA / CP',col:'#A78BFA',skills:['DSA','C++','Greedy','DP']},
+    {name:'Web & Mobile',col:'#34D399',skills:['React','Node','Flutter','TS']},
+    {name:'AI / ML',col:'#60A5FA',skills:['PyTorch','NLP','CV','LLMs']},
+    {name:'Cloud / DevOps',col:'#22D3EE',skills:['AWS','K8s','Docker','CI/CD']},
+    {name:'Product / Design',col:'#F472B6',skills:['Figma','UX','Research','PM']},
+    {name:'Data / Analytics',col:'#FBBF24',skills:['SQL','Pandas','PowerBI','ETL']}
+  ];
+  const FN=['Riya','Arjun','Sneha','Karthik','Ananya','Vikram','Diya','Rahul','Meera','Aditya','Isha','Rohan','Tara','Nikhil','Priya','Dev','Kavya','Sai','Neha','Aman'];
+  const LN=['Sharma','Nair','Patel','Reddy','Iyer','Menon','Gupta','Rao','Das','Bose','Verma','Shetty'];
+  const AV=['👩‍💻','👨‍💻','🧑‍💻','👩‍🔬','👨‍🔬'];
+  const BR=['CSE','IT','ECE','AI&DS','MECH'];
+  const pick=a=>a[Math.floor(Math.random()*a.length)];
+
+  let nodes=[],cc=[],recruiters=[],t=0,hover=null,focus={x:.5,y:.5},targetFocus={x:.5,y:.5},dragging=false;
+
+  function place(){
+    const cx=W/2,cy=H/2,rx=W*.30,ry=H*.30;
+    cc=CL.map((c,i)=>{const a=(i/CL.length)*Math.PI*2-Math.PI/2;return{x:cx+Math.cos(a)*rx,y:cy+Math.sin(a)*ry,col:c.col};});
+    if(nodes.length)return;
+    for(let i=0;i<118;i++){
+      const ci=Math.floor(Math.random()*CL.length),score=Math.floor(900+Math.random()*750),ready=score>1450;
+      nodes.push({ci,score,ready,ang:Math.random()*Math.PI*2,rad:18+Math.random()*70,
+        spd:(Math.random()*.4+.15)*(Math.random()<.5?1:-1)/100,jit:Math.random()*Math.PI*2,
+        name:pick(FN)+' '+pick(LN),br:pick(BR),av:pick(AV),
+        sk:[CL[ci].skills[0],CL[ci].skills[Math.floor(Math.random()*CL[ci].skills.length)]].filter((v,k,a)=>a.indexOf(v)===k),
+        x:0,y:0,r:ready?5.5:(3+Math.random()*2)});
+    }
+    recruiters=[
+      {co:'Google',col:'#4285F4',target:2,ang:0,sp:.0042,r:Math.min(W,H)*.40},
+      {co:'Flipkart',col:'#F9A825',target:1,ang:2.1,sp:.0056,r:Math.min(W,H)*.46},
+      {co:'Microsoft',col:'#7CBB00',target:0,ang:4.2,sp:.0037,r:Math.min(W,H)*.34}
+    ];
+  }
+
+  cv.addEventListener('pointerdown',()=>dragging=true);
+  addEventListener('pointerup',()=>dragging=false);
+  cv.addEventListener('pointermove',e=>{
+    const rc=cv.getBoundingClientRect(),mx=e.clientX-rc.left,my=e.clientY-rc.top;
+    if(dragging){targetFocus.x=mx/W;targetFocus.y=my/H;}
+    let best=null,bd=1e9;
+    nodes.forEach(n=>{const d=(n.x-mx)**2+(n.y-my)**2;if(d<bd){bd=d;best=n;}});
+    if(best&&bd<280){hover=best;showCard(best,mx,my);}else{hover=null;card.classList.remove('show');}
+  });
+  cv.addEventListener('pointerleave',()=>{hover=null;card.classList.remove('show');});
+
+  function showCard(n,mx,my){
+    const c=CL[n.ci];
+    card.style.left=Math.min(mx+18,W-240)+'px';card.style.top=Math.min(my+18,H-165)+'px';
+    const st=n.ready
+      ?`<span class="nc-st" style="background:rgba(0,255,157,.12);color:#00ff9d">● Switch-ready</span>`
+      :(n.score>1200
+        ?`<span class="nc-st" style="background:rgba(0,229,255,.12);color:#00e5ff">● Nearly ready</span>`
+        :`<span class="nc-st" style="background:rgba(240,180,41,.12);color:#f0b429">● Building</span>`);
+    card.innerHTML=
+      `<div class="nc-top"><div class="nc-av" style="background:linear-gradient(135deg,${c.col},#07060f)">${n.av}</div>`+
+      `<div><div class="nc-nm">${n.name}</div><div class="nc-br">${n.br} · ${c.name}</div></div>`+
+      `<div class="nc-elo"><b>${n.score}</b><span>ELO</span></div></div>`+
+      `<div class="nc-skills">${n.sk.map(s=>`<span class="sk" style="color:${c.col};border-color:${c.col}44;background:${c.col}11">✓ ${s}</span>`).join('')}</div>${st}`;
+    card.classList.add('show');
+  }
+
+  function hex(h,a){const n=parseInt(h.slice(1),16);return`rgba(${n>>16},${(n>>8)&255},${n&255},${a})`;}
+
+  function loop(){
+    t++;focus.x+=(targetFocus.x-focus.x)*.05;focus.y+=(targetFocus.y-focus.y)*.05;
+    x.clearRect(0,0,W,H);
+    // faint grid
+    x.strokeStyle='rgba(0,229,255,.03)';x.lineWidth=1;
+    for(let i=0;i<W;i+=48){x.beginPath();x.moveTo(i,0);x.lineTo(i,H);x.stroke();}
+    for(let i=0;i<H;i+=48){x.beginPath();x.moveTo(0,i);x.lineTo(W,i);x.stroke();}
+    // cluster halos
+    cc.forEach(c=>{
+      const fdx=focus.x-c.x/W,fdy=focus.y-c.y/H,near=1-Math.min(1,Math.hypot(fdx,fdy)*1.6);
+      const g=x.createRadialGradient(c.x,c.y,0,c.x,c.y,105+near*38);
+      g.addColorStop(0,hex(c.col,.2+near*.18));g.addColorStop(1,hex(c.col,0));
+      x.fillStyle=g;x.beginPath();x.arc(c.x,c.y,105+near*38,0,7);x.fill();
+    });
+    // node positions + spokes
+    nodes.forEach(n=>{
+      const c=cc[n.ci];n.ang+=n.spd;
+      const b=Math.sin(t*.02+n.jit)*4;
+      n.x=c.x+Math.cos(n.ang)*(n.rad+b);n.y=c.y+Math.sin(n.ang)*(n.rad+b)*.82;
+      if(n.score>1300){x.strokeStyle=hex(CL[n.ci].col,.085);x.lineWidth=.8;x.beginPath();x.moveTo(n.x,n.y);x.lineTo(c.x,c.y);x.stroke();}
+    });
+    // recruiters
+    recruiters.forEach(r=>{
+      r.ang+=r.sp;const c=cc[r.target];
+      const rx=W/2+Math.cos(r.ang)*r.r,ry=H/2+Math.sin(r.ang)*r.r*.7;
+      x.strokeStyle=hex(r.col,.22);x.lineWidth=1;
+      let cnt=0;nodes.forEach(n=>{if(n.ci===r.target&&n.score>1350&&cnt<5){x.beginPath();x.moveTo(rx,ry);x.lineTo(n.x,n.y);x.stroke();cnt++;}});
+      const pulse=Math.sin(t*.1)*3;
+      x.beginPath();x.arc(rx,ry,9,0,7);x.fillStyle=hex(r.col,.9);x.fill();
+      x.strokeStyle=hex(r.col,.3);x.lineWidth=7;x.beginPath();x.arc(rx,ry,9+pulse+5,0,7);x.stroke();
+      x.fillStyle='rgba(255,255,255,.9)';x.font='700 9px Inter';x.textAlign='center';x.fillText(r.co,rx,ry-17);
+    });
+    // nodes
+    nodes.forEach(n=>{
+      const c=CL[n.ci].col,isH=hover===n;
+      if(n.ready){
+        const pr=6+Math.sin(t*.06+n.jit)*3;
+        const g=x.createRadialGradient(n.x,n.y,0,n.x,n.y,n.r+pr+6);
+        g.addColorStop(0,hex(c,.55));g.addColorStop(1,hex(c,0));
+        x.fillStyle=g;x.beginPath();x.arc(n.x,n.y,n.r+pr+6,0,7);x.fill();
+      }
+      x.beginPath();x.arc(n.x,n.y,isH?n.r+2.5:n.r,0,7);
+      x.fillStyle=isH?'#fff':hex(c,n.score>1300?.94:.6);x.fill();
+      if(isH){x.strokeStyle=c;x.lineWidth=2;x.beginPath();x.arc(n.x,n.y,n.r+7,0,7);x.stroke();}
+    });
+    requestAnimationFrame(loop);
+  }
+
+  rs();addEventListener('resize',rs);loop();
+  const caps=['Google is scanning the AI/ML cluster…','Flipkart shortlisted 6 Web & Mobile students…','Microsoft filtering DSA score > 1450…','24 verified profiles viewed in the last hour…','Amazon opened 3 Cloud/DevOps profiles…'];
+  let ci=0;const lt=document.getElementById('livetxt');lt.style.transition='opacity .25s';
+  setInterval(()=>{ci=(ci+1)%caps.length;lt.style.opacity=0;setTimeout(()=>{lt.textContent=caps[ci];lt.style.opacity=1;},260);},3600);
+})();
+
+/* ══ RECRUITER FEED ══════════════════════════════════════════════ */
+(function(){
+  const data=[
+    ['G','#4285F4','Google','viewed 14 verified AI/ML profiles','2m'],
+    ['F','#F9A825','Flipkart','shortlisted Riya Sharma (ELO 1542)','11m'],
+    ['M','#7CBB00','Microsoft','filtered System Design > 1300','24m'],
+    ['A','#FF9900','Amazon','messaged 3 Cloud/DevOps students','41m'],
+    ['Z','#FF3008','Zomato','opened the CSE 2025 batch','1h'],
+    ['S','#FC8019','Swiggy','saved 9 Web & Mobile profiles','2h'],
+    ['D','#0061FF','Deloitte','requested a campus drive slot','3h']
+  ];
+  document.getElementById('feed').innerHTML=data.map(d=>
+    `<div class="fitem"><div class="co" style="background:${d[1]}">${d[0]}</div>`+
+    `<div style="flex:1"><div class="fw">${d[2]}</div><div class="fs">${d[3]}</div></div>`+
+    `<div class="tm">${d[4]} ago</div></div>`).join('');
+})();
+
+/* ══ SKILL RADAR ═════════════════════════════════════════════════ */
+(function(){
+  const cv=document.getElementById('radarCv');
+  const x=cv.getContext('2d');
+  const W=cv.width,H=cv.height,cx=W/2,cy=H/2+8,R=88;
+  const skills=[
+    {l:'DSA',v:.72,c:'#A78BFA'},{l:'Web',v:.68,c:'#34D399'},
+    {l:'Data',v:.63,c:'#FBBF24'},{l:'Comms',v:.55,c:'#F472B6'},
+    {l:'SysDesign',v:.41,c:'#22D3EE'},{l:'AI/ML',v:.60,c:'#60A5FA'},
+  ];
+  const N=skills.length,angles=skills.map((_,i)=>i*(Math.PI*2/N)-Math.PI/2);
+
+  // rings
+  [.25,.5,.75,1].forEach(r=>{
+    x.beginPath();
+    angles.forEach((a,i)=>{const m=i===0?'moveTo':'lineTo';x[m](cx+Math.cos(a)*R*r,cy+Math.sin(a)*R*r);});
+    x.closePath();x.strokeStyle=r===1?'rgba(255,255,255,.1)':'rgba(255,255,255,.05)';x.lineWidth=1;x.stroke();
+  });
+  // spokes
+  angles.forEach(a=>{x.beginPath();x.moveTo(cx,cy);x.lineTo(cx+Math.cos(a)*R,cy+Math.sin(a)*R);x.strokeStyle='rgba(255,255,255,.07)';x.lineWidth=1;x.stroke();});
+  // fill
+  x.beginPath();
+  angles.forEach((a,i)=>{const v=skills[i].v,m=i===0?'moveTo':'lineTo';x[m](cx+Math.cos(a)*R*v,cy+Math.sin(a)*R*v);});
+  x.closePath();
+  const g=x.createRadialGradient(cx,cy,0,cx,cy,R);
+  g.addColorStop(0,'rgba(240,180,41,.26)');g.addColorStop(1,'rgba(155,89,255,.1)');
+  x.fillStyle=g;x.fill();
+  x.strokeStyle='rgba(240,180,41,.65)';x.lineWidth=1.5;x.stroke();
+  // points + labels
+  skills.forEach((s,i)=>{
+    const a=angles[i],vx=cx+Math.cos(a)*R*s.v,vy=cy+Math.sin(a)*R*s.v;
+    x.beginPath();x.arc(vx,vy,4,0,7);x.fillStyle=s.c;x.fill();
+    x.strokeStyle='rgba(255,255,255,.3)';x.lineWidth=1;x.stroke();
+    const lx=cx+Math.cos(a)*(R+16),ly=cy+Math.sin(a)*(R+16);
+    x.font='600 10px Inter';x.textAlign='center';x.fillStyle='rgba(240,237,232,.58)';x.fillText(s.l,lx,ly+3.5);
+  });
+})();
+
+/* ══ PLACEMENT RIBBON ════════════════════════════════════════════ */
+(function(){
+  const pl=[
+    ['👩‍💻','#A78BFA','Riya S.','Google','₹42 LPA'],['👨‍💻','#34D399','Arjun N.','Flipkart','₹28 LPA'],
+    ['🧑‍💻','#60A5FA','Sneha P.','Microsoft','₹38 LPA'],['👨‍🔬','#FBBF24','Karthik R.','Amazon','₹32 LPA'],
+    ['👩‍🔬','#F472B6','Ananya I.','Adobe','₹26 LPA'],['👨‍💻','#22D3EE','Vikram M.','Swiggy','₹22 LPA'],
+    ['👩‍💻','#34D399','Diya G.','Zomato','₹20 LPA'],['🧑‍💻','#A78BFA','Rahul R.','Deloitte','₹18 LPA']
+  ];
+  const one=pl.map(p=>
+    `<div class="plac"><div class="av" style="background:linear-gradient(135deg,${p[1]},#07060f)">${p[0]}</div>`+
+    `<div><div class="pname">${p[2]}</div><div class="pco">→ ${p[3]}</div></div>`+
+    `<div class="pkg">${p[4]}</div></div>`).join('');
+  document.getElementById('ribtrack').innerHTML=one+one;
+})();
+
+/* ══ SCROLLSPY TABS ══════════════════════════════════════════════ */
+(function(){
+  const links=[...document.querySelectorAll('.navtabs a')];
+  const ids=['map','intel','proof','depts','why'];
+  addEventListener('scroll',()=>{
+    let cur=0;ids.forEach((id,i)=>{const el=document.getElementById(id);if(el&&el.getBoundingClientRect().top<180)cur=i;});
+    links.forEach((l,i)=>l.classList.toggle('on',i===cur));
+  });
+})();
+</script>
+</body>
+</html>

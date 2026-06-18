@@ -27,11 +27,16 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 }
 
-// ── Eko secret-key: base64( HMAC-SHA256(secret_key, timestamp) ) ─────────────
+// ── Eko secret-key: base64( HMAC-SHA256(base64(secret_key), timestamp_ms) ) ──
+// Eko algorithm (from their official sample):
+//   1. encodedKey = base64(rawSecretKey)
+//   2. signature  = HMAC-SHA256(encodedKey, timestampMs).digest('base64')
+//   3. timestamp  = Date.now()  ← milliseconds, NOT seconds
 async function ekoSecretKey(secretKey: string, timestamp: string): Promise<string> {
   const enc = new TextEncoder()
+  const encodedKey = btoa(secretKey)          // base64-encode the raw key first
   const cryptoKey = await crypto.subtle.importKey(
-    "raw", enc.encode(secretKey),
+    "raw", enc.encode(encodedKey),
     { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
   )
   const sig = await crypto.subtle.sign("HMAC", cryptoKey, enc.encode(timestamp))
@@ -94,7 +99,7 @@ async function fetchEpfoFromEko(phone: string): Promise<{
     ? "https://www.eko.in:25004/ekoapi/v3/tools/kyc/advance-employment"
     : "https://staging.eko.in:25004/ekoapi/v3/tools/kyc/advance-employment"
 
-  const timestamp     = String(Math.floor(Date.now() / 1000))
+  const timestamp     = String(Date.now())   // ms — Eko uses Date.now(), not seconds
   const secretKey     = await ekoSecretKey(secretKeyRaw, timestamp)
   const clientRefId   = `cap_${Date.now()}_${Math.random().toString(36).slice(2,8)}`
 
@@ -119,7 +124,17 @@ async function fetchEpfoFromEko(phone: string): Promise<{
 
   if (!res.ok) {
     const text = await res.text()
-    return { ok: false, error: `Eko HTTP ${res.status}: ${text.slice(0, 200)}` }
+    // Return full debug info so we can diagnose
+    return {
+      ok: false,
+      error: `Eko HTTP ${res.status}: ${text.slice(0, 400)}`,
+      debug: {
+        url: baseUrl,
+        timestamp,
+        developerKeyPrefix: developerKey.slice(0, 8) + "…",
+        body: { ...body, phone: "REDACTED" },
+      },
+    }
   }
 
   const raw = await res.json()
