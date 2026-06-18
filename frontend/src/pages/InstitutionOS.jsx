@@ -62,20 +62,37 @@ const T = {
 const FONT = "Inter, -apple-system, sans-serif"
 const MONO = "'JetBrains Mono', 'Fira Mono', monospace"
 
-// ─── Nav items ────────────────────────────────────────────────────────────────
-const NAV = [
-  { id: "home",          label: "Home",          icon: "⌂",  mobileShow: true  },
-  { id: "intelligence",  label: "Intelligence",  icon: "📊", mobileShow: true  },
-  { id: "tasks",         label: "Tasks",         icon: "✓",  mobileShow: true  },
-  { id: "people",        label: "People",        icon: "👥", mobileShow: true  },
-  { id: "community",     label: "Community",     icon: "💬", mobileShow: true  },
-  { id: "groups",        label: "Groups",        icon: "🗂",  mobileShow: false },
-  { id: "cohorts",       label: "Cohorts",       icon: "🎓", mobileShow: false },
-  { id: "events",        label: "Events",        icon: "📅", mobileShow: false },
-  { id: "companies",     label: "Companies",     icon: "🏢", mobileShow: false },
-  { id: "outcomes",      label: "Outcomes",      icon: "🏆", mobileShow: false },
-  { id: "settings",      label: "Settings",      icon: "⚙", mobileShow: false },
+// ─── Nav structure (grouped) ──────────────────────────────────────────────────
+const NAV_GROUPS = [
+  {
+    label: "Visibility",
+    items: [
+      { id: "home",      label: "Institution home", badge: "Live", mobileShow: true },
+      { id: "community", label: "Public profile",   mobileShow: true  },
+      { id: "events",    label: "Posts",            mobileShow: false },
+      { id: "outcomes",  label: "Search presence",  mobileShow: false },
+    ],
+  },
+  {
+    label: "Operations",
+    items: [
+      { id: "people",    label: "Students",         badgeProp: "pendingMembers", mobileShow: true },
+      { id: "tasks",     label: "Workflow queue",   badgeProp: "activeTasks",    mobileShow: true },
+      { id: "cohorts",   label: "At-risk cases",    mobileShow: false },
+      { id: "groups",    label: "Document approvals", mobileShow: false },
+      { id: "companies", label: "Recruiter NDAs",   mobileShow: false },
+    ],
+  },
+  {
+    label: "Intelligence",
+    items: [
+      { id: "intelligence", label: "Placement cell", mobileShow: true  },
+      { id: "settings",     label: "Readiness",      mobileShow: false },
+    ],
+  },
 ]
+// flat list for mobile tab bar
+const NAV = NAV_GROUPS.flatMap(g => g.items)
 
 // ─── Audit log helper ─────────────────────────────────────────────────────────
 async function auditLog(orgId, actorId, actorName, action, actionCode, entityType = "", entityId = "", details = {}, severity = "info") {
@@ -412,77 +429,82 @@ function KPICard({ value, label, trend, trendDir = "up", context, action, color,
 }
 
 // ─── Sidebar (desktop) ────────────────────────────────────────────────────────
-function InstSidebar({ active, onNav, userData }) {
+function InstSidebar({ active, onNav, userData, members, tasks }) {
   const orgName = userData?.org_name || "Your Institution"
-  const initials = orgName.split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase()
+  const pendingCount = (members || []).filter(m => m.status === "pending" || m.status === "invited").length
+  const taskCount    = (tasks   || []).filter(t => t.status === "active").length
+
+  const getBadge = (item) => {
+    if (item.badge) return item.badge
+    if (item.badgeProp === "pendingMembers" && pendingCount > 0) return pendingCount
+    if (item.badgeProp === "activeTasks"    && taskCount    > 0) return taskCount
+    return null
+  }
+
   return (
     <div style={{
       width: T.navW, minWidth: T.navW, height: "100%",
-      background: "linear-gradient(180deg,rgba(11,10,8,.95),rgba(11,10,8,.92))",
+      background: "linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01))",
       display: "flex", flexDirection: "column", flexShrink: 0,
-      borderRight: "1px solid rgba(255,255,255,0.10)",
-      backdropFilter: "blur(24px)",
+      borderRight: `1px solid ${T.border}`,
     }}>
-      {/* Header */}
-      <div style={{ padding: "16px 14px 12px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{
-            width: 34, height: 34, borderRadius: 11,
-            background: "linear-gradient(135deg,#dc8b18,#f6c453)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 13, fontWeight: 900, color: "#23170a", fontFamily: FONT, flexShrink: 0,
-            boxShadow: "0 0 18px rgba(246,196,83,.28),inset 0 1px 0 rgba(255,255,255,.25)",
-          }}>{initials || "OS"}</div>
-          <div style={{ overflow: "hidden" }}>
-            <div style={{ fontSize: 11.5, fontWeight: 700, color: T.navTextA, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{orgName}</div>
-            <div style={{ display: "inline-flex", alignItems: "center", background: "rgba(246,196,83,.10)", border: "1px solid rgba(246,196,83,.22)", borderRadius: 999, padding: "2px 8px", marginTop: 3 }}>
-              <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.18em", textTransform: "uppercase", color: "#f6c453" }}>
-                {userData?.org_type === "company" ? "Company OS" : "Institution OS"}
-              </span>
-            </div>
+      {/* Header card */}
+      <div style={{ padding: "16px 14px 14px" }}>
+        <div style={{
+          padding: 14, borderRadius: 18, border: `1px solid ${T.border}`,
+          background: "rgba(255,255,255,.03)",
+        }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: T.ink, marginBottom: 4 }}>{orgName}</div>
+          <div style={{ fontSize: 11.5, color: T.ink3, lineHeight: 1.4 }}>
+            {userData?.org_type === "company" ? "Company control layer · operations + visibility" : "Institution control layer · public identity + operations + placement intelligence"}
           </div>
         </div>
       </div>
 
-      {/* Nav */}
-      <nav style={{ flex: 1, overflowY: "auto", padding: "8px 0 16px" }}>
+      {/* Grouped nav */}
+      <nav style={{ flex: 1, overflowY: "auto", padding: "4px 14px 16px" }}>
         <style>{`
-          .inst-nav-btn { transition: background 0.13s, color 0.13s; }
-          .inst-nav-btn:hover:not(.inst-nav-active) { background: rgba(255,255,255,0.055) !important; color: rgba(247,242,234,0.85) !important; }
-          .inst-nav-btn:hover:not(.inst-nav-active) .inst-nav-ic { background: rgba(255,255,255,0.10) !important; }
+          .inst-nav-link { transition: background 0.12s, color 0.12s; }
+          .inst-nav-link:hover:not(.inst-nav-link-active) { background: rgba(255,255,255,.055) !important; color: rgba(247,242,234,.85) !important; }
         `}</style>
-        <div style={{ padding: "10px 14px 4px", fontSize: 8, fontWeight: 800, letterSpacing: ".22em", textTransform: "uppercase", color: "rgba(247,242,234,.25)" }}>
-          {userData?.org_type === "company" ? "COMPANY PATH" : "INSTITUTION PATH"}
-        </div>
-        {NAV.map(item => {
-          const isActive = active === item.id
-          return (
-            <button key={item.id} onClick={() => onNav(item.id)}
-              className={`inst-nav-btn${isActive ? " inst-nav-active" : ""}`}
-              style={{
-                display: "flex", alignItems: "center", gap: 10, width: "calc(100% - 16px)",
-                margin: "1px 8px", padding: "9px 12px", borderRadius: 13, border: "1px solid transparent",
-                background: isActive ? "linear-gradient(135deg,#dc8b18,#f6c453)" : "transparent",
-                color: isActive ? "#23170a" : T.navText,
-                fontSize: 12.5, fontWeight: isActive ? 700 : 500, fontFamily: FONT,
-                cursor: "pointer",
-                boxShadow: isActive ? "0 4px 18px rgba(220,139,24,.22)" : "none",
-              }}
-            >
-              <span className="inst-nav-ic" style={{
-                width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 13, borderRadius: 9,
-                background: isActive ? "rgba(35,23,10,.18)" : "rgba(255,255,255,.06)",
-                flexShrink: 0, transition: ".14s",
-              }}>{item.icon}</span>
-              <span style={{ letterSpacing: "-0.01em" }}>{item.label}</span>
-            </button>
-          )
-        })}
+        {NAV_GROUPS.map(group => (
+          <div key={group.label} style={{ marginTop: 16 }}>
+            <div style={{ padding: "0 10px 8px", fontSize: 10, fontWeight: 800, letterSpacing: ".16em", textTransform: "uppercase", color: T.ink5 }}>
+              {group.label}
+            </div>
+            {group.items.map(item => {
+              const isActive = active === item.id
+              const badge = getBadge(item)
+              return (
+                <button key={item.id} onClick={() => onNav(item.id)}
+                  className={`inst-nav-link${isActive ? " inst-nav-link-active" : ""}`}
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    gap: 10, width: "100%", padding: "10px 12px", borderRadius: 14,
+                    border: `1px solid ${isActive ? "rgba(246,196,83,.20)" : "transparent"}`,
+                    background: isActive ? "rgba(246,196,83,.10)" : "transparent",
+                    color: isActive ? T.gold : T.ink3,
+                    fontSize: 13, fontWeight: 700, fontFamily: FONT,
+                    cursor: "pointer", marginBottom: 3, textAlign: "left",
+                  }}
+                >
+                  <span>{item.label}</span>
+                  {badge && (
+                    <span style={{
+                      padding: "3px 7px", fontSize: 10, fontWeight: 900,
+                      borderRadius: 999, color: "#281909",
+                      background: "linear-gradient(135deg,#dc8b18,#f6c453)",
+                    }}>{badge}</span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        ))}
       </nav>
 
       {/* Footer */}
-      <div style={{ padding: "10px 14px 16px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+      <div style={{ padding: "10px 14px 16px", borderTop: `1px solid ${T.border}` }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{
             width: 30, height: 30, borderRadius: "50%",
@@ -653,117 +675,185 @@ function HomePage({ userData, user, onNav, members, tasks, events, auditLogs, au
     return "📝"
   }
 
+  // At-risk cohort members
+  const atRisk = members.filter(m => m.status === "active" && (m.elo_rating < 900 || m.placement_company === null))
+    .slice(0, 5)
+
+  // Recent queue tasks
+  const queueItems = tasks.filter(t => t.status === "active").slice(0, 5)
+
+  // Placement rate
+  const placementRate = activeMembers > 0 ? Math.round((placedMembers / activeMembers) * 100) : 0
+
   return (
     <PageShell>
-      <div style={{ marginBottom: 22 }}>
-        <p style={{ margin: 0, fontSize: 11.5, color: T.ink4, fontWeight: 500, letterSpacing: "0.01em" }}>{greeting}, {firstName} · Admin Console</p>
+      {vLevel < 4 && <VerificationBanner level={vLevel} onVerify={onVerify} />}
+
+      {/* dash-hero */}
+      <div style={{ marginBottom: 24 }}>
+        <p style={{ margin: "0 0 6px", fontSize: 11, color: T.ink5, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase" }}>
+          {greeting}, {firstName}
+        </p>
         <h1 style={{
-          margin: "6px 0 0", fontFamily: "'Instrument Serif', Georgia, serif",
-          fontStyle: "italic", fontWeight: 400, fontSize: 40,
-          letterSpacing: "-0.02em", lineHeight: 0.94, color: T.ink,
+          margin: 0, fontFamily: "'Instrument Serif', Georgia, serif",
+          fontStyle: "italic", fontWeight: 400, fontSize: 38,
+          letterSpacing: "-0.02em", lineHeight: 0.95, color: T.ink,
         }}>
           What needs <span style={{ color: T.gold }}>attention</span> now?
         </h1>
       </div>
 
-      {vLevel < 4 && <VerificationBanner level={vLevel} onVerify={onVerify} />}
-
-      {/* Live KPIs */}
-      <div style={{ overflowX: "auto", marginBottom: 20 }}>
-        <div style={{ display: "flex", gap: 10, minWidth: 440 }}>
-          {pulseCards.map((p, i) => (
-            <KPICard key={i} {...p} onClick={() => onNav(i === 0 ? "people" : i === 1 ? "tasks" : i === 2 ? "outcomes" : "events")} />
-          ))}
-        </div>
+      {/* KPI grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 20 }}>
+        {[
+          { label: isCollege ? "Active Members" : "Active Devs", value: activeMembers || 0, sub: `${pendingMembers} pending`, nav: "people" },
+          { label: "Workflow Queue",  value: activeTasks || 0,  sub: `${urgentTasks} urgent`, nav: "tasks" },
+          { label: "Placements",      value: placedMembers || 0, sub: `${placementRate}% rate`, nav: "intelligence" },
+          { label: "Events",          value: upcomingEvents || 0, sub: "upcoming",               nav: "events" },
+        ].map((k, i) => (
+          <div key={i} onClick={() => onNav(k.nav)} style={{
+            background: "rgba(255,255,255,.04)", border: `1px solid ${T.border}`,
+            borderRadius: 18, padding: 16, minHeight: 110, cursor: "pointer",
+            transition: "border-color .15s, background .15s",
+          }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(246,196,83,.28)"; e.currentTarget.style.background = "rgba(255,255,255,.06)" }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.background = "rgba(255,255,255,.04)" }}
+          >
+            <div style={{ fontSize: 11, color: T.ink4, textTransform: "uppercase", letterSpacing: ".14em", fontWeight: 700 }}>{k.label}</div>
+            <div style={{ margin: "10px 0 4px", fontSize: 32, fontWeight: 900, letterSpacing: "-0.04em", color: T.ink, lineHeight: 1 }}>{k.value}</div>
+            <div style={{ fontSize: 11, color: T.ink4 }}>{k.sub}</div>
+          </div>
+        ))}
       </div>
 
-      {/* Alerts */}
-      {urgentAlerts.length > 0 && (
-        <Card style={{ marginBottom: 20, padding: 0, overflow: "hidden" }}>
-          <div style={{ padding: "14px 18px 10px", borderBottom: `1px solid ${T.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: T.ink2 }}>Priority Alerts</div>
-            <Badge color={T.red}>{urgentAlerts.filter(a => a.urgent).length} urgent</Badge>
-          </div>
-          {urgentAlerts.map((a, i) => (
-            <div key={i} onClick={() => onNav(a.page)} style={{
-              display: "flex", alignItems: "center", gap: 12, padding: "13px 18px",
-              borderBottom: i < urgentAlerts.length - 1 ? `1px solid ${T.border}` : "none",
-              cursor: "pointer", borderLeft: `3px solid ${a.color}`,
-            }}
-              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,.06)"}
-              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-            >
-              <span style={{ fontSize: 18 }}>{a.icon}</span>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>{a.label}</span>
-                  {a.urgent && <Badge color={T.red}>Urgent</Badge>}
-                </div>
-                <div style={{ fontSize: 12, color: T.ink4, marginTop: 2 }}>{a.sub}</div>
-              </div>
-              <span style={{ color: T.ink4, fontSize: 18 }}>›</span>
-            </div>
-          ))}
-        </Card>
-      )}
-
-      {urgentAlerts.length === 0 && members.length === 0 && tasks.length === 0 && (
-        <Card style={{ marginBottom: 20, textAlign: "center", padding: "24px" }}>
-          <div style={{ fontSize: 28, marginBottom: 8 }}>🎉</div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: T.ink2, marginBottom: 4 }}>All caught up!</div>
-          <div style={{ fontSize: 12, color: T.ink4, marginBottom: 16 }}>Get started by inviting members and publishing your first task.</div>
-          <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-            <Btn onClick={() => onNav("people")}>+ Invite Members</Btn>
-            <Btn variant="outline" onClick={() => onNav("tasks")}>+ Create Task</Btn>
-          </div>
-        </Card>
-      )}
-
-      {/* Two columns */}
+      {/* 2-column content grid */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        {/* Activity feed */}
-        <Card>
-          <SectionHead title="Recent Activity" />
-          {auditLoading ? <Spinner /> : auditItems.length === 0 ? (
-            <EmptyState icon="📋" title="No activity yet" sub="Actions like approvals and task publishes will appear here." />
-          ) : (
-            auditItems.map((a, i) => (
-              <div key={a.id} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: i < auditItems.length - 1 ? `1px solid ${T.border}` : "none" }}>
-                <span style={{ fontSize: 16, marginTop: 1 }}>{actionIcon(a.action_code)}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12, color: T.ink, lineHeight: 1.5 }}>{a.action}</div>
+
+        {/* LEFT col */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* Workflow queue */}
+          <div style={{ border: `1px solid ${T.border}`, borderRadius: 22, background: "linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.03))", padding: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <span style={{ fontSize: 13, fontWeight: 800, color: T.ink }}>Workflow queue</span>
+              <button onClick={() => onNav("tasks")} style={{ fontSize: 11, fontWeight: 700, color: T.gold, background: "none", border: "none", cursor: "pointer", padding: 0 }}>View all →</button>
+            </div>
+            {queueItems.length === 0 ? (
+              <div style={{ padding: "20px 0", textAlign: "center", color: T.ink4, fontSize: 12 }}>No active tasks</div>
+            ) : queueItems.map((t, i) => (
+              <div key={t.id} style={{
+                display: "grid", gridTemplateColumns: "40px 1fr auto", gap: 12,
+                padding: "14px 0", borderTop: i === 0 ? "none" : `1px solid ${T.border}`, alignItems: "center",
+              }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 14, display: "grid", placeItems: "center",
+                  background: "rgba(255,255,255,.05)", border: `1px solid ${T.border}`,
+                  fontWeight: 900, fontSize: 14, color: T.gold,
+                }}>
+                  {(t.title || "T").charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: T.ink, lineHeight: 1.3 }}>{t.title || "Untitled Task"}</div>
+                  <div style={{ fontSize: 11, color: T.ink4, marginTop: 2 }}>
+                    {t.assigned_to || "Unassigned"} · {timeSince(t.created_at)}
+                  </div>
+                </div>
+                <span style={{
+                  borderRadius: 999, padding: "6px 10px", fontSize: 11, fontWeight: 800,
+                  ...(t.priority === "urgent"
+                    ? { color: T.red,   background: "rgba(255,129,119,.10)" }
+                    : t.priority === "high"
+                    ? { color: T.gold,  background: "rgba(246,196,83,.08)" }
+                    : { color: T.green, background: "rgba(79,212,163,.08)" }
+                  ),
+                }}>
+                  {t.priority || "normal"}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Performance strip */}
+          <div style={{ border: `1px solid ${T.border}`, borderRadius: 22, background: "linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.03))", padding: 18 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: T.ink, marginBottom: 14 }}>Performance</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {[
+                { label: "Submit rate", value: (() => { const tot = tasks.reduce((s,t)=>s+(t.total_assigned||0),0); const sub = tasks.reduce((s,t)=>s+(t.submission_count||0),0); return tot > 0 ? Math.round(sub/tot*100)+"%" : "—" })() },
+                { label: "Placement rate", value: placementRate + "%" },
+                { label: "Pending reviews", value: pendingMembers },
+                { label: "Urgent tasks",   value: urgentTasks },
+              ].map((s, i) => (
+                <div key={i} style={{ padding: "10px 12px", background: "rgba(255,255,255,.03)", borderRadius: 12, border: `1px solid ${T.border}` }}>
+                  <div style={{ fontSize: 10, color: T.ink4, textTransform: "uppercase", letterSpacing: ".12em", fontWeight: 700 }}>{s.label}</div>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: T.ink, letterSpacing: "-0.03em", marginTop: 6 }}>{s.value}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT col */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* At-risk cases */}
+          <div style={{ border: `1px solid ${T.border}`, borderRadius: 22, background: "linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.03))", padding: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <span style={{ fontSize: 13, fontWeight: 800, color: T.ink }}>At-risk cases</span>
+              <button onClick={() => onNav("cohorts")} style={{ fontSize: 11, fontWeight: 700, color: T.gold, background: "none", border: "none", cursor: "pointer", padding: 0 }}>View all →</button>
+            </div>
+            {atRisk.length === 0 ? (
+              <div style={{ padding: "20px 0", textAlign: "center", color: T.ink4, fontSize: 12 }}>No at-risk members flagged</div>
+            ) : atRisk.map((m, i) => (
+              <div key={m.id} style={{
+                display: "grid", gridTemplateColumns: "40px 1fr auto", gap: 12,
+                padding: "14px 0", borderTop: i === 0 ? "none" : `1px solid ${T.border}`, alignItems: "center",
+              }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 14, display: "grid", placeItems: "center",
+                  background: "rgba(255,255,255,.05)", border: `1px solid ${T.border}`,
+                  fontWeight: 900, fontSize: 14, color: T.red,
+                }}>
+                  {(m.name || "?").charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: T.ink, lineHeight: 1.3 }}>{m.name || "Unknown"}</div>
+                  <div style={{ fontSize: 11, color: T.ink4, marginTop: 2 }}>
+                    ELO {m.elo_rating || "—"} · {m.placement_company ? "Placed" : "Unplaced"}
+                  </div>
+                </div>
+                <span style={{
+                  borderRadius: 999, padding: "6px 10px", fontSize: 11, fontWeight: 800,
+                  color: T.red, background: "rgba(255,129,119,.10)",
+                }}>
+                  at risk
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Activity feed */}
+          <div style={{ border: `1px solid ${T.border}`, borderRadius: 22, background: "linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.03))", padding: 18 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: T.ink, marginBottom: 14 }}>Recent activity</div>
+            {auditLoading ? <Spinner /> : auditItems.length === 0 ? (
+              <div style={{ padding: "20px 0", textAlign: "center", color: T.ink4, fontSize: 12 }}>No activity yet</div>
+            ) : auditItems.map((a, i) => (
+              <div key={a.id} style={{
+                display: "grid", gridTemplateColumns: "40px 1fr", gap: 12,
+                padding: "14px 0", borderTop: i === 0 ? "none" : `1px solid ${T.border}`, alignItems: "flex-start",
+              }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 14, display: "grid", placeItems: "center",
+                  background: "rgba(255,255,255,.05)", border: `1px solid ${T.border}`,
+                  fontSize: 16,
+                }}>
+                  {actionIcon(a.action_code)}
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: T.ink, lineHeight: 1.35 }}>{a.action}</div>
                   <div style={{ fontSize: 11, color: T.ink4, marginTop: 2 }}>{a.actor_name} · {timeSince(a.created_at)}</div>
                 </div>
               </div>
-            ))
-          )}
-        </Card>
-
-        {/* Quick actions */}
-        <Card>
-          <SectionHead title="Quick Actions" />
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            {[
-              { icon: "👥", label: "People",        page: "people"        },
-              { icon: "📊", label: "Intelligence",  page: "intelligence"  },
-              { icon: "✓",  label: "Tasks",         page: "tasks"         },
-              { icon: "🎓", label: "Cohorts",       page: "cohorts"       },
-              { icon: "💼", label: "Opportunities", page: "opportunities" },
-              { icon: "⚙",  label: "Settings",      page: "settings"      },
-            ].map(q => (
-              <button key={q.page} onClick={() => onNav(q.page)} style={{
-                display: "flex", alignItems: "center", gap: 6, padding: "10px 12px",
-                background: T.bg, border: `1px solid ${T.border}`, borderRadius: 10,
-                cursor: "pointer", fontFamily: FONT, fontSize: 12, fontWeight: 600, color: T.ink2,
-              }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = T.sky; e.currentTarget.style.color = T.sky }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.ink2 }}
-              >
-                <span style={{ fontSize: 16 }}>{q.icon}</span> {q.label}
-              </button>
             ))}
           </div>
-        </Card>
+        </div>
       </div>
     </PageShell>
   )
@@ -2142,7 +2232,7 @@ export default function InstitutionOS({ user, userData, onNavigate }) {
       overflow: "hidden", fontFamily: FONT,
     }}>
       {!isMobile && (
-        <InstSidebar active={activePage} onNav={onNav} userData={userData} />
+        <InstSidebar active={activePage} onNav={onNav} userData={userData} members={members} tasks={tasks} />
       )}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, minWidth: 0 }}>
         {PAGE_MAP[activePage] || <HomePage {...shared} onVerify={handleVerify} />}
