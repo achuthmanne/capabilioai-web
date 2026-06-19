@@ -2647,7 +2647,7 @@ export default function InstitutionOS({ user, userData, onNavigate }) {
 
   const PAGE_MAP = {
     home:          <HomePage          {...shared} onVerify={handleVerify} />,
-    pubprofile:    <InstitutionPublicProfile onAction={(a)=>{ if(a==='back') setActivePage('home') }} onBack={()=>setActivePage('home')} />,
+    pubprofile:    <InstitutionPublicProfile onAction={(a)=>{ if(a==='back') setActivePage('home') }} onBack={()=>setActivePage('home')} userData={userData} members={members} />,
     intelligence:  <IntelligencePage  {...shared} />,
     tasks:         <TasksPage         {...shared} />,
     people:        <PeoplePage        {...shared} />,

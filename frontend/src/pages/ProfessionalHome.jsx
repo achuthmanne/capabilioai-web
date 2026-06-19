@@ -1,244 +1,703 @@
 /**
- * ProfessionalHome.jsx — Professional command center
- * "What needs attention in my career this week?"
+ * ProfessionalHome.jsx — Professional Path Command Center
+ * Design matches landing page ProfessionalOrbitPreview / PathCard aesthetic:
+ *   • White background, subtle purple glow
+ *   • 'Playfair Display' serif for hero headings
+ *   • 'JetBrains Mono' for all numbers, labels, badges
+ *   • #8B5CF6 purple accent, #FAFAF8 stat cells, 28px card radius
  */
 import { useState } from "react"
 
-const C = {
-  purple:  "#8B5CF6",
-  purpleL: "rgba(139,92,246,0.12)",
-  purpleB: "rgba(139,92,246,0.28)",
-  ink:     "#0F172A",
-  ink2:    "#475569",
-  ink3:    "#94A3B8",
-  ink4:    "#64748B",
-  border:  "rgba(0,0,0,0.05)",
-  surface: "#FFFFFF",
-  bg:      "#FFFFFF",
-  green:   "#10B981",
-  greenL:  "rgba(16,185,129,0.12)",
-  blue:    "#3B82F6",
-  blueL:   "rgba(59,130,246,0.12)",
-  amber:   "#F59E0B",
-  amberL:  "rgba(245,158,11,0.12)",
-  red:     "#F43F5E",
-  redL:    "rgba(244,63,94,0.12)",
+// ─── Design tokens — mirrors landing page exactly ──────────────────────────────
+const P   = "#8B5CF6"   // purple accent
+const INK = "#111827"   // primary text
+const INK2= "#374151"   // secondary text
+const MUT = "#6B7280"   // muted text
+const BG  = "#FAFAFA"   // page background
+const SURF= "#FFFFFF"   // card surface
+const CELL= "#FAFAF8"   // inner stat cell
+const BDR = "rgba(17,24,39,0.08)"    // default border
+const PBDR= "rgba(139,92,246,0.14)"  // purple card border
+const PBDR2="rgba(139,92,246,0.22)"  // hover
+const SHD = "0 18px 40px rgba(139,92,246,0.08)"
+const SHD2= "0 10px 24px rgba(17,24,39,0.05)"
+const r28 = 28, r22 = 22, r18 = 18, r14 = 14, r12 = 12, r999 = 999
+
+const SERIF = "'Playfair Display', Georgia, serif"
+const MONO  = "'JetBrains Mono', 'Fira Mono', monospace"
+const BODY  = "Inter, -apple-system, sans-serif"
+
+// ─── Atoms ────────────────────────────────────────────────────────────────────
+function MonoLabel({ children, color = MUT, size = 10 }) {
+  return (
+    <div style={{ fontSize: size, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color, fontFamily: MONO, marginBottom: 8 }}>
+      {children}
+    </div>
+  )
 }
 
-function Card({ children, style = {} }) {
+function Badge({ children, color = P, bg }) {
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center",
+      fontSize: 10, fontWeight: 700, padding: "4px 10px", borderRadius: r999,
+      background: bg || `${color}10`, color,
+      border: `1px solid ${color}26`, fontFamily: MONO,
+      letterSpacing: "0.06em",
+    }}>{children}</span>
+  )
+}
+
+function StatusChip({ type, children }) {
+  const map = {
+    good: { color: "#16A34A", bg: "#F0FDF4", border: "rgba(22,163,74,0.16)" },
+    warn: { color: "#D97706", bg: "#FFF7E8", border: "rgba(217,119,6,0.16)" },
+    bad:  { color: "#DC2626", bg: "#FEF2F2", border: "rgba(220,38,38,0.16)" },
+    info: { color: "#3B82F6", bg: "#EFF6FF", border: "rgba(59,130,246,0.16)" },
+    gray: { color: MUT,       bg: "#F9FAFB", border: BDR },
+  }
+  const s = map[type] || map.gray
+  return (
+    <span style={{
+      fontSize: 10, fontWeight: 900, padding: "4px 9px", borderRadius: r999,
+      background: s.bg, color: s.color, border: `1px solid ${s.border}`,
+      fontFamily: MONO, letterSpacing: "0.06em",
+    }}>{children}</span>
+  )
+}
+
+function Card({ children, style = {}, purple = false }) {
   return (
     <div style={{
-      background: C.surface, border: `1px solid ${C.border}`,
-      borderRadius: 16, padding: 20,
-      boxShadow: "0 4px 12px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.3)",
+      background: SURF,
+      border: `1px solid ${purple ? PBDR : BDR}`,
+      borderRadius: r28, padding: 24,
+      boxShadow: purple ? SHD : SHD2,
       ...style,
     }}>{children}</div>
   )
 }
 
-function Label({ children, color = C.purple, bg = C.purpleL }) {
+function StatCell({ label, value, sub, color = INK }) {
   return (
-    <span style={{
-      display: "inline-flex", alignItems: "center",
-      padding: "3px 10px", borderRadius: 100,
-      background: bg, color, fontSize: 11, fontWeight: 700,
-      fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.06em",
-      textTransform: "uppercase",
-    }}>{children}</span>
+    <div style={{ background: CELL, border: `1px solid rgba(17,24,39,0.06)`, borderRadius: r14, padding: "12px 10px", textAlign: "center" }}>
+      <div style={{ fontFamily: MONO, fontSize: 18, fontWeight: 800, color, marginBottom: 3, lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontSize: 9, color: MUT, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: MONO }}>{label}</div>
+      {sub && <div style={{ fontSize: 10, color: MUT, marginTop: 3, fontFamily: BODY }}>{sub}</div>}
+    </div>
   )
 }
 
-function HalfLifeBar({ skill, percent, risk }) {
-  const color = risk === "high" ? C.red : risk === "medium" ? C.amber : C.green
+function SkillBar({ label, value, color }) {
   return (
-    <div style={{ marginBottom: 12 }}>
+    <div>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{skill}</span>
-        <span style={{ fontSize: 12, color, fontWeight: 700 }}>
-          {risk === "high" ? "⚠ Decaying" : risk === "medium" ? "~ Aging" : "✓ Fresh"}
-        </span>
+        <span style={{ fontSize: 13, color: INK2, fontWeight: 600, fontFamily: BODY }}>{label}</span>
+        <span style={{ fontSize: 11, color, fontWeight: 800, fontFamily: MONO }}>{value}% fresh</span>
       </div>
-      <div style={{ height: 6, background: "#F3F4F6", borderRadius: 99 }}>
-        <div style={{ width: `${percent}%`, height: "100%", background: color, borderRadius: 99, transition: "width 0.4s" }} />
+      <div style={{ height: 7, borderRadius: r999, background: "#F3F4F6", overflow: "hidden" }}>
+        <div style={{ height: "100%", width: `${value}%`, borderRadius: r999, background: color, transition: "width .5s ease" }} />
       </div>
     </div>
   )
 }
 
-export default function ProfessionalHome({ user, userData, onNavigate, onNavigatePricing }) {
-  const name      = userData?.name || user?.displayName || "Professional"
-  const firstName = name.split(" ")[0]
-  const elo       = userData?.eloRating || 1200
-  const eloTrend  = +15
+function Btn({ children, onClick, primary, outline, small, style = {} }) {
+  const base = {
+    border: "none", cursor: "pointer", fontFamily: MONO,
+    fontWeight: 800, letterSpacing: "0.06em", borderRadius: r14,
+    padding: small ? "8px 12px" : "11px 18px",
+    fontSize: small ? 10 : 11, transition: "all 180ms cubic-bezier(0.16,1,0.3,1)",
+    textTransform: "uppercase",
+  }
+  if (primary) return (
+    <button onClick={onClick} style={{ ...base, background: P, color: "#fff", boxShadow: `0 8px 22px ${P}30`, ...style }}>{children}</button>
+  )
+  if (outline) return (
+    <button onClick={onClick} style={{ ...base, background: SURF, border: `1px solid ${BDR}`, color: INK2, boxShadow: SHD2, ...style }}>{children}</button>
+  )
+  return (
+    <button onClick={onClick} style={{ ...base, background: `${P}10`, border: `1px solid ${P}26`, color: P, ...style }}>{children}</button>
+  )
+}
 
-  const hour = new Date().getHours()
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening"
+// ─── Section: Career Timeline ─────────────────────────────────────────────────
+function CareerTimeline({ experiences, onNavigate }) {
+  const exps = experiences || []
 
-  const skills = [
-    { skill: "React / Frontend",    percent: 38, risk: "high"   },
-    { skill: "System Design",       percent: 71, risk: "medium" },
-    { skill: "Node.js / Backend",   percent: 85, risk: "low"    },
-    { skill: "SQL & Databases",     percent: 52, risk: "medium" },
-  ]
-
-  const isOnFreePlan = !userData?.subscription || userData?.subscription === "free"
-
-  const roleMatch = {
-    title: "Senior Software Engineer",
-    company: "Series B SaaS",
-    fit: 87,
-    location: "Remote · ₹28–38 LPA",
+  if (!exps.length) {
+    return (
+      <div style={{ padding: "32px 24px", textAlign: "center" }}>
+        <div style={{ fontSize: 32, marginBottom: 10 }}>📋</div>
+        <div style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: INK, marginBottom: 8 }}>No timeline entries yet</div>
+        <div style={{ fontSize: 13, color: MUT, maxWidth: 360, margin: "0 auto 20px", lineHeight: 1.7, fontFamily: BODY }}>
+          Upload your resume in Vault — AI will parse your career history into a verified timeline automatically.
+        </div>
+        <Btn primary onClick={() => onNavigate("aura")}>Open Profile & Vault →</Btn>
+      </div>
+    )
   }
 
-  const alerts = [
-    { icon: "🔴", text: "React skill half-life critical — 1 Forge task can fix it", action: "forge"   },
-    { icon: "📈", text: "Backend Java roles now require Kafka + Docker",            action: "pulse"   },
-    { icon: "👁️", text: "3 recruiters viewed your Orbit profile this week",         action: "orbit"   },
+  return (
+    <div style={{ position: "relative", paddingLeft: 36 }}>
+      {/* timeline spine */}
+      <div style={{ position: "absolute", left: 18, top: 0, bottom: 0, width: 2, background: `linear-gradient(180deg,${P}55,${P}0A)` }} />
+
+      {exps.slice(0, 4).map((exp, i) => {
+        const isCurrent = !exp.endDate || exp.endDate === "Present"
+        return (
+          <div key={i} style={{ position: "relative", marginBottom: i < exps.length - 1 ? 14 : 0 }}>
+            {/* dot */}
+            <div style={{
+              position: "absolute", left: -24, top: 16,
+              width: 12, height: 12, borderRadius: "50%",
+              background: isCurrent ? P : SURF,
+              border: `3px solid ${P}72`,
+              boxShadow: isCurrent ? `0 0 0 5px ${P}14` : "0 0 0 5px rgba(139,92,246,0.06)",
+            }} />
+            <div style={{ background: CELL, border: `1px solid ${BDR}`, borderRadius: r18, padding: "14px 16px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+                <div>
+                  <div style={{ fontFamily: SERIF, fontSize: 17, fontWeight: 700, color: INK, marginBottom: 2 }}>{exp.title || exp.role || "Role"}</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: P, marginBottom: 2, fontFamily: BODY }}>{exp.company || exp.org}</div>
+                  <div style={{ fontSize: 11, color: MUT, fontFamily: MONO }}>
+                    {exp.startDate || "—"} – {exp.endDate || "Present"} · {exp.verified ? "Verified" : "Self-claimed"}
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", flexShrink: 0 }}>
+                  <StatusChip type={exp.verified ? "good" : "warn"}>{exp.verified ? "Verified" : "Pending"}</StatusChip>
+                  {isCurrent && <StatusChip type="info">Current</StatusChip>}
+                </div>
+              </div>
+              {exp.description && (
+                <div style={{ fontSize: 12, color: INK2, marginTop: 10, lineHeight: 1.72, fontFamily: BODY }}>
+                  {exp.description.slice(0, 160)}{exp.description.length > 160 ? "…" : ""}
+                </div>
+              )}
+              {(exp.skills || exp.tags || []).length > 0 && (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
+                  {(exp.skills || exp.tags || []).slice(0, 5).map((t, j) => (
+                    <Badge key={j} color={P}>{t}</Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })}
+
+      {exps.length > 4 && (
+        <div style={{ paddingTop: 12, textAlign: "center" }}>
+          <button onClick={() => onNavigate("aura")} style={{ background: "none", border: "none", color: P, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: MONO, letterSpacing: "0.06em" }}>
+            VIEW ALL {exps.length} ENTRIES →
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Section: Vault docs ──────────────────────────────────────────────────────
+function VaultRows({ files, onNavigate }) {
+  const statusType = { Resume: "good", Experience: "good", Certificate: "good", Offer: "warn" }
+
+  if (!files.length) {
+    return (
+      <div style={{ padding: "24px 0", textAlign: "center" }}>
+        <div style={{ fontSize: 24, marginBottom: 8 }}>🔐</div>
+        <div style={{ fontSize: 13, color: MUT, marginBottom: 14, fontFamily: BODY }}>No documents uploaded yet</div>
+        <Btn primary onClick={() => onNavigate("aura")}>Upload first document →</Btn>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 8 }}>
+      {/* info note */}
+      <div style={{ padding: "11px 14px", borderRadius: r12, border: "1px solid rgba(59,130,246,0.16)", background: "#EFF6FF", fontSize: 12, color: "#1D4ED8", lineHeight: 1.6, fontFamily: BODY, marginBottom: 4 }}>
+        <strong>Flow:</strong> Upload resume → AI parses company, role, dates, skills → confirm once → timeline is canonical.
+      </div>
+      {files.slice(0, 5).map((f, i) => (
+        <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "11px 14px", background: CELL, border: `1px solid ${BDR}`, borderRadius: r14 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: INK, fontFamily: BODY }}>{f.name}</div>
+            <div style={{ fontSize: 11, color: MUT, marginTop: 2, fontFamily: MONO }}>
+              {f.category || "Document"}{f.size ? ` · ${Math.round(f.size / 1024)}KB` : ""}
+            </div>
+          </div>
+          <StatusChip type={statusType[f.category] || "gray"}>{statusType[f.category] === "good" ? "In Vault" : "Pending"}</StatusChip>
+        </div>
+      ))}
+      {files.length > 5 && (
+        <button onClick={() => onNavigate("aura")} style={{ background: "none", border: "none", color: P, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: MONO, letterSpacing: "0.06em", textAlign: "center", padding: "6px 0" }}>
+          VIEW ALL {files.length} DOCUMENTS →
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ─── Section: Orbit scores ────────────────────────────────────────────────────
+function OrbitScores({ elo, userData }) {
+  const hasExp   = (userData?.experiences || []).length > 0
+  const hasVault = (userData?.vaultFiles  || []).length > 0
+  const hasVerif = !!(userData?.epfoVerified || userData?.verified)
+  const hasSumm  = !!userData?.summary
+  const eloN     = Math.min(elo, 1600)
+
+  const scores = [
+    { label: "Career Health",   value: Math.min(Math.round(eloN * .42 + (hasExp?200:0) + (hasVerif?180:0) + (hasSumm?120:0)), 1600), color: P,         max: 1600 },
+    { label: "Role Fit",        value: Math.min(Math.round(eloN * .72),  1600), color: "#3B82F6", max: 1600 },
+    { label: "Market Standing", value: Math.min(Math.round(eloN * .80),  1600), color: "#16A34A", max: 1600 },
+    { label: "Proof Strength",  value: Math.min((hasVault?180:0)+(hasVerif?260:0)+(hasExp?140:0), 580),  color: "#D97706", max: 580  },
   ]
 
   return (
-    <div style={{ background: `radial-gradient(ellipse at 30% 40%, rgba(139,92,246,0.12) 0%, transparent 55%), #FFFFFF`, flex: 1, minHeight: 0, overflowY: "auto", padding: "20px 16px 24px", fontFamily: "Inter, sans-serif" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap');`}</style>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 10 }}>
+      {scores.map((s, i) => (
+        <div key={i} style={{ background: CELL, border: `1px solid rgba(17,24,39,0.06)`, borderRadius: r14, padding: "14px 12px" }}>
+          <MonoLabel color={MUT} children={s.label} />
+          <div style={{ fontFamily: MONO, fontSize: 26, fontWeight: 800, color: s.color, letterSpacing: "-.04em", lineHeight: 1 }}>
+            {s.value.toLocaleString()}
+          </div>
+          <div style={{ marginTop: 10, height: 7, borderRadius: r999, background: "#F3F4F6", overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${Math.round((s.value/s.max)*100)}%`, borderRadius: r999, background: s.color }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
 
-      {/* ── Greeting ─────────────────────────────────────────── */}
-      <div style={{ marginBottom: 20 }}>
-        <p style={{ fontSize: 13, color: C.ink3, margin: 0, fontWeight: 500 }}>{greeting}, {firstName}</p>
-        <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, fontWeight: 800, color: C.ink, margin: "4px 0 0", lineHeight: 1.2 }}>
-          What needs <span style={{ color: C.purple, fontStyle: "italic" }}>attention</span> this week?
-        </h1>
+// ─── Section: Skill Half-Life ─────────────────────────────────────────────────
+function SkillHalfLife({ userData }) {
+  // Derive from skillGraph or use defaults with real freshness logic
+  const graph = userData?.skillGraph || []
+  const skills = graph.length > 0
+    ? graph.slice(0, 4).map(s => ({
+        label: s.label || s.skill || "Skill",
+        value: Math.max(10, Math.min(99, s.freshness || s.value || 70)),
+        color: (s.freshness || s.value || 70) < 40 ? "#DC2626" : (s.freshness || s.value || 70) < 65 ? "#D97706" : P,
+      }))
+    : [
+        { label: "Primary stack",    value: 65, color: P         },
+        { label: "System Design",    value: 72, color: "#16A34A" },
+        { label: "Cloud / DevOps",   value: 48, color: "#D97706" },
+        { label: "Domain knowledge", value: 81, color: "#3B82F6" },
+      ]
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+      {skills.map((sk, i) => <SkillBar key={i} {...sk} />)}
+      <div style={{ fontSize: 11, color: MUT, fontFamily: BODY, marginTop: 4, lineHeight: 1.6 }}>
+        Skills below 50% freshness trigger Forge repair tasks automatically.
       </div>
+    </div>
+  )
+}
 
-      {/* ── ELO + status row ─────────────────────────────────── */}
-      <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-        <Card style={{ flex: 1, padding: 16, textAlign: "center" }}>
-          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 24, fontWeight: 700, color: C.purple }}>{elo.toLocaleString()}</div>
-          <div style={{ fontSize: 11, color: C.ink4, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", marginTop: 2 }}>ELO</div>
-          <div style={{ fontSize: 12, color: eloTrend > 0 ? C.green : C.red, fontWeight: 700, marginTop: 4 }}>
-            {eloTrend > 0 ? "▲" : "▼"} {Math.abs(eloTrend)} this week
-          </div>
-        </Card>
-        <Card style={{ flex: 1, padding: 16, textAlign: "center" }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: C.red, fontFamily: "'Playfair Display', serif" }}>2</div>
-          <div style={{ fontSize: 11, color: C.ink4, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", marginTop: 2 }}>At-Risk Skills</div>
-          <div style={{ fontSize: 12, color: C.red, marginTop: 4 }}>Needs Forge</div>
-        </Card>
-        <Card style={{ flex: 1, padding: 16, textAlign: "center" }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: C.green, fontFamily: "'Playfair Display', serif" }}>Active</div>
-          <div style={{ fontSize: 11, color: C.ink4, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", marginTop: 2 }}>Continuity</div>
-          <div style={{ fontSize: 12, color: C.green, marginTop: 4 }}>14-day streak</div>
-        </Card>
+// ─── Section: Action gap cards ────────────────────────────────────────────────
+function ActionGaps({ userData, onNavigate }) {
+  const hasVerif   = !!(userData?.epfoVerified || userData?.verified)
+  const hasTarget  = !!userData?.targetRole
+  const hasVault   = (userData?.vaultFiles || []).length > 0
+  const hasExp     = (userData?.experiences || []).length > 0
+  const hasSummary = !!userData?.summary
+
+  const gaps = []
+  if (!hasVerif)   gaps.push({ cap: "Critical gap",    title: "Employment verification missing", desc: "EPFO/UAN cross-match increases recruiter trust and unlocks proof strength score.", icon: "🔐", impact: "bad",  page: "aura",     btn: "Verify now" })
+  if (!hasTarget)  gaps.push({ cap: "Signal gap",      title: "Target role not set",             desc: "Set a target role so Orbit can tune skill decay and weekly assessments correctly.",  icon: "🎯", impact: "warn", page: "orbit",    btn: "Set target" })
+  if (!hasVault)   gaps.push({ cap: "Evidence gap",    title: "No resume uploaded",              desc: "Upload your resume to Vault — AI will parse it into your career timeline in seconds.", icon: "📄", impact: "info", page: "aura",     btn: "Open Vault" })
+  if (!hasSummary) gaps.push({ cap: "Visibility gap",  title: "Profile summary missing",        desc: "A strong summary increases role fit score and recruiter profile views 3×.",           icon: "✍️", impact: "warn", page: "aura",     btn: "Add summary" })
+  if (!hasExp)     gaps.push({ cap: "Profile gap",     title: "Timeline empty",                 desc: "Add career entries so your profile is visible to recruiters and Orbit can score it.",  icon: "📋", impact: "warn", page: "aura",     btn: "Add experience" })
+
+  if (!gaps.length) {
+    return (
+      <div style={{ padding: "24px 0", textAlign: "center" }}>
+        <div style={{ fontSize: 28, marginBottom: 8 }}>✅</div>
+        <div style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 700, color: "#16A34A" }}>Profile looking strong</div>
+        <div style={{ fontSize: 12, color: MUT, marginTop: 6, fontFamily: BODY }}>Keep running weekly assessments to maintain your scores.</div>
       </div>
+    )
+  }
 
-      {/* ── Priority alert — one-click Forge ─────────────────── */}
-      <Card style={{ marginBottom: 16, background: C.purple, border: "none" }}>
-        <Label color="#fff" bg="rgba(239,68,68,0.1)">Action Required</Label>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", marginTop: 10, fontFamily: "'Playfair Display', serif" }}>
-          React skill is decaying. 5-min Forge task available now.
-        </div>
-        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", marginTop: 4, marginBottom: 12 }}>
-          Prevent ELO erosion before recruiter season peaks this week.
-        </div>
-        <button
-          onClick={() => onNavigate("forge")}
-          style={{ padding: "10px 20px", background: "#FFFFFF", border: "none", borderRadius: 12, color: C.purple, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
-        >Open Forge →</button>
-      </Card>
-
-      {/* ── Skill half-life ──────────────────────────────────── */}
-      <Card style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink2 }}>Skill Freshness</div>
-          <button onClick={() => onNavigate("orbit")} style={{ fontSize: 12, color: C.purple, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>See Orbit →</button>
-        </div>
-        {skills.map((s, i) => <HalfLifeBar key={i} {...s} />)}
-      </Card>
-
-      {/* ── Best role match ──────────────────────────────────── */}
-      <Card style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <div>
-            <Label>Best Match This Week</Label>
-            <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginTop: 8, fontFamily: "'Playfair Display', serif" }}>{roleMatch.title}</div>
-            <div style={{ fontSize: 12, color: C.ink3, marginTop: 2 }}>{roleMatch.company} · {roleMatch.location}</div>
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 22, fontWeight: 700, color: C.green }}>{roleMatch.fit}%</div>
-            <div style={{ fontSize: 11, color: C.ink4 }}>Role Fit</div>
-          </div>
-        </div>
-        <button
-          onClick={() => onNavigate("orbit")}
-          style={{ marginTop: 12, width: "100%", padding: "10px", background: C.purpleL, border: `1px solid ${C.purple}30`, borderRadius: 10, color: C.purple, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
-        >View full match in Orbit</button>
-      </Card>
-
-      {/* ── Career alerts ────────────────────────────────────── */}
-      <div style={{ marginBottom: 8 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: C.ink2, marginBottom: 10 }}>Career Alerts</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {alerts.map((a, i) => (
-            <div
-              key={i}
-              onClick={() => onNavigate(a.action)}
-              style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, cursor: "pointer" }}
-            >
-              <span style={{ fontSize: 18 }}>{a.icon}</span>
-              <span style={{ fontSize: 13, color: C.ink2, flex: 1, fontWeight: 500 }}>{a.text}</span>
-              <span style={{ color: C.ink4, fontSize: 16 }}>›</span>
+  return (
+    <div style={{ display: "grid", gap: 10 }}>
+      {gaps.slice(0, 3).map((g, i) => (
+        <div key={i} style={{ padding: "14px 16px", background: CELL, border: `1px solid ${BDR}`, borderRadius: r18, display: "flex", gap: 14, alignItems: "flex-start" }}>
+          <div style={{ width: 38, height: 38, background: SURF, border: `1px solid ${BDR}`, borderRadius: r12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, flexShrink: 0 }}>{g.icon}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <MonoLabel children={g.cap} />
+            <div style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 700, color: INK, marginBottom: 4 }}>{g.title}</div>
+            <div style={{ fontSize: 12, color: MUT, lineHeight: 1.6, fontFamily: BODY, marginBottom: 10 }}>{g.desc}</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <StatusChip type={g.impact}>{g.impact === "bad" ? "High impact" : g.impact === "warn" ? "Medium" : "Actionable"}</StatusChip>
+              <Btn small onClick={() => onNavigate(g.page)}>{g.btn} →</Btn>
             </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─── Root component ───────────────────────────────────────────────────────────
+export default function ProfessionalHome({ user, userData, onNavigate, onNavigatePricing }) {
+  const [subTab, setSubTab] = useState("overview")
+
+  const name        = userData?.name || user?.displayName || "Professional"
+  const initials    = name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()
+  const firstName   = name.split(" ")[0]
+  const elo         = userData?.eloRating || 1200
+  const role        = userData?.keyword || userData?.targetRole || "Professional"
+  const isFreePlan  = !userData?.subscription || userData?.subscription === "free"
+  const isVerified  = !!(userData?.epfoVerified || userData?.verified)
+  const experiences = userData?.experiences || []
+  const vaultFiles  = userData?.vaultFiles  || []
+
+  // Top nav: Profile is "home" (active), others route out
+  const TOP_TABS = [
+    { label: "Profile",   active: true,  page: null        },
+    { label: "Orbit",     active: false, page: "orbit"     },
+    { label: "Pulse",     active: false, page: "pulse"     },
+    { label: "Assess",    active: false, page: "aura"      },
+    { label: "Forge",     active: false, page: "forge"     },
+    { label: "Launchpad", active: false, page: "launchpad" },
+  ]
+  const SUB_TABS = ["overview", "timeline", "vault", "readiness"]
+
+  return (
+    <div style={{
+      flex: 1, minHeight: 0, overflowY: "auto",
+      background: `radial-gradient(ellipse at 10% 0%, ${P}0D 0%, transparent 46%), ${BG}`,
+      fontFamily: BODY, color: INK,
+    }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap');
+        .ph-nav-tab { background: ${SURF}; border: 1px solid ${BDR}; color: ${MUT}; padding: 9px 14px; border-radius: ${r999}px; font-weight: 800; font-size: 11px; cursor: pointer; font-family: ${MONO}; letter-spacing: 0.06em; text-transform: uppercase; transition: all 150ms; }
+        .ph-nav-tab:hover { border-color: ${P}40; color: ${P}; }
+        .ph-nav-tab.active { background: ${P}; color: #fff; border-color: transparent; box-shadow: 0 8px 22px ${P}30; }
+        .ph-sub-tab { background: none; border: 1px solid ${BDR}; color: ${MUT}; padding: 8px 14px; border-radius: ${r999}px; font-weight: 700; font-size: 11px; cursor: pointer; font-family: ${MONO}; letter-spacing: 0.06em; text-transform: uppercase; transition: all 150ms; }
+        .ph-sub-tab:hover { color: ${P}; border-color: ${P}40; }
+        .ph-sub-tab.on { background: ${P}10; color: ${P}; border-color: ${P}26; }
+        .ph-action-card:hover { border-color: ${P}22 !important; transform: translateY(-1px); box-shadow: 0 12px 26px ${P}08; }
+        .ph-card-hover:hover { border-color: rgba(139,92,246,0.22) !important; transform: translateY(-2px); }
+      `}</style>
+
+      {/* ── Sticky top nav ─────────────────────────────────────────────────── */}
+      <div style={{
+        position: "sticky", top: 0, zIndex: 25,
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        gap: 12, padding: "12px 24px",
+        background: "rgba(250,250,250,0.92)", backdropFilter: "blur(18px)",
+        borderBottom: `1px solid ${BDR}`,
+        flexWrap: "wrap",
+      }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {TOP_TABS.map(t => (
+            <button key={t.label} className={`ph-nav-tab${t.active ? " active" : ""}`} onClick={() => !t.active && t.page && onNavigate(t.page)}>
+              {t.label}
+            </button>
           ))}
         </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{ background: `${P}0F`, border: `1.5px solid ${P}30`, borderRadius: r14, padding: "8px 14px", textAlign: "center" }}>
+            <span style={{ fontFamily: MONO, fontSize: 14, fontWeight: 800, color: P }}>{elo.toLocaleString()}</span>
+            <span style={{ fontFamily: MONO, fontSize: 9, color: P, marginLeft: 6, textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700 }}>ELO</span>
+          </div>
+          <div style={{ background: SURF, border: `1px solid ${BDR}`, borderRadius: r14, padding: "8px 14px", fontFamily: MONO, fontSize: 12, fontWeight: 800, color: INK }}>
+            {firstName}
+          </div>
+        </div>
       </div>
 
-      {/* ── Upgrade banner — only for free plan ──────────────── */}
-      {isOnFreePlan && (
-        <div style={{ margin: "20px 0 0", padding: "20px 18px", background: "linear-gradient(135deg, #4C1D95, #6D28D9)", borderRadius: 20, position: "relative", overflow: "hidden" }}>
-          {/* glow */}
-          <div style={{ position: "absolute", top: -30, right: -30, width: 100, height: 100, background: "rgba(0,0,0,0.03)", borderRadius: "50%" }} />
-          <div style={{ position: "absolute", bottom: -20, left: -20, width: 80, height: 80, background: "rgba(0,0,0,0.02)", borderRadius: "50%" }} />
-
-          <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.6)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 }}>Free Plan</div>
-          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, fontWeight: 800, color: "#fff", marginBottom: 6, lineHeight: 1.25 }}>
-            Unlock your full career OS
-          </div>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.72)", marginBottom: 16, lineHeight: 1.55 }}>
-            Capabilio Pro gives you compensation intelligence, unlimited Forge, layoff shield score, peer benchmarking, and gap narrative — starting at <strong style={{ color: "#fff" }}>₹499/month</strong>.
+      {/* ── Hero card ──────────────────────────────────────────────────────── */}
+      <div style={{ padding: "20px 24px 0" }}>
+        <div className="ph-card-hover" style={{
+          background: SURF, border: `1px solid ${PBDR}`,
+          borderRadius: r28, overflow: "hidden",
+          boxShadow: SHD, transition: "all 180ms cubic-bezier(0.16,1,0.3,1)",
+        }}>
+          {/* cover */}
+          <div style={{ height: 120, background: `linear-gradient(120deg,#4C1D95,#7C3AED 45%,#A78BFA 80%,#C4B5FD)`, position: "relative" }}>
+            <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 20% 40%,rgba(255,255,255,0.18),transparent 40%),radial-gradient(circle at 80% 20%,rgba(255,255,255,0.12),transparent 30%)" }} />
           </div>
 
-          {/* Feature pills */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
-            {["Compensation Intel", "Unlimited Forge", "Layoff Shield", "Peer Benchmarks", "3 Market Reports/mo"].map(f => (
-              <span key={f} style={{ padding: "3px 10px", background: "rgba(0,0,0,0.08)", borderRadius: 100, fontSize: 11, color: "#fff", fontWeight: 600 }}>✓ {f}</span>
-            ))}
-          </div>
+          <div style={{ padding: "0 24px 24px" }}>
+            {/* avatar + identity row */}
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 18, marginTop: -44, marginBottom: 16, flexWrap: "wrap" }}>
+              {/* avatar */}
+              <div style={{
+                width: 88, height: 88, borderRadius: 22, flexShrink: 0,
+                background: `linear-gradient(135deg,${P},#A78BFA)`,
+                border: "3px solid #fff",
+                boxShadow: `0 8px 24px ${P}30`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontFamily: SERIF, fontSize: 32, fontWeight: 800, color: "#fff",
+              }}>{initials}</div>
 
-          <div style={{ display: "flex", gap: 10 }}>
-            <button
-              onClick={() => (onNavigatePricing || onNavigate)("pricing")}
-              style={{ flex: 1, padding: "12px", background: "#FFFFFF", border: "none", borderRadius: 12, color: "#6D28D9", fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "'Playfair Display', serif" }}
-            >
-              Upgrade to Capabilio Pro →
-            </button>
-            <button
-              onClick={() => onNavigate("orbit")}
-              style={{ padding: "12px 16px", background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: 12, color: "#374151", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
-            >
-              See Orbit
-            </button>
+              {/* name block */}
+              <div style={{ paddingBottom: 4, flex: 1, minWidth: 180 }}>
+                <div style={{ fontFamily: SERIF, fontSize: "clamp(22px,3.5vw,38px)", fontWeight: 800, color: INK, lineHeight: 1, marginBottom: 5 }}>
+                  {name}
+                </div>
+                <div style={{ fontSize: 13, color: MUT, fontFamily: BODY }}>{role} {isVerified && <span style={{ color: "#16A34A", fontWeight: 700 }}>· Verified ✓</span>}</div>
+              </div>
+
+              {/* ELO badge */}
+              <div style={{ background: `${P}0F`, border: `1.5px solid ${P}30`, borderRadius: r18, padding: "14px 16px 12px", textAlign: "center", flexShrink: 0 }}>
+                <div style={{ fontFamily: MONO, fontSize: 30, fontWeight: 800, color: P, lineHeight: 1 }}>{elo.toLocaleString()}</div>
+                <div style={{ fontSize: 9, color: P, letterSpacing: "0.12em", marginTop: 5, textTransform: "uppercase", fontFamily: MONO, fontWeight: 800 }}>ELO Score</div>
+              </div>
+            </div>
+
+            {/* pills row */}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
+              <Badge color={P}>Professional path</Badge>
+              {isVerified && <Badge color="#16A34A" bg="#F0FDF4">Verified timeline</Badge>}
+              {experiences.length > 0 && <Badge color="#3B82F6" bg="#EFF6FF">{experiences.length} career {experiences.length === 1 ? "entry" : "entries"}</Badge>}
+              {vaultFiles.length > 0 && <Badge color="#D97706" bg="#FFF7E8">{vaultFiles.length} vault {vaultFiles.length === 1 ? "doc" : "docs"}</Badge>}
+              {isFreePlan && <Badge color={MUT} bg="#F9FAFB">Free plan</Badge>}
+            </div>
+
+            {/* 3-col stats */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 18 }}>
+              <StatCell label="Market Value" value="—" sub="Add timeline to unlock" color={INK} />
+              <StatCell label="Layoff Shield" value={isVerified ? "Active" : "—"} sub={isVerified ? "Employment verified" : "Verify to unlock"} color={isVerified ? "#16A34A" : INK} />
+              <StatCell label="Career Velocity" value={experiences.length > 0 ? "+ELO" : "—"} sub="Based on Orbit signals" color={P} />
+            </div>
+
+            {/* sub-tabs */}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {SUB_TABS.map(t => (
+                <button key={t} className={`ph-sub-tab${subTab === t ? " on" : ""}`} onClick={() => setSubTab(t)}>
+                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* ── Already upgraded confirmation ────────────────────── */}
-      {!isOnFreePlan && (
-        <div style={{ margin: "20px 0 0", padding: "14px 16px", background: C.greenL, border: `1px solid ${C.green}30`, borderRadius: 14, display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 20 }}>✅</span>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: C.green }}>You're on {userData.subscription === "orbit_elite" ? "Capabilio Elite" : "Capabilio Pro"}</div>
-            <div style={{ fontSize: 12, color: C.ink3, marginTop: 1 }}>All career intelligence features unlocked.</div>
+      {/* ── Body content ───────────────────────────────────────────────────── */}
+      <div style={{ padding: "18px 24px 60px" }}>
+
+        {/* OVERVIEW ─────────────────────────────────────────────────────────── */}
+        {subTab === "overview" && (
+          <div style={{ display: "grid", gridTemplateColumns: "1.1fr .9fr", gap: 18 }}>
+
+            {/* Left col */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+
+              {/* Career timeline card */}
+              <Card purple>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
+                  <div>
+                    <MonoLabel>Career timeline</MonoLabel>
+                    <div style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: INK }}>Employment history</div>
+                    <div style={{ fontSize: 12, color: MUT, marginTop: 3, fontFamily: BODY }}>One source of truth — confirmed once, powers profile, Orbit, and matching.</div>
+                  </div>
+                  <Btn primary small onClick={() => onNavigate("aura")}>+ Add entry</Btn>
+                </div>
+                <CareerTimeline experiences={experiences} onNavigate={onNavigate} />
+              </Card>
+
+              {/* Skill half-life */}
+              <Card>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
+                  <div>
+                    <MonoLabel>Skill half-life radar</MonoLabel>
+                    <div style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: INK }}>Freshness signals</div>
+                  </div>
+                  <Btn onClick={() => onNavigate("orbit")} small>Open Orbit →</Btn>
+                </div>
+                <SkillHalfLife userData={userData} />
+              </Card>
+            </div>
+
+            {/* Right col */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+
+              {/* Orbit scores */}
+              <Card>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
+                  <div>
+                    <MonoLabel>Orbit intelligence</MonoLabel>
+                    <div style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: INK }}>Career scores</div>
+                  </div>
+                  <Btn primary small onClick={() => onNavigate("orbit")}>Full Orbit →</Btn>
+                </div>
+                <OrbitScores elo={elo} userData={userData} />
+
+                {/* module pills */}
+                <div style={{ marginTop: 18 }}>
+                  <MonoLabel>Your modules</MonoLabel>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {[
+                      { label: "Orbit",     color: P          },
+                      { label: "Forge",     color: "#FF5701"  },
+                      { label: "Vault",     color: "#3B82F6"  },
+                      { label: "Pulse",     color: "#16A34A"  },
+                      { label: "Assess",    color: "#D97706"  },
+                      { label: "Launchpad", color: "#8B5CF6"  },
+                    ].map((m, i) => (
+                      <Badge key={i} color={m.color}>{m.label}</Badge>
+                    ))}
+                  </div>
+                </div>
+              </Card>
+
+              {/* Action gaps */}
+              <Card>
+                <div style={{ marginBottom: 18 }}>
+                  <MonoLabel>Action items</MonoLabel>
+                  <div style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: INK }}>Profile gaps</div>
+                  <div style={{ fontSize: 12, color: MUT, marginTop: 3, fontFamily: BODY }}>Resolve these to improve career scores.</div>
+                </div>
+                <ActionGaps userData={userData} onNavigate={onNavigate} />
+              </Card>
+
+              {/* Quick nav to other paths */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                {[
+                  { icon: "⚡", label: "Weekly Assess", page: "aura",      color: "#D97706" },
+                  { icon: "🔧", label: "Forge Repair",  page: "forge",     color: "#FF5701" },
+                  { icon: "📡", label: "Pulse Feed",    page: "pulse",     color: "#16A34A" },
+                  { icon: "🚀", label: "Job matching",  page: "launchpad", color: "#3B82F6" },
+                ].map((q, i) => (
+                  <div key={i} onClick={() => onNavigate(q.page)} className="ph-action-card" style={{
+                    padding: "14px 16px", background: CELL,
+                    border: `1px solid ${BDR}`, borderRadius: r18,
+                    cursor: "pointer", transition: "all 180ms cubic-bezier(0.16,1,0.3,1)",
+                  }}>
+                    <div style={{ width: 36, height: 36, background: `${q.color}12`, border: `1px solid ${q.color}22`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, marginBottom: 10 }}>{q.icon}</div>
+                    <div style={{ fontFamily: MONO, fontSize: 10, fontWeight: 800, color: q.color, letterSpacing: "0.1em", textTransform: "uppercase" }}>{q.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* TIMELINE ─────────────────────────────────────────────────────────── */}
+        {subTab === "timeline" && (
+          <Card purple>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+              <div>
+                <MonoLabel>Career timeline</MonoLabel>
+                <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 700, color: INK }}>Employment history</div>
+                <div style={{ fontSize: 12, color: MUT, marginTop: 4, fontFamily: BODY }}>Canonical source — powers profile display, verification, Orbit, and matching.</div>
+              </div>
+              <Btn primary onClick={() => onNavigate("aura")}>+ Add entry</Btn>
+            </div>
+            <CareerTimeline experiences={experiences} onNavigate={onNavigate} />
+            {!experiences.length && (
+              <div style={{ padding: "14px 0 0" }}>
+                <div style={{ padding: "11px 14px", borderRadius: r12, border: "1px solid rgba(59,130,246,0.16)", background: "#EFF6FF", fontSize: 12, color: "#1D4ED8", lineHeight: 1.6, fontFamily: BODY }}>
+                  <strong>Tip:</strong> Upload your resume to Vault first — AI will draft timeline entries you confirm in one click.
+                </div>
+              </div>
+            )}
+          </Card>
+        )}
+
+        {/* VAULT ────────────────────────────────────────────────────────────── */}
+        {subTab === "vault" && (
+          <Card>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+              <div>
+                <MonoLabel>Vault</MonoLabel>
+                <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 700, color: INK }}>Documents & proofs</div>
+                <div style={{ fontSize: 12, color: MUT, marginTop: 4, fontFamily: BODY }}>Upload resumes, offer letters, and certificates. AI parses them into structured timeline fields.</div>
+              </div>
+              <Btn primary onClick={() => onNavigate("aura")}>+ Upload document</Btn>
+            </div>
+            <VaultRows files={vaultFiles} onNavigate={onNavigate} />
+          </Card>
+        )}
+
+        {/* READINESS ────────────────────────────────────────────────────────── */}
+        {subTab === "readiness" && (
+          <div style={{ display: "grid", gap: 18 }}>
+            <Card purple>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
+                <div>
+                  <MonoLabel>Orbit intelligence</MonoLabel>
+                  <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 700, color: INK }}>Career readiness scores</div>
+                  <div style={{ fontSize: 12, color: MUT, marginTop: 4, fontFamily: BODY }}>Every score has a reason and a next action — open full Orbit for diagnostics.</div>
+                </div>
+                <Btn primary onClick={() => onNavigate("orbit")}>Open Orbit →</Btn>
+              </div>
+              <OrbitScores elo={elo} userData={userData} />
+            </Card>
+
+            <Card>
+              <div style={{ marginBottom: 18 }}>
+                <MonoLabel>Action items</MonoLabel>
+                <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 700, color: INK }}>Profile gaps to resolve</div>
+              </div>
+              <ActionGaps userData={userData} onNavigate={onNavigate} />
+            </Card>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14 }}>
+              {[
+                { cap: "Role mapping",     title: "Weekly assessment",  desc: "Hard MCQ-only role mastery engine. Timed, recurring, tied to Orbit decay.",         btn: "Start assessment", page: "aura",      color: "#D97706" },
+                { cap: "Proof repair",     title: "Forge repair tasks", desc: "Weak MCQ clusters generate repair tasks. Back claims with evidence and projects.",   btn: "Open Forge",       page: "forge",     color: "#FF5701" },
+                { cap: "Switch readiness", title: "Launchpad matching", desc: "Jobs read the same timeline and assessment signals for accurate role matching.",       btn: "Browse jobs",      page: "launchpad", color: "#3B82F6" },
+              ].map((c, i) => (
+                <div key={i} style={{ padding: 20, background: SURF, border: `1px solid ${BDR}`, borderRadius: r22, boxShadow: SHD2, transition: "all 180ms cubic-bezier(0.16,1,0.3,1)" }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = `${c.color}26`; e.currentTarget.style.transform = "translateY(-2px)" }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = BDR; e.currentTarget.style.transform = "translateY(0)" }}>
+                  <div style={{ width: 42, height: 42, background: `${c.color}12`, border: `1px solid ${c.color}22`, borderRadius: r12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, marginBottom: 14 }}>
+                    {i === 0 ? "⚡" : i === 1 ? "🔧" : "🚀"}
+                  </div>
+                  <MonoLabel color={c.color}>{c.cap}</MonoLabel>
+                  <div style={{ fontFamily: SERIF, fontSize: 17, fontWeight: 700, color: INK, marginBottom: 8 }}>{c.title}</div>
+                  <div style={{ fontSize: 12, color: MUT, lineHeight: 1.7, fontFamily: BODY, marginBottom: 14 }}>{c.desc}</div>
+                  <Btn small onClick={() => onNavigate(c.page)}>{c.btn} →</Btn>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Upgrade / Pro banner ─────────────────────────────────────────── */}
+        {isFreePlan && subTab === "overview" && (
+          <div style={{ marginTop: 18, padding: "22px 24px", borderRadius: r22, background: `linear-gradient(135deg,#4C1D95,#6D28D9)`, position: "relative", overflow: "hidden" }}>
+            <div style={{ position: "absolute", top: -40, right: -40, width: 160, height: 160, background: "rgba(255,255,255,0.04)", borderRadius: "50%" }} />
+            <div style={{ fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.55)", letterSpacing: "0.14em", textTransform: "uppercase", fontFamily: MONO, marginBottom: 8 }}>Free plan</div>
+            <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 800, color: "#fff", marginBottom: 6 }}>Unlock your full Career OS</div>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.72)", lineHeight: 1.65, fontFamily: BODY, marginBottom: 16 }}>
+              Capabilio Pro gives you compensation intelligence, unlimited Forge, layoff shield score, peer benchmarking, and gap narrative — starting at <strong style={{ color: "#fff" }}>₹499/month</strong>.
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
+              {["Compensation Intel", "Unlimited Forge", "Layoff Shield", "Peer Benchmarks", "3 Market Reports/mo"].map(f => (
+                <span key={f} style={{ padding: "4px 10px", background: "rgba(255,255,255,0.12)", borderRadius: r999, fontSize: 10, color: "#fff", fontWeight: 700, fontFamily: MONO }}>✓ {f}</span>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => (onNavigatePricing || onNavigate)("pricing")} style={{
+                flex: 1, padding: 14, background: "#fff", border: "none", borderRadius: r14,
+                color: "#6D28D9", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: MONO,
+                letterSpacing: "0.06em", textTransform: "uppercase",
+              }}>Upgrade to Capabilio Pro →</button>
+              <button onClick={() => onNavigate("orbit")} style={{
+                padding: "14px 18px", background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.20)",
+                borderRadius: r14, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: MONO,
+              }}>See Orbit</button>
+            </div>
+          </div>
+        )}
+        {!isFreePlan && subTab === "overview" && (
+          <div style={{ marginTop: 18, padding: "14px 18px", background: "#F0FDF4", border: "1px solid rgba(22,163,74,0.18)", borderRadius: r14, display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontSize: 20 }}>✅</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#16A34A", fontFamily: BODY }}>You're on {userData?.subscription === "orbit_elite" ? "Capabilio Elite" : "Capabilio Pro"}</div>
+              <div style={{ fontSize: 12, color: MUT, marginTop: 1, fontFamily: BODY }}>All career intelligence features unlocked.</div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

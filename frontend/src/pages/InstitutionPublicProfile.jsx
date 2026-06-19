@@ -4,6 +4,8 @@
  * hero + orbital stats + live ticker. Mirrors the institution-path prototype.
  *
  * Props:
+ *   userData   — institution profile from Supabase (org_name, org_location, etc.)
+ *   members    — array of org members (used to compute student count)
  *   onBack()   — optional, called by the "← Search" breadcrumb
  *   onAction(name) — optional, called for follow / request-access / brochure
  */
@@ -110,66 +112,82 @@ const IP_CSS = `
 
 const C = { am:'#dc8b18',gold:'#f6c453',green:'#4fd4a3',blue:'#74a8ff',purple:'#ab93ff',cyan:'#54d9e0',pink:'#ff8db1',red:'#ff8177',teal:'#34d4bf' }
 
-function buildBody() {
-  const DEPTS=[
-    {code:'CSE',full:'Computer Science & Engineering',students:182,elo:1410,delta:'+120',placed:78,col:C.gold,skills:['DSA 79%','Web 71%','SysDesign 46%'],feat:true},
-    {code:'IT',full:'Information Technology',students:96,elo:1280,delta:'+88',placed:64,col:C.green,skills:['DSA 68%','Web 74%'],feat:false},
-    {code:'AI&DS',full:'AI & Data Science',students:71,elo:1190,delta:'+60',placed:52,col:C.purple,skills:['ML 71%','DSA 55%'],feat:false},
-    {code:'ECE',full:'Electronics & Comm',students:138,elo:980,delta:'-10',placed:31,col:C.red,skills:['Embedded 62%','Signal 44%'],feat:false},
-  ]
-  const RECS=[
-    {ic:'G',name:'Google',sub:'Round 2',col:C.blue,live:true},{ic:'F',name:'Flipkart',sub:'Shortlisting',col:C.am,live:true},
-    {ic:'M',name:'Microsoft',sub:'3 offers',col:C.green,live:false},{ic:'D',name:'Deloitte',sub:'Offers',col:C.purple,live:false},
-    {ic:'A',name:'Amazon',sub:'Screening',col:C.cyan,live:true},{ic:'T',name:'TCS',sub:'12 hires',col:C.teal,live:false},
-    {ic:'W',name:'Wipro',sub:'8 hires',col:C.pink,live:false},{ic:'Z',name:'Zomato',sub:'Live drive',col:C.red,live:true},
-    {ic:'S',name:'Stripe',sub:'3 offers',col:C.gold,live:false},{ic:'I',name:'Infosys',sub:'Upcoming',col:C.blue,live:false},
-  ]
-  const HLS=[
-    {yr:'2024-25',v:'₹38L',s:'Highest package ever · Microsoft SDE',c:C.gold},
-    {yr:'2024-25',v:'312',s:'Offers in a single placement cycle',c:C.green},
-    {yr:'Term avg',v:'+141',s:'ELO points lifted across cohorts',c:C.blue},
-    {yr:'YoY',v:'9%',s:'Placement rate improvement',c:C.purple},
-    {yr:'Platform high',v:'1542',s:'Top student ELO — Riya Sharma · CSE',c:C.cyan},
-    {yr:'Case data',v:'68%',s:'At-risk students fully recovered',c:C.green},
-  ]
+function buildBody(d) {
+  // d = { orgName, orgLocation, orgType, naacGrade, studentCount, verified }
+  const orgName     = d.orgName     || "Your Institution"
+  const orgLocation = d.orgLocation || "India"
+  const orgType     = d.orgType     || "Higher Education"
+  const naacGrade   = d.naacGrade   || ""
+  const studentCount= d.studentCount|| "—"
+  const verified    = d.verified
+
+  // Split org name: first word bold, rest italic-serif (like VIT / Vellore layout)
+  const nameParts   = orgName.trim().split(/\s+/)
+  const nameFirst   = nameParts[0]
+  const nameRest    = nameParts.slice(1).join(" ")
+
+  const naacBadge   = naacGrade ? ` · NAAC ${naacGrade}` : ""
+  const verBadge    = verified
+    ? `<span class="livdot"></span>✦ Capabilio Verified${naacBadge}`
+    : `<span style="width:6px;height:6px;border-radius:50%;background:var(--gold);display:inline-block"></span> ✦ Profile Active — Verification Pending`
+
   const TRUST=[
-    ['✓','Domain & email verified','y'],['✓','Website DNS match confirmed','y'],['✓','NAAC A+ certificate on file','y'],
-    ['✓','NBA accreditation linked','y'],['✓','Admin identity verified','y'],['⏳','Trust Seal Level 3 in review','p'],['○','Research output not yet linked','n'],
+    [verified ? '✓' : '⏳', verified ? 'Domain & email verified' : 'Email verification pending', verified ? 'y' : 'p'],
+    ['✓','Profile created & active','y'],
+    [naacGrade ? '✓' : '○', naacGrade ? `NAAC ${naacGrade} grade on record` : 'NAAC grade not yet added', naacGrade ? 'y' : 'n'],
+    [verified ? '✓' : '○','Admin identity verified', verified ? 'y' : 'n'],
+    ['⏳','Trust Seal review in progress','p'],
+    ['○','Placement data not yet linked','n'],
+    ['○','Research output not yet linked','n'],
   ]
-  const deptCards=DEPTS.map(d=>`<div class="ip-dept ${d.feat?'feat':''}"><div class="dd-ghost">${d.code}</div><div class="dd-code" style="color:${d.col}">${d.code}</div><div class="dd-sub">${d.full}<br><span style="opacity:.7">${d.students} students</span></div><div class="dd-elo">Avg ELO <b style="color:${d.col}">${d.elo.toLocaleString()}</b> <span style="font-size:9.5px;color:${d.delta[0]==='-'?C.red:C.green}">${d.delta} term</span></div><div class="dd-track"><div class="dd-fill" style="width:${d.placed}%;background:${d.col}"></div></div><div class="dd-placed" style="color:${d.col}">${d.placed}%<span style="font-size:11px;font-weight:600;color:var(--mut);margin-left:5px">placed</span></div>${d.feat?`<div style="display:flex;gap:5px;margin-top:11px;flex-wrap:wrap">${d.skills.map(sk=>'<span class="tag gy" style="font-size:9.5px">'+sk+'</span>').join('')}</div>`:''}</div>`).join('')
-  const recCards=RECS.map(r=>`<div class="ip-rec ${r.live?'live-now':''}"><div class="ric" style="background:linear-gradient(135deg,${r.col}44,${r.col}18);border:1px solid ${r.col}33"><span style="color:${r.col};font-size:15px;font-weight:900">${r.ic}</span></div><div class="rn">${r.name}</div><div class="rs">${r.sub}</div></div>`).join('')
-  const hlCards=HLS.map(h=>`<div class="ip-hl"><div class="hy">${h.yr}</div><div class="hv" style="color:${h.c}">${h.v}</div><div class="hs">${h.s}</div><div class="hglow" style="background:${h.c}"></div></div>`).join('')
+
+  // Placeholder stats — will be real once placement data is captured
+  const HLS=[
+    {yr:'Coming soon',v:'—',s:'Highest package — add placement data to unlock',c:C.gold},
+    {yr:'Coming soon',v:'—',s:'Offers this cycle — sync your placement records',c:C.green},
+    {yr:'Coming soon',v:'—',s:'ELO lift this term — students need Arena scores',c:C.blue},
+    {yr:'Coming soon',v:'—',s:'Placement rate — complete student profiles to track',c:C.purple},
+    {yr:'Coming soon',v:'—',s:'Top student ELO — pending Arena activity',c:C.cyan},
+    {yr:'Coming soon',v:'—',s:'At-risk recovery rate — set up cohorts to measure',c:C.green},
+  ]
+
   const trustChecks=TRUST.map(t=>`<div class="ip-tcheck"><div class="tc ${t[2]}">${t[0]}</div><span>${t[1]}</span></div>`).join('')
+  const hlCards=HLS.map(h=>`<div class="ip-hl"><div class="hy">${h.yr}</div><div class="hv" style="color:${h.c}">${h.v}</div><div class="hs">${h.s}</div><div class="hglow" style="background:${h.c}"></div></div>`).join('')
+
   return `<div class="ip-hero">
     <div class="ip-hero-bg"><canvas class="ipCanvas"></canvas><div class="ip-fg-left"></div><div class="ip-fg-right"></div></div>
     <div class="ip-hero-left">
-      <div class="ip-nav-bar"><div class="ip-breadcrumb"><button data-ip="back">← Search</button><span>›</span><span>Institutions</span><span>›</span><b style="color:var(--txt)">VIT Vellore</b></div></div>
-      <div class="ip-tier-badge"><span class="livdot"></span>✦ Capabilio Verified · Level 2 · NAAC A+ · NBA Accredited</div>
-      <div class="ip-name">VIT<br><span class="serif-part">Vellore</span></div>
-      <div class="ip-tagline">Where ideas move at a different pace — 2,400 students, 64 verified recruiter partners, and a live talent signal updated in real time.</div>
-      <div class="ip-meta-row"><span>🏛️ Higher Education · Est. 1984</span><span>📍 Vellore, Tamil Nadu</span><span>👥 <b>2,400</b> students</span><span>🎓 <b>4</b> departments</span></div>
-      <div class="ip-meta-row"><span class="live-badge"><span class="pulse"></span>12 recruiters active now</span><span>🤝 <b>64</b> partner companies</span><span>📅 On Capabilio since 2024</span></div>
+      <div class="ip-nav-bar"><div class="ip-breadcrumb"><button data-ip="back">← Search</button><span>›</span><span>Institutions</span><span>›</span><b style="color:var(--txt)">${orgName}</b></div></div>
+      <div class="ip-tier-badge">${verBadge}</div>
+      <div class="ip-name">${nameFirst}${nameRest ? '<br><span class="serif-part">' + nameRest + '</span>' : ''}</div>
+      <div class="ip-tagline">${orgName} — ${studentCount !== '—' ? studentCount + ' students' : 'building the next generation of talent'}, connecting with top recruiters on Capabilio.</div>
+      <div class="ip-meta-row"><span>🏛️ ${orgType}</span>${orgLocation ? '<span>📍 ' + orgLocation + '</span>' : ''}<span>👥 <b>${studentCount}</b> students</span></div>
+      <div class="ip-meta-row"><span class="live-badge"><span class="pulse"></span>Live on Capabilio</span><span>📅 Profile active</span></div>
       <div class="ip-actions"><button class="btnP" data-ip="reqAccess">⚡ Request Recruiter Access</button><button class="btnG" data-ip="follow">+ Follow</button><button class="btnG" data-ip="brochure">📥 Download Brochure</button></div>
     </div>
-    <div class="ip-hero-right"><div class="ip-orbit" data-orbit><div class="ip-ring3"></div><div class="ip-ring2"></div><div class="ip-ring1"></div><div class="ip-orbit-core"><div class="cn">64%</div><div class="cl">Placed</div></div></div></div>
+    <div class="ip-hero-right"><div class="ip-orbit" data-orbit><div class="ip-ring3"></div><div class="ip-ring2"></div><div class="ip-ring1"></div><div class="ip-orbit-core"><div class="cn">${studentCount}</div><div class="cl">Students</div></div></div></div>
   </div>
-  <div class="ip-ticker"><div class="ip-ticker-track" data-ticker></div></div>
+  <div class="ip-ticker"><div class="ip-ticker-track" data-ticker="${encodeURIComponent(orgName)}"></div></div>
   <div class="ip-body">
     <div class="ip-statstrip">
-      <div class="ip-stat"><div class="sn" style="color:var(--green)">312</div><div class="sl">Offers this cycle</div><div class="sd">▲ +9% YoY</div></div>
-      <div class="ip-stat"><div class="sn" style="color:var(--gold)">₹6.2L</div><div class="sl">Avg Package</div><div class="sd">▲ +₹0.4L MoM</div></div>
-      <div class="ip-stat"><div class="sn" style="color:var(--blue)">1,342</div><div class="sl">Cohort Avg ELO</div><div class="sd">▲ +141 this term</div></div>
-      <div class="ip-stat"><div class="sn" style="color:var(--cyan)">64</div><div class="sl">Recruiter Partners</div><div class="sd">▲ +8 this year</div></div>
+      <div class="ip-stat"><div class="sn" style="color:var(--green)">—</div><div class="sl">Offers this cycle</div><div class="sd" style="color:var(--mut2)">Add placement data</div></div>
+      <div class="ip-stat"><div class="sn" style="color:var(--gold)">—</div><div class="sl">Avg Package</div><div class="sd" style="color:var(--mut2)">Pending records</div></div>
+      <div class="ip-stat"><div class="sn" style="color:var(--blue)">${studentCount}</div><div class="sl">Students</div><div class="sd" style="color:var(--mut2)">On platform</div></div>
+      <div class="ip-stat"><div class="sn" style="color:var(--cyan)">—</div><div class="sl">Recruiter Partners</div><div class="sd" style="color:var(--mut2)">Growing</div></div>
     </div>
-    <div class="ip-sh"><h2>Departments</h2><div class="hl"></div><span class="badge" style="background:rgba(246,196,83,.12);color:var(--gold)">4 active</span></div>
-    <div class="ip-dept-grid">${deptCards}</div>
-    <div class="ip-sh"><h2>Recruiter Network</h2><div class="hl"></div><span class="badge" style="background:rgba(79,212,163,.12);color:var(--green)">● 12 active now</span></div>
-    <div class="ip-rec-grid">${recCards}</div>
+    <div class="ip-sh"><h2>Departments</h2><div class="hl"></div><span class="badge" style="background:rgba(247,242,234,.07);color:var(--mut2)">Add via Settings</span></div>
+    <div style="border:1px dashed rgba(255,255,255,.08);border-radius:16px;padding:32px;text-align:center;color:var(--mut2);font-size:12px;margin-bottom:24px">
+      🎓 Department breakdown will appear here once you add departments in Settings → Profile
+    </div>
+    <div class="ip-sh"><h2>Recruiter Network</h2><div class="hl"></div><span class="badge" style="background:rgba(79,212,163,.12);color:var(--green)">● Active</span></div>
+    <div style="border:1px dashed rgba(255,255,255,.08);border-radius:16px;padding:32px;text-align:center;color:var(--mut2);font-size:12px;margin-bottom:24px">
+      🤝 Recruiter partners will appear here as they connect through Capabilio
+    </div>
     <div class="ip-bottom-row">
-      <div class="ip-trust"><div class="ip-trust-score">82</div><div class="ip-trust-label">Trust Score / 100</div>${trustChecks}</div>
+      <div class="ip-trust"><div class="ip-trust-score" style="color:${verified ? 'var(--green)' : 'var(--gold)'}">${verified ? '72' : '40'}</div><div class="ip-trust-label">Trust Score / 100</div>${trustChecks}</div>
       <div><div class="ip-sh"><h2>Landmark Outcomes</h2><div class="hl"></div></div><div class="ip-hl-grid">${hlCards}</div></div>
     </div>
-    <div class="ip-cta"><div class="cta-text" style="flex:1"><h3>Partner with VIT Vellore</h3><p>Access verified, skill-scored talent. NDA-gated. Sign a data agreement and receive curated shortlists in 48 hours.</p></div><button class="btnP" data-ip="reqAccess" style="white-space:nowrap">⚡ Request Access</button><button class="btnG" data-ip="follow" style="white-space:nowrap">+ Follow Institution</button></div>
+    <div class="ip-cta"><div class="cta-text" style="flex:1"><h3>Partner with ${orgName}</h3><p>Access verified, skill-scored talent. NDA-gated. Sign a data agreement and receive curated shortlists in 48 hours.</p></div><button class="btnP" data-ip="reqAccess" style="white-space:nowrap">⚡ Request Access</button><button class="btnG" data-ip="follow" style="white-space:nowrap">+ Follow Institution</button></div>
   </div>`
 }
 
@@ -207,13 +225,14 @@ function initInstPage(root) {
   const orbit = root.querySelector("[data-orbit]")
   if (orbit) {
     const CX = 160, CY = 160
+    const sc = orbit.closest(".ipx")?.dataset?.studentCount || "—"
     const ONODES = [
-      { angle: 0, r: 82, n: '2,400', l: 'Students', col: '#74a8ff' },
-      { angle: 180, r: 82, n: '64', l: 'Partners', col: '#54d9e0' },
-      { angle: 75, r: 128, n: '₹6.2L', l: 'Avg Pkg', col: '#f6c453' },
-      { angle: 255, r: 128, n: '#1', l: 'CSE Rank', col: '#ab93ff' },
-      { angle: 330, r: 152, n: '82', l: 'Trust', col: '#4fd4a3' },
-      { angle: 150, r: 152, n: '+141', l: 'ELO Lift', col: '#dc8b18' },
+      { angle: 0,   r: 82,  n: sc,    l: 'Students', col: '#74a8ff' },
+      { angle: 180, r: 82,  n: '—',   l: 'Partners',  col: '#54d9e0' },
+      { angle: 75,  r: 128, n: '—',   l: 'Avg Pkg',   col: '#f6c453' },
+      { angle: 255, r: 128, n: '—',   l: 'Offers',    col: '#ab93ff' },
+      { angle: 330, r: 152, n: '—',   l: 'Trust',     col: '#4fd4a3' },
+      { angle: 150, r: 152, n: '—',   l: 'ELO Lift',  col: '#dc8b18' },
     ]
     ONODES.forEach(o => {
       const rad = o.angle * Math.PI / 180, px = CX + o.r * Math.cos(rad), py = CY + o.r * Math.sin(rad)
@@ -229,29 +248,46 @@ function initInstPage(root) {
   // ticker
   const track = root.querySelector("[data-ticker]")
   if (track) {
+    const name = decodeURIComponent(track.dataset.ticker || "Your Institution")
     const TICKS = [
-      { col: '#4fd4a3', txt: 'Riya Sharma → Google SDE-1 · ₹38L offered' },
-      { col: '#f6c453', txt: 'Google moved 12 CSE students to Round 2' },
-      { col: '#74a8ff', txt: 'ELO 1,542 — VITs current platform high' },
-      { col: '#ab93ff', txt: 'Prof. Mehta published "LRU Cache Design" to 62 students' },
-      { col: '#54d9e0', txt: 'Flipkart shortlisted 92 students for SDE Intern' },
-      { col: '#dc8b18', txt: 'Zomato drive opened — 48h to apply' },
-      { col: '#4fd4a3', txt: '3 offers logged today · avg ₹7.1L' },
-      { col: '#ff8db1', txt: 'System Design Recovery track: IT cohort +8% ready' },
-      { col: '#f6c453', txt: 'Annual Tech Fest 2026 — 4,000+ attendees' },
-      { col: '#74a8ff', txt: 'Stripe pipeline: 3 offer letters pending signatures' },
+      { col: '#4fd4a3', txt: `${name} is live on Capabilio` },
+      { col: '#f6c453', txt: 'Recruiter access requests now open' },
+      { col: '#74a8ff', txt: `${name} — talent signal updating in real time` },
+      { col: '#ab93ff', txt: 'Students building verified skill profiles' },
+      { col: '#54d9e0', txt: 'Placement data sync coming soon' },
+      { col: '#dc8b18', txt: 'Complete your profile to unlock Trust Seal' },
+      { col: '#4fd4a3', txt: 'Arena challenges active for students' },
+      { col: '#ff8db1', txt: 'Add departments to unlock department breakdown' },
+      { col: '#f6c453', txt: `${name} — building the next generation of talent` },
+      { col: '#74a8ff', txt: 'Connect recruiter partners to grow your network' },
     ]
     track.innerHTML = TICKS.concat(TICKS).map(t => '<span class="ip-tick-item"><span class="tid" style="background:' + t.col + '"></span>' + t.txt + '</span>').join('')
   }
   return () => { cancelAnimationFrame(raf1); cancelAnimationFrame(raf2); clearTimeout(capTimer) }
 }
 
-export default function InstitutionPublicProfile({ onBack, onAction }) {
+export default function InstitutionPublicProfile({ onBack, onAction, userData, members }) {
   const ref = useRef(null)
+
+  // Derive dynamic values from props
+  const studentCount = members
+    ? members.filter(m => m.role === "student" || m.role === "Student").length || members.length
+    : (userData?.student_count || "—")
+
+  const profileData = {
+    orgName:      userData?.org_name      || "Your Institution",
+    orgLocation:  userData?.org_location  || "",
+    orgType:      userData?.org_inst_type || userData?.org_industry || "Higher Education",
+    naacGrade:    userData?.org_naac_grade|| "",
+    studentCount: studentCount || "—",
+    verified:     !!userData?.verified,
+  }
+
   useEffect(() => {
     const root = ref.current
     if (!root) return
-    root.innerHTML = buildBody()
+    root.dataset.studentCount = profileData.studentCount
+    root.innerHTML = buildBody(profileData)
     const cleanup = initInstPage(root)
     const onClick = (e) => {
       const b = e.target.closest("[data-ip]")
@@ -262,7 +298,8 @@ export default function InstitutionPublicProfile({ onBack, onAction }) {
     }
     root.addEventListener("click", onClick)
     return () => { root.removeEventListener("click", onClick); cleanup && cleanup() }
-  }, [onBack, onAction])
+  // Re-render when userData or members change
+  }, [onBack, onAction, userData, members])
 
   return (
     <>
