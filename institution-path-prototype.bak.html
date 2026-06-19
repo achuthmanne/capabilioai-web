@@ -20,6 +20,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .serif{font-family:'Instrument Serif',serif;font-style:italic;}
 a{color:inherit;text-decoration:none;}button{font-family:inherit;cursor:pointer;}
 ::-webkit-scrollbar{width:8px;height:8px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.11);border-radius:6px;}
+
 /* ── TOP BAR ── */
 #top{height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;background:rgba(11,10,8,.9);backdrop-filter:blur(24px);border-bottom:1px solid var(--line);position:relative;z-index:30;}
 #top::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent 5%,rgba(246,196,83,.4) 50%,transparent 95%);pointer-events:none;}
@@ -35,8 +36,10 @@ a{color:inherit;text-decoration:none;}button{font-family:inherit;cursor:pointer;
 .roleSw button:not(.on):hover{color:var(--txt);background:rgba(255,255,255,.05);}
 .who{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--mut);white-space:nowrap;}
 .who .av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:10.5px;color:#23170a;}
+
 /* ── SHELL ── */
 #shell{display:flex;height:calc(100vh - 60px);position:relative;z-index:1;}
+
 /* ── SIDEBAR ── */
 #side{width:246px;flex-shrink:0;background:linear-gradient(180deg,rgba(255,255,255,.028),rgba(255,255,255,.008));border-right:1px solid var(--line);padding:8px 0 24px;overflow-y:auto;position:relative;}
 .side-head{padding:16px 16px 6px;font-size:8.5px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:rgba(247,242,234,.3);}
@@ -52,22 +55,27 @@ a{color:inherit;text-decoration:none;}button{font-family:inherit;cursor:pointer;
 .sidecard{margin:14px 10px 0;background:linear-gradient(135deg,rgba(220,139,24,.08),rgba(171,147,255,.04));border:1px solid rgba(246,196,83,.14);border-radius:14px;padding:12px 13px;}
 .sidecard .t{font-size:11px;font-weight:800;color:var(--gold);margin-bottom:5px;}
 .sidecard .d{font-size:10px;color:var(--mut);line-height:1.6;}
+
 /* ── MAIN ── */
 #main{flex:1;overflow-y:auto;padding:24px 32px 70px;position:relative;}
+
 /* ── SCOPE BAR ── */
 .scopebar{display:inline-flex;align-items:center;gap:8px;font-size:10.5px;color:var(--mut2);background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:999px;padding:6px 14px;margin-bottom:22px;}
 .scopebar b{color:var(--txt);font-weight:700;}.scopebar .k{color:var(--gold);font-weight:800;}
+
 /* ── PAGE HEADER ── */
 .phead{margin-bottom:22px;}
 .phead h1{font-family:'Instrument Serif',serif;font-weight:400;font-size:40px;letter-spacing:-.02em;line-height:.94;}
 .phead h1 em{color:var(--gold);font-style:inherit;}
 .phead p{color:var(--mut);font-size:13px;margin-top:9px;max-width:740px;line-height:1.65;}
+
 /* ── PAGE STAT STRIP ── */
 .phead-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:18px;overflow:hidden;margin:18px 0 22px;}
 .phead-stat{background:linear-gradient(180deg,rgba(255,255,255,.048),rgba(255,255,255,.02));padding:16px 18px;}
 .phead-stat .psn{font-size:30px;font-weight:900;letter-spacing:-.05em;line-height:1;}
 .phead-stat .psl{font-size:8.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--mut2);margin-top:4px;}
 .phead-stat .psd{font-size:10px;font-weight:700;margin-top:5px;display:flex;align-items:center;gap:4px;}
+
 /* ── SAE (Signal / Action / Evidence) ── */
 .sae{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:0 0 22px;}
 .saeC{border:1px solid var(--line);border-radius:18px;padding:16px 17px;position:relative;overflow:hidden;}
@@ -78,31 +86,38 @@ a{color:inherit;text-decoration:none;}button{font-family:inherit;cursor:pointer;
 .saeC.s{background:linear-gradient(160deg,rgba(116,168,255,.07),rgba(255,255,255,.02));border-color:rgba(116,168,255,.24);}.saeC.s::before{background:var(--blue);}.saeC.s .lab{color:var(--blue);}
 .saeC.a{background:linear-gradient(160deg,rgba(246,196,83,.08),rgba(255,255,255,.02));border-color:rgba(246,196,83,.26);}.saeC.a::before{background:var(--gold);}.saeC.a .lab{color:var(--gold);}
 .saeC.e{background:linear-gradient(160deg,rgba(79,212,163,.07),rgba(255,255,255,.02));border-color:rgba(79,212,163,.24);}.saeC.e::before{background:var(--green);}.saeC.e .lab{color:var(--green);}
+
 /* ── TABS ── */
 .tabbar{display:flex;gap:5px;margin-bottom:18px;overflow-x:auto;padding-bottom:2px;}
 .tabbar button{border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--mut);font-size:11.5px;font-weight:700;padding:8px 14px;border-radius:999px;white-space:nowrap;transition:.15s;}
 .tabbar button.on{color:#23170a;background:linear-gradient(135deg,var(--amber),var(--gold));border-color:transparent;box-shadow:0 3px 12px rgba(220,139,24,.22);}
 .tabbar button:not(.on):hover{color:var(--txt);background:rgba(255,255,255,.05);}
+
 /* ── GRID ── */
 .grid{display:grid;gap:13px;}
 .g5{grid-template-columns:repeat(5,1fr);}.g4{grid-template-columns:repeat(4,1fr);}.g3{grid-template-columns:repeat(3,1fr);}.g2{grid-template-columns:repeat(2,1fr);}
+
 /* ── CARDS ── */
 .card{background:linear-gradient(180deg,rgba(255,255,255,.052),rgba(255,255,255,.026));border:1px solid var(--line);border-radius:20px;padding:18px;}
 .card.hov{transition:.2s;}.card.hov:hover{transform:translateY(-2px);border-color:rgba(246,196,83,.32);box-shadow:var(--shadow);}
+
 /* ── KPI CARD ── */
 .kpi .n{font-size:38px;font-weight:900;letter-spacing:-.06em;line-height:1;}
 .kpi .l{font-size:9px;color:var(--mut2);margin-top:5px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;}
 .kpi .d{font-size:10px;margin-top:8px;font-weight:700;display:flex;align-items:center;gap:5px;}
 .up{color:var(--green);}.down{color:var(--red);}
+
 /* ── PULSE DOT ── */
 .pulse{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(79,212,163,.6);animation:pl 1.8s infinite;flex-shrink:0;}
 @keyframes pl{0%{box-shadow:0 0 0 0 rgba(79,212,163,.5)}70%{box-shadow:0 0 0 7px rgba(79,212,163,0)}100%{box-shadow:0 0 0 0 rgba(79,212,163,0)}}
+
 /* ── SECTION HEADERS ── */
 .sec{margin:22px 0 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 .sec h2{font-size:9.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--mut2);white-space:nowrap;}
 .sec .hl{flex:1;height:1px;background:linear-gradient(90deg,var(--line2),transparent);min-width:20px;}
 .sec .sub{font-size:11px;color:var(--mut2);}
 .sec .badge{font-size:9.5px;font-weight:800;padding:3px 9px;border-radius:999px;white-space:nowrap;}
+
 /* ── BUTTONS ── */
 .btnP{padding:10px 17px;border-radius:12px;background:linear-gradient(135deg,var(--amber),var(--gold));color:#23170a;font-weight:800;font-size:12.5px;border:none;box-shadow:0 4px 16px rgba(220,139,24,.18);transition:.15s;}
 .btnP:hover{box-shadow:0 6px 24px rgba(220,139,24,.35);transform:translateY(-1px);}
@@ -112,6 +127,7 @@ a{color:inherit;text-decoration:none;}button{font-family:inherit;cursor:pointer;
 .btnRd{padding:8px 13px;border-radius:10px;background:rgba(255,129,119,.10);border:1px solid rgba(255,129,119,.28);color:var(--red);font-weight:800;font-size:11.5px;}
 .btnXs{padding:6px 12px;border-radius:9px;font-size:11px;font-weight:800;border:1px solid var(--line2);background:rgba(255,255,255,.04);color:var(--txt);transition:.12s;}
 .btnXs:hover{border-color:rgba(255,255,255,.24);background:rgba(255,255,255,.07);}
+
 /* ── TABLES ── */
 table{width:100%;border-collapse:collapse;font-size:12.5px;}
 th{text-align:left;font-size:8.5px;font-weight:800;letter-spacing:.1em;color:var(--mut2);text-transform:uppercase;padding:12px 14px;border-bottom:1px solid var(--line);}
@@ -122,28 +138,33 @@ tr:hover td{background:rgba(255,255,255,.022);}
 .tname{display:flex;align-items:center;gap:10px;}
 .tav{width:31px;height:31px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;color:#23170a;flex-shrink:0;}
 .tnm{font-weight:700;font-size:12.5px;}.tsub{font-size:10.5px;color:var(--mut2);}
+
 /* ── TAGS ── */
 .tag{font-size:10px;font-weight:800;padding:4px 9px;border-radius:999px;white-space:nowrap;}
 .am{background:rgba(246,196,83,.13);color:var(--gold);}.gr{background:rgba(79,212,163,.13);color:var(--green);}.bl{background:rgba(116,168,255,.13);color:var(--blue);}
 .pu{background:rgba(171,147,255,.15);color:var(--purple);}.pk{background:rgba(255,141,177,.13);color:var(--pink);}.rd{background:rgba(255,129,119,.13);color:var(--red);}.cy{background:rgba(84,217,224,.13);color:var(--cyan);}.gy{background:rgba(255,255,255,.07);color:var(--mut);}
 .risk{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;padding:4px 9px;border-radius:999px;}
 .risk.hi{background:rgba(255,129,119,.13);color:var(--red);}.risk.md{background:rgba(246,196,83,.13);color:var(--gold);}.risk.lo{background:rgba(79,212,163,.13);color:var(--green);}
+
 /* ── MISC ── */
 .restrict{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:800;color:var(--red);background:rgba(255,129,119,.09);border:1px solid rgba(255,129,119,.25);border-radius:999px;padding:5px 12px;}
 .privacy{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:800;color:var(--mut2);background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:999px;padding:5px 12px;}
 .empty{text-align:center;padding:40px;color:var(--mut2);font-size:12.5px;border:1px dashed var(--line2);border-radius:18px;}
+
 /* ── ROW ITEMS ── */
 .row{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,rgba(255,255,255,.048),rgba(255,255,255,.022));margin-bottom:9px;transition:.14s;}
 .row:hover{border-color:rgba(255,255,255,.17);background:linear-gradient(180deg,rgba(255,255,255,.062),rgba(255,255,255,.03));}
 .row .av{width:36px;height:36px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:#23170a;flex-shrink:0;}
 .row .nm{font-size:13px;font-weight:700;}.row .mt{font-size:10.5px;color:var(--mut);margin-top:2px;}
 .row .right{margin-left:auto;display:flex;align-items:center;gap:8px;}
+
 /* ── BARS ── */
 .bar{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
 .bar .nm{font-size:11.5px;width:135px;flex-shrink:0;}
 .bar .tk{flex:1;height:8px;background:rgba(255,255,255,.07);border-radius:999px;overflow:hidden;}
 .bar .fill{height:100%;border-radius:999px;}
 .bar .pc{font-size:11.5px;font-weight:800;width:38px;text-align:right;}
+
 /* ── POSTS ── */
 .post{border:1px solid var(--line);border-radius:20px;background:linear-gradient(180deg,rgba(255,255,255,.052),rgba(255,255,255,.026));padding:17px;margin-bottom:12px;}
 .post .ph{display:flex;align-items:center;gap:11px;margin-bottom:11px;}
@@ -154,9 +175,11 @@ tr:hover td{background:rgba(255,255,255,.022);}
 .post .doc{margin-top:12px;display:flex;align-items:center;gap:11px;padding:12px;border-radius:12px;background:rgba(116,168,255,.08);border:1px solid rgba(116,168,255,.22);}
 .post .doc .ic{font-size:22px;}.post .doc .dn{font-size:12.5px;font-weight:700;}.post .doc .ds{font-size:11px;color:var(--mut2);}
 .post .pf{display:flex;gap:16px;margin-top:13px;padding-top:11px;border-top:1px solid var(--line);font-size:11px;color:var(--mut2);font-weight:600;}
+
 #mapwrap{position:relative;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:radial-gradient(120% 120% at 50% 0%,#1a140a,#0b0a08 72%);height:360px;}
 #tmap{position:absolute;inset:0;width:100%;height:100%;}
 .liveband{position:absolute;left:14px;bottom:14px;display:flex;align-items:center;gap:8px;background:rgba(11,10,8,.6);backdrop-filter:blur(8px);border:1px solid rgba(79,212,163,.3);border-radius:999px;padding:6px 13px;font-size:11.5px;color:var(--green);font-weight:700;}
+
 #mob{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:60;padding:20px;}
 #mob.show{display:flex;}
 #modal{width:480px;max-width:100%;max-height:88vh;overflow-y:auto;background:var(--bg2);border:1px solid var(--line2);border-radius:20px;padding:24px;box-shadow:var(--shadow);}
@@ -170,17 +193,20 @@ tr:hover td{background:rgba(255,255,255,.022);}
 .note{font-size:10.5px;color:var(--gold);background:rgba(220,139,24,.10);border:1px solid rgba(246,196,83,.24);border-radius:10px;padding:9px 11px;margin-bottom:13px;line-height:1.5;}
 .flash{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:linear-gradient(135deg,var(--green),#74e0b8);color:#06281d;font-weight:800;font-size:12.5px;padding:12px 22px;border-radius:999px;z-index:80;opacity:0;transition:.3s;box-shadow:0 14px 40px rgba(79,212,163,.35);}
 .flash.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
 #drawer{position:fixed;top:0;right:0;height:100vh;width:430px;max-width:92vw;background:var(--bg2);border-left:1px solid var(--line2);box-shadow:-30px 0 80px rgba(0,0,0,.55);transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);z-index:55;overflow-y:auto;padding:22px;}
 #drawer.show{transform:translateX(0);}
 #drawer .dx{position:absolute;top:16px;right:16px;width:30px;height:30px;border-radius:9px;background:var(--panel);border:1px solid var(--line2);color:var(--txt);font-size:15px;}
 #dscrim{position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:.28s;z-index:54;}
 #dscrim.show{opacity:1;pointer-events:all;}
 .lockwrap{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:54px 20px;}
+
 :focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px;}
 .skip{position:absolute;left:-999px;top:0;z-index:99;background:var(--gold);color:#23170a;padding:8px 14px;border-radius:0 0 8px 0;font-weight:800;font-size:12px;}
 .skip:focus{left:0;}
 #hamb{display:none;width:34px;height:34px;border-radius:10px;background:var(--panel);border:1px solid var(--line2);color:var(--txt);font-size:16px;}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+
 /* ===================== INSTITUTION PROFILE PAGE ===================== */
 .ip-wrap{margin:-22px -30px -70px;overflow:hidden;}
 .ip-hero{position:relative;min-height:430px;display:grid;grid-template-columns:55% 45%;overflow:hidden;background:#0b0a08;}
@@ -296,6 +322,7 @@ tr:hover td{background:rgba(255,255,255,.022);}
   .ip-body{padding:18px 16px 50px;}
   .ip-hero-left{padding:24px 20px;}
 }
+
 @media(max-width:1100px){.g5{grid-template-columns:repeat(3,1fr);}.g4{grid-template-columns:1fr 1fr;}.sae{grid-template-columns:1fr;}}
 @media(max-width:760px){
   #hamb{display:inline-flex;align-items:center;justify-content:center;}
@@ -321,6 +348,7 @@ tr:hover td{background:rgba(255,255,255,.022);}
 <div id="dscrim"></div><div id="drawer" role="dialog" aria-label="Detail panel"></div>
 <div id="mob"><div id="modal"></div></div>
 <div class="flash" id="flash"></div>
+
 <script>
 /* ===================== TOKENS / HELPERS ===================== */
 const C={am:'#dc8b18',gold:'#f6c453',green:'#4fd4a3',blue:'#74a8ff',purple:'#ab93ff',cyan:'#54d9e0',pink:'#ff8db1',red:'#ff8177',teal:'#34d4bf'};
@@ -328,6 +356,7 @@ const $=s=>document.querySelector(s);
 const ini=s=>s.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
 const grad=c=>'linear-gradient(135deg,'+c+',#f6c453)';
 function flash(m){const f=$('#flash');f.textContent='✓ '+m;f.classList.add('show');clearTimeout(f._t);f._t=setTimeout(()=>f.classList.remove('show'),2200);}
+
 /* ===================== ROLES ===================== */
 const ROLES=[
   ['admin','🛡️','Institution Admin'],
@@ -360,6 +389,7 @@ const NAV={
   student:[['saccess','🔒','Access'],['spulse','📣','Institution Pulse']],
 };
 const FIRST={admin:'home',placement:'plhome',faculty:'fhome',mentor:'mhome',dept:'dhome',recruiter:'rhome',student:'saccess'};
+
 let S={role:'admin',page:'home',tab:{},sel:{},
   studentReqs:[{id:1,name:'Aman Verma',cid:'21BCE1042',br:'CSE',dup:false},{id:2,name:'Neha Das',cid:'21BIT3090',br:'IT',dup:true},{id:3,name:'Sai Kumar',cid:'21BEC2210',br:'ECE',dup:false}],
   posts:3, drives:[{id:1,co:'Google',role:'SDE-1',elig:'ELO>1300 · CSE/IT',short:48,stage:'Round 2',status:'live'},{id:2,co:'Flipkart',role:'SDE Intern',elig:'ELO>1150',short:92,stage:'Shortlist',status:'live'},{id:3,co:'Deloitte',role:'Analyst',elig:'CGPA>7',short:64,stage:'Offers',status:'closing'}],
@@ -399,6 +429,7 @@ let S={role:'admin',page:'home',tab:{},sel:{},
     {id:3,trigger:'At-risk case idle',sla:'48h',escTo:'Placement Cell',remind:'daily',reassign:'after 72h',on:true},
     {id:4,trigger:'Recruiter access request',sla:'24h',escTo:'Legal',remind:'every 6h',reassign:'after 48h',on:false},
   ],
+  // action-level permission grant matrix: 0=none, 1=full, 2=own-only
   perms:{
     'Students · View':[1,1,1,1,0],'Students · Approve':[1,0,0,0,0],'Students · Edit':[1,1,0,1,0],'Students · Export':[1,1,0,1,0],
     'Faculty · View':[1,0,0,1,0],'Faculty · Create':[1,0,0,0,0],'Faculty · Deactivate':[1,0,0,0,0],
@@ -409,6 +440,7 @@ let S={role:'admin',page:'home',tab:{},sel:{},
   },
   permRoles:[['Admin',C.am],['Placement',C.green],['Professor',C.purple],['Dept Head',C.blue],['Recruiter',C.cyan]],
 };
+// cross-page search index
 const IDX=[
   ['Student','Riya Sharma','CSE · ELO 1542 · placed-track',C.gold],['Student','Arjun Nair','CSE · ELO 1489 · interviewing',C.gold],['Student','Meera Joshi','ECE · ELO 980 · at-risk',C.gold],['Student','Karthik R.','AI&DS · ELO 1188 · building',C.gold],
   ['Faculty','Prof. Mehta','CSE · DSA & System Design · mentor',C.purple],['Faculty','Dr. Iyer','AI&DS · HOD · mentor',C.purple],['Faculty','Ms. Rao','CSE · Placement Officer',C.purple],
@@ -420,12 +452,14 @@ const IDX=[
   ['Institution','University of Hertfordshire','Verified · 241K followers · partner institution',C.blue],
 ];
 let SQ='',SF='All';
+
 /* ===================== SHELL ===================== */
 function setRole(r){S.role=r;S.page=FIRST[r];render();}
 function setTab(p,t){S.tab[p]=t;render();}
 function go(p){S.page=p;document.body.classList.remove('navopen');render();}
 $('#roleSw').innerHTML=ROLES.map(([r,ic,l])=>'<button data-r="'+r+'">'+ic+' '+l+'</button>').join('');
 $('#roleSw').addEventListener('click',e=>{const b=e.target.closest('button');if(b)setRole(b.dataset.r);});
+
 function render(){
   document.querySelectorAll('#roleSw button').forEach(b=>b.classList.toggle('on',b.dataset.r===S.role));
   const w=WHO[S.role];$('#who').innerHTML='<div class="av" style="background:'+grad(w.c)+'">'+ini(w.n)+'</div>'+w.n;
@@ -452,8 +486,10 @@ function render(){
   if(document.getElementById('ipCanvas'))initInstPage();
   bind();
 }
+
 /* ===================== UI BUILDERS ===================== */
 function page(title,sub,body){
+  // Split title on last word to italicise with Instrument Serif for a futuristic mixed-type look
   const parts=title.split(' ');
   const last=parts.pop();
   const h1=(parts.length?parts.join(' ')+' <em>'+last+'</em>':last);
@@ -481,6 +517,8 @@ function comments(){return '<div class="sec" style="margin:16px 0 8px"><h2 style
   '<div class="card" style="font-size:12px;margin-bottom:7px"><div style="display:flex;gap:8px;align-items:center;margin-bottom:5px"><b>Ms. Rao</b><span class="tag rd">Admin only</span><span style="margin-left:auto;color:var(--mut2);font-size:10px">3h</span></div>Flagged for placement intervention. Do not surface to student.</div>'+
   '<div class="card" style="font-size:12px;margin-bottom:10px"><div style="display:flex;gap:8px;align-items:center;margin-bottom:5px"><b>Prof. Mehta</b><span class="tag bl">All staff</span><span style="margin-left:auto;color:var(--mut2);font-size:10px">1d</span></div>Assigned to remedial DSA track.</div>'+
   '<div style="display:flex;gap:7px"><input placeholder="Add a comment…" style="flex:1;background:rgba(255,255,255,.05);border:1px solid var(--line2);border-radius:8px;padding:8px 10px;color:var(--txt);font-size:12px"><select style="background:rgba(255,255,255,.05);border:1px solid var(--line2);border-radius:8px;color:var(--txt);font-size:11px;padding:0 6px"><option>Admin only</option><option>Placement + Admin</option><option>All staff</option><option>Recruiter-visible</option></select><button class="btnXs" data-act="addComment">Post</button></div>';}
+
+/* ===================== DEMO DATA ===================== */
 const STUD=[
   ['Riya Sharma','CSE · 4th yr','21BCE1188',1542,'31','Solved','Interviewing · Google','Prof. Mehta','Low'],
   ['Arjun Nair','CSE · 4th yr','21BCE1042',1489,'28','Active','Shortlisted · Flipkart','Prof. Mehta','Low'],
@@ -495,48 +533,52 @@ const FAC=[
   ['Prof. Nair','IT · Web Engineering',1,7,'0','71%','Asst. Prof.',''],
   ['Ms. Rao','CSE · Placement Cell',0,0,'0','—','Placement Officer',''],
 ];
+
 /* ===================== GLOBAL SEARCH ENGINE ===================== */
 function renderSearch(){
   const q=SQ.trim().toLowerCase();
   let rows=IDX.filter(r=>(SF==='All'||r[0]===SF)&&(!q||(r[1]+' '+r[2]+' '+r[0]).toLowerCase().includes(q)));
-  if(!rows.length)return '<div class="empty">No matches'+(q?' for "'+SQ+'"':'')+'. Try a different term or filter.</div>';
+  if(!rows.length)return '<div class=”empty”>No matches'+(q?' for “'+SQ+'”':'')+'. Try a different term or filter.</div>';
   const ICO={Student:'📚',Faculty:'👥',Drive:'🎯',Document:'📄',Case:'🚨',Group:'👨‍👩‍👧',Institution:'🏛️'};
+  // Split institutions out for special treatment
   const insts=rows.filter(r=>r[0]==='Institution');
   const rest=rows.filter(r=>r[0]!=='Institution');
-  let out='<div class="mt" style="font-size:11px;margin-bottom:12px;color:var(--mut2)">'+rows.length+' result'+(rows.length>1?'s':'')+'</div>';
+  let out='<div class=”mt” style=”font-size:11px;margin-bottom:12px”>'+rows.length+' result'+(rows.length>1?'s':'')+'</div>';
   if(insts.length){
-    out+='<div style="margin-bottom:16px"><div style="font-size:9.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--mut2);margin-bottom:10px">Institutions</div>';
+    out+=`<div style=”margin-bottom:16px”><div style=”font-size:9.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--mut2);margin-bottom:10px”>Institutions</div>`;
     out+=insts.map(r=>{
       const isVIT=r[1].toLowerCase().includes('vit');
-      return '<div style="border:1px solid rgba(246,196,83,'+(isVIT?.35:.18)+');border-radius:18px;background:linear-gradient(135deg,rgba(220,139,24,'+(isVIT?.12:.06)+'),rgba(255,255,255,.02));padding:16px 18px;margin-bottom:9px;cursor:pointer;transition:.18s;display:flex;gap:14px;align-items:center" data-act="goInst" data-id="'+r[1]+'">'+
-        '<div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,'+r[3]+',rgba(255,255,255,.1));display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;color:#1a1200;flex-shrink:0">'+r[1].split(' ').map(w=>w[0]).join('').slice(0,2)+'</div>'+
-        '<div style="flex:1;min-width:0">'+
-          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
-            '<span style="font-size:14px;font-weight:800">'+r[1]+'</span>'+
-            '<span class="tag am" style="font-size:9.5px">🏛️ Institution</span>'+
-            (isVIT?'<span class="tag gr" style="font-size:9.5px">✦ Verified · Level 2</span>':'')+
-          '</div>'+
-          '<div style="font-size:11.5px;color:var(--mut);margin-top:4px">'+r[2]+'</div>'+
-        '</div>'+
-        '<div style="flex-shrink:0;display:flex;gap:7px">'+
-          (isVIT?'<button class="btnP" style="font-size:11.5px;padding:8px 14px" data-act="goInst" data-id="'+r[1]+'">View Profile ↗</button>':'')+
-          '<button class="btnG" style="font-size:11.5px;padding:8px 13px">Follow</button>'+
-        '</div>'+
-      '</div>';
+      return `<div style=”border:1px solid rgba(246,196,83,${isVIT?.35:.18});border-radius:18px;background:linear-gradient(135deg,rgba(220,139,24,${isVIT?.12:.06}),rgba(255,255,255,.02));padding:16px 18px;margin-bottom:9px;cursor:pointer;transition:.18s;display:flex;gap:14px;align-items:center” data-act=”goInst” data-id=”${r[1]}”>
+        <div style=”width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,${r[3]},rgba(255,255,255,.1));display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;color:#1a1200;flex-shrink:0”>${r[1].split(' ').map(w=>w[0]).join('').slice(0,2)}</div>
+        <div style=”flex:1;min-width:0”>
+          <div style=”display:flex;align-items:center;gap:8px;flex-wrap:wrap”>
+            <span style=”font-size:14px;font-weight:800”>${r[1]}</span>
+            <span class=”tag am” style=”font-size:9.5px”>🏛️ Institution</span>
+            ${isVIT?'<span class=”tag gr” style=”font-size:9.5px”>✦ Verified · Level 2</span>':''}
+          </div>
+          <div style=”font-size:11.5px;color:var(--mut);margin-top:4px”>${r[2]}</div>
+        </div>
+        <div style=”flex-shrink:0;display:flex;gap:7px”>
+          ${isVIT?'<button class=”btnP” style=”font-size:11.5px;padding:8px 14px” data-act=”goInst” data-id=”'+r[1]+'”>View Profile ↗</button>':''}
+          <button class=”btnG” style=”font-size:11.5px;padding:8px 13px”>Follow</button>
+        </div>
+      </div>`;
     }).join('');
     out+='</div>';
   }
   if(rest.length){
-    if(insts.length)out+='<div style="font-size:9.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--mut2);margin-bottom:10px">Other results</div>';
-    out+=rest.map(r=>'<div class="row"><div class="av" style="background:'+grad(r[3])+'">'+(ICO[r[0]]||'•')+'</div><div style="flex:1"><div class="nm">'+r[1]+' <span class="tag gy" style="margin-left:4px">'+r[0]+'</span></div><div class="mt">'+r[2]+'</div></div><div class="right"><button class="btnXs">Open</button></div></div>').join('');
+    if(insts.length)out+=`<div style=”font-size:9.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--mut2);margin-bottom:10px”>Other results</div>`;
+    out+=rest.map(r=>`<div class=”row”><div class=”av” style=”background:${grad(r[3])}”>${ICO[r[0]]||'•'}</div><div style=”flex:1”><div class=”nm”>${r[1]} <span class=”tag gy” style=”margin-left:4px”>${r[0]}</span></div><div class=”mt”>${r[2]}</div></div><div class=”right”><button class=”btnXs”>Open</button></div></div>`).join('');
   }
   return out;
 }
 window.gsearch=function(v){SQ=v;const el=document.getElementById('gsres');if(el)el.innerHTML=renderSearch();};
 window.gsfilter=function(f){SF=f;const r=document.getElementById('gsres');if(r)r.innerHTML=renderSearch();
-  document.querySelectorAll('#gschips button').forEach(b=>{const on=b.textContent===(f==='All'?'All':f+'s')||(b.textContent==='Institutions'&&f==='Institution');b.style.borderColor=on?'var(--gold)':'';b.style.color=on?'var(--gold)':'';});};
+  document.querySelectorAll('#gschips button').forEach(b=>{const on=b.textContent===(f==='All'?'All':f+'s')||b.textContent==='Institutions'&&f==='Institution';b.style.borderColor=on?'var(--gold)':'';b.style.color=on?'var(--gold)':'';});};
+
 /* ===================== PAGES ===================== */
 const PAGES={
+/* ---------- ADMIN: HOME ---------- */
 home:()=>page('Institution Command Center','Where the institution stands, what needs action, and what changed.',
   '<div class="phead-strip">'+
   '<div class="phead-stat"><div class="psn" style="color:var(--green)">64%</div><div class="psl">Placement Rate</div><div class="psd up">▲ +9% YoY</div></div>'+
@@ -561,6 +603,8 @@ home:()=>page('Institution Command Center','Where the institution stands, what n
      '<div class="row" style="margin:0 0 7px"><div class="av" style="background:'+grad(C.blue)+';font-size:16px">'+d[0]+'</div><div style="flex:1"><div class="nm">'+d[1]+'</div><div class="mt">'+d[2]+'</div></div></div>').join('')+
     '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btnP" data-act="post">+ Post Update</button><button class="btnG" data-p="students">Review Approvals</button></div></div>'+
   '</div>'),
+
+/* ---------- ADMIN: STUDENTS ---------- */
 students:()=>{const T=[['linked','Linked Students'],['pending','Pending Approvals'],['arena','Arena Sync'],['readiness','Readiness'],['placement','Placement Status'],['alumni','Alumni']];const a=curTab('students',T);
   let body='';
   if(a==='linked')body='<div style="margin-bottom:12px"><span class="restrict">🔒 Visible to Admin & Placement Cell only</span></div>'+
@@ -576,6 +620,8 @@ students:()=>{const T=[['linked','Linked Students'],['pending','Pending Approval
   else if(a==='placement')body=tbl(['Student','Branch','Status','Company','Package'],[['Sneha Patel','IT','Placed','Microsoft','₹38L'],['Riya Sharma','CSE','Interviewing','Google','—'],['Arjun Nair','CSE','Shortlisted','Flipkart','—'],['Karthik R.','AI&DS','Building','—','—']].map(r=>'<tr><td>'+nameCell(r[0],r[1],C.green)+'</td><td>'+r[1]+'</td><td><span class="tag '+(r[2]==='Placed'?'gr':r[2]==='Building'?'gy':'am')+'">'+r[2]+'</span></td><td>'+r[3]+'</td><td>'+r[4]+'</td></tr>').join(''));
   else body=tbl(['Alumni','Batch','Now at','Role'],[['Vikram M.','2023','Amazon','SDE-2'],['Tara S.','2022','Stripe','Backend'],['Nikhil P.','2023','Google','SWE']].map(r=>'<tr><td>'+nameCell(r[0],r[1],C.purple)+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td><td>'+r[3]+'</td></tr>').join(''));
   return page('Students','Your verified cohort — auto-synced from Student Path.',tabs('students',T)+body);},
+
+/* ---------- ADMIN: FACULTY ---------- */
 faculty:()=>{const T=[['profs','Professors'],['mentors','Mentors'],['invites','Pending Invites'],['depts','Departments'],['activity','Activity'],['logs','Access Logs']];const a=curTab('faculty',T);let body='';
   if(a==='profs'||a==='mentors'){const list=a==='mentors'?FAC.filter(f=>f[7]==='Mentor'):FAC;
     body='<div class="sec" style="margin:0 0 11px"><h2>'+list.length+' '+(a==='mentors'?'Mentors':'Faculty')+'</h2><div class="hl"></div><button class="btnP" data-act="addFac">+ Add Professor</button></div>'+
@@ -585,19 +631,22 @@ faculty:()=>{const T=[['profs','Professors'],['mentors','Mentors'],['invites','P
   else if(a==='activity')body=tbl(['Faculty','Action','When'],[['Prof. Mehta','Published task to CSE 2025','24m'],['Dr. Iyer','Accepted 2 mentor sessions','1h'],['Prof. Nair','Shared notes to IT group','3h']].map(r=>'<tr><td>'+nameCell(r[0],'',C.am)+'</td><td>'+r[1]+'</td><td>'+r[2]+' ago</td></tr>').join(''));
   else body='<div class="note">📜 Immutable audit trail — every privileged action is logged.</div>'+tbl(['Actor','Action','Entity','Severity','Time'],[['Dr. Anand','Approved student','21BCE1042','info','2m'],['Dr. Anand','Created professor','Prof. Sharma','info','1d'],['Ms. Rao','Exported placement report','Q2-2026','notice','2d'],['Dr. Anand','Deactivated staff','Prof. Old','warn','5d']].map(r=>'<tr><td>'+nameCell(r[0],'',C.am)+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td><td><span class="tag '+(r[3]==='warn'?'rd':r[3]==='notice'?'am':'gy')+'">'+r[3]+'</span></td><td>'+r[4]+' ago</td></tr>').join(''));
   return page('Faculty','Provision, assign roles & oversee faculty. Professor earnings never appear here.',tabs('faculty',T)+body);},
+
+/* ---------- ADMIN/PLACEMENT: PLACEMENT CELL ---------- */
 placement:()=>{const T=[['live','Live Hiring'],['drives','Campus Drives'],['recruiters','Recruiters'],['offers','Offers'],['packages','Packages'],['locations','Locations'],['risk','Risk Groups']];const a=curTab('placement',T);let body='';
   if(a==='live')body=sae(['64% hired · 312 offers','Across 64 recruiters this placement cycle.'],['41 high-readiness still unplaced','ELO>1400 students with no offer yet — push to active drives.'],['Avg package ₹6.2L (+₹0.4L MoM)','Live-synced from verified offers.'])+
     '<div class="grid g4">'+kpiLive('64%','Students Hired',C.green,'live')+kpi('₹6.2L','Average Package',C.gold)+kpi('₹7.0L','Median Package',C.blue)+kpiLive('12','Recruiters Active',C.cyan,'this week')+'</div>'+
-    '<div class="sec"><h2>High-readiness unplaced</h2><div class="hl"></div></div>'+tbl(['Student','ELO','Skills','Action'],[['Riya Sharma',1542,'Python · React',''],['Arjun Nair',1489,'Python · ML',''],['Dev Roy',1455,'Java · SQL','']].map(r=>'<tr><td>'+nameCell(r[0],'CSE',C.gold)+'</td><td><span class="tag am">'+r[1]+'</span></td><td>'+r[2]+'</td><td><button class="btnXs" data-act="match">→ Add to drive</button></td></tr>').join(''));
+    '<div class="sec"><h2>High-readiness unplaced students</h2></div>'+tbl(['Student','ELO','Skills','Action'],[['Riya Sharma',1542,'Python · React',''],['Arjun Nair',1489,'Python · ML',''],['Dev Roy',1455,'Java · SQL','']].map(r=>'<tr><td>'+nameCell(r[0],'CSE',C.gold)+'</td><td><span class="tag am">'+r[1]+'</span></td><td>'+r[2]+'</td><td><button class="btnXs" data-act="match">→ Add to drive</button></td></tr>').join(''));
   else if(a==='drives')body='<div class="sec" style="margin:0 0 11px"><h2>'+S.drives.length+' Active Drives</h2><div class="hl"></div><button class="btnP" data-act="addDrive">+ Create Campus Drive</button></div>'+
     S.drives.map(d=>'<div class="row"><div class="av" style="background:'+grad(C.cyan)+'">'+d.co[0]+'</div><div style="flex:1"><div class="nm">'+d.co+' · '+d.role+'</div><div class="mt">Eligibility: '+d.elig+' · '+d.short+' shortlisted</div></div><div class="right"><span class="tag '+(d.stage==='Offers'?'gr':'am')+'">'+d.stage+'</span><span class="tag '+(d.status==='live'?'gr':'rd')+'">'+d.status+'</span><button class="btnXs" data-act="driveDrawer" data-id="'+d.id+'">Open</button></div></div>').join('');
   else if(a==='recruiters')body='<div class="note">🤝 Recruiter access is curated — they only see eligible, verified cohorts.</div>'+tbl(['Company','Access','Active drives','Offers','Last active',''],[['Google','Approved',1,8,'2m'],['Flipkart','Approved',1,14,'1h'],['Microsoft','Approved',0,6,'1d'],['Acme Corp','Pending',0,0,'—']].map(r=>'<tr><td>'+nameCell(r[0],'',C.cyan)+'</td><td><span class="tag '+(r[1]==='Approved'?'gr':'am')+'">'+r[1]+'</span></td><td>'+r[2]+'</td><td>'+r[3]+'</td><td>'+r[4]+'</td><td>'+(r[1]==='Pending'?'<button class="btnGr" data-act="apprRec">Grant access</button>':'<button class="btnXs">Manage</button>')+'</td></tr>').join(''));
   else if(a==='offers')body=tbl(['Student','Company','Role','Package','Status'],[['Sneha Patel','Microsoft','SDE','₹38L','Accepted'],['Vikram M.','Amazon','SDE-1','₹32L','Accepted'],['Diya G.','Zomato','Analyst','₹20L','On hold'],['Rahul R.','Deloitte','Analyst','₹18L','Offered']].map(r=>'<tr><td>'+nameCell(r[0],'',C.green)+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td><td><span class="tag gr">'+r[3]+'</span></td><td><span class="tag '+(r[4]==='Accepted'?'gr':r[4]==='On hold'?'am':'bl')+'">'+r[4]+'</span></td></tr>').join(''));
   else if(a==='packages')body='<div class="card"><div class="sec" style="margin:0 0 12px"><h2>Package Distribution</h2><div class="hl"></div></div>'+bars([['₹3–6 LPA',38,C.gold],['₹6–10 LPA',31,C.green],['₹10–20 LPA',22,C.blue],['₹20L+',9,C.purple]])+'</div>';
-  else if(a==='locations')body='<div class="card"><div class="sec" style="margin:0 0 10px"><h2>Where students get placed</h2><div class="hl"></div></div>'+[['Bengaluru',128,C.gold],['Hyderabad',74,C.green],['Pune',39,C.blue],['Chennai',36,C.purple],['Remote',22,C.cyan]].map(l=>'<div class="bar"><span class="nm">📍 '+l[0]+'</span><span class="tk"><span class="fill" style="width:'+Math.round(l[1]/128*100)+'%;background:'+l[2]+'"></span></span><span class="pc" style="color:'+l[2]+'">'+l[1]+'</span></div>').join('')+'</div>'+
-    '<div class="sec"><h2>Verified talent map</h2><div class="hl"></div></div>'+mapBlock();
+  else if(a==='locations')body='<div class="card"><div class="sec" style="margin:0 0 10px"><h2>Where students get placed</h2></div>'+[['Bengaluru',128,C.gold],['Hyderabad',74,C.green],['Pune',39,C.blue],['Chennai',36,C.purple],['Remote',22,C.cyan]].map(l=>'<div class="bar"><span class="nm">📍 '+l[0]+'</span><span class="tk"><span class="fill" style="width:'+Math.round(l[1]/128*100)+'%;background:'+l[2]+'"></span></span><span class="pc" style="color:'+l[2]+'">'+l[1]+'</span></div>').join('')+'</div>'+
+    '<div class="sec"><h2>Verified talent map</h2></div>'+mapBlock();
   else body='<div class="note">⚠ At-risk cohorts the intervention engine is watching.</div>'+tbl(['Cohort','Avg ELO','Risk','Suggested intervention',''],[['ECE 2025',980,'High','Remedial DSA track + 2 mentors'],['IT 3rd yr',1120,'Med','System Design recovery track'],['AI&DS idle',1066,'Med','Re-engagement nudge campaign']].map(r=>'<tr><td>'+r[0]+'</td><td><span class="tag '+(r[1]<1050?'rd':'am')+'">'+r[1]+'</span></td><td>'+riskTag(r[2])+'</td><td>'+r[3]+'</td><td><button class="btnP" data-act="intervene">Launch</button></td></tr>').join(''));
   return page(S.role==='placement'?'Placement Execution':'Placement Cell','Live hiring, campus drives, recruiters & risk — wired to verified student signals.',tabs('placement',T)+body);},
+
 plhome:()=>page('Placement Cell · Home','Your hiring command center.',
   '<div class="phead-strip">'+
   '<div class="phead-stat"><div class="psn" style="color:var(--green)">64%</div><div class="psl">Hired This Cycle</div><div class="psd up"><span class="pulse"></span> live</div></div>'+
@@ -607,11 +656,15 @@ plhome:()=>page('Placement Cell · Home','Your hiring command center.',
   '</div>'+
   sae(['312 offers · 64% placed','Cycle on track vs 60% target.'],['41 high-readiness unplaced','Match them into Google & Flipkart drives this week.'],['3 drives live','Google R2, Flipkart shortlist, Deloitte offers.'])+
   '<div style="display:flex;gap:9px;margin-top:14px;flex-wrap:wrap"><button class="btnP" data-act="addDrive">+ Create Drive</button><button class="btnG" data-p="placement">Open Placement Cell</button></div>'),
+
+/* ---------- ADMIN: GROUPS ---------- */
 groups:()=>{const T=[['subject','Subject Groups'],['prep','Placement Prep'],['cohort','Dept Cohorts'],['mentor','Mentorship Circles'],['remedial','Remedial']];const a=curTab('groups',T);
   const sets={subject:[['CSE 2025 · DSA Sprint','Prof. Mehta',62],['AI/ML Track','Dr. Iyer',48]],prep:[['Top 100 Interview Prep','Placement Cell',96],['System Design Recovery','Placement Cell',34]],cohort:[['CSE 4th Year','Dept Head',182],['IT 3rd Year','Dept Head',96]],mentor:[['FAANG Circle','Dr. Iyer',12],['Product Design Circle','Prof. Nair',9]],remedial:[['ECE DSA Remedial','Prof. Mehta',24]]}[a];
   return page(S.role==='dept'?'Cohorts':'Groups','The unit for tasks, posts, documents & sessions.',tabs('groups',T)+
    '<div class="sec" style="margin:0 0 11px"><h2>'+sets.length+' Groups</h2><div class="hl"></div><button class="btnP" data-act="addGroup">+ Create Group</button></div>'+
    sets.map((g,i)=>'<div class="row"><div class="av" style="background:'+grad([C.purple,C.green,C.blue][i%3])+'">'+ini(g[0])+'</div><div style="flex:1"><div class="nm">'+g[0]+'</div><div class="mt">Owner: '+g[1]+' · task feed · document shelf · session calendar</div></div><div class="right"><span class="tag pu">'+g[2]+' members</span><button class="btnXs" data-act="groupDrawer" data-id="'+i+'">Open</button></div></div>').join(''));},
+
+/* ---------- ADMIN: TASKS ---------- */
 tasks:()=>{const T=[['pub','Published'],['drafts','Drafts'],['sched','Scheduled'],['reviews','Reviews'],['recovery','Recovery Tracks'],['arena','Arena-linked']];const a=curTab('tasks',T);let body='';
   if(a==='pub')body=tbl(['Task','Group','Owner','Completion','Avg score','ELO',''],[['Two Sum & Hashing','CSE 2025','Prof. Mehta','86%','78','+20'],['Binary Tree Traversals','CSE 2025','Prof. Mehta','54%','71','+35'],['LRU Cache — Design','CSE 2025','Prof. Mehta','12%','—','+60']].map(r=>'<tr><td><div class="tnm">'+r[0]+'</div></td><td>'+r[1]+'</td><td>'+r[2]+'</td><td><span class="tag '+(parseInt(r[3])>60?'gr':parseInt(r[3])>30?'am':'rd')+'">'+r[3]+'</span></td><td>'+r[4]+'</td><td><span class="tag bl">'+r[5]+'</span></td><td><button class="btnXs" data-act="taskDrawer">Detail</button></td></tr>').join(''));
   else if(a==='reviews')body='<div class="note">Submissions awaiting faculty review. Tasks publish into Student Path; completions sync back here.</div>'+tbl(['Student','Task','Submitted',''],[['Riya Sharma','LRU Cache','2h ago'],['Arjun Nair','Binary Tree','5h ago']].map(r=>'<tr><td>'+nameCell(r[0],'',C.gold)+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td><td><button class="btnGr">Review</button></td></tr>').join(''));
@@ -620,6 +673,8 @@ tasks:()=>{const T=[['pub','Published'],['drafts','Drafts'],['sched','Scheduled'
   else body='<div class="empty">No '+a+' tasks. Use Create Task to add one.</div>';
   return page('Tasks','Orchestrate tasks to Student Path. Completion, score & ELO sync back.',tabs('tasks',T)+
    (a==='pub'?'<div class="sec" style="margin:14px 0 11px"><div class="hl"></div><button class="btnP" data-act="addTask" style="margin-left:auto">+ Create Task</button></div>':'')+body);},
+
+/* ---------- ADMIN/FACULTY: SESSIONS ---------- */
 sessions:()=>{const T=[['requests','Requests'],['upcoming','Upcoming'],['completed','Completed'],['avail','Faculty Availability'],['feedback','Feedback']];const a=curTab('sessions',T);let body='';
   if(a==='requests')body=tbl(['Student','Mentor','Topic','Slot',''],[['Arjun Nair','Prof. Mehta','FAANG strategy','Jun 21, 5PM'],['Dev Anand','Dr. Iyer','ML career path','Jun 22, 6PM']].map(r=>'<tr><td>'+nameCell(r[0],'',C.gold)+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td><td>'+r[3]+'</td><td><span class="tag am">⏳ pending faculty</span></td></tr>').join(''));
   else if(a==='upcoming')body=tbl(['Student','Mentor','Topic','When'],[['Riya Sharma','Prof. Mehta','System Design','Jun 21, 5PM'],['Sneha Patel','Dr. Iyer','Offer negotiation','Jun 23, 4PM']].map(r=>'<tr><td>'+nameCell(r[0],'',C.green)+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td><td>'+r[3]+'</td></tr>').join(''));
@@ -628,8 +683,10 @@ sessions:()=>{const T=[['requests','Requests'],['upcoming','Upcoming'],['complet
   else body=tbl(['Student','Mentor','Topic','Date'],[['Karthik R.','Prof. Mehta','Resume review','Jun 14'],['Meera Joshi','Dr. Iyer','Career options','Jun 12']].map(r=>'<tr><td>'+nameCell(r[0],'',C.purple)+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td><td>'+r[3]+'</td></tr>').join(''));
   return page('Sessions','1:1 mentoring volume & participation.',
    '<div style="margin-bottom:12px"><span class="privacy">🔒 Institution sees participation & volume — never professor payout/earnings.</span></div>'+tabs('sessions',T)+body);},
+
+/* ---------- ADMIN: PULSE ---------- */
 pulse:()=>{const T=[['official','Official Posts'],['notices','Notices'],['docs','Documents'],['events','Events'],['gallery','Gallery'],['eng','Student Engagement']];const a=curTab('pulse',T);let body='';
-  const post=(t,b,media)=>'<div class="post"><div class="ph"><div class="av" style="background:'+grad(C.am)+'">VIT</div><div><div class="nm">VIT Vellore <span style="color:var(--gold)">✦</span></div><div class="mt" style="font-size:10px;color:var(--mut2)">Institution · pushed to 487 student Pulse feeds</div></div></div><div class="ttl">'+t+'</div><div class="body">'+b+'</div>'+(media||'')+'<div class="pf"><span>♥ 214</span><span>💬 18</span><span>↗ Share</span><span>📲 push delivered</span></div></div>';
+  const post=(t,b,media)=>'<div class="post"><div class="ph"><div class="av" style="background:'+grad(C.am)+'">VIT</div><div><div class="nm">VIT Vellore <span style="color:var(--gold)">✦</span></div><div class="mt" style="font-size:10px;color:var(--mut2)">Institution · pushed to '+'487 student Pulse feeds</div></div></div><div class="ttl">'+t+'</div><div class="body">'+b+'</div>'+(media||'')+'<div class="pf"><span>♥ 214</span><span>💬 18</span><span>↗ Share</span><span>📲 push delivered</span></div></div>';
   if(a==='official')body=post('Google campus drive — Jun 28','Eligibility: ELO > 1300. Register on Launchpad before Jun 25.')+post('Annual Tech Fest 2026 🎉','Highlights from this year — 4,000+ students.','<div class="media">🖼️</div>');
   else if(a==='notices')body=post('NAAC data freeze — Jul 01','All placement records must be finalised by Jul 01.');
   else if(a==='docs')body='<div class="row"><div class="av" style="background:'+grad(C.blue)+'">📄</div><div style="flex:1"><div class="nm">Placement Report 2024–25.pdf</div><div class="mt">official document · 2.4 MB</div></div><div class="right"><span class="tag bl">Document</span></div></div>';
@@ -638,6 +695,8 @@ pulse:()=>{const T=[['official','Official Posts'],['notices','Notices'],['docs',
   else body='<div class="card"><div class="sec" style="margin:0 0 12px"><h2>Engagement on Institution Posts</h2><div class="hl"></div></div>'+bars([['Seen in Pulse',92,C.green],['Reacted',41,C.gold],['Clicked through',28,C.blue]])+'</div>';
   return page('Pulse','Your internal media center + outward communication to student Pulse feeds.',
    '<div class="sec" style="margin:0 0 11px"><div class="hl" style="flex:0 0 auto;width:0"></div><button class="btnP" data-act="post" style="margin-left:auto">+ Create Post</button></div>'+tabs('pulse',T)+body);},
+
+/* ---------- ADMIN: INTELLIGENCE ---------- */
 intel:()=>{const T=[['cohort','Cohort Readiness'],['gaps','Skill Gaps'],['dept','Department Trends'],['risk','Placement Risk'],['bands','ELO Bands'],['outcomes','Intervention Outcomes']];const a=curTab('intel',T);let body='';
   if(a==='cohort')body=
     '<div class="phead-strip" style="grid-template-columns:repeat(3,1fr);margin-bottom:18px">'+
@@ -655,16 +714,22 @@ intel:()=>{const T=[['cohort','Cohort Readiness'],['gaps','Skill Gaps'],['dept',
   else if(a==='bands')body='<div class="card"><div class="sec" style="margin:0 0 12px"><h2>ELO Band Distribution</h2><div class="hl"></div></div>'+bars([['1500+ (switch-ready)',18,C.green],['1400–1499',29,C.blue],['1200–1399',32,C.gold],['<1200',21,C.red]])+'</div>';
   else body=tbl(['Intervention','Cohort','Before','After','Result'],[['DSA Remedial','ECE','920','980','+60 ELO'],['SysDesign Recovery','IT','38%','46%','+8% ready'],['Mentor push','AI&DS','idle','active','+22 sessions']].map(r=>'<tr><td>'+r[0]+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td><td>'+r[3]+'</td><td><span class="tag gr">'+r[4]+'</span></td></tr>').join(''));
   return page(S.role==='dept'?'Department Analytics':'Intelligence','Turns Student-Path activity into institutional action — your strongest differentiator.',tabs('intel',T)+body);},
+
+/* ---------- ADMIN: REPORTS ---------- */
 reports:()=>{const T=[['placement','Placement Reports'],['dept','Department Reports'],['accred','Accreditation'],['recruiter','Recruiter Reports'],['export','Export Center']];const a=curTab('reports',T);
   const cards={placement:[['Placement Summary 2024–25','company list, packages, % placed'],['Branch-wise Placement','CSE / IT / ECE / AI&DS splits']],dept:[['Department Engagement','tasks, ELO, sessions per dept'],['Readiness Trends','term-over-term movement']],accred:[['NAAC Criterion V','auto-populated placement data'],['NBA Outcomes','program outcomes mapping']],recruiter:[['Recruiter Activity','who viewed / shortlisted / offered'],['Offer Conversion','shortlist → offer funnel']],export:[['Full Data Export (CSV)','all institution records'],['Custom Report Builder','pick fields & filters']]}[a];
   return page('Reports','Export placement & accreditation data for reviews.',tabs('reports',T)+
    '<div class="grid g2">'+cards.map(c=>'<div class="card hov"><div style="font-size:22px;margin-bottom:8px">📄</div><div class="nm" style="font-size:14px;font-weight:800">'+c[0]+'</div><div class="mt" style="font-size:11.5px;color:var(--mut);margin:6px 0 12px">'+c[1]+'</div><button class="btnP" data-act="export">📥 Generate</button></div>').join('')+'</div>');},
+
+/* ---------- ADMIN: SETTINGS ---------- */
 settings:()=>{const T=[['profile','Institution Profile'],['depts','Departments'],['access','Staff Access'],['link','Student Link Rules'],['integ','Integrations'],['verify','Verification'],['policy','Policy Controls']];const a=curTab('settings',T);let body='';
   if(a==='verify')body='<div class="card"><div class="sec" style="margin:0 0 12px"><h2>Verification Level</h2><div class="hl"></div><span class="tag gr">Level 2 of 4</span></div>'+bars([['Email domain',100,C.green],['Website / DNS',100,C.green],['Accreditation doc',40,C.gold],['Admin identity',0,C.red]])+'<button class="btnP" data-act="verify" style="margin-top:8px">Continue verification</button></div>';
   else if(a==='link')body='<div class="card"><div class="sec" style="margin:0 0 12px"><h2>Student Linking Rule</h2><div class="hl"></div></div>'+['Manual approval (College ID)|on','Batch CSV import|off','Hybrid|off','Duplicate detection|on'].map(x=>{const p=x.split('|');return '<div class="bar"><span class="nm" style="width:220px">'+p[0]+'</span><span class="tag '+(p[1]==='on'?'gr':'gy')+'">'+(p[1]==='on'?'● Enabled':'Disabled')+'</span></div>';}).join('')+'</div>';
   else if(a==='access')body='<div class="note">🛡️ Role permissions matrix — who can see and do what.</div>'+tbl(['Role','Scope','Create staff','See earnings','Global settings'],[['Institution Admin','Everything','✓','✗','✓'],['Placement Cell','Hiring & students','✗','✗','—'],['Professor','Own groups','✗','own only','✗'],['Dept Head','Department','✗','✗','✗'],['Recruiter','Curated talent','✗','✗','✗']].map(r=>'<tr><td><b>'+r[0]+'</b></td><td>'+r[1]+'</td><td>'+r[2]+'</td><td>'+r[3]+'</td><td>'+r[4]+'</td></tr>').join(''));
   else body='<div class="card"><div class="sec" style="margin:0 0 12px"><h2>'+T.find(t=>t[0]===a)[1]+'</h2><div class="hl"></div></div><div class="empty">Configuration panel for '+T.find(t=>t[0]===a)[1]+'.</div></div>';
   return page('Settings','Tenant configuration & policy controls.',tabs('settings',T)+body);},
+
+/* ---------- FACULTY WORKSPACE ---------- */
 fhome:()=>page('Faculty Home','Welcome, Prof. Mehta — scoped to your subjects.',
   '<div class="phead-strip" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px">'+
   '<div class="phead-stat"><div class="psn" style="color:var(--purple)">3</div><div class="psl">My Groups</div><div class="psd">62 students</div></div>'+
@@ -674,33 +739,41 @@ fhome:()=>page('Faculty Home','Welcome, Prof. Mehta — scoped to your subjects.
   '</div>'+
   sae(['3 groups · 62 students','Active across CSE 2025, AI/ML & Remedial.'],['2 sessions + 4 reviews','Accept pending sessions and review submissions.'],['94% response rate','Your students complete tasks faster than dept avg.'])+
   '<div class="grid g2" style="margin-top:13px"><div class="card"><div class="sec" style="margin:0 0 12px"><h2>Quick Actions</h2><div class="hl"></div></div><div style="display:flex;gap:9px;flex-wrap:wrap"><button class="btnP" data-act="addTask">+ Assign Task</button><button class="btnG" data-act="addGroup">+ Create Group</button><button class="btnG" data-act="addDoc">+ Share Notes</button></div></div>'+
-  '<div class="card" style="border-color:rgba(52,211,163,.25)"><div class="sec" style="margin:0 0 8px"><h2>💰 Your earnings</h2><span class="privacy">🔒 Private — only you</span></div><div style="font-size:22px;font-weight:900;color:var(--green)">₹38,400 <span style="font-size:11px;color:var(--mut2);font-weight:600">this month · 80% share</span></div><div style="font-size:11px;color:var(--mut);margin-top:6px">Never visible to Admin or institution path.</div></div></div>'+
+  '<div class="card" style="border-color:rgba(52,211,153,.25)"><div class="sec" style="margin:0 0 8px"><h2>💰 Your earnings</h2><span class="privacy">🔒 Private — only you</span></div><div style="font-size:22px;font-weight:900;color:var(--green)">₹38,400 <span style="font-size:11px;color:var(--mut2);font-weight:600">this month · 80% share</span></div><div style="font-size:11px;color:var(--mut);margin-top:6px">Never visible to Admin or institution path.</div></div></div>'+
   '<div class="card" style="margin-top:13px"><div class="sec" style="margin:0 0 12px"><h2>Institution Notices</h2><div class="hl"></div></div>'+
    '<div class="row" style="margin:0 0 8px"><div class="av" style="background:'+grad(C.am)+'">VIT</div><div style="flex:1"><div class="nm">NAAC data freeze — Jul 01</div><div class="mt">from Institution Admin</div></div></div></div>'),
+
 fstudents:()=>page(S.role==='mentor'?'My Mentees':'My Students','Only students in your assigned groups.',
   '<div style="margin-bottom:12px"><span class="privacy">🔒 Scoped — you see only your assigned students</span></div>'+
   tbl(['Student','Group','Task completion','Last session','Risk',''],STUD.slice(0,4).map((s,i)=>'<tr><td>'+nameCell(s[0],s[1],[C.gold,C.green,C.blue,C.purple][i%4])+'</td><td>CSE 2025</td><td><span class="tag '+(i<2?'gr':'am')+'">'+[92,78,54,40][i]+'%</span></td><td>'+['Jun 14','—','Jun 10','—'][i]+'</td><td>'+riskTag(s[8])+'</td><td><button class="btnXs" data-act="drawer" data-id="'+i+'">View</button></td></tr>').join(''))),
+
 fgroups:()=>page('My Groups','Create & manage your subject or mentor groups.',
   '<div class="sec" style="margin:0 0 11px"><h2>3 Groups</h2><div class="hl"></div><button class="btnP" data-act="addGroup">+ Create Group</button></div>'+
   [['CSE 2025 · DSA Sprint',62,C.purple],['AI/ML Track',48,C.green],['ECE DSA Remedial',24,C.red]].map(g=>'<div class="row"><div class="av" style="background:'+grad(g[2])+'">'+ini(g[0])+'</div><div style="flex:1"><div class="nm">'+g[0]+'</div><div class="mt">task feed · document shelf · session calendar</div></div><div class="right"><span class="tag pu">'+g[1]+' members</span></div></div>').join('')),
+
 ftasks:()=>page('My Tasks','Create DSA tasks & prep tracks — they publish into Student Path.',
   '<div class="sec" style="margin:0 0 11px"><h2>Published</h2><div class="hl"></div><button class="btnP" data-act="addTask">+ Assign Task</button></div>'+
   tbl(['Task','Group','Completion','Weak performers'],[['Two Sum & Hashing','CSE 2025','86%','3 stuck'],['Binary Tree Traversals','CSE 2025','54%','9 stuck'],['LRU Cache','CSE 2025','12%','review queue']].map(r=>'<tr><td>'+r[0]+'</td><td>'+r[1]+'</td><td><span class="tag '+(parseInt(r[2])>60?'gr':'am')+'">'+r[2]+'</span></td><td><button class="btnXs">'+r[3]+'</button></td></tr>').join(''))),
+
 fsessions:()=>page(S.role==='mentor'?'Mentor Sessions':'Sessions','Open slots, requests & completed guidance. Earnings are private to you.',
   '<div class="note">💡 You\'re a mentor at ₹799/session. Accepting confirms the slot for both calendars.</div>'+
   '<div class="sec" style="margin:0 0 11px"><h2>Requests</h2><div class="hl"></div></div>'+
   [['Arjun Nair','FAANG interview strategy','Jun 21, 5PM'],['Dev Anand','ML career path','Jun 22, 6PM']].map(r=>'<div class="row"><div class="av" style="background:'+grad(C.teal)+'">'+ini(r[0])+'</div><div style="flex:1"><div class="nm">'+r[0]+'</div><div class="mt">'+r[1]+' · '+r[2]+'</div></div><div class="right"><button class="btnGr" data-act="acceptS">Accept</button><button class="btnRd" data-act="declineS">Decline</button></div></div>').join('')+
   '<div class="sec" style="margin:12px 0 11px"><h2>Upcoming</h2><div class="hl"></div></div><div class="row"><div class="av" style="background:'+grad(C.green)+'">RS</div><div style="flex:1"><div class="nm">Riya Sharma</div><div class="mt">System Design · Jun 21, 5PM</div></div><div class="right"><span class="tag gr">✓ Confirmed</span></div></div>'),
+
 resources:()=>page('Resources','Notes, documents & links — visible to your groups only.',
   '<div class="sec" style="margin:0 0 11px"><h2>Shared Resources</h2><div class="hl"></div><button class="btnP" data-act="addDoc">+ Share Note/Doc</button></div>'+
   [['DSA Patterns — Cheat Sheet.pdf','CSE 2025',C.blue],['System Design Primer.pdf','CSE 2025',C.purple],['ML Roadmap (link)','AI/ML Track',C.green]].map(d=>'<div class="row"><div class="av" style="background:'+grad(d[2])+'">📄</div><div style="flex:1"><div class="nm">'+d[0]+'</div><div class="mt">shared to '+d[1]+'</div></div><div class="right"><span class="tag bl">Group-limited</span></div></div>').join('')),
+
 fpulse:()=>page('Pulse','Institution news + topics you follow outside.',
   '<div class="post"><div class="ph"><div class="av" style="background:'+grad(C.am)+'">VIT</div><div><div class="nm">VIT Vellore ✦</div><div class="mt" style="font-size:10px;color:var(--mut2)">Institution · 3h ago</div></div></div><div class="ttl">Google campus drive — Jun 28</div><div class="body">Eligibility: ELO > 1300.</div></div>'+
   '<div class="sec" style="margin:14px 0 11px"><h2>You Also Follow</h2><div class="hl"></div></div>'+
   [['GeeksforGeeks','🟢','Top 50 DP problems for interviews','3h'],['Google Careers','🔵','STEP Internship applications open','6h']].map(e=>'<div class="row"><div class="av" style="background:'+grad(C.blue)+'">'+e[1]+'</div><div style="flex:1"><div class="nm">'+e[0]+'</div><div class="mt">'+e[2]+'</div></div><div class="right"><span class="mt">'+e[3]+'</span></div></div>').join('')),
+
 fprofile:()=>page('Faculty Profile','Your public faculty identity.',
   '<div class="card"><div style="display:flex;align-items:center;gap:16px"><div class="av" style="width:60px;height:60px;border-radius:16px;background:'+grad(C.purple)+';display:flex;align-items:center;justify-content:center;font-weight:900;font-size:22px;color:#1a1200">PM</div><div><div style="font-size:18px;font-weight:800">Prof. Mehta</div><div style="font-size:12.5px;color:var(--mut)">CSE · DSA & System Design · Mentor enabled</div><div style="display:flex;gap:7px;margin-top:8px"><span class="tag am">⭐ 4.9</span><span class="tag bl">120+ sessions</span><span class="tag gr">Mentor ON</span></div></div></div></div>'+
   '<div class="grid g3" style="margin-top:13px">'+kpi('3','Subjects',C.purple)+kpi('4.9','Avg Rating',C.gold)+kpi('94%','Student Response',C.green)+'</div>'),
+
 mhome:()=>page('Mentor Home','Your 1:1 guidance workspace.',
   '<div class="phead-strip" style="grid-template-columns:repeat(3,1fr);margin-bottom:18px">'+
   '<div class="phead-stat"><div class="psn" style="color:var(--teal)">12</div><div class="psl">Active Mentees</div><div class="psd">FAANG + Product</div></div>'+
@@ -709,9 +782,12 @@ mhome:()=>page('Mentor Home','Your 1:1 guidance workspace.',
   '</div>'+
   sae(['12 active mentees','Across FAANG & Product circles.'],['2 session requests','Accept to confirm both calendars.'],['4.9 avg rating','From 120+ completed sessions.'])+
   '<div class="grid g3">'+kpi('12','Mentees',C.teal)+kpi('2','Requests',C.am)+kpi('6','This week',C.green)+'</div>'+
-  '<div class="card" style="border-color:rgba(52,211,163,.25);margin-top:13px"><div class="sec" style="margin:0 0 10px"><h2>Earnings</h2><div class="hl"></div><span class="privacy" style="margin-left:auto">🔒 Private — only you</span></div><div style="font-size:32px;font-weight:900;letter-spacing:-.04em;color:var(--green)">₹38,400 <span style="font-size:11px;color:var(--mut2);font-weight:600">this month</span></div></div>'),
+  '<div class="card" style="border-color:rgba(52,211,153,.25);margin-top:13px"><div class="sec" style="margin:0 0 10px"><h2>Earnings</h2><div class="hl"></div><span class="privacy" style="margin-left:auto">🔒 Private — only you</span></div><div style="font-size:32px;font-weight:900;letter-spacing:-.04em;color:var(--green)">₹38,400 <span style="font-size:11px;color:var(--mut2);font-weight:600">this month</span></div></div>'),
+
 mfeedback:()=>page('Feedback','Ratings & notes from your mentees.',
   [['Arjun Nair','⭐ 5.0','"Cleared my DP confusion in 30 min."'],['Riya Sharma','⭐ 4.8','"Sharp system design feedback."'],['Dev Anand','⭐ 5.0','"Gave me a clear ML roadmap."']].map(r=>'<div class="row"><div class="av" style="background:'+grad(C.teal)+'">'+ini(r[0])+'</div><div style="flex:1"><div class="nm">'+r[0]+' <span class="tag am">'+r[1]+'</span></div><div class="mt">'+r[2]+'</div></div></div>').join('')),
+
+/* ---------- DEPT HEAD ---------- */
 dhome:()=>page('Department · CSE','Department-level oversight only — no global admin.',
   '<div class="phead-strip" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px">'+
   '<div class="phead-stat"><div class="psn" style="color:var(--blue)">182</div><div class="psl">CSE Students</div><div class="psd">active cohort</div></div>'+
@@ -721,6 +797,8 @@ dhome:()=>page('Department · CSE','Department-level oversight only — no globa
   '</div>'+
   sae(['CSE avg ELO 1,410','Top department this term.'],['9 students at risk','Idle >14d — assign remedial.'],['78% placed','Best branch placement rate.'])+
   '<div class="card" style="margin-top:13px"><div class="sec" style="margin:0 0 12px"><h2>CSE Readiness</h2><div class="hl"></div></div>'+bars([['DSA',79,C.green],['Web',71,C.blue],['System Design',46,C.cyan]])+'</div>'),
+
+/* ---------- RECRUITER ---------- */
 rhome:()=>page('Eligible Talent','Curated, verified cohorts — no internal institution data.',
   '<div class="phead-strip" style="grid-template-columns:repeat(3,1fr);margin-bottom:18px">'+
   '<div class="phead-stat"><div class="psn" style="color:var(--cyan)">48</div><div class="psl">Eligible Candidates</div><div class="psd">ELO &gt; 1300</div></div>'+
@@ -730,15 +808,22 @@ rhome:()=>page('Eligible Talent','Curated, verified cohorts — no internal inst
   '<div style="margin-bottom:12px"><span class="privacy">✦ You see only students who match your drive eligibility & opted in.</span></div>'+
   '<div class="grid g3" style="margin-bottom:14px">'+kpi('48','Eligible (ELO>1300)',C.cyan)+kpi('100%','Verified Skills',C.green)+kpi('VIT','Trust Layer',C.gold,'Level 2 verified')+'</div>'+
   tbl(['Candidate','Verified skills','ELO','Status',''],[['Riya Sharma','Python ✓ React ✓',1542,'Open'],['Arjun Nair','Python ✓ ML ✓',1489,'Interviewing'],['Sneha Patel','Python ✓ SQL ✓',1412,'Open']].map(r=>'<tr><td>'+nameCell(r[0],'CSE · verified',C.cyan)+'</td><td>'+r[1]+'</td><td><span class="tag am">'+r[2]+'</span></td><td><span class="tag '+(r[3]==='Open'?'gr':'am')+'">'+r[3]+'</span></td><td><button class="btnXs" data-act="shortlist">+ Shortlist</button></td></tr>').join(''))),
+
 rshort:()=>page('Shortlist','Candidates you\'ve shortlisted.',tbl(['Candidate','ELO','Stage'],[['Riya Sharma',1542,'Round 2'],['Arjun Nair',1489,'Round 1']].map(r=>'<tr><td>'+nameCell(r[0],'CSE',C.cyan)+'</td><td>'+r[1]+'</td><td><span class="tag am">'+r[2]+'</span></td></tr>').join(''))),
+
 rtrust:()=>page('Trust Layer','Why Capabilio talent is verifiable.',
   '<div class="grid g3">'+[['✦','Verified institution','VIT Vellore · Level 2 verified · accreditation on file'],['⚔️','Proven skills','Every skill earned via Arena & graded missions — not self-reported'],['📈','Live ELO','Readiness scored continuously, sorted for you']].map(c=>'<div class="card hov"><div style="font-size:24px;margin-bottom:8px">'+c[0]+'</div><div class="nm" style="font-size:14px;font-weight:800">'+c[1]+'</div><div class="mt" style="font-size:11.5px;color:var(--mut);margin-top:6px">'+c[2]+'</div></div>').join('')+'</div>'),
+
+/* ---------- STUDENT (no dashboard) ---------- */
 saccess:()=>page('','','<div class="lockwrap"><div style="font-size:46px;margin-bottom:14px">🔒</div><h1 style="font-size:22px;font-weight:800">Students don\'t use the Institution dashboard</h1><p style="color:var(--mut);font-size:13.5px;max-width:460px;margin:10px auto 0;line-height:1.6">Students live in the <b style="color:var(--gold)">Student Path</b> — Arena, courses, tasks & missions. They stay linked to the institution and receive its updates through their <b style="color:var(--gold)">Pulse</b> feed. Open the Institution Pulse tab to see exactly what they receive.</p><button class="btnP" data-p="spulse" style="margin-top:18px">See what students receive →</button></div>'),
+
 spulse:()=>page('Institution Pulse (Student view)','What a linked student receives in Student Path.',
   '<div class="note">📲 This is rendered inside Student Path — pushed automatically when the institution posts.</div>'+
   '<div class="row"><div class="av" style="background:'+grad(C.am)+'">VIT</div><div style="flex:1"><div class="nm">🔔 Google campus drive — Jun 28</div><div class="mt">from VIT Vellore · eligibility ELO>1300</div></div><div class="right"><span class="mt">3h</span></div></div>'+
   '<div class="row"><div class="av" style="background:'+grad(C.purple)+'">PM</div><div style="flex:1"><div class="nm">📚 New task: LRU Cache — Design</div><div class="mt">Prof. Mehta · CSE 2025 · +60 ELO</div></div><div class="right"><span class="mt">24m</span></div></div>'+
   '<div class="row"><div class="av" style="background:'+grad(C.green)+'">PC</div><div style="flex:1"><div class="nm">📊 You\'re shortlisted by Flipkart</div><div class="mt">Placement Cell · respond in Launchpad</div></div><div class="right"><span class="mt">1h</span></div></div>'),
+
+/* ===================== OPERATIONS PAGES ===================== */
 queue:()=>{const T=[['all','All'],['mine','My Queue'],['esc','Escalated'],['breach','Breaching SLA'],['done','Resolved']];const a=curTab('queue',T);
   let rows=S.queue;
   if(a==='mine')rows=rows.filter(q=>q.owner==='Dr. Anand');
@@ -751,6 +836,7 @@ queue:()=>{const T=[['all','All'],['mine','My Queue'],['esc','Escalated'],['brea
   return page('Workflow Queue','One queue for every approval, override, access request & case — with SLA timers, escalation states & bulk actions.',
    sae(['12 open items','5 unassigned across the team.'],['1 SLA breached, 2 due soon','Escalate the Acme Corp access request now.'],['Avg resolution 6.2h','Down from 11h after queue rollout.'])+
    tabs('queue',T)+body);},
+
 cases:()=>{const T=[['open','Open'],['investigating','Investigating'],['intervention','Intervention'],['closed','Closed']];const a=curTab('cases',T);
   const map={open:'Open',investigating:'Investigating',intervention:'Intervention',closed:'Closed'};
   const rows=S.cases.filter(c=>a==='closed'?c.stage==='Closed':c.stage===map[a]||(a==='open'&&c.stage==='Open'));
@@ -759,6 +845,7 @@ cases:()=>{const T=[['open','Open'],['investigating','Investigating'],['interven
    sae([S.cases.filter(c=>c.stage!=='Closed').length+' active cases','1 unassigned needs an owner.'],['Assign & open interventions','ECE cohort case is due in 2 days.'],['68% of cases recover','Students who reach Intervention gain +120 ELO avg.'])+
    tabs('cases',T)+
    list.map(c=>`<div class="row"><div class="av" style="background:${grad(C.red)}">${ini(c.student)}</div><div style="flex:1"><div class="nm">${c.student} · ${c.br}</div><div class="mt">${c.reason} · owner: ${c.owner} · updated ${c.upd}</div></div><div class="right">${stateTag(c.stage)}<span class="tag ${c.sla==='On track'?'gr':c.sla==='Unassigned'?'rd':'am'}">${c.sla}</span><button class="btnXs" data-act="caseDrawer" data-id="${c.id}">Open case</button></div></div>`).join(''));},
+
 inbox:()=>{const T=[['all','All'],['unread','Unread'],['mention','Mentions'],['system','System'],['arch','Archived']];const a=curTab('inbox',T);
   let rows=S.notifs;
   if(a==='unread')rows=rows.filter(n=>!n.read);else if(a==='mention')rows=rows.filter(n=>n.cat==='Mention');else if(a==='system')rows=rows.filter(n=>n.cat==='System');else if(a==='arch')rows=[];
@@ -766,11 +853,13 @@ inbox:()=>{const T=[['all','All'],['unread','Unread'],['mention','Mentions'],['s
    '<div style="display:flex;gap:8px;margin-bottom:14px"><button class="btnG" data-act="readAll">Mark all read</button><button class="btnG" data-act="mute">Mute category</button></div>'+
    tabs('inbox',T)+
    (rows.length?rows.map(n=>`<div class="row" style="${n.read?'opacity:.6':''}"><div class="av" style="background:${grad(n.cat==='Mention'?C.purple:n.cat==='System'?C.cyan:C.gold)}">${n.cat==='Mention'?'@':n.cat==='System'?'⚙':'✓'}</div><div style="flex:1"><div class="nm">${n.txt}</div><div class="mt">${n.cat} · ${n.t} ago</div></div><div class="right">${n.read?'<span class="tag gy">read</span>':'<button class="btnXs" data-act="readOne" data-id="'+n.id+'">Mark read</button>'}</div></div>`).join(''):'<div class="empty">Nothing here.</div>'));},
+
 docchain:()=>{const T=[['pending','Pending'],['approved','Approved'],['mine','My Approvals']];const a=curTab('docchain',T);
   let rows=S.docchain;if(a==='approved')rows=rows.filter(d=>d.status==='Approved');else if(a==='pending'||a==='mine')rows=rows.filter(d=>d.status==='Pending');
   return page('Document Approval Chains','Documents move through an ordered approval chain. Each approver acts only at their step.',
    tabs('docchain',T)+
    rows.map(d=>`<div class="card" style="margin-bottom:11px"><div style="display:flex;align-items:center;gap:11px;margin-bottom:10px"><div class="av" style="width:34px;height:34px;border-radius:9px;background:${grad(C.blue)};display:flex;align-items:center;justify-content:center;font-weight:900;color:#1a1200">📄</div><div style="flex:1"><div class="nm">${d.title}</div><div class="mt">submitted by ${d.by}</div></div>${stateTag(d.status)}</div>${chainViz(d)}${d.status==='Pending'?`<div style="display:flex;gap:8px;margin-top:11px"><button class="btnGr" data-act="docApprove" data-id="${d.id}">Approve this step</button><button class="btnRd" data-act="docReject" data-id="${d.id}">Reject</button></div>`:''}</div>`).join(''));},
+
 compliance:()=>{const T=[['offers','Offers'],['overrides','Overrides'],['access','Access Grants'],['exports','Exports']];const a=curTab('compliance',T);
   const data={offers:[['Offer recorded','Sneha Patel → Microsoft ₹38L','Ms. Rao','verified'],['Offer recorded','Vikram M. → Amazon ₹32L','Ms. Rao','verified']],
     overrides:[['Eligibility override','Karthik R. added to Google drive below ELO bar','Dr. Anand','justification logged'],['CGPA waiver','Dev Anand for Deloitte','Ms. Rao','approved']],
@@ -780,6 +869,7 @@ compliance:()=>{const T=[['offers','Offers'],['overrides','Overrides'],['access'
    '<div style="margin-bottom:12px"><span class="restrict">🔒 Immutable · Admin & Placement Cell only</span></div>'+
    tabs('compliance',T)+
    tbl(['Action','Detail','Actor','Compliance',''],data.map(r=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td><td><span class="tag gr">${r[3]}</span></td><td><button class="btnXs" data-act="export">Evidence</button></td></tr>`).join('')));},
+
 nda:()=>{const T=[['active','Active'],['pending','Pending Signature'],['expired','Expired']];const a=curTab('nda',T);
   const data={active:[['Google','Signed','CSE/IT eligible · 90 days','Jun 1, 2026','Sep 1, 2026'],['Flipkart','Signed','All verified · 60 days','Jun 10, 2026','Aug 10, 2026']],
     pending:[['Acme Corp','Pending','—','—','—']],
@@ -788,19 +878,24 @@ nda:()=>{const T=[['active','Active'],['pending','Pending Signature'],['expired'
    '<div class="note">✍️ No NDA = no candidate data. Scope & expiry are enforced per agreement.</div>'+
    tabs('nda',T)+
    tbl(['Recruiter','NDA','Access scope','Signed','Expires',''],data.map(r=>`<tr><td>${nameCell(r[0],'',C.cyan)}</td><td><span class="tag ${r[1]==='Signed'?'gr':r[1]==='Pending'?'am':'rd'}">${r[1]}</span></td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td><td>${r[1]==='Pending'?'<button class="btnGr" data-act="sendNda">Send NDA</button>':r[1]==='Expired'?'<button class="btnXs" data-act="sendNda">Renew</button>':'<button class="btnXs">Revoke</button>'}</td></tr>`).join('')));},
+
+/* ===================== SYSTEM PAGES ===================== */
 search:()=>page('Global Search','Live search across students, faculty, drives, documents, cases & groups.',
   `<div style="margin-bottom:14px"><input id="gsearch" aria-label="Search" value="${SQ}" oninput="gsearch(this.value)" placeholder="🔎  Type to search — try: riya, ELO, google, NAAC, at-risk…" style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--line2);border-radius:11px;padding:13px 15px;color:var(--txt);font-size:14px"></div>`+
   `<div id="gschips" style="display:flex;gap:7px;margin-bottom:16px;flex-wrap:wrap">${[['All','All'],['Institution','Institutions'],['Student','Students'],['Faculty','Faculty'],['Drive','Drives'],['Document','Documents'],['Case','Cases'],['Group','Groups']].map(([f,l])=>`<button class="btnXs" onclick="gsfilter('${f}')" style="${f===SF?'border-color:var(--gold);color:var(--gold)':''}">${l}</button>`).join('')}</div>`+
   `<div id="gsres">${renderSearch()}</div>`),
+
 audit:()=>{const T=[['all','All'],['logins','Logins'],['data','Data Changes'],['exports','Exports'],['security','Security']];const a=curTab('audit',T);
   const all=[['Dr. Anand','Approved student','21BCE1042','info','2m'],['Ms. Rao','Exported placement report','Q2-2026','notice','2d'],['Dr. Anand','Granted recruiter access','Google','notice','3d'],['system','Failed login x3','ip 49.x.x.x','warn','4d'],['Dr. Anand','Created professor','Prof. Sharma','info','5d'],['Dr. Anand','Eligibility override','Karthik R.','warn','6d']];
   const rows=a==='logins'?all.filter(r=>/login/i.test(r[1])):a==='exports'?all.filter(r=>/export/i.test(r[1])):a==='security'?all.filter(r=>r[3]==='warn'):a==='data'?all.filter(r=>/Created|override|Approved/.test(r[1])):all;
   return page('Audit Center','Every privileged action, immutably logged & filterable for audits.',
    '<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap"><input placeholder="Filter by actor…" style="background:rgba(255,255,255,.05);border:1px solid var(--line2);border-radius:8px;padding:8px 11px;color:var(--txt);font-size:12px"><button class="btnG" data-act="export">📥 Export log</button></div>'+
    tabs('audit',T)+tbl(['Actor','Action','Entity','Severity','When'],rows.map(r=>`<tr><td>${nameCell(r[0],'',C.am)}</td><td>${r[1]}</td><td>${r[2]}</td><td><span class="tag ${r[3]==='warn'?'rd':r[3]==='notice'?'am':'gy'}">${r[3]}</span></td><td>${r[4]} ago</td></tr>`).join('')));},
+
 activity:()=>page('Activity Center','Real-time stream of everything happening across the institution.',
   '<div style="display:flex;gap:7px;margin-bottom:14px;flex-wrap:wrap">'+['All','Approvals','Tasks','Placement','Sessions','System'].map((f,i)=>`<button class="btnXs" style="${i===0?'border-color:var(--gold);color:var(--gold)':''}">${f}</button>`).join('')+'</div>'+
   [['#4285F4','G','Google moved 12 students to Round 2','2m'],[C.purple,'M','Prof. Mehta published "LRU Cache"','24m'],[C.green,'P','3 offers logged · avg ₹7.1L','1h'],[C.cyan,'S','Import job #44 completed','3h'],[C.red,'!','SLA breach: Acme Corp access','4h'],[C.gold,'V','Tech Fest post pushed to 487 feeds','5h']].map(d=>`<div class="row"><div class="av" style="background:${grad(d[0])}">${d[1]}</div><div style="flex:1"><div class="nm">${d[2]}</div></div><div class="right"><span class="mt">${d[3]} ago</span></div></div>`).join('')),
+
 perms:()=>{const roles=S.permRoles;const acts=Object.keys(S.perms);
   let lastDom='';let rows='';
   acts.forEach(act=>{const dom=act.split(' · ')[0],lbl=act.split(' · ')[1];
@@ -810,27 +905,32 @@ perms:()=>{const roles=S.permRoles;const acts=Object.keys(S.perms);
    '<div class="note">🔐 Every change is audit-logged. "Finance · View earnings = Own" keeps professor payouts private even from the Admin.</div>'+
    tbl(['Action',...roles.map(r=>`<span style="color:${r[1]}">${r[0]}</span>`)],rows)+
    '<div style="margin-top:14px;display:flex;gap:9px;align-items:center"><button class="btnP" data-act="savePerms">Save matrix</button><span class="mt">Legend: ⚪ none · 🟢 full · <span class="tag pu">Own</span> self-only</span></div>');},
+
 templates:()=>{const T=[['email','Email'],['push','Push'],['inapp','In-app'],['sms','SMS']];const a=curTab('templates',T);
   const data=[['Student approved','Welcome {{name}} — you are now linked to {{institution}}.'],['Drive shortlist','{{name}}, you are shortlisted for {{company}} {{role}}.'],['SLA escalation','{{item}} breached SLA — assigned to {{owner}}.'],['Doc approval','{{doc}} needs your approval at step {{step}}.']];
   return page('Notification Templates','Reusable, variabled templates per channel. Edit once, send everywhere.',
    '<div class="sec" style="margin:0 0 11px"><h2>'+T.find(t=>t[0]===a)[1]+' Templates</h2><div class="hl"></div><button class="btnP" data-act="newTemplate">+ New template</button></div>'+tabs('templates',T)+
    data.map(d=>`<div class="card" style="margin-bottom:10px"><div style="display:flex;align-items:center;margin-bottom:7px"><b style="font-size:13px">${d[0]}</b><span class="tag bl" style="margin-left:auto">${T.find(t=>t[0]===a)[1]}</span></div><div style="font-size:12px;color:var(--mut);font-family:monospace;background:rgba(255,255,255,.04);padding:9px 11px;border-radius:8px">${d[1]}</div><div style="display:flex;gap:7px;margin-top:9px"><button class="btnXs" data-act="editTemplate">Edit</button><button class="btnXs">Preview</button></div></div>`).join(''));},
+
 forms:()=>page('Form Builder','Build custom intake & application forms with drag-and-drop fields.',
   '<div class="grid g2" style="grid-template-columns:200px 1fr;align-items:start">'+
    '<div class="card"><div class="sec" style="margin:0 0 9px"><h2 style="font-size:13px">Field palette</h2></div>'+['📝 Short text','📄 Paragraph','▾ Dropdown','☑ Checkbox','🔢 Number','📎 File upload','📅 Date','⭐ Rating'].map(f=>`<div class="row" style="margin:0 0 6px;padding:8px 10px;cursor:grab"><div class="nm" style="font-size:12px">${f}</div></div>`).join('')+'</div>'+
    '<div class="card"><div class="sec" style="margin:0 0 9px"><h2 style="font-size:13px">"Internship Application" — canvas</h2><button class="btnXs" data-act="addField">+ Add field</button></div>'+
     [['Full name','Short text','required'],['Branch','Dropdown','required'],['Resume','File upload','required'],['Preferred location','Dropdown','optional'],['Why this role?','Paragraph','optional']].map(f=>`<div class="row" style="margin:0 0 7px"><div style="flex:1"><div class="nm">${f[0]}</div><div class="mt">${f[1]}</div></div><div class="right"><span class="tag ${f[2]==='required'?'am':'gy'}">${f[2]}</span><button class="btnXs">⚙</button></div></div>`).join('')+
     '<button class="btnP" data-act="publishForm" style="margin-top:8px">Publish form</button></div></div>'),
+
 import:()=>{const T=[['new','New Import'],['history','History'],['errors','Errors']];const a=curTab('import',T);let body='';
   if(a==='new')body='<div class="card"><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">'+['1 Upload','2 Map columns','3 Validate','4 Commit'].map((s,i)=>`<span class="tag ${i===0?'am':'gy'}">${s}</span>${i<3?'<span style="color:var(--mut2)">→</span>':''}`).join('')+'</div><div style="border:1.5px dashed var(--line2);border-radius:12px;padding:34px;text-align:center;color:var(--mut2);cursor:pointer" data-act="uploadCsv">⬆ Drop a CSV of students / faculty here, or click to browse</div><div class="note" style="margin-top:12px">Supports student roster, faculty list, batches & offers. Duplicates auto-flagged against College ID.</div></div>';
   else if(a==='history')body=tbl(['Job','Type','Rows','Status','When'],[['#44','Student roster',312,'Completed','3h'],['#43','Faculty list',18,'Completed','2d'],['#42','Offers CSV',96,'Partial (4 errors)','5d']].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td><span class="tag ${r[3]==='Completed'?'gr':'am'}">${r[3]}</span></td><td>${r[4]} ago</td></tr>`).join(''));
   else body=tbl(['Row','Field','Error','Fix'],[['18','College ID','Duplicate of 21BIT3090','Merge or skip'],['44','Email','Invalid format','Correct'],['77','Branch','Unknown value "CSEE"','Map to CSE']].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td><span class="tag rd">${r[2]}</span></td><td><button class="btnXs">${r[3]}</button></td></tr>`).join(''));
   return page('Import Center','Bulk-import rosters, faculty, batches & offers — with column mapping, validation & error handling.',tabs('import',T)+body);},
+
 apilogs:()=>{const T=[['all','All'],['errors','Errors'],['webhooks','Webhooks'],['integrations','Integrations']];const a=curTab('apilogs',T);
   const all=[['POST /offers','Razorpay','200',124,'2m'],['Webhook','Razorpay payment','200',88,'12m'],['POST /import','Internal','200',412,'3h'],['GET /verify','EmailJS','500',2100,'4h'],['Sync','LMS (Moodle)','200',640,'6h'],['Webhook','Recruiter ATS','403',54,'8h']];
   const rows=a==='errors'?all.filter(r=>+r[2]>=400):a==='webhooks'?all.filter(r=>r[0]==='Webhook'):a==='integrations'?all.filter(r=>['Razorpay','EmailJS','LMS (Moodle)','Recruiter ATS'].includes(r[1])):all;
   return page('API & Integration Logs','Every outbound call, webhook & integration sync — with status, latency & retry.',
    tabs('apilogs',T)+tbl(['Endpoint','Integration','Status','Latency','When',''],rows.map(r=>`<tr><td><span style="font-family:monospace;font-size:11.5px">${r[0]}</span></td><td>${r[1]}</td><td><span class="tag ${+r[2]>=400?'rd':'gr'}">${r[2]}</span></td><td>${r[3]}ms</td><td>${r[4]} ago</td><td>${+r[2]>=400?'<button class="btnXs" data-act="retry">Retry</button>':''}</td></tr>`).join('')));},
+
 master:()=>{const T=[['dept','Departments'],['program','Programs'],['batch','Batches'],['sem','Semesters'],['campus','Campuses']];const a=curTab('master',T);
   const data={dept:[['CSE','Computer Science',182],['IT','Information Tech',96],['AI&DS','AI & Data Science',71],['ECE','Electronics',138]],
     program:[['B.Tech CSE','4 yr · UG',182],['M.Tech AI','2 yr · PG',24],['B.Tech IT','4 yr · UG',96]],
@@ -841,30 +941,18 @@ master:()=>{const T=[['dept','Departments'],['program','Programs'],['batch','Bat
   return page('Master Data','The institutional backbone — departments, programs, batches, semesters & campuses.',
    '<div class="sec" style="margin:0 0 11px"><h2>'+T.find(t=>t[0]===a)[1]+'</h2><div class="hl"></div><button class="btnP" data-act="addMaster">+ Add</button></div>'+tabs('master',T)+
    tbl([...cols,''],data.map(r=>`<tr>${r.map(v=>`<td>${typeof v==='string'&&(v==='active'||v==='upcoming')?`<span class="tag ${v==='active'?'gr':'am'}">${v}</span>`:v}</td>`).join('')}<td><button class="btnXs">Edit</button></td></tr>`).join('')));},
+
 routing:()=>page('Approval Routing Rules','Define how each request type is routed for approval — e.g. an NDA goes to Legal then Admin; a placement report goes to Dept Head then Admin.',
   '<div class="sec" style="margin:0 0 11px"><h2>'+S.routing.length+' Active Rules</h2><div class="hl"></div><button class="btnP" data-act="addRule">+ New rule</button></div>'+
   S.routing.map(r=>`<div class="card" style="margin-bottom:10px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><span class="tag am">IF</span><b style="font-size:13px">${r.cond}</b><button class="btnXs" data-act="addRule" style="margin-left:auto">Edit</button></div><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span class="tag gy">THEN route</span>${r.chain.map((s,i)=>`<span class="tag ${i===r.chain.length-1?'gr':'bl'}">${s}</span>${i<r.chain.length-1?'<span style="color:var(--mut2)">→</span>':''}`).join('')}</div></div>`).join('')),
+
 escalation:()=>page('Escalation Policies','Automate what happens when work stalls: SLA timers, reminders, reassignment & escalation targets.',
   sae(['4 policies · 3 active','Approval, SLA breach & idle-case policies are live.'],['1 policy disabled','Recruiter-access escalation is off — turn on?'],['Auto-escalation saved 14 breaches','Last 30 days, vs manual chasing.'])+
   '<div class="sec" style="margin:0 0 11px"><h2>Policies</h2><div class="hl"></div><button class="btnP" data-act="addPolicy">+ New policy</button></div>'+
   tbl(['Trigger','SLA timer','Escalate to','Reminder','Reassign','Status',''],S.escal.map(p=>`<tr><td><b>${p.trigger}</b></td><td><span class="tag ${p.sla==='0h'?'rd':'am'}">${p.sla}</span></td><td>${p.escTo}</td><td>${p.remind}</td><td>${p.reassign}</td><td><span class="tag ${p.on?'gr':'gy'}">${p.on?'● Active':'Disabled'}</span></td><td><button class="btnXs" data-act="togglePolicy" data-id="${p.id}">${p.on?'Disable':'Enable'}</button></td></tr>`).join(''))),
-opshealth:()=>{const T=[['overview','Overview'],['turnaround','Approval Turnaround'],['breach','SLA Breaches'],['imports','Import Quality'],['cases','Case Aging']];const a=curTab('opshealth',T);let body='';
-  if(a==='overview')body=
-    '<div class="phead-strip" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px">'+
-    '<div class="phead-stat"><div class="psn" style="color:var(--green)">6.2h</div><div class="psl">Avg Turnaround</div><div class="psd up">▲ -43% QoQ</div></div>'+
-    '<div class="phead-stat"><div class="psn" style="color:var(--red)">8%</div><div class="psl">SLA Breach Rate</div><div class="psd down">target &lt;5%</div></div>'+
-    '<div class="phead-stat"><div class="psn" style="color:var(--gold)">1.3%</div><div class="psl">Import Error Rate</div><div class="psd up">▲ improving</div></div>'+
-    '<div class="phead-stat"><div class="psn" style="color:var(--blue)">3.4d</div><div class="psl">Avg Case Age</div><div class="psd down">target &lt;3d</div></div>'+
-    '</div>'+
-    sae(['Operational health: Good','Most queues within SLA; one cohort case aging.'],['Cut SLA breach rate < 5%','Acme access + ECE case are the current drags.'],['Turnaround down 43%','From 11h to 6.2h since queue + escalation rollout.'])+
-    '<div class="card" style="margin-top:13px"><div class="sec" style="margin:0 0 12px"><h2>Queue Throughput</h2><div class="hl"></div><span style="font-size:10px;color:var(--mut2)">this week</span></div>'+bars([['Resolved on time',71,C.green],['Resolved late',21,C.gold],['Still open / breached',8,C.red]])+'</div>';
-  else if(a==='turnaround')body='<div class="card"><div class="sec" style="margin:0 0 12px"><h2>Avg Turnaround by Request Type</h2><div class="hl"></div></div>'+bars([['Student approval',2.1*20,C.green],['Doc approval',6.4*8,C.gold],['Eligibility override',9.2*6,C.am],['Recruiter access',18*3,C.red]])+'<div class="mt" style="font-size:11px;margin-top:6px">Bars scaled for comparison · recruiter access is the slowest lane.</div></div>';
-  else if(a==='breach')body='<div class="grid g3" style="margin-bottom:14px">'+kpi('8%','Breach Rate',C.red)+kpi('14','Breaches (30d)',C.gold)+kpi('1','Open breach',C.red)+'</div>'+tbl(['Work item','Lane','Age','State'],[['Recruiter access — Acme Corp','Access','2d over','Escalated'],['Doc — old MoU','Document','4h over','Resolved'],['Override — batch 2024','Override','1h over','Resolved']].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td><span class="tag rd">${r[2]}</span></td><td>${stateTag(r[3])}</td></tr>`).join(''));
-  else if(a==='imports')body='<div class="grid g3" style="margin-bottom:14px">'+kpi('1.3%','Error Rate',C.gold)+kpi('312','Last job rows',C.green)+kpi('4','Errors flagged',C.red)+'</div>'+'<div class="card"><div class="sec" style="margin:0 0 12px"><h2>Error Types</h2><div class="hl"></div><span style="font-size:10px;color:var(--mut2)">last 5 jobs</span></div>'+bars([['Duplicate College ID',52,C.red],['Invalid email',28,C.gold],['Unknown branch',20,C.blue]])+'</div>';
-  else body='<div class="card"><div class="sec" style="margin:0 0 12px"><h2>Unresolved Cases by Age</h2><div class="hl"></div></div>'+bars([['< 1 day',30,C.green],['1–3 days',45,C.gold],['3–7 days',18,C.am],['> 7 days',7,C.red]])+'<div class="mt" style="font-size:11px;margin-top:6px">Avg unresolved case age: 3.4 days · target < 3.</div></div>';
-  return page('Operational Health','Institution-level analytics for how operations actually run — turnaround, SLA breaches, import quality & case aging.',tabs('opshealth',T)+body);},
-};
-PAGES.instpage=()=>{
+
+/* ---------- INSTITUTION PROFILE (public view) ---------- */
+instpage:()=>{
   const DEPTS=[
     {code:'CSE',full:'Computer Science & Engineering',students:182,elo:1410,delta:'+120',placed:78,col:C.gold,skills:['DSA 79%','Web 71%','SysDesign 46%'],feat:true},
     {code:'IT',full:'Information Technology',students:96,elo:1280,delta:'+88',placed:64,col:C.green,skills:['DSA 68%','Web 74%'],feat:false},
@@ -900,6 +988,7 @@ PAGES.instpage=()=>{
       <div class="dd-placed" style="color:${d.col}">${d.placed}%<span style="font-size:11px;font-weight:600;color:var(--mut);margin-left:5px">placed</span></div>
       ${d.feat?`<div style="display:flex;gap:5px;margin-top:11px;flex-wrap:wrap">${d.skills.map(sk=>'<span class="tag gy" style="font-size:9.5px">'+sk+'</span>').join('')}</div>`:''}
     </div>`).join('');
+
   const recCards=RECS.map(r=>`
     <div class="ip-rec ${r.live?'live-now':''}">
       <div class="ric" style="background:linear-gradient(135deg,${r.col}44,${r.col}18);border:1px solid ${r.col}33">
@@ -908,6 +997,7 @@ PAGES.instpage=()=>{
       <div class="rn">${r.name}</div>
       <div class="rs">${r.sub}</div>
     </div>`).join('');
+
   const hlCards=HLS.map(h=>`
     <div class="ip-hl">
       <div class="hy">${h.yr}</div>
@@ -915,12 +1005,15 @@ PAGES.instpage=()=>{
       <div class="hs">${h.s}</div>
       <div class="hglow" style="background:${h.c}"></div>
     </div>`).join('');
+
   const trustChecks=TRUST.map(t=>`
     <div class="ip-tcheck">
       <div class="tc ${t[2]}">${t[0]}</div>
       <span>${t[1]}</span>
     </div>`).join('');
+
   return `<div class="ip-wrap">
+    <!-- HERO -->
     <div class="ip-hero">
       <div class="ip-hero-bg">
         <canvas id="ipCanvas"></canvas>
@@ -931,7 +1024,9 @@ PAGES.instpage=()=>{
         <div class="ip-nav-bar">
           <div class="ip-breadcrumb">
             <button data-act="backSearch">← Search</button>
-            <span>›</span><span>Institutions</span><span>›</span>
+            <span>›</span>
+            <span>Institutions</span>
+            <span>›</span>
             <b style="color:var(--txt)">VIT Vellore</b>
           </div>
         </div>
@@ -957,23 +1052,58 @@ PAGES.instpage=()=>{
       </div>
       <div class="ip-hero-right">
         <div class="ip-orbit" id="ipOrbit">
-          <div class="ip-ring3"></div><div class="ip-ring2"></div><div class="ip-ring1"></div>
-          <div class="ip-orbit-core"><div class="cn">64%</div><div class="cl">Placed</div></div>
+          <div class="ip-ring3"></div>
+          <div class="ip-ring2"></div>
+          <div class="ip-ring1"></div>
+          <div class="ip-orbit-core">
+            <div class="cn">64%</div>
+            <div class="cl">Placed</div>
+          </div>
         </div>
       </div>
     </div>
-    <div class="ip-ticker" aria-label="Live hiring activity"><div class="ip-ticker-track" id="ipTickerTrack"></div></div>
+
+    <!-- LIVE TICKER -->
+    <div class="ip-ticker" aria-label="Live hiring activity">
+      <div class="ip-ticker-track" id="ipTickerTrack"></div>
+    </div>
+
+    <!-- BODY -->
     <div class="ip-body">
+
+      <!-- Stat strip -->
       <div class="ip-statstrip">
-        <div class="ip-stat"><div class="sn" style="color:var(--green)">312</div><div class="sl">Offers this cycle</div><div class="sd up">▲ +9% YoY</div></div>
-        <div class="ip-stat"><div class="sn" style="color:var(--gold)">₹6.2L</div><div class="sl">Avg Package</div><div class="sd up">▲ +₹0.4L MoM</div></div>
-        <div class="ip-stat"><div class="sn" style="color:var(--blue)">1,342</div><div class="sl">Cohort Avg ELO</div><div class="sd up">▲ +141 this term</div></div>
-        <div class="ip-stat"><div class="sn" style="color:var(--cyan)">64</div><div class="sl">Recruiter Partners</div><div class="sd up">▲ +8 this year</div></div>
+        <div class="ip-stat">
+          <div class="sn" style="color:var(--green)">312</div>
+          <div class="sl">Offers this cycle</div>
+          <div class="sd up">▲ +9% YoY</div>
+        </div>
+        <div class="ip-stat">
+          <div class="sn" style="color:var(--gold)">₹6.2L</div>
+          <div class="sl">Avg Package</div>
+          <div class="sd up">▲ +₹0.4L MoM</div>
+        </div>
+        <div class="ip-stat">
+          <div class="sn" style="color:var(--blue)">1,342</div>
+          <div class="sl">Cohort Avg ELO</div>
+          <div class="sd up">▲ +141 this term</div>
+        </div>
+        <div class="ip-stat">
+          <div class="sn" style="color:var(--cyan)">64</div>
+          <div class="sl">Recruiter Partners</div>
+          <div class="sd up">▲ +8 this year</div>
+        </div>
       </div>
+
+      <!-- Departments -->
       <div class="ip-sh"><h2>Departments</h2><div class="hl"></div><span class="badge" style="background:rgba(246,196,83,.12);color:var(--gold)">4 active</span></div>
       <div class="ip-dept-grid">${deptCards}</div>
+
+      <!-- Recruiter network -->
       <div class="ip-sh"><h2>Recruiter Network</h2><div class="hl"></div><span class="badge" style="background:rgba(79,212,163,.12);color:var(--green)">● 12 active now</span></div>
       <div class="ip-rec-grid">${recCards}</div>
+
+      <!-- Trust + Highlights -->
       <div class="ip-bottom-row">
         <div class="ip-trust">
           <div class="ip-trust-score">82</div>
@@ -985,6 +1115,8 @@ PAGES.instpage=()=>{
           <div class="ip-hl-grid">${hlCards}</div>
         </div>
       </div>
+
+      <!-- CTA -->
       <div class="ip-cta">
         <div class="cta-text" style="flex:1">
           <h3>Partner with VIT Vellore</h3>
@@ -993,9 +1125,28 @@ PAGES.instpage=()=>{
         <button class="btnP" data-act="reqAccess" style="white-space:nowrap;flex-shrink:0">⚡ Request Access</button>
         <button class="btnG" data-act="follow" style="white-space:nowrap;flex-shrink:0">+ Follow Institution</button>
       </div>
+
     </div>
   </div>`;
+},
+
+opshealth:()=>{const T=[['overview','Overview'],['turnaround','Approval Turnaround'],['breach','SLA Breaches'],['imports','Import Quality'],['cases','Case Aging']];const a=curTab('opshealth',T);let body='';
+  if(a==='overview')body=
+    '<div class="phead-strip" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px">'+
+    '<div class="phead-stat"><div class="psn" style="color:var(--green)">6.2h</div><div class="psl">Avg Turnaround</div><div class="psd up">▲ -43% QoQ</div></div>'+
+    '<div class="phead-stat"><div class="psn" style="color:var(--red)">8%</div><div class="psl">SLA Breach Rate</div><div class="psd down">target &lt;5%</div></div>'+
+    '<div class="phead-stat"><div class="psn" style="color:var(--gold)">1.3%</div><div class="psl">Import Error Rate</div><div class="psd up">▲ improving</div></div>'+
+    '<div class="phead-stat"><div class="psn" style="color:var(--blue)">3.4d</div><div class="psl">Avg Case Age</div><div class="psd down">target &lt;3d</div></div>'+
+    '</div>'+
+    sae(['Operational health: Good','Most queues within SLA; one cohort case aging.'],['Cut SLA breach rate < 5%','Acme access + ECE case are the current drags.'],['Turnaround down 43%','From 11h to 6.2h since queue + escalation rollout.'])+
+    '<div class="card" style="margin-top:13px"><div class="sec" style="margin:0 0 12px"><h2>Queue Throughput</h2><div class="hl"></div><span style="font-size:10px;color:var(--mut2)">this week</span></div>'+bars([['Resolved on time',71,C.green],['Resolved late',21,C.gold],['Still open / breached',8,C.red]])+'</div>';
+  else if(a==='turnaround')body='<div class="card"><div class="sec" style="margin:0 0 12px"><h2>Avg Turnaround by Request Type</h2><div class="hl"></div></div>'+bars([['Student approval',2.1*20,C.green],['Doc approval',6.4*8,C.gold],['Eligibility override',9.2*6,C.am],['Recruiter access',18*3,C.red]])+'<div class="mt" style="font-size:11px;margin-top:6px">Bars scaled for comparison · recruiter access is the slowest lane.</div></div>';
+  else if(a==='breach')body='<div class="grid g3" style="margin-bottom:14px">'+kpi('8%','Breach Rate',C.red)+kpi('14','Breaches (30d)',C.gold)+kpi('1','Open breach',C.red)+'</div>'+tbl(['Work item','Lane','Age','State'],[['Recruiter access — Acme Corp','Access','2d over','Escalated'],['Doc — old MoU','Document','4h over','Resolved'],['Override — batch 2024','Override','1h over','Resolved']].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td><span class="tag rd">${r[2]}</span></td><td>${stateTag(r[3])}</td></tr>`).join(''));
+  else if(a==='imports')body='<div class="grid g3" style="margin-bottom:14px">'+kpi('1.3%','Error Rate',C.gold)+kpi('312','Last job rows',C.green)+kpi('4','Errors flagged',C.red)+'</div>'+'<div class="card"><div class="sec" style="margin:0 0 12px"><h2>Error Types</h2><div class="hl"></div><span style="font-size:10px;color:var(--mut2)">last 5 jobs</span></div>'+bars([['Duplicate College ID',52,C.red],['Invalid email',28,C.gold],['Unknown branch',20,C.blue]])+'</div>';
+  else body='<div class="card"><div class="sec" style="margin:0 0 12px"><h2>Unresolved Cases by Age</h2><div class="hl"></div></div>'+bars([['< 1 day',30,C.green],['1–3 days',45,C.gold],['3–7 days',18,C.am],['> 7 days',7,C.red]])+'<div class="mt" style="font-size:11px;margin-top:6px">Avg unresolved case age: 3.4 days · target < 3.</div></div>';
+  return page('Operational Health','Institution-level analytics for how operations actually run — turnaround, SLA breaches, import quality & case aging.',tabs('opshealth',T)+body);},
 };
+
 /* ===================== DRAWER ===================== */
 function openDrawer(html){$('#drawer').innerHTML='<button class="dx" onclick="closeDrawer()">✕</button>'+html;$('#drawer').classList.add('show');$('#dscrim').classList.add('show');}
 window.closeDrawer=function(){$('#drawer').classList.remove('show');$('#dscrim').classList.remove('show');};
@@ -1024,6 +1175,7 @@ function caseDrawer(id){const c=S.cases.find(x=>x.id===id);const order=['Open','
   '<div class="sec" style="margin:16px 0 8px"><h2 style="font-size:13px">Outcome closure</h2></div>'+
   '<div class="card" style="padding:13px"><div style="display:flex;gap:7px"><select id="caseOutcome" aria-label="Outcome" style="flex:1;background:rgba(255,255,255,.05);border:1px solid var(--line2);border-radius:8px;color:var(--txt);font-size:12px;padding:8px 10px"><option>Recovered — back on track</option><option>Placed</option><option>Escalated to department</option><option>No longer at risk</option><option>Withdrawn / left</option></select><button class="btnGr" data-act="closeCase" data-id="'+c.id+'">Close case</button></div></div>'+
   comments());}
+
 /* ===================== MODALS / ACTIONS ===================== */
 function openModal(html){$('#modal').innerHTML=html;$('#mob').classList.add('show');}
 function closeModal(){$('#mob').classList.remove('show');}
@@ -1079,33 +1231,48 @@ function act(a,id,el){
   else if(a==='backSearch'){go('search');}
   else if(a==='follow'){flash('Following VIT Vellore — updates in your feed');}
   else if(a==='reqAccess'){openModal('<h3>Request Recruiter Access</h3><div class="ms">VIT Vellore · Verified · NAAC A+</div><div class="note">You\'ll get curated shortlists once your NDA and data agreement are signed. Access is scoped strictly to eligible, opted-in students.</div><div class="fld"><label>Company name</label><input value="Google" readonly></div><div class="fld"><label>Recruiter name</label><input placeholder="Your name"></div><div class="fld"><label>Use case</label><select><option>Campus drive</option><option>Ongoing pipeline</option><option>Internship</option></select></div><div class="acts"><button class="btnG" data-x>Cancel</button><button class="btnP" data-done="Access request sent · NDA will arrive at your email in 24h">Submit request</button></div>');}
-  else if(['match','apprRec','shortlist','acceptS','declineS','mute','sendNda','savePerms','newTemplate','editTemplate','addField','publishForm','uploadCsv','retry','addMaster','addComment'].includes(a)){flash({match:'Added to drive',apprRec:'Recruiter access granted',shortlist:'Shortlisted',acceptS:'Session confirmed',declineS:'Declined',mute:'Category muted',sendNda:'NDA sent for signature',savePerms:'Permissions saved & audit-logged',newTemplate:'Template created',editTemplate:'Template editor opened',addField:'Field added to form',publishForm:'Form published',uploadCsv:'CSV uploaded — mapping columns',retry:'Request retried',addMaster:'Record added',addComment:'Comment posted (visibility applied)'}[a]);}
+  else if(['match','apprRec','shortlist','acceptS','declineS','mute','sendNda','togglePerm','savePerms','newTemplate','editTemplate','addField','publishForm','uploadCsv','retry','addMaster','addComment'].includes(a)){flash({match:'Added to drive',apprRec:'Recruiter access granted',shortlist:'Shortlisted',acceptS:'Session confirmed',declineS:'Declined',mute:'Category muted',sendNda:'NDA sent for signature',togglePerm:'Permission toggled',savePerms:'Permissions saved & audit-logged',newTemplate:'Template created',editTemplate:'Template editor opened',addField:'Field added to form',publishForm:'Form published',uploadCsv:'CSV uploaded — mapping columns',retry:'Request retried',addMaster:'Record added',addComment:'Comment posted (visibility applied)'}[a]);}
 }
 document.addEventListener('click',e=>{
   if(e.target.matches('[data-x]'))closeModal();
   const d=e.target.closest('[data-done]');if(d){flash(d.dataset.done);closeModal();}
 });
+
 /* ===================== INSTITUTION PROFILE CANVAS ===================== */
 function initInstPage(){
+  // ---- Background canvas ----
   const cv=document.getElementById('ipCanvas');
   if(!cv)return;
   const ctx=cv.getContext('2d');
   let W,H,DPR=Math.min(devicePixelRatio,2),t2=0;
   function rsz(){W=cv.offsetWidth;H=cv.offsetHeight;cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);}rsz();
   const PTS=[];
-  for(let i=0;i<120;i++)PTS.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.28,vy:(Math.random()-.5)*.28,r:Math.random()<.15?2.5:Math.random()<.4?1.5:1,col:['#f6c453','#74a8ff','#4fd4a3','#ab93ff','#54d9e0'][Math.floor(Math.random()*5)],bright:Math.random()});
+  for(let i=0;i<120;i++)PTS.push({
+    x:Math.random()*W,y:Math.random()*H,
+    vx:(Math.random()-.5)*.28,vy:(Math.random()-.5)*.28,
+    r:Math.random()<.15?2.5:Math.random()<.4?1.5:1,
+    col:['#f6c453','#74a8ff','#4fd4a3','#ab93ff','#54d9e0'][Math.floor(Math.random()*5)],
+    bright:Math.random()
+  });
   function hx(col,a){const n=parseInt(col.slice(1),16);return'rgba('+(n>>16)+','+((n>>8)&255)+','+(n&255)+','+a+')';}
   function loopBg(){
     if(!document.getElementById('ipCanvas'))return;
     t2++;ctx.clearRect(0,0,W,H);
+    // grid
     ctx.strokeStyle='rgba(255,255,255,.025)';ctx.lineWidth=1;
     for(let i=0;i<W;i+=56){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,H);ctx.stroke();}
     for(let i=0;i<H;i+=56){ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(W,i);ctx.stroke();}
+    // particles
     PTS.forEach(p=>{
       p.x+=p.vx;p.y+=p.vy;
-      if(p.x<0)p.x=W;if(p.x>W)p.x=0;if(p.y<0)p.y=H;if(p.y>H)p.y=0;
+      if(p.x<0)p.x=W;if(p.x>W)p.x=0;
+      if(p.y<0)p.y=H;if(p.y>H)p.y=0;
       const pulse=p.bright*.4+.3+Math.sin(t2*.025+p.bright*6.28)*.25;
-      PTS.forEach(q=>{const d=Math.hypot(p.x-q.x,p.y-q.y);if(d<90&&d>1){ctx.strokeStyle=hx(p.col,(.9-d/90)*.10);ctx.lineWidth=.7;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.stroke();}});
+      // connections
+      PTS.forEach(q=>{
+        const d=Math.hypot(p.x-q.x,p.y-q.y);
+        if(d<90&&d>1){ctx.strokeStyle=hx(p.col,(.9-d/90)*.10);ctx.lineWidth=.7;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.stroke();}
+      });
       if(p.r>1.8){const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*4);g.addColorStop(0,hx(p.col,pulse*.7));g.addColorStop(1,hx(p.col,0));ctx.fillStyle=g;ctx.beginPath();ctx.arc(p.x,p.y,p.r*4,0,7);ctx.fill();}
       ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,7);ctx.fillStyle=hx(p.col,pulse*.9);ctx.fill();
     });
@@ -1113,36 +1280,51 @@ function initInstPage(){
   }
   window.addEventListener('resize',()=>{rsz();PTS.forEach(p=>{p.x=Math.random()*W;p.y=Math.random()*H;});});
   loopBg();
+
+  // ---- Orbit nodes ----
   const orbit=document.getElementById('ipOrbit');
   if(orbit){
+    // Remove stale nodes
     orbit.querySelectorAll('.ip-orb-node').forEach(n=>n.remove());
     const CX=160,CY=160;
     const ONODES=[
-      {angle:0,r:82,n:'2,400',l:'Students',col:'#74a8ff'},
-      {angle:180,r:82,n:'64',l:'Partners',col:'#54d9e0'},
-      {angle:75,r:128,n:'₹6.2L',l:'Avg Pkg',col:'#f6c453'},
-      {angle:255,r:128,n:'#1',l:'CSE Rank',col:'#ab93ff'},
-      {angle:330,r:152,n:'82',l:'Trust',col:'#4fd4a3'},
-      {angle:150,r:152,n:'+141',l:'ELO Lift',col:'#dc8b18'},
+      {angle:0,   r:82,  n:'2,400', l:'Students',  col:'#74a8ff'},
+      {angle:180, r:82,  n:'64',    l:'Partners',   col:'#54d9e0'},
+      {angle:75,  r:128, n:'₹6.2L', l:'Avg Pkg',   col:'#f6c453'},
+      {angle:255, r:128, n:'#1',    l:'CSE Rank',  col:'#ab93ff'},
+      {angle:330, r:152, n:'82',    l:'Trust',     col:'#4fd4a3'},
+      {angle:150, r:152, n:'+141',  l:'ELO Lift',  col:'#dc8b18'},
     ];
     ONODES.forEach(o=>{
-      const rad=o.angle*Math.PI/180;const px=CX+o.r*Math.cos(rad);const py=CY+o.r*Math.sin(rad);
-      const el=document.createElement('div');el.className='ip-orb-node';el.style.cssText='left:'+px+'px;top:'+py+'px;';
+      const rad=o.angle*Math.PI/180;
+      const px=CX+o.r*Math.cos(rad);
+      const py=CY+o.r*Math.sin(rad);
+      const el=document.createElement('div');
+      el.className='ip-orb-node';
+      el.style.cssText=`left:${px}px;top:${py}px;`;
       const hex=o.col;
-      el.innerHTML='<div class="on-chip" style="background:'+hex+'18;border-color:'+hex+'44;"><div class="on-n" style="color:'+hex+'">'+o.n+'</div><div class="on-l" style="color:'+hex+'">'+o.l+'</div></div>';
+      el.innerHTML=`<div class="on-chip" style="background:${hex}18;border-color:${hex}44;"><div class="on-n" style="color:${hex}">${o.n}</div><div class="on-l" style="color:${hex}">${o.l}</div></div>`;
       orbit.appendChild(el);
     });
-    const r1=orbit.querySelector('.ip-ring2');const r2=orbit.querySelector('.ip-ring3');
+    // Animate orbit spin via CSS on ring elements
+    const r1=orbit.querySelector('.ip-ring2');
+    const r2=orbit.querySelector('.ip-ring3');
     if(r1){r1.style.animation='orb2 18s linear infinite';}
     if(r2){r2.style.animation='orb3 28s linear infinite reverse';}
-    if(!document.getElementById('orbKeyframes')){const s=document.createElement('style');s.id='orbKeyframes';s.textContent='@keyframes orb2{to{transform:translate(-50%,-50%) rotate(360deg)}}@keyframes orb3{to{transform:translate(-50%,-50%) rotate(360deg)}}';document.head.appendChild(s);}
+    if(!document.getElementById('orbKeyframes')){
+      const s=document.createElement('style');s.id='orbKeyframes';
+      s.textContent='@keyframes orb2{to{transform:translate(-50%,-50%) rotate(360deg)}}@keyframes orb3{to{transform:translate(-50%,-50%) rotate(360deg)}}';
+      document.head.appendChild(s);
+    }
   }
+
+  // ---- Ticker ----
   const track=document.getElementById('ipTickerTrack');
   if(track){
     const TICKS=[
       {col:'#4fd4a3',txt:'Riya Sharma → Google SDE-1 · ₹38L offered'},
       {col:'#f6c453',txt:'Google moved 12 CSE students to Round 2'},
-      {col:'#74a8ff',txt:'ELO 1,542 — VITs current platform high'},
+      {col:'#74a8ff',txt:'ELO 1,542 — VIT\'s current platform high'},
       {col:'#ab93ff',txt:'Prof. Mehta published "LRU Cache Design" to 62 students'},
       {col:'#54d9e0',txt:'Flipkart shortlisted 92 students for SDE Intern'},
       {col:'#dc8b18',txt:'Zomato drive opened — 48h to apply'},
@@ -1151,9 +1333,11 @@ function initInstPage(){
       {col:'#f6c453',txt:'Annual Tech Fest 2026 — 4,000+ attendees'},
       {col:'#74a8ff',txt:'Stripe pipeline: 3 offer letters pending signatures'},
     ];
-    track.innerHTML=TICKS.concat(TICKS).map(t=>'<span class="ip-tick-item"><span class="tid" style="background:'+t.col+'"></span>'+t.txt+'</span>').join('');
+    const inner=TICKS.concat(TICKS).map(t=>`<span class="ip-tick-item"><span class="tid" style="background:${t.col}"></span>${t.txt}</span>`).join('');
+    track.innerHTML=inner;
   }
 }
+
 /* ===================== TALENT MAP ===================== */
 function initMap(){
   const cv=document.getElementById('tmap');if(!cv)return;
@@ -1182,7 +1366,6 @@ function initMap(){
   const lt=document.getElementById('livetxt');if(lt)lt.style.transition='opacity .25s';
 }
 render();
-
 </script>
 </body>
 </html>

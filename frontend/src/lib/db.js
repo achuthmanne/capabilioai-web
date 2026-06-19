@@ -253,7 +253,7 @@ export const arenaDb = {
         console.error(
           '❌ arena_history table missing in your Supabase project.\n' +
           '   Run supabase-arena-history-migration.sql in your Supabase SQL Editor.\n' +
-          '   Project: https://supabase.com/dashboard/project/eybchcqwbizjmzyrviri/sql/new'
+          '   Project: https://supabase.com/dashboard/project/cbrjdfllxfmmvalijpej/sql/new'
         )
       } else {
         console.error('arenaDb.addSubmission error:', error.code, error.message)

@@ -99,6 +99,32 @@ const NAV_GROUPS = [
 // flat list for mobile tab bar
 const NAV = NAV_GROUPS.flatMap(g => g.items)
 
+// ─── Roles (UI-level scoping; enforce with Supabase RLS later) ─────────────────
+const ROLES = [
+  { id: "admin",     label: "Institution Admin", workspace: "Institution OS" },
+  { id: "placement", label: "Placement Cell",    workspace: "Placement Cell" },
+  { id: "faculty",   label: "Professor",         workspace: "Faculty Workspace" },
+  { id: "recruiter", label: "Recruiter",         workspace: "Recruiter Portal" },
+]
+// page ids each role may see (null ⇒ everything)
+const ROLE_PAGES = {
+  admin:     null,
+  placement: ["home", "pubprofile", "people", "companies", "intelligence", "outcomes", "settings"],
+  faculty:   ["home", "people", "tasks", "cohorts", "events"],
+  recruiter: ["pubprofile", "companies", "outcomes"],
+}
+function roleAllows(role, pageId) {
+  const allow = ROLE_PAGES[role]
+  return !allow || allow.includes(pageId)
+}
+function navGroupsForRole(role) {
+  const allow = ROLE_PAGES[role]
+  if (!allow) return NAV_GROUPS
+  return NAV_GROUPS
+    .map(g => ({ ...g, items: g.items.filter(it => allow.includes(it.id)) }))
+    .filter(g => g.items.length)
+}
+
 // ─── Audit log helper ─────────────────────────────────────────────────────────
 async function auditLog(orgId, actorId, actorName, action, actionCode, entityType = "", entityId = "", details = {}, severity = "info") {
   try {
@@ -460,8 +486,10 @@ function KPICard({ value, label, trend, trendDir = "up", context, action, color,
 }
 
 // ─── Sidebar (desktop) ────────────────────────────────────────────────────────
-function InstSidebar({ active, onNav, userData, members, tasks }) {
+function InstSidebar({ active, onNav, userData, members, tasks, role = "admin", onRole }) {
   const orgName = userData?.org_name || "Your Institution"
+  const groups = navGroupsForRole(role)
+  const roleMeta = ROLES.find(r => r.id === role) || ROLES[0]
   const pendingCount = (members || []).filter(m => m.status === "pending" || m.status === "invited").length
   const taskCount    = (tasks   || []).filter(t => t.status === "active").length
 
@@ -495,9 +523,17 @@ function InstSidebar({ active, onNav, userData, members, tasks }) {
           <div style={{ overflow: "hidden" }}>
             <div style={{ fontSize: 13, fontWeight: 800, color: T.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{orgName}</div>
             <div style={{ fontSize: 10, color: T.ink5, fontFamily: MONO, letterSpacing: "0.06em", textTransform: "uppercase", marginTop: 2 }}>
-              {userData?.org_type === "company" ? "Company OS" : "Institution OS"}
+              {roleMeta.workspace}
             </div>
           </div>
+        </div>
+        {/* Role switcher (UI scoping; RLS-enforced later) */}
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: ".16em", textTransform: "uppercase", color: T.ink5, fontFamily: MONO, marginBottom: 5 }}>View as</div>
+          <select value={role} onChange={e => onRole && onRole(e.target.value)}
+            style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: `1px solid ${T.borderM}`, borderRadius: 10, color: T.ink, fontSize: 12, fontWeight: 700, fontFamily: FONT, padding: "8px 10px", cursor: "pointer" }}>
+            {ROLES.map(r => <option key={r.id} value={r.id} style={{ background: T.bg }}>{r.label}</option>)}
+          </select>
         </div>
         {/* Divider */}
         <div style={{ height: 1, background: T.border }} />
@@ -509,7 +545,7 @@ function InstSidebar({ active, onNav, userData, members, tasks }) {
           .inst-nav-link { transition: background 0.12s, color 0.12s; }
           .inst-nav-link:hover:not(.inst-nav-link-active) { background: rgba(255,255,255,0.055) !important; color: #f7f2ea !important; }
         `}</style>
-        {NAV_GROUPS.map(group => (
+        {groups.map(group => (
           <div key={group.label} style={{ marginTop: 20 }}>
             <div style={{ padding: "0 8px 6px", fontSize: 9.5, fontWeight: 800, letterSpacing: ".18em", textTransform: "uppercase", color: T.ink5, fontFamily: MONO }}>
               {group.label}
@@ -2572,6 +2608,16 @@ export default function InstitutionOS({ user, userData, onNavigate }) {
   const [activePage, setActivePage] = useState("home")
   const [isMobile, setIsMobile]     = useState(window.innerWidth < 768)
   const [settingsTab, setSettingsTab] = useState("profile")
+  const [role, setRole]             = useState("admin")
+
+  function onRole(r) {
+    setRole(r)
+    // if current page isn't allowed for the new role, jump to its first allowed page
+    if (!roleAllows(r, activePage)) {
+      const first = navGroupsForRole(r)[0]?.items[0]?.id || "home"
+      setActivePage(first)
+    }
+  }
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
@@ -2622,7 +2668,7 @@ export default function InstitutionOS({ user, userData, onNavigate }) {
       overflow: "hidden", fontFamily: FONT,
     }}>
       {!isMobile && (
-        <InstSidebar active={activePage} onNav={onNav} userData={userData} members={members} tasks={tasks} />
+        <InstSidebar active={activePage} onNav={onNav} userData={userData} members={members} tasks={tasks} role={role} onRole={onRole} />
       )}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, minWidth: 0 }}>
         {PAGE_MAP[activePage] || <HomePage {...shared} onVerify={handleVerify} />}
