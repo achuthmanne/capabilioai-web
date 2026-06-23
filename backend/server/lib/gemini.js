@@ -619,10 +619,22 @@ Return ONLY this JSON (no markdown, no extra text):
 
   const result = await genModel.generateContent({
     contents: [{ role: "user", parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 6000, responseMimeType: "application/json" },
+    generationConfig: { maxOutputTokens: 8192, responseMimeType: "application/json" },
   })
 
-  const parsed = JSON.parse(result.response.text())
+  const raw = result.response.text()
+  let parsed
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    // Attempt recovery from truncated JSON: find last complete question object
+    const lastComma = raw.lastIndexOf("},")
+    if (lastComma > 0) {
+      try { parsed = JSON.parse(raw.slice(0, lastComma + 1) + "]}") } catch { parsed = {} }
+    }
+    if (!parsed?.questions?.length) throw new Error(`Gemini returned unparseable JSON (length ${raw.length})`)
+    console.warn(`[gemini-mcq] Partial JSON recovery: salvaged ${parsed.questions.length} questions`)
+  }
   const questions = Array.isArray(parsed) ? parsed : (parsed.questions || [])
   if (!questions.length) throw new Error("Gemini returned no MCQ questions")
   return { questions }
