@@ -181,7 +181,9 @@ Never start a question with "Write a..." or "Create a..." — those are open-end
 
 Return JSON now:`,
       },
-    ], { max_tokens: 6000 })
+    ], { max_tokens: 3500 })
+    // 3500 keeps total tokens (prompt ~412 + output) well under llama-3.1-8b-instant's
+    // hard 6000 TPM cap. llama-3.3-70b-versatile handles this fine at higher limits.
 
     console.log(`[generate-mcq] Groq raw length: ${raw?.length} chars`)
 
