@@ -568,7 +568,10 @@ export async function geminiGenerateMission({ keyword, domainKey, eloRating, dif
 // Returns { questions: [...] }
 export async function geminiGenerateMCQ({ jobTitle, count, domainSkills, mix, summaryLine, contextLine }) {
   const genai    = client()
-  const genModel = genai.getGenerativeModel({ model: GEMINI_FLASH })
+  // Use gemini-1.5-flash for MCQ — stable free-tier model with no "thinking" tokens
+  // consuming the output budget (gemini-2.5-flash is a thinking model: uses most of
+  // 8192 tokens internally, leaving almost nothing for JSON output → truncation)
+  const genModel = genai.getGenerativeModel({ model: "gemini-1.5-flash" })
 
   const prompt = `Generate exactly ${count} fresher-level multiple-choice questions for an Indian tech assessment (Wipro/TCS/Infosys campus level).
 

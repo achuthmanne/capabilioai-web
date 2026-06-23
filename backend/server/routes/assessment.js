@@ -173,7 +173,7 @@ router.post("/generate-mcq", async (req, res) => {
         role: "user",
         content: `${count} fresher questions for "${jobTitle}". Skills: ${domainSkills.slice(0,8).join(", ")}. Mix: mcq:${mix.mcq},code:${mix.code_output},ps:${mix.problem_solving}. ${summaryLine} Return {"questions":[{"id":1,"type":"mcq","category":"<skill>","question":"...","options":["a","b","c","d"],"correct":0,"explanation":"..."}]}`,
       },
-    ], { max_tokens: 6000, json: true })
+    ], { max_tokens: 5000, json: true })  // 5000 keeps total under llama-3.1-8b-instant's 6000 TPM limit
 
     console.log("[generate-mcq] Groq fallback raw length:", raw?.length)
 
