@@ -858,6 +858,11 @@ function ProfessionalResultModal({ auraResult, onGoToDashboard, savingResult }) 
 // KEY FIX: reads "capabilio_selected_path" (matches what LandingPage writes)
 // ══════════════════════════════════════════════════════════════════
 export default function Onboarding({ user, onComplete, onBack }) {
+  // Keep a stable ref to onComplete so the init useEffect doesn't re-run every
+  // time App.jsx re-renders (which creates a new arrow-function reference).
+  const onCompleteRef = useRef(onComplete)
+  useEffect(() => { onCompleteRef.current = onComplete }, [onComplete])
+
   // ── All useState hooks (unconditional) ──
   const [checkingUser, setCheckingUser] = useState(true)
   const [step, setStep] = useState("path")
@@ -964,7 +969,8 @@ export default function Onboarding({ user, onComplete, onBack }) {
             profile.onboarding_complete === true ||
             profile.onboardingComplete === true
           )
-        if (alreadyDone) { onComplete?.(); return }
+        // Use the ref so we always call the latest onComplete without making it a dep.
+        if (alreadyDone) { onCompleteRef.current?.(); return }
       } catch {}
 
       // Clear any pre-selected path from localStorage.
@@ -977,7 +983,11 @@ export default function Onboarding({ user, onComplete, onBack }) {
       setCheckingUser(false)
     }
     init()
-  }, [user, onComplete])
+    // Intentionally only depends on user?.id — onComplete is accessed via ref.
+    // If onComplete were in deps, every App.jsx re-render (e.g. from a Supabase
+    // real-time update) would create a new arrow-function reference and re-fire
+    // this effect, resetting step→"path" while the user is mid-assessment.
+  }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Carousel auto-advance
   useEffect(() => {
