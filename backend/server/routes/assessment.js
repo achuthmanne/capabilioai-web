@@ -126,7 +126,7 @@ router.post("/generate-mcq", async (req, res) => {
     if (Array.isArray(q.options)) {
       q.options = q.options
         .map(o => String(o).replace(/^[A-Ea-e1-4][).:\-\s]+\s*/, "").trim())
-        .filter(o => o.length > 1) // filter empty AND single-char leftovers like "A"
+        .filter(o => o.length > 0 && !/^[A-Ea-e]$/.test(o)) // drop empty + bare-letter artifacts, keep "0","1","null" etc
     }
 
     // If options still missing/short — skip this question rather than show placeholders
