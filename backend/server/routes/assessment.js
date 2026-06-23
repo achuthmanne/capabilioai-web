@@ -1,15 +1,13 @@
 // Routes: POST /api/generate-mcq, /api/analyse-assessment, /api/analyse-professional-profile
 //
-// generate-mcq:                 Gemini Flash → Groq fallback
-//   STICKY: generated once per assessment session, held until user submits.
-//   Was 8,000 tokens on Groq 70b — very wasteful. Gemini handles JSON natively.
+// generate-mcq:                 Groq llama-3.3-70b-versatile (primary, no strict json mode)
+//                               → llama-3.1-8b-instant on 429 (auto-fallback in groq.js)
 // analyse-assessment:           Claude Haiku → Groq fallback  (user reads this feedback)
 // analyse-professional-profile: Claude Sonnet → Groq fallback (career intelligence)
 
 import { Router } from "express"
 import { groq, GROQ_FAST } from "../lib/groq.js"
 import { claude, CLAUDE_HAIKU, CLAUDE_SONNET } from "../lib/claude.js"
-import { geminiGenerateMCQ } from "../lib/gemini.js"
 
 const router = Router()
 
@@ -148,40 +146,51 @@ router.post("/generate-mcq", async (req, res) => {
     return q
   }
 
-  // ── Attempt 1: Gemini Flash (primary — STICKY content, native JSON mode) ──────
-  try {
-    const result = await geminiGenerateMCQ({ jobTitle, count, domainSkills, mix, summaryLine, contextLine })
-    const questions = result.questions
-      .map((q, i) => repairQuestion(q, i, domainSkills))
-      .filter(Boolean)
-
-    console.log(`[generate-mcq] Gemini: ${questions.length} questions for "${jobTitle}"`)
-    if (questions.length < 3) throw new Error(`Only ${questions.length} valid questions from Gemini`)
-    return res.json({ questions: questions.slice(0, count), domainSkills })
-  } catch (geminiErr) {
-    console.warn(`[generate-mcq] Gemini failed (${geminiErr.message}), falling back to Groq…`)
-  }
-
-  // ── Attempt 2: Groq fallback ──────────────────────────────────────────────────
+  // ── Groq primary (llama-3.3-70b-versatile → llama-3.1-8b-instant on 429) ──────
+  // No json:true — strict JSON mode causes json_validate_failed on the small model.
+  // parseQuestions() handles plain-text JSON, code-fenced JSON, and truncated JSON.
   try {
     const raw = await groq([
       {
         role: "system",
-        content: `MCQ generator for Indian fresher tech assessment. STRICT: every question has "options" array of 4 plain strings, "correct" is 0-based index, "category" is exact skill name. Return JSON object with key "questions". No markdown.`,
+        content: `You are an MCQ generator for Indian fresher tech assessments (campus-level: Wipro, TCS, Infosys).
+STRICT OUTPUT RULES:
+- Return ONLY a raw JSON object. No markdown, no code fences, no explanation text.
+- Top-level key must be "questions" with an array of exactly ${count} question objects.
+- Each question: {"id":1,"type":"mcq","category":"<exact skill>","question":"...","options":["a","b","c","d"],"correct":0,"explanation":"..."}
+- "options" MUST be an array of exactly 4 plain strings. Never omit.
+- "correct" is 0-based index of the right answer.
+- "category" must be one of the exact skill names given.
+- Do NOT prefix options with "A)", "1.", etc.`,
       },
       {
         role: "user",
-        content: `${count} fresher questions for "${jobTitle}". Skills: ${domainSkills.slice(0,8).join(", ")}. Mix: mcq:${mix.mcq},code:${mix.code_output},ps:${mix.problem_solving}. ${summaryLine} Return {"questions":[{"id":1,"type":"mcq","category":"<skill>","question":"...","options":["a","b","c","d"],"correct":0,"explanation":"..."}]}`,
-      },
-    ], { max_tokens: 5000, json: true })  // 5000 keeps total under llama-3.1-8b-instant's 6000 TPM limit
+        content: `Generate ${count} fresher-level MCQs for a "${jobTitle}" assessment.
 
-    console.log("[generate-mcq] Groq fallback raw length:", raw?.length)
+Skills to cover (use EXACTLY as category):
+${domainSkills.map((s, i) => `${i + 1}. ${s}`).join("\n")}
+
+Each skill needs at least ${Math.max(1, Math.floor(count / domainSkills.length))} question(s).
+Type mix: mcq:${mix.mcq}, code_output:${mix.code_output}, problem_solving:${mix.problem_solving}, scenario:${mix.scenario}, fill_blank:${mix.fill_blank}
+${summaryLine}
+${contextLine}
+
+For code_output questions: show a short code snippet (≤6 lines) in "question" and ask "What is the output?" — options are 4 possible outputs.
+For fill_blank: use "___" in question text, options are 4 completions.
+Never start a question with "Write a..." or "Create a..." — those are open-ended, not MCQ.
+
+Return JSON now:`,
+      },
+    ], { max_tokens: 6000 })
+
+    console.log(`[generate-mcq] Groq raw length: ${raw?.length} chars`)
 
     const questions = parseQuestions(raw)
       .map((q, i) => repairQuestion(q, i, domainSkills))
       .filter(Boolean)
 
-    if (questions.length < 3) throw new Error(`Only ${questions.length} valid questions from Groq. Raw: ${raw?.slice(0,300)}`)
+    console.log(`[generate-mcq] Groq: ${questions.length} valid questions for "${jobTitle}"`)
+    if (questions.length < 3) throw new Error(`Only ${questions.length} valid questions from Groq. Raw: ${raw?.slice(0, 300)}`)
     return res.json({ questions: questions.slice(0, count), domainSkills })
   } catch (e) {
     console.error("[generate-mcq] ERROR:", e.message)
