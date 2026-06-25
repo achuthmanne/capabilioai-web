@@ -429,7 +429,7 @@ export default function ChallengeShell({
 
         {/* ── LEFT PROMPT RAIL ── */}
         {leftOpen ? (
-          <div style={{ width: 320, flexShrink: 0, background: "#fff", borderRight: `1px solid ${T.border}`, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div key="left-open" style={{ width: 320, flexShrink: 0, background: "#fff", borderRight: `1px solid ${T.border}`, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <div style={{ display: "flex", borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>
               {[["brief", "Brief"], ...(hints.length ? [["hints", `Hints (${hints.length})`]] : []), ["history", "History"]].map(([id, label]) => (
                 <button key={id} onClick={() => setLeftTab(id)}
@@ -506,7 +506,7 @@ export default function ChallengeShell({
             {leftTab === "history" && <div style={{ flex: 1, overflowY: "auto" }}><AttemptHistory uid={uid} mission={mission} /></div>}
           </div>
         ) : (
-          <button onClick={() => setLeftOpen(true)} title="Expand brief  [" style={{ width: 34, flexShrink: 0, background: "#fff", border: "none", borderRight: `1px solid ${T.border}`, cursor: "pointer", color: T.ink4, fontSize: 13, writingMode: "vertical-rl" }}>⟩ Brief</button>
+          <button key="left-closed" onClick={() => setLeftOpen(true)} title="Expand brief  [" style={{ width: 34, flexShrink: 0, background: "#fff", border: "none", borderRight: `1px solid ${T.border}`, cursor: "pointer", color: T.ink4, fontSize: 13, writingMode: "vertical-rl" }}>⟩ Brief</button>
         )}
 
         {/* ── CENTER: WORKSTATION RENDERER SLOT ── */}
@@ -526,7 +526,7 @@ export default function ChallengeShell({
 
         {/* ── RIGHT CONTEXT RAIL ── */}
         {rightOpen ? (
-          <div style={{ width: 300, flexShrink: 0, background: "#FAFAFA", borderLeft: `1px solid ${T.border}`, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div key="right-open" style={{ width: 300, flexShrink: 0, background: "#FAFAFA", borderLeft: `1px solid ${T.border}`, display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
             {/* Rail header */}
             <div style={{ display: "flex", alignItems: "center", padding: "10px 14px", borderBottom: `1px solid ${T.border}`, background: "#fff", flexShrink: 0 }}>
@@ -647,7 +647,7 @@ export default function ChallengeShell({
             </div>
           </div>
         ) : (
-          <button onClick={() => setRightOpen(true)} title="Expand" style={{ width: 34, flexShrink: 0, background: "#fff", border: "none", borderLeft: `1px solid ${T.border}`, cursor: "pointer", color: T.ink4, fontSize: 13, writingMode: "vertical-rl" }}>⟨ Checks</button>
+          <button key="right-closed" onClick={() => setRightOpen(true)} title="Expand" style={{ width: 34, flexShrink: 0, background: "#fff", border: "none", borderLeft: `1px solid ${T.border}`, cursor: "pointer", color: T.ink4, fontSize: 13, writingMode: "vertical-rl" }}>⟨ Checks</button>
         )}
       </div>
 
@@ -678,12 +678,15 @@ export default function ChallengeShell({
         {showRunSlot && (
           <button onClick={handleRun} disabled={running}
             style={{ padding: "8px 16px", background: "rgba(255,255,255,0.09)", border: "1px solid rgba(255,255,255,0.13)", borderRadius: 7, color: running ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: 700, cursor: running ? "wait" : "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }}>
-            {running ? <><Spinner color="rgba(255,255,255,0.4)" size={11} /> Running…</> : meta.actions.run}
+            {/* Use sibling slots instead of Fragment-vs-string to avoid fiber type mismatch */}
+            {running && <Spinner color="rgba(255,255,255,0.4)" size={11} />}
+            {running ? " Running…" : meta.actions.run}
           </button>
         )}
         <button onClick={handleValidate} disabled={validating}
           style={{ padding: "8px 16px", background: "rgba(255,255,255,0.09)", border: "1px solid rgba(255,255,255,0.13)", borderRadius: 7, color: validating ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: 700, cursor: validating ? "wait" : "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }}>
-          {validating ? <><Spinner color="rgba(255,255,255,0.4)" size={11} /> Validating…</> : meta.actions.validate}
+          {validating && <Spinner color="rgba(255,255,255,0.4)" size={11} />}
+          {validating ? " Validating…" : meta.actions.validate}
           {validation && !validating && <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: passCount === realChecks.length ? "#4ADE80" : "#FBBF24" }}>{passCount}/{realChecks.length}</span>}
         </button>
         <button onClick={handlePreview}
@@ -696,7 +699,8 @@ export default function ChallengeShell({
           <span style={{ fontSize: 10, color: "rgba(255,255,255,0.28)" }}>{saveState === "saving" ? "Saving…" : "Draft saved ✓"}</span>
           <button onClick={() => setConfirming(true)} disabled={submitting || !code?.trim()}
             style={{ padding: "9px 22px", background: (submitting || !code?.trim()) ? "#4B5563" : meta.hue, border: "none", borderRadius: 7, color: "#fff", fontSize: 12.5, fontWeight: 800, cursor: (submitting || !code?.trim()) ? "not-allowed" : "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 7 }}>
-            {submitting ? <><Spinner color="#fff" size={11} /> Freezing & scoring…</> : meta.actions.submit}
+            {submitting && <Spinner color="#fff" size={11} />}
+            {submitting ? " Freezing & scoring…" : meta.actions.submit}
           </button>
         </div>
       </div>

@@ -262,25 +262,33 @@ function SqlWorkstation({ mission, code, onCodeChange }) {
                 : results ? `✓ ${results.resultSets.length} result set${results.resultSets.length === 1 ? "" : "s"} — ${totalRows} rows in ${results.ms}ms`
                 : "Results"}
             </PanelHeader>
-            {sqlError && (
-              <div style={{ padding: "10px 14px", fontFamily: "monospace", fontSize: 11, color: T.red, whiteSpace: "pre-wrap" }}>{sqlError}</div>
-            )}
-            {results && !running && results.resultSets.length === 0 && (
-              <div style={{ padding: 16, color: T.ink3, fontSize: 11 }}>Statement executed — no rows returned.</div>
-            )}
-            {results && !running && results.resultSets.map((rs, i) => (
-              <div key={i} style={{ marginBottom: 8 }}>
-                {results.resultSets.length > 1 && (
-                  <div style={{ padding: "4px 10px", fontSize: 9, fontWeight: 800, color: T.ink3, textTransform: "uppercase", letterSpacing: 0.6, background: T.bg }}>
-                    Result {i + 1} — {rs.rowCount} rows{rs.truncated ? " (showing first 500)" : ""}
+            {/* Single output slot — all variants at ONE fiber position to prevent
+                React insertBefore NotFoundError when batched state updates remove
+                the placeholder AND insert results in the same commit pass. */}
+            {running ? null
+              : sqlError ? (
+                <div key="sql-error" style={{ padding: "10px 14px", fontFamily: "monospace", fontSize: 11, color: T.red, whiteSpace: "pre-wrap" }}>{sqlError}</div>
+              ) : results ? (
+                results.resultSets.length === 0 ? (
+                  <div key="empty-result" style={{ padding: 16, color: T.ink3, fontSize: 11 }}>Statement executed — no rows returned.</div>
+                ) : (
+                  <div key="result-rows">
+                    {results.resultSets.map((rs, i) => (
+                      <div key={i} style={{ marginBottom: 8 }}>
+                        {results.resultSets.length > 1 && (
+                          <div style={{ padding: "4px 10px", fontSize: 9, fontWeight: 800, color: T.ink3, textTransform: "uppercase", letterSpacing: 0.6, background: T.bg }}>
+                            Result {i + 1} — {rs.rowCount} rows{rs.truncated ? " (showing first 500)" : ""}
+                          </div>
+                        )}
+                        <ResultTable rs={rs} />
+                      </div>
+                    ))}
                   </div>
-                )}
-                <ResultTable rs={rs} />
-              </div>
-            ))}
-            {!results && !sqlError && !running && (
-              <div style={{ padding: 16, color: T.ink3, fontSize: 11 }}>Write SQL above and press ▶ Run Query — it executes for real against the seeded database.</div>
-            )}
+                )
+              ) : (
+                <div key="sql-placeholder" style={{ padding: 16, color: T.ink3, fontSize: 11 }}>Write SQL above and press ▶ Run Query — it executes for real against the seeded database.</div>
+              )
+            }
           </div>
         </div>
       </div>
