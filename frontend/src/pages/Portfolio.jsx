@@ -73,22 +73,122 @@ const PATH_CONFIG = {
 
 // ─── Skill icon mapping (skillicons.dev slugs) ────────────────────────────────
 const SKILL_SLUG = {
-  "python":"python","sql":"mysql","javascript":"js","typescript":"ts","react":"react",
-  "node.js":"nodejs","nodejs":"nodejs","java":"java","c++":"cpp","c#":"cs","go":"go",
-  "rust":"rust","swift":"swift","kotlin":"kotlin","dart":"dart","php":"php","ruby":"ruby",
+  // Languages
+  "python":"python","javascript":"js","typescript":"ts","java":"java",
+  "c++":"cpp","c#":"cs","c":"c","go":"go","golang":"go","rust":"rust",
+  "swift":"swift","kotlin":"kotlin","dart":"dart","php":"php","ruby":"ruby",
+  "r":"r","scala":"scala","elixir":"elixir","perl":"perl","lua":"lua",
+  "julia":"julia","matlab":"matlab","haskell":"haskell","clojure":"clojure",
+  "fortran":"fortran","crystal":"crystal","nim":"nim","zig":"zig","v":"v",
+  "solidity":"solidity","wasm":"wasm","webassembly":"wasm",
+  // Web
+  "html":"html","css":"css","sass":"sass","less":"less",
+  "react":"react","vue":"vue","angular":"angular","svelte":"svelte",
+  "next.js":"nextjs","nextjs":"nextjs","nuxtjs":"nuxtjs","nuxt":"nuxtjs",
+  "gatsby":"gatsby","remix":"remix","astro":"astro","alpinejs":"alpinejs",
+  "jquery":"jquery","tailwind":"tailwind","tailwindcss":"tailwind",
+  "bootstrap":"bootstrap","styledcomponents":"styledcomponents","emotion":"emotion",
+  "three.js":"threejs","threejs":"threejs","d3.js":"d3","d3":"d3",
+  "redux":"redux","graphql":"graphql","apollo":"apollo","pug":"pug",
+  // Backend / runtime
+  "node.js":"nodejs","nodejs":"nodejs","deno":"deno","bun":"bun",
+  "express":"express","fastapi":"fastapi","django":"django","flask":"flask",
+  "spring":"spring","laravel":"laravel","rails":"ruby","adonis":"adonis",
+  "tauri":"tauri","electron":"electron","webpack":"webpack","vite":"vite",
+  "babel":"babel","jest":"jest","selenium":"selenium","sequelize":"sequelize",
+  "prisma":"prisma","hibernate":"hibernate","maven":"maven","gradle":"gradle",
+  // Cloud & DevOps
   "docker":"docker","kubernetes":"kubernetes","aws":"aws","gcp":"gcp","azure":"azure",
-  "postgresql":"postgres","mysql":"mysql","mongodb":"mongodb","redis":"redis","sqlite":"sqlite",
-  "tensorflow":"tensorflow","pytorch":"pytorch","pandas":"py","numpy":"py","scikit-learn":"sklearn",
-  "django":"django","flask":"flask","fastapi":"fastapi","spring":"spring","express":"express",
-  "vue":"vue","angular":"angular","svelte":"svelte","next.js":"nextjs","nextjs":"nextjs",
-  "tailwind":"tailwind","css":"css","html":"html","sass":"sass","graphql":"graphql",
-  "git":"git","linux":"linux","figma":"figma","firebase":"firebase","supabase":"supabase",
-  "nginx":"nginx","bash":"bash","r":"r","scala":"scala","elixir":"elixir",
+  "terraform":"terraform","ansible":"ansible","cloudflare":"cloudflare",
+  "netlify":"netlify","heroku":"heroku","firebase":"firebase","supabase":"supabase",
+  "appwrite":"appwrite","openstack":"openstack","workers":"workers",
+  "prometheus":"prometheus","sentry":"sentry","nginx":"nginx","bash":"bash",
+  "linux":"linux","ubuntu":"ubuntu","debian":"debian","arch":"arch","bsd":"bsd",
+  "powershell":"powershell","vim":"vim","git":"git","github":"github","gitlab":"gitlab",
+  // Databases
+  "postgresql":"postgres","postgres":"postgres","mysql":"mysql","sqlite":"sqlite",
+  "mongodb":"mongodb","redis":"redis","dynamodb":"dynamodb","cassandra":"cassandra",
+  "elasticsearch":"elasticsearch","kafka":"kafka","planetscale":"planetscale",
+  "sql":"sqlite",
+  // AI / ML — map to closest visual match
+  "tensorflow":"tensorflow","pytorch":"pytorch",
+  "machine learning":"tensorflow","deep learning":"pytorch",
+  "artificial intelligence":"tensorflow","ai":"tensorflow","ml":"tensorflow",
+  "pandas":"py","numpy":"py","matplotlib":"py","seaborn":"py",
+  "jupyter":"py","anaconda":"anaconda","scikit-learn":"py","sklearn":"py",
+  "scipy":"py","statsmodels":"py",
+  // Data / Analytics — map best-fit
+  "power bi":"visualstudio","tableau":"visualstudio",
+  "excel":"visualstudio","google sheets":"visualstudio",
+  "spark":"scala","apache spark":"scala","hadoop":"java","airflow":"py",
+  "dbt":"sqlite","snowflake":"azure","databricks":"py","bigquery":"gcp",
+  "looker":"gcp","redshift":"aws",
+  // Tools / Design
+  "figma":"figma","xd":"xd","sketchup":"sketchup","blender":"blender",
+  "unity":"unity","unreal":"unreal","godot":"godot","gamemaker":"gamemakerstudio",
+  "postman":"postman","vscode":"vscode","idea":"idea","eclipse":"eclipse",
+  "rider":"rider","sublime":"sublime","atom":"atom",
+  "notion":"notion","obsidian":"obsidian","stackoverflow":"stackoverflow",
+  // Mobile
+  "flutter":"flutter","react native":"react","android":"android","ios":"swift",
+  // Other
+  "regex":"regex","latex":"latex","processing":"processing","processing.js":"processing",
+  "replit":"replit","codepen":"codepen","devto":"devto","netlify":"netlify",
 }
+
+// Color palettes for generated logos — 10 vibrant options
+const LOGO_GRADIENTS = [
+  ["#FF6B6B","#FF8E53"],["#4ECDC4","#44CF6C"],["#A855F7","#EC4899"],
+  ["#00D4FF","#0066FF"],["#FFB347","#FF6B35"],["#11998e","#38ef7d"],
+  ["#FC466B","#3F5EFB"],["#f7971e","#ffd200"],["#8360c3","#2ebf91"],
+  ["#ff9966","#ff5e62"],
+]
+function logoColors(name) {
+  let h = 0
+  for (const ch of (name||"")) h = (h * 31 + ch.charCodeAt(0)) & 0xffff
+  return LOGO_GRADIENTS[h % LOGO_GRADIENTS.length]
+}
+function skillAbbr(name) {
+  const words = (name||"").split(/[\s\-_\/\.]+/).filter(Boolean)
+  if (words.length >= 2) return words.map(w=>w[0]?.toUpperCase()||"").join("").slice(0,3)
+  return (name||"").slice(0,3).toUpperCase()
+}
+
+// Generated logo for skills without a skillicons.dev entry
+function GeneratedSkillIcon({ name, size=22 }) {
+  const abbr = skillAbbr(name)
+  const [c1,c2] = logoColors(name)
+  const fs = abbr.length <= 2 ? Math.round(size*0.5) : Math.round(size*0.36)
+  return (
+    <div style={{
+      width:size, height:size, borderRadius:Math.round(size*0.22),
+      background:`linear-gradient(135deg,${c1},${c2})`,
+      display:"flex", alignItems:"center", justifyContent:"center",
+      fontFamily:"'DM Mono',monospace", fontSize:fs,
+      fontWeight:900, color:"#fff",
+      textShadow:"0 1px 3px rgba(0,0,0,0.5)",
+      letterSpacing:"-0.5px", flexShrink:0, userSelect:"none",
+    }}>
+      {abbr}
+    </div>
+  )
+}
+
 function getSkillIcon(name) {
   const slug = SKILL_SLUG[(name||"").toLowerCase().trim()]
   if (!slug) return null
   return `https://skillicons.dev/icons?i=${slug}&theme=dark`
+}
+// Returns a React element — either <img> from skillicons.dev or generated logo
+function SkillIconEl({ name, size=22 }) {
+  const [failed, setFailed] = useState(false)
+  const src = getSkillIcon(name)
+  if (!src || failed) return <GeneratedSkillIcon name={name} size={size}/>
+  return (
+    <img src={src} alt={name}
+      style={{width:size,height:size,borderRadius:Math.round(size*0.18),flexShrink:0}}
+      onError={()=>setFailed(true)}/>
+  )
 }
 
 const ELO_TIERS = [
@@ -230,7 +330,7 @@ function SkillBadge({ label, pct, color=C.blue }) {
       background:"rgba(255,255,255,0.04)", border:`1px solid rgba(255,255,255,0.08)`,
       borderRadius:14, padding:"12px 16px", marginBottom:10,
       backdropFilter:"blur(12px)" }}>
-      {/* Icon or initial circle */}
+      {/* Icon inside circular progress ring */}
       <div style={{ position:"relative", width:46, height:46, flexShrink:0 }}>
         <svg width="46" height="46" style={{ transform:"rotate(-90deg)", position:"absolute", top:0, left:0 }}>
           <circle cx="23" cy="23" r="20" fill="none" stroke={`${color}20`} strokeWidth="3"/>
@@ -238,16 +338,8 @@ function SkillBadge({ label, pct, color=C.blue }) {
             strokeDasharray={`${filled} ${ring}`} strokeLinecap="round"
             style={{ filter:`drop-shadow(0 0 4px ${color}80)` }}/>
         </svg>
-        {icon
-          ? <img src={icon} alt={label} style={{ position:"absolute", top:"50%", left:"50%",
-              transform:"translate(-50%,-50%)", width:22, height:22, borderRadius:4 }}
-              onError={e=>{ e.target.style.display="none"; e.target.nextSibling.style.display="flex" }}/>
-          : null}
-        <div style={{ position:"absolute", top:"50%", left:"50%", transform:"translate(-50%,-50%)",
-          width:22, height:22, borderRadius:"50%", background:`${color}22`,
-          display: icon ? "none" : "flex", alignItems:"center", justifyContent:"center",
-          fontSize:10, fontWeight:900, color, border:`1px solid ${color}40` }}>
-          {label.slice(0,2).toUpperCase()}
+        <div style={{ position:"absolute", top:"50%", left:"50%", transform:"translate(-50%,-50%)" }}>
+          <SkillIconEl name={label} size={22}/>
         </div>
       </div>
       {/* Label + bar */}
@@ -1433,32 +1525,17 @@ export default function Portfolio({ username: usernameProp }) {
                     Technologies I work with
                   </div>
                   <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-                    {skills.slice(0,10).map((s,i)=>{
-                      const icon=getSkillIcon(s.skill)
-                      const accent=aConfig?.palette?.accent||C.purple
-                      return (
-                        <div key={i} title={s.skill} style={{
-                          width:40,height:40,borderRadius:12,
-                          background:"rgba(255,255,255,0.07)",
-                          border:`1px solid rgba(255,255,255,0.12)`,
-                          display:"flex",alignItems:"center",justifyContent:"center",
-                          flexShrink:0,transition:"transform 0.15s",
-                        }}>
-                          {icon
-                            ? <img src={icon} alt={s.skill}
-                                style={{width:24,height:24,borderRadius:4}}
-                                onError={e=>{e.target.style.display="none";if(e.target.nextSibling)e.target.nextSibling.style.display="flex"}}/>
-                            : null}
-                          <div style={{
-                            width:24,height:24,borderRadius:6,
-                            background:`${accent}22`,
-                            display:icon?"none":"flex",alignItems:"center",justifyContent:"center",
-                            fontSize:9,fontWeight:900,color:accent}}>
-                            {s.skill.slice(0,2).toUpperCase()}
-                          </div>
-                        </div>
-                      )
-                    })}
+                    {skills.slice(0,10).map((s,i)=>(
+                      <div key={i} title={s.skill} style={{
+                        width:44,height:44,borderRadius:12,
+                        background:"rgba(255,255,255,0.07)",
+                        border:"1px solid rgba(255,255,255,0.12)",
+                        display:"flex",alignItems:"center",justifyContent:"center",
+                        flexShrink:0,
+                      }}>
+                        <SkillIconEl name={s.skill} size={26}/>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
