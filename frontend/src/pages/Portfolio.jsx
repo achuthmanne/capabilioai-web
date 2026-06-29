@@ -154,22 +154,48 @@ function skillAbbr(name) {
   return (name||"").slice(0,3).toUpperCase()
 }
 
-// Generated logo for skills without a skillicons.dev entry
+// ── 3D Generated logo for skills without a skillicons.dev entry ───────────────
 function GeneratedSkillIcon({ name, size=22 }) {
   const abbr = skillAbbr(name)
   const [c1,c2] = logoColors(name)
-  const fs = abbr.length <= 2 ? Math.round(size*0.5) : Math.round(size*0.36)
+  const fs   = abbr.length <= 2 ? Math.round(size*0.46) : Math.round(size*0.33)
+  const r    = Math.round(size * 0.24)
   return (
     <div style={{
-      width:size, height:size, borderRadius:Math.round(size*0.22),
-      background:`linear-gradient(135deg,${c1},${c2})`,
+      width:size, height:size, borderRadius:r,
+      // Base gradient — slightly angled for 3D feel
+      background:`linear-gradient(145deg, ${c1} 0%, ${c2} 100%)`,
       display:"flex", alignItems:"center", justifyContent:"center",
-      fontFamily:"'DM Mono',monospace", fontSize:fs,
-      fontWeight:900, color:"#fff",
-      textShadow:"0 1px 3px rgba(0,0,0,0.5)",
-      letterSpacing:"-0.5px", flexShrink:0, userSelect:"none",
+      position:"relative", flexShrink:0, userSelect:"none", overflow:"hidden",
+      // 3D depth: top-left highlight + drop shadow + bottom-right shadow
+      boxShadow:`
+        inset 0 1px 2px rgba(255,255,255,0.40),
+        inset 0 -2px 4px rgba(0,0,0,0.35),
+        0 6px 18px rgba(0,0,0,0.55),
+        0 2px 6px rgba(0,0,0,0.45),
+        0 1px 0px rgba(255,255,255,0.08)
+      `,
+      border:`1px solid rgba(255,255,255,0.14)`,
     }}>
-      {abbr}
+      {/* Top specular gleam */}
+      <div style={{
+        position:"absolute", top:0, left:0, right:0, height:"42%",
+        background:"linear-gradient(180deg,rgba(255,255,255,0.28) 0%,transparent 100%)",
+        borderRadius:`${r}px ${r}px 0 0`, pointerEvents:"none",
+      }}/>
+      {/* Bottom dark edge */}
+      <div style={{
+        position:"absolute", bottom:0, left:0, right:0, height:"20%",
+        background:"rgba(0,0,0,0.22)", borderRadius:`0 0 ${r}px ${r}px`,
+        pointerEvents:"none",
+      }}/>
+      <span style={{
+        position:"relative", zIndex:1,
+        fontFamily:"'DM Mono',monospace", fontSize:fs, fontWeight:900, color:"#fff",
+        textShadow:"0 1px 4px rgba(0,0,0,0.7)", letterSpacing:"-0.5px",
+      }}>
+        {abbr}
+      </span>
     </div>
   )
 }
@@ -179,15 +205,33 @@ function getSkillIcon(name) {
   if (!slug) return null
   return `https://skillicons.dev/icons?i=${slug}&theme=dark`
 }
-// Returns a React element — either <img> from skillicons.dev or generated logo
+
+// Returns a React element — skillicons.dev img with 3D wrapper, or generated logo
 function SkillIconEl({ name, size=22 }) {
   const [failed, setFailed] = useState(false)
   const src = getSkillIcon(name)
+  const r = Math.round(size * 0.22)
   if (!src || failed) return <GeneratedSkillIcon name={name} size={size}/>
   return (
-    <img src={src} alt={name}
-      style={{width:size,height:size,borderRadius:Math.round(size*0.18),flexShrink:0}}
-      onError={()=>setFailed(true)}/>
+    <div style={{
+      width:size, height:size, borderRadius:r,
+      flexShrink:0, position:"relative", overflow:"hidden",
+      boxShadow:`
+        inset 0 1px 1px rgba(255,255,255,0.18),
+        0 6px 18px rgba(0,0,0,0.55),
+        0 2px 5px rgba(0,0,0,0.4)
+      `,
+      border:"1px solid rgba(255,255,255,0.10)",
+    }}>
+      <img src={src} alt={name} style={{width:size,height:size,display:"block"}}
+        onError={()=>setFailed(true)}/>
+      {/* Specular top gleam over real icon too */}
+      <div style={{
+        position:"absolute", top:0, left:0, right:0, height:"35%",
+        background:"linear-gradient(180deg,rgba(255,255,255,0.14) 0%,transparent 100%)",
+        pointerEvents:"none",
+      }}/>
+    </div>
   )
 }
 
@@ -1526,14 +1570,8 @@ export default function Portfolio({ username: usernameProp }) {
                   </div>
                   <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
                     {skills.slice(0,10).map((s,i)=>(
-                      <div key={i} title={s.skill} style={{
-                        width:44,height:44,borderRadius:12,
-                        background:"rgba(255,255,255,0.07)",
-                        border:"1px solid rgba(255,255,255,0.12)",
-                        display:"flex",alignItems:"center",justifyContent:"center",
-                        flexShrink:0,
-                      }}>
-                        <SkillIconEl name={s.skill} size={26}/>
+                      <div key={i} title={s.skill}>
+                        <SkillIconEl name={s.skill} size={44}/>
                       </div>
                     ))}
                   </div>
@@ -1631,86 +1669,115 @@ export default function Portfolio({ username: usernameProp }) {
       {/* ── Main content ─────────────────────────────────────────────────────── */}
       <div style={{maxWidth:1100,margin:"36px auto",padding:"0 32px 80px",display:"flex",flexDirection:"column",gap:24}}>
 
-        {/* ══ ARCHETYPE ROLE CONTEXT BANNER ══════════════════════════════════ */}
+        {/* ══ AI PROFESSIONAL IDENTITY CARD ══════════════════════════════════ */}
         {aConfig&&(
           <div className="ps" style={{
-            background:`linear-gradient(135deg, ${C.surface} 0%, ${C.surface2} 100%)`,
-            borderRadius:20,
-            border:`1px solid ${C.border}`,
+            background:`linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.07) 100%)`,
+            backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)",
+            borderRadius:24, border:`1px solid rgba(255,255,255,0.10)`,
             borderLeft:`4px solid ${aConfig.palette.accent}`,
-            boxShadow:C.shadow2,
-            overflow:"hidden",
-            position:"relative",
+            boxShadow:`0 20px 60px rgba(0,0,0,0.5), 0 0 0 0 transparent`,
+            overflow:"hidden", position:"relative",
           }}>
-            {/* Accent glow */}
+            {/* Accent radial glow */}
             <div style={{
-              position:"absolute", top:0, left:0, width:300, height:"100%",
-              background:`linear-gradient(90deg, ${aConfig.palette.accent}0a 0%, transparent 100%)`,
+              position:"absolute", top:"-30%", left:"-5%", width:400, height:300,
+              background:`radial-gradient(ellipse, ${aConfig.palette.accent}18 0%, transparent 70%)`,
               pointerEvents:"none",
             }}/>
-            <div style={{
-              padding:"24px 28px",
-              display:"flex", alignItems:"stretch", gap:0, flexWrap:"wrap",
-              position:"relative",
-            }}>
-              {/* Left: Archetype identity */}
-              <div style={{display:"flex",alignItems:"center",gap:18,flex:1,minWidth:260,paddingRight:28,borderRight:`1px solid ${C.border}`}}>
+            <div style={{ padding:"28px 32px", display:"flex", gap:0, flexWrap:"wrap", position:"relative" }}>
+
+              {/* LEFT: Identity */}
+              <div style={{display:"flex",alignItems:"flex-start",gap:20,flex:"1 1 300px",
+                paddingRight:32, borderRight:`1px solid rgba(255,255,255,0.08)`, marginRight:0}}>
+                {/* 3D icon */}
                 <div style={{
-                  width:56, height:56, borderRadius:16,
-                  background:`${aConfig.palette.accent}18`,
-                  border:`1px solid ${aConfig.palette.accent}30`,
-                  display:"flex", alignItems:"center", justifyContent:"center",
-                  fontSize:26, flexShrink:0,
+                  width:64, height:64, borderRadius:20, flexShrink:0,
+                  background:`linear-gradient(145deg,${aConfig.palette.accent},${aConfig.palette.tag||aConfig.palette.accent}99)`,
+                  display:"flex", alignItems:"center", justifyContent:"center", fontSize:30,
+                  boxShadow:`inset 0 1px 2px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.3), 0 8px 24px ${aConfig.palette.accent}40`,
+                  border:`1px solid rgba(255,255,255,0.15)`,
+                  position:"relative", overflow:"hidden",
                 }}>
+                  <div style={{position:"absolute",top:0,left:0,right:0,height:"40%",
+                    background:"linear-gradient(180deg,rgba(255,255,255,0.25),transparent)",pointerEvents:"none",borderRadius:"20px 20px 0 0"}}/>
                   {aConfig.icon}
                 </div>
-                <div>
-                  <div style={{fontSize:10,fontWeight:800,color:aConfig.palette.accent,textTransform:"uppercase",letterSpacing:2,marginBottom:4}}>
-                    Portfolio Archetype
+                <div style={{flex:1}}>
+                  {/* What is this */}
+                  <div style={{
+                    display:"inline-flex",alignItems:"center",gap:6,marginBottom:8,
+                    background:`${aConfig.palette.accent}14`,border:`1px solid ${aConfig.palette.accent}35`,
+                    borderRadius:99,padding:"3px 12px",
+                  }}>
+                    <span style={{fontSize:9,fontWeight:900,color:aConfig.palette.accent,
+                      textTransform:"uppercase",letterSpacing:1.8}}>
+                      🤖 AI-Assigned Professional Identity
+                    </span>
                   </div>
-                  <div style={{fontSize:18,fontWeight:800,color:C.ink,lineHeight:1.1,marginBottom:4}}>
+                  <div style={{fontSize:22,fontWeight:900,color:C.ink,lineHeight:1.1,marginBottom:6}}>
                     {aConfig.name}
                   </div>
-                  <div style={{fontSize:12,color:C.ink4,fontStyle:"italic",lineHeight:1.5}}>
+                  <div style={{fontSize:13,color:C.ink3,fontStyle:"italic",lineHeight:1.6,marginBottom:12}}>
                     {aConfig.tagline}
+                  </div>
+                  {/* Plain-English explanation */}
+                  <div style={{
+                    fontSize:12,color:C.ink2,lineHeight:1.8,
+                    background:"rgba(0,0,0,0.2)",borderRadius:10,
+                    padding:"10px 14px",border:`1px solid rgba(255,255,255,0.06)`,
+                  }}>
+                    💡 <strong style={{color:C.ink}}>What this means:</strong> Capabilio's AI analyzed your Arena scores, skill graph, and challenge history to assign you this role persona. Recruiters use it to instantly understand your specialization — like a professional headline, but backed by real performance data.
                   </div>
                 </div>
               </div>
-              {/* Right: Proof signal chips */}
+
+              {/* RIGHT: Proof signals + seniority */}
               <div style={{
-                flex:1, minWidth:240,
-                paddingLeft:28,
-                display:"flex", flexDirection:"column", justifyContent:"center", gap:10,
+                flex:"1 1 260px", paddingLeft:32,
+                display:"flex",flexDirection:"column",justifyContent:"center",gap:14,
               }}>
-                <div style={{fontSize:10,fontWeight:700,color:C.ink4,textTransform:"uppercase",letterSpacing:1.5}}>
-                  Key Proof Signals
+                <div>
+                  <div style={{fontSize:10,fontWeight:800,color:C.ink3,
+                    textTransform:"uppercase",letterSpacing:1.8,marginBottom:10}}>
+                    🎯 What Recruiters See You Excel At
+                  </div>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    {aConfig.proofElements.slice(0,4).map((pe,i)=>(
+                      <div key={i} style={{
+                        padding:"6px 14px",
+                        background: i===0 ? `${aConfig.palette.accent}18` : "rgba(255,255,255,0.05)",
+                        border:`1px solid ${i===0 ? aConfig.palette.accent+"40" : "rgba(255,255,255,0.10)"}`,
+                        borderRadius:99, fontSize:11, fontWeight:700,
+                        color:i===0 ? aConfig.palette.accent : C.ink2,
+                      }}>
+                        {pe.replace(/_/g," ")}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                  {aConfig.proofElements.slice(0,4).map((pe,i)=>(
-                    <div key={i} style={{
-                      padding:"5px 13px",
-                      background:C.surface2,
-                      border:`1px solid ${C.border2}`,
-                      borderRadius:99,
-                      fontSize:11, fontWeight:600,
-                      color:i===0?aConfig.palette.accent:C.ink3,
-                    }}>
-                      {pe.replace(/_/g," ")}
-                    </div>
-                  ))}
-                </div>
-                {/* Seniority indicator */}
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{fontSize:11,color:C.ink4}}>Seniority:</span>
+                <div style={{
+                  display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",
+                  background:"rgba(255,255,255,0.04)",borderRadius:12,
+                  padding:"10px 14px",border:"1px solid rgba(255,255,255,0.07)",
+                }}>
+                  <span style={{fontSize:11,color:C.ink3,fontWeight:600}}>Your level:</span>
                   <span style={{
-                    fontSize:11,fontWeight:800,
+                    fontSize:12,fontWeight:900,textTransform:"capitalize",
                     color:seniority==="senior"?C.purple:seniority==="mid"?C.blue:C.amber,
-                    textTransform:"capitalize",
                   }}>
-                    {seniority} level
+                    {seniority} · {tier.label}
                   </span>
-                  <span style={{fontSize:11,color:C.ink4}}>·</span>
-                  <span style={{fontSize:11,color:C.ink3}}>ELO {ud.eloRating} · {tier.label}</span>
+                  <span style={{fontSize:11,color:C.ink4}}>•</span>
+                  <span style={{fontSize:11,color:C.ink3,fontFamily:"'DM Mono',monospace"}}>
+                    ELO {ud.eloRating}
+                  </span>
+                  <div style={{
+                    marginLeft:"auto",fontSize:10,color:C.ink4,fontStyle:"italic",
+                    maxWidth:180,lineHeight:1.5,
+                  }}>
+                    Complete more Arena challenges to level up your archetype
+                  </div>
                 </div>
               </div>
             </div>
