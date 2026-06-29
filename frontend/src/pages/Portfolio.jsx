@@ -489,6 +489,125 @@ function InterviewCard({ iv }) {
   )
 }
 
+// ─── Project Card ─────────────────────────────────────────────────────────────
+function ProjectCard({ p, last }) {
+  const [open, setOpen] = useState(false)
+  const accent = C.teal
+  return (
+    <div style={{ borderBottom: last ? "none" : `1px solid ${C.border}`, paddingBottom: last ? 0 : 18, marginBottom: last ? 0 : 18 }}>
+      <div onClick={() => setOpen(o => !o)} style={{ cursor: "pointer", display: "flex", alignItems: "flex-start", gap: 14 }}>
+        <div style={{ width: 38, height: 38, borderRadius: 10, background: `${accent}18`, border: `1px solid ${accent}30`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
+          {p.emoji || "🔧"}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: C.ink }}>{p.name || p.title || "Project"}</span>
+            {p.role && <span style={{ fontSize: 11, color: accent, background: `${accent}14`, border: `1px solid ${accent}28`, borderRadius: 99, padding: "2px 8px", fontWeight: 600 }}>{p.role}</span>}
+            {p.status === "live" && <span style={{ fontSize: 10, color: C.green, background: C.green2, borderRadius: 99, padding: "2px 7px", fontWeight: 700 }}>● Live</span>}
+          </div>
+          <div style={{ fontSize: 12, color: C.ink3, marginTop: 3, lineHeight: 1.55 }}>
+            {p.description || p.summary || ""}
+          </div>
+          {(p.technologies || p.tech || []).length > 0 && (
+            <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 7 }}>
+              {(p.technologies || p.tech || []).slice(0, 6).map((t, j) => (
+                <span key={j} style={{ fontSize: 10, color: C.blue, background: C.blue3, padding: "2px 7px", borderRadius: 99, fontWeight: 600 }}>{t}</span>
+              ))}
+            </div>
+          )}
+        </div>
+        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+          {p.githubUrl && (
+            <a href={p.githubUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
+              style={{ fontSize: 11, color: C.ink3, background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 7, padding: "4px 9px", textDecoration: "none", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+              ⌥ Code
+            </a>
+          )}
+          {(p.liveUrl || p.demoUrl || p.url) && (
+            <a href={p.liveUrl || p.demoUrl || p.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
+              style={{ fontSize: 11, color: C.teal, background: C.teal3, border: `1px solid ${C.teal}30`, borderRadius: 7, padding: "4px 9px", textDecoration: "none", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+              ↗ Live
+            </a>
+          )}
+          <span style={{ fontSize: 11, color: C.ink4, transform: open ? "rotate(180deg)" : "none", transition: "0.2s", marginTop: 3 }}>▾</span>
+        </div>
+      </div>
+      {open && (
+        <div style={{ marginTop: 14, marginLeft: 52, display: "flex", flexDirection: "column", gap: 10 }}>
+          {p.problem && (
+            <div style={{ background: `${C.amber}08`, border: `1px solid ${C.amber}20`, borderRadius: 10, padding: "10px 12px" }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: C.amber, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Problem</div>
+              <div style={{ fontSize: 12, color: C.ink2, lineHeight: 1.6 }}>{p.problem}</div>
+            </div>
+          )}
+          {(p.outcome || p.impact) && (
+            <div style={{ background: `${C.green}08`, border: `1px solid ${C.green}20`, borderRadius: 10, padding: "10px 12px" }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: C.green, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Impact / Outcome</div>
+              <div style={{ fontSize: 12, color: C.ink2, lineHeight: 1.6 }}>{p.outcome || p.impact}</div>
+            </div>
+          )}
+          {(p.startDate || p.endDate || p.duration) && (
+            <div style={{ fontSize: 11, color: C.ink4 }}>
+              📅 {p.duration || [p.startDate, p.endDate || "Present"].filter(Boolean).join(" – ")}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Certificate Card ──────────────────────────────────────────────────────────
+function CertCard({ cert, last }) {
+  const color = C.amber
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 14, paddingBottom: last ? 0 : 16, marginBottom: last ? 0 : 16, borderBottom: last ? "none" : `1px solid ${C.border}` }}>
+      <div style={{ width: 38, height: 38, borderRadius: 10, background: `${color}14`, border: `1px solid ${color}28`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
+        🏅
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: C.ink }}>{cert.name || cert.title || "Certificate"}</div>
+        <div style={{ fontSize: 12, color: C.ink3, marginTop: 2 }}>{cert.issuer || cert.organization || ""}{cert.date ? ` · ${cert.date}` : ""}</div>
+        {cert.credentialId && <div style={{ fontSize: 11, color: C.ink4, marginTop: 2, fontFamily: "'DM Mono', monospace" }}>ID: {cert.credentialId}</div>}
+        {(cert.skills || []).length > 0 && (
+          <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 7 }}>
+            {cert.skills.slice(0, 5).map((s, i) => (
+              <span key={i} style={{ fontSize: 10, color: color, background: `${color}12`, borderRadius: 99, padding: "2px 7px", fontWeight: 600 }}>{s}</span>
+            ))}
+          </div>
+        )}
+      </div>
+      {cert.url && (
+        <a href={cert.url} target="_blank" rel="noreferrer"
+          style={{ fontSize: 11, color: color, background: `${color}12`, border: `1px solid ${color}28`, borderRadius: 7, padding: "4px 9px", textDecoration: "none", fontWeight: 700, flexShrink: 0 }}>
+          Verify ↗
+        </a>
+      )}
+    </div>
+  )
+}
+
+// ─── Testimonial Card ─────────────────────────────────────────────────────────
+function TestimonialCard({ t }) {
+  return (
+    <div style={{ background: C.surface2, border: `1px solid ${C.border2}`, borderRadius: 14, padding: "18px 20px", marginBottom: 14 }}>
+      <div style={{ fontSize: 13, color: C.ink2, lineHeight: 1.7, fontStyle: "italic", marginBottom: 12 }}>
+        "{t.text || t.content || ""}"
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ width: 32, height: 32, borderRadius: "50%", background: `linear-gradient(135deg, ${C.blue}, ${C.teal})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#fff", flexShrink: 0 }}>
+          {(t.name || "?")[0].toUpperCase()}
+        </div>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>{t.name || "Reviewer"}</div>
+          <div style={{ fontSize: 11, color: C.ink4 }}>{[t.role, t.company].filter(Boolean).join(" at ")}</div>
+        </div>
+        {t.relationship && <span style={{ marginLeft: "auto", fontSize: 10, color: C.ink4, background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 99, padding: "2px 8px" }}>{t.relationship}</span>}
+      </div>
+    </div>
+  )
+}
+
 // ─── Activity Heatmap ─────────────────────────────────────────────────────────
 function ActivityHeatmap({ tasks, streak }) {
   const DAYS = 91
@@ -700,7 +819,7 @@ export default function Portfolio({ username: usernameProp }) {
   const [scrolled,    setScrolled]    = useState(false)
   const [currentUid,  setCurrentUid]  = useState(null)
 
-  const refs = { overview:useRef(), summary:useRef(), activity:useRef(), skills:useRef(), challenges:useRef(), interviews:useRef(), experience:useRef() }
+  const refs = { overview:useRef(), summary:useRef(), activity:useRef(), skills:useRef(), challenges:useRef(), interviews:useRef(), experience:useRef(), certificates:useRef(), testimonials:useRef() }
 
   useEffect(()=>{
     supabase.auth.getSession().then(({data})=>{
@@ -873,6 +992,11 @@ export default function Portfolio({ username: usernameProp }) {
         githubUrl:     row.githubUrl     ||row.github_url      ||"",
         avatarUrl:     row.profilePhotoURL||row.profile_photo_url||row.avatarUrl||"",
         createdAt:     row.createdAt     ||row.created_at      ||"",
+        certificates:  row.certificates  ||row.certifications  ||[],
+        testimonials:  row.testimonials  ||row.recommendations ||[],
+        portfolioUrl:  row.portfolioUrl  ||row.portfolio_url   ||"",
+        websiteUrl:    row.websiteUrl    ||row.website_url     ||"",
+        jobRole:       row.keyword       ||row.job_role        ||"",
       }
 
       const skills=(ud.skillGraph)
@@ -1024,7 +1148,9 @@ export default function Portfolio({ username: usernameProp }) {
             skills.length>0&&{k:"skills",    l:"Skills"},
             tasks.length>0&&{k:"challenges", l:"Challenges"},
             interviews.length>0&&{k:"interviews",l:"Interviews"},
-            (isPro&&(ud.experiences?.length>0||ud.resumeProjects?.length>0))&&{k:"experience",l:"Experience"},
+            (ud.experiences?.length>0||ud.resumeProjects?.length>0)&&{k:"experience",l:"Projects"},
+            ud.certificates?.length>0&&{k:"certificates",l:"Certificates"},
+            ud.testimonials?.length>0&&{k:"testimonials",l:"Reviews"},
           ].filter(Boolean).map(({k,l})=>(
             <button key={k} onClick={()=>scrollTo(k)}
               style={{padding:"6px 14px",borderRadius:99,border:"none",background:"transparent",
@@ -1169,6 +1295,19 @@ export default function Portfolio({ username: usernameProp }) {
                       ⌥ GitHub ↗
                     </a>
                   )}
+                  {(ud.portfolioUrl||ud.websiteUrl)&&(
+                    <a href={ud.portfolioUrl||ud.websiteUrl} target="_blank" rel="noreferrer"
+                      style={{
+                        display:"inline-flex",alignItems:"center",gap:6,
+                        padding:"9px 18px",borderRadius:99,
+                        background:"rgba(255,255,255,0.08)",
+                        border:"1px solid rgba(255,255,255,0.18)",
+                        color:"#fff",fontSize:12,fontWeight:700,textDecoration:"none",
+                        backdropFilter:"blur(8px)",
+                      }}>
+                      🌐 Portfolio ↗
+                    </a>
+                  )}
                   {/* ELO pill — styled with tier color */}
                   <div style={{
                     display:"inline-flex",alignItems:"center",gap:7,
@@ -1198,6 +1337,8 @@ export default function Portfolio({ username: usernameProp }) {
             {interviews.length>0&&<StatChip icon="🎤" value={interviews.length} label="Interviews" color={C.purple}/>}
             {skills.length>0&&<StatChip icon="🧠" value={`${Math.round(skills.reduce((s,k)=>s+k.percentage,0)/skills.length)}%`} label="Avg Skill" color={C.teal}/>}
             {avgScore>0&&<StatChip icon="📊" value={`${avgScore}`} label="Avg Score" color={aConfig?.palette?.accent||C.blue}/>}
+            {ud.resumeProjects?.length>0&&<StatChip icon="📂" value={ud.resumeProjects.length} label="Projects" color={C.teal}/>}
+            {ud.certificates?.length>0&&<StatChip icon="🏅" value={ud.certificates.length} label="Certs" color={C.amber}/>}
             {ud.jobReadiness>0&&<StatChip icon="🚀" value={`${ud.jobReadiness}%`} label="Job Ready" color={C.blue2}/>}
           </div>
         </div>
@@ -1495,12 +1636,13 @@ export default function Portfolio({ username: usernameProp }) {
           </div>
         )}
 
-        {/* ══ EXPERIENCE — professionals & authority + project-heavy archetypes */}
-        {(isPro||[ARCHETYPES.CRAFTSMAN,ARCHETYPES.FULLSTACK,ARCHETYPES.MOBILE,ARCHETYPES.ARCHITECT].includes(archetype))&&(ud.experiences?.length>0||ud.resumeProjects?.length>0)&&(
+        {/* ══ PROJECTS & EXPERIENCE — all users ══════════════════════════════ */}
+        {(ud.experiences?.length>0||ud.resumeProjects?.length>0)&&(
           <div ref={refs.experience} className="ps">
             <Card accent={aConfig?.palette?.accent}>
               <SectionTitle icon="💼"
                 title={
+                  ud.path==="student" ? "Projects & Internships" :
                   archetype===ARCHETYPES.MOBILE?"Published Apps & Experience":
                   archetype===ARCHETYPES.CRAFTSMAN?"Built Projects & Work History":
                   archetype===ARCHETYPES.ANALYST?"Analytics Projects & Case Studies":
@@ -1508,13 +1650,18 @@ export default function Portfolio({ username: usernameProp }) {
                   archetype===ARCHETYPES.PM?"Product Work & Outcomes":
                   "Experience & Projects"
                 }
+                sub={ud.path==="student" ? "Real-world work, internships, and personal builds" : undefined}
                 accent={aConfig?.palette?.accent||C.teal}/>
+
+              {/* Work / internship history */}
               {ud.experiences?.length>0&&(
                 <div style={{marginBottom:ud.resumeProjects?.length>0?28:0}}>
-                  <div style={{fontSize:11,fontWeight:800,color:C.ink4,textTransform:"uppercase",letterSpacing:1,marginBottom:16}}>Work History</div>
+                  <div style={{fontSize:11,fontWeight:800,color:C.ink4,textTransform:"uppercase",letterSpacing:1,marginBottom:16}}>
+                    {ud.path==="student" ? "Internships & Work" : "Work History"}
+                  </div>
                   {ud.experiences.map((e,i)=>(
                     <TLine key={i}
-                      icon="🏢"
+                      icon={ud.path==="student" ? "🏫" : "🏢"}
                       title={`${e.role||e.title||"Role"} — ${e.company||"Company"}`}
                       sub={e.description||e.summary||""}
                       time={e.startDate||e.start_date}
@@ -1524,20 +1671,31 @@ export default function Portfolio({ username: usernameProp }) {
                   ))}
                 </div>
               )}
+
+              {/* Projects — rich cards with proof links + outcome */}
               {ud.resumeProjects?.length>0&&(
                 <div>
-                  <div style={{fontSize:11,fontWeight:800,color:C.ink4,textTransform:"uppercase",letterSpacing:1,marginBottom:16}}>Projects</div>
+                  <div style={{fontSize:11,fontWeight:800,color:C.ink4,textTransform:"uppercase",letterSpacing:1,marginBottom:16}}>
+                    {ud.path==="student" ? "Projects & Builds" : "Projects"}
+                  </div>
                   {ud.resumeProjects.map((p,i)=>(
-                    <TLine key={i}
-                      icon="🔧"
-                      title={p.name||p.title||"Project"}
-                      sub={p.description||p.summary||""}
-                      last={i===ud.resumeProjects.length-1}
-                      meta={(p.technologies||p.tech||[]).slice(0,4).map((t,j)=>(
-                        <span key={j} style={{fontSize:11,color:C.blue,background:C.blue3,padding:"2px 8px",borderRadius:99}}>{t}</span>
-                      ))}
-                    />
+                    <ProjectCard key={i} p={p} last={i===ud.resumeProjects.length-1}/>
                   ))}
+                </div>
+              )}
+
+              {/* GitHub CTA if no projects yet */}
+              {!ud.resumeProjects?.length && ud.githubUrl && (
+                <div style={{marginTop:12,padding:"12px 14px",background:C.surface2,border:`1px solid ${C.border}`,borderRadius:10,display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:16}}>⌥</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:13,fontWeight:600,color:C.ink}}>View code on GitHub</div>
+                    <div style={{fontSize:11,color:C.ink4}}>Projects and repositories</div>
+                  </div>
+                  <a href={ud.githubUrl} target="_blank" rel="noreferrer"
+                    style={{fontSize:12,color:C.blue,background:C.blue3,border:`1px solid ${C.blue}30`,borderRadius:8,padding:"5px 12px",textDecoration:"none",fontWeight:600}}>
+                    Open ↗
+                  </a>
                 </div>
               )}
             </Card>
@@ -1559,6 +1717,38 @@ export default function Portfolio({ username: usernameProp }) {
                   meta={<span style={{fontSize:12,color:C.ink4}}>{e.year||e.endDate||e.end_date||""}</span>}
                 />
               ))}
+            </Card>
+          </div>
+        )}
+
+        {/* ══ CERTIFICATES & TRAINING ═════════════════════════════════════════ */}
+        {ud.certificates?.length>0&&(
+          <div ref={refs.certificates} className="ps">
+            <Card accent={C.amber}>
+              <SectionTitle icon="🏅" title="Certificates & Training"
+                sub={`${ud.certificates.length} credential${ud.certificates.length>1?"s":""} earned`}
+                accent={C.amber}/>
+              <div>
+                {ud.certificates.map((cert,i)=>(
+                  <CertCard key={i} cert={cert} last={i===ud.certificates.length-1}/>
+                ))}
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* ══ TESTIMONIALS & RECOMMENDATIONS ══════════════════════════════════ */}
+        {ud.testimonials?.length>0&&(
+          <div ref={refs.testimonials} className="ps">
+            <Card accent={C.purple}>
+              <SectionTitle icon="💬" title="Recommendations"
+                sub="From mentors, supervisors, and collaborators"
+                accent={C.purple}/>
+              <div>
+                {ud.testimonials.map((t,i)=>(
+                  <TestimonialCard key={i} t={t}/>
+                ))}
+              </div>
             </Card>
           </div>
         )}
