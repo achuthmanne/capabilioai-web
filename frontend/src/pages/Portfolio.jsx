@@ -267,6 +267,34 @@ function SkillBadge({ label, pct, color=C.blue }) {
 // keep alias for any remaining direct SkillBar calls
 const SkillBar = SkillBadge
 
+function SkillGrid({ skills, aConfig, max=12 }) {
+  const [expanded, setExpanded] = useState(false)
+  const accent = aConfig?.palette?.accent || C.blue
+  const tag    = aConfig?.palette?.tag    || C.teal
+  const visible = expanded ? skills : skills.slice(0, max)
+  const hasMore = skills.length > max
+  return (
+    <div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+        {visible.map((s,i) => (
+          <SkillBadge key={i} label={s.skill} pct={s.percentage}
+            color={i%2===0 ? accent : tag} />
+        ))}
+      </div>
+      {hasMore && (
+        <button onClick={() => setExpanded(e=>!e)} style={{
+          marginTop:12, width:"100%", padding:"9px 0",
+          background:"rgba(255,255,255,0.04)", border:`1px solid rgba(255,255,255,0.10)`,
+          borderRadius:10, color:C.ink3, fontSize:12, fontWeight:700,
+          cursor:"pointer", fontFamily:"'DM Sans',sans-serif", letterSpacing:0.3,
+        }}>
+          {expanded ? `▲ Show less` : `▼ Show all ${skills.length} skills`}
+        </button>
+      )}
+    </div>
+  )
+}
+
 function TLine({ icon, title, sub, score, time, meta, last }) {
   return (
     <div style={{ display:"flex", gap:14, position:"relative" }}>
@@ -343,9 +371,11 @@ function ChallengeDetailModal({ t, onClose }) {
               <div style={{ fontSize:9, color:C.ink4, fontWeight:700, letterSpacing:0.5, marginTop:1 }}>ELO</div>
             </div>
             <button onClick={onClose}
-              style={{ width:32, height:32, borderRadius:"50%", background:C.surface2, border:`1px solid ${C.border2}`,
-                color:C.ink3, fontSize:16, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center",
-                fontFamily:"inherit", marginLeft:4 }}>×</button>
+              style={{ width:40, height:40, borderRadius:"50%", background:"rgba(239,68,68,0.15)",
+                border:"2px solid rgba(239,68,68,0.5)",
+                color:"#EF4444", fontSize:20, fontWeight:900, cursor:"pointer",
+                display:"flex", alignItems:"center", justifyContent:"center",
+                fontFamily:"inherit", marginLeft:4, lineHeight:1, flexShrink:0 }}>✕</button>
           </div>
         </div>
 
@@ -434,6 +464,19 @@ function ChallengeDetailModal({ t, onClose }) {
               ))}
             </div>
           </div>
+
+          {/* Footer close bar */}
+          <div style={{ padding:"16px 24px", borderTop:`1px solid ${C.border}`, display:"flex", justifyContent:"center", flexShrink:0 }}>
+            <button onClick={onClose} style={{
+              display:"inline-flex", alignItems:"center", gap:8,
+              padding:"10px 32px", borderRadius:99,
+              background:"rgba(239,68,68,0.12)", border:"1.5px solid rgba(239,68,68,0.4)",
+              color:"#EF4444", fontSize:14, fontWeight:700, cursor:"pointer",
+              fontFamily:"'DM Sans',sans-serif", letterSpacing:0.3,
+            }}>
+              ✕ Close
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -476,11 +519,10 @@ function ChallengeCard({ t, last }) {
             </div>
             <div style={{ fontSize:11, fontWeight:700, color:C.blue }}>+{t.eloDelta} ELO</div>
             <button onClick={() => setShowModal(true)}
-              style={{ padding:"4px 12px", background:"transparent", border:`1px solid ${C.border2}`,
-                borderRadius:6, color:C.ink3, fontSize:10, fontWeight:700, cursor:"pointer",
-                fontFamily:"inherit", transition:"all 0.15s" }}
-              onMouseEnter={e => { e.currentTarget.style.background = C.surface; e.currentTarget.style.color = C.ink }}
-              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.ink3 }}>
+              style={{ padding:"6px 14px", background:"rgba(59,130,246,0.12)",
+                border:"1px solid rgba(59,130,246,0.35)",
+                borderRadius:8, color:C.blue2, fontSize:11, fontWeight:700, cursor:"pointer",
+                fontFamily:"inherit", letterSpacing:0.3 }}>
               View Details →
             </button>
           </div>
@@ -1371,6 +1413,40 @@ export default function Portfolio({ username: usernameProp }) {
                   {summary||archetypeSummary||`${pc.label} building career on Capabilio.`}
                 </p>
 
+                {/* Tech stack icon row — inspired by CodeCraft reference */}
+                {skills.length>0&&(
+                  <div style={{marginBottom:22}}>
+                    <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.35)",
+                      textTransform:"uppercase",letterSpacing:1.5,marginBottom:10}}>
+                      Technologies I work with
+                    </div>
+                    <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+                      {skills.slice(0,10).map((s,i)=>{
+                        const icon=getSkillIcon(s.skill)
+                        return (
+                          <div key={i} title={s.skill} style={{
+                            width:36,height:36,borderRadius:10,
+                            background:"rgba(255,255,255,0.08)",
+                            border:"1px solid rgba(255,255,255,0.14)",
+                            display:"flex",alignItems:"center",justifyContent:"center",
+                            backdropFilter:"blur(8px)",
+                            flexShrink:0,
+                          }}>
+                            {icon
+                              ? <img src={icon} alt={s.skill} style={{width:22,height:22,borderRadius:4}}
+                                  onError={e=>{e.target.style.display="none";e.target.nextSibling.style.display="block"}}/>
+                              : null}
+                            <span style={{fontSize:9,fontWeight:900,color:"rgba(255,255,255,0.7)",
+                              display:icon?"none":"block",lineHeight:1}}>
+                              {s.skill.slice(0,2).toUpperCase()}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Action links row */}
                 <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
                   {ud.linkedInUrl&&(
@@ -1630,10 +1706,7 @@ export default function Portfolio({ username: usernameProp }) {
                 )}
                 <div>
                   <div style={{fontSize:11,fontWeight:700,color:C.ink4,textTransform:"uppercase",letterSpacing:1.2,marginBottom:14}}>Skill Levels</div>
-                  {skills.slice(0,9).map((s,i)=>(
-                    <SkillBar key={i} label={s.skill} pct={s.percentage}
-                      color={i%2===0?(aConfig?.palette?.accent||C.blue):(aConfig?.palette?.tag||C.teal)}/>
-                  ))}
+                  <SkillGrid skills={skills} aConfig={aConfig}/>
                 </div>
               </div>
             </Card>
