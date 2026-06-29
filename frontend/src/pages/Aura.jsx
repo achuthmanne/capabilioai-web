@@ -2350,6 +2350,283 @@ function MissionTicker({ userData, keyword, onNavigate }) {
   )
 }
 
+// ─── Student Profile Link Form ────────────────────────────────────────────────
+function ProfileLinksForm({ userData, save, setUserData }) {
+  const [linkedin, setLinkedin] = useState(userData?.linkedInUrl||userData?.personalInfo?.linkedinUrl||"")
+  const [github,   setGithub]   = useState(userData?.githubUrl||userData?.personalInfo?.githubUrl||"")
+  const [portfolio, setPortfolio] = useState(userData?.portfolioUrl||userData?.personalInfo?.portfolioUrl||"")
+  const [saving, setSaving] = useState(false)
+
+  const handleSave = async () => {
+    setSaving(true)
+    const updates = {
+      linkedInUrl: linkedin.trim(), "personalInfo.linkedinUrl": linkedin.trim(),
+      githubUrl:   github.trim(),   "personalInfo.githubUrl":   github.trim(),
+      portfolioUrl: portfolio.trim(),"personalInfo.portfolioUrl": portfolio.trim(),
+    }
+    await save(updates)
+    if (setUserData) setUserData(p => ({...p,...updates}))
+    setSaving(false)
+  }
+
+  const inp = { width:"100%", padding:"9px 12px", border:`1px solid ${T.border}`, borderRadius:9,
+    background:"#FAF7F2", color:T.ink, fontSize:13, outline:"none", boxSizing:"border-box" }
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:12}}>
+      {[
+        {label:"LinkedIn URL", icon:"🔗", val:linkedin, set:setLinkedin, ph:"https://linkedin.com/in/username"},
+        {label:"GitHub URL",   icon:"⌥", val:github,   set:setGithub,   ph:"https://github.com/username"},
+        {label:"Portfolio / Website", icon:"🌐", val:portfolio, set:setPortfolio, ph:"https://yoursite.com"},
+      ].map(({label,icon,val,set,ph})=>(
+        <div key={label}>
+          <div style={{fontSize:11,fontWeight:700,color:T.ink3,marginBottom:5}}>{icon} {label}</div>
+          <input style={inp} value={val} onChange={e=>set(e.target.value)} placeholder={ph}/>
+        </div>
+      ))}
+      <button onClick={handleSave} disabled={saving}
+        style={{alignSelf:"flex-start",padding:"8px 20px",background:T.brand||"#FF5701",color:"#fff",border:"none",
+          borderRadius:9,fontSize:13,fontWeight:700,cursor:"pointer",opacity:saving?0.6:1}}>
+        {saving?"Saving…":"Save Links"}
+      </button>
+    </div>
+  )
+}
+
+// ─── Student Projects Panel ───────────────────────────────────────────────────
+function StudentProjectsPanel({ projects, onSave }) {
+  const [items, setItems] = useState(projects||[])
+  const [editing, setEditing] = useState(null) // null | index | "new"
+  const [form, setForm] = useState({})
+
+  useEffect(()=>setItems(projects||[]),[projects])
+
+  const openNew = () => { setForm({ emoji:"🔧", name:"", role:"", description:"", problem:"", outcome:"", technologies:[], githubUrl:"", liveUrl:"", status:"" }); setEditing("new") }
+  const openEdit = i => { setForm({...items[i]}); setEditing(i) }
+  const del = async i => { const next=[...items]; next.splice(i,1); setItems(next); await onSave(next) }
+
+  const save = async () => {
+    const tech = typeof form.technologies==="string"
+      ? form.technologies.split(",").map(s=>s.trim()).filter(Boolean)
+      : (form.technologies||[])
+    const next = editing==="new" ? [...items,{...form,technologies:tech}] : items.map((x,i)=>i===editing?{...form,technologies:tech}:x)
+    setItems(next); setEditing(null); await onSave(next)
+  }
+
+  const inp = {width:"100%",padding:"8px 11px",border:`1px solid ${T.border}`,borderRadius:8,background:"#FAF7F2",color:T.ink,fontSize:13,outline:"none",boxSizing:"border-box",marginTop:4}
+
+  return (
+    <Card style={{marginBottom:20}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+        <SectionLabel color={T.indigo}>📂 My Projects</SectionLabel>
+        <button onClick={openNew} style={{padding:"6px 14px",background:"#FF5701",color:"#fff",border:"none",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>+ Add Project</button>
+      </div>
+      <p style={{fontSize:12,color:T.ink3,margin:"0 0 14px"}}>Add your builds, hackathon projects, coursework, and side projects — they show as rich cards on your public portfolio.</p>
+
+      {editing!==null&&(
+        <div style={{background:"#FAF7F2",border:`1.5px solid ${T.border}`,borderRadius:12,padding:"18px 16px",marginBottom:16}}>
+          <div style={{display:"grid",gridTemplateColumns:"48px 1fr 1fr",gap:10,marginBottom:10}}>
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:T.ink3,marginTop:4}}>Icon</div>
+              <input style={{...inp,textAlign:"center",fontSize:20,padding:"6px 4px"}} value={form.emoji||"🔧"} onChange={e=>setForm(f=>({...f,emoji:e.target.value}))}/>
+            </div>
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:T.ink3,marginTop:4}}>Project Name *</div>
+              <input style={inp} value={form.name||""} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="e.g. Sales Dashboard"/>
+            </div>
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:T.ink3,marginTop:4}}>Your Role</div>
+              <input style={inp} value={form.role||""} onChange={e=>setForm(f=>({...f,role:e.target.value}))} placeholder="e.g. Solo / Lead / Backend"/>
+            </div>
+          </div>
+          <div style={{marginBottom:10}}>
+            <div style={{fontSize:11,fontWeight:700,color:T.ink3}}>Description (what you built)</div>
+            <textarea style={{...inp,resize:"vertical",minHeight:56}} value={form.description||""} onChange={e=>setForm(f=>({...f,description:e.target.value}))} placeholder="Brief summary of what the project does"/>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:T.ink3}}>Problem it solves</div>
+              <textarea style={{...inp,resize:"vertical",minHeight:52}} value={form.problem||""} onChange={e=>setForm(f=>({...f,problem:e.target.value}))} placeholder="What pain point or challenge did this address?"/>
+            </div>
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:T.ink3}}>Impact / Outcome</div>
+              <textarea style={{...inp,resize:"vertical",minHeight:52}} value={form.outcome||""} onChange={e=>setForm(f=>({...f,outcome:e.target.value}))} placeholder="e.g. Reduced report time by 60%, 200 users"/>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}>
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:T.ink3}}>Technologies</div>
+              <input style={inp} value={Array.isArray(form.technologies)?form.technologies.join(", "):(form.technologies||"")} onChange={e=>setForm(f=>({...f,technologies:e.target.value}))} placeholder="Python, SQL, Pandas"/>
+            </div>
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:T.ink3}}>GitHub URL</div>
+              <input style={inp} value={form.githubUrl||""} onChange={e=>setForm(f=>({...f,githubUrl:e.target.value}))} placeholder="https://github.com/..."/>
+            </div>
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:T.ink3}}>Live / Demo URL</div>
+              <input style={inp} value={form.liveUrl||""} onChange={e=>setForm(f=>({...f,liveUrl:e.target.value}))} placeholder="https://..."/>
+            </div>
+          </div>
+          <div style={{display:"flex",gap:8,marginTop:4}}>
+            <button onClick={save} style={{padding:"7px 18px",background:"#FF5701",color:"#fff",border:"none",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>Save Project</button>
+            <button onClick={()=>setEditing(null)} style={{padding:"7px 14px",background:"transparent",color:T.ink3,border:`1px solid ${T.border}`,borderRadius:8,fontSize:12,cursor:"pointer"}}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {items.length===0&&editing===null&&(
+        <div style={{textAlign:"center",padding:"24px 16px",color:T.ink4,fontSize:13,border:`1.5px dashed ${T.border}`,borderRadius:10}}>
+          No projects yet — click <strong>+ Add Project</strong> to add your first build
+        </div>
+      )}
+      {items.map((p,i)=>(
+        <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderBottom:i<items.length-1?`1px solid ${T.border}`:"none"}}>
+          <span style={{fontSize:20}}>{p.emoji||"🔧"}</span>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:13,fontWeight:700,color:T.ink}}>{p.name||p.title||"Project"}</div>
+            <div style={{fontSize:11,color:T.ink4}}>{p.role&&<span style={{marginRight:8}}>◈ {p.role}</span>}{(p.technologies||[]).slice(0,3).join(", ")}</div>
+          </div>
+          <div style={{display:"flex",gap:6,flexShrink:0}}>
+            <button onClick={()=>openEdit(i)} style={{padding:"4px 10px",fontSize:11,border:`1px solid ${T.border}`,borderRadius:6,background:"transparent",color:T.ink3,cursor:"pointer"}}>Edit</button>
+            <button onClick={()=>del(i)} style={{padding:"4px 10px",fontSize:11,border:"none",background:"rgba(220,38,38,0.07)",color:"#DC2626",borderRadius:6,cursor:"pointer"}}>✕</button>
+          </div>
+        </div>
+      ))}
+    </Card>
+  )
+}
+
+// ─── Student Certificates Panel ───────────────────────────────────────────────
+function StudentCertificatesPanel({ certs, onSave }) {
+  const [items, setItems] = useState(certs||[])
+  const [editing, setEditing] = useState(null)
+  const [form, setForm] = useState({})
+
+  useEffect(()=>setItems(certs||[]),[certs])
+
+  const openNew = () => { setForm({name:"",issuer:"",date:"",credentialId:"",url:"",skills:[]}); setEditing("new") }
+  const openEdit = i => { setForm({...items[i]}); setEditing(i) }
+  const del = async i => { const next=[...items]; next.splice(i,1); setItems(next); await onSave(next) }
+  const save = async () => {
+    const skills = typeof form.skills==="string" ? form.skills.split(",").map(s=>s.trim()).filter(Boolean) : (form.skills||[])
+    const next = editing==="new" ? [...items,{...form,skills}] : items.map((x,i)=>i===editing?{...form,skills}:x)
+    setItems(next); setEditing(null); await onSave(next)
+  }
+
+  const inp = {width:"100%",padding:"8px 11px",border:`1px solid ${T.border}`,borderRadius:8,background:"#FAF7F2",color:T.ink,fontSize:13,outline:"none",boxSizing:"border-box",marginTop:4}
+
+  return (
+    <Card style={{marginBottom:20}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+        <SectionLabel color="#D97706">🏅 Certificates & Training</SectionLabel>
+        <button onClick={openNew} style={{padding:"6px 14px",background:"#FF5701",color:"#fff",border:"none",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>+ Add Certificate</button>
+      </div>
+      <p style={{fontSize:12,color:T.ink3,margin:"0 0 14px"}}>Courses, certifications, and training programs you've completed.</p>
+
+      {editing!==null&&(
+        <div style={{background:"#FAF7F2",border:`1.5px solid ${T.border}`,borderRadius:12,padding:"16px",marginBottom:14}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+            <div><div style={{fontSize:11,fontWeight:700,color:T.ink3}}>Certificate Name *</div><input style={inp} value={form.name||""} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="e.g. Google Data Analytics"/></div>
+            <div><div style={{fontSize:11,fontWeight:700,color:T.ink3}}>Issuing Organization</div><input style={inp} value={form.issuer||""} onChange={e=>setForm(f=>({...f,issuer:e.target.value}))} placeholder="e.g. Coursera / AWS / Google"/></div>
+            <div><div style={{fontSize:11,fontWeight:700,color:T.ink3}}>Issue Date</div><input style={inp} value={form.date||""} onChange={e=>setForm(f=>({...f,date:e.target.value}))} placeholder="e.g. Jan 2025"/></div>
+            <div><div style={{fontSize:11,fontWeight:700,color:T.ink3}}>Credential ID</div><input style={inp} value={form.credentialId||""} onChange={e=>setForm(f=>({...f,credentialId:e.target.value}))} placeholder="Optional"/></div>
+            <div><div style={{fontSize:11,fontWeight:700,color:T.ink3}}>Verify URL</div><input style={inp} value={form.url||""} onChange={e=>setForm(f=>({...f,url:e.target.value}))} placeholder="https://..."/></div>
+            <div><div style={{fontSize:11,fontWeight:700,color:T.ink3}}>Skills Covered</div><input style={inp} value={Array.isArray(form.skills)?form.skills.join(", "):(form.skills||"")} onChange={e=>setForm(f=>({...f,skills:e.target.value}))} placeholder="SQL, Python, Tableau"/></div>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={save} style={{padding:"7px 18px",background:"#FF5701",color:"#fff",border:"none",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>Save</button>
+            <button onClick={()=>setEditing(null)} style={{padding:"7px 14px",background:"transparent",color:T.ink3,border:`1px solid ${T.border}`,borderRadius:8,fontSize:12,cursor:"pointer"}}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {items.length===0&&editing===null&&(
+        <div style={{textAlign:"center",padding:"20px 16px",color:T.ink4,fontSize:13,border:`1.5px dashed ${T.border}`,borderRadius:10}}>
+          No certificates yet — add any course or credential you've completed
+        </div>
+      )}
+      {items.map((c,i)=>(
+        <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderBottom:i<items.length-1?`1px solid ${T.border}`:"none"}}>
+          <span style={{fontSize:20}}>🏅</span>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,fontWeight:700,color:T.ink}}>{c.name||"Certificate"}</div>
+            <div style={{fontSize:11,color:T.ink4}}>{c.issuer}{c.date?` · ${c.date}`:""}</div>
+          </div>
+          <div style={{display:"flex",gap:6}}>
+            <button onClick={()=>openEdit(i)} style={{padding:"4px 10px",fontSize:11,border:`1px solid ${T.border}`,borderRadius:6,background:"transparent",color:T.ink3,cursor:"pointer"}}>Edit</button>
+            <button onClick={()=>del(i)} style={{padding:"4px 10px",fontSize:11,border:"none",background:"rgba(220,38,38,0.07)",color:"#DC2626",borderRadius:6,cursor:"pointer"}}>✕</button>
+          </div>
+        </div>
+      ))}
+    </Card>
+  )
+}
+
+// ─── Student Testimonials Panel ───────────────────────────────────────────────
+function StudentTestimonialsPanel({ testimonials, onSave }) {
+  const [items, setItems] = useState(testimonials||[])
+  const [editing, setEditing] = useState(null)
+  const [form, setForm] = useState({})
+
+  useEffect(()=>setItems(testimonials||[]),[testimonials])
+
+  const openNew = () => { setForm({text:"",name:"",role:"",company:"",relationship:""}); setEditing("new") }
+  const openEdit = i => { setForm({...items[i]}); setEditing(i) }
+  const del = async i => { const next=[...items]; next.splice(i,1); setItems(next); await onSave(next) }
+  const save = async () => {
+    const next = editing==="new" ? [...items,{...form}] : items.map((x,i)=>i===editing?{...form}:x)
+    setItems(next); setEditing(null); await onSave(next)
+  }
+
+  const inp = {width:"100%",padding:"8px 11px",border:`1px solid ${T.border}`,borderRadius:8,background:"#FAF7F2",color:T.ink,fontSize:13,outline:"none",boxSizing:"border-box",marginTop:4}
+
+  return (
+    <Card style={{marginBottom:20}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+        <SectionLabel color="#7C3AED">💬 Recommendations</SectionLabel>
+        <button onClick={openNew} style={{padding:"6px 14px",background:"#FF5701",color:"#fff",border:"none",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>+ Add Recommendation</button>
+      </div>
+      <p style={{fontSize:12,color:T.ink3,margin:"0 0 14px"}}>Feedback from mentors, faculty, supervisors, or collaborators — shown as testimonials on your portfolio.</p>
+
+      {editing!==null&&(
+        <div style={{background:"#FAF7F2",border:`1.5px solid ${T.border}`,borderRadius:12,padding:"16px",marginBottom:14}}>
+          <div style={{marginBottom:10}}>
+            <div style={{fontSize:11,fontWeight:700,color:T.ink3}}>What they said *</div>
+            <textarea style={{...inp,resize:"vertical",minHeight:72}} value={form.text||""} onChange={e=>setForm(f=>({...f,text:e.target.value}))} placeholder="Paste their recommendation or quote here…"/>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+            <div><div style={{fontSize:11,fontWeight:700,color:T.ink3}}>Reviewer Name *</div><input style={inp} value={form.name||""} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="Dr. Sharma / Prof. Anita"/></div>
+            <div><div style={{fontSize:11,fontWeight:700,color:T.ink3}}>Their Role / Title</div><input style={inp} value={form.role||""} onChange={e=>setForm(f=>({...f,role:e.target.value}))} placeholder="Professor / Senior Engineer"/></div>
+            <div><div style={{fontSize:11,fontWeight:700,color:T.ink3}}>Organization</div><input style={inp} value={form.company||""} onChange={e=>setForm(f=>({...f,company:e.target.value}))} placeholder="IIT Delhi / TCS"/></div>
+            <div><div style={{fontSize:11,fontWeight:700,color:T.ink3}}>Relationship</div><input style={inp} value={form.relationship||""} onChange={e=>setForm(f=>({...f,relationship:e.target.value}))} placeholder="e.g. Thesis Supervisor / Mentor"/></div>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={save} style={{padding:"7px 18px",background:"#FF5701",color:"#fff",border:"none",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>Save</button>
+            <button onClick={()=>setEditing(null)} style={{padding:"7px 14px",background:"transparent",color:T.ink3,border:`1px solid ${T.border}`,borderRadius:8,fontSize:12,cursor:"pointer"}}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {items.length===0&&editing===null&&(
+        <div style={{textAlign:"center",padding:"20px 16px",color:T.ink4,fontSize:13,border:`1.5px dashed ${T.border}`,borderRadius:10}}>
+          No recommendations yet — ask a mentor or supervisor to write one for you
+        </div>
+      )}
+      {items.map((t,i)=>(
+        <div key={i} style={{padding:"10px 0",borderBottom:i<items.length-1?`1px solid ${T.border}`:"none"}}>
+          <div style={{fontSize:12,color:T.ink2,fontStyle:"italic",marginBottom:6,lineHeight:1.55}}>"{(t.text||"").slice(0,120)}{(t.text||"").length>120?"…":""}"</div>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div style={{fontSize:12,fontWeight:600,color:T.ink}}>{t.name} {t.role?<span style={{color:T.ink4,fontWeight:400}}>· {t.role}</span>:null}</div>
+            <div style={{display:"flex",gap:6}}>
+              <button onClick={()=>openEdit(i)} style={{padding:"4px 10px",fontSize:11,border:`1px solid ${T.border}`,borderRadius:6,background:"transparent",color:T.ink3,cursor:"pointer"}}>Edit</button>
+              <button onClick={()=>del(i)} style={{padding:"4px 10px",fontSize:11,border:"none",background:"rgba(220,38,38,0.07)",color:"#DC2626",borderRadius:6,cursor:"pointer"}}>✕</button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </Card>
+  )
+}
+
 // ─── MAIN AURA COMPONENT ─────────────────────────────────────────────────────
 export default function Aura({ user, activeTab: activeTabProp, setActiveTab: setActiveTabProp, onNavigate, onNavigatePricing, userData: propUserData, setUserData }) {
   // Aura is now self-contained: it owns the tab state and renders its own tab bar.
@@ -4755,6 +5032,31 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
                   </div>
                 </div>
               )}
+            </Card>
+
+            {/* ── My Projects ───────────────────────────────────────────── */}
+            <StudentProjectsPanel
+              projects={userData?.resumeProjects||[]}
+              onSave={async(projects)=>{ await save({resumeProjects:projects}); if(setUserData) setUserData(p=>({...p,resumeProjects:projects})) }}
+            />
+
+            {/* ── Certificates & Training ───────────────────────────────── */}
+            <StudentCertificatesPanel
+              certs={userData?.certificates||[]}
+              onSave={async(certs)=>{ await save({certificates:certs}); if(setUserData) setUserData(p=>({...p,certificates:certs})) }}
+            />
+
+            {/* ── Recommendations ───────────────────────────────────────── */}
+            <StudentTestimonialsPanel
+              testimonials={userData?.testimonials||[]}
+              onSave={async(t)=>{ await save({testimonials:t}); if(setUserData) setUserData(p=>({...p,testimonials:t})) }}
+            />
+
+            {/* ── Profile Links ─────────────────────────────────────────── */}
+            <Card style={{marginTop:0,marginBottom:20}}>
+              <SectionLabel color={T.indigo}>🔗 Profile Links</SectionLabel>
+              <p style={{fontSize:12,color:T.ink3,margin:"0 0 14px"}}>These appear as buttons on your public portfolio page.</p>
+              <ProfileLinksForm userData={userData} save={save} setUserData={setUserData}/>
             </Card>
           </div>
         )}
