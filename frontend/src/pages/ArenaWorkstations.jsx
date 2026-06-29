@@ -34,7 +34,7 @@ const T = {
   indigo:  "#4F46E5",
   ink4:    "#B5AFA8",
   border:  "#E2DED7",
-  code:    "#1E1E1E",
+  code:    "#F7F6F3",
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -100,7 +100,7 @@ const MonoTextarea = ({ value, onChange, placeholder, minHeight = 200, style = {
     spellCheck={false}
     style={{
       width: "100%", height: "100%", minHeight,
-      background: T.code, color: "#D4D4D4",
+      background: T.code, color: T.ink,
       border: "none", outline: "none", resize: "none",
       fontFamily: "'Fira Code', 'Consolas', monospace", fontSize: 12, lineHeight: 1.6,
       padding: "12px 14px", boxSizing: "border-box",
@@ -123,7 +123,7 @@ const PanelHeader = ({ children, color = T.ink3, bg = T.bg2, actions }) => (
 const SmallBtn = ({ onClick, children, active, color }) => (
   <button onClick={onClick} style={{
     padding: "3px 8px", borderRadius: 5, border: `1px solid ${T.border}`,
-    background: active ? (color || T.blue) + "18" : "#0F172A",
+    background: active ? (color || T.blue) + "18" : T.bg,
     color: active ? (color || T.blue) : T.ink3,
     fontSize: 10, fontWeight: 700, cursor: "pointer",
   }}>{children}</button>
@@ -144,7 +144,7 @@ function ResultTable({ rs }) {
       </thead>
       <tbody>
         {rs.values.map((row, i) => (
-          <tr key={i} style={{ borderBottom: `1px solid ${T.border}`, background: i % 2 ? T.bg : "#0F172A" }}>
+          <tr key={i} style={{ borderBottom: `1px solid ${T.border}`, background: i % 2 ? T.bg : T.bg2 }}>
             {row.map((cell, ci) => (
               <td key={ci} style={{ padding: "3px 8px", color: cell === null ? T.red : T.ink2, fontWeight: cell === null ? 700 : 400, whiteSpace: "nowrap" }}>
                 {formatCell(cell)}
@@ -255,7 +255,7 @@ function SqlWorkstation({ mission, code, onCodeChange }) {
             />
           </div>
 
-          <div style={{ flex: 1, borderTop: `1px solid ${T.border}`, overflow: "auto", background: "#0F172A" }}>
+          <div style={{ flex: 1, borderTop: `1px solid ${T.border}`, overflow: "auto", background: T.bg }}>
             <PanelHeader color={sqlError ? T.red : T.ink3}>
               {running ? "⟳ Executing…"
                 : sqlError ? "✗ SQL Error"
@@ -337,7 +337,7 @@ function ApiWorkstation({ mission, code, onCodeChange }) {
         <select value={method} onChange={e => setMethod(e.target.value)} style={{
           padding: "4px 8px", border: `1px solid ${T.border}`, borderRadius: 6,
           fontWeight: 800, fontSize: 11, color: methodColor[method] || T.ink,
-          background: "#0F172A", cursor: "pointer",
+          background: T.bg, cursor: "pointer",
         }}>
           {methods.map(m => <option key={m}>{m}</option>)}
         </select>
@@ -348,7 +348,7 @@ function ApiWorkstation({ mission, code, onCodeChange }) {
         />
         <button onClick={sendRequest} style={{
           padding: "4px 14px", borderRadius: 6, border: "none",
-          background: T.blue, color: "#0F172A", fontSize: 11, fontWeight: 700, cursor: "pointer",
+          background: T.blue, color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer",
         }}>
           {sending ? "⟳" : "Send ▶"}
         </button>
@@ -392,7 +392,7 @@ function ApiWorkstation({ mission, code, onCodeChange }) {
                 <span style={{ fontSize: 12, fontWeight: 800, color: T.green }}>✓ {response.status} {response.statusText}</span>
                 <span style={{ fontSize: 10, color: T.ink3 }}>⏱ {response.time}</span>
               </div>
-              <pre style={{ margin: 0, padding: "10px 14px", fontSize: 11, color: "#D4D4D4", background: T.code, overflow: "auto", flex: 1 }}>
+              <pre style={{ margin: 0, padding: "10px 14px", fontSize: 11, color: T.ink, background: T.code, overflow: "auto", flex: 1 }}>
                 {response.body}
               </pre>
             </div>
@@ -458,7 +458,7 @@ function FrontendWorkstation({ mission, code, onCodeChange }) {
               src={previewSrc}
               title="preview"
               sandbox="allow-scripts"
-              style={{ flex: 1, border: "none", background: "#0F172A" }}
+              style={{ flex: 1, border: "none", background: "#ffffff" }}
             />
           </div>
         )}
@@ -641,7 +641,7 @@ function NotebookWorkstation({ mission, code, onCodeChange }) {
               </thead>
               <tbody>
                 {preview.values.map((row, i) => (
-                  <tr key={i} style={{ borderBottom: `1px solid ${T.border}`, background: i % 2 ? T.bg : "#0F172A" }}>
+                  <tr key={i} style={{ borderBottom: `1px solid ${T.border}`, background: i % 2 ? T.bg : T.bg2 }}>
                     {row.map((cell, ci) => <td key={ci} style={{ padding: "3px 8px", color: cell === null ? T.red : T.ink2, whiteSpace: "nowrap" }}>{formatCell(cell)}</td>)}
                   </tr>
                 ))}
@@ -664,7 +664,7 @@ function NotebookWorkstation({ mission, code, onCodeChange }) {
           />
         </div>
         {/* Output */}
-        <div style={{ flex: 1, borderTop: `1px solid ${T.border}`, overflow: "auto", background: "#0F172A" }}>
+        <div style={{ flex: 1, borderTop: `1px solid ${T.border}`, overflow: "auto", background: T.bg }}>
           <PanelHeader color={output?.error ? T.red : T.ink3}>
             {running ? (status || "⟳ Running…") : output ? (output.error ? "✗ Traceback" : "Output") : "No output yet — first run downloads the Python runtime (~15 MB, cached afterwards)"}
           </PanelHeader>
@@ -729,12 +729,11 @@ function MarkdownWorkstation({ mission, code, onCodeChange }) {
               value={code}
               onChange={onCodeChange}
               placeholder={"# Title\n\nWrite your markdown here...\n\n## Section\n\n- Item 1\n- Item 2"}
-              style={{ background: "#1E1E2E" }}
             />
           </div>
         )}
         {previewVisible && (
-          <div style={{ flex: 1, overflow: "auto", padding: "16px 20px", background: "#0F172A", fontFamily: "Georgia, serif", fontSize: 14, lineHeight: 1.7, color: T.ink }}>
+          <div style={{ flex: 1, overflow: "auto", padding: "16px 20px", background: "#ffffff", fontFamily: "Georgia, serif", fontSize: 14, lineHeight: 1.7, color: T.ink }}>
             {code
               ? <div dangerouslySetInnerHTML={{ __html: renderMarkdown(code) }} />
               : <div style={{ color: T.ink3, fontSize: 12, fontStyle: "italic" }}>Preview will appear here…</div>
@@ -1029,9 +1028,9 @@ function ExcelWorkstation({ mission, code, onCodeChange }) {
 
           <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 5 }}>
             <div style={{ fontSize: 10, fontWeight: 800, color: T.ink3, marginBottom: 2 }}>⚡ Quick Fixes</div>
-            <button onClick={removeDuplicates} style={{ padding: "5px 8px", borderRadius: 6, border: `1px solid ${T.border}`, background: "#0F172A", fontSize: 10, fontWeight: 700, color: T.blue, cursor: "pointer", textAlign: "left" }}>🗑 Remove Duplicates</button>
-            <button onClick={standardiseCase} style={{ padding: "5px 8px", borderRadius: 6, border: `1px solid ${T.border}`, background: "#0F172A", fontSize: 10, fontWeight: 700, color: T.blue, cursor: "pointer", textAlign: "left" }}>Aa Standardise Casing</button>
-            <button onClick={fixDates} style={{ padding: "5px 8px", borderRadius: 6, border: `1px solid ${T.border}`, background: "#0F172A", fontSize: 10, fontWeight: 700, color: T.blue, cursor: "pointer", textAlign: "left" }}>📅 Fix Date Formats</button>
+            <button onClick={removeDuplicates} style={{ padding: "5px 8px", borderRadius: 6, border: `1px solid ${T.border}`, background: T.bg2, fontSize: 10, fontWeight: 700, color: T.blue, cursor: "pointer", textAlign: "left" }}>🗑 Remove Duplicates</button>
+            <button onClick={standardiseCase} style={{ padding: "5px 8px", borderRadius: 6, border: `1px solid ${T.border}`, background: T.bg2, fontSize: 10, fontWeight: 700, color: T.blue, cursor: "pointer", textAlign: "left" }}>Aa Standardise Casing</button>
+            <button onClick={fixDates} style={{ padding: "5px 8px", borderRadius: 6, border: `1px solid ${T.border}`, background: T.bg2, fontSize: 10, fontWeight: 700, color: T.blue, cursor: "pointer", textAlign: "left" }}>📅 Fix Date Formats</button>
           </div>
         </div>
       </div>
@@ -1054,7 +1053,7 @@ function ExcelWorkstation({ mission, code, onCodeChange }) {
             {/* Formula bar */}
             {selected && (
               <div style={{ display: "flex", gap: 6, padding: "4px 8px", borderBottom: `1px solid ${T.border}`, background: "#FAFAFA", flexShrink: 0, alignItems: "center" }}>
-                <div style={{ padding: "2px 6px", border: `1px solid ${T.border}`, borderRadius: 3, fontSize: 10, fontWeight: 700, textAlign: "center", background: "#0F172A", color: T.green, whiteSpace: "nowrap" }}>
+                <div style={{ padding: "2px 6px", border: `1px solid ${T.border}`, borderRadius: 3, fontSize: 10, fontWeight: 700, textAlign: "center", background: T.bg2, color: T.green, whiteSpace: "nowrap" }}>
                   {headers[selected[1]]} · row {selected[0] + 1}
                 </div>
                 <input
@@ -1073,7 +1072,7 @@ function ExcelWorkstation({ mission, code, onCodeChange }) {
                 <tr>
                   <th style={{ width: 28, background: "#E0E0E0", border: `1px solid #C8C8C8`, padding: "3px 6px", fontSize: 10 }}>#</th>
                   {headers.map(h => (
-                    <th key={h} style={{ background: "#217346", color: "#0F172A", border: `1px solid #C8C8C8`, padding: "5px 10px", fontWeight: 700, fontSize: 10, whiteSpace: "nowrap" }}>{h}</th>
+                    <th key={h} style={{ background: "#217346", color: "#ffffff", border: `1px solid #C8C8C8`, padding: "5px 10px", fontWeight: 700, fontSize: 10, whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -1081,7 +1080,7 @@ function ExcelWorkstation({ mission, code, onCodeChange }) {
                 {rows.map((row, ri) => {
                   const hasIssue = issueRowIdx.has(ri)
                   return (
-                    <tr key={ri} style={{ background: hasIssue ? "#FFF8F0" : ri % 2 ? "#F8FBF8" : "#0F172A" }}>
+                    <tr key={ri} style={{ background: hasIssue ? "#FFF8F0" : ri % 2 ? T.bg : T.bg2 }}>
                       <td style={{ background: "#E0E0E0", border: `1px solid #C8C8C8`, padding: "2px 5px", fontWeight: 700, fontSize: 10, color: T.ink3, textAlign: "center" }}>
                         {hasIssue ? "⚠" : ri + 1}
                       </td>
@@ -1148,7 +1147,7 @@ function ExcelWorkstation({ mission, code, onCodeChange }) {
               style={{
                 flex: 1, border: "none", outline: "none", resize: "none",
                 padding: "14px 18px", fontSize: 12, lineHeight: 1.8,
-                fontFamily: "Georgia, serif", color: T.ink, background: "#0F172A",
+                fontFamily: "Georgia, serif", color: T.ink, background: "#ffffff",
               }}
             />
           </div>
@@ -1163,7 +1162,7 @@ function ExcelWorkstation({ mission, code, onCodeChange }) {
                 { label: "NULL / Empty",   value: stats.nullCount, icon: "⚠️", color: T.red },
                 { label: "Duplicate IDs",  value: stats.dupes,     icon: "🔁", color: T.amber },
               ].map(kpi => (
-                <div key={kpi.label} style={{ background: "#0F172A", borderRadius: 10, padding: "12px 14px", border: `1px solid ${T.border}`, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+                <div key={kpi.label} style={{ background: T.bg, borderRadius: 10, padding: "12px 14px", border: `1px solid ${T.border}`, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
                   <div style={{ fontSize: 18 }}>{kpi.icon}</div>
                   <div style={{ fontSize: 22, fontWeight: 800, color: kpi.color, marginTop: 4 }}>{kpi.value}</div>
                   <div style={{ fontSize: 10, color: T.ink3, marginTop: 2 }}>{kpi.label}</div>
@@ -1175,7 +1174,7 @@ function ExcelWorkstation({ mission, code, onCodeChange }) {
                 <div style={{ fontSize: 11, fontWeight: 800, color: T.ink, marginBottom: 8 }}>Numeric Column Stats</div>
                 <table style={{ borderCollapse: "collapse", fontSize: 11, width: "100%" }}>
                   <thead>
-                    <tr style={{ background: "#217346", color: "#0F172A" }}>
+                    <tr style={{ background: "#217346", color: "#ffffff" }}>
                       {["Column","Count","Mean","Min","Max"].map(h => (
                         <th key={h} style={{ padding: "6px 12px", textAlign: "left", fontWeight: 700 }}>{h}</th>
                       ))}
@@ -1183,7 +1182,7 @@ function ExcelWorkstation({ mission, code, onCodeChange }) {
                   </thead>
                   <tbody>
                     {stats.numericCols.map((nc, i) => (
-                      <tr key={nc.col} style={{ background: i % 2 ? "#F0F7F0" : "#0F172A", borderBottom: "1px solid #D0D0D0" }}>
+                      <tr key={nc.col} style={{ background: i % 2 ? T.bg : T.bg2, borderBottom: "1px solid #D0D0D0" }}>
                         <td style={{ padding: "5px 12px", fontWeight: 700, fontFamily: "monospace" }}>{nc.col}</td>
                         <td style={{ padding: "5px 12px" }}>{nc.count}</td>
                         <td style={{ padding: "5px 12px" }}>{nc.mean}</td>
@@ -1307,13 +1306,13 @@ function UserDonut({ rs }) {
           const d = `M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${sweep > 180 ? 1 : 0} 1 ${x2},${y2} Z`
           return <path key={i} d={d} fill={DONUT_COLORS[i % DONUT_COLORS.length]} opacity={0.9} />
         })}
-        <circle cx={70} cy={65} r={26} fill="#0F172A" />
+        <circle cx={70} cy={65} r={26} fill="#F8F7F4" />
       </svg>
       {rows.map((seg, i) => (
         <div key={i} style={{ display: "flex", gap: 7, alignItems: "center", marginBottom: 5 }}>
           <div style={{ width: 9, height: 9, borderRadius: "50%", background: DONUT_COLORS[i % DONUT_COLORS.length], flexShrink: 0 }} />
           <span style={{ fontSize: 10, color: "#475569", flex: 1 }}>{seg.x}</span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: "#0F172A", fontVariantNumeric: "tabular-nums" }}>{Math.round((Math.max(0, seg.y) / total) * 100)}%</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "#1A1714", fontVariantNumeric: "tabular-nums" }}>{Math.round((Math.max(0, seg.y) / total) * 100)}%</span>
         </div>
       ))}
     </>
@@ -1481,11 +1480,11 @@ function DashboardWorkstation({ mission, code, onCodeChange }) {
   }
 
   const labelStyle = { fontSize: 9, fontWeight: 800, color: "#94A3B8", letterSpacing: 0.7, textTransform: "uppercase", marginBottom: 6 }
-  const cardStyle  = { background: "#0F172A", borderRadius: 11, padding: "12px 14px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "1px solid #F3F4F6" }
+  const cardStyle  = { background: "#ffffff", borderRadius: 11, padding: "12px 14px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "1px solid #E2DED7" }
   const sectionHdr = (label, icon) => (
     <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10 }}>
       <span style={{ fontSize: 14 }}>{icon}</span>
-      <span style={{ fontSize: 11, fontWeight: 800, color: "#0F172A", letterSpacing: -0.2 }}>{label}</span>
+      <span style={{ fontSize: 11, fontWeight: 800, color: "#1A1714", letterSpacing: -0.2 }}>{label}</span>
     </div>
   )
 
@@ -1501,10 +1500,10 @@ function DashboardWorkstation({ mission, code, onCodeChange }) {
   busRef.current = { runSql, sqlCode, pyOut, insights, published }
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0, fontFamily: "'DM Sans',sans-serif", background: "#F4F6FA" }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0, fontFamily: "'DM Sans',sans-serif", background: "#F8F7F4" }}>
 
       {/* ── Workspace tab bar ── */}
-      <div style={{ display: "flex", background: "#0F172A", borderBottom: "1px solid #E5E7EB", flexShrink: 0 }}>
+      <div style={{ display: "flex", background: "#ffffff", borderBottom: "1px solid #E2DED7", flexShrink: 0 }}>
         {[
           { id: "data",    icon: "🗄️", label: "Data",    hint: "Inspect & profile" },
           { id: "build",   icon: "🔧", label: "Build",   hint: "SQL · Python · Publish" },
@@ -1517,8 +1516,8 @@ function DashboardWorkstation({ mission, code, onCodeChange }) {
           }}>
             <span style={{ fontSize: 14 }}>{t.icon}</span>
             <div style={{ textAlign: "left" }}>
-              <div style={{ fontSize: 12, fontWeight: wsTab === t.id ? 800 : 500, color: wsTab === t.id ? "#2563EB" : "#475569" }}>{t.label}</div>
-              <div style={{ fontSize: 9, color: "#9CA3AF", lineHeight: 1 }}>{t.hint}</div>
+              <div style={{ fontSize: 12, fontWeight: wsTab === t.id ? 800 : 500, color: wsTab === t.id ? "#1E62B5" : "#4A4540" }}>{t.label}</div>
+              <div style={{ fontSize: 9, color: "#9A948E", lineHeight: 1 }}>{t.hint}</div>
             </div>
           </button>
         ))}
@@ -1583,19 +1582,19 @@ function DashboardWorkstation({ mission, code, onCodeChange }) {
                   <thead>
                     <tr style={{ background: "#1E3A5F" }}>
                       {preview.columns.map(c => (
-                        <th key={c} style={{ padding: "6px 10px", textAlign: "left", color: "#0F172A", fontWeight: 700, fontSize: 10, whiteSpace: "nowrap" }}>{c}</th>
+                        <th key={c} style={{ padding: "6px 10px", textAlign: "left", color: "#ffffff", fontWeight: 700, fontSize: 10, whiteSpace: "nowrap" }}>{c}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {preview.values.map((row, ri) => (
-                      <tr key={ri} style={{ background: ri % 2 ? "#0F172A" : "#0F172A", borderBottom: "1px solid #F3F4F6" }}>
+                      <tr key={ri} style={{ background: ri % 2 ? "#F8F7F4" : "#F1EFE9", borderBottom: "1px solid #E2DED7" }}>
                         {row.map((cell, ci) => {
                           const isNull = cell === null
                           return (
                             <td key={ci} style={{
                               padding: "5px 10px", whiteSpace: "nowrap",
-                              color: isNull ? "#DC2626" : "#1E293B", fontWeight: isNull ? 700 : 400,
+                              color: isNull ? "#DC2626" : T.ink, fontWeight: isNull ? 700 : 400,
                               background: isNull ? "#FEF2F2" : "inherit",
                             }}>{isNull ? "NULL ⚠" : formatCell(cell)}</td>
                           )
@@ -1607,7 +1606,7 @@ function DashboardWorkstation({ mission, code, onCodeChange }) {
               )}
               {!preview && <div style={{ fontSize: 11, color: "#9CA3AF", padding: 10 }}>Loading rows…</div>}
             </div>
-            <div style={{ padding: "6px 10px", borderTop: "1px solid #F3F4F6", fontSize: 9, color: "#9CA3AF", background: "#0F172A" }}>
+            <div style={{ padding: "6px 10px", borderTop: "1px solid #E2DED7", fontSize: 9, color: "#9A948E", background: "#F1EFE9" }}>
               This is a real SQLite database — query it from the Build tab. Quality issues above were computed from the actual rows.
             </div>
           </div>
@@ -1619,13 +1618,13 @@ function DashboardWorkstation({ mission, code, onCodeChange }) {
         <div style={{ flex: 1, display: "flex", gap: 0, overflow: "hidden", minHeight: 0 }}>
           {/* Left: SQL editor + live results */}
           <div style={{ flex: 1.2, display: "flex", flexDirection: "column", borderRight: "1px solid #E5E7EB", overflow: "hidden" }}>
-            <div style={{ padding: "7px 12px", background: "#0F172A", borderBottom: "1px solid rgba(0,0,0,0.03)", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+            <div style={{ padding: "7px 12px", background: "#F8F7F4", borderBottom: "1px solid #E2DED7", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
               <div style={{ display: "flex", gap: 4 }}>
                 {["#EF4444", "#F59E0B", "#22C55E"].map((c, i) => <div key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: c }} />)}
               </div>
-              <span style={{ fontSize: 9, color: "#6B7280", fontFamily: "monospace" }}>SQL — executes against the live database</span>
-              <button onClick={() => setSqlCode(DASH_SQL_SCAFFOLD)} style={{ marginLeft: "auto", padding: "2px 8px", borderRadius: 4, border: "1px solid rgba(0,0,0,0.07)", background: "rgba(0,0,0,0.03)", color: "rgba(255,255,255,0.45)", fontSize: 9, cursor: "pointer" }}>Load scaffold</button>
-              <button onClick={runSql} disabled={sqlRunning} style={{ padding: "2px 12px", borderRadius: 4, border: "none", background: sqlRunning ? "#475569" : "#16A34A", color: "#0F172A", fontSize: 9, fontWeight: 700, cursor: sqlRunning ? "wait" : "pointer" }}>
+              <span style={{ fontSize: 9, color: "#9A948E", fontFamily: "monospace" }}>SQL — executes against the live database</span>
+              <button onClick={() => setSqlCode(DASH_SQL_SCAFFOLD)} style={{ marginLeft: "auto", padding: "2px 8px", borderRadius: 4, border: "1px solid #E2DED7", background: "#F1EFE9", color: "#9A948E", fontSize: 9, cursor: "pointer" }}>Load scaffold</button>
+              <button onClick={runSql} disabled={sqlRunning} style={{ padding: "2px 12px", borderRadius: 4, border: "none", background: sqlRunning ? "#9A948E" : "#2D8653", color: "#ffffff", fontSize: 9, fontWeight: 700, cursor: sqlRunning ? "wait" : "pointer" }}>
                 {sqlRunning ? "⟳ Running…" : "▶ Run SQL"}
               </button>
             </div>
@@ -1635,25 +1634,25 @@ function DashboardWorkstation({ mission, code, onCodeChange }) {
               onKeyDown={e => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); runSql() } }}
               placeholder={"-- Write SQL and press ▶ Run SQL (or ⌘/Ctrl+Enter).\n-- It executes for real — wrong SQL gives a real error.\nSELECT * FROM orders LIMIT 10;"}
               spellCheck={false}
-              style={{ flex: "0 0 45%", background: "#0F172A", color: "#E2E8F0", fontFamily: "'DM Mono',monospace", fontSize: 12, lineHeight: 1.65, padding: "10px 14px", border: "none", outline: "none", resize: "none", boxSizing: "border-box" }}
+              style={{ flex: "0 0 45%", background: "#F7F6F3", color: "#1A1714", fontFamily: "'DM Mono',monospace", fontSize: 12, lineHeight: 1.65, padding: "10px 14px", border: "none", outline: "none", resize: "none", boxSizing: "border-box" }}
             />
             {/* Real results + publish controls */}
-            <div style={{ flex: 1, overflow: "auto", background: "#0F172A", borderTop: "1px solid #E5E7EB" }}>
-              <div style={{ padding: "5px 12px", fontSize: 9, fontWeight: 800, color: sqlErr ? "#DC2626" : "#94A3B8", textTransform: "uppercase", letterSpacing: 0.6, background: "#0F172A", borderBottom: "1px solid #F3F4F6", position: "sticky", top: 0 }}>
+            <div style={{ flex: 1, overflow: "auto", background: "#F8F7F4", borderTop: "1px solid #E2DED7" }}>
+              <div style={{ padding: "5px 12px", fontSize: 9, fontWeight: 800, color: sqlErr ? "#D14343" : "#9A948E", textTransform: "uppercase", letterSpacing: 0.6, background: "#F1EFE9", borderBottom: "1px solid #E2DED7", position: "sticky", top: 0 }}>
                 {sqlErr ? "✗ SQL Error" : sqlOut ? `✓ ${sqlOut.resultSets.length} result set${sqlOut.resultSets.length === 1 ? "" : "s"} in ${sqlOut.ms}ms — publish them to your dashboard →` : "Results appear here after ▶ Run SQL"}
               </div>
               {sqlErr && <pre style={{ margin: 0, padding: "10px 14px", fontFamily: "monospace", fontSize: 11, color: "#DC2626", whiteSpace: "pre-wrap" }}>{sqlErr}</pre>}
               {sqlOut && sqlOut.resultSets.map((rs, i) => (
                 <div key={i} style={{ borderBottom: "1px solid #F3F4F6" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px", background: "#0F172A" }}>
-                    <span style={{ fontSize: 9, fontWeight: 800, color: "#475569" }}>Result {i + 1} · {rs.rowCount} rows</span>
-                    <span style={{ fontSize: 9, color: "#9CA3AF", marginRight: "auto" }}>{rs.columns.join(", ").slice(0, 60)}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px", background: "#F1EFE9" }}>
+                    <span style={{ fontSize: 9, fontWeight: 800, color: "#4A4540" }}>Result {i + 1} · {rs.rowCount} rows</span>
+                    <span style={{ fontSize: 9, color: "#9A948E", marginRight: "auto" }}>{rs.columns.join(", ").slice(0, 60)}</span>
                     {[["kpi", "📌 KPI"], ["trend", "📈 Trend"], ["breakdown", "🥧 Breakdown"]].map(([slot, lbl]) => (
                       <button key={slot} onClick={() => publish(slot, rs)} style={{
                         padding: "2px 8px", borderRadius: 4, fontSize: 9, fontWeight: 700, cursor: "pointer",
-                        border: `1px solid ${published[slot] === rs ? "#16A34A" : "#E5E7EB"}`,
-                        background: published[slot] === rs ? "#DCFCE7" : "#0F172A",
-                        color: published[slot] === rs ? "#15803D" : "#94A3B8",
+                        border: `1px solid ${published[slot] === rs ? "#2D8653" : "#E2DED7"}`,
+                        background: published[slot] === rs ? "#E6F4ED" : "#ffffff",
+                        color: published[slot] === rs ? "#2D8653" : "#9A948E",
                       }}>{published[slot] === rs ? "✓ " : ""}{lbl}</button>
                     ))}
                   </div>
@@ -1667,7 +1666,7 @@ function DashboardWorkstation({ mission, code, onCodeChange }) {
                       <tbody>
                         {rs.values.slice(0, 50).map((row, ri) => (
                           <tr key={ri} style={{ borderTop: "1px solid #F3F4F6" }}>
-                            {row.map((cell, ci) => <td key={ci} style={{ padding: "3px 9px", color: cell === null ? "#DC2626" : "#1E293B", whiteSpace: "nowrap" }}>{formatCell(cell)}</td>)}
+                            {row.map((cell, ci) => <td key={ci} style={{ padding: "3px 9px", color: cell === null ? "#DC2626" : T.ink, whiteSpace: "nowrap" }}>{formatCell(cell)}</td>)}
                           </tr>
                         ))}
                       </tbody>
@@ -1680,10 +1679,10 @@ function DashboardWorkstation({ mission, code, onCodeChange }) {
 
           {/* Right: Python (real, via Pyodide) */}
           <div style={{ width: 380, flexShrink: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <div style={{ padding: "6px 12px", background: "#1E293B", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-              <span style={{ fontSize: 9, color: "#6B7280", fontFamily: "monospace" }}>Python — real pandas/matplotlib (Pyodide)</span>
-              <button onClick={() => setPyCode(DASH_PY_SCAFFOLD)} style={{ marginLeft: "auto", padding: "2px 7px", borderRadius: 4, border: "1px solid rgba(0,0,0,0.07)", background: "rgba(0,0,0,0.03)", color: "rgba(255,255,255,0.4)", fontSize: 9, cursor: "pointer" }}>Load scaffold</button>
-              <button onClick={runPy} disabled={pyRunning} style={{ padding: "2px 12px", borderRadius: 4, border: "none", background: pyRunning ? "#475569" : "#2563EB", color: "#0F172A", fontSize: 9, fontWeight: 700, cursor: pyRunning ? "wait" : "pointer" }}>
+            <div style={{ padding: "6px 12px", background: "#F8F7F4", borderBottom: "1px solid #E2DED7", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+              <span style={{ fontSize: 9, color: "#9A948E", fontFamily: "monospace" }}>Python — real pandas/matplotlib (Pyodide)</span>
+              <button onClick={() => setPyCode(DASH_PY_SCAFFOLD)} style={{ marginLeft: "auto", padding: "2px 7px", borderRadius: 4, border: "1px solid #E2DED7", background: "#F1EFE9", color: "#9A948E", fontSize: 9, cursor: "pointer" }}>Load scaffold</button>
+              <button onClick={runPy} disabled={pyRunning} style={{ padding: "2px 12px", borderRadius: 4, border: "none", background: pyRunning ? "#9A948E" : "#1E62B5", color: "#ffffff", fontSize: 9, fontWeight: 700, cursor: pyRunning ? "wait" : "pointer" }}>
                 {pyRunning ? "⟳" : "▶ Run"}
               </button>
             </div>
@@ -1692,15 +1691,15 @@ function DashboardWorkstation({ mission, code, onCodeChange }) {
               onChange={e => setPyCode(e.target.value)}
               placeholder={"# Real Python — df preloaded from /data/orders.csv\n# First run downloads the runtime (~15 MB, cached after).\nprint(df.head())"}
               spellCheck={false}
-              style={{ flex: "0 0 45%", background: "#1E293B", color: "#E2E8F0", fontFamily: "'DM Mono',monospace", fontSize: 11.5, lineHeight: 1.65, padding: "10px 14px", border: "none", outline: "none", resize: "none", boxSizing: "border-box" }}
+              style={{ flex: "0 0 45%", background: "#F7F6F3", color: "#1A1714", fontFamily: "'DM Mono',monospace", fontSize: 11.5, lineHeight: 1.65, padding: "10px 14px", border: "none", outline: "none", resize: "none", boxSizing: "border-box" }}
             />
-            <div style={{ flex: 1, overflow: "auto", background: "#0F172A", borderTop: "1px solid #E5E7EB" }}>
-              <div style={{ padding: "5px 12px", fontSize: 9, fontWeight: 800, color: pyOut?.error ? "#DC2626" : "#94A3B8", textTransform: "uppercase", letterSpacing: 0.6, background: "#0F172A", borderBottom: "1px solid #F3F4F6" }}>
+            <div style={{ flex: 1, overflow: "auto", background: "#F8F7F4", borderTop: "1px solid #E2DED7" }}>
+              <div style={{ padding: "5px 12px", fontSize: 9, fontWeight: 800, color: pyOut?.error ? "#D14343" : "#9A948E", textTransform: "uppercase", letterSpacing: 0.6, background: "#F1EFE9", borderBottom: "1px solid #E2DED7" }}>
                 {pyRunning ? (pyStatus || "⟳ Running…") : pyOut ? (pyOut.error ? "✗ Traceback" : "✓ Python output") : "Output"}
               </div>
               {pyOut && (
                 <div style={{ padding: "8px 12px" }}>
-                  {pyOut.stdout && <pre style={{ margin: 0, fontFamily: "monospace", fontSize: 10.5, color: "#1E293B", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{pyOut.stdout}</pre>}
+                  {pyOut.stdout && <pre style={{ margin: 0, fontFamily: "monospace", fontSize: 10.5, color: T.ink, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{pyOut.stdout}</pre>}
                   {pyOut.error && <pre style={{ margin: "6px 0 0", fontFamily: "monospace", fontSize: 10.5, color: "#DC2626", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{pyOut.error}</pre>}
                   {(pyOut.images || []).map((img, i) => (
                     <img key={i} src={`data:image/png;base64,${img}`} alt={`figure ${i + 1}`} style={{ maxWidth: "100%", marginTop: 8, border: "1px solid #E5E7EB", borderRadius: 6 }} />
@@ -1732,9 +1731,9 @@ function DashboardWorkstation({ mission, code, onCodeChange }) {
             {kpiCards ? (
               <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(kpiCards.length, 4)},1fr)`, gap: 10 }}>
                 {kpiCards.map(kpi => (
-                  <div key={kpi.label} style={{ background: "#0F172A", borderRadius: 11, padding: "12px 14px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "1px solid #F3F4F6" }}>
-                    <div style={{ fontSize: 10, color: "#94A3B8", fontWeight: 600, marginBottom: 5, fontFamily: "monospace" }}>{kpi.label}</div>
-                    <div style={{ fontSize: 19, fontWeight: 900, color: "#0F172A", fontVariantNumeric: "tabular-nums" }}>{kpi.value}</div>
+                  <div key={kpi.label} style={{ background: "#ffffff", borderRadius: 11, padding: "12px 14px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "1px solid #E2DED7" }}>
+                    <div style={{ fontSize: 10, color: "#9A948E", fontWeight: 600, marginBottom: 5, fontFamily: "monospace" }}>{kpi.label}</div>
+                    <div style={{ fontSize: 19, fontWeight: 900, color: "#1A1714", fontVariantNumeric: "tabular-nums" }}>{kpi.value}</div>
                   </div>
                 ))}
               </div>
@@ -1756,7 +1755,7 @@ function DashboardWorkstation({ mission, code, onCodeChange }) {
                 <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "5px 0", borderTop: i ? "1px solid #F3F4F6" : "none" }}>
                   <span style={{ fontSize: 12, flexShrink: 0 }}>{v.passed ? "✅" : "❌"}</span>
                   <div style={{ fontSize: 11, lineHeight: 1.5 }}>
-                    <strong style={{ color: "#0F172A" }}>{v.input}</strong>
+                    <strong style={{ color: "#1A1714" }}>{v.input}</strong>
                     <span style={{ color: "#94A3B8" }}> — expected ≈ {v.expected} · {v.actual}</span>
                   </div>
                 </div>
@@ -1774,7 +1773,7 @@ function DashboardWorkstation({ mission, code, onCodeChange }) {
                 </div>
                 <div style={{ display: "flex", gap: 4 }}>
                   {["bar", "line"].map(ct => (
-                    <button key={ct} onClick={() => setChartType(ct)} style={{ padding: "2px 8px", borderRadius: 4, border: `1px solid ${chartType === ct ? "#2563EB" : "#E5E7EB"}`, background: chartType === ct ? "#2563EB" : "#0F172A", color: chartType === ct ? "#0F172A" : "#94A3B8", fontSize: 9, fontWeight: 700, cursor: "pointer" }}>
+                    <button key={ct} onClick={() => setChartType(ct)} style={{ padding: "2px 8px", borderRadius: 4, border: `1px solid ${chartType === ct ? "#1E62B5" : "#E2DED7"}`, background: chartType === ct ? "#1E62B5" : "#F1EFE9", color: chartType === ct ? "#ffffff" : "#9A948E", fontSize: 9, fontWeight: 700, cursor: "pointer" }}>
                       {ct === "bar" ? "▦ Bar" : "↗ Line"}
                     </button>
                   ))}
@@ -1794,11 +1793,11 @@ function DashboardWorkstation({ mission, code, onCodeChange }) {
           </div>
 
           {/* Insights box — rubric-guided (unchanged: scored by the AI evaluator) */}
-          <div style={{ background: "#0F172A", borderRadius: 11, padding: "14px 16px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "1px solid #F3F4F6" }}>
+          <div style={{ background: "#ffffff", borderRadius: 11, padding: "14px 16px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "1px solid #E2DED7" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
               <div>
                 <div style={labelStyle}>✍️ Your Analysis & Insights</div>
-                <div style={{ fontSize: 10, color: "#94A3B8" }}>Base these on the numbers you actually computed — the AI evaluator scores each field</div>
+                <div style={{ fontSize: 10, color: "#9A948E" }}>Base these on the numbers you actually computed — the AI evaluator scores each field</div>
               </div>
               <div style={{ fontSize: 9, fontWeight: 700, color: "#1D4ED8", background: "#EFF6FF", padding: "3px 10px", borderRadius: 99, border: "1px solid #BFDBFE" }}>
                 4 rubric criteria
@@ -1811,17 +1810,17 @@ function DashboardWorkstation({ mission, code, onCodeChange }) {
                 { key: "concern", icon: "⚠️", label: "Concern / Risk",     hint: "Which metric is moving the wrong way? Data quality issues count." },
                 { key: "action",  icon: "🎯", label: "Recommended Action", hint: "One specific, measurable action tied to your numbers." },
               ].map(field => (
-                <div key={field.key} style={{ background: "#0F172A", borderRadius: 8, padding: "10px 11px", border: "1px solid #E5E7EB" }}>
+                <div key={field.key} style={{ background: "#F8F7F4", borderRadius: 8, padding: "10px 11px", border: "1px solid #E2DED7" }}>
                   <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 5 }}>
                     <span style={{ fontSize: 13 }}>{field.icon}</span>
-                    <span style={{ fontSize: 10, fontWeight: 800, color: "#0F172A" }}>{field.label}</span>
+                    <span style={{ fontSize: 10, fontWeight: 800, color: "#1A1714" }}>{field.label}</span>
                     <div style={{ marginLeft: "auto", fontSize: 8, color: "#9CA3AF", maxWidth: 140, textAlign: "right", lineHeight: 1.3 }}>{field.hint}</div>
                   </div>
                   <textarea
                     value={insights[field.key] || ""}
                     onChange={e => setInsights(prev => ({ ...prev, [field.key]: e.target.value }))}
                     placeholder={`Write your ${field.label.toLowerCase()} insight based on your actual results…`}
-                    style={{ width: "100%", minHeight: 64, border: "1px solid #E5E7EB", borderRadius: 6, padding: "6px 8px", fontSize: 11, fontFamily: "inherit", resize: "vertical", outline: "none", boxSizing: "border-box", color: "#0F172A", lineHeight: 1.65, background: "#0F172A" }}
+                    style={{ width: "100%", minHeight: 64, border: "1px solid #E2DED7", borderRadius: 6, padding: "6px 8px", fontSize: 11, fontFamily: "inherit", resize: "vertical", outline: "none", boxSizing: "border-box", color: "#1A1714", lineHeight: 1.65, background: "#ffffff" }}
                     onFocus={e => e.target.style.borderColor = "#2563EB"}
                     onBlur={e => e.target.style.borderColor = "#E5E7EB"}
                   />
@@ -1928,7 +1927,7 @@ function ReportWorkstation({ mission, code, onCodeChange }) {
         <div style={{ padding: "8px 10px", borderTop: `1px solid ${T.border}`, marginTop: "auto" }}>
           <button onClick={() => setPreview(p => !p)} style={{
             width: "100%", padding: "6px", borderRadius: 7, border: `1px solid ${T.border}`,
-            background: preview ? T.green : "#0F172A", color: preview ? "#0F172A" : T.ink2,
+            background: preview ? T.green : T.bg2, color: preview ? "#ffffff" : T.ink2,
             fontSize: 11, fontWeight: 700, cursor: "pointer",
           }}>
             {preview ? "✏️ Edit" : "👁 Preview"}
@@ -1956,12 +1955,12 @@ function ReportWorkstation({ mission, code, onCodeChange }) {
               style={{
                 flex: 1, border: "none", outline: "none", resize: "none",
                 padding: "14px 18px", fontSize: 13, lineHeight: 1.8,
-                fontFamily: "Georgia, serif", color: T.ink, background: "#0F172A",
+                fontFamily: "Georgia, serif", color: T.ink, background: "#ffffff",
               }}
             />
           </>
         ) : (
-          <div style={{ flex: 1, overflow: "auto", padding: "20px 28px", background: "#0F172A", fontFamily: "Georgia, serif" }}>
+          <div style={{ flex: 1, overflow: "auto", padding: "20px 28px", background: "#ffffff", fontFamily: "Georgia, serif" }}>
             <h1 style={{ fontSize: 20, fontWeight: 800, color: T.ink, borderBottom: `2px solid ${T.green}`, paddingBottom: 8, marginBottom: 20 }}>
               {mission?.title || "Analysis Report"}
             </h1>
@@ -2078,7 +2077,7 @@ function SecurityConsole({ mission, code, onCodeChange }) {
             <div style={{ fontSize:10, color:T.ink4, marginBottom:8, letterSpacing:1 }}>ALERT QUEUE — {SECURITY_LOG_SCENARIOS.length} EVENTS</div>
             {SECURITY_LOG_SCENARIOS.map((alert, i) => (
               <div key={i} onClick={() => setAlert(alert)}
-                style={{ background:selectedAlert===alert?"#FEF2F2":"#0F172A", border:`1px solid ${selectedAlert===alert?"#DC262640":T.border}`, borderLeft:`3px solid ${SEV_COLORS[alert.severity]||"#94A3B8"}`, borderRadius:8, padding:"9px 12px", marginBottom:7, cursor:"pointer", transition:"all .12s" }}>
+                style={{ background:selectedAlert===alert?"#FEF2F2":T.bg, border:`1px solid ${selectedAlert===alert?"#DC262640":T.border}`, borderLeft:`3px solid ${SEV_COLORS[alert.severity]||"#94A3B8"}`, borderRadius:8, padding:"9px 12px", marginBottom:7, cursor:"pointer", transition:"all .12s" }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:4 }}>
                   <span style={{ fontSize:11, fontWeight:700, color:SEV_COLORS[alert.severity], background:SEV_COLORS[alert.severity]+"15", padding:"1px 7px", borderRadius:99 }}>{alert.severity}</span>
                   <span style={{ fontSize:10, color:T.ink4 }}>{alert.time}</span>
@@ -2115,7 +2114,7 @@ function SecurityConsole({ mission, code, onCodeChange }) {
               placeholder="index=main severity=CRIT | stats count by src_ip"
               style={{ flex:1, padding:"9px 12px", background:"#0A0A10", color:"#22D3EE", border:`1px solid ${T.border}`, borderRadius:8, fontSize:12, fontFamily:"'DM Mono',monospace", outline:"none" }}
               onKeyDown={e=>e.key==="Enter"&&runQuery()} />
-            <button onClick={runQuery} style={{ padding:"9px 20px", background:"#DC2626", border:"none", borderRadius:8, color:"#0F172A", fontSize:12, fontWeight:700, cursor:"pointer" }}>Run</button>
+            <button onClick={runQuery} style={{ padding:"9px 20px", background:"#DC2626", border:"none", borderRadius:8, color:"#ffffff", fontSize:12, fontWeight:700, cursor:"pointer" }}>Run</button>
           </div>
           <div style={{ flex:1, background:"#0A0A10", borderRadius:8, padding:12, overflow:"auto" }}>
             {results.length === 0
@@ -2211,7 +2210,7 @@ function SOCConsole({ mission, code, onCodeChange }) {
         <div style={{ flex:1, overflowY:"auto", padding:12 }}>
           <div style={{ fontSize:10, color:T.ink4, marginBottom:10, letterSpacing:1 }}>LIVE ALERT QUEUE — TRIAGE REQUIRED</div>
           {alerts.map(al=>(
-            <div key={al.id} style={{ background:al.assigned?"#F0FDF4":"#0F172A", border:`1px solid ${al.assigned?"#05966940":T.border}`, borderLeft:`3px solid ${SEV[al.severity]}`, borderRadius:8, padding:"10px 12px", marginBottom:8 }}>
+            <div key={al.id} style={{ background:al.assigned?"#F0FDF4":T.bg, border:`1px solid ${al.assigned?"#05966940":T.border}`, borderLeft:`3px solid ${SEV[al.severity]}`, borderRadius:8, padding:"10px 12px", marginBottom:8 }}>
               <div style={{ display:"flex", justifyContent:"space-between", marginBottom:5 }}>
                 <span style={{ fontSize:11, fontWeight:800, color:SEV[al.severity], background:SEV[al.severity]+"15", padding:"1px 8px", borderRadius:99 }}>{al.severity}</span>
                 <span style={{ fontSize:10, color:T.ink4 }}>Source: {al.src}</span>
@@ -2219,7 +2218,7 @@ function SOCConsole({ mission, code, onCodeChange }) {
               <div style={{ fontSize:12, fontWeight:700, color:T.ink, marginBottom:3 }}>{al.title}</div>
               <div style={{ fontSize:11, color:T.ink3, marginBottom:8 }}>{al.detail}</div>
               {!al.assigned
-                ? <button onClick={()=>assign(al.id)} style={{ padding:"5px 14px", background:"#DC2626", border:"none", borderRadius:6, color:"#0F172A", fontSize:10, fontWeight:700, cursor:"pointer" }}>Assign & Respond →</button>
+                ? <button onClick={()=>assign(al.id)} style={{ padding:"5px 14px", background:"#DC2626", border:"none", borderRadius:6, color:"#ffffff", fontSize:10, fontWeight:700, cursor:"pointer" }}>Assign & Respond →</button>
                 : <span style={{ fontSize:10, color:"#059669", fontWeight:700 }}>✓ Assigned — see Playbook tab</span>
               }
             </div>
@@ -2236,8 +2235,8 @@ function SOCConsole({ mission, code, onCodeChange }) {
                 <div style={{ fontSize:10, color:T.ink4, marginBottom:14 }}>IR Playbook — check off each step as you complete it</div>
                 {playbook.map((step,i)=>(
                   <div key={i} onClick={()=>checkStep(i)}
-                    style={{ display:"flex", gap:12, alignItems:"flex-start", padding:"9px 12px", background:checkedSteps[i]?"#F0FDF4":"#0F172A", border:`1px solid ${checkedSteps[i]?"#05966940":T.border}`, borderRadius:8, marginBottom:8, cursor:"pointer" }}>
-                    <div style={{ width:20, height:20, borderRadius:4, border:`2px solid ${checkedSteps[i]?"#059669":"#D1D5DB"}`, background:checkedSteps[i]?"#059669":"transparent", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:"#0F172A", fontSize:11 }}>
+                    style={{ display:"flex", gap:12, alignItems:"flex-start", padding:"9px 12px", background:checkedSteps[i]?"#F0FDF4":T.bg, border:`1px solid ${checkedSteps[i]?"#05966940":T.border}`, borderRadius:8, marginBottom:8, cursor:"pointer" }}>
+                    <div style={{ width:20, height:20, borderRadius:4, border:`2px solid ${checkedSteps[i]?"#059669":"#D1D5DB"}`, background:checkedSteps[i]?"#059669":"transparent", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:checkedSteps[i]?"#ffffff":"transparent", fontSize:11 }}>
                       {checkedSteps[i]?"✓":""}
                     </div>
                     <span style={{ fontSize:12, color: checkedSteps[i]?T.ink3:T.ink, textDecoration: checkedSteps[i]?"line-through":"none", lineHeight:1.5 }}>
@@ -2334,20 +2333,20 @@ function QATestLab({ mission, code, onCodeChange }) {
             </button>
           ))}
           <div style={{ flex:1 }} />
-          <button onClick={runSimulation} style={{ margin:"5px 10px", padding:"4px 14px", background:T.indigo, border:"none", borderRadius:6, color:"#0F172A", fontSize:11, fontWeight:700, cursor:"pointer" }}>▶ Run Tests</button>
+          <button onClick={runSimulation} style={{ margin:"5px 10px", padding:"4px 14px", background:T.indigo, border:"none", borderRadius:6, color:"#ffffff", fontSize:11, fontWeight:700, cursor:"pointer" }}>▶ Run Tests</button>
         </div>
 
         {tab==="tests" && (
           <textarea value={testCode} onChange={e=>{setTestCode(e.target.value);onCodeChange(e.target.value)}}
-            style={{ flex:1, padding:14, background:"#1A1A2E", color:"#E5E7EB", fontSize:12, fontFamily:"'DM Mono',monospace", border:"none", resize:"none", outline:"none", lineHeight:1.7 }} />
+            style={{ flex:1, padding:14, background:T.code, color:T.ink, fontSize:12, fontFamily:"'DM Mono',monospace", border:"none", resize:"none", outline:"none", lineHeight:1.7 }} />
         )}
         {tab==="bugs" && (
           <textarea value={bugReport} onChange={e=>setBugReport(e.target.value)}
-            style={{ flex:1, padding:14, background:"#1A1A2E", color:"#E5E7EB", fontSize:12, fontFamily:"'DM Mono',monospace", border:"none", resize:"none", outline:"none", lineHeight:1.7 }}
+            style={{ flex:1, padding:14, background:T.code, color:T.ink, fontSize:12, fontFamily:"'DM Mono',monospace", border:"none", resize:"none", outline:"none", lineHeight:1.7 }}
             placeholder={`Bug Report Template:\n\n## Bug #1\n**Title:** \n**Severity:** HIGH / MED / LOW\n**Steps to Reproduce:**\n1. \n**Expected:** \n**Actual:** \n**Screenshot/Evidence:** `} />
         )}
         {tab==="coverage" && (
-          <div style={{ flex:1, overflow:"auto", padding:14, background:"#1A1A2E", color:"#E5E7EB", fontFamily:"'DM Mono',monospace", fontSize:11 }}>
+          <div style={{ flex:1, overflow:"auto", padding:14, background:T.code, color:T.ink, fontFamily:"'DM Mono',monospace", fontSize:11 }}>
             {testResults.length===0
               ? <div style={{ color:"#94A3B8" }}>Run tests to see coverage results.</div>
               : <>
@@ -2370,7 +2369,7 @@ function QATestLab({ mission, code, onCodeChange }) {
         <PanelHeader color={T.ink3} bg={T.bg}>APP UNDER TEST</PanelHeader>
         <iframe
           srcDoc={QA_BROKEN_APP}
-          style={{ flex:1, border:"none", background:"#0F172A" }}
+          style={{ flex:1, border:"none", background:"#ffffff" }}
           sandbox="allow-scripts"
           title="App Under Test"
         />
@@ -2513,7 +2512,7 @@ function SREConsole({ mission, code, onCodeChange }) {
           <div style={{ fontSize:10, color:T.ink4, marginBottom:12, letterSpacing:1 }}>SERVICE HEALTH DASHBOARD — PRODUCTION</div>
           <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:10 }}>
             {SRE_SERVICES.map((s,i)=>(
-              <div key={i} style={{ background:"#0F172A", border:`1px solid ${STATUS_COLORS[s.status]}40`, borderLeft:`3px solid ${STATUS_COLORS[s.status]}`, borderRadius:10, padding:"12px 14px" }}>
+              <div key={i} style={{ background:T.bg, border:`1px solid ${STATUS_COLORS[s.status]}40`, borderLeft:`3px solid ${STATUS_COLORS[s.status]}`, borderRadius:10, padding:"12px 14px" }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
                   <span style={{ fontSize:13, fontWeight:800, color:T.ink }}>{s.name}</span>
                   <span style={{ fontSize:10, fontWeight:700, color:STATUS_COLORS[s.status], background:STATUS_COLORS[s.status]+"15", padding:"2px 8px", borderRadius:99, textTransform:"uppercase" }}>{s.status}</span>
@@ -2543,7 +2542,7 @@ function SREConsole({ mission, code, onCodeChange }) {
               onKeyDown={e=>e.key==="Enter"&&runCommand(input)}
               placeholder="kubectl get pods"
               style={{ flex:1, background:"transparent", border:"none", color:"#E5E7EB", fontSize:12, fontFamily:"'DM Mono',monospace", outline:"none" }} />
-            <button onClick={()=>runCommand(input)} style={{ padding:"4px 12px", background:"#6366F1", border:"none", borderRadius:5, color:"#0F172A", fontSize:11, cursor:"pointer" }}>Run</button>
+            <button onClick={()=>runCommand(input)} style={{ padding:"4px 12px", background:"#6366F1", border:"none", borderRadius:5, color:"#ffffff", fontSize:11, cursor:"pointer" }}>Run</button>
           </div>
         </div>
       )}
@@ -2643,7 +2642,7 @@ run_pipeline()
         {["code","dag","schema"].map(t=>(
           <button key={t} onClick={()=>setTab(t)} style={{ padding:"9px 14px", background:"none", border:"none", borderBottom:`2px solid ${tab===t?T.indigo:"transparent"}`, color:tab===t?T.indigo:T.ink3, fontSize:11, fontWeight:tab===t?800:400, cursor:"pointer", textTransform:"uppercase", letterSpacing:1 }}>{t.toUpperCase()}</button>
         ))}
-        <button onClick={runPipeline} disabled={runningPipe} style={{ marginLeft:"auto", marginRight:10, padding:"4px 14px", borderRadius:6, border:"none", background: runningPipe ? "#9CA3AF" : "#059669", color:"#0F172A", fontSize:11, fontWeight:700, cursor: runningPipe ? "wait" : "pointer" }}>
+        <button onClick={runPipeline} disabled={runningPipe} style={{ marginLeft:"auto", marginRight:10, padding:"4px 14px", borderRadius:6, border:"none", background: runningPipe ? "#9CA3AF" : "#059669", color:"#ffffff", fontSize:11, fontWeight:700, cursor: runningPipe ? "wait" : "pointer" }}>
           {runningPipe ? (runStatus || "⟳ Running…") : "▶ Run Pipeline"}
         </button>
       </div>
@@ -2651,7 +2650,7 @@ run_pipeline()
       {tab==="code" && (
         <div style={{ flex:1, display:"flex", flexDirection:"column", minHeight:0 }}>
           <textarea value={pipelineCode} onChange={e=>{setPipelineCode(e.target.value);onCodeChange(e.target.value)}}
-            style={{ flex:1, padding:16, background:"#1A1A2E", color:"#E5E7EB", fontSize:12, fontFamily:"'DM Mono',monospace", border:"none", resize:"none", outline:"none", lineHeight:1.7 }} />
+            style={{ flex:1, padding:16, background:T.code, color:T.ink, fontSize:12, fontFamily:"'DM Mono',monospace", border:"none", resize:"none", outline:"none", lineHeight:1.7 }} />
           {/* Real run console */}
           <div style={{ flex:"0 0 32%", borderTop:"1px solid #2D2D44", background:"#11111E", overflow:"auto" }}>
             <div style={{ padding:"5px 14px", fontSize:9, fontWeight:800, letterSpacing:1, textTransform:"uppercase", color: runOut?.error ? "#F87171" : "rgba(255,255,255,0.35)", borderBottom:"1px solid #2D2D44", position:"sticky", top:0, background:"#11111E" }}>
@@ -2670,7 +2669,7 @@ run_pipeline()
       {tab==="dag" && (
         <div style={{ flex:1, overflow:"auto", padding:24 }}>
           <div style={{ fontSize:10, color:T.ink4, marginBottom:16, letterSpacing:1 }}>PIPELINE DAG VISUALISER</div>
-          <div style={{ position:"relative", height:180, background:"#0F172A", borderRadius:12, border:`1px solid ${T.border}` }}>
+          <div style={{ position:"relative", height:180, background:T.bg2, borderRadius:12, border:`1px solid ${T.border}` }}>
             <svg style={{ position:"absolute", inset:0, width:"100%", height:"100%", pointerEvents:"none" }}>
               {DAG_NODES.slice(0,-1).map((n,i) => {
                 const next = DAG_NODES[i+1]
@@ -2679,7 +2678,7 @@ run_pipeline()
               <defs><marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#D1D5DB"/></marker></defs>
             </svg>
             {DAG_NODES.map(n=>(
-              <div key={n.id} style={{ position:"absolute", left:n.x, top:n.y, width:108, padding:"10px 8px", background:"#0F172A", border:`2px solid ${n.color}40`, borderRadius:10, textAlign:"center", boxShadow:`0 2px 8px ${n.color}20` }}>
+              <div key={n.id} style={{ position:"absolute", left:n.x, top:n.y, width:108, padding:"10px 8px", background:T.bg, border:`2px solid ${n.color}40`, borderRadius:10, textAlign:"center", boxShadow:`0 2px 8px ${n.color}20` }}>
                 <div style={{ fontSize:18, marginBottom:3 }}>{n.icon}</div>
                 <div style={{ fontSize:11, fontWeight:800, color:n.color }}>{n.label}</div>
                 <div style={{ fontSize:9, color: runOut ? (pipeHealthy ? "#059669" : "#DC2626") : "#9CA3AF", fontWeight:600 }}>
@@ -2697,12 +2696,12 @@ run_pipeline()
       {tab==="schema" && (
         <div style={{ flex:1, overflow:"auto", padding:16 }}>
           <div style={{ fontSize:10, color:T.ink4, marginBottom:12, letterSpacing:1 }}>SOURCE SCHEMA — /data/raw.csv (real file in the runtime)</div>
-          <div style={{ background:"#0F172A", borderRadius:10, border:`1px solid ${T.border}`, overflow:"hidden" }}>
+          <div style={{ background:T.bg, borderRadius:10, border:`1px solid ${T.border}`, overflow:"hidden" }}>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", background:T.indigo, padding:"8px 12px" }}>
-              {["Column","Type","Nullable","Notes"].map(h=><div key={h} style={{ fontSize:11, fontWeight:700, color:"#0F172A" }}>{h}</div>)}
+              {["Column","Type","Nullable","Notes"].map(h=><div key={h} style={{ fontSize:11, fontWeight:700, color:"#ffffff" }}>{h}</div>)}
             </div>
             {[["order_id","TEXT","No","Has duplicates — dedupe!"],["customer_id","INTEGER","No","FK to customers"],["product_id","INTEGER","No","FK to products"],["order_date","TEXT","No","YYYY-MM-DD"],["quantity","INTEGER","No",""],["amount","REAL","Yes","Contains NULLs — handle them"],["category","TEXT","No",""],["status","TEXT","No","Delivered / Cancelled / Returned"],["city","TEXT","No","Inconsistent casing"]].map((r,i)=>(
-              <div key={i} style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", padding:"7px 12px", background:i%2===0?"#F7F7F3":"#0F172A" }}>
+              <div key={i} style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", padding:"7px 12px", background:i%2===0?T.bg:T.bg2 }}>
                 {r.map((c,j)=><div key={j} style={{ fontSize:11, fontFamily:j<2?"'DM Mono',monospace":"inherit", color:j===0?T.indigo:T.ink3 }}>{c}</div>)}
               </div>
             ))}
@@ -2719,7 +2718,7 @@ run_pipeline()
 // ─────────────────────────────────────────────────────────────────────────────
 const SD_LAYERS = [
   {
-    id: "client", label: "Client", color: "#64748B", bg: "#0F172A", border: "#475569",
+    id: "client", label: "Client", color: "#64748B", bg: "#F8F7F5", border: "#CBD5E1",
     items: [
       { id:"client",  label:"Client",     shortLabel:"Client",  icon:"💻" },
       { id:"mobile",  label:"Mobile App", shortLabel:"Mobile",  icon:"📱" },
@@ -2866,7 +2865,7 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
   }
 
   const rubricScore = SD_RUBRIC.reduce((s, r) => s + (rubricChecks[r.id] ? r.weight : 0), 0)
-  const inp = { padding:"4px 7px", border:"1px solid #E5E7EB", borderRadius:5, fontSize:11, fontFamily:"inherit", outline:"none", background:"#0F172A", color:"#0F172A", width:"100%", boxSizing:"border-box" }
+  const inp = { padding:"4px 7px", border:"1px solid #E5E7EB", borderRadius:5, fontSize:11, fontFamily:"inherit", outline:"none", background:"#ffffff", color:T.ink, width:"100%", boxSizing:"border-box" }
   const METHOD_C = { GET:"#16A34A", POST:"#2563EB", PUT:"#D97706", PATCH:"#7C3AED", DELETE:"#DC2626" }
 
   return (
@@ -2877,7 +2876,7 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
       `}</style>
 
       {/* ═══════════════ LEFT — prompt tabs ═══════════════ */}
-      <div style={{ width:256, flexShrink:0, borderRight:"1px solid #E2E8F0", display:"flex", flexDirection:"column", background:"#0F172A", overflow:"hidden" }}>
+      <div style={{ width:256, flexShrink:0, borderRight:"1px solid #E2E8F0", display:"flex", flexDirection:"column", background:T.bg, overflow:"hidden" }}>
         <div style={{ display:"flex", borderBottom:"1px solid #E2E8F0", background:"#FAFAFA", flexShrink:0 }}>
           {[{ id:"req",deliver:false, icon:"📋", label:"Prompt" },{ id:"deliver",deliver:true, icon:"📦", label:"Deliver" },{ id:"rubric",deliver:false, icon:"✅", label:"Rubric" }].map(t => (
             <button key={t.id} onClick={() => setLeftTab(t.id)} style={{ flex:1, padding:"9px 0", border:"none", background:"none", borderBottom: leftTab===t.id ? "2px solid #6D40A0" : "2px solid transparent", fontSize:10, fontWeight: leftTab===t.id ? 800 : 500, color: leftTab===t.id ? "#6D40A0" : "#94A3B8", cursor:"pointer", fontFamily:"inherit" }}>
@@ -2890,7 +2889,7 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
           {/* Prompt */}
           {leftTab === "req" && (
             <div style={{ padding:"14px" }}>
-              <div style={{ fontSize:13, fontWeight:800, color:"#0F172A", marginBottom:8, lineHeight:1.3 }}>{mission?.title || "System Design Challenge"}</div>
+              <div style={{ fontSize:13, fontWeight:800, color:T.ink, marginBottom:8, lineHeight:1.3 }}>{mission?.title || "System Design Challenge"}</div>
               <p style={{ margin:"0 0 12px", fontSize:12, color:"#4B5563", lineHeight:1.65 }}>{mission?.scenario || mission?.description || "Design a scalable system meeting the requirements below."}</p>
 
               <div style={{ fontSize:9, fontWeight:800, color:"#9CA3AF", letterSpacing:0.8, textTransform:"uppercase", marginBottom:6 }}>Steps</div>
@@ -2907,11 +2906,11 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
                 {icon:"☁️",k:"Scale",     v: mission?.scale         || "10B redirects / day"  },
                 {icon:"✅",k:"Availability",v:mission?.availability || "99.99% uptime"        },
               ].map(r => (
-                <div key={r.k} style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5, padding:"6px 8px", background:"#0F172A", borderRadius:7, border:"1px solid #E2E8F0" }}>
+                <div key={r.k} style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5, padding:"6px 8px", background:T.bg2, borderRadius:7, border:"1px solid #E2E8F0" }}>
                   <span style={{ fontSize:13 }}>{r.icon}</span>
                   <div style={{ minWidth:0 }}>
                     <div style={{ fontSize:9, fontWeight:700, color:"#94A3B8" }}>{r.k}</div>
-                    <div style={{ fontSize:11, fontWeight:600, color:"#0F172A" }}>{r.v}</div>
+                    <div style={{ fontSize:11, fontWeight:600, color:T.ink }}>{r.v}</div>
                   </div>
                 </div>
               ))}
@@ -2934,10 +2933,10 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
                 { icon:"📊", title:"Capacity Estimates",   desc:"Fill in QPS, storage/year, and bandwidth in the Capacity tab." },
                 { icon:"⚖️", title:"Trade-off Analysis",   desc:"Document 2 design decisions and your reasoning in Tradeoffs." },
               ].map(d => (
-                <div key={d.title} style={{ padding:"10px 11px", background:"#0F172A", borderRadius:9, border:"1px solid #E2E8F0" }}>
+                <div key={d.title} style={{ padding:"10px 11px", background:T.bg2, borderRadius:9, border:"1px solid #E2E8F0" }}>
                   <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:3 }}>
                     <span style={{ fontSize:16 }}>{d.icon}</span>
-                    <span style={{ fontSize:12, fontWeight:700, color:"#0F172A" }}>{d.title}</span>
+                    <span style={{ fontSize:12, fontWeight:700, color:T.ink }}>{d.title}</span>
                   </div>
                   <p style={{ margin:0, fontSize:11, color:"#94A3B8", lineHeight:1.5 }}>{d.desc}</p>
                 </div>
@@ -2959,9 +2958,9 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
                 const on = rubricChecks[r.id]
                 return (
                   <div key={r.id} onClick={() => setChecks(c => ({ ...c, [r.id]: !c[r.id] }))}
-                    style={{ display:"flex", gap:9, alignItems:"center", padding:"8px 10px", borderRadius:8, marginBottom:5, border:`1.5px solid ${on ? "#BBF7D0" : "#E5E7EB"}`, background: on ? "#F0FDF4" : "#0F172A", cursor:"pointer", transition:"all 0.15s" }}>
+                    style={{ display:"flex", gap:9, alignItems:"center", padding:"8px 10px", borderRadius:8, marginBottom:5, border:`1.5px solid ${on ? "#BBF7D0" : "#E5E7EB"}`, background: on ? "#F0FDF4" : T.bg2, cursor:"pointer", transition:"all 0.15s" }}>
                     <div style={{ width:18, height:18, borderRadius:5, border:`2px solid ${on ? "#16A34A" : "#D1D5DB"}`, background: on ? "#16A34A" : "transparent", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                      {on && <span style={{ fontSize:10, color:"#0F172A", lineHeight:1 }}>✓</span>}
+                      {on && <span style={{ fontSize:10, color:"#ffffff", lineHeight:1 }}>✓</span>}
                     </div>
                     <div style={{ flex:1 }}>
                       <div style={{ fontSize:11, fontWeight:600, color: on ? "#15803D" : "#475569" }}>{r.label}</div>
@@ -2979,7 +2978,7 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
       <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden", minWidth:0 }}>
 
         {/* Palette bar */}
-        <div style={{ background:"#0F172A", borderBottom:"1px solid #E2E8F0", flexShrink:0 }}>
+        <div style={{ background:T.bg, borderBottom:"1px solid #E2E8F0", flexShrink:0 }}>
           {connSrc ? (
             <div style={{ padding:"8px 14px", display:"flex", alignItems:"center", gap:10, background:"#F5F3FF", borderBottom:"1px solid #DDD6FE" }}>
               <div style={{ width:8, height:8, borderRadius:"50%", background:"#7C3AED", animation:"sd-pulse 1.5s infinite" }} />
@@ -2996,7 +2995,7 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
                       <button key={item.id} onClick={() => addNode(item, layer.color)}
                         title={`Add ${item.label}`}
                         style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2, padding:"5px 7px", borderRadius:7, border:`1px solid transparent`, background:"transparent", cursor:"pointer", transition:"all 0.12s", minWidth:46 }}
-                        onMouseEnter={e => { e.currentTarget.style.background = "#0F172A"; e.currentTarget.style.borderColor = layer.border; e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.08)" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "#F0EDE8"; e.currentTarget.style.borderColor = layer.border; e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.08)" }}
                         onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; e.currentTarget.style.boxShadow = "none" }}>
                         <span style={{ fontSize:18, lineHeight:1 }}>{item.icon}</span>
                         <span style={{ fontSize:8.5, fontWeight:600, color:layer.color, whiteSpace:"nowrap", lineHeight:1.2, textAlign:"center" }}>{item.shortLabel}</span>
@@ -3053,7 +3052,7 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
                     strokeDasharray="none" opacity="0.85" />
                   {/* Midpoint delete handle */}
                   <g style={{ cursor:"pointer" }} onClick={e => { e.stopPropagation(); setEdges(es => es.filter((_,i) => i !== ei)) }}>
-                    <circle cx={mx} cy={my} r={8} fill="#0F172A" stroke="#E2E8F0" strokeWidth="1.5" />
+                    <circle cx={mx} cy={my} r={8} fill="#ffffff" stroke="#E2E8F0" strokeWidth="1.5" />
                     <text x={mx} y={my+4} fontSize="9" fill="#9CA3AF" textAnchor="middle">✕</text>
                   </g>
                 </g>
@@ -3076,7 +3075,7 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
                   position:"absolute",
                   left: node.x - 52, top: node.y - 28,
                   width:104, minHeight:68,
-                  background:"#0F172A",
+                  background:"#ffffff",
                   borderRadius:12,
                   border:`2px solid ${isSrc ? "#7C3AED" : isSel ? node.color : isHov ? node.color + "60" : "#E2E8F0"}`,
                   boxShadow: isSrc
@@ -3109,13 +3108,13 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
                     {!isSrc && (
                       <button onClick={e => { e.stopPropagation(); setConnSrc(node.uid); setSelected(null) }}
                         title="Draw connection to another component"
-                        style={{ width:22, height:22, borderRadius:99, background:"#6D40A0", border:"none", color:"#0F172A", fontSize:11, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 2px 6px rgba(109,64,160,0.4)" }}>
+                        style={{ width:22, height:22, borderRadius:99, background:"#6D40A0", border:"none", color:"#ffffff", fontSize:11, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 2px 6px rgba(109,64,160,0.4)" }}>
                         →
                       </button>
                     )}
                     <button onClick={e => { e.stopPropagation(); removeNode(node.uid) }}
                       title="Remove this component"
-                      style={{ width:22, height:22, borderRadius:99, background:"#DC2626", border:"none", color:"#0F172A", fontSize:11, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 2px 6px rgba(220,38,38,0.3)" }}>
+                      style={{ width:22, height:22, borderRadius:99, background:"#DC2626", border:"none", color:"#ffffff", fontSize:11, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 2px 6px rgba(220,38,38,0.3)" }}>
                       ✕
                     </button>
                   </div>
@@ -3137,7 +3136,7 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
         </div>
 
         {/* Canvas footer */}
-        <div style={{ borderTop:"1px solid #E2E8F0", background:"#0F172A", padding:"5px 16px", display:"flex", gap:16, alignItems:"center", flexShrink:0 }}>
+        <div style={{ borderTop:"1px solid #E2E8F0", background:T.bg2, padding:"5px 16px", display:"flex", gap:16, alignItems:"center", flexShrink:0 }}>
           <span style={{ fontSize:10, color:"#94A3B8" }}>
             <strong style={{ color:"#64748B" }}>Click palette</strong> to add ·
             <strong style={{ color:"#64748B" }}> Drag</strong> to move ·
@@ -3152,7 +3151,7 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
       </div>
 
       {/* ═══════════════ RIGHT — spec notes ═══════════════ */}
-      <div style={{ width:264, flexShrink:0, borderLeft:"1px solid #E2E8F0", display:"flex", flexDirection:"column", background:"#0F172A", overflow:"hidden" }}>
+      <div style={{ width:264, flexShrink:0, borderLeft:"1px solid #E2E8F0", display:"flex", flexDirection:"column", background:T.bg, overflow:"hidden" }}>
 
         {/* Tab bar */}
         <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", borderBottom:"1px solid #E2E8F0", background:"#FAFAFA", flexShrink:0 }}>
@@ -3170,10 +3169,10 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
             <div style={{ padding:"10px" }}>
               <div style={{ fontSize:10, fontWeight:800, color:"#475569", marginBottom:8 }}>Endpoints</div>
               {apiRows.map((row, i) => (
-                <div key={i} style={{ marginBottom:8, padding:"9px 10px", background:"#0F172A", borderRadius:9, border:"1px solid #E2E8F0" }}>
+                <div key={i} style={{ marginBottom:8, padding:"9px 10px", background:T.bg2, borderRadius:9, border:"1px solid #E2E8F0" }}>
                   <div style={{ display:"flex", gap:5, marginBottom:5, alignItems:"center" }}>
                     <select value={row.method} onChange={e => persist({ api: apiRows.map((r,j) => j===i ? {...r, method:e.target.value} : r) })}
-                      style={{ padding:"3px 5px", border:"1px solid #E5E7EB", borderRadius:5, fontWeight:800, fontSize:10, color:METHOD_C[row.method]||"#475569", background:"#0F172A", cursor:"pointer", outline:"none" }}>
+                      style={{ padding:"3px 5px", border:"1px solid #E5E7EB", borderRadius:5, fontWeight:800, fontSize:10, color:METHOD_C[row.method]||"#475569", background:"#ffffff", cursor:"pointer", outline:"none" }}>
                       {["GET","POST","PUT","PATCH","DELETE"].map(m => <option key={m}>{m}</option>)}
                     </select>
                     <input value={row.path} onChange={e => persist({ api: apiRows.map((r,j) => j===i ? {...r, path:e.target.value} : r) })}
@@ -3222,10 +3221,10 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
                     placeholder="Metric" style={{ ...inp, fontWeight:700, marginBottom:4, background:"transparent", border:"none", padding:"0", fontSize:11 }} />
                   <div style={{ display:"flex", gap:5, alignItems:"center" }}>
                     <input value={row.formula} onChange={e => persist({ capacity: capRows.map((r,j) => j===i ? {...r, formula:e.target.value} : r) })}
-                      placeholder="calculation" style={{ ...inp, fontFamily:"'DM Mono',monospace", fontSize:10, flex:1, background:"#0F172A" }} />
+                      placeholder="calculation" style={{ ...inp, fontFamily:"'DM Mono',monospace", fontSize:10, flex:1 }} />
                     <span style={{ fontSize:11, color:"#60A5FA", fontWeight:700 }}>→</span>
                     <input value={row.result} onChange={e => persist({ capacity: capRows.map((r,j) => j===i ? {...r, result:e.target.value} : r) })}
-                      placeholder="result" style={{ ...inp, width:68, fontWeight:800, color:"#1D4ED8", fontSize:10, background:"#0F172A" }} />
+                      placeholder="result" style={{ ...inp, width:68, fontWeight:800, color:"#1D4ED8", fontSize:10 }} />
                   </div>
                 </div>
               ))}

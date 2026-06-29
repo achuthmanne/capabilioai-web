@@ -69,7 +69,7 @@ function ProofOverlay({ draft, mission, meta, validation, onClose }) {
               {a.type === "image"
                 ? <img src={a.content} alt={a.label} style={{ display: "block", maxWidth: "100%" }} />
                 : a.type === "code"
-                  ? <pre style={{ margin: 0, padding: "12px 16px", background: T.slate, color: "#E2E8F0", fontFamily: "'DM Mono',monospace", fontSize: 11.5, lineHeight: 1.6, overflow: "auto", maxHeight: 320 }}>{a.content}</pre>
+                  ? <pre style={{ margin: 0, padding: "12px 16px", background: T.bg2, color: T.ink, fontFamily: "'DM Mono',monospace", fontSize: 11.5, lineHeight: 1.6, overflow: "auto", maxHeight: 320 }}>{a.content}</pre>
                   : <pre style={{ margin: 0, padding: "12px 16px", fontFamily: a.type === "narrative" ? "inherit" : "'DM Mono',monospace", fontSize: 12, color: T.ink2, whiteSpace: "pre-wrap", lineHeight: 1.65 }}>{a.content}</pre>}
             </div>
           ))}
@@ -674,29 +674,29 @@ export default function ChallengeShell({
       )}
 
       {/* ══ ACTION BAR · 56px · four fixed slots ══ */}
-      <div style={{ height: 56, background: T.slate2, borderTop: "1px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", gap: 8, padding: "0 14px", flexShrink: 0 }}>
+      <div style={{ height: 56, background: T.bg2, borderTop: `1px solid ${T.border}`, display: "flex", alignItems: "center", gap: 8, padding: "0 14px", flexShrink: 0 }}>
         {showRunSlot && (
           <button onClick={handleRun} disabled={running}
-            style={{ padding: "8px 16px", background: "rgba(255,255,255,0.09)", border: "1px solid rgba(255,255,255,0.13)", borderRadius: 7, color: running ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: 700, cursor: running ? "wait" : "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }}>
+            style={{ padding: "8px 16px", background: T.bg, border: `1px solid ${T.border}`, borderRadius: 7, color: running ? T.ink3 : T.ink2, fontSize: 12, fontWeight: 700, cursor: running ? "wait" : "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }}>
             {/* Use sibling slots instead of Fragment-vs-string to avoid fiber type mismatch */}
-            {running && <Spinner color="rgba(255,255,255,0.4)" size={11} />}
+            {running && <Spinner color={T.ink3} size={11} />}
             {running ? " Running…" : meta.actions.run}
           </button>
         )}
         <button onClick={handleValidate} disabled={validating}
-          style={{ padding: "8px 16px", background: "rgba(255,255,255,0.09)", border: "1px solid rgba(255,255,255,0.13)", borderRadius: 7, color: validating ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: 700, cursor: validating ? "wait" : "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }}>
-          {validating && <Spinner color="rgba(255,255,255,0.4)" size={11} />}
+          style={{ padding: "8px 16px", background: T.bg, border: `1px solid ${T.border}`, borderRadius: 7, color: validating ? T.ink3 : T.ink2, fontSize: 12, fontWeight: 700, cursor: validating ? "wait" : "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }}>
+          {validating && <Spinner color={T.ink3} size={11} />}
           {validating ? " Validating…" : meta.actions.validate}
-          {validation && !validating && <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: passCount === realChecks.length ? "#4ADE80" : "#FBBF24" }}>{passCount}/{realChecks.length}</span>}
+          {validation && !validating && <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: passCount === realChecks.length ? "#16A34A" : "#D97706" }}>{passCount}/{realChecks.length}</span>}
         </button>
         <button onClick={handlePreview}
-          style={{ padding: "8px 16px", background: "none", border: "1px solid rgba(255,255,255,0.13)", borderRadius: 7, color: "rgba(255,255,255,0.65)", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+          style={{ padding: "8px 16px", background: "none", border: `1px solid ${T.border}`, borderRadius: 7, color: T.ink3, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
           {meta.actions.preview}
         </button>
-        {runFeedback && <span style={{ fontSize: 10.5, color: "#F87171" }}>{runFeedback}</span>}
+        {runFeedback && <span style={{ fontSize: 10.5, color: T.red }}>{runFeedback}</span>}
 
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.28)" }}>{saveState === "saving" ? "Saving…" : "Draft saved ✓"}</span>
+          <span style={{ fontSize: 10, color: T.ink3 }}>{saveState === "saving" ? "Saving…" : "Draft saved ✓"}</span>
           <button onClick={() => setConfirming(true)} disabled={submitting || !code?.trim()}
             style={{ padding: "9px 22px", background: (submitting || !code?.trim()) ? "#4B5563" : meta.hue, border: "none", borderRadius: 7, color: "#fff", fontSize: 12.5, fontWeight: 800, cursor: (submitting || !code?.trim()) ? "not-allowed" : "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 7 }}>
             {submitting && <Spinner color="#fff" size={11} />}

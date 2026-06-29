@@ -14,7 +14,7 @@ export const T = {
   blue: "#2563EB", blueBg: "#EFF6FF",
   purple: "#6B3FA0", purpleBg: "#F5F3FF",
   orange: "#FF5701",
-  slate: "#0F172A", slate2: "#1E293B",
+  slate: "#F1EFE9", slate2: "#E5E5E2",
 }
 
 export const ELO_TIERS = [
