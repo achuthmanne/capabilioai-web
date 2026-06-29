@@ -105,7 +105,7 @@ function EntryModal({ entry, onClose, onSave }) {
   return (
     <div style={{position:"fixed",inset:0,zIndex:999,background:"rgba(17,24,39,0.6)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
       <div style={{background:"#fff",borderRadius:20,padding:"28px 32px",maxWidth:600,width:"100%",maxHeight:"90vh",overflowY:"auto"}}>
-        <div style={{fontSize:18,fontWeight:800,color:T.ink,marginBottom:20,fontFamily:"'Playfair Display',serif"}}>{entry?.id?"Edit Experience":"Add Experience"}</div>
+        <div style={{fontSize:18,fontWeight:800,color:T.ink,marginBottom:20,fontFamily:"'DM Sans',serif"}}>{entry?.id?"Edit Experience":"Add Experience"}</div>
 
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
           {inp("company","Company name")}
@@ -154,7 +154,7 @@ function EntryModal({ entry, onClose, onSave }) {
         </div>
 
         <div style={{display:"flex",gap:10,marginTop:20}}>
-          <button onClick={onClose} style={{flex:1,padding:"11px",background:"#F9FAFB",border:`1px solid ${T.border}`,borderRadius:10,cursor:"pointer",fontSize:13,color:T.ink3}}>Cancel</button>
+          <button onClick={onClose} style={{flex:1,padding:"11px",background:"#FAF7F2",border:`1px solid ${T.border}`,borderRadius:10,cursor:"pointer",fontSize:13,color:T.ink3}}>Cancel</button>
           <button onClick={handleSave} disabled={saving} style={{flex:2,padding:"11px",background:T.indigo,border:"none",borderRadius:10,color:"#fff",fontWeight:700,cursor:"pointer",fontSize:13,opacity:saving?0.6:1}}>
             {saving?"Saving…":entry?.id?"Save Changes":"Add Experience"}
           </button>
@@ -213,7 +213,7 @@ export default function CareerTimeline({ user }) {
   )
 
   return (
-    <div style={{fontFamily:"Inter,sans-serif"}}>
+    <div style={{fontFamily:"DM Sans,sans-serif"}}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
         <div>
@@ -263,7 +263,7 @@ export default function CareerTimeline({ user }) {
                 <div style={{padding:"18px 20px",cursor:"pointer"}} onClick={()=>setExpanded(e=>({...e,[entry.id]:!e[entry.id]}))}>
                   <div style={{display:"flex",alignItems:"flex-start",gap:14}}>
                     {/* Company logo */}
-                    <div style={{width:46,height:46,borderRadius:10,border:`1px solid ${T.border}`,overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",background:"#F9FAFB",flexShrink:0}}>
+                    <div style={{width:46,height:46,borderRadius:10,border:`1px solid ${T.border}`,overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",background:"#FAF7F2",flexShrink:0}}>
                       {entry.company_logo
                         ? <img src={entry.company_logo} alt="" style={{width:38,height:38,objectFit:"contain"}} onError={e=>{e.target.style.display="none";e.target.nextSibling.style.display="flex"}}/>
                         : null
@@ -327,7 +327,7 @@ export default function CareerTimeline({ user }) {
                       <div>
                         <div style={{fontSize:11,fontWeight:700,color:T.ink3,letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>PROJECTS AT THIS COMPANY</div>
                         {entry.projects.map((p,i)=>(
-                          <div key={i} style={{padding:"10px 14px",background:"#F9FAFB",borderRadius:10,border:`1px solid ${T.border}`,marginBottom:6}}>
+                          <div key={i} style={{padding:"10px 14px",background:"#FAF7F2",borderRadius:10,border:`1px solid ${T.border}`,marginBottom:6}}>
                             <div style={{fontSize:13,fontWeight:600,color:T.ink}}>{p.title||p.name||"Project"}</div>
                             {p.desc&&<div style={{fontSize:12,color:T.ink3,marginTop:2}}>{p.desc}</div>}
                           </div>

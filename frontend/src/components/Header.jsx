@@ -54,7 +54,7 @@ export default function Header({
     if (elo >= 550) return { tier: "Rising",   color: "#6366F1" }
     if (elo >= 450) return { tier: "Building", color: "#10B981" }
     if (elo >= 400) return { tier: "Learning", color: "#F59E0B" }
-    return                  { tier: "Beginner",color: "#64748B" }
+    return                  { tier: "Beginner",color: "#6B6560" }
   }
   const eloTier = getEloTier(eloRating)
 
@@ -182,7 +182,7 @@ export default function Header({
     <>
       {/* ── Keyframes & class helpers ── */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500;600&display=swap');
 
         @keyframes hdrSlideDown {
           from { opacity:0; transform:translateY(-14px); }
@@ -208,7 +208,7 @@ export default function Header({
 
         .cg-shell {
           position:fixed; top:0; left:0; right:0; z-index:400;
-          font-family:'Inter',sans-serif;
+          font-family:'DM Sans',system-ui,sans-serif;
           animation: hdrSlideDown 0.45s cubic-bezier(0,0,0.2,1) both;
         }
         .cg-topbar {
@@ -217,31 +217,31 @@ export default function Header({
           grid-template-columns:240px 1fr 320px;
           align-items:center;
           padding:0 24px;
-          background:rgba(255,255,255,0.96);
+          background:rgba(250,247,242,0.97);
           backdrop-filter:blur(20px);
           -webkit-backdrop-filter:blur(20px);
-          border-bottom:1px solid #E5E7EB;
+          border-bottom:1px solid #E8E3DA;
           transition:box-shadow 0.3s ease;
         }
         .cg-topbar.scrolled {
-          box-shadow:0 4px 20px rgba(0,0,0,0.07);
-          border-bottom-color:#D1D5DB;
+          box-shadow:0 4px 20px rgba(26,23,20,0.07);
+          border-bottom-color:#C8C2BA;
         }
 
         /* Logo mark */
         .cg-logo-mark {
           width:36px; height:36px; border-radius:10px; flex-shrink:0;
-          background:linear-gradient(135deg,#6366F1,#8B5CF6);
+          background:#FF5701;
           display:flex; align-items:center; justify-content:center;
-          font-family:'Inter',sans-serif; font-size:16px; font-weight:900; color:#fff;
-          box-shadow:0 4px 18px rgba(99,102,241,0.38);
+          font-family:'DM Sans',sans-serif; font-size:16px; font-weight:900; color:#fff;
+          box-shadow:0 4px 18px rgba(255,87,1,0.30);
           transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s ease;
           user-select:none; cursor:pointer;
           letter-spacing:-0.5px;
         }
         .cg-logo-mark:hover {
           transform:scale(1.1) rotate(-5deg);
-          box-shadow:0 8px 32px rgba(99,102,241,0.55);
+          box-shadow:0 8px 28px rgba(255,87,1,0.42);
         }
 
         /* Nav links */
@@ -249,32 +249,32 @@ export default function Header({
           display:inline-flex; align-items:center; gap:7px;
           padding:8px 15px; border-radius:10px;
           border:1px solid transparent; background:transparent;
-          color:#6B7280; font-size:13px; font-weight:500; cursor:pointer;
+          color:#6B6560; font-size:13px; font-weight:500; cursor:pointer;
           transition:all 0.18s ease; white-space:nowrap;
-          font-family:'Inter',sans-serif; position:relative;
+          font-family:'DM Sans',sans-serif; position:relative;
         }
-        .cg-nav-link:hover { color:#0F172A; background:#F9FAFB; border-color:#E5E7EB; }
+        .cg-nav-link:hover { color:#1A1714; background:#F2EDE4; border-color:#E8E3DA; }
         .cg-nav-link:active { transform:scale(0.95); }
         .cg-nav-link.active {
-          background:rgba(99,102,241,0.07); border-color:rgba(99,102,241,0.2);
-          color:#4F46E5; font-weight:600;
+          background:rgba(255,87,1,0.07); border-color:rgba(255,87,1,0.2);
+          color:#FF5701; font-weight:600;
         }
         .cg-nav-link.active::after {
           content:''; position:absolute; bottom:-1px; left:50%; transform:translateX(-50%);
-          width:20px; height:2px; border-radius:999px; background:#6366F1;
+          width:20px; height:2px; border-radius:999px; background:#FF5701;
         }
 
         /* Icon button */
         .cg-icon-btn {
           width:38px; height:38px; border-radius:10px;
-          border:1px solid rgba(0,0,0,0.05); background:rgba(0,0,0,0.02);
-          color:#374151; cursor:pointer;
+          border:1px solid #E8E3DA; background:#F2EDE4;
+          color:#3D3935; cursor:pointer;
           display:flex; align-items:center; justify-content:center;
           position:relative; transition:all 0.18s ease;
         }
         .cg-icon-btn:hover {
-          background:rgba(0,0,0,0.05);
-          border-color:rgba(0,0,0,0.08);
+          background:#EDE8DF;
+          border-color:#C8C2BA;
           transform:translateY(-1px);
         }
         .cg-icon-btn:active { transform:scale(0.92); }
@@ -294,7 +294,7 @@ export default function Header({
         .cg-elo-badge {
           display:inline-flex; align-items:center; gap:6px;
           padding:5px 14px; border-radius:9999px;
-          background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.25);
+          background:#FFFBEB; border:1px solid rgba(217,119,6,0.25);
           transition:box-shadow 0.2s ease;
         }
         .cg-elo-badge.updated { animation:eloPulse 1s ease; }
@@ -302,8 +302,8 @@ export default function Header({
         /* Popover */
         .cg-popover {
           position:absolute; top:48px; right:0;
-          background:#FFFFFF; border:1px solid #E5E7EB;
-          border-radius:14px; box-shadow:0 8px 32px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06);
+          background:#FFFFFF; border:1px solid #E8E3DA;
+          border-radius:14px; box-shadow:0 8px 32px rgba(26,23,20,0.10), 0 2px 8px rgba(26,23,20,0.05);
           overflow:hidden; z-index:500;
           animation:popoverIn 0.22s cubic-bezier(0.34,1.56,0.64,1) both;
           transform-origin:top right;
@@ -313,21 +313,21 @@ export default function Header({
         .cg-notif-row {
           display:flex; gap:12px; padding:12px 16px;
           cursor:pointer; transition:background 0.15s;
-          border-bottom:1px solid rgba(0,0,0,0.03);
+          border-bottom:1px solid #F0EBE3;
         }
         .cg-notif-row:last-child { border-bottom:none; }
-        .cg-notif-row:hover { background:rgba(0,0,0,0.03); }
+        .cg-notif-row:hover { background:#FAF7F2; }
 
         /* Menu button */
         .cg-menu-btn {
           width:100%; display:flex; align-items:center; gap:10px;
           padding:11px 16px; background:transparent;
-          border:none; border-bottom:1px solid rgba(0,0,0,0.02);
-          color:#6B7280; font-size:13px; text-align:left;
-          cursor:pointer; font-family:'Inter',sans-serif; transition:all 0.15s;
+          border:none; border-bottom:1px solid #F0EBE3;
+          color:#6B6560; font-size:13px; text-align:left;
+          cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.15s;
         }
-        .cg-menu-btn:hover { background:#F9FAFB; color:#0F172A; }
-        .cg-menu-btn.active { background:rgba(99,102,241,0.06); color:#4F46E5; }
+        .cg-menu-btn:hover { background:#FAF7F2; color:#1A1714; }
+        .cg-menu-btn.active { background:rgba(255,87,1,0.06); color:#FF5701; }
         .cg-menu-btn:last-of-type { border-bottom:none; }
 
         /* Avatar button */
@@ -345,15 +345,15 @@ export default function Header({
         /* Avatar ring */
         .cg-avatar-ring {
           width:34px; height:34px; border-radius:50%; flex-shrink:0;
-          background:rgba(99,102,241,0.16); border:2px solid rgba(99,102,241,0.4);
+          background:rgba(255,87,1,0.12); border:2px solid rgba(255,87,1,0.35);
           display:flex; align-items:center; justify-content:center;
-          font-size:13px; font-weight:800; color:#818CF8;
-          font-family:'Inter',sans-serif; position:relative;
+          font-size:13px; font-weight:800; color:#FF5701;
+          font-family:'DM Sans',sans-serif; position:relative;
           transition:border-color 0.2s, box-shadow 0.2s;
         }
         .cg-avatar-btn:hover .cg-avatar-ring {
-          border-color:rgba(99,102,241,0.65);
-          box-shadow:0 0 0 3px rgba(99,102,241,0.12);
+          border-color:rgba(255,87,1,0.6);
+          box-shadow:0 0 0 3px rgba(255,87,1,0.12);
         }
 
         /* Online dot */
@@ -364,17 +364,17 @@ export default function Header({
         }
 
         /* Chevron */
-        .cg-chevron { font-size:10px; color:#9CA3AF; transition:transform 0.2s; }
+        .cg-chevron { font-size:10px; color:#A8A29E; transition:transform 0.2s; }
         .cg-chevron.open { transform:rotate(180deg); }
 
         /* Vertical divider */
-        .cg-vdivider { width:1px; height:26px; background:rgba(0,0,0,0.05); margin:0 4px; flex-shrink:0; }
+        .cg-vdivider { width:1px; height:26px; background:#E8E3DA; margin:0 4px; flex-shrink:0; }
 
         /* Sub-tab bar */
         .cg-subbar {
           height:${SUBNAV_HEIGHT}px;
-          background:#FFFFFF;
-          border-bottom:1px solid #E5E7EB;
+          background:#FAF7F2;
+          border-bottom:1px solid #E8E3DA;
           display:flex; align-items:center; gap:2px;
           padding:0 24px; overflow-x:auto; scrollbar-width:none;
         }
@@ -385,22 +385,22 @@ export default function Header({
           display:inline-flex; align-items:center; gap:6px;
           padding:10px 13px;
           border:none; border-bottom:2px solid transparent;
-          background:transparent; color:#9CA3AF;
+          background:transparent; color:#A8A29E;
           font-size:12.5px; font-weight:500; cursor:pointer;
-          white-space:nowrap; flex-shrink:0; font-family:'Inter',sans-serif;
+          white-space:nowrap; flex-shrink:0; font-family:'DM Sans',sans-serif;
           transition:all 0.18s ease;
         }
-        .cg-subtab:hover { color:#374151; }
-        .cg-subtab.active { color:#6366F1; border-bottom-color:#6366F1; font-weight:700; }
+        .cg-subtab:hover { color:#3D3935; }
+        .cg-subtab.active { color:#FF5701; border-bottom-color:#FF5701; font-weight:700; }
 
         /* Profile bar */
         .cg-profile-bar {
-          height:5px; background:rgba(0,0,0,0.03);
+          height:5px; background:#E8E3DA;
           border-radius:999px; overflow:hidden;
         }
         .cg-profile-bar-fill {
           height:100%; border-radius:999px;
-          background:linear-gradient(90deg,#6366F1,#8B5CF6);
+          background:linear-gradient(90deg,#FF5701,#E04D00);
           animation:profileBarFill 0.9s ease both;
         }
 
@@ -408,10 +408,10 @@ export default function Header({
         .cg-signout-btn {
           width:100%; display:flex; align-items:center; gap:10px;
           padding:12px 16px; border:none; background:transparent;
-          color:#FB7185; font-size:13px; text-align:left;
-          cursor:pointer; font-family:'Inter',sans-serif; transition:background 0.15s;
+          color:#DC2626; font-size:13px; text-align:left;
+          cursor:pointer; font-family:'DM Sans',sans-serif; transition:background 0.15s;
         }
-        .cg-signout-btn:hover { background:rgba(0,0,0,0.02); }
+        .cg-signout-btn:hover { background:#FAF7F2; }
       `}</style>
 
       <div className="cg-shell">
@@ -424,17 +424,17 @@ export default function Header({
             <div className="cg-logo-mark" onClick={() => handleNavigate("aura")}>C</div>
             <div style={{ minWidth:0, display:"flex", flexDirection:"column", gap:3 }}>
               <div style={{
-                fontFamily:"'Inter',sans-serif", fontSize:15, fontWeight:800,
-                letterSpacing:"0.1em", color:"#0F172A", lineHeight:1,
+                fontFamily:"'DM Sans',sans-serif", fontSize:15, fontWeight:800,
+                letterSpacing:"0.05em", color:"#1A1714", lineHeight:1,
               }}>
                 CAPABILIO
               </div>
               <div style={{
-                fontFamily:"'JetBrains Mono',monospace", fontSize:10,
-                color:"#64748B", letterSpacing:"0.12em", lineHeight:1,
+                fontFamily:"'DM Mono',monospace", fontSize:10,
+                color:"#6B6560", letterSpacing:"0.10em", lineHeight:1,
                 whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:6,
               }}>
-                <span style={{ color:"#94A3B8" }}>{accountLabel}</span>
+                <span style={{ color:"#A8A29E" }}>{accountLabel}</span>
                 <span style={{ opacity:0.4 }}>·</span>
                 <span>{keyword}</span>
               </div>
@@ -459,15 +459,15 @@ export default function Header({
             {/* ELO badge — crown jewel */}
             <div className={`cg-elo-badge${eloUpdated ? " updated" : ""}`}>
               <span style={{
-                fontFamily:"'JetBrains Mono',monospace", fontSize:10,
-                fontWeight:600, color:"rgba(245,158,11,0.65)", letterSpacing:"0.1em",
+                fontFamily:"'DM Mono',monospace", fontSize:10,
+                fontWeight:600, color:"rgba(217,119,6,0.65)", letterSpacing:"0.1em",
                 lineHeight:1,
               }}>
                 ELO
               </span>
               <span style={{
-                fontFamily:"'JetBrains Mono',monospace", fontSize:15,
-                fontWeight:800, color:"#F59E0B", lineHeight:1,
+                fontFamily:"'DM Mono',monospace", fontSize:15,
+                fontWeight:800, color:"#D97706", lineHeight:1,
               }}>
                 {eloRating}
               </span>
@@ -495,15 +495,15 @@ export default function Header({
                     borderBottom:"1px solid #F3F4F6",
                     display:"flex", justifyContent:"space-between", alignItems:"center",
                   }}>
-                    <span style={{ fontSize:14, fontWeight:700, color:"#0F172A" }}>Notifications</span>
-                    <button style={{ border:"none", background:"transparent", color:"#6366F1", fontSize:11, fontWeight:700, cursor:"pointer" }}>
+                    <span style={{ fontSize:14, fontWeight:700, color:"#1A1714" }}>Notifications</span>
+                    <button style={{ border:"none", background:"transparent", color:"#FF5701", fontSize:11, fontWeight:700, cursor:"pointer" }}>
                       Mark all read
                     </button>
                   </div>
 
                   {notifications.map((item, i) => (
                     <div key={i} className="cg-notif-row"
-                      style={{ background: item.unread ? "rgba(99,102,241,0.04)" : "transparent" }}>
+                      style={{ background: item.unread ? "rgba(255,87,1,0.04)" : "transparent" }}>
                       <div style={{
                         width:34, height:34, borderRadius:10,
                         background:`${item.color}1A`,
@@ -513,8 +513,8 @@ export default function Header({
                         {item.icon}
                       </div>
                       <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:12, color:"#475569", lineHeight:1.5, marginBottom:2 }}>{item.text}</div>
-                        <div style={{ fontSize:10, color:"#64748B" }}>{item.time}</div>
+                        <div style={{ fontSize:12, color:"#3D3935", lineHeight:1.5, marginBottom:2 }}>{item.text}</div>
+                        <div style={{ fontSize:10, color:"#A8A29E" }}>{item.time}</div>
                       </div>
                       {item.unread && (
                         <div style={{ width:7, height:7, borderRadius:"50%", background:item.color, marginTop:5, flexShrink:0 }} />
@@ -522,8 +522,8 @@ export default function Header({
                     </div>
                   ))}
 
-                  <div style={{ padding:"11px 16px", textAlign:"center", borderTop:"1px solid #F3F4F6" }}>
-                    <button style={{ border:"none", background:"transparent", color:"#6366F1", fontSize:12, fontWeight:700, cursor:"pointer" }}>
+                  <div style={{ padding:"11px 16px", textAlign:"center", borderTop:"1px solid #E8E3DA" }}>
+                    <button style={{ border:"none", background:"transparent", color:"#FF5701", fontSize:12, fontWeight:700, cursor:"pointer" }}>
                       View all →
                     </button>
                   </div>
@@ -542,10 +542,10 @@ export default function Header({
                   <div className="cg-online-dot" />
                 </div>
                 <div style={{ textAlign:"left", minWidth:0 }}>
-                  <div style={{ fontSize:13, fontWeight:700, color:"#0F172A", lineHeight:1.2, whiteSpace:"nowrap" }}>
+                  <div style={{ fontSize:13, fontWeight:700, color:"#1A1714", lineHeight:1.2, whiteSpace:"nowrap" }}>
                     {firstName}
                   </div>
-                  <div style={{ fontSize:10, color:"#64748B", lineHeight:1.3, whiteSpace:"nowrap" }}>
+                  <div style={{ fontSize:10, color:"#6B6560", lineHeight:1.3, whiteSpace:"nowrap" }}>
                     {keyword}
                     {" · "}
                     <span style={{ color:eloTier.color, fontWeight:700 }}>{eloTier.tier}</span>
@@ -558,49 +558,49 @@ export default function Header({
                 <div className="cg-popover" style={{ width:276 }}>
 
                   {/* Profile header */}
-                  <div style={{ padding:16, borderBottom:"1px solid #F3F4F6" }}>
+                  <div style={{ padding:16, borderBottom:"1px solid #E8E3DA" }}>
                     <div style={{ display:"flex", gap:12, alignItems:"center", marginBottom:12 }}>
                       <div style={{
                         width:48, height:48, borderRadius:"50%", flexShrink:0,
-                        background:"rgba(99,102,241,0.16)", border:"2px solid rgba(99,102,241,0.35)",
+                        background:"rgba(255,87,1,0.12)", border:"2px solid rgba(255,87,1,0.3)",
                         display:"flex", alignItems:"center", justifyContent:"center",
-                        fontSize:18, fontWeight:800, color:"#818CF8",
-                        fontFamily:"'Inter',sans-serif", position:"relative",
+                        fontSize:18, fontWeight:800, color:"#FF5701",
+                        fontFamily:"'DM Sans',sans-serif", position:"relative",
                       }}>
                         {initial}
                         <div style={{
                           position:"absolute", right:1, bottom:1,
                           width:10, height:10, borderRadius:"50%",
-                          background:"#10B981", border:"2px solid #FFFFFF",
+                          background:"#16A34A", border:"2px solid #FFFFFF",
                         }} />
                       </div>
                       <div style={{ minWidth:0 }}>
-                        <div style={{ fontSize:14, fontWeight:700, color:"#0F172A", marginBottom:2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                        <div style={{ fontSize:14, fontWeight:700, color:"#1A1714", marginBottom:2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                           {user?.displayName || "User"}
                         </div>
-                        <div style={{ fontSize:11, color:"#64748B", marginBottom:7, wordBreak:"break-word" }}>
+                        <div style={{ fontSize:11, color:"#6B6560", marginBottom:7, wordBreak:"break-word" }}>
                           {user?.email || ""}
                         </div>
                         <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
-                          <span style={pill("rgba(99,102,241,0.12)","rgba(99,102,241,0.3)","#818CF8")}>{keyword}</span>
+                          <span style={pill("rgba(255,87,1,0.10)","rgba(255,87,1,0.28)","#FF5701")}>{keyword}</span>
                           <span style={pill(`${eloTier.color}1A`,`${eloTier.color}40`,eloTier.color)}>{eloTier.tier}</span>
-                          <span style={pill("rgba(16,185,129,0.12)","rgba(16,185,129,0.3)","#34D399")}>{accountLabel}</span>
+                          <span style={pill("rgba(22,163,74,0.10)","rgba(22,163,74,0.28)","#16A34A")}>{accountLabel}</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Profile strength */}
-                    <div style={{ background:"#F9FAFB", borderRadius:10, padding:"10px 11px", border:"1px solid rgba(0,0,0,0.03)" }}>
+                    <div style={{ background:"#F2EDE4", borderRadius:10, padding:"10px 11px", border:"1px solid #E8E3DA" }}>
                       <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
                         <span style={{
-                          fontSize:10, color:"#64748B", fontWeight:700,
-                          fontFamily:"'JetBrains Mono',monospace", letterSpacing:"0.08em",
+                          fontSize:10, color:"#6B6560", fontWeight:700,
+                          fontFamily:"'DM Mono',monospace", letterSpacing:"0.08em",
                         }}>
                           PROFILE STRENGTH
                         </span>
                         <span style={{
-                          fontSize:10, fontWeight:800, fontFamily:"'JetBrains Mono',monospace",
-                          color: profileStrength >= 75 ? "#34D399" : "#F59E0B",
+                          fontSize:10, fontWeight:800, fontFamily:"'DM Mono',monospace",
+                          color: profileStrength >= 75 ? "#16A34A" : "#D97706",
                         }}>
                           {profileStrength}%
                         </span>
@@ -621,7 +621,7 @@ export default function Header({
                         <span>{item.label}</span>
                         {item.tab === "vault" && vaultFiles.length > 0 && (
                           <span style={{
-                            marginLeft:"auto", background:"#6366F1", color:"#fff",
+                            marginLeft:"auto", background:"#FF5701", color:"#fff",
                             fontSize:9, fontWeight:800, padding:"2px 6px", borderRadius:999, lineHeight:1.4,
                           }}>
                             {vaultFiles.length}
@@ -632,7 +632,7 @@ export default function Header({
                   </div>
 
                   {/* Sign out */}
-                  <div style={{ borderTop:"1px solid #F3F4F6" }}>
+                  <div style={{ borderTop:"1px solid #E8E3DA" }}>
                     <button className="cg-signout-btn"
                       onClick={() => { setShowUserMenu(false); onSignOut?.() }}>
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -654,16 +654,16 @@ export default function Header({
           <div className="cg-subbar">
             <div style={{
               marginRight:16, paddingRight:16,
-              borderRight:"1px solid #E5E7EB",
+              borderRight:"1px solid #E8E3DA",
               flexShrink:0, display:"flex", flexDirection:"column", justifyContent:"center",
             }}>
               <div style={{
-                fontSize:13, fontWeight:700, color:"#0F172A",
-                fontFamily:"'Inter',sans-serif", letterSpacing:"0.3px", lineHeight:1.2,
+                fontSize:13, fontWeight:700, color:"#1A1714",
+                fontFamily:"'DM Sans',sans-serif", letterSpacing:"0.2px", lineHeight:1.2,
               }}>
                 Aura
               </div>
-              <div style={{ fontSize:10, color:"#64748B", lineHeight:1.3 }}>Career profile &amp; insights</div>
+              <div style={{ fontSize:10, color:"#6B6560", lineHeight:1.3 }}>Career profile &amp; insights</div>
             </div>
 
             {auraTabs.map(tab => (
@@ -674,7 +674,7 @@ export default function Header({
                 {tab.label}
                 {tab.id === "vault" && vaultFiles.length > 0 && (
                   <span style={{
-                    background:"#6366F1", color:"#fff",
+                    background:"#FF5701", color:"#fff",
                     fontSize:9, fontWeight:800, padding:"1px 6px", borderRadius:999, lineHeight:1.5,
                   }}>
                     {vaultFiles.length}

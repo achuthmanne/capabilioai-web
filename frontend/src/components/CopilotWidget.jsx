@@ -59,7 +59,7 @@ function TypingDots({ label }) {
           }} />
         ))}
       </div>
-      {label && <span style={{ fontSize: 11, color: "#9CA3AF", fontFamily: "'DM Sans', sans-serif" }}>{label}</span>}
+      {label && <span style={{ fontSize: 11, color: "#A8A29E", fontFamily: "'DM Sans', sans-serif" }}>{label}</span>}
     </div>
   )
 }
@@ -80,9 +80,9 @@ function Bubble({ role, content, isBlocked }) {
         borderRadius: isUser ? "16px 16px 4px 16px" : "4px 16px 16px 16px",
         background: isUser
           ? "linear-gradient(135deg, #FF5701 0%, #FF8C42 100%)"
-          : isBlocked ? "#FFF5F5" : "#F9FAFB",
+          : isBlocked ? "#FFF5F5" : "#FAF7F2",
         border: isBlocked ? "1px solid #FECACA" : isUser ? "none" : "1px solid #F3F4F6",
-        color: isUser ? "#fff" : "#111827",
+        color: isUser ? "#fff" : "#1A1714",
         fontSize: 13, lineHeight: 1.55,
         fontFamily: "'DM Sans', sans-serif",
         boxShadow: isUser ? "0 2px 8px rgba(255,87,1,0.2)" : "none",
@@ -104,10 +104,10 @@ function Chip({ label, onClick }) {
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
-        padding: "6px 11px", borderRadius: 99, border: "1px solid #E5E7EB",
+        padding: "6px 11px", borderRadius: 99, border: "1px solid #E8E3DA",
         background: hov ? "#FFF1E8" : "#fff",
-        borderColor: hov ? "#FF570150" : "#E5E7EB",
-        color: hov ? "#FF5701" : "#374151",
+        borderColor: hov ? "#FF570150" : "#E8E3DA",
+        color: hov ? "#FF5701" : "#3D3935",
         fontSize: 12, fontFamily: "'DM Sans', sans-serif", fontWeight: 500,
         cursor: "pointer", transition: "all 0.15s", whiteSpace: "nowrap",
       }}
@@ -448,7 +448,7 @@ export default function CopilotWidget({ user, userData }) {
               <div style={{
                 background: "rgba(255,255,255,0.2)", borderRadius: 99,
                 padding: "3px 9px", fontSize: 11, color: "#fff",
-                fontFamily: "'JetBrains Mono', monospace", fontWeight: 700,
+                fontFamily: "'DM Mono', monospace", fontWeight: 700,
               }}>
                 {remaining}/5
               </div>
@@ -457,7 +457,7 @@ export default function CopilotWidget({ user, userData }) {
               <div style={{
                 background: "rgba(255,255,255,0.2)", borderRadius: 99,
                 padding: "3px 9px", fontSize: 11, color: "#fff",
-                fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em",
+                fontFamily: "'DM Mono', monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em",
               }}>
                 {tier}
               </div>
@@ -465,7 +465,7 @@ export default function CopilotWidget({ user, userData }) {
           </div>
 
           {/* Messages area */}
-          <div style={{ flex: 1, overflowY: "auto", padding: "14px 14px 0", scrollbarWidth: "thin", scrollbarColor: "#E5E7EB transparent" }}>
+          <div style={{ flex: 1, overflowY: "auto", padding: "14px 14px 0", scrollbarWidth: "thin", scrollbarColor: "#E8E3DA transparent" }}>
 
             {/* Welcome state */}
             {isEmpty && (
@@ -473,9 +473,9 @@ export default function CopilotWidget({ user, userData }) {
                 <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 12 }}>
                   <CapiAvatar size={26} />
                   <div style={{
-                    background: "#F9FAFB", border: "1px solid #F3F4F6",
+                    background: "#FAF7F2", border: "1px solid #F3F4F6",
                     borderRadius: "4px 16px 16px 16px", padding: "9px 13px",
-                    fontSize: 13, lineHeight: 1.55, color: "#111827",
+                    fontSize: 13, lineHeight: 1.55, color: "#1A1714",
                     fontFamily: "'DM Sans', sans-serif", maxWidth: "80%",
                   }}>
                     Hi {userData?.name?.split(" ")[0] || "there"}! I know your Capabilio profile.
@@ -501,7 +501,7 @@ export default function CopilotWidget({ user, userData }) {
             {loading && !streamText && (
               <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 12 }}>
                 <CapiAvatar size={26} />
-                <div style={{ background: "#F9FAFB", border: "1px solid #F3F4F6", borderRadius: "4px 16px 16px 16px", padding: "10px 14px" }}>
+                <div style={{ background: "#FAF7F2", border: "1px solid #F3F4F6", borderRadius: "4px 16px 16px 16px", padding: "10px 14px" }}>
                   <TypingDots label={thinkText} />
                 </div>
               </div>
@@ -510,9 +510,9 @@ export default function CopilotWidget({ user, userData }) {
               <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 12 }}>
                 <CapiAvatar size={26} />
                 <div style={{
-                  background: "#F9FAFB", border: "1px solid #F3F4F6",
+                  background: "#FAF7F2", border: "1px solid #F3F4F6",
                   borderRadius: "4px 16px 16px 16px", padding: "9px 13px",
-                  fontSize: 13, lineHeight: 1.55, color: "#111827",
+                  fontSize: 13, lineHeight: 1.55, color: "#1A1714",
                   fontFamily: "'DM Sans', sans-serif", maxWidth: "80%",
                   whiteSpace: "pre-wrap", wordBreak: "break-word",
                 }}>
@@ -535,7 +535,7 @@ export default function CopilotWidget({ user, userData }) {
           {/* Limit hit state */}
           {limitHit ? (
             <div style={{ padding: "12px 14px 14px", borderTop: "1px solid #F3F4F6", flexShrink: 0, background: "#FFF8F5" }}>
-              <div style={{ fontSize: 12, color: "#374151", fontFamily: "'DM Sans', sans-serif", lineHeight: 1.5, marginBottom: 10 }}>
+              <div style={{ fontSize: 12, color: "#3D3935", fontFamily: "'DM Sans', sans-serif", lineHeight: 1.5, marginBottom: 10 }}>
                 <strong style={{ color: "#FF5701" }}>You've used all 5 free questions this month.</strong><br />
                 Upgrade to Pro for unlimited career guidance.
               </div>
@@ -570,15 +570,15 @@ export default function CopilotWidget({ user, userData }) {
                   placeholder="Ask about your career..."
                   rows={1}
                   style={{
-                    flex: 1, resize: "none", border: "1.5px solid #E5E7EB",
+                    flex: 1, resize: "none", border: "1.5px solid #E8E3DA",
                     borderRadius: 12, padding: "9px 12px", fontSize: 13,
-                    fontFamily: "'DM Sans', sans-serif", color: "#111827",
+                    fontFamily: "'DM Sans', sans-serif", color: "#1A1714",
                     outline: "none", lineHeight: 1.45, maxHeight: 96,
-                    transition: "border-color 0.15s", background: loading ? "#F9FAFB" : "#fff",
+                    transition: "border-color 0.15s", background: loading ? "#FAF7F2" : "#fff",
                     overflow: "auto",
                   }}
                   onFocus={e => { e.target.style.borderColor = "#FF5701" }}
-                  onBlur={e => { e.target.style.borderColor = "#E5E7EB" }}
+                  onBlur={e => { e.target.style.borderColor = "#E8E3DA" }}
                   onInput={e => {
                     e.target.style.height = "auto"
                     e.target.style.height = Math.min(e.target.scrollHeight, 96) + "px"
@@ -592,7 +592,7 @@ export default function CopilotWidget({ user, userData }) {
                     background: (!input.trim() || loading)
                       ? "#F3F4F6"
                       : "linear-gradient(135deg, #FF5701 0%, #FF8C42 100%)",
-                    color: (!input.trim() || loading) ? "#9CA3AF" : "#fff",
+                    color: (!input.trim() || loading) ? "#A8A29E" : "#fff",
                     cursor: (!input.trim() || loading) ? "default" : "pointer",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     flexShrink: 0, transition: "all 0.15s",
@@ -604,7 +604,7 @@ export default function CopilotWidget({ user, userData }) {
                   </svg>
                 </button>
               </div>
-              <div style={{ fontSize: 10, color: "#D1D5DB", textAlign: "center", marginTop: 7, fontFamily: "'DM Sans', sans-serif" }}>
+              <div style={{ fontSize: 10, color: "#D6D0C8", textAlign: "center", marginTop: 7, fontFamily: "'DM Sans', sans-serif" }}>
                 Career-scoped AI · Not a general assistant
               </div>
             </div>

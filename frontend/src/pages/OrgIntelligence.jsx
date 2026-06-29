@@ -5,8 +5,8 @@ import { useState } from "react"
 
 const C = {
   teal: "#0F766E", tealL: "#F0FDFA", tealB: "rgba(15,118,110,0.12)",
-  ink: "#0F172A", ink2: "#475569", ink3: "#94A3B8", ink4: "#9CA3AF",
-  border: "#E5E7EB", surface: "#0F172A", bg: "#F8F9FA",
+  ink: "#1A1714", ink2: "#475569", ink3: "#A8A29E", ink4: "#A8A29E",
+  border: "#E8E3DA", surface: "#1A1714", bg: "#FAF7F2",
   green: "#16A34A", greenL: "#F0FDF4",
   amber: "#D97706", amberL: "#FFFBEB",
   red: "#DC2626", redL: "#FEF2F2",
@@ -41,11 +41,11 @@ export default function OrgIntelligence({ user, userData }) {
   const [tab, setTab] = useState("Cohort Overview")
 
   return (
-    <div style={{ background: C.bg, flex: 1, minHeight: 0, overflowY: "auto", fontFamily: "Inter, sans-serif" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap');`}</style>
+    <div style={{ background: C.bg, flex: 1, minHeight: 0, overflowY: "auto", fontFamily: "DM Sans, sans-serif" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');`}</style>
 
       <div style={{ padding: "20px 16px 0" }}>
-        <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, fontWeight: 800, color: C.ink, margin: 0 }}>
+        <h1 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 26, fontWeight: 800, color: C.ink, margin: 0 }}>
           Intelligence <span style={{ color: C.teal, fontStyle: "italic" }}>Dashboard</span>
         </h1>
         <p style={{ fontSize: 13, color: C.ink3, margin: "4px 0 16px" }}>Cohort performance, placement analytics, and skill insights.</p>
@@ -59,7 +59,7 @@ export default function OrgIntelligence({ user, userData }) {
             { val: "1,200",label: "Total Students", color: C.purple },
           ].map((s, i) => (
             <div key={i} style={{ flex: "0 0 100px", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "12px 10px", textAlign: "center" }}>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 18, fontWeight: 700, color: s.color }}>{s.val}</div>
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 18, fontWeight: 700, color: s.color }}>{s.val}</div>
               <div style={{ fontSize: 10, color: C.ink4, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", marginTop: 2, lineHeight: 1.3 }}>{s.label}</div>
             </div>
           ))}
@@ -88,7 +88,7 @@ export default function OrgIntelligence({ user, userData }) {
                     <div style={{ fontSize: 12, color: C.ink4, marginTop: 2 }}>{d.students} students enrolled</div>
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 20, fontWeight: 700, color: C.teal }}>{d.avgElo}</div>
+                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 20, fontWeight: 700, color: C.teal }}>{d.avgElo}</div>
                     <div style={{ fontSize: 11, color: d.trend.startsWith("+") ? C.green : C.red, fontWeight: 700 }}>ELO {d.trend} MoM</div>
                   </div>
                 </div>
@@ -109,14 +109,14 @@ export default function OrgIntelligence({ user, userData }) {
             <div style={{ fontSize: 13, color: C.ink3, marginBottom: 12 }}>Top performers across all departments · This semester</div>
             {TOP_STUDENTS.map((s, i) => (
               <div key={i} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: 14, marginBottom: 10, display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 18, fontWeight: 700, color: i === 0 ? "#F59E0B" : i === 1 ? "#94A3B8" : i === 2 ? "#B45309" : C.ink4, width: 28, textAlign: "center" }}>#{i + 1}</div>
+                <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 18, fontWeight: 700, color: i === 0 ? "#F59E0B" : i === 1 ? "#A8A29E" : i === 2 ? "#B45309" : C.ink4, width: 28, textAlign: "center" }}>#{i + 1}</div>
                 <div style={{ width: 36, height: 36, borderRadius: "50%", background: C.tealL, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: C.teal }}>{s.name.charAt(0)}</div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: C.ink }}>{s.name}</div>
                   <div style={{ fontSize: 12, color: C.ink4 }}>{s.domain}</div>
                 </div>
                 <div style={{ textAlign: "right" }}>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 18, fontWeight: 700, color: C.teal }}>{s.elo}</div>
+                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 18, fontWeight: 700, color: C.teal }}>{s.elo}</div>
                   <span style={{ padding: "2px 8px", background: C.tealL, color: C.teal, borderRadius: 6, fontSize: 11, fontWeight: 700 }}>{s.badge}</span>
                 </div>
               </div>
@@ -131,7 +131,7 @@ export default function OrgIntelligence({ user, userData }) {
               <div key={i} style={{ marginBottom: 16 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: C.ink2 }}>{stage.stage}</span>
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: stage.color }}>{stage.count}</span>
+                  <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, fontWeight: 700, color: stage.color }}>{stage.count}</span>
                 </div>
                 <div style={{ height: 10, background: "#F3F4F6", borderRadius: 99 }}>
                   <div style={{ width: `${stage.pct}%`, height: "100%", background: stage.color, borderRadius: 99, transition: "width 0.4s" }} />
@@ -162,7 +162,7 @@ export default function OrgIntelligence({ user, userData }) {
                 <div>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
                     <span style={{ fontSize: 11, color: C.ink4 }}>Skill gap severity</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: g.gap > 60 ? C.red : C.amber, fontFamily: "'JetBrains Mono', monospace" }}>{g.gap}%</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: g.gap > 60 ? C.red : C.amber, fontFamily: "'DM Mono', monospace" }}>{g.gap}%</span>
                   </div>
                   <div style={{ height: 6, background: "#F3F4F6", borderRadius: 99 }}>
                     <div style={{ width: `${g.gap}%`, height: "100%", background: g.gap > 60 ? C.red : C.amber, borderRadius: 99 }} />

@@ -9,7 +9,7 @@ export default function AccountType({ onSelect, onLogin, onBack }) {
       icon: "🎓",
       title: "Student",
       badge: "ELO starts at 400",
-      badgeColor: "#6B7280",
+      badgeColor: "#6B6560",
       desc: "25 foundation MCQs calibrate your starting radar. ELO begins at 400 and grows through daily Arena challenges.",
       featured: false,
     },
@@ -46,14 +46,14 @@ export default function AccountType({ onSelect, onLogin, onBack }) {
     "#FF5701": "#FFF1E8",
     "#16A34A": "#F0FDF4",
     "#D97706": "#FFF7E8",
-    "#6B7280": "#F9FAFB",
+    "#6B6560": "#FAF7F2",
   }
 
   const badgeBorder = {
     "#FF5701": "rgba(255,87,1,0.18)",
     "#16A34A": "rgba(22,163,74,0.16)",
     "#D97706": "rgba(217,119,6,0.16)",
-    "#6B7280": "#E5E7EB",
+    "#6B6560": "#E8E3DA",
   }
 
   return (
@@ -63,11 +63,11 @@ export default function AccountType({ onSelect, onLogin, onBack }) {
         background:
           "radial-gradient(circle at top left, rgba(255,87,1,0.06), transparent 20%), linear-gradient(to bottom, #FFFFFF, #F6F6F1)",
         color: "#FFFFFF",
-        fontFamily: "'Playfair Display', serif",
+        fontFamily: "'DM Sans', sans-serif",
       }}
     >
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');
 
         * { box-sizing: border-box; }
 
@@ -152,7 +152,7 @@ export default function AccountType({ onSelect, onLogin, onBack }) {
               fontWeight: 700,
               letterSpacing: "0.08em",
               cursor: "pointer",
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "'DM Mono', monospace",
               transition: "all 180ms cubic-bezier(0.16, 1, 0.3, 1)",
             }}
             onMouseEnter={(e) => {
@@ -171,7 +171,7 @@ export default function AccountType({ onSelect, onLogin, onBack }) {
 
           <span
             style={{
-              fontFamily: "'Playfair Display', serif",
+              fontFamily: "'DM Sans', sans-serif",
               fontSize: 22,
               fontWeight: 800,
               color: "#FFFFFF",
@@ -186,8 +186,8 @@ export default function AccountType({ onSelect, onLogin, onBack }) {
           <span
             style={{
               fontSize: 12,
-              color: "#6B7280",
-              fontFamily: "'JetBrains Mono', monospace",
+              color: "#6B6560",
+              fontFamily: "'DM Mono', monospace",
               letterSpacing: "0.02em",
             }}
           >
@@ -205,7 +205,7 @@ export default function AccountType({ onSelect, onLogin, onBack }) {
               fontSize: 12,
               fontWeight: 700,
               cursor: "pointer",
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "'DM Mono', monospace",
               letterSpacing: "0.04em",
               boxShadow: "0 10px 24px rgba(255,87,1,0.14)",
               transition: "all 180ms cubic-bezier(0.16, 1, 0.3, 1)",
@@ -261,10 +261,10 @@ export default function AccountType({ onSelect, onLogin, onBack }) {
             <span
               style={{
                 fontSize: 11,
-                color: "#6B7280",
+                color: "#6B6560",
                 fontWeight: 700,
                 letterSpacing: "0.14em",
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: "'DM Mono', monospace",
                 textTransform: "uppercase",
               }}
             >
@@ -275,7 +275,7 @@ export default function AccountType({ onSelect, onLogin, onBack }) {
           <h1
             className="acc-title"
             style={{
-              fontFamily: "'Playfair Display', serif",
+              fontFamily: "'DM Sans', sans-serif",
               fontSize: 52,
               fontWeight: 800,
               color: "#FFFFFF",
@@ -348,7 +348,7 @@ export default function AccountType({ onSelect, onLogin, onBack }) {
                       padding: "6px 10px",
                       borderRadius: "0 0 10px 10px",
                       letterSpacing: "0.12em",
-                      fontFamily: "'JetBrains Mono', monospace",
+                      fontFamily: "'DM Mono', monospace",
                       textTransform: "uppercase",
                     }}
                   >
@@ -384,7 +384,7 @@ export default function AccountType({ onSelect, onLogin, onBack }) {
                 >
                   <div
                     style={{
-                      fontFamily: "'Playfair Display', serif",
+                      fontFamily: "'DM Sans', sans-serif",
                       fontSize: 24,
                       fontWeight: 700,
                       color: "#FFFFFF",
@@ -401,7 +401,7 @@ export default function AccountType({ onSelect, onLogin, onBack }) {
                       minWidth: 34,
                       borderRadius: "50%",
                       background: isActive ? "#FF5701" : "#F3F4F6",
-                      color: isActive ? "#FFFFFF" : "#9CA3AF",
+                      color: isActive ? "#FFFFFF" : "#A8A29E",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -433,10 +433,10 @@ export default function AccountType({ onSelect, onLogin, onBack }) {
                     fontWeight: 700,
                     padding: "5px 10px",
                     borderRadius: 999,
-                    background: badgeBg[p.badgeColor] || "#F9FAFB",
+                    background: badgeBg[p.badgeColor] || "#FAF7F2",
                     color: p.badgeColor,
-                    border: `1px solid ${badgeBorder[p.badgeColor] || "#E5E7EB"}`,
-                    fontFamily: "'JetBrains Mono', monospace",
+                    border: `1px solid ${badgeBorder[p.badgeColor] || "#E8E3DA"}`,
+                    fontFamily: "'DM Mono', monospace",
                     letterSpacing: "0.02em",
                   }}
                 >
@@ -461,9 +461,9 @@ export default function AccountType({ onSelect, onLogin, onBack }) {
           <p
             style={{
               fontSize: 12,
-              color: "#6B7280",
+              color: "#6B6560",
               margin: 0,
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "'DM Mono', monospace",
               letterSpacing: "0.01em",
               lineHeight: 1.8,
             }}

@@ -8,10 +8,10 @@ import { jobsApi, skillsApi } from "../lib/api"
 // ─── Theme ────────────────────────────────────────────────────────────────────
 const T = {
   // ── Glassmorphic Cosmos dark tokens ─────────────────────────────────────
-  cream:    "#F8F9FA",                     // page bg
-  ink:      "#0F172A",                     // primary text
+  cream:    "#FAF7F2",                     // page bg
+  ink:      "#1A1714",                     // primary text
   ink2:     "#475569",                     // secondary text
-  ink3:     "#94A3B8",                     // muted text
+  ink3:     "#A8A29E",                     // muted text
   indigo:   "#6366F1",                     // primary action
   indigo2:  "rgba(99,102,241,0.12)",       // soft indigo bg
   indigo3:  "#4F46E5",                     // darker indigo
@@ -141,7 +141,7 @@ function CompanyLogo({ src, name, size = 44 }) {
       {ok && src
         ? <img src={src} alt={name} style={{ width: size - 4, height: size - 4, objectFit: "contain" }} onError={() => setOk(false)} />
         : <div style={{ width: "100%", height: "100%", background: bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ color: "#fff", fontSize: size * 0.42, fontWeight: 800, fontFamily: "Arial" }}>{letter}</span>
+            <span style={{ color: "#fff", fontSize: size * 0.42, fontWeight: 800, fontFamily: "DM Sans, sans-serif" }}>{letter}</span>
           </div>
       }
     </div>
@@ -173,7 +173,7 @@ function MatchBar({ score, reason, compact = false }) {
     <div style={{ marginBottom: compact ? 0 : 4 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 3 }}>
         <span style={{ fontSize: 11, color: T.ink3 }}>{compact ? "Match" : "Profile match"}</span>
-        <span style={{ fontSize: 12, fontWeight: 800, color, fontFamily: "'JetBrains Mono',monospace" }}>{score}%</span>
+        <span style={{ fontSize: 12, fontWeight: 800, color, fontFamily: "'DM Mono',monospace" }}>{score}%</span>
       </div>
       <div style={{ height: 3, borderRadius: 3, background: "rgba(0,0,0,0.05)", overflow: "hidden" }}>
         <div style={{ height: "100%", width: `${score}%`, background: color, borderRadius: 3, transition: "width .6s ease" }} />
@@ -201,7 +201,7 @@ function ReadinessMeter({ score }) {
     <svg viewBox="0 0 100 80" width="100" height="80" style={{ display: "block", margin: "0 auto" }}>
       <path d={arc(startDeg, startDeg + total)} fill="none" stroke="#EEEEE9" strokeWidth="7" strokeLinecap="round" />
       {score > 0 && <path d={arc(startDeg, startDeg + filled)} fill="none" stroke={color} strokeWidth="7" strokeLinecap="round" />}
-      <text x="50" y="52" textAnchor="middle" fill={color} fontSize="20" fontWeight="800" fontFamily="'JetBrains Mono',monospace">{score}</text>
+      <text x="50" y="52" textAnchor="middle" fill={color} fontSize="20" fontWeight="800" fontFamily="'DM Mono',monospace">{score}</text>
       <text x="50" y="64" textAnchor="middle" fill={T.ink3} fontSize="9" fontFamily="Arial,sans-serif">readiness</text>
     </svg>
   )
@@ -349,7 +349,7 @@ function JobDetailModal({ job, match, userData, onClose, onSave, onApply, saved,
       onClick={e => e.target === overlayRef.current && onClose()}
       style={{ position: "fixed", inset: 0, background: "rgba(26,26,24,0.6)", zIndex: 1000, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "24px 16px", backdropFilter: "blur(4px)", overflowY: "auto" }}>
 
-      <div style={{ background: "#F8F9FA", border: "1px solid rgba(0,0,0,0.06)", borderRadius: 20, width: "100%", maxWidth: 960, boxShadow: "0 20px 60px rgba(0,0,0,0.7)", overflow: "hidden", margin: "auto" }}>
+      <div style={{ background: "#FAF7F2", border: "1px solid rgba(0,0,0,0.06)", borderRadius: 20, width: "100%", maxWidth: 960, boxShadow: "0 20px 60px rgba(0,0,0,0.7)", overflow: "hidden", margin: "auto" }}>
 
         {/* ── Company hero banner ── */}
         <div style={{ background: `linear-gradient(135deg, ${T.indigo3} 0%, ${T.indigo} 50%, ${T.teal} 100%)`, padding: "28px 28px 24px", position: "relative" }}>
@@ -361,7 +361,7 @@ function JobDetailModal({ job, match, userData, onClose, onSave, onApply, saved,
                 <span style={{ fontSize: 22, fontWeight: 800, color: "#fff" }}>{job.title}</span>
                 {job.is_verified && <span style={{ fontSize: 11, background: "rgba(16,185,129,0.1)", color: "#059669", padding: "2px 8px", borderRadius: 99, fontWeight: 700 }}>✓ Verified</span>}
               </div>
-              <div style={{ fontSize: 14, color: "#1E293B", marginBottom: 10 }}>
+              <div style={{ fontSize: 14, color: "#1A1714", marginBottom: 10 }}>
                 {job.company}{job.location ? ` · ${job.location}` : ""}
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -473,7 +473,7 @@ function JobDetailModal({ job, match, userData, onClose, onSave, onApply, saved,
                     <div style={{ background: "#FFFFFF", border: `1px solid ${T.border}`, borderRadius: 14, padding: "20px", marginBottom: 20 }}>
                       <div style={{ display: "flex", gap: 20, alignItems: "center", marginBottom: 16 }}>
                         <div style={{ textAlign: "center" }}>
-                          <div style={{ fontSize: 48, fontWeight: 900, color: match.score >= 70 ? T.green : match.score >= 45 ? T.amber : T.red, fontFamily: "'JetBrains Mono',monospace", lineHeight: 1 }}>{match.score}<span style={{ fontSize: 20 }}>%</span></div>
+                          <div style={{ fontSize: 48, fontWeight: 900, color: match.score >= 70 ? T.green : match.score >= 45 ? T.amber : T.red, fontFamily: "'DM Mono',monospace", lineHeight: 1 }}>{match.score}<span style={{ fontSize: 20 }}>%</span></div>
                           <div style={{ fontSize: 11, color: T.ink3, marginTop: 2 }}>profile match</div>
                         </div>
                         <div style={{ flex: 1 }}>
@@ -775,7 +775,7 @@ function ReadinessHeroStrip({ userData, total, newCount }) {
           <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 2 }}>
             {newCount > 0 ? `${newCount} new matches since your last visit` : `${total.toLocaleString()} opportunities matched to your profile`}
           </div>
-          <div style={{ fontSize: 12, color: "#374151" }}>
+          <div style={{ fontSize: 12, color: "#3D3935" }}>
             Profile readiness: <span style={{ fontWeight: 800, color: readiness >= 70 ? "#6EE7B7" : readiness >= 50 ? "#FCD34D" : "#FCA5A5" }}>{readiness}%</span>
             {elo ? <span style={{ marginLeft: 12 }}>ELO <span style={{ fontWeight: 700 }}>{elo.toLocaleString()}</span></span> : null}
           </div>
@@ -792,8 +792,8 @@ function ReadinessHeroStrip({ userData, total, newCount }) {
 function HeroStat({ value, label }) {
   return (
     <div style={{ background: "rgba(0,0,0,0.07)", borderRadius: 10, padding: "8px 14px", textAlign: "center" }}>
-      <div style={{ fontSize: 18, fontWeight: 900, color: "#fff", fontFamily: "'JetBrains Mono',monospace", lineHeight: 1 }}>{typeof value === "number" ? value.toLocaleString() : value}</div>
-      <div style={{ fontSize: 10, color: "#374151", marginTop: 1 }}>{label}</div>
+      <div style={{ fontSize: 18, fontWeight: 900, color: "#fff", fontFamily: "'DM Mono',monospace", lineHeight: 1 }}>{typeof value === "number" ? value.toLocaleString() : value}</div>
+      <div style={{ fontSize: 10, color: "#3D3935", marginTop: 1 }}>{label}</div>
     </div>
   )
 }
@@ -939,7 +939,7 @@ export default function Launchpad({ user, userData }) {
   ]
 
   return (
-    <div style={{ background: `radial-gradient(ellipse at 20% 50%, rgba(6,182,212,0.10) 0%, transparent 55%), radial-gradient(ellipse at 80% 20%, rgba(99,102,241,0.08) 0%, transparent 50%), #FFFFFF`, flex: 1, minHeight: 0, overflowY: "auto", fontFamily: "Inter, Arial, sans-serif", paddingBottom: 80 }}>
+    <div style={{ background: `radial-gradient(ellipse at 20% 50%, rgba(255,87,1,0.05) 0%, transparent 55%), radial-gradient(ellipse at 80% 20%, rgba(255,87,1,0.04) 0%, transparent 50%), #FAF7F2`, flex: 1, minHeight: 0, overflowY: "auto", fontFamily: "DM Sans, sans-serif", paddingBottom: 80 }}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}} * { box-sizing: border-box; }`}</style>
 
       {/* ── Readiness hero strip ── */}
@@ -953,7 +953,7 @@ export default function Launchpad({ user, userData }) {
             <div style={{ display: "flex", gap: 2, background: "rgba(0,0,0,0.03)", borderRadius: 10, padding: 3 }}>
               {tabs.map(t => (
                 <button key={t.id} onClick={() => setActiveTab(t.id)}
-                  style={{ padding: "7px 14px", background: activeTab === t.id ? "rgba(99,102,241,0.20)" : "transparent", border: "none", borderRadius: 8, color: activeTab === t.id ? "#0F172A" : T.ink3, fontSize: 13, fontWeight: activeTab === t.id ? 700 : 400, cursor: "pointer", boxShadow: activeTab === t.id ? "0 2px 8px rgba(99,102,241,0.3)" : "none", transition: "all .15s", whiteSpace: "nowrap" }}>
+                  style={{ padding: "7px 14px", background: activeTab === t.id ? "rgba(99,102,241,0.20)" : "transparent", border: "none", borderRadius: 8, color: activeTab === t.id ? "#1A1714" : T.ink3, fontSize: 13, fontWeight: activeTab === t.id ? 700 : 400, cursor: "pointer", boxShadow: activeTab === t.id ? "0 2px 8px rgba(99,102,241,0.3)" : "none", transition: "all .15s", whiteSpace: "nowrap" }}>
                   {t.label}{t.count ? ` (${t.count})` : ""}
                 </button>
               ))}
@@ -975,7 +975,7 @@ export default function Launchpad({ user, userData }) {
               <FilterChipGroup label="Type" options={JOB_TYPES} value={jobType} onChange={v => { setJobType(v); setPage(1) }} />
               {/* Profile-filter indicator */}
               {profileKeyword && (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 10px", background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.18)", borderRadius: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 10px", background: "rgba(255,87,1,0.04)", border: "1px solid rgba(99,102,241,0.18)", borderRadius: 20 }}>
                   <span style={{ fontSize: 10 }}>🎯</span>
                   <span style={{ fontSize: 11, fontWeight: 600, color: "#4F46E5" }}>Filtered for: {profileKeyword}</span>
                   {search !== profileKeyword && (
@@ -1008,7 +1008,7 @@ export default function Launchpad({ user, userData }) {
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   {proofReadyJobs.map(j => (
                     <div key={j.id} onClick={() => setDetailJob(j)}
-                      style={{ display: "flex", gap: 8, alignItems: "center", background: "#F9FAFB", borderRadius: 10, padding: "8px 12px", cursor: "pointer", border: "1px solid rgba(0,0,0,0.06)" }}>
+                      style={{ display: "flex", gap: 8, alignItems: "center", background: "#FAF7F2", borderRadius: 10, padding: "8px 12px", cursor: "pointer", border: "1px solid rgba(0,0,0,0.06)" }}>
                       <CompanyLogo src={j.company_logo} name={j.company} size={26} />
                       <div>
                         <div style={{ fontSize: 12, fontWeight: 700, color: T.ink }}>{j.title}</div>

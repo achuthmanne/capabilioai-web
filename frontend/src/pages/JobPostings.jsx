@@ -19,10 +19,10 @@ const C = {
   purple:  "#7C3AED",
   purpleL: "#F5F3FF",
   ink:     "#FFFFFF",
-  ink2:    "#374151",
-  ink3:    "#6B7280",
-  ink4:    "#9CA3AF",
-  border:  "#E5E7EB",
+  ink2:    "#3D3935",
+  ink3:    "#6B6560",
+  ink4:    "#A8A29E",
+  border:  "#E8E3DA",
   surface: "#FFFFFF",
   bg:      "#F5F5F0",
 }
@@ -281,7 +281,7 @@ function PostingDetail({ posting, onClose, onPublish, onClose2 }) {
           {/* Description */}
           <div style={{
             fontSize: 13, color: C.ink2, lineHeight: 1.6,
-            padding: "12px 14px", background: "#F9FAFB",
+            padding: "12px 14px", background: "#FAF7F2",
             borderRadius: 12, marginBottom: 16,
           }}>
             {posting.description}
@@ -323,7 +323,7 @@ function PostingDetail({ posting, onClose, onPublish, onClose2 }) {
                         }} />
                       )}
                     </div>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color, width: 24, textAlign: "right" }}>
+                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, fontWeight: 700, color, width: 24, textAlign: "right" }}>
                       {posting.pipeline[key]}
                     </div>
                   </div>
@@ -364,7 +364,7 @@ function PostingDetail({ posting, onClose, onPublish, onClose2 }) {
                   onClick={() => { onClose2(posting.id); onClose() }}
                   style={{
                     flex: 1, padding: "12px 0",
-                    background: "#F9FAFB",
+                    background: "#FAF7F2",
                     border: `1.5px solid ${C.border}`,
                     borderRadius: 12, color: C.ink3,
                     fontSize: 13, fontWeight: 700,
@@ -422,7 +422,7 @@ function CreateRoleForm({ onClose, onSave }) {
                   rows={3}
                   style={{
                     width: "100%", padding: "11px 14px",
-                    background: "#F9FAFB",
+                    background: "#FAF7F2",
                     border: `1.5px solid ${C.border}`,
                     borderRadius: 12, fontSize: 14,
                     fontFamily: "inherit", color: C.ink,
@@ -436,7 +436,7 @@ function CreateRoleForm({ onClose, onSave }) {
                   placeholder={f.placeholder}
                   style={{
                     width: "100%", padding: "11px 14px",
-                    background: "#F9FAFB",
+                    background: "#FAF7F2",
                     border: `1.5px solid ${C.border}`,
                     borderRadius: 12, fontSize: 14,
                     fontFamily: "inherit", color: C.ink,
@@ -460,7 +460,7 @@ function CreateRoleForm({ onClose, onSave }) {
                   onChange={e => set(f.key, e.target.value)}
                   style={{
                     width: "100%", padding: "11px 10px",
-                    background: "#F9FAFB",
+                    background: "#FAF7F2",
                     border: `1.5px solid ${C.border}`,
                     borderRadius: 12, fontSize: 13,
                     fontFamily: "inherit", color: C.ink,
@@ -479,7 +479,7 @@ function CreateRoleForm({ onClose, onSave }) {
               onClick={() => { onSave({ ...form, status: "draft" }); onClose() }}
               style={{
                 flex: 1, padding: 15,
-                background: valid ? "#F9FAFB" : "#F3F4F6",
+                background: valid ? "#FAF7F2" : "#F3F4F6",
                 border: `1.5px solid ${C.border}`,
                 borderRadius: 14,
                 color: valid ? C.ink3 : C.ink4,
@@ -553,9 +553,9 @@ export default function JobPostings({ user, userData, onNavigate }) {
   }
 
   return (
-    <div style={{ background: C.bg, flex: 1, minHeight: 0, overflowY: "auto", fontFamily: "Inter, -apple-system, sans-serif" }}>
+    <div style={{ background: C.bg, flex: 1, minHeight: 0, overflowY: "auto", fontFamily: "DM Sans, system-ui, sans-serif" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');
         * { box-sizing: border-box; }
       `}</style>
 
@@ -623,7 +623,7 @@ export default function JobPostings({ user, userData, onNavigate }) {
             padding: "12px 8px",
             textAlign: "center",
           }}>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 18, fontWeight: 700, color: k.color }}>
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 18, fontWeight: 700, color: k.color }}>
               {k.value}
             </div>
             <div style={{ fontSize: 10, color: C.ink4, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", marginTop: 4, lineHeight: 1.3 }}>

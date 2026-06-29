@@ -62,9 +62,9 @@ const T = {
   shadowGlow: (color) => `0 0 0 1px ${color}28, 0 4px 20px ${color}22`,
 }
 const GRAD_ACTIVE = "linear-gradient(135deg,#dc8b18,#f6c453)"  // amber→gold nav active gradient
-const FONT = "Inter, -apple-system, sans-serif"
+const FONT = "DM Sans, system-ui, sans-serif"
 const FONT_SERIF = "'Instrument Serif', Georgia, serif"
-const MONO = "'JetBrains Mono', 'Fira Mono', monospace"
+const MONO = "'DM Mono', 'Fira Mono', monospace"
 
 // ─── Nav structure (grouped) ──────────────────────────────────────────────────
 const NAV_GROUPS = [
@@ -658,7 +658,7 @@ function PageShell({ children }) {
       position: "relative",
     }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');
         * { box-sizing: border-box; }
         button:focus-visible { outline: 2px solid ${T.gold}; outline-offset: 2px; border-radius: 4px; }
         input:focus, select:focus, textarea:focus { border-color: ${T.gold} !important; box-shadow: 0 0 0 3px rgba(246,196,83,0.14); }

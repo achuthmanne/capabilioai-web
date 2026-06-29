@@ -6,11 +6,11 @@ const C = {
   gold:    "#F59E0B",
   goldL:   "rgba(245,158,11,0.12)",
   goldB:   "rgba(245,158,11,0.28)",
-  navy:    "#F8F9FA",
-  ink:     "#0F172A",
+  navy:    "#FAF7F2",
+  ink:     "#1A1714",
   ink2:    "#475569",
-  ink3:    "#94A3B8",
-  ink4:    "#64748B",
+  ink3:    "#A8A29E",
+  ink4:    "#6B6560",
   border:  "rgba(0,0,0,0.05)",
   surface: "#FFFFFF",
   bg:      "#FFFFFF",
@@ -38,7 +38,7 @@ function Label({ children, color = C.gold, bg = C.goldL }) {
       display: "inline-flex", alignItems: "center",
       padding: "3px 10px", borderRadius: 100,
       background: bg, color, fontSize: 11, fontWeight: 700,
-      fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.06em",
+      fontFamily: "'DM Mono', monospace", letterSpacing: "0.06em",
       textTransform: "uppercase",
     }}>{children}</span>
   )
@@ -71,13 +71,13 @@ export default function ExecutiveHome({ user, userData, onNavigate }) {
   ]
 
   return (
-    <div style={{ background: `radial-gradient(ellipse at 50% 30%, rgba(245,158,11,0.14) 0%, transparent 55%), radial-gradient(ellipse at 80% 70%, rgba(161,122,0,0.07) 0%, transparent 45%), #FFFFFF`, flex: 1, minHeight: 0, overflowY: "auto", padding: "20px 16px 24px", fontFamily: "Inter, sans-serif" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap');`}</style>
+    <div style={{ background: `radial-gradient(ellipse at 50% 30%, rgba(245,158,11,0.14) 0%, transparent 55%), radial-gradient(ellipse at 80% 70%, rgba(161,122,0,0.07) 0%, transparent 45%), #FFFFFF`, flex: 1, minHeight: 0, overflowY: "auto", padding: "20px 16px 24px", fontFamily: "DM Sans, sans-serif" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');`}</style>
 
       {/* ── Greeting ─────────────────────────────────────────── */}
       <div style={{ marginBottom: 20 }}>
         <p style={{ fontSize: 13, color: C.ink3, margin: 0, fontWeight: 500 }}>{greeting}, {firstName} · {keyword}</p>
-        <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, fontWeight: 800, color: C.ink, margin: "4px 0 0", lineHeight: 1.2 }}>
+        <h1 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 24, fontWeight: 800, color: C.ink, margin: "4px 0 0", lineHeight: 1.2 }}>
           Your authority <span style={{ color: C.gold, fontStyle: "italic" }}>today</span>
         </h1>
       </div>
@@ -87,13 +87,13 @@ export default function ExecutiveHome({ user, userData, onNavigate }) {
         <Label color={C.gold} bg={C.goldB}>Revenue Today</Label>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 12 }}>
           <div>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 30, fontWeight: 700, color: C.gold }}>{revenue.today}</div>
-            <div style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}>from {todayBookings.length} sessions</div>
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 30, fontWeight: 700, color: C.gold }}>{revenue.today}</div>
+            <div style={{ fontSize: 12, color: "#6B6560", marginTop: 2 }}>from {todayBookings.length} sessions</div>
           </div>
           <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 12, color: "#6B7280" }}>This month</div>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 16, fontWeight: 700, color: "#fff" }}>{revenue.month}</div>
-            <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>{revenue.pending} pending payout</div>
+            <div style={{ fontSize: 12, color: "#6B6560" }}>This month</div>
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 16, fontWeight: 700, color: "#fff" }}>{revenue.month}</div>
+            <div style={{ fontSize: 11, color: "#A8A29E", marginTop: 4 }}>{revenue.pending} pending payout</div>
           </div>
         </div>
       </Card>
@@ -112,13 +112,13 @@ export default function ExecutiveHome({ user, userData, onNavigate }) {
               <Card key={i} style={{ padding: "14px 16px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div>
-                    <div style={{ fontSize: 11, color: C.gold, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{b.time}</div>
+                    <div style={{ fontSize: 11, color: C.gold, fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{b.time}</div>
                     <div style={{ fontSize: 14, fontWeight: 700, color: C.ink, marginTop: 2 }}>{b.title}</div>
                     <div style={{ fontSize: 12, color: C.ink3, marginTop: 1 }}>with {b.requester}</div>
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <Label>{b.type}</Label>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 15, fontWeight: 700, color: C.green, marginTop: 6 }}>{b.rate}</div>
+                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 15, fontWeight: 700, color: C.green, marginTop: 6 }}>{b.rate}</div>
                   </div>
                 </div>
               </Card>
@@ -160,7 +160,7 @@ export default function ExecutiveHome({ user, userData, onNavigate }) {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, flex: 1, paddingRight: 12 }}>{ins.title}</div>
               <div style={{ textAlign: "right", flexShrink: 0 }}>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: C.blue }}>{ins.views} views</div>
+                <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, fontWeight: 700, color: C.blue }}>{ins.views} views</div>
                 <div style={{ fontSize: 11, color: ins.engagement === "High" ? C.green : C.ink3, fontWeight: 600, marginTop: 2 }}>{ins.engagement}</div>
               </div>
             </div>

@@ -15,14 +15,14 @@ import SettingsPanel from "./SettingsPanel"
 // ─── DESIGN TOKENS — Glassmorphic Cosmos dark theme ─────────────────────────
 const T = {
   // surfaces (dark)
-  cream:   "#F8F9FA",                    // page bg → dark base
+  cream:   "#FAF7F2",                    // page bg → dark base
   cream2:  "#FFFFFF",                    // raised surface
   cream3:  "rgba(0,0,0,0.05)",     // dividers / progress tracks
   // text (light on dark)
-  ink:     "#0F172A",                    // primary text
+  ink:     "#1A1714",                    // primary text
   ink2:    "#475569",                    // secondary text
-  ink3:    "#94A3B8",                    // muted text
-  ink4:    "#64748B",                    // ghost / placeholder
+  ink3:    "#A8A29E",                    // muted text
+  ink4:    "#6B6560",                    // ghost / placeholder
   // brand
   indigo:  "#6366F1",                    // primary action
   indigo2: "#818CF8",                    // lighter indigo
@@ -145,7 +145,7 @@ function getSkillsForDomain(keyword) {
 // ─── ELO SPARKLINE ───────────────────────────────────────────────────────────
 // ─── ELO RANK TIERS ──────────────────────────────────────────────────────────
 const ELO_TIERS = [
-  {min:0,   max:600,  label:"Rookie",      color:"#94A3B8", icon:"🌱"},
+  {min:0,   max:600,  label:"Rookie",      color:"#A8A29E", icon:"🌱"},
   {min:600, max:800,  label:"Apprentice",  color:"#22C55E", icon:"⚡"},
   {min:800, max:1000, label:"Practitioner",color:"#3B82F6", icon:"🔵"},
   {min:1000,max:1200, label:"Expert",      color:"#8B5CF6", icon:"💜"},
@@ -171,7 +171,7 @@ function EloHistoryCard({ history, currentElo, eloDecayToday }) {
     ctx.clearRect(0, 0, W, H)
 
     if (!history || history.length < 2) {
-      ctx.font = "12px 'DM Sans',sans-serif"; ctx.fillStyle = "#94A3B8"
+      ctx.font = "12px 'DM Sans',sans-serif"; ctx.fillStyle = "#A8A29E"
       ctx.textAlign = "center"
       ctx.fillText("Complete Arena tasks to build your ELO history", W/2, H/2 - 8)
       ctx.font = "10px 'DM Sans',sans-serif"
@@ -210,7 +210,7 @@ function EloHistoryCard({ history, currentElo, eloDecayToday }) {
       ctx.strokeStyle = "rgba(0,0,0,0.05)"; ctx.lineWidth = 1; ctx.setLineDash([3, 5])
       ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke()
       ctx.setLineDash([])
-      ctx.font = "8px 'DM Mono',monospace"; ctx.fillStyle = "#9CA3AF"
+      ctx.font = "8px 'DM Mono',monospace"; ctx.fillStyle = "#A8A29E"
       ctx.textAlign = "right"
       ctx.fillText(Math.round(v), pad.l - 5, y + 3)
     }
@@ -291,7 +291,7 @@ function EloHistoryCard({ history, currentElo, eloDecayToday }) {
     }
 
     // Date labels (first, middle, last)
-    ctx.font = "9px 'DM Sans',sans-serif"; ctx.fillStyle = "#9CA3AF"; ctx.textAlign = "center"
+    ctx.font = "9px 'DM Sans',sans-serif"; ctx.fillStyle = "#A8A29E"; ctx.textAlign = "center"
     ;[0, Math.floor(n / 2), n - 1].forEach(i => {
       const d = new Date(history[i]?.date || Date.now())
       ctx.fillText(d.toLocaleDateString("en-US", {month:"short", day:"numeric"}), xOf(i), H - 4)
@@ -341,13 +341,13 @@ function EloHistoryCard({ history, currentElo, eloDecayToday }) {
       )}
 
       {/* Chart */}
-      <div style={{background:"#FAFAFA",borderRadius:12,padding:"12px 6px 4px",border:"1px solid #E5E7EB",marginBottom:10,position:"relative"}}>
+      <div style={{background:"#FAFAFA",borderRadius:12,padding:"12px 6px 4px",border:"1px solid #E8E3DA",marginBottom:10,position:"relative"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 10px 8px"}}>
-          <span style={{fontSize:9,fontWeight:700,color:"#9CA3AF",letterSpacing:"0.1em",textTransform:"uppercase"}}>ELO / Session</span>
+          <span style={{fontSize:9,fontWeight:700,color:"#A8A29E",letterSpacing:"0.1em",textTransform:"uppercase"}}>ELO / Session</span>
           <div style={{display:"flex",gap:10}}>
             <span style={{display:"flex",alignItems:"center",gap:3,fontSize:9,color:"#22C55E",fontWeight:700}}><span style={{width:8,height:8,background:"#22C55E",display:"inline-block",borderRadius:1}}/>Gain</span>
             <span style={{display:"flex",alignItems:"center",gap:3,fontSize:9,color:"#EF4444",fontWeight:700}}><span style={{width:8,height:8,background:"#EF4444CC",display:"inline-block",borderRadius:1}}/>Loss</span>
-            <span style={{display:"flex",alignItems:"center",gap:3,fontSize:9,color:"#9CA3AF",fontWeight:700}}><span style={{width:14,height:1.5,background:"#9CA3AF55",display:"inline-block"}}/>Trend</span>
+            <span style={{display:"flex",alignItems:"center",gap:3,fontSize:9,color:"#A8A29E",fontWeight:700}}><span style={{width:14,height:1.5,background:"#A8A29E55",display:"inline-block"}}/>Trend</span>
           </div>
         </div>
         <canvas ref={canvasRef} width={500} height={150} style={{width:"100%",height:150,display:"block"}}/>
@@ -566,11 +566,11 @@ function CareerTimeline({ experiences, onAdd, onEdit, onDelete }) {
   if (exps.length === 0) return (
     <div style={{ textAlign:"center", padding:"52px 24px" }}>
       <div style={{ width:64, height:64, borderRadius:16, background:"linear-gradient(135deg,#EEF0FB 0%,#F4F0FF 100%)", border:"1.5px solid rgba(61,78,172,0.12)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, margin:"0 auto 18px" }}>💼</div>
-      <div style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:700, color:T.ink, marginBottom:8 }}>No experience yet</div>
+      <div style={{ fontFamily:"'DM Sans',serif", fontSize:20, fontWeight:700, color:T.ink, marginBottom:8 }}>No experience yet</div>
       <div style={{ fontSize:13, color:T.ink4, lineHeight:1.7, maxWidth:360, margin:"0 auto 20px" }}>
         Upload a <strong style={{color:T.ink2}}>text-based PDF resume</strong> to auto-extract your timeline, or add entries manually.
       </div>
-      <button onClick={onAdd} style={{ padding:"10px 24px", background:T.indigo, border:"none", borderRadius:10, color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"'JetBrains Mono',monospace", letterSpacing:"0.04em" }}>+ ADD EXPERIENCE</button>
+      <button onClick={onAdd} style={{ padding:"10px 24px", background:T.indigo, border:"none", borderRadius:10, color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"'DM Mono',monospace", letterSpacing:"0.04em" }}>+ ADD EXPERIENCE</button>
     </div>
   )
 
@@ -587,7 +587,7 @@ function CareerTimeline({ experiences, onAdd, onEdit, onDelete }) {
           <div key={ei} style={{ display:"flex", gap:0 }}>
             {/* Left: avatar + connector */}
             <div style={{ flexShrink:0, display:"flex", flexDirection:"column", alignItems:"center", width:56, paddingTop:2 }}>
-              <div style={{ width:44, height:44, borderRadius:12, background:"linear-gradient(135deg,#EEF0FB 0%,#F4F0FF 100%)", border:"1.5px solid rgba(61,78,172,0.18)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:17, fontWeight:900, color:T.indigo, flexShrink:0, fontFamily:"'Playfair Display',serif", boxShadow:"0 2px 8px rgba(61,78,172,0.10)" }}>
+              <div style={{ width:44, height:44, borderRadius:12, background:"linear-gradient(135deg,#EEF0FB 0%,#F4F0FF 100%)", border:"1.5px solid rgba(61,78,172,0.18)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:17, fontWeight:900, color:T.indigo, flexShrink:0, fontFamily:"'DM Sans',serif", boxShadow:"0 2px 8px rgba(61,78,172,0.10)" }}>
                 {e.company?.charAt(0)?.toUpperCase()||"C"}
               </div>
               {ei < exps.length - 1 && <div style={{ width:2, flex:1, background:"linear-gradient(to bottom, rgba(61,78,172,0.18) 0%, rgba(61,78,172,0.04) 100%)", marginTop:6, minHeight:32, borderRadius:2 }}/>}
@@ -599,29 +599,29 @@ function CareerTimeline({ experiences, onAdd, onEdit, onDelete }) {
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10, flexWrap:"wrap", gap:8 }}>
                 <div>
                   <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom:3 }}>
-                    <span style={{ fontFamily:"'Playfair Display',serif", fontSize:17, fontWeight:700, color:T.ink }}>{e.company}</span>
+                    <span style={{ fontFamily:"'DM Sans',serif", fontSize:17, fontWeight:700, color:T.ink }}>{e.company}</span>
                     {e.verificationStatus==="verified"
-                      ? <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 9px", borderRadius:100, background:T.green2, color:T.green, fontSize:10, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", letterSpacing:"0.06em", textTransform:"uppercase" }}>✓ VERIFIED</span>
-                      : <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 9px", borderRadius:100, background:T.amber2, color:T.amber, fontSize:10, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", letterSpacing:"0.06em", textTransform:"uppercase" }}>SELF-CLAIMED</span>}
-                    {e.isCurrent && <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 8px", borderRadius:100, background:T.green2, color:T.green, fontSize:10, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", letterSpacing:"0.06em" }}>● CURRENT</span>}
+                      ? <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 9px", borderRadius:100, background:T.green2, color:T.green, fontSize:10, fontWeight:700, fontFamily:"'DM Mono',monospace", letterSpacing:"0.06em", textTransform:"uppercase" }}>✓ VERIFIED</span>
+                      : <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 9px", borderRadius:100, background:T.amber2, color:T.amber, fontSize:10, fontWeight:700, fontFamily:"'DM Mono',monospace", letterSpacing:"0.06em", textTransform:"uppercase" }}>SELF-CLAIMED</span>}
+                    {e.isCurrent && <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 8px", borderRadius:100, background:T.green2, color:T.green, fontSize:10, fontWeight:700, fontFamily:"'DM Mono',monospace", letterSpacing:"0.06em" }}>● CURRENT</span>}
                   </div>
-                  <div style={{ fontSize:11, color:T.ink4, display:"flex", gap:6, flexWrap:"wrap", fontFamily:"'JetBrains Mono',monospace", letterSpacing:"0.04em" }}>
+                  <div style={{ fontSize:11, color:T.ink4, display:"flex", gap:6, flexWrap:"wrap", fontFamily:"'DM Mono',monospace", letterSpacing:"0.04em" }}>
                     {e.industry&&<span>{e.industry}</span>}
                     {e.location&&<><span>·</span><span>📍 {e.location}</span></>}
                   </div>
                 </div>
                 <div style={{ display:"flex", gap:6 }}>
-                  <button onClick={()=>onEdit(ei)} style={{ background:T.indigo3, border:`1px solid rgba(61,78,172,0.18)`, borderRadius:8, padding:"5px 13px", color:T.indigo, fontSize:11, cursor:"pointer", fontWeight:700, fontFamily:"'JetBrains Mono',monospace", letterSpacing:"0.04em" }}>EDIT</button>
-                  <button onClick={()=>onDelete(ei)} style={{ background:T.red2, border:`1px solid rgba(192,57,43,0.15)`, borderRadius:8, padding:"5px 13px", color:T.red, fontSize:11, cursor:"pointer", fontWeight:700, fontFamily:"'JetBrains Mono',monospace", letterSpacing:"0.04em" }}>DEL</button>
+                  <button onClick={()=>onEdit(ei)} style={{ background:T.indigo3, border:`1px solid rgba(61,78,172,0.18)`, borderRadius:8, padding:"5px 13px", color:T.indigo, fontSize:11, cursor:"pointer", fontWeight:700, fontFamily:"'DM Mono',monospace", letterSpacing:"0.04em" }}>EDIT</button>
+                  <button onClick={()=>onDelete(ei)} style={{ background:T.red2, border:`1px solid rgba(192,57,43,0.15)`, borderRadius:8, padding:"5px 13px", color:T.red, fontSize:11, cursor:"pointer", fontWeight:700, fontFamily:"'DM Mono',monospace", letterSpacing:"0.04em" }}>DEL</button>
                 </div>
               </div>
 
               {/* Role card */}
               <div style={{ background:"#FAFAFE", border:"1.5px solid rgba(61,78,172,0.12)", borderRadius:14, padding:"14px 16px", boxShadow:"0 2px 12px rgba(61,78,172,0.06)" }}>
                 <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:8, marginBottom:4, flexWrap:"wrap" }}>
-                  <span style={{ fontFamily:"'Playfair Display',serif", fontSize:15, fontWeight:700, color:T.ink }}>{e.role||"Job Title"}</span>
+                  <span style={{ fontFamily:"'DM Sans',serif", fontSize:15, fontWeight:700, color:T.ink }}>{e.role||"Job Title"}</span>
                 </div>
-                <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:11, color: dateStr ? T.ink4 : T.ink3, letterSpacing:"0.04em", marginBottom:8, fontStyle: dateStr ? "normal" : "italic" }}>
+                <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color: dateStr ? T.ink4 : T.ink3, letterSpacing:"0.04em", marginBottom:8, fontStyle: dateStr ? "normal" : "italic" }}>
                   {dateStr
                     ? <>{dateStr}{dur&&<span style={{ marginLeft:8, color:T.indigo, fontWeight:600 }}>{dur}</span>}</>
                     : "Date not set · click EDIT to add dates"
@@ -640,7 +640,7 @@ function CareerTimeline({ experiences, onAdd, onEdit, onDelete }) {
                 {skillList.length > 0 && (
                   <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginTop:8 }}>
                     {skillList.map((sk,si) => (
-                      <span key={si} style={{ background:T.indigo3, border:`1px solid rgba(61,78,172,0.15)`, borderRadius:100, padding:"3px 10px", fontSize:11, color:T.indigo, fontWeight:600, fontFamily:"'JetBrains Mono',monospace", letterSpacing:"0.03em" }}>{sk}</span>
+                      <span key={si} style={{ background:T.indigo3, border:`1px solid rgba(61,78,172,0.15)`, borderRadius:100, padding:"3px 10px", fontSize:11, color:T.indigo, fontWeight:600, fontFamily:"'DM Mono',monospace", letterSpacing:"0.03em" }}>{sk}</span>
                     ))}
                   </div>
                 )}
@@ -1274,7 +1274,7 @@ function AIInterviewPanel({ user, userData, save, setUserData, onNavigatePricing
             <div>
               <div style={{background:"#000",borderRadius:16,overflow:"hidden",aspectRatio:"16/9",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16,position:"relative"}}>
                 <video ref={videoRef} autoPlay playsInline muted style={{width:"100%",height:"100%",objectFit:"cover",display:cameraOn?"block":"none"}}/>
-                {!cameraOn&&<div style={{textAlign:"center",color:"#6B7280"}}><div style={{fontSize:40,marginBottom:8}}>📷</div><div style={{fontSize:13}}>Camera off</div></div>}
+                {!cameraOn&&<div style={{textAlign:"center",color:"#6B6560"}}><div style={{fontSize:40,marginBottom:8}}>📷</div><div style={{fontSize:13}}>Camera off</div></div>}
                 {cameraOn&&<div style={{position:"absolute",top:12,right:12,background:"rgba(0,0,0,0.6)",borderRadius:8,padding:"4px 10px",fontSize:11,color:"#4ade80",fontWeight:600}}>● LIVE</div>}
               </div>
               {mediaError&&<div style={{background:T.red2,border:`1.5px solid rgba(192,57,43,0.2)`,borderRadius:10,padding:"12px 16px",marginBottom:12,fontSize:12,color:T.red,lineHeight:1.5}}>⚠️ {mediaError}</div>}
@@ -1488,7 +1488,7 @@ function MonthlyReportPanel({ userData, skillGraph, eloHistory, eloRating, keywo
   const topSkillScore = Math.round(skillGraph[0]?.value||skillGraph[0]?.score||0)
 
   // Tier
-  const TIERS=[{min:0,max:600,label:"Rookie",color:"#94A3B8"},{min:600,max:800,label:"Apprentice",color:"#22C55E"},{min:800,max:1000,label:"Practitioner",color:"#3B82F6"},{min:1000,max:1200,label:"Expert",color:"#8B5CF6"},{min:1200,max:1500,label:"Master",color:"#F59E0B"},{min:1500,max:9999,label:"Elite",color:"#EF4444"}]
+  const TIERS=[{min:0,max:600,label:"Rookie",color:"#A8A29E"},{min:600,max:800,label:"Apprentice",color:"#22C55E"},{min:800,max:1000,label:"Practitioner",color:"#3B82F6"},{min:1000,max:1200,label:"Expert",color:"#8B5CF6"},{min:1200,max:1500,label:"Master",color:"#F59E0B"},{min:1500,max:9999,label:"Elite",color:"#EF4444"}]
   const tier = TIERS.find(t=>eloRating>=t.min&&eloRating<t.max)||TIERS[0]
 
   // Recommended actions
@@ -1517,7 +1517,7 @@ function MonthlyReportPanel({ userData, skillGraph, eloHistory, eloRating, keywo
           <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
             <div style={{width:44,height:44,borderRadius:12,background:"rgba(61,78,172,0.4)",border:"1px solid rgba(0,0,0,0.07)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>📊</div>
             <div>
-              <div style={{fontSize:11,fontWeight:700,color:"#9CA3AF",letterSpacing:2,textTransform:"uppercase"}}>Capabilio Intelligence Report</div>
+              <div style={{fontSize:11,fontWeight:700,color:"#A8A29E",letterSpacing:2,textTransform:"uppercase"}}>Capabilio Intelligence Report</div>
               <div style={{fontSize:18,fontWeight:800,color:"#fff",marginTop:2}}>{monthName} · {keyword}</div>
             </div>
             <div style={{marginLeft:"auto",padding:"6px 14px",background:"rgba(34,197,94,0.15)",border:"1px solid rgba(34,197,94,0.3)",borderRadius:99,fontSize:11,fontWeight:700,color:"#4ade80"}}>● Live Data</div>
@@ -1525,22 +1525,22 @@ function MonthlyReportPanel({ userData, skillGraph, eloHistory, eloRating, keywo
           <div style={{display:"flex",gap:24,flexWrap:"wrap"}}>
             <div style={{textAlign:"center"}}>
               <div style={{fontSize:32,fontWeight:900,color:"#fff",lineHeight:1}}>{eloRating}</div>
-              <div style={{fontSize:10,color:"#9CA3AF",fontWeight:600,textTransform:"uppercase",marginTop:3}}>ELO</div>
+              <div style={{fontSize:10,color:"#A8A29E",fontWeight:600,textTransform:"uppercase",marginTop:3}}>ELO</div>
             </div>
             <div style={{width:1,background:"rgba(0,0,0,0.05)"}}/>
             <div style={{textAlign:"center"}}>
               <div style={{fontSize:32,fontWeight:900,color:tier.color,lineHeight:1}}>{tier.label}</div>
-              <div style={{fontSize:10,color:"#9CA3AF",fontWeight:600,textTransform:"uppercase",marginTop:3}}>Tier</div>
+              <div style={{fontSize:10,color:"#A8A29E",fontWeight:600,textTransform:"uppercase",marginTop:3}}>Tier</div>
             </div>
             <div style={{width:1,background:"rgba(0,0,0,0.05)"}}/>
             <div style={{textAlign:"center"}}>
               <div style={{fontSize:32,fontWeight:900,color:"#60a5fa",lineHeight:1}}>{percentile}<span style={{fontSize:16}}>%ile</span></div>
-              <div style={{fontSize:10,color:"#9CA3AF",fontWeight:600,textTransform:"uppercase",marginTop:3}}>Market Rank</div>
+              <div style={{fontSize:10,color:"#A8A29E",fontWeight:600,textTransform:"uppercase",marginTop:3}}>Market Rank</div>
             </div>
             <div style={{width:1,background:"rgba(0,0,0,0.05)"}}/>
             <div style={{textAlign:"center"}}>
               <div style={{fontSize:32,fontWeight:900,color:"#f59e0b",lineHeight:1}}>{market.growth}</div>
-              <div style={{fontSize:10,color:"#9CA3AF",fontWeight:600,textTransform:"uppercase",marginTop:3}}>Market Growth</div>
+              <div style={{fontSize:10,color:"#A8A29E",fontWeight:600,textTransform:"uppercase",marginTop:3}}>Market Growth</div>
             </div>
           </div>
         </div>
@@ -1570,7 +1570,7 @@ function MonthlyReportPanel({ userData, skillGraph, eloHistory, eloRating, keywo
               <p style={{margin:"4px 0 0",fontSize:12,color:C.ink3}}>Your assessed skill scores compared to what the {keyword} market requires in 2025-26</p>
             </div>
             <div style={{display:"flex",gap:16,flexShrink:0}}>
-              {[{color:C.indigo,label:"Your Score"},{color:"#94A3B8",label:"Market Avg"}].map((l,i)=>(
+              {[{color:C.indigo,label:"Your Score"},{color:"#A8A29E",label:"Market Avg"}].map((l,i)=>(
                 <div key={i} style={{display:"flex",alignItems:"center",gap:6}}>
                   <div style={{width:10,height:10,borderRadius:2,background:l.color}}/>
                   <span style={{fontSize:11,color:C.ink3,fontWeight:600}}>{l.label}</span>
@@ -1606,7 +1606,7 @@ function MonthlyReportPanel({ userData, skillGraph, eloHistory, eloRating, keywo
                       background:row.status==="ahead"?`linear-gradient(90deg,${C.green},#86efac)`:row.status==="close"?`linear-gradient(90deg,${C.amber},#fcd34d)`:`linear-gradient(90deg,${C.indigo},${C.indigo2})`,
                       borderRadius:99,transition:"width 1s ease"}}/>
                     {/* Market marker line */}
-                    <div style={{position:"absolute",top:0,left:`${row.marketPct}%`,width:2,height:"100%",background:"#94A3B8",transform:"translateX(-50%)"}}/>
+                    <div style={{position:"absolute",top:0,left:`${row.marketPct}%`,width:2,height:"100%",background:"#A8A29E",transform:"translateX(-50%)"}}/>
                   </div>
                 </div>
               ))}
@@ -1643,11 +1643,11 @@ function MonthlyReportPanel({ userData, skillGraph, eloHistory, eloRating, keywo
               {(()=>{
                 const angle=((percentile/100)*Math.PI)+Math.PI
                 const nx=100+68*Math.cos(angle), ny=100+68*Math.sin(angle)
-                return <line x1="100" y1="100" x2={nx} y2={ny} stroke="#1E293B" strokeWidth="2.5" strokeLinecap="round"/>
+                return <line x1="100" y1="100" x2={nx} y2={ny} stroke="#1A1714" strokeWidth="2.5" strokeLinecap="round"/>
               })()}
-              <circle cx="100" cy="100" r="6" fill="#1E293B"/>
+              <circle cx="100" cy="100" r="6" fill="#1A1714"/>
               <text x="100" y="92" textAnchor="middle" fontSize="22" fontWeight="900" fill={percentile>75?C.green:percentile>50?C.blue:percentile>25?C.amber:C.red}>{percentile}</text>
-              <text x="100" y="106" textAnchor="middle" fontSize="9" fill="#94A3B8">PERCENTILE</text>
+              <text x="100" y="106" textAnchor="middle" fontSize="9" fill="#A8A29E">PERCENTILE</text>
             </svg>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
@@ -1698,7 +1698,7 @@ function MonthlyReportPanel({ userData, skillGraph, eloHistory, eloRating, keywo
                 ))}
               </>
             })() : (
-              <text x="130" y="45" textAnchor="middle" fontSize="11" fill="#94A3B8">Complete Arena tasks to grow ELO</text>
+              <text x="130" y="45" textAnchor="middle" fontSize="11" fill="#A8A29E">Complete Arena tasks to grow ELO</text>
             )}
           </svg>
           {/* Month over month comparison */}
@@ -1714,16 +1714,16 @@ function MonthlyReportPanel({ userData, skillGraph, eloHistory, eloRating, keywo
       </div>
 
       {/* ── Recommended Actions ── */}
-      <div style={{background:"linear-gradient(135deg,#0F172A,#1E293B)",border:`1px solid rgba(0,0,0,0.03)`,borderRadius:18,padding:"24px 28px",marginBottom:24,boxShadow:C.shadow2}}>
+      <div style={{background:"linear-gradient(135deg,#1A1714,#1A1714)",border:`1px solid rgba(0,0,0,0.03)`,borderRadius:18,padding:"24px 28px",marginBottom:24,boxShadow:C.shadow2}}>
         <div style={{fontSize:11,fontWeight:700,color:"rgba(96,165,250,0.8)",textTransform:"uppercase",letterSpacing:1.5,marginBottom:4}}>🚀 Next 30 Days</div>
         <h3 style={{margin:"0 0 18px",fontSize:18,fontWeight:800,color:"#fff"}}>Recommended Actions for {now.toLocaleString("en-US",{month:"long"})}</h3>
         <div style={{display:"flex",flexDirection:"column",gap:10}}>
           {actions.map((action,i)=>(
-            <div key={i} style={{display:"flex",gap:14,alignItems:"flex-start",padding:"14px 16px",background:"rgba(0,0,0,0.02)",border:"1px solid #E5E7EB",borderRadius:12}}>
+            <div key={i} style={{display:"flex",gap:14,alignItems:"flex-start",padding:"14px 16px",background:"rgba(0,0,0,0.02)",border:"1px solid #E8E3DA",borderRadius:12}}>
               <div style={{width:26,height:26,borderRadius:8,background:`rgba(61,78,172,0.4)`,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:"#93c5fd"}}>
                 {i+1}
               </div>
-              <div style={{fontSize:13,color:"#374151",lineHeight:1.6}}>{action}</div>
+              <div style={{fontSize:13,color:"#3D3935",lineHeight:1.6}}>{action}</div>
             </div>
           ))}
         </div>
@@ -1948,7 +1948,7 @@ function ExecutiveAura({ user, userData, onNavigate, onNavigatePricing }) {
   return (
     <div style={{ background: Ex.cream, flex: 1, minHeight: 0, overflowY: "auto", fontFamily: "'DM Sans', sans-serif", color: Ex.ink }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Playfair+Display:wght@700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');
         *{box-sizing:border-box}
         @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
         @keyframes spin{to{transform:rotate(360deg)}}
@@ -1961,7 +1961,7 @@ function ExecutiveAura({ user, userData, onNavigate, onNavigatePricing }) {
       {showLinkedInModal && (
         <div style={modalOverlay} onClick={e => e.target===e.currentTarget&&setShowLinkedInModal(false)}>
           <div style={modalBox}>
-            <div style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:800, color:Ex.ink, marginBottom:4 }}>LinkedIn Profile</div>
+            <div style={{ fontFamily:"'DM Sans',serif", fontSize:20, fontWeight:800, color:Ex.ink, marginBottom:4 }}>LinkedIn Profile</div>
             <div style={{ fontSize:13, color:Ex.ink3, marginBottom:20 }}>Paste your LinkedIn URL to verify your professional presence.</div>
             <label style={labelStyle}>LinkedIn URL</label>
             <input className="ex-input" style={inputStyle} value={linkedInInput} onChange={e=>setLinkedInInput(e.target.value)}
@@ -1980,7 +1980,7 @@ function ExecutiveAura({ user, userData, onNavigate, onNavigatePricing }) {
       {showWebsiteModal && (
         <div style={modalOverlay} onClick={e => e.target===e.currentTarget&&setShowWebsiteModal(false)}>
           <div style={modalBox}>
-            <div style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:800, color:Ex.ink, marginBottom:4 }}>Personal Website</div>
+            <div style={{ fontFamily:"'DM Sans',serif", fontSize:20, fontWeight:800, color:Ex.ink, marginBottom:4 }}>Personal Website</div>
             <div style={{ fontSize:13, color:Ex.ink3, marginBottom:20 }}>Your personal URL or portfolio surfaces you in 3× more searches.</div>
             <label style={labelStyle}>Website URL</label>
             <input className="ex-input" style={inputStyle} value={websiteInput} onChange={e=>setWebsiteInput(e.target.value)}
@@ -1999,7 +1999,7 @@ function ExecutiveAura({ user, userData, onNavigate, onNavigatePricing }) {
       {showRoleModal && (
         <div style={modalOverlay} onClick={e => e.target===e.currentTarget&&setShowRoleModal(false)}>
           <div style={{ ...modalBox, maxWidth: 520 }}>
-            <div style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:800, color:Ex.ink, marginBottom:4 }}>
+            <div style={{ fontFamily:"'DM Sans',serif", fontSize:20, fontWeight:800, color:Ex.ink, marginBottom:4 }}>
               {editExpIdx !== null ? "Edit Role" : "Add Career Experience"}
             </div>
             <div style={{ fontSize:13, color:Ex.ink3, marginBottom:20 }}>Verified roles build recruiter and board trust.</div>
@@ -2062,17 +2062,17 @@ function ExecutiveAura({ user, userData, onNavigate, onNavigatePricing }) {
               ) : (localPhotoURL || userData?.profilePhotoURL) ? (
                 <img src={localPhotoURL || userData.profilePhotoURL} alt="" style={{ width:"100%",height:"100%",objectFit:"cover" }}/>
               ) : (
-                <span style={{ fontFamily:"'Playfair Display',serif", fontSize:28, fontWeight:800, color:Ex.gold }}>{initial}</span>
+                <span style={{ fontFamily:"'DM Sans',serif", fontSize:28, fontWeight:800, color:Ex.gold }}>{initial}</span>
               )}
               {/* Camera overlay on hover */}
-              <div style={{ position:"absolute",bottom:0,left:0,right:0,height:28,background:"rgba(13,13,26,0.65)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"#0F172A",fontWeight:600,transition:"opacity 0.2s" }}>
+              <div style={{ position:"absolute",bottom:0,left:0,right:0,height:28,background:"rgba(13,13,26,0.65)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"#1A1714",fontWeight:600,transition:"opacity 0.2s" }}>
                 📷
               </div>
             </div>
 
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6, flexWrap: "wrap" }}>
-                <h1 style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontSize: 28, fontWeight: 800, color: "#F5F0EB", letterSpacing: "-0.3px" }}>{name}</h1>
+                <h1 style={{ margin: 0, fontFamily: "'DM Sans', sans-serif", fontSize: 28, fontWeight: 800, color: "#F5F0EB", letterSpacing: "-0.3px" }}>{name}</h1>
                 <span style={{ padding: "3px 12px", background: `${Ex.gold}22`, border: `1px solid ${Ex.gold}44`, borderRadius: 100, fontSize: 11, fontWeight: 700, color: Ex.gold, letterSpacing: 1.5, textTransform: "uppercase" }}>{execLabel}</span>
               </div>
               <div style={{ fontSize: 14, color: "rgba(245,240,235,0.6)", marginBottom: 10, fontWeight: 500 }}>{keyword}</div>
@@ -2097,7 +2097,7 @@ function ExecutiveAura({ user, userData, onNavigate, onNavigatePricing }) {
 
             {/* Influence score */}
             <div style={{ flexShrink: 0, textAlign: "center", background: "rgba(0,0,0,0.02)", border: `1px solid ${Ex.gold}22`, borderRadius: 14, padding: "14px 20px" }}>
-              <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 36, fontWeight: 800, color: Ex.gold, lineHeight: 1 }}>{influenceScore}</div>
+              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 36, fontWeight: 800, color: Ex.gold, lineHeight: 1 }}>{influenceScore}</div>
               <div style={{ fontSize: 10, color: "rgba(245,240,235,0.45)", fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginTop: 4 }}>Influence</div>
               <div style={{ height: 3, width: 60, background: `rgba(201,168,76,0.15)`, borderRadius: 99, marginTop: 8, overflow: "hidden" }}>
                 <div style={{ height: "100%", width: `${influenceScore}%`, background: `linear-gradient(90deg, ${Ex.gold}, ${Ex.gold2})`, borderRadius: 99 }}/>
@@ -2114,7 +2114,7 @@ function ExecutiveAura({ user, userData, onNavigate, onNavigatePricing }) {
                 <span style={{ fontSize: 18 }}>{m.icon}</span>
                 <span style={{ width: 7, height: 7, borderRadius: "50%", background: m.color }}/>
               </div>
-              <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, fontWeight: 800, color: Ex.ink, lineHeight: 1 }}>{m.value}<span style={{ fontSize: 14, fontWeight: 500, color: Ex.ink3 }}>{m.suffix}</span></div>
+              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 28, fontWeight: 800, color: Ex.ink, lineHeight: 1 }}>{m.value}<span style={{ fontSize: 14, fontWeight: 500, color: Ex.ink3 }}>{m.suffix}</span></div>
               <div style={{ fontSize: 12, fontWeight: 700, color: Ex.ink2, marginTop: 4 }}>{m.label}</div>
               <div style={{ fontSize: 11, color: Ex.ink4, marginTop: 3, lineHeight: 1.4 }}>{m.desc}</div>
             </div>
@@ -2255,7 +2255,7 @@ function ExecutiveAura({ user, userData, onNavigate, onNavigatePricing }) {
             <div style={{ background: `linear-gradient(135deg, ${Ex.dark} 0%, ${Ex.dark3} 100%)`, borderRadius: 16, padding: "20px 20px", boxShadow: "0 8px 32px rgba(13,13,26,0.18)", position: "relative", overflow: "hidden" }}>
               <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1.5, background: `linear-gradient(90deg, transparent, ${Ex.gold}60, transparent)` }}/>
               <div style={{ fontSize: 22, marginBottom: 8 }}>◈</div>
-              <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 16, fontWeight: 800, color: "#F5F0EB", marginBottom: 6 }}>Intel Hub</div>
+              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 16, fontWeight: 800, color: "#F5F0EB", marginBottom: 6 }}>Intel Hub</div>
               <div style={{ fontSize: 12, color: "rgba(245,240,235,0.55)", lineHeight: 1.6, marginBottom: 14 }}>AI-curated industry intelligence, deal flow, board opportunities, and thought leadership tools — built for executives.</div>
               <button onClick={() => onNavigate?.("launchpad")} style={{ padding: "9px 18px", background: `linear-gradient(135deg, ${Ex.gold}, ${Ex.gold2})`, border: "none", borderRadius: 9, color: Ex.dark, fontSize: 12, fontWeight: 800, cursor: "pointer", width: "100%" }}>Open Intel Hub →</button>
             </div>
@@ -2336,7 +2336,7 @@ function MissionTicker({ userData, keyword, onNavigate }) {
         willChange: "transform",
       }}>
         <span style={{
-          fontFamily: "'JetBrains Mono', monospace",
+          fontFamily: "'DM Mono', monospace",
           fontSize: 12,
           fontWeight: 600,
           color: dc,
@@ -3246,7 +3246,7 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
         onMouseLeave={()=>{if(isDraggingCover){setIsDraggingCover(false);save({coverPosition})}}}
         style={{height:180,borderRadius:20,overflow:"hidden",position:"relative",
           cursor:coverAdjust?"grab":"default",
-          background:userData?.coverPhotoUrl?"transparent":"linear-gradient(135deg,#F8F9FA 0%,#F5F5F5 40%,#2D3A5A 70%,#3D4EAC 100%)",
+          background:userData?.coverPhotoUrl?"transparent":"linear-gradient(135deg,#FAF7F2 0%,#F5F5F5 40%,#2D3A5A 70%,#3D4EAC 100%)",
           border:`1px solid ${T.border}`,boxShadow:'0 4px 20px rgba(0,0,0,0.5)',userSelect:"none"}}>
         {userData?.coverPhotoUrl&&<img src={userData.coverPhotoUrl} alt="Cover" style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:`${coverPosition.x}% ${coverPosition.y}%`,transition:isDraggingCover?"none":"object-position .3s",pointerEvents:"none"}}/>}
         {/* Pattern overlay */}
@@ -3343,10 +3343,10 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
   return (
     <div style={{
       background:`radial-gradient(ellipse at 30% 40%, rgba(139,92,246,0.12) 0%, transparent 55%), radial-gradient(ellipse at 75% 15%, rgba(99,102,241,0.08) 0%, transparent 50%), #FFFFFF`,
-      flex:1, minHeight:0, overflowY:"auto", fontFamily:"'Inter',sans-serif", color:T.ink,
+      flex:1, minHeight:0, overflowY:"auto", fontFamily:"'DM Sans',sans-serif", color:T.ink,
     }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');
         *{box-sizing:border-box}
         ::-webkit-scrollbar{width:4px}
         ::-webkit-scrollbar-track{background:transparent}
@@ -3386,7 +3386,7 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
         ]).map(tab=>{
           const active=activeTab===tab.id
           return(
-            <button key={tab.id} onClick={()=>setActiveTab(tab.id)} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"10px 14px",border:"none",borderBottom:active?"2px solid #6366F1":"2px solid transparent",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:13,fontWeight:active?700:500,color:active?"#6366F1":"#6B7280",background:"transparent",transition:"all 0.15s",whiteSpace:"nowrap",flexShrink:0}}>
+            <button key={tab.id} onClick={()=>setActiveTab(tab.id)} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"10px 14px",border:"none",borderBottom:active?"2px solid #6366F1":"2px solid transparent",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:13,fontWeight:active?700:500,color:active?"#6366F1":"#6B6560",background:"transparent",transition:"all 0.15s",whiteSpace:"nowrap",flexShrink:0}}>
               <span style={{fontSize:12}}>{tab.icon}</span>{tab.label}
               {tab.id==="vault"&&vaultFiles.length>0&&<span style={{background:"#FF5701",color:"#fff",fontSize:9,fontWeight:700,padding:"1px 5px",borderRadius:100}}>{vaultFiles.length}</span>}
             </button>
@@ -3514,7 +3514,7 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
                           {momentumScore>0&&<circle cx={nx.toFixed(2)} cy={ny.toFixed(2)} r={5} fill={momentumForm.color} stroke="#fff" strokeWidth={2}/>}
                           {/* Center score */}
                           <text x={cx} y={cy-6} textAnchor="middle" fontSize={22} fontWeight={900} fill={momentumForm.color} fontFamily="'DM Mono',monospace">{momentumScore}</text>
-                          <text x={cx} y={cy+10} textAnchor="middle" fontSize={8} fill="#94A3B8" fontWeight={600}>/100</text>
+                          <text x={cx} y={cy+10} textAnchor="middle" fontSize={8} fill="#A8A29E" fontWeight={600}>/100</text>
                         </svg>
                       )
                     })()}
@@ -3775,7 +3775,7 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
                 <div style={{background:T.indigo,borderRadius:12,padding:"14px 18px",display:"flex",justifyContent:"space-between",alignItems:"center",boxShadow:"0 4px 20px rgba(61,78,172,0.2)"}}>
                   <div>
                     <div style={{fontSize:13,fontWeight:700,color:"#fff"}}>⚔️ Selected: {practiceSkill}</div>
-                    <div style={{fontSize:11,color:"#374151",marginTop:3}}>
+                    <div style={{fontSize:11,color:"#3D3935",marginTop:3}}>
                       Arena will generate a <strong style={{color:"#fff"}}>{practiceSkill}</strong> challenge tailored to your level
                     </div>
                   </div>
@@ -4805,21 +4805,21 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
               }}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
                   <div>
-                    <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10,fontWeight:800,color:T.indigo,letterSpacing:"0.14em",textTransform:"uppercase",marginBottom:5}}>🏢 Experience</div>
-                    <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:700,color:T.ink,lineHeight:1.2}}>Career Timeline</div>
+                    <div style={{fontFamily:"'DM Mono',monospace",fontSize:10,fontWeight:800,color:T.indigo,letterSpacing:"0.14em",textTransform:"uppercase",marginBottom:5}}>🏢 Experience</div>
+                    <div style={{fontFamily:"'DM Sans',serif",fontSize:22,fontWeight:700,color:T.ink,lineHeight:1.2}}>Career Timeline</div>
                   </div>
                   <div style={{display:"flex",gap:8}}>
                     <button onClick={()=>resumeFileInputRef.current?.click()} disabled={resumeUploading}
                       style={{padding:"8px 16px",background:"rgba(255,255,255,0.8)",border:`1.5px solid rgba(61,78,172,0.2)`,
                         borderRadius:9,color:T.indigo,fontSize:12,fontWeight:700,
                         cursor:resumeUploading?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:6,
-                        fontFamily:"'JetBrains Mono',monospace",letterSpacing:"0.04em"}}>
+                        fontFamily:"'DM Mono',monospace",letterSpacing:"0.04em"}}>
                       {resumeUploading?<><div style={{width:11,height:11,border:`2px solid ${T.indigo}`,borderTopColor:"transparent",borderRadius:"50%",animation:"spin .8s linear infinite"}}/>Parsing…</>:"📄 RESUME"}
                     </button>
                     <button onClick={()=>{setEditingIdx(null);setShowExpModal(true)}}
                       style={{padding:"8px 16px",background:T.indigo,border:"none",borderRadius:9,
                         color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",
-                        fontFamily:"'JetBrains Mono',monospace",letterSpacing:"0.04em",
+                        fontFamily:"'DM Mono',monospace",letterSpacing:"0.04em",
                         boxShadow:`0 4px 14px rgba(61,78,172,0.25)`}}>
                       + ADD
                     </button>

@@ -23,10 +23,10 @@ const C = {
   purpleL:  "#F5F3FF",
   // Neutral
   ink:      "#FFFFFF",
-  ink2:     "#374151",
-  ink3:     "#6B7280",
-  ink4:     "#9CA3AF",
-  border:   "#E5E7EB",
+  ink2:     "#3D3935",
+  ink3:     "#6B6560",
+  ink4:     "#A8A29E",
+  border:   "#E8E3DA",
   surface:  "#FFFFFF",
   bg:       "#F5F5F0",
 }
@@ -123,9 +123,9 @@ export default function RecruiterDashboard({ user, userData, onNavigate }) {
   const maxCount        = Math.max(...PIPELINE_HEALTH.map(p => p.count))
 
   return (
-    <div style={{ background: C.bg, flex: 1, minHeight: 0, overflowY: "auto", fontFamily: "Inter, -apple-system, sans-serif" }}>
+    <div style={{ background: C.bg, flex: 1, minHeight: 0, overflowY: "auto", fontFamily: "DM Sans, system-ui, sans-serif" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');
         * { box-sizing: border-box; }
       `}</style>
 
@@ -155,7 +155,7 @@ export default function RecruiterDashboard({ user, userData, onNavigate }) {
           ].map((k, i) => (
             <Card key={i} style={{ flex: 1, padding: "14px 10px", textAlign: "center" }}>
               <div style={{
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: "'DM Mono', monospace",
                 fontSize: 20, fontWeight: 700, color: k.color,
                 lineHeight: 1,
               }}>
@@ -228,7 +228,7 @@ export default function RecruiterDashboard({ user, userData, onNavigate }) {
                     }} />
                   </div>
                   <div style={{
-                    fontFamily: "'JetBrains Mono', monospace",
+                    fontFamily: "'DM Mono', monospace",
                     fontSize: 13, fontWeight: 700, color: p.color,
                     width: 28, textAlign: "right", flexShrink: 0,
                   }}>

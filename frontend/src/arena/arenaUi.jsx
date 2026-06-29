@@ -4,26 +4,64 @@
  */
 import React, { useState, useEffect } from "react"
 
+// ── Parchment design tokens (synced with theme.js + index.css) ───────────────
 export const T = {
-  bg: "#F8F8F5", bg2: "#F1EFE9", card: "#FFFFFF",
-  ink: "#1A1A18", ink2: "#3A3A38", ink3: "#6B6B68", ink4: "#9A9A97",
-  border: "#E5E5E2", borderSoft: "#F3F4F6",
-  green: "#16A34A", greenBg: "#F0FDF4",
-  amber: "#D97706", amberBg: "#FFFBEB",
-  red: "#DC2626", redBg: "#FEF2F2",
-  blue: "#2563EB", blueBg: "#EFF6FF",
-  purple: "#6B3FA0", purpleBg: "#F5F3FF",
+  // Backgrounds
+  bg:    "#FAF7F2",   // page background
+  bg2:   "#F2EDE4",   // surface / raised
+  card:  "#FFFFFF",   // card white
+  cream: "#F2EDE4",
+  cream2:"#EDE8DF",
+  cream3:"#D6D0C8",
+
+  // Ink
+  ink:   "#1A1714",
+  ink2:  "#3D3935",
+  ink3:  "#6B6560",
+  ink4:  "#A8A29E",
+  ink5:  "#D6D0C8",
+
+  // Borders
+  border:     "#E8E3DA",
+  borderSoft: "#F0EBE3",
+
+  // Brand
   orange: "#FF5701",
-  slate: "#F1EFE9", slate2: "#E5E5E2",
+  brand:  "#FF5701",
+
+  // Semantic
+  green:  "#16A34A", greenBg:  "#ECFDF5",
+  amber:  "#D97706", amberBg:  "#FFFBEB",
+  red:    "#DC2626", redBg:    "#FEF2F2",
+  blue:   "#2563EB", blueBg:   "#EFF6FF",
+  indigo: "#4F46E5", indigoBg: "#EEF2FF",
+  purple: "#7C3AED", purpleBg: "#F5F3FF",
+  teal:   "#0891B2", tealBg:   "#ECFEFF",
+
+  // Legacy aliases used in Arena/Portfolio pages
+  blue2:    "#4F46E5",
+  blue3:    "#EEF2FF",
+  green2:   "#ECFDF5",
+  amber2:   "#FFFBEB",
+  purple2:  "#F5F3FF",
+  teal3:    "#ECFEFF",
+
+  // Shadows
+  shadow:   "0 1px 3px rgba(26,23,20,0.06), 0 1px 2px rgba(26,23,20,0.04)",
+
+  // Convenience
+  slate:  "#F2EDE4",
+  slate2: "#E8E3DA",
+  indigo: "#4F46E5",
 }
 
 export const ELO_TIERS = [
-  { min: 0,    max: 600,      label: "Rookie",     color: "#94A3B8", icon: "🌱" },
+  { min: 0,    max: 600,      label: "Rookie",     color: "#A8A29E", icon: "🌱" },
   { min: 600,  max: 900,      label: "Contender",  color: "#16A34A", icon: "⚔️" },
   { min: 900,  max: 1200,     label: "Specialist", color: "#2563EB", icon: "🎯" },
   { min: 1200, max: 1500,     label: "Expert",     color: "#7C3AED", icon: "💎" },
   { min: 1500, max: 1800,     label: "Master",     color: "#D97706", icon: "👑" },
-  { min: 1800, max: Infinity, label: "Legend",     color: "#DC2626", icon: "🔥" },
+  { min: 1800, max: Infinity, label: "Legend",     color: "#FF5701", icon: "🔥" },
 ]
 export const getTier = elo => ELO_TIERS.find(t => elo >= t.min && elo < t.max) || ELO_TIERS[0]
 
@@ -32,7 +70,7 @@ export const diffBg    = d => d === "Easy" ? "#F0FDF4" : d === "Hard" ? "#FEF2F2
 
 export const fmtClock = s => s == null ? null : `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`
 
-export function Spinner({ color = T.orange, size = 14 }) {
+export function Spinner({ color = T.brand, size = 14 }) {
   return <div style={{ width: size, height: size, border: `2px solid ${color}33`, borderTopColor: color, borderRadius: "50%", animation: "spin 0.7s linear infinite", flexShrink: 0 }} />
 }
 

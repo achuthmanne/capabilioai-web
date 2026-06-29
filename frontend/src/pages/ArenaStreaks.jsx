@@ -192,10 +192,10 @@ function HeatmapTooltip({ day, position }) {
         <>
           <div>{day.count} challenge{day.count !== 1 ? "s" : ""} completed</div>
           {day.elo > 0 && <div>+{day.elo} ELO</div>}
-          {day.domains?.length > 0 && <div style={{ color: "#94A3B8", marginTop: 2 }}>{day.domains.join(", ")}</div>}
+          {day.domains?.length > 0 && <div style={{ color: "#A8A29E", marginTop: 2 }}>{day.domains.join(", ")}</div>}
         </>
       ) : (
-        <div style={{ color: "#94A3B8" }}>No activity</div>
+        <div style={{ color: "#A8A29E" }}>No activity</div>
       )}
     </div>
   )

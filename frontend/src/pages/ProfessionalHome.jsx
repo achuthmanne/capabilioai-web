@@ -2,17 +2,17 @@
  * ProfessionalHome.jsx — Professional Path Command Center
  * Design matches landing page ProfessionalOrbitPreview / PathCard aesthetic:
  *   • White background, subtle purple glow
- *   • 'Playfair Display' serif for hero headings
- *   • 'JetBrains Mono' for all numbers, labels, badges
+ *   • 'DM Sans' serif for hero headings
+ *   • 'DM Mono' for all numbers, labels, badges
  *   • #8B5CF6 purple accent, #FAFAF8 stat cells, 28px card radius
  */
 import { useState } from "react"
 
 // ─── Design tokens — mirrors landing page exactly ──────────────────────────────
 const P   = "#8B5CF6"   // purple accent
-const INK = "#111827"   // primary text
-const INK2= "#374151"   // secondary text
-const MUT = "#6B7280"   // muted text
+const INK = "#1A1714"   // primary text
+const INK2= "#3D3935"   // secondary text
+const MUT = "#6B6560"   // muted text
 const BG  = "#FAFAFA"   // page background
 const SURF= "#FFFFFF"   // card surface
 const CELL= "#FAFAF8"   // inner stat cell
@@ -23,9 +23,9 @@ const SHD = "0 18px 40px rgba(139,92,246,0.08)"
 const SHD2= "0 10px 24px rgba(17,24,39,0.05)"
 const r28 = 28, r22 = 22, r18 = 18, r14 = 14, r12 = 12, r999 = 999
 
-const SERIF = "'Playfair Display', Georgia, serif"
-const MONO  = "'JetBrains Mono', 'Fira Mono', monospace"
-const BODY  = "Inter, -apple-system, sans-serif"
+const SERIF = "'DM Sans', Georgia, serif"
+const MONO  = "'DM Mono', 'Fira Mono', monospace"
+const BODY  = "DM Sans, system-ui, sans-serif"
 
 // ─── Atoms ────────────────────────────────────────────────────────────────────
 function MonoLabel({ children, color = MUT, size = 10 }) {
@@ -54,7 +54,7 @@ function StatusChip({ type, children }) {
     warn: { color: "#D97706", bg: "#FFF7E8", border: "rgba(217,119,6,0.16)" },
     bad:  { color: "#DC2626", bg: "#FEF2F2", border: "rgba(220,38,38,0.16)" },
     info: { color: "#3B82F6", bg: "#EFF6FF", border: "rgba(59,130,246,0.16)" },
-    gray: { color: MUT,       bg: "#F9FAFB", border: BDR },
+    gray: { color: MUT,       bg: "#FAF7F2", border: BDR },
   }
   const s = map[type] || map.gray
   return (
@@ -373,7 +373,7 @@ export default function ProfessionalHome({ user, userData, onNavigate, onNavigat
       fontFamily: BODY, color: INK,
     }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');
         .ph-nav-tab { background: ${SURF}; border: 1px solid ${BDR}; color: ${MUT}; padding: 9px 14px; border-radius: ${r999}px; font-weight: 800; font-size: 11px; cursor: pointer; font-family: ${MONO}; letter-spacing: 0.06em; text-transform: uppercase; transition: all 150ms; }
         .ph-nav-tab:hover { border-color: ${P}40; color: ${P}; }
         .ph-nav-tab.active { background: ${P}; color: #fff; border-color: transparent; box-shadow: 0 8px 22px ${P}30; }
@@ -457,7 +457,7 @@ export default function ProfessionalHome({ user, userData, onNavigate, onNavigat
               {isVerified && <Badge color="#16A34A" bg="#F0FDF4">Verified timeline</Badge>}
               {experiences.length > 0 && <Badge color="#3B82F6" bg="#EFF6FF">{experiences.length} career {experiences.length === 1 ? "entry" : "entries"}</Badge>}
               {vaultFiles.length > 0 && <Badge color="#D97706" bg="#FFF7E8">{vaultFiles.length} vault {vaultFiles.length === 1 ? "doc" : "docs"}</Badge>}
-              {isFreePlan && <Badge color={MUT} bg="#F9FAFB">Free plan</Badge>}
+              {isFreePlan && <Badge color={MUT} bg="#FAF7F2">Free plan</Badge>}
             </div>
 
             {/* 3-col stats */}

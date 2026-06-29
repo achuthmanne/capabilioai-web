@@ -8,15 +8,15 @@ import { userDoc } from "../lib/db"
 
 // ─── Design System ────────────────────────────────────────────────────────────
 const DS = {
-  bg:"#FFFFFF",
+  bg:"#FAF7F2",
   surface:"#FFFFFF",
-  surface2:"rgba(0,0,0,0.03)",
-  ink:"#0F172A",
+  surface2:"#F2EDE4",
+  ink:"#1A1714",
   ink2:"#475569",
-  ink3:"#94A3B8",
-  ink4:"#64748B",
-  border:"rgba(0,0,0,0.05)",
-  border2:"rgba(0,0,0,0.08)",
+  ink3:"#A8A29E",
+  ink4:"#6B6560",
+  border:"#E8E3DA",
+  border2:"#D6D0C8",
   primary:"#6366F1",
   pBg:"rgba(99,102,241,0.12)",
   pBd:"rgba(99,102,241,0.28)",
@@ -38,15 +38,15 @@ const DS = {
   teal:"#06B6D4",
   tBg:"rgba(6,182,212,0.12)",
   tBd:"rgba(6,182,212,0.28)",
-  display:"'Inter', sans-serif",
-  mono:"'JetBrains Mono', monospace",
-  body:"'Inter', system-ui, sans-serif",
+  display:"'DM Sans', sans-serif",
+  mono:"'DM Mono', monospace",
+  body:"'DM Sans', system-ui, sans-serif",
   sh:"0 4px 12px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.3)",
   sh2:"0 8px 24px rgba(0,0,0,0.08)), 0 4px 12px rgba(0,0,0,0.4)",
   r:12, r2:16, r3:20,
 }
 const G=`
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
@@ -59,7 +59,7 @@ function Tag({children,color=DS.ink3,bg=DS.surface2,bd=DS.border}){return<span s
 function SL({children,color=DS.ink4}){return<div style={{fontSize:10,fontWeight:700,letterSpacing:2.2,color,textTransform:"uppercase",fontFamily:DS.mono,marginBottom:8}}>{children}</div>}
 function Card({children,style={}}){return<div style={{background:DS.surface,border:`1px solid ${DS.border}`,borderRadius:DS.r2,boxShadow:DS.sh,padding:"20px 22px",...style}}>{children}</div>}
 function Btn({children,onClick,variant="primary",size="md",disabled=false,loading=false,full=false,style={}}){
-  const V={primary:{bg:DS.primary,color:"#0F172A",bd:"none"},ghost:{bg:"transparent",color:DS.ink2,bd:`1px solid ${DS.border2}`},success:{bg:DS.gBg,color:DS.green,bd:`1px solid ${DS.gBd}`},amber:{bg:DS.aBg,color:DS.amber,bd:`1px solid ${DS.aBd}`},purple:{bg:DS.purBg,color:DS.purple,bd:`1px solid ${DS.purBd}`},subtle:{bg:DS.surface2,color:DS.ink3,bd:`1px solid ${DS.border}`}}
+  const V={primary:{bg:DS.primary,color:"#1A1714",bd:"none"},ghost:{bg:"transparent",color:DS.ink2,bd:`1px solid ${DS.border2}`},success:{bg:DS.gBg,color:DS.green,bd:`1px solid ${DS.gBd}`},amber:{bg:DS.aBg,color:DS.amber,bd:`1px solid ${DS.aBd}`},purple:{bg:DS.purBg,color:DS.purple,bd:`1px solid ${DS.purBd}`},subtle:{bg:DS.surface2,color:DS.ink3,bd:`1px solid ${DS.border}`}}
   const S={sm:"7px 13px",md:"10px 18px",lg:"12px 22px"}
   const v=V[variant]||V.primary
   return<button className="fbtn" onClick={onClick} disabled={disabled||loading} style={{width:full?"100%":undefined,padding:S[size],background:v.bg,color:v.color,border:v.bd,borderRadius:DS.r,fontSize:size==="sm"?11:13,fontWeight:700,fontFamily:DS.body,display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,outline:"none",opacity:disabled?.5:1,...style}}>{loading&&<Spin color={v.color} size={11}/>}{children}</button>
@@ -91,9 +91,9 @@ function TaskItem({task,ud,onToggle,onAction,saving}){
   return<div style={{border:`1px solid ${isDone?DS.gBd:task.type==="ACTION"?DS.aBd:DS.border}`,borderRadius:DS.r,marginBottom:8,background:isDone?DS.gBg:DS.surface,overflow:"hidden",transition:"all .2s"}}>
     <div style={{display:"flex",alignItems:"center",gap:11,padding:"11px 14px"}}>
       {task.type==="AUTO"
-        ?<div style={{width:22,height:22,borderRadius:6,border:`2px solid ${isAutoVerified?DS.green:DS.border2}`,background:isAutoVerified?DS.green:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:"#0F172A",fontSize:12,fontWeight:700}}>{isAutoVerified?"✓":""}</div>
+        ?<div style={{width:22,height:22,borderRadius:6,border:`2px solid ${isAutoVerified?DS.green:DS.border2}`,background:isAutoVerified?DS.green:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:"#1A1714",fontSize:12,fontWeight:700}}>{isAutoVerified?"✓":""}</div>
         :task.type==="SELF"
-          ?<button onClick={()=>onToggle&&onToggle(task.id)} disabled={saving} style={{width:22,height:22,borderRadius:6,border:`2px solid ${isDone?DS.green:DS.border2}`,background:isDone?DS.green:"transparent",color:"#0F172A",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,outline:"none",transition:"all .15s"}}>{isDone?"✓":""}</button>
+          ?<button onClick={()=>onToggle&&onToggle(task.id)} disabled={saving} style={{width:22,height:22,borderRadius:6,border:`2px solid ${isDone?DS.green:DS.border2}`,background:isDone?DS.green:"transparent",color:"#1A1714",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,outline:"none",transition:"all .15s"}}>{isDone?"✓":""}</button>
           :<div style={{width:22,height:22,borderRadius:6,border:`2px solid ${DS.aBd}`,background:DS.aBg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:12,color:DS.amber,fontWeight:700}}>!</div>
       }
       <div style={{flex:1,minWidth:0}}>
@@ -457,7 +457,7 @@ function PromotionForge({ud,onSave,onNav}){
     <Card style={{marginBottom:14}}>
       <SL color={DS.amber}>Leadership Evidence Statement {ud?.promotionLeadership&&<span style={{color:DS.green,fontSize:9}}>SAVED ✓</span>}</SL>
       <div style={{fontSize:12,color:DS.ink3,marginBottom:8}}>Write a statement covering any team you've led, mentored, or influenced — even informally.</div>
-      <textarea value={proofText} onChange={e=>setProofText(e.target.value)} rows={3} placeholder="e.g. Led a team of 4 engineers on the checkout redesign. Mentored 2 junior devs. Ran weekly syncs with design and product." style={{width:"100%",padding:"9px 12px",background:DS.surface2,border:`1.5px solid ${DS.border}`,borderRadius:DS.r,fontSize:13,fontFamily:"'Inter', system-ui, sans-serif",color:DS.ink,outline:"none",resize:"vertical",lineHeight:1.6,boxSizing:"border-box"}} onFocus={e=>e.target.style.borderColor=DS.amber} onBlur={e=>e.target.style.borderColor=DS.border}/>
+      <textarea value={proofText} onChange={e=>setProofText(e.target.value)} rows={3} placeholder="e.g. Led a team of 4 engineers on the checkout redesign. Mentored 2 junior devs. Ran weekly syncs with design and product." style={{width:"100%",padding:"9px 12px",background:DS.surface2,border:`1.5px solid ${DS.border}`,borderRadius:DS.r,fontSize:13,fontFamily:"'DM Sans', system-ui, sans-serif",color:DS.ink,outline:"none",resize:"vertical",lineHeight:1.6,boxSizing:"border-box"}} onFocus={e=>e.target.style.borderColor=DS.amber} onBlur={e=>e.target.style.borderColor=DS.border}/>
       <div style={{display:"flex",gap:8,marginTop:8}}><Btn onClick={saveProof} loading={savingProof} size="sm" variant="amber">Save Statement →</Btn></div>
     </Card>
     <SL>Promotion Forge Tasks</SL>
@@ -498,8 +498,8 @@ function InterviewForge({ud,onSave,onNav}){
     <Card style={{marginBottom:14}}>
       <SL color={DS.teal}>Current Interview Context</SL>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:9,marginBottom:9}}>
-        <div><div style={{fontSize:11,fontWeight:600,color:DS.ink3,marginBottom:4}}>Target Company</div><input value={prep.company} onChange={e=>setPrep(p=>({...p,company:e.target.value}))} placeholder="e.g. Flipkart" style={{width:"100%",padding:"8px 11px",background:DS.surface2,border:`1.5px solid ${DS.border}`,borderRadius:DS.r,fontSize:12,fontFamily:"'Inter', system-ui, sans-serif",color:DS.ink,outline:"none",boxSizing:"border-box"}} onFocus={e=>e.target.style.borderColor=DS.teal} onBlur={e=>e.target.style.borderColor=DS.border}/></div>
-        <div><div style={{fontSize:11,fontWeight:600,color:DS.ink3,marginBottom:4}}>Role</div><input value={prep.role} onChange={e=>setPrep(p=>({...p,role:e.target.value}))} placeholder="e.g. Senior PM" style={{width:"100%",padding:"8px 11px",background:DS.surface2,border:`1.5px solid ${DS.border}`,borderRadius:DS.r,fontSize:12,fontFamily:"'Inter', system-ui, sans-serif",color:DS.ink,outline:"none",boxSizing:"border-box"}} onFocus={e=>e.target.style.borderColor=DS.teal} onBlur={e=>e.target.style.borderColor=DS.border}/></div>
+        <div><div style={{fontSize:11,fontWeight:600,color:DS.ink3,marginBottom:4}}>Target Company</div><input value={prep.company} onChange={e=>setPrep(p=>({...p,company:e.target.value}))} placeholder="e.g. Flipkart" style={{width:"100%",padding:"8px 11px",background:DS.surface2,border:`1.5px solid ${DS.border}`,borderRadius:DS.r,fontSize:12,fontFamily:"'DM Sans', system-ui, sans-serif",color:DS.ink,outline:"none",boxSizing:"border-box"}} onFocus={e=>e.target.style.borderColor=DS.teal} onBlur={e=>e.target.style.borderColor=DS.border}/></div>
+        <div><div style={{fontSize:11,fontWeight:600,color:DS.ink3,marginBottom:4}}>Role</div><input value={prep.role} onChange={e=>setPrep(p=>({...p,role:e.target.value}))} placeholder="e.g. Senior PM" style={{width:"100%",padding:"8px 11px",background:DS.surface2,border:`1.5px solid ${DS.border}`,borderRadius:DS.r,fontSize:12,fontFamily:"'DM Sans', system-ui, sans-serif",color:DS.ink,outline:"none",boxSizing:"border-box"}} onFocus={e=>e.target.style.borderColor=DS.teal} onBlur={e=>e.target.style.borderColor=DS.border}/></div>
         <div style={{display:"flex",alignItems:"flex-end"}}><Btn onClick={savePrep} loading={savingPrep} size="sm" style={{background:DS.tBg,color:DS.teal,border:`1px solid ${DS.tBd}`}}>Save</Btn></div>
       </div>
       {ud?.currentInterviewPrep?.company&&<div style={{padding:"7px 11px",background:DS.tBg,border:`1px solid ${DS.tBd}`,borderRadius:DS.r,fontSize:11,color:DS.teal}}>✓ Prepping for <strong>{ud.currentInterviewPrep.role}</strong> at <strong>{ud.currentInterviewPrep.company}</strong></div>}

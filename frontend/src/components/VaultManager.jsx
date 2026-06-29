@@ -102,7 +102,7 @@ function UploadModal({ onClose, onUploaded }) {
   return (
     <div style={{position:"fixed",inset:0,zIndex:999,background:"rgba(17,24,39,0.6)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
       <div style={{background:"#fff",borderRadius:20,padding:"28px 32px",maxWidth:500,width:"100%"}}>
-        <div style={{fontSize:18,fontWeight:800,color:T.ink,marginBottom:20,fontFamily:"'Playfair Display',serif"}}>Upload to Vault</div>
+        <div style={{fontSize:18,fontWeight:800,color:T.ink,marginBottom:20,fontFamily:"'DM Sans',serif"}}>Upload to Vault</div>
 
         {/* File drop area */}
         <div
@@ -123,7 +123,7 @@ function UploadModal({ onClose, onUploaded }) {
           <div style={{fontSize:12,fontWeight:600,color:T.ink3,marginBottom:6}}>Document type</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}}>
             {DOC_TYPES.map(dt=>(
-              <button key={dt.id} onClick={()=>setDocType(dt.id)} style={{padding:"8px 4px",background:docType===dt.id?T.indigo2:"#F9FAFB",border:`1px solid ${docType===dt.id?T.indigo:T.border}`,borderRadius:8,cursor:"pointer",textAlign:"center"}}>
+              <button key={dt.id} onClick={()=>setDocType(dt.id)} style={{padding:"8px 4px",background:docType===dt.id?T.indigo2:"#FAF7F2",border:`1px solid ${docType===dt.id?T.indigo:T.border}`,borderRadius:8,cursor:"pointer",textAlign:"center"}}>
                 <div style={{fontSize:16}}>{dt.icon}</div>
                 <div style={{fontSize:10,color:docType===dt.id?T.indigo:T.ink3,marginTop:2}}>{dt.label}</div>
               </button>
@@ -156,14 +156,14 @@ function UploadModal({ onClose, onUploaded }) {
         {/* Progress */}
         {uploading && (
           <div style={{marginBottom:12}}>
-            <div style={{height:4,borderRadius:4,background:"#E5E7EB",overflow:"hidden"}}>
+            <div style={{height:4,borderRadius:4,background:"#E8E3DA",overflow:"hidden"}}>
               <div style={{height:"100%",width:`${progress}%`,background:T.indigo,transition:"width .3s ease"}}/>
             </div>
           </div>
         )}
 
         <div style={{display:"flex",gap:10}}>
-          <button onClick={onClose} style={{flex:1,padding:"11px",background:"#F9FAFB",border:`1px solid ${T.border}`,borderRadius:10,cursor:"pointer",fontSize:13,color:T.ink3}}>Cancel</button>
+          <button onClick={onClose} style={{flex:1,padding:"11px",background:"#FAF7F2",border:`1px solid ${T.border}`,borderRadius:10,cursor:"pointer",fontSize:13,color:T.ink3}}>Cancel</button>
           <button onClick={handleUpload} disabled={!file||uploading} style={{flex:2,padding:"11px",background:T.indigo,border:"none",borderRadius:10,color:"#fff",fontWeight:700,cursor:"pointer",fontSize:13,opacity:!file||uploading?0.6:1}}>
             {uploading?"Uploading…":"Upload to Vault"}
           </button>
@@ -217,7 +217,7 @@ export default function VaultManager({ user }) {
   if (loading) return <div style={{padding:40,textAlign:"center"}}><div style={{width:24,height:24,border:`2px solid ${T.indigo}`,borderTopColor:"transparent",borderRadius:"50%",animation:"spin .7s linear infinite",display:"inline-block"}}/><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>
 
   return (
-    <div style={{fontFamily:"Inter,sans-serif"}}>
+    <div style={{fontFamily:"DM Sans,sans-serif"}}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
 
       {/* Header */}
@@ -245,7 +245,7 @@ export default function VaultManager({ user }) {
           style={{flex:1,minWidth:200,padding:"9px 14px",border:`1px solid ${T.border}`,borderRadius:10,fontSize:13,outline:"none"}}/>
         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
           {["all",...DOC_TYPES.map(d=>d.id)].map(f=>(
-            <button key={f} onClick={()=>setFilter(f)} style={{padding:"6px 12px",background:filter===f?T.indigo:"#F9FAFB",border:`1px solid ${filter===f?T.indigo:T.border}`,borderRadius:8,color:filter===f?"#fff":T.ink3,fontSize:12,fontWeight:filter===f?700:400,cursor:"pointer"}}>
+            <button key={f} onClick={()=>setFilter(f)} style={{padding:"6px 12px",background:filter===f?T.indigo:"#FAF7F2",border:`1px solid ${filter===f?T.indigo:T.border}`,borderRadius:8,color:filter===f?"#fff":T.ink3,fontSize:12,fontWeight:filter===f?700:400,cursor:"pointer"}}>
               {f==="all"?"All":DOC_TYPE_META[f]?.label||f}
             </button>
           ))}

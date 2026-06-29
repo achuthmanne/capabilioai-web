@@ -7,7 +7,7 @@ const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-server.onrende
 
 // ─── CSS injected once ─────────────────────────────────────────────
 const ONBOARDING_STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;0,900;1,700;1,800&family=JetBrains+Mono:wght@400;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');
   * { box-sizing: border-box; }
   @keyframes ob-spin { to { transform: rotate(360deg) } }
   @keyframes ob-fadeUp { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
@@ -85,12 +85,12 @@ const T = {
   // ── Glassmorphic Cosmos dark tokens ─────────────────────────────────────
   pageBg:   "#FFFFFF",
   surface:  "#FFFFFF",                     // raised surface
-  raised:   "#F8F9FA",                     // base dark
+  raised:   "#FAF7F2",                     // base dark
   cardBg:   "#FFFFFF",                     // card bg
   // text
-  text:     "#0F172A",                     // primary text
-  muted:    "#94A3B8",                     // muted
-  hint:     "#64748B",                     // ghost
+  text:     "#1A1714",                     // primary text
+  muted:    "#A8A29E",                     // muted
+  hint:     "#6B6560",                     // ghost
   // brand — dark-adapted indigo
   primary:  "#6366F1",
   primaryD: "#4F46E5",
@@ -107,9 +107,9 @@ const T = {
   border:   "rgba(0,0,0,0.05)",
   borderHi: "rgba(99,102,241,0.35)",
   // fonts
-  display:  "'Inter', sans-serif",
-  body:     "'Inter', system-ui, sans-serif",
-  mono:     "'JetBrains Mono', monospace",
+  display:  "'DM Sans', sans-serif",
+  body:     "'DM Sans', system-ui, sans-serif",
+  mono:     "'DM Mono', monospace",
   // radii
   radius:   "12px",
   radiusLg: "16px",
@@ -195,12 +195,12 @@ const FieldInput = ({ value, onChange, placeholder, type = "text", style }) => (
     value={value} onChange={onChange} type={type} placeholder={placeholder}
     style={{
       width: "100%", padding: "13px 16px", borderRadius: T.radius,
-      background: "rgba(0,0,0,0.02)", border: "1px solid #E5E7EB",
+      background: "rgba(0,0,0,0.02)", border: "1px solid #E8E3DA",
       color: T.text, fontSize: 14, fontFamily: T.body, outline: "none",
       boxSizing: "border-box", transition: "border-color 0.15s", ...style,
     }}
     onFocus={e => e.target.style.borderColor = `${T.primary}60`}
-    onBlur={e => e.target.style.borderColor = "#E5E7EB"}
+    onBlur={e => e.target.style.borderColor = "#E8E3DA"}
   />
 )
 
@@ -209,7 +209,7 @@ const FieldSelect = ({ value, onChange, children }) => (
     value={value} onChange={onChange}
     style={{
       width: "100%", padding: "13px 16px", borderRadius: T.radius,
-      background: T.raised, border: "1px solid #E5E7EB",
+      background: T.raised, border: "1px solid #E8E3DA",
       color: value ? T.text : T.muted, fontSize: 14,
       fontFamily: T.body, outline: "none", boxSizing: "border-box",
       cursor: "pointer",
@@ -224,12 +224,12 @@ const FieldTextarea = ({ value, onChange, placeholder, rows = 4 }) => (
     value={value} onChange={onChange} rows={rows} placeholder={placeholder}
     style={{
       width: "100%", padding: "13px 16px", borderRadius: T.radius,
-      background: "rgba(0,0,0,0.02)", border: "1px solid #E5E7EB",
+      background: "rgba(0,0,0,0.02)", border: "1px solid #E8E3DA",
       color: T.text, fontSize: 14, fontFamily: T.body, outline: "none",
       resize: "vertical", boxSizing: "border-box",
     }}
     onFocus={e => e.target.style.borderColor = `${T.primary}60`}
-    onBlur={e => e.target.style.borderColor = "#E5E7EB"}
+    onBlur={e => e.target.style.borderColor = "#E8E3DA"}
   />
 )
 
@@ -550,7 +550,7 @@ function RadarChart({ data, size = 260 }) {
       {data.map((_, i) => { const op = pt(i, 100); return <line key={i} x1={cx} y1={cy} x2={op.x} y2={op.y} stroke="rgba(59,130,246,0.1)" strokeWidth={1} /> })}
       <path d={pathD} fill="rgba(59,130,246,0.12)" stroke={T.primary} strokeWidth={2} />
       {pts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={3.5} fill={colors[i % colors.length]} />)}
-      {data.map((d, i) => { const p = lp(i); const lbl = String(d.label || ""); return <text key={i} x={p.x} y={p.y} textAnchor="middle" dominantBaseline="middle" fontSize={9} fontWeight={700} fill="#9CA3AF" fontFamily={T.body}>{lbl.length > 12 ? lbl.slice(0, 11) + "…" : lbl}</text> })}
+      {data.map((d, i) => { const p = lp(i); const lbl = String(d.label || ""); return <text key={i} x={p.x} y={p.y} textAnchor="middle" dominantBaseline="middle" fontSize={9} fontWeight={700} fill="#A8A29E" fontFamily={T.body}>{lbl.length > 12 ? lbl.slice(0, 11) + "…" : lbl}</text> })}
     </svg>
   )
 }
@@ -617,7 +617,7 @@ function ResultModal({ result, keyword, questions, onGoToDashboard, savingResult
                   strokeDasharray={`${(pct/100)*289} 289`} strokeLinecap="round"
                   transform="rotate(-90 55 55)" style={{ transition:"stroke-dasharray 1.5s ease" }} />
                 <text x={55} y={51} textAnchor="middle" fill={scoreColor} fontSize={26} fontWeight={900} fontFamily={T.body}>{pct}%</text>
-                <text x={55} y={68} textAnchor="middle" fill="#6B7280" fontSize={10} fontFamily={T.body}>Score</text>
+                <text x={55} y={68} textAnchor="middle" fill="#6B6560" fontSize={10} fontFamily={T.body}>Score</text>
               </svg>
             </div>
             <div style={{ flex:1 }}>
@@ -748,7 +748,7 @@ function ProfessionalResultModal({ auraResult, onGoToDashboard, savingResult }) 
                 <circle cx={55} cy={55} r={46} fill="none" stroke="rgba(0,0,0,0.03)" strokeWidth={8} />
                 <circle cx={55} cy={55} r={46} fill="none" stroke={scoreColor} strokeWidth={8} strokeDasharray={`${(total/100)*289} 289`} strokeLinecap="round" transform="rotate(-90 55 55)" style={{ transition:"stroke-dasharray 1.8s ease" }} />
                 <text x={55} y={51} textAnchor="middle" fill={scoreColor} fontSize={26} fontWeight={900} fontFamily={T.body}>{total}</text>
-                <text x={55} y={67} textAnchor="middle" fill="#6B7280" fontSize={9} fontFamily={T.body}>/100</text>
+                <text x={55} y={67} textAnchor="middle" fill="#6B6560" fontSize={9} fontFamily={T.body}>/100</text>
               </svg>
             </div>
             <div style={{ flex:1 }}>
@@ -1578,14 +1578,14 @@ export default function Onboarding({ user, onComplete, onBack }) {
         {/* Subtle grid overlay */}
         <div style={{ position:"fixed", inset:0, backgroundImage:"linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg,rgba(255,255,255,.025) 1px, transparent 1px)", backgroundSize:"40px 40px", pointerEvents:"none", zIndex:0 }}/>
 
-        <nav style={{ position:"sticky", top:0, zIndex:50, background:"rgba(255,255,255,0.97)", backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", borderBottom:`1px solid #E5E7EB`, height:64, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 32px" }}>
+        <nav style={{ position:"sticky", top:0, zIndex:50, background:"rgba(255,255,255,0.97)", backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", borderBottom:`1px solid #E8E3DA`, height:64, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 32px" }}>
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
             <div style={{ width:32, height:32, borderRadius:9, background:"linear-gradient(135deg,#6366F1,#8B5CF6)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:900, color:"#fff", boxShadow:"0 4px 14px rgba(99,102,241,.4)" }}>C</div>
-            <span style={{ fontSize:16, fontWeight:800, color:"#0F172A", letterSpacing:".05em" }}>CAPABILIO <span style={{ color:"#6366F1" }}>AI</span></span>
+            <span style={{ fontSize:16, fontWeight:800, color:"#1A1714", letterSpacing:".05em" }}>CAPABILIO <span style={{ color:"#6366F1" }}>AI</span></span>
           </div>
-          <div style={{ fontSize:10, color:"#64748B", fontFamily:T.mono, letterSpacing:".12em", textTransform:"uppercase" }}>Choose Your Path</div>
+          <div style={{ fontSize:10, color:"#6B6560", fontFamily:T.mono, letterSpacing:".12em", textTransform:"uppercase" }}>Choose Your Path</div>
           {onBack && (
-            <button onClick={onBack} style={{ display:"flex", alignItems:"center", gap:6, background:"rgba(255,255,255,.06)", border:`1px solid rgba(255,255,255,.1)`, borderRadius:8, padding:"6px 14px", cursor:"pointer", color:"#94A3B8", fontSize:12, fontFamily:T.body, transition:"all .18s" }}>← Back</button>
+            <button onClick={onBack} style={{ display:"flex", alignItems:"center", gap:6, background:"rgba(255,255,255,.06)", border:`1px solid rgba(255,255,255,.1)`, borderRadius:8, padding:"6px 14px", cursor:"pointer", color:"#A8A29E", fontSize:12, fontFamily:T.body, transition:"all .18s" }}>← Back</button>
           )}
         </nav>
 
@@ -1595,13 +1595,13 @@ export default function Onboarding({ user, onComplete, onBack }) {
               <div style={{ width:6, height:6, borderRadius:"50%", background:"#6366F1", boxShadow:"0 0 0 3px rgba(99,102,241,.25)" }}/>
               <span style={{ fontSize:11, color:"#A5B4FC", fontWeight:700, letterSpacing:".12em", fontFamily:T.mono, textTransform:"uppercase" }}>Step 1 · Choose your path</span>
             </div>
-            <h1 style={{ fontSize:"clamp(30px,4.5vw,52px)", fontWeight:900, color:"#0F172A", letterSpacing:"-.04em", lineHeight:1.05, marginBottom:14 }}>
+            <h1 style={{ fontSize:"clamp(30px,4.5vw,52px)", fontWeight:900, color:"#1A1714", letterSpacing:"-.04em", lineHeight:1.05, marginBottom:14 }}>
               One platform.{" "}
               <span style={{ background:"linear-gradient(135deg,#6366F1,#8B5CF6,#06B6D4)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", backgroundClip:"text" }}>
                 Four different journeys.
               </span>
             </h1>
-            <p style={{ fontSize:16, color:"#64748B", lineHeight:1.8, maxWidth:540, margin:"0 auto" }}>Your path sets your onboarding flow, starting ELO, available modules, and the kind of work you'll see first.</p>
+            <p style={{ fontSize:16, color:"#6B6560", lineHeight:1.8, maxWidth:540, margin:"0 auto" }}>Your path sets your onboarding flow, starting ELO, available modules, and the kind of work you'll see first.</p>
           </div>
 
           <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:16, maxWidth:920, margin:"0 auto 28px" }}>
@@ -1621,17 +1621,17 @@ export default function Onboarding({ user, onComplete, onBack }) {
                     <div style={{ display:"flex", alignItems:"flex-start", gap:14, marginBottom:16 }}>
                       <div style={{ width:48, height:48, background:pt.accentBg, border:`1px solid ${pt.accentBd}`, borderRadius:14, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, flexShrink:0 }}>{pt.icon}</div>
                       <div style={{ flex:1 }}>
-                        <div style={{ fontSize:20, fontWeight:700, color:"#0F172A", marginBottom:4 }}>{p.title}</div>
+                        <div style={{ fontSize:20, fontWeight:700, color:"#1A1714", marginBottom:4 }}>{p.title}</div>
                         <span style={{ display:"inline-flex", fontSize:10, fontWeight:700, padding:"3px 10px", borderRadius:99, background:pt.accentBg, color:pt.accent, border:`1px solid ${pt.accentBd}`, fontFamily:T.mono }}>{p.badge}</span>
                       </div>
                       <div style={{ width:30, height:30, minWidth:30, borderRadius:"50%", background:pt.accentBg, color:pt.accent, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:700, flexShrink:0 }}>→</div>
                     </div>
-                    <p style={{ fontSize:13, color:"#94A3B8", lineHeight:1.7, marginBottom:16 }}>{p.subtitle}</p>
+                    <p style={{ fontSize:13, color:"#A8A29E", lineHeight:1.7, marginBottom:16 }}>{p.subtitle}</p>
                     <div style={{ display:"grid", gap:7 }}>
                       {p.details.map((d, di) => (
                         <div key={di} style={{ display:"flex", gap:8, alignItems:"flex-start" }}>
                           <span style={{ color:pt.accent, fontWeight:800, fontSize:11, flexShrink:0, marginTop:2 }}>✦</span>
-                          <span style={{ fontSize:12, color:"#64748B", lineHeight:1.5 }}>{d}</span>
+                          <span style={{ fontSize:12, color:"#6B6560", lineHeight:1.5 }}>{d}</span>
                         </div>
                       ))}
                     </div>
@@ -1729,7 +1729,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
                 <pre style={{ marginTop:12,padding:"12px 14px",background:"rgba(0,0,0,0.35)",borderRadius:8,fontSize:13,color:"#7DD3FC",fontFamily:T.mono,overflowX:"auto",lineHeight:1.6,border:"1px solid rgba(0,0,0,0.05)",whiteSpace:"pre-wrap",wordBreak:"break-word" }}>{q.code}</pre>
               )}
             </div>
-            <div style={{ padding:"20px 28px 28px", background:"#F8F9FA" }}>
+            <div style={{ padding:"20px 28px 28px", background:"#FAF7F2" }}>
               <div style={{ fontSize:11, fontWeight:700, color:T.muted, letterSpacing:"0.10em", textTransform:"uppercase", fontFamily:T.mono, marginBottom:12 }}>
                 Choose the correct answer
               </div>
@@ -1895,7 +1895,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
                   { label:"LinkedIn", active:liOk,                        icon:"🔗", pts:7  },
                   { label:"GitHub",   active:githubFetchStatus==="done",  icon:"⌥", pts:5  },
                 ].map((s,i) => (
-                  <div key={i} style={{ padding:"10px 12px", borderRadius:T.radius, background:s.active?`${pt.accent}10`:"#F9FAFB", border:`1px solid ${s.active?pt.accent+"30":"rgba(17,24,39,0.06)"}`, textAlign:"center", transition:"all 0.2s" }}>
+                  <div key={i} style={{ padding:"10px 12px", borderRadius:T.radius, background:s.active?`${pt.accent}10`:"#FAF7F2", border:`1px solid ${s.active?pt.accent+"30":"rgba(17,24,39,0.06)"}`, textAlign:"center", transition:"all 0.2s" }}>
                     <div style={{ fontSize:18, marginBottom:4 }}>{s.icon}</div>
                     <div style={{ fontSize:11, fontWeight:700, color:s.active?pt.accent:T.muted, fontFamily:T.mono }}>{s.label}</div>
                     <div style={{ fontSize:10, color:s.active?T.green:T.muted, marginTop:2 }}>{s.active?`+${s.pts} pts`:"not added"}</div>
@@ -2013,12 +2013,12 @@ export default function Onboarding({ user, onComplete, onBack }) {
                   { type:"Async Q&A",      price:"₹500" },
                 ].map((s,i)=>(
                   <div key={i} style={{ background:"rgba(0,0,0,0.02)", border:"1px solid #F3F4F6", borderRadius:10, padding:"10px 12px" }}>
-                    <div style={{ fontSize:11, color:"#9CA3AF", fontFamily:T.mono, marginBottom:4 }}>{s.type}</div>
+                    <div style={{ fontSize:11, color:"#A8A29E", fontFamily:T.mono, marginBottom:4 }}>{s.type}</div>
                     <div style={{ fontSize:18, fontWeight:800, color:"#fff", fontFamily:T.mono }}>{s.price}</div>
                   </div>
                 ))}
               </div>
-              <div style={{ fontSize:11, color:"#64748B", marginTop:12, fontFamily:T.body }}>
+              <div style={{ fontSize:11, color:"#6B6560", marginTop:12, fontFamily:T.body }}>
                 Set your own rates. Commission: <span style={{ color:pt.accent, fontWeight:700 }}>18% (Authority) → 12% (Luminary) → 8% (Legacy)</span>. Pick your plan to lower your rate.
               </div>
             </div>
@@ -2136,17 +2136,17 @@ export default function Onboarding({ user, onComplete, onBack }) {
                 <div style={{ display:"flex", alignItems:"center", gap:0, flexWrap:"wrap" }}>
                   {["Joins college", "Campus Hub + Arena", "Professor tasks", "In-campus offer", "→ Professional path"].map((s,i,arr)=>(
                     <div key={i} style={{ display:"flex", alignItems:"center", gap:0 }}>
-                      <div style={{ padding:"6px 10px", background:"rgba(0,0,0,0.03)", border:"1px solid rgba(0,0,0,0.05)", borderRadius:8, fontSize:11, color:"#D1D5DB", fontFamily:T.body, whiteSpace:"nowrap" }}>{s}</div>
-                      {i < arr.length-1 && <div style={{ fontSize:12, color:"#94A3B8", margin:"0 4px" }}>→</div>}
+                      <div style={{ padding:"6px 10px", background:"rgba(0,0,0,0.03)", border:"1px solid rgba(0,0,0,0.05)", borderRadius:8, fontSize:11, color:"#D6D0C8", fontFamily:T.body, whiteSpace:"nowrap" }}>{s}</div>
+                      {i < arr.length-1 && <div style={{ fontSize:12, color:"#A8A29E", margin:"0 4px" }}>→</div>}
                     </div>
                   ))}
                 </div>
-                <div style={{ fontSize:11, color:"#64748B", marginTop:8, fontFamily:T.body }}>No manual transitions needed. Capabilio handles it automatically.</div>
+                <div style={{ fontSize:11, color:"#6B6560", marginTop:8, fontFamily:T.body }}>No manual transitions needed. Capabilio handles it automatically.</div>
               </div>
             ) : (
               <div style={{ background:"#FFFFFF", borderRadius:12, padding:"14px 18px", marginBottom:22 }}>
                 <div style={{ fontSize:10, fontWeight:800, color:pt.accent, letterSpacing:"0.12em", textTransform:"uppercase", fontFamily:T.mono, marginBottom:8 }}>🔒 Anonymous Rating Architecture</div>
-                <div style={{ fontSize:12, color:"#D1D5DB", lineHeight:1.7, fontFamily:T.body }}>Triggered at Day 30 and exit. Reviewer identity stripped before storage. Company sees aggregated data <strong style={{color:"#fff"}}>only when 5+ ratings exist</strong> — prevents reverse-engineering. 6 dimensions: Culture, Growth, Work-Life, Management, Compensation, Inclusion.</div>
+                <div style={{ fontSize:12, color:"#D6D0C8", lineHeight:1.7, fontFamily:T.body }}>Triggered at Day 30 and exit. Reviewer identity stripped before storage. Company sees aggregated data <strong style={{color:"#fff"}}>only when 5+ ratings exist</strong> — prevents reverse-engineering. 6 dimensions: Culture, Growth, Work-Life, Management, Compensation, Inclusion.</div>
               </div>
             )}
 

@@ -1252,7 +1252,7 @@ function UserTrendChart({ rs, chartType }) {
             return (
               <g key={i}>
                 <rect x={x} y={110 - bh} width={Math.max(8, slot - 12)} height={bh} fill="#2563EB" rx={3} opacity={0.85} />
-                <text x={x + Math.max(8, slot - 12) / 2} y={124} textAnchor="middle" fontSize={8} fill="#94A3B8">{p.x.slice(0, 8)}</text>
+                <text x={x + Math.max(8, slot - 12) / 2} y={124} textAnchor="middle" fontSize={8} fill="#A8A29E">{p.x.slice(0, 8)}</text>
                 <text x={x + Math.max(8, slot - 12) / 2} y={106 - bh} textAnchor="middle" fontSize={7.5} fontWeight="700" fill="#1E40AF">{formatMetric(p.y, yLabel)}</text>
               </g>
             )
@@ -1269,19 +1269,19 @@ function UserTrendChart({ rs, chartType }) {
                   <g key={i}>
                     <circle cx={x} cy={y} r={3.5} fill="#2563EB" />
                     <text x={x} y={y - 7} textAnchor="middle" fontSize={7.5} fontWeight="700" fill="#1E40AF">{formatMetric(pts[i].y, yLabel)}</text>
-                    <text x={x} y={124} textAnchor="middle" fontSize={8} fill="#94A3B8">{pts[i].x.slice(0, 8)}</text>
+                    <text x={x} y={124} textAnchor="middle" fontSize={8} fill="#A8A29E">{pts[i].x.slice(0, 8)}</text>
                   </g>
                 ))}
               </>
             )
           })()
       }
-      <line x1={10} y1={110} x2={W - 5} y2={110} stroke="#E5E7EB" strokeWidth={1} />
+      <line x1={10} y1={110} x2={W - 5} y2={110} stroke="#E8E3DA" strokeWidth={1} />
     </svg>
   )
 }
 
-const DONUT_COLORS = ["#2563EB", "#D97706", "#16A34A", "#9333EA", "#DC2626", "#0891B2", "#CA8A04", "#64748B"]
+const DONUT_COLORS = ["#2563EB", "#D97706", "#16A34A", "#9333EA", "#DC2626", "#0891B2", "#CA8A04", "#6B6560"]
 
 function UserDonut({ rs }) {
   const xy = resultToXY(rs)
@@ -1321,8 +1321,8 @@ function UserDonut({ rs }) {
 
 function EmptyChartState({ label }) {
   return (
-    <div style={{ minHeight: 100, display: "flex", alignItems: "center", justifyContent: "center", border: "1.5px dashed #D1D5DB", borderRadius: 8, padding: 14 }}>
-      <span style={{ fontSize: 10.5, color: "#9CA3AF", textAlign: "center", lineHeight: 1.5 }}>{label}</span>
+    <div style={{ minHeight: 100, display: "flex", alignItems: "center", justifyContent: "center", border: "1.5px dashed #D6D0C8", borderRadius: 8, padding: 14 }}>
+      <span style={{ fontSize: 10.5, color: "#A8A29E", textAlign: "center", lineHeight: 1.5 }}>{label}</span>
     </div>
   )
 }
@@ -1479,7 +1479,7 @@ function DashboardWorkstation({ mission, code, onCodeChange }) {
     setValidating(false)
   }
 
-  const labelStyle = { fontSize: 9, fontWeight: 800, color: "#94A3B8", letterSpacing: 0.7, textTransform: "uppercase", marginBottom: 6 }
+  const labelStyle = { fontSize: 9, fontWeight: 800, color: "#A8A29E", letterSpacing: 0.7, textTransform: "uppercase", marginBottom: 6 }
   const cardStyle  = { background: "#ffffff", borderRadius: 11, padding: "12px 14px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "1px solid #E2DED7" }
   const sectionHdr = (label, icon) => (
     <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10 }}>
@@ -1526,8 +1526,8 @@ function DashboardWorkstation({ mission, code, onCodeChange }) {
             <span key={slot} style={{
               fontSize: 9, fontWeight: 700, padding: "3px 9px", borderRadius: 99,
               background: published[slot] ? "#DCFCE7" : "#F3F4F6",
-              color: published[slot] ? "#15803D" : "#9CA3AF",
-              border: `1px solid ${published[slot] ? "#BBF7D0" : "#E5E7EB"}`,
+              color: published[slot] ? "#15803D" : "#A8A29E",
+              border: `1px solid ${published[slot] ? "#BBF7D0" : "#E8E3DA"}`,
             }}>{published[slot] ? "✓" : "○"} {slot.toUpperCase()}</span>
           ))}
         </div>
@@ -1545,16 +1545,16 @@ function DashboardWorkstation({ mission, code, onCodeChange }) {
           <div style={{ width: 250, flexShrink: 0, display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={cardStyle}>
               {sectionHdr("Live Schema", "📋")}
-              {!schemaInfo && <div style={{ fontSize: 10, color: "#9CA3AF" }}>Loading database…</div>}
+              {!schemaInfo && <div style={{ fontSize: 10, color: "#A8A29E" }}>Loading database…</div>}
               {(schemaInfo || []).map(t => (
                 <div key={t.table} style={{ marginBottom: 10 }}>
                   <div style={{ fontSize: 10, fontWeight: 800, color: "#1D4ED8", marginBottom: 3, fontFamily: "monospace" }}>
-                    {t.table} <span style={{ color: "#9CA3AF", fontWeight: 400 }}>· {t.rowCount.toLocaleString()} rows</span>
+                    {t.table} <span style={{ color: "#A8A29E", fontWeight: 400 }}>· {t.rowCount.toLocaleString()} rows</span>
                   </div>
                   {t.columns.map(c => (
-                    <div key={c.name} style={{ fontSize: 10, paddingLeft: 8, color: "#94A3B8", display: "flex", justifyContent: "space-between" }}>
+                    <div key={c.name} style={{ fontSize: 10, paddingLeft: 8, color: "#A8A29E", display: "flex", justifyContent: "space-between" }}>
                       <span style={{ fontFamily: "monospace", color: "#475569" }}>{c.name}</span>
-                      <span style={{ fontSize: 9, color: "#9CA3AF" }}>{c.type}</span>
+                      <span style={{ fontSize: 9, color: "#A8A29E" }}>{c.type}</span>
                     </div>
                   ))}
                 </div>
@@ -1569,7 +1569,7 @@ function DashboardWorkstation({ mission, code, onCodeChange }) {
                     <span style={{ fontSize: 10, color: q.fixed ? "#15803D" : "#DC2626", lineHeight: 1.4 }}>{q.label}</span>
                   </div>
                 ))}
-                {!quality && <div style={{ fontSize: 10, color: "#9CA3AF" }}>Profiling data…</div>}
+                {!quality && <div style={{ fontSize: 10, color: "#A8A29E" }}>Profiling data…</div>}
               </div>
             </div>
           </div>
@@ -1604,7 +1604,7 @@ function DashboardWorkstation({ mission, code, onCodeChange }) {
                   </tbody>
                 </table>
               )}
-              {!preview && <div style={{ fontSize: 11, color: "#9CA3AF", padding: 10 }}>Loading rows…</div>}
+              {!preview && <div style={{ fontSize: 11, color: "#A8A29E", padding: 10 }}>Loading rows…</div>}
             </div>
             <div style={{ padding: "6px 10px", borderTop: "1px solid #E2DED7", fontSize: 9, color: "#9A948E", background: "#F1EFE9" }}>
               This is a real SQLite database — query it from the Build tab. Quality issues above were computed from the actual rows.
@@ -1617,7 +1617,7 @@ function DashboardWorkstation({ mission, code, onCodeChange }) {
       {wsTab === "build" && (
         <div style={{ flex: 1, display: "flex", gap: 0, overflow: "hidden", minHeight: 0 }}>
           {/* Left: SQL editor + live results */}
-          <div style={{ flex: 1.2, display: "flex", flexDirection: "column", borderRight: "1px solid #E5E7EB", overflow: "hidden" }}>
+          <div style={{ flex: 1.2, display: "flex", flexDirection: "column", borderRight: "1px solid #E8E3DA", overflow: "hidden" }}>
             <div style={{ padding: "7px 12px", background: "#F8F7F4", borderBottom: "1px solid #E2DED7", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
               <div style={{ display: "flex", gap: 4 }}>
                 {["#EF4444", "#F59E0B", "#22C55E"].map((c, i) => <div key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: c }} />)}
@@ -1659,7 +1659,7 @@ function DashboardWorkstation({ mission, code, onCodeChange }) {
                   <div style={{ maxHeight: 160, overflow: "auto" }}>
                     <table style={{ borderCollapse: "collapse", fontSize: 10.5, width: "100%" }}>
                       <thead>
-                        <tr style={{ background: "#F1F5F9" }}>
+                        <tr style={{ background: "#F2EDE4" }}>
                           {rs.columns.map(c => <th key={c} style={{ padding: "4px 9px", textAlign: "left", fontWeight: 700, color: "#475569", whiteSpace: "nowrap" }}>{c}</th>)}
                         </tr>
                       </thead>
@@ -1702,12 +1702,12 @@ function DashboardWorkstation({ mission, code, onCodeChange }) {
                   {pyOut.stdout && <pre style={{ margin: 0, fontFamily: "monospace", fontSize: 10.5, color: T.ink, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{pyOut.stdout}</pre>}
                   {pyOut.error && <pre style={{ margin: "6px 0 0", fontFamily: "monospace", fontSize: 10.5, color: "#DC2626", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{pyOut.error}</pre>}
                   {(pyOut.images || []).map((img, i) => (
-                    <img key={i} src={`data:image/png;base64,${img}`} alt={`figure ${i + 1}`} style={{ maxWidth: "100%", marginTop: 8, border: "1px solid #E5E7EB", borderRadius: 6 }} />
+                    <img key={i} src={`data:image/png;base64,${img}`} alt={`figure ${i + 1}`} style={{ maxWidth: "100%", marginTop: 8, border: "1px solid #E8E3DA", borderRadius: 6 }} />
                   ))}
                 </div>
               )}
               {!pyOut && !pyRunning && (
-                <div style={{ padding: "10px 12px", fontSize: 10, color: "#9CA3AF", lineHeight: 1.6 }}>
+                <div style={{ padding: "10px 12px", fontSize: 10, color: "#A8A29E", lineHeight: 1.6 }}>
                   Optional deep-dive: clean the data and chart it with real pandas + matplotlib. Figures render here as images.
                 </div>
               )}
@@ -1756,7 +1756,7 @@ function DashboardWorkstation({ mission, code, onCodeChange }) {
                   <span style={{ fontSize: 12, flexShrink: 0 }}>{v.passed ? "✅" : "❌"}</span>
                   <div style={{ fontSize: 11, lineHeight: 1.5 }}>
                     <strong style={{ color: "#1A1714" }}>{v.input}</strong>
-                    <span style={{ color: "#94A3B8" }}> — expected ≈ {v.expected} · {v.actual}</span>
+                    <span style={{ color: "#A8A29E" }}> — expected ≈ {v.expected} · {v.actual}</span>
                   </div>
                 </div>
               ))}
@@ -1769,7 +1769,7 @@ function DashboardWorkstation({ mission, code, onCodeChange }) {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <div>
                   <div style={labelStyle}>📈 Trend — from your published TREND query</div>
-                  {published.trend && <div style={{ fontSize: 10, color: "#94A3B8", fontFamily: "monospace" }}>{published.trend.columns.join(" · ")}</div>}
+                  {published.trend && <div style={{ fontSize: 10, color: "#A8A29E", fontFamily: "monospace" }}>{published.trend.columns.join(" · ")}</div>}
                 </div>
                 <div style={{ display: "flex", gap: 4 }}>
                   {["bar", "line"].map(ct => (
@@ -1814,7 +1814,7 @@ function DashboardWorkstation({ mission, code, onCodeChange }) {
                   <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 5 }}>
                     <span style={{ fontSize: 13 }}>{field.icon}</span>
                     <span style={{ fontSize: 10, fontWeight: 800, color: "#1A1714" }}>{field.label}</span>
-                    <div style={{ marginLeft: "auto", fontSize: 8, color: "#9CA3AF", maxWidth: 140, textAlign: "right", lineHeight: 1.3 }}>{field.hint}</div>
+                    <div style={{ marginLeft: "auto", fontSize: 8, color: "#A8A29E", maxWidth: 140, textAlign: "right", lineHeight: 1.3 }}>{field.hint}</div>
                   </div>
                   <textarea
                     value={insights[field.key] || ""}
@@ -1822,7 +1822,7 @@ function DashboardWorkstation({ mission, code, onCodeChange }) {
                     placeholder={`Write your ${field.label.toLowerCase()} insight based on your actual results…`}
                     style={{ width: "100%", minHeight: 64, border: "1px solid #E2DED7", borderRadius: 6, padding: "6px 8px", fontSize: 11, fontFamily: "inherit", resize: "vertical", outline: "none", boxSizing: "border-box", color: "#1A1714", lineHeight: 1.65, background: "#ffffff" }}
                     onFocus={e => e.target.style.borderColor = "#2563EB"}
-                    onBlur={e => e.target.style.borderColor = "#E5E7EB"}
+                    onBlur={e => e.target.style.borderColor = "#E8E3DA"}
                   />
                 </div>
               ))}
@@ -2077,7 +2077,7 @@ function SecurityConsole({ mission, code, onCodeChange }) {
             <div style={{ fontSize:10, color:T.ink4, marginBottom:8, letterSpacing:1 }}>ALERT QUEUE — {SECURITY_LOG_SCENARIOS.length} EVENTS</div>
             {SECURITY_LOG_SCENARIOS.map((alert, i) => (
               <div key={i} onClick={() => setAlert(alert)}
-                style={{ background:selectedAlert===alert?"#FEF2F2":T.bg, border:`1px solid ${selectedAlert===alert?"#DC262640":T.border}`, borderLeft:`3px solid ${SEV_COLORS[alert.severity]||"#94A3B8"}`, borderRadius:8, padding:"9px 12px", marginBottom:7, cursor:"pointer", transition:"all .12s" }}>
+                style={{ background:selectedAlert===alert?"#FEF2F2":T.bg, border:`1px solid ${selectedAlert===alert?"#DC262640":T.border}`, borderLeft:`3px solid ${SEV_COLORS[alert.severity]||"#A8A29E"}`, borderRadius:8, padding:"9px 12px", marginBottom:7, cursor:"pointer", transition:"all .12s" }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:4 }}>
                   <span style={{ fontSize:11, fontWeight:700, color:SEV_COLORS[alert.severity], background:SEV_COLORS[alert.severity]+"15", padding:"1px 7px", borderRadius:99 }}>{alert.severity}</span>
                   <span style={{ fontSize:10, color:T.ink4 }}>{alert.time}</span>
@@ -2118,13 +2118,13 @@ function SecurityConsole({ mission, code, onCodeChange }) {
           </div>
           <div style={{ flex:1, background:"#0A0A10", borderRadius:8, padding:12, overflow:"auto" }}>
             {results.length === 0
-              ? <div style={{ color:"#94A3B8", fontSize:11 }}>Run a query to see results. Try: leave empty and press Run to search all events.</div>
+              ? <div style={{ color:"#A8A29E", fontSize:11 }}>Run a query to see results. Try: leave empty and press Run to search all events.</div>
               : results.map((r,i) => (
                   <div key={i} style={{ borderBottom:"1px solid #1F2937", paddingBottom:8, marginBottom:8 }}>
-                    <span style={{ color:SEV_COLORS[r.severity]||"#94A3B8", fontWeight:700, fontSize:10, marginRight:8 }}>{r.severity}</span>
+                    <span style={{ color:SEV_COLORS[r.severity]||"#A8A29E", fontWeight:700, fontSize:10, marginRight:8 }}>{r.severity}</span>
                     <span style={{ color:"#22D3EE", fontSize:11 }}>{r.time}</span>
                     <span style={{ color:"#F59E0B", fontSize:11, margin:"0 8px" }}>{r.src} → {r.dst}</span>
-                    <span style={{ color:"#D1D5DB", fontSize:11 }}>{r.event}: {r.detail}</span>
+                    <span style={{ color:"#D6D0C8", fontSize:11 }}>{r.event}: {r.detail}</span>
                   </div>
                 ))
             }
@@ -2137,7 +2137,7 @@ function SecurityConsole({ mission, code, onCodeChange }) {
         <div style={{ flex:1, display:"flex", flexDirection:"column", padding:16 }}>
           <div style={{ fontSize:10, color:T.ink4, marginBottom:8, letterSpacing:1 }}>INCIDENT REPORT CANVAS</div>
           <textarea value={notes} onChange={e=>{setNotes(e.target.value);onCodeChange(e.target.value)}}
-            style={{ flex:1, padding:14, background:"#0A0A10", color:"#E5E7EB", fontSize:12, fontFamily:"'DM Mono',monospace", border:`1px solid ${T.border}`, borderRadius:8, resize:"none", outline:"none", lineHeight:1.7 }}
+            style={{ flex:1, padding:14, background:"#0A0A10", color:"#E8E3DA", fontSize:12, fontFamily:"'DM Mono',monospace", border:`1px solid ${T.border}`, borderRadius:8, resize:"none", outline:"none", lineHeight:1.7 }}
             placeholder={`## Incident Report\n\n**Summary:** \n\n**Attack Type:** \n\n**Affected Systems:** \n\n**Timeline:**\n- HH:MM — \n\n**Indicators of Compromise (IoC):**\n- IP: \n- Domain: \n\n**Recommended Actions:**\n1. `} />
         </div>
       )}
@@ -2203,7 +2203,7 @@ function SOCConsole({ mission, code, onCodeChange }) {
           </button>
         ))}
         <div style={{ flex:1 }} />
-        <div style={{ padding:"9px 16px", fontSize:10, color:"#94A3B8" }}>{alerts.filter(a=>a.assigned).length}/{alerts.length} assigned</div>
+        <div style={{ padding:"9px 16px", fontSize:10, color:"#A8A29E" }}>{alerts.filter(a=>a.assigned).length}/{alerts.length} assigned</div>
       </div>
 
       {tab==="queue" && (
@@ -2236,7 +2236,7 @@ function SOCConsole({ mission, code, onCodeChange }) {
                 {playbook.map((step,i)=>(
                   <div key={i} onClick={()=>checkStep(i)}
                     style={{ display:"flex", gap:12, alignItems:"flex-start", padding:"9px 12px", background:checkedSteps[i]?"#F0FDF4":T.bg, border:`1px solid ${checkedSteps[i]?"#05966940":T.border}`, borderRadius:8, marginBottom:8, cursor:"pointer" }}>
-                    <div style={{ width:20, height:20, borderRadius:4, border:`2px solid ${checkedSteps[i]?"#059669":"#D1D5DB"}`, background:checkedSteps[i]?"#059669":"transparent", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:checkedSteps[i]?"#ffffff":"transparent", fontSize:11 }}>
+                    <div style={{ width:20, height:20, borderRadius:4, border:`2px solid ${checkedSteps[i]?"#059669":"#D6D0C8"}`, background:checkedSteps[i]?"#059669":"transparent", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:checkedSteps[i]?"#ffffff":"transparent", fontSize:11 }}>
                       {checkedSteps[i]?"✓":""}
                     </div>
                     <span style={{ fontSize:12, color: checkedSteps[i]?T.ink3:T.ink, textDecoration: checkedSteps[i]?"line-through":"none", lineHeight:1.5 }}>
@@ -2254,17 +2254,17 @@ function SOCConsole({ mission, code, onCodeChange }) {
           <div style={{ fontSize:10, color:T.ink4, marginBottom:8, letterSpacing:1 }}>INCIDENT TIMELINE</div>
           <div style={{ flex:1, background:"#0A0A10", borderRadius:8, padding:12, overflow:"auto" }}>
             {timeline.length===0
-              ? <div style={{ color:"#94A3B8", fontSize:11 }}>Timeline entries appear as you work the incident.</div>
+              ? <div style={{ color:"#A8A29E", fontSize:11 }}>Timeline entries appear as you work the incident.</div>
               : timeline.map((e,i)=>(
                   <div key={i} style={{ borderBottom:"1px solid #1F2937", paddingBottom:6, marginBottom:6 }}>
                     <span style={{ color:"#22D3EE", fontSize:10 }}>{e.time}</span>
-                    <span style={{ color:"#D1D5DB", fontSize:11, marginLeft:10 }}>{e.action}</span>
+                    <span style={{ color:"#D6D0C8", fontSize:11, marginLeft:10 }}>{e.action}</span>
                   </div>
                 ))
             }
           </div>
           <textarea value={notes} onChange={e=>{setNotes(e.target.value);onCodeChange(e.target.value)}}
-            style={{ marginTop:10, height:100, padding:10, background:"#0A0A10", color:"#E5E7EB", fontSize:11, fontFamily:"'DM Mono',monospace", border:`1px solid ${T.border}`, borderRadius:8, resize:"none", outline:"none" }}
+            style={{ marginTop:10, height:100, padding:10, background:"#0A0A10", color:"#E8E3DA", fontSize:11, fontFamily:"'DM Mono',monospace", border:`1px solid ${T.border}`, borderRadius:8, resize:"none", outline:"none" }}
             placeholder="Add notes to the incident report..." />
         </div>
       )}
@@ -2348,13 +2348,13 @@ function QATestLab({ mission, code, onCodeChange }) {
         {tab==="coverage" && (
           <div style={{ flex:1, overflow:"auto", padding:14, background:T.code, color:T.ink, fontFamily:"'DM Mono',monospace", fontSize:11 }}>
             {testResults.length===0
-              ? <div style={{ color:"#94A3B8" }}>Run tests to see coverage results.</div>
+              ? <div style={{ color:"#A8A29E" }}>Run tests to see coverage results.</div>
               : <>
                   <div style={{ marginBottom:12 }}>{runLog}</div>
                   {testResults.map((r,i) => (
                     <div key={i} style={{ display:"flex", gap:8, marginBottom:6 }}>
                       <span style={{ color: r.status==="PASS"?"#22C55E":"#EF4444", fontWeight:700 }}>{r.status==="PASS"?"✓":"✗"}</span>
-                      <span style={{ color:"#D1D5DB" }}>{r.name}</span>
+                      <span style={{ color:"#D6D0C8" }}>{r.name}</span>
                       {r.status==="FAIL" && <span style={{ color:"#F59E0B", fontSize:10 }}>— {r.note}</span>}
                     </div>
                   ))}
@@ -2413,7 +2413,7 @@ function BusinessAnalysisBoard({ mission, code, onCodeChange }) {
           value={content}
           onChange={e=>{setContent(e.target.value);onCodeChange(e.target.value)}}
           placeholder={tab==="requirements" ? "Write your user story, acceptance criteria, and definition of done..." : tab==="metrics" ? "Define your KPIs, metrics, and SQL queries..." : "Map the business process, RACI, and pain points..."}
-          style={{ flex:1, padding:20, background:"#F8F9FA", color:T.ink, fontSize:13, fontFamily:"'DM Sans',sans-serif", border:"none", resize:"none", outline:"none", lineHeight:1.8 }}
+          style={{ flex:1, padding:20, background:"#FAF7F2", color:T.ink, fontSize:13, fontFamily:"'DM Sans',sans-serif", border:"none", resize:"none", outline:"none", lineHeight:1.8 }}
         />
         {/* Preview panel */}
         <div style={{ width:"40%", borderLeft:`1px solid ${T.border}`, display:"flex", flexDirection:"column" }}>
@@ -2533,7 +2533,7 @@ function SREConsole({ mission, code, onCodeChange }) {
 
       {tab==="terminal" && (
         <div style={{ flex:1, display:"flex", flexDirection:"column", background:"#0A0A14" }}>
-          <div style={{ flex:1, overflow:"auto", padding:"14px 16px", fontFamily:"'DM Mono',monospace", fontSize:11, color:"#E5E7EB", whiteSpace:"pre-wrap", lineHeight:1.6 }}>
+          <div style={{ flex:1, overflow:"auto", padding:"14px 16px", fontFamily:"'DM Mono',monospace", fontSize:11, color:"#E8E3DA", whiteSpace:"pre-wrap", lineHeight:1.6 }}>
             {termOutput}
           </div>
           <div style={{ display:"flex", gap:8, padding:"10px 14px", borderTop:"1px solid #1F2937" }}>
@@ -2541,7 +2541,7 @@ function SREConsole({ mission, code, onCodeChange }) {
             <input value={input} onChange={e=>setInput(e.target.value)}
               onKeyDown={e=>e.key==="Enter"&&runCommand(input)}
               placeholder="kubectl get pods"
-              style={{ flex:1, background:"transparent", border:"none", color:"#E5E7EB", fontSize:12, fontFamily:"'DM Mono',monospace", outline:"none" }} />
+              style={{ flex:1, background:"transparent", border:"none", color:"#E8E3DA", fontSize:12, fontFamily:"'DM Mono',monospace", outline:"none" }} />
             <button onClick={()=>runCommand(input)} style={{ padding:"4px 12px", background:"#6366F1", border:"none", borderRadius:5, color:"#ffffff", fontSize:11, cursor:"pointer" }}>Run</button>
           </div>
         </div>
@@ -2551,7 +2551,7 @@ function SREConsole({ mission, code, onCodeChange }) {
         <div style={{ flex:1, display:"flex", flexDirection:"column", padding:16 }}>
           <div style={{ fontSize:10, color:T.ink4, marginBottom:8, letterSpacing:1 }}>SLO DEFINITION & POSTMORTEM</div>
           <textarea value={sloText} onChange={e=>{setSloText(e.target.value);onCodeChange(e.target.value)}}
-            style={{ flex:1, padding:14, background:"#F8F9FA", color:T.ink, fontSize:12, fontFamily:"'DM Mono',monospace", border:`1px solid ${T.border}`, borderRadius:8, resize:"none", outline:"none", lineHeight:1.7 }}
+            style={{ flex:1, padding:14, background:"#FAF7F2", color:T.ink, fontSize:12, fontFamily:"'DM Mono',monospace", border:`1px solid ${T.border}`, borderRadius:8, resize:"none", outline:"none", lineHeight:1.7 }}
             placeholder={`## SLO Definition\n\n**Service:** payment-service\n**SLI:** Availability = successful_requests / total_requests\n**SLO:** 99.9% availability over 30-day rolling window\n**Error Budget:** 43.8 minutes/month\n\n## Postmortem\n\n**Incident:** payment-service CrashLoopBackOff\n**Duration:** 45 min  \n**Impact:** 100% of payment requests failed\n**Root Cause:** OOMKilled — memory limit 128Mi too low for DB retry loop\n\n## Action Items\n- [ ] Increase memory limit to 512Mi\n- [ ] Add circuit breaker for DB retries\n- [ ] Set up OOM alert at 80% memory`} />
         </div>
       )}
@@ -2633,7 +2633,7 @@ run_pipeline()
     { id:"validate",  x:180, y:80,  label:"Validate",   color:"#D97706", icon:"✓" },
     { id:"transform", x:320, y:80,  label:"Transform",  color:"#7C3AED", icon:"⚙️" },
     { id:"load",      x:460, y:80,  label:"Load",       color:"#059669", icon:"📤" },
-    { id:"notify",    x:600, y:80,  label:"Notify",     color:"#94A3B8", icon:"🔔" },
+    { id:"notify",    x:600, y:80,  label:"Notify",     color:"#A8A29E", icon:"🔔" },
   ]
 
   return (
@@ -2642,7 +2642,7 @@ run_pipeline()
         {["code","dag","schema"].map(t=>(
           <button key={t} onClick={()=>setTab(t)} style={{ padding:"9px 14px", background:"none", border:"none", borderBottom:`2px solid ${tab===t?T.indigo:"transparent"}`, color:tab===t?T.indigo:T.ink3, fontSize:11, fontWeight:tab===t?800:400, cursor:"pointer", textTransform:"uppercase", letterSpacing:1 }}>{t.toUpperCase()}</button>
         ))}
-        <button onClick={runPipeline} disabled={runningPipe} style={{ marginLeft:"auto", marginRight:10, padding:"4px 14px", borderRadius:6, border:"none", background: runningPipe ? "#9CA3AF" : "#059669", color:"#ffffff", fontSize:11, fontWeight:700, cursor: runningPipe ? "wait" : "pointer" }}>
+        <button onClick={runPipeline} disabled={runningPipe} style={{ marginLeft:"auto", marginRight:10, padding:"4px 14px", borderRadius:6, border:"none", background: runningPipe ? "#A8A29E" : "#059669", color:"#ffffff", fontSize:11, fontWeight:700, cursor: runningPipe ? "wait" : "pointer" }}>
           {runningPipe ? (runStatus || "⟳ Running…") : "▶ Run Pipeline"}
         </button>
       </div>
@@ -2673,15 +2673,15 @@ run_pipeline()
             <svg style={{ position:"absolute", inset:0, width:"100%", height:"100%", pointerEvents:"none" }}>
               {DAG_NODES.slice(0,-1).map((n,i) => {
                 const next = DAG_NODES[i+1]
-                return <line key={i} x1={n.x+54} y1={n.y+24} x2={next.x} y2={next.y+24} stroke="#D1D5DB" strokeWidth="2" markerEnd="url(#arrow)" />
+                return <line key={i} x1={n.x+54} y1={n.y+24} x2={next.x} y2={next.y+24} stroke="#D6D0C8" strokeWidth="2" markerEnd="url(#arrow)" />
               })}
-              <defs><marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#D1D5DB"/></marker></defs>
+              <defs><marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#D6D0C8"/></marker></defs>
             </svg>
             {DAG_NODES.map(n=>(
               <div key={n.id} style={{ position:"absolute", left:n.x, top:n.y, width:108, padding:"10px 8px", background:T.bg, border:`2px solid ${n.color}40`, borderRadius:10, textAlign:"center", boxShadow:`0 2px 8px ${n.color}20` }}>
                 <div style={{ fontSize:18, marginBottom:3 }}>{n.icon}</div>
                 <div style={{ fontSize:11, fontWeight:800, color:n.color }}>{n.label}</div>
-                <div style={{ fontSize:9, color: runOut ? (pipeHealthy ? "#059669" : "#DC2626") : "#9CA3AF", fontWeight:600 }}>
+                <div style={{ fontSize:9, color: runOut ? (pipeHealthy ? "#059669" : "#DC2626") : "#A8A29E", fontWeight:600 }}>
                   {runOut ? (pipeHealthy ? "✓ passed" : "✗ failed") : "○ not run"}
                 </div>
               </div>
@@ -2718,7 +2718,7 @@ run_pipeline()
 // ─────────────────────────────────────────────────────────────────────────────
 const SD_LAYERS = [
   {
-    id: "client", label: "Client", color: "#64748B", bg: "#F8F7F5", border: "#CBD5E1",
+    id: "client", label: "Client", color: "#6B6560", bg: "#F8F7F5", border: "#D6D0C8",
     items: [
       { id:"client",  label:"Client",     shortLabel:"Client",  icon:"💻" },
       { id:"mobile",  label:"Mobile App", shortLabel:"Mobile",  icon:"📱" },
@@ -2865,7 +2865,7 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
   }
 
   const rubricScore = SD_RUBRIC.reduce((s, r) => s + (rubricChecks[r.id] ? r.weight : 0), 0)
-  const inp = { padding:"4px 7px", border:"1px solid #E5E7EB", borderRadius:5, fontSize:11, fontFamily:"inherit", outline:"none", background:"#ffffff", color:T.ink, width:"100%", boxSizing:"border-box" }
+  const inp = { padding:"4px 7px", border:"1px solid #E8E3DA", borderRadius:5, fontSize:11, fontFamily:"inherit", outline:"none", background:"#ffffff", color:T.ink, width:"100%", boxSizing:"border-box" }
   const METHOD_C = { GET:"#16A34A", POST:"#2563EB", PUT:"#D97706", PATCH:"#7C3AED", DELETE:"#DC2626" }
 
   return (
@@ -2876,10 +2876,10 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
       `}</style>
 
       {/* ═══════════════ LEFT — prompt tabs ═══════════════ */}
-      <div style={{ width:256, flexShrink:0, borderRight:"1px solid #E2E8F0", display:"flex", flexDirection:"column", background:T.bg, overflow:"hidden" }}>
-        <div style={{ display:"flex", borderBottom:"1px solid #E2E8F0", background:"#FAFAFA", flexShrink:0 }}>
+      <div style={{ width:256, flexShrink:0, borderRight:"1px solid #E8E3DA", display:"flex", flexDirection:"column", background:T.bg, overflow:"hidden" }}>
+        <div style={{ display:"flex", borderBottom:"1px solid #E8E3DA", background:"#FAFAFA", flexShrink:0 }}>
           {[{ id:"req",deliver:false, icon:"📋", label:"Prompt" },{ id:"deliver",deliver:true, icon:"📦", label:"Deliver" },{ id:"rubric",deliver:false, icon:"✅", label:"Rubric" }].map(t => (
-            <button key={t.id} onClick={() => setLeftTab(t.id)} style={{ flex:1, padding:"9px 0", border:"none", background:"none", borderBottom: leftTab===t.id ? "2px solid #6D40A0" : "2px solid transparent", fontSize:10, fontWeight: leftTab===t.id ? 800 : 500, color: leftTab===t.id ? "#6D40A0" : "#94A3B8", cursor:"pointer", fontFamily:"inherit" }}>
+            <button key={t.id} onClick={() => setLeftTab(t.id)} style={{ flex:1, padding:"9px 0", border:"none", background:"none", borderBottom: leftTab===t.id ? "2px solid #6D40A0" : "2px solid transparent", fontSize:10, fontWeight: leftTab===t.id ? 800 : 500, color: leftTab===t.id ? "#6D40A0" : "#A8A29E", cursor:"pointer", fontFamily:"inherit" }}>
               {t.icon} {t.label}
             </button>
           ))}
@@ -2892,7 +2892,7 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
               <div style={{ fontSize:13, fontWeight:800, color:T.ink, marginBottom:8, lineHeight:1.3 }}>{mission?.title || "System Design Challenge"}</div>
               <p style={{ margin:"0 0 12px", fontSize:12, color:"#4B5563", lineHeight:1.65 }}>{mission?.scenario || mission?.description || "Design a scalable system meeting the requirements below."}</p>
 
-              <div style={{ fontSize:9, fontWeight:800, color:"#9CA3AF", letterSpacing:0.8, textTransform:"uppercase", marginBottom:6 }}>Steps</div>
+              <div style={{ fontSize:9, fontWeight:800, color:"#A8A29E", letterSpacing:0.8, textTransform:"uppercase", marginBottom:6 }}>Steps</div>
               {(mission?.steps || ["Define requirements and capacity", "Draw architecture diagram", "Spec API endpoints", "Define data schema", "Calculate capacity", "Document trade-offs"]).map((s, i) => (
                 <div key={i} style={{ display:"flex", gap:8, alignItems:"flex-start", marginBottom:6 }}>
                   <div style={{ width:18, height:18, borderRadius:99, background:"#EDE9FE", color:"#6D40A0", fontSize:9, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginTop:1 }}>{i+1}</div>
@@ -2901,25 +2901,25 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
               ))}
 
               <div style={{ height:1, background:"#F3F4F6", margin:"12px 0" }} />
-              <div style={{ fontSize:9, fontWeight:800, color:"#9CA3AF", letterSpacing:0.8, textTransform:"uppercase", marginBottom:7 }}>Non-Functional</div>
+              <div style={{ fontSize:9, fontWeight:800, color:"#A8A29E", letterSpacing:0.8, textTransform:"uppercase", marginBottom:7 }}>Non-Functional</div>
               {[{icon:"⚡",k:"Latency",   v: mission?.latency       || "p99 < 10ms"          },
                 {icon:"☁️",k:"Scale",     v: mission?.scale         || "10B redirects / day"  },
                 {icon:"✅",k:"Availability",v:mission?.availability || "99.99% uptime"        },
               ].map(r => (
-                <div key={r.k} style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5, padding:"6px 8px", background:T.bg2, borderRadius:7, border:"1px solid #E2E8F0" }}>
+                <div key={r.k} style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5, padding:"6px 8px", background:T.bg2, borderRadius:7, border:"1px solid #E8E3DA" }}>
                   <span style={{ fontSize:13 }}>{r.icon}</span>
                   <div style={{ minWidth:0 }}>
-                    <div style={{ fontSize:9, fontWeight:700, color:"#94A3B8" }}>{r.k}</div>
+                    <div style={{ fontSize:9, fontWeight:700, color:"#A8A29E" }}>{r.k}</div>
                     <div style={{ fontSize:11, fontWeight:600, color:T.ink }}>{r.v}</div>
                   </div>
                 </div>
               ))}
 
               <div style={{ height:1, background:"#F3F4F6", margin:"12px 0" }} />
-              <div style={{ fontSize:9, fontWeight:800, color:"#9CA3AF", letterSpacing:0.8, textTransform:"uppercase", marginBottom:5 }}>Assumptions</div>
+              <div style={{ fontSize:9, fontWeight:800, color:"#A8A29E", letterSpacing:0.8, textTransform:"uppercase", marginBottom:5 }}>Assumptions</div>
               <textarea value={assumptions} onChange={e => persist({ assumptions: e.target.value })}
                 placeholder={"e.g.\n– Read:Write ≈ 100:1\n– URLs globally unique\n– No real-time analytics"}
-                style={{ ...inp, minHeight:80, fontSize:11, lineHeight:1.55, resize:"vertical", fontFamily:"inherit", border:"1px solid #E5E7EB", padding:"8px 10px" }} />
+                style={{ ...inp, minHeight:80, fontSize:11, lineHeight:1.55, resize:"vertical", fontFamily:"inherit", border:"1px solid #E8E3DA", padding:"8px 10px" }} />
             </div>
           )}
 
@@ -2933,12 +2933,12 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
                 { icon:"📊", title:"Capacity Estimates",   desc:"Fill in QPS, storage/year, and bandwidth in the Capacity tab." },
                 { icon:"⚖️", title:"Trade-off Analysis",   desc:"Document 2 design decisions and your reasoning in Tradeoffs." },
               ].map(d => (
-                <div key={d.title} style={{ padding:"10px 11px", background:T.bg2, borderRadius:9, border:"1px solid #E2E8F0" }}>
+                <div key={d.title} style={{ padding:"10px 11px", background:T.bg2, borderRadius:9, border:"1px solid #E8E3DA" }}>
                   <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:3 }}>
                     <span style={{ fontSize:16 }}>{d.icon}</span>
                     <span style={{ fontSize:12, fontWeight:700, color:T.ink }}>{d.title}</span>
                   </div>
-                  <p style={{ margin:0, fontSize:11, color:"#94A3B8", lineHeight:1.5 }}>{d.desc}</p>
+                  <p style={{ margin:0, fontSize:11, color:"#A8A29E", lineHeight:1.5 }}>{d.desc}</p>
                 </div>
               ))}
             </div>
@@ -2949,7 +2949,7 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
             <div style={{ padding:"14px" }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
                 <span style={{ fontSize:11, fontWeight:800, color:"#475569" }}>Self-check</span>
-                <span style={{ fontSize:13, fontWeight:900, color: rubricScore>=80 ? "#16A34A" : rubricScore>=50 ? "#D97706" : "#9CA3AF", fontVariantNumeric:"tabular-nums" }}>{rubricScore}%</span>
+                <span style={{ fontSize:13, fontWeight:900, color: rubricScore>=80 ? "#16A34A" : rubricScore>=50 ? "#D97706" : "#A8A29E", fontVariantNumeric:"tabular-nums" }}>{rubricScore}%</span>
               </div>
               <div style={{ height:6, background:"#F3F4F6", borderRadius:3, overflow:"hidden", marginBottom:14 }}>
                 <div style={{ height:"100%", width:`${rubricScore}%`, background: rubricScore>=80 ? "#16A34A" : "#6D40A0", borderRadius:3, transition:"width 0.35s" }} />
@@ -2958,13 +2958,13 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
                 const on = rubricChecks[r.id]
                 return (
                   <div key={r.id} onClick={() => setChecks(c => ({ ...c, [r.id]: !c[r.id] }))}
-                    style={{ display:"flex", gap:9, alignItems:"center", padding:"8px 10px", borderRadius:8, marginBottom:5, border:`1.5px solid ${on ? "#BBF7D0" : "#E5E7EB"}`, background: on ? "#F0FDF4" : T.bg2, cursor:"pointer", transition:"all 0.15s" }}>
-                    <div style={{ width:18, height:18, borderRadius:5, border:`2px solid ${on ? "#16A34A" : "#D1D5DB"}`, background: on ? "#16A34A" : "transparent", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                    style={{ display:"flex", gap:9, alignItems:"center", padding:"8px 10px", borderRadius:8, marginBottom:5, border:`1.5px solid ${on ? "#BBF7D0" : "#E8E3DA"}`, background: on ? "#F0FDF4" : T.bg2, cursor:"pointer", transition:"all 0.15s" }}>
+                    <div style={{ width:18, height:18, borderRadius:5, border:`2px solid ${on ? "#16A34A" : "#D6D0C8"}`, background: on ? "#16A34A" : "transparent", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                       {on && <span style={{ fontSize:10, color:"#ffffff", lineHeight:1 }}>✓</span>}
                     </div>
                     <div style={{ flex:1 }}>
                       <div style={{ fontSize:11, fontWeight:600, color: on ? "#15803D" : "#475569" }}>{r.label}</div>
-                      <div style={{ fontSize:9, color:"#9CA3AF" }}>{r.weight}% of score</div>
+                      <div style={{ fontSize:9, color:"#A8A29E" }}>{r.weight}% of score</div>
                     </div>
                   </div>
                 )
@@ -2978,7 +2978,7 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
       <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden", minWidth:0 }}>
 
         {/* Palette bar */}
-        <div style={{ background:T.bg, borderBottom:"1px solid #E2E8F0", flexShrink:0 }}>
+        <div style={{ background:T.bg, borderBottom:"1px solid #E8E3DA", flexShrink:0 }}>
           {connSrc ? (
             <div style={{ padding:"8px 14px", display:"flex", alignItems:"center", gap:10, background:"#F5F3FF", borderBottom:"1px solid #DDD6FE" }}>
               <div style={{ width:8, height:8, borderRadius:"50%", background:"#7C3AED", animation:"sd-pulse 1.5s infinite" }} />
@@ -3029,7 +3029,7 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
             {/* Edge arrows */}
             <defs>
               <marker id="sd-arrow" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-                <path d="M0,0 L10,4 L0,8 Z" fill="#94A3B8" />
+                <path d="M0,0 L10,4 L0,8 Z" fill="#A8A29E" />
               </marker>
               <marker id="sd-arrow-sel" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                 <path d="M0,0 L10,4 L0,8 Z" fill="#6D40A0" />
@@ -3048,12 +3048,12 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
               return (
                 <g key={edge.id}>
                   <path d={`M${fx},${fy} C${cp1x},${cp1y} ${cp2x},${cp2y} ${tx},${ty}`}
-                    stroke="#94A3B8" strokeWidth="1.8" fill="none" markerEnd="url(#sd-arrow)"
+                    stroke="#A8A29E" strokeWidth="1.8" fill="none" markerEnd="url(#sd-arrow)"
                     strokeDasharray="none" opacity="0.85" />
                   {/* Midpoint delete handle */}
                   <g style={{ cursor:"pointer" }} onClick={e => { e.stopPropagation(); setEdges(es => es.filter((_,i) => i !== ei)) }}>
-                    <circle cx={mx} cy={my} r={8} fill="#ffffff" stroke="#E2E8F0" strokeWidth="1.5" />
-                    <text x={mx} y={my+4} fontSize="9" fill="#9CA3AF" textAnchor="middle">✕</text>
+                    <circle cx={mx} cy={my} r={8} fill="#ffffff" stroke="#E8E3DA" strokeWidth="1.5" />
+                    <text x={mx} y={my+4} fontSize="9" fill="#A8A29E" textAnchor="middle">✕</text>
                   </g>
                 </g>
               )
@@ -3077,7 +3077,7 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
                   width:104, minHeight:68,
                   background:"#ffffff",
                   borderRadius:12,
-                  border:`2px solid ${isSrc ? "#7C3AED" : isSel ? node.color : isHov ? node.color + "60" : "#E2E8F0"}`,
+                  border:`2px solid ${isSrc ? "#7C3AED" : isSel ? node.color : isHov ? node.color + "60" : "#E8E3DA"}`,
                   boxShadow: isSrc
                     ? `0 0 0 4px rgba(124,58,237,0.2), 0 4px 16px rgba(124,58,237,0.25)`
                     : isSel
@@ -3136,14 +3136,14 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
         </div>
 
         {/* Canvas footer */}
-        <div style={{ borderTop:"1px solid #E2E8F0", background:T.bg2, padding:"5px 16px", display:"flex", gap:16, alignItems:"center", flexShrink:0 }}>
-          <span style={{ fontSize:10, color:"#94A3B8" }}>
-            <strong style={{ color:"#64748B" }}>Click palette</strong> to add ·
-            <strong style={{ color:"#64748B" }}> Drag</strong> to move ·
-            <strong style={{ color:"#64748B" }}> Select → →</strong> to draw arrow ·
-            <strong style={{ color:"#64748B" }}> ✕ on edge</strong> to remove
+        <div style={{ borderTop:"1px solid #E8E3DA", background:T.bg2, padding:"5px 16px", display:"flex", gap:16, alignItems:"center", flexShrink:0 }}>
+          <span style={{ fontSize:10, color:"#A8A29E" }}>
+            <strong style={{ color:"#6B6560" }}>Click palette</strong> to add ·
+            <strong style={{ color:"#6B6560" }}> Drag</strong> to move ·
+            <strong style={{ color:"#6B6560" }}> Select → →</strong> to draw arrow ·
+            <strong style={{ color:"#6B6560" }}> ✕ on edge</strong> to remove
           </span>
-          <div style={{ marginLeft:"auto", display:"flex", gap:10, fontSize:10, color:"#94A3B8" }}>
+          <div style={{ marginLeft:"auto", display:"flex", gap:10, fontSize:10, color:"#A8A29E" }}>
             <span>{nodes.length} components</span>
             <span>{edges.length} connections</span>
           </div>
@@ -3151,12 +3151,12 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
       </div>
 
       {/* ═══════════════ RIGHT — spec notes ═══════════════ */}
-      <div style={{ width:264, flexShrink:0, borderLeft:"1px solid #E2E8F0", display:"flex", flexDirection:"column", background:T.bg, overflow:"hidden" }}>
+      <div style={{ width:264, flexShrink:0, borderLeft:"1px solid #E8E3DA", display:"flex", flexDirection:"column", background:T.bg, overflow:"hidden" }}>
 
         {/* Tab bar */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", borderBottom:"1px solid #E2E8F0", background:"#FAFAFA", flexShrink:0 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", borderBottom:"1px solid #E8E3DA", background:"#FAFAFA", flexShrink:0 }}>
           {[{ id:"api",icon:"🔌",label:"API" },{ id:"schema",icon:"🗃️",label:"Schema" },{ id:"capacity",icon:"📊",label:"Capacity" },{ id:"tradeoffs",icon:"⚖️",label:"Trade-offs" }].map(t => (
-            <button key={t.id} onClick={() => setRightTab(t.id)} style={{ padding:"8px 0", border:"none", background:"none", borderBottom: rightTab===t.id ? "2px solid #1D4ED8" : "2px solid transparent", fontSize:9, fontWeight: rightTab===t.id ? 800 : 500, color: rightTab===t.id ? "#1D4ED8" : "#94A3B8", cursor:"pointer", fontFamily:"inherit", display:"flex", flexDirection:"column", alignItems:"center", gap:2 }}>
+            <button key={t.id} onClick={() => setRightTab(t.id)} style={{ padding:"8px 0", border:"none", background:"none", borderBottom: rightTab===t.id ? "2px solid #1D4ED8" : "2px solid transparent", fontSize:9, fontWeight: rightTab===t.id ? 800 : 500, color: rightTab===t.id ? "#1D4ED8" : "#A8A29E", cursor:"pointer", fontFamily:"inherit", display:"flex", flexDirection:"column", alignItems:"center", gap:2 }}>
               <span style={{ fontSize:13 }}>{t.icon}</span>{t.label}
             </button>
           ))}
@@ -3169,10 +3169,10 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
             <div style={{ padding:"10px" }}>
               <div style={{ fontSize:10, fontWeight:800, color:"#475569", marginBottom:8 }}>Endpoints</div>
               {apiRows.map((row, i) => (
-                <div key={i} style={{ marginBottom:8, padding:"9px 10px", background:T.bg2, borderRadius:9, border:"1px solid #E2E8F0" }}>
+                <div key={i} style={{ marginBottom:8, padding:"9px 10px", background:T.bg2, borderRadius:9, border:"1px solid #E8E3DA" }}>
                   <div style={{ display:"flex", gap:5, marginBottom:5, alignItems:"center" }}>
                     <select value={row.method} onChange={e => persist({ api: apiRows.map((r,j) => j===i ? {...r, method:e.target.value} : r) })}
-                      style={{ padding:"3px 5px", border:"1px solid #E5E7EB", borderRadius:5, fontWeight:800, fontSize:10, color:METHOD_C[row.method]||"#475569", background:"#ffffff", cursor:"pointer", outline:"none" }}>
+                      style={{ padding:"3px 5px", border:"1px solid #E8E3DA", borderRadius:5, fontWeight:800, fontSize:10, color:METHOD_C[row.method]||"#475569", background:"#ffffff", cursor:"pointer", outline:"none" }}>
                       {["GET","POST","PUT","PATCH","DELETE"].map(m => <option key={m}>{m}</option>)}
                     </select>
                     <input value={row.path} onChange={e => persist({ api: apiRows.map((r,j) => j===i ? {...r, path:e.target.value} : r) })}
@@ -3185,7 +3185,7 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
                 </div>
               ))}
               <button onClick={() => persist({ api: [...apiRows, { method:"GET", path:"/", desc:"", status:"200" }] })}
-                style={{ width:"100%", padding:"5px 0", borderRadius:6, border:"1.5px dashed #D1D5DB", background:"transparent", fontSize:11, color:"#9CA3AF", cursor:"pointer", fontWeight:600 }}>+ Add endpoint</button>
+                style={{ width:"100%", padding:"5px 0", borderRadius:6, border:"1.5px dashed #D6D0C8", background:"transparent", fontSize:11, color:"#A8A29E", cursor:"pointer", fontWeight:600 }}>+ Add endpoint</button>
             </div>
           )}
 
@@ -3194,7 +3194,7 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
             <div style={{ padding:"10px" }}>
               <div style={{ fontSize:10, fontWeight:800, color:"#475569", marginBottom:8 }}>Table Fields</div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 80px 60px", gap:3, marginBottom:5 }}>
-                {["Field","Type","Notes"].map(h => <div key={h} style={{ fontSize:8.5, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:0.4 }}>{h}</div>)}
+                {["Field","Type","Notes"].map(h => <div key={h} style={{ fontSize:8.5, fontWeight:700, color:"#A8A29E", textTransform:"uppercase", letterSpacing:0.4 }}>{h}</div>)}
               </div>
               {schRows.map((row, i) => (
                 <div key={i} style={{ display:"grid", gridTemplateColumns:"1fr 80px 60px", gap:3, marginBottom:4 }}>
@@ -3207,7 +3207,7 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
                 </div>
               ))}
               <button onClick={() => persist({ schema: [...schRows, { field:"", type:"", note:"" }] })}
-                style={{ width:"100%", marginTop:4, padding:"5px 0", borderRadius:6, border:"1.5px dashed #D1D5DB", background:"transparent", fontSize:11, color:"#9CA3AF", cursor:"pointer", fontWeight:600 }}>+ Add field</button>
+                style={{ width:"100%", marginTop:4, padding:"5px 0", borderRadius:6, border:"1.5px dashed #D6D0C8", background:"transparent", fontSize:11, color:"#A8A29E", cursor:"pointer", fontWeight:600 }}>+ Add field</button>
             </div>
           )}
 
@@ -3229,14 +3229,14 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
                 </div>
               ))}
               <button onClick={() => persist({ capacity: [...capRows, { metric:"", formula:"", result:"" }] })}
-                style={{ width:"100%", padding:"5px 0", borderRadius:6, border:"1.5px dashed #D1D5DB", background:"transparent", fontSize:11, color:"#9CA3AF", cursor:"pointer", fontWeight:600 }}>+ Add estimate</button>
+                style={{ width:"100%", padding:"5px 0", borderRadius:6, border:"1.5px dashed #D6D0C8", background:"transparent", fontSize:11, color:"#A8A29E", cursor:"pointer", fontWeight:600 }}>+ Add estimate</button>
 
-              <div style={{ marginTop:12, borderTop:"1px solid #E2E8F0", paddingTop:10 }}>
-                <div style={{ fontSize:9, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:0.5, marginBottom:6 }}>Formula cheatsheet</div>
+              <div style={{ marginTop:12, borderTop:"1px solid #E8E3DA", paddingTop:10 }}>
+                <div style={{ fontSize:9, fontWeight:700, color:"#A8A29E", textTransform:"uppercase", letterSpacing:0.5, marginBottom:6 }}>Formula cheatsheet</div>
                 {[["QPS","daily ÷ 86,400"],["Storage/yr","rows × size × 365"],["Cache","traffic × 0.2"],["Bandwidth","QPS × resp_size"]].map(([k,v]) => (
-                  <div key={k} style={{ display:"flex", justifyContent:"space-between", padding:"3px 0", borderBottom:"1px solid #F1F5F9" }}>
+                  <div key={k} style={{ display:"flex", justifyContent:"space-between", padding:"3px 0", borderBottom:"1px solid #F2EDE4" }}>
                     <span style={{ fontSize:10, fontWeight:600, color:"#475569" }}>{k}</span>
-                    <span style={{ fontSize:9, color:"#94A3B8", fontFamily:"'DM Mono',monospace" }}>{v}</span>
+                    <span style={{ fontSize:9, color:"#A8A29E", fontFamily:"'DM Mono',monospace" }}>{v}</span>
                   </div>
                 ))}
               </div>
@@ -3248,28 +3248,28 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
             <div style={{ padding:"10px" }}>
               <div style={{ fontSize:10, fontWeight:800, color:"#475569", marginBottom:8 }}>Design Decisions</div>
               {tradeRows.map((row, i) => (
-                <div key={i} style={{ marginBottom:10, padding:"9px 10px", background:"#F8F9FA", borderRadius:9, border:"1px solid #E5E7EB" }}>
+                <div key={i} style={{ marginBottom:10, padding:"9px 10px", background:"#FAF7F2", borderRadius:9, border:"1px solid #E8E3DA" }}>
                   <input value={row.decision} onChange={e => persist({ tradeoffs: tradeRows.map((r,j) => j===i ? {...r, decision:e.target.value} : r) })}
                     placeholder="Decision (e.g. Redirect type)" style={{ ...inp, fontWeight:700, marginBottom:6 }} />
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:4, marginBottom:6 }}>
                     <div>
-                      <div style={{ fontSize:8, fontWeight:700, color:"#9CA3AF", marginBottom:2 }}>OPTION A</div>
+                      <div style={{ fontSize:8, fontWeight:700, color:"#A8A29E", marginBottom:2 }}>OPTION A</div>
                       <input value={row.optionA} onChange={e => persist({ tradeoffs: tradeRows.map((r,j) => j===i ? {...r, optionA:e.target.value} : r) })}
                         placeholder="e.g. 301" style={{ ...inp, fontSize:10 }} />
                     </div>
                     <div>
-                      <div style={{ fontSize:8, fontWeight:700, color:"#9CA3AF", marginBottom:2 }}>OPTION B</div>
+                      <div style={{ fontSize:8, fontWeight:700, color:"#A8A29E", marginBottom:2 }}>OPTION B</div>
                       <input value={row.optionB} onChange={e => persist({ tradeoffs: tradeRows.map((r,j) => j===i ? {...r, optionB:e.target.value} : r) })}
                         placeholder="e.g. 302" style={{ ...inp, fontSize:10 }} />
                     </div>
                   </div>
-                  <div style={{ fontSize:8, fontWeight:700, color:"#9CA3AF", marginBottom:2 }}>CHOSEN — WHY?</div>
+                  <div style={{ fontSize:8, fontWeight:700, color:"#A8A29E", marginBottom:2 }}>CHOSEN — WHY?</div>
                   <input value={row.chosen} onChange={e => persist({ tradeoffs: tradeRows.map((r,j) => j===i ? {...r, chosen:e.target.value} : r) })}
                     placeholder="I chose … because …" style={inp} />
                 </div>
               ))}
               <button onClick={() => persist({ tradeoffs: [...tradeRows, { decision:"", optionA:"", optionB:"", chosen:"" }] })}
-                style={{ width:"100%", padding:"5px 0", borderRadius:6, border:"1.5px dashed #D1D5DB", background:"transparent", fontSize:11, color:"#9CA3AF", cursor:"pointer", fontWeight:600 }}>+ Add decision</button>
+                style={{ width:"100%", padding:"5px 0", borderRadius:6, border:"1.5px dashed #D6D0C8", background:"transparent", fontSize:11, color:"#A8A29E", cursor:"pointer", fontWeight:600 }}>+ Add decision</button>
             </div>
           )}
         </div>

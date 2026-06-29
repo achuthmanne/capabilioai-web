@@ -15,7 +15,7 @@ const IP_CSS = `
 .ipx{--bg:#0b0a08;--bg2:#13100c;--line:rgba(255,255,255,.10);--line2:rgba(255,255,255,.16);
   --amber:#dc8b18;--gold:#f6c453;--green:#4fd4a3;--blue:#74a8ff;--purple:#ab93ff;--cyan:#54d9e0;--pink:#ff8db1;--red:#ff8177;--teal:#34d4bf;
   --txt:#f7f2ea;--mut:rgba(247,242,234,.68);--mut2:rgba(247,242,234,.44);
-  color:var(--txt);font-family:Inter,sans-serif;height:100%;overflow-y:auto;}
+  color:var(--txt);font-family:DM Sans,sans-serif;height:100%;overflow-y:auto;}
 .ipx *{box-sizing:border-box;}
 .ipx .ip-hero{position:relative;min-height:430px;display:grid;grid-template-columns:55% 45%;overflow:hidden;background:#0b0a08;}
 .ipx .ip-hero-bg{position:absolute;inset:0;z-index:0;}

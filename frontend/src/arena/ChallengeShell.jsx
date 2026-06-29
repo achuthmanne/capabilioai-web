@@ -34,7 +34,7 @@ function Md({ text }) {
     if (!line.trim())       return <div key={i} style={{ height: 8 }} />
     const parts = line.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((p, j) => {
       if (/^\*\*.+\*\*$/.test(p)) return <strong key={j}>{p.slice(2, -2)}</strong>
-      if (/^`.+`$/.test(p)) return <code key={j} style={{ background: "#F1F5F9", padding: "1px 5px", borderRadius: 3, fontFamily: "'DM Mono',monospace", fontSize: 12 }}>{p.slice(1, -1)}</code>
+      if (/^`.+`$/.test(p)) return <code key={j} style={{ background: "#F2EDE4", padding: "1px 5px", borderRadius: 3, fontFamily: "'DM Mono',monospace", fontSize: 12 }}>{p.slice(1, -1)}</code>
       return p
     })
     return <p key={i} style={{ margin: "0 0 8px", fontSize: 13.5, color: T.ink2, lineHeight: 1.7 }}>{parts}</p>
@@ -588,7 +588,7 @@ export default function ChallengeShell({
                   const isPass    = c.passed && !c.pending && !c.info
                   const isFail    = !c.passed && !c.pending && !c.info
                   const isPending = c.pending || c.info
-                  const dotColor  = isPending ? "#CBD5E1" : isPass ? "#22C55E" : "#EF4444"
+                  const dotColor  = isPending ? "#D6D0C8" : isPass ? "#22C55E" : "#EF4444"
                   const cardBg    = isPending ? "#fff" : isPass ? "#F0FDF4" : "#FFF5F5"
                   const cardBorder= isPending ? T.border : isPass ? "#BBF7D0" : "#FECACA"
                   return (
@@ -631,14 +631,14 @@ export default function ChallengeShell({
                   { label: "Submitted",         desc: "Locked into proof",                done: false,           active: false },
                   { label: "Recruiter-visible", desc: "Live on your profile",             done: false,           active: false },
                 ].map((step, i, arr) => {
-                  const dotC = step.done ? "#22C55E" : step.active ? meta.hue : "#CBD5E1"
+                  const dotC = step.done ? "#22C55E" : step.active ? meta.hue : "#D6D0C8"
                   return (
                     <div key={i} style={{ display: "flex", gap: 9, alignItems: "flex-start", marginBottom: i < arr.length - 1 ? 0 : 0 }}>
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0 }}>
-                        <div style={{ width: 14, height: 14, borderRadius: "50%", background: dotC, border: `2px solid ${step.done ? "#22C55E" : step.active ? meta.hue : "#E2E8F0"}`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <div style={{ width: 14, height: 14, borderRadius: "50%", background: dotC, border: `2px solid ${step.done ? "#22C55E" : step.active ? meta.hue : "#E8E3DA"}`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
                           {step.done && <span style={{ fontSize: 7, color: "#fff" }}>✓</span>}
                         </div>
-                        {i < arr.length - 1 && <div style={{ width: 1, height: 18, background: step.done ? "#22C55E40" : "#E2E8F0" }} />}
+                        {i < arr.length - 1 && <div style={{ width: 1, height: 18, background: step.done ? "#22C55E40" : "#E8E3DA" }} />}
                       </div>
                       <div style={{ paddingBottom: i < arr.length - 1 ? 4 : 0 }}>
                         <div style={{ fontSize: 11, fontWeight: step.done || step.active ? 700 : 500, color: step.done ? "#15803D" : step.active ? T.ink : T.ink4 }}>{step.label}</div>

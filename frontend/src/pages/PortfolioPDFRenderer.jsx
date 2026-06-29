@@ -15,7 +15,7 @@ function ExecutiveTemplate({ data }) {
   const topTasks = tasks.slice(0, 4)
 
   return (
-    <div style={{ width: 794, minHeight: 1123, background: "#fff", fontFamily: "'Inter','Helvetica Neue',Arial,sans-serif", color: "#1e293b" }}>
+    <div style={{ width: 794, minHeight: 1123, background: "#fff", fontFamily: "'DM Sans','Helvetica Neue',Arial,sans-serif", color: "#1e293b" }}>
       {/* Header */}
       <div style={{ background: "#1a2744", padding: "40px 48px 32px", color: "#fff" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -51,7 +51,7 @@ function ExecutiveTemplate({ data }) {
           {summary && (
             <div style={{ marginBottom: 28 }}>
               <div style={{ fontSize: 11, fontWeight: 800, color: "#2563EB", textTransform: "uppercase", letterSpacing: 2, marginBottom: 10 }}>Professional Summary</div>
-              <p style={{ fontSize: 13, lineHeight: 1.7, color: "#374151", margin: 0 }}>{summary}</p>
+              <p style={{ fontSize: 13, lineHeight: 1.7, color: "#3D3935", margin: 0 }}>{summary}</p>
             </div>
           )}
 
@@ -98,7 +98,7 @@ function ExecutiveTemplate({ data }) {
               {topSkills.map((s, i) => (
                 <div key={i} style={{ marginBottom: 10 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>{s.skill}</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "#3D3935" }}>{s.skill}</span>
                     <span style={{ fontSize: 12, fontWeight: 700, color: "#2563EB" }}>{s.percentage}%</span>
                   </div>
                   <div style={{ height: 5, background: "#e2e8f0", borderRadius: 99, overflow: "hidden" }}>
@@ -129,8 +129,8 @@ function ModernTemplate({ data }) {
   const topTasks = tasks.slice(0, 3)
 
   return (
-    <div style={{ width: 794, minHeight: 1123, background: "#0F172A", fontFamily: "'Inter','Helvetica Neue',Arial,sans-serif", color: "#0f172a" }}>
-      <div style={{ background: "#0F172A", padding: "36px 48px", color: "#fff", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+    <div style={{ width: 794, minHeight: 1123, background: "#1A1714", fontFamily: "'DM Sans','Helvetica Neue',Arial,sans-serif", color: "#0f172a" }}>
+      <div style={{ background: "#1A1714", padding: "36px 48px", color: "#fff", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.02em" }}>{name}</div>
           <div style={{ fontSize: 14, color: "#06B6D4", fontWeight: 600, marginTop: 4 }}>{role}</div>
@@ -146,7 +146,7 @@ function ModernTemplate({ data }) {
           {summary && (
             <div style={{ marginBottom: 24, padding: "14px 18px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8 }}>
               <div style={{ fontSize: 10, fontWeight: 800, color: "#06B6D4", textTransform: "uppercase", letterSpacing: 2, marginBottom: 8 }}>Summary</div>
-              <p style={{ fontSize: 12, lineHeight: 1.7, color: "#374151", margin: 0 }}>{summary}</p>
+              <p style={{ fontSize: 12, lineHeight: 1.7, color: "#3D3935", margin: 0 }}>{summary}</p>
             </div>
           )}
           {topTasks.length > 0 && (
@@ -181,7 +181,7 @@ function ModernTemplate({ data }) {
             </div>
           )}
         </div>
-        <div style={{ background: "#0F172A", padding: "28px 24px", color: "#fff" }}>
+        <div style={{ background: "#1A1714", padding: "28px 24px", color: "#fff" }}>
           <div style={{ fontSize: 10, fontWeight: 800, color: "#06B6D4", textTransform: "uppercase", letterSpacing: 2, marginBottom: 14 }}>Skills</div>
           {topSkills.map((s, i) => (
             <div key={i} style={{ marginBottom: 12 }}>
@@ -215,7 +215,7 @@ function MinimalTemplate({ data }) {
   const avgScore = tasks.length ? Math.round(tasks.reduce((a, t) => a + (t.submission?.score || 0), 0) / tasks.length) : 0
 
   return (
-    <div style={{ width: 794, minHeight: 1123, background: "#fff", fontFamily: "'Inter','Helvetica Neue',Arial,sans-serif", color: "#FFFFFF", padding: "60px 64px" }}>
+    <div style={{ width: 794, minHeight: 1123, background: "#fff", fontFamily: "'DM Sans','Helvetica Neue',Arial,sans-serif", color: "#FFFFFF", padding: "60px 64px" }}>
       <div style={{ borderBottom: "2px solid #6366F1", paddingBottom: 24, marginBottom: 32 }}>
         <div style={{ fontSize: 36, fontWeight: 900, letterSpacing: "-0.03em", color: "#FFFFFF" }}>{name}</div>
         <div style={{ fontSize: 16, color: "#6366F1", fontWeight: 600, marginTop: 6 }}>{role}</div>
@@ -226,7 +226,7 @@ function MinimalTemplate({ data }) {
       </div>
       {summary && (
         <div style={{ marginBottom: 32 }}>
-          <p style={{ fontSize: 13, lineHeight: 1.8, color: "#374151", margin: 0, fontStyle: "italic" }}>{summary}</p>
+          <p style={{ fontSize: 13, lineHeight: 1.8, color: "#3D3935", margin: 0, fontStyle: "italic" }}>{summary}</p>
         </div>
       )}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32, marginBottom: 32 }}>
@@ -234,7 +234,7 @@ function MinimalTemplate({ data }) {
           <div style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: 2, marginBottom: 14 }}>Skills</div>
           {skills.slice(0, 5).map((s, i) => (
             <div key={i} style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #f3f4f6", padding: "7px 0" }}>
-              <span style={{ fontSize: 13, color: "#374151" }}>{s.skill}</span>
+              <span style={{ fontSize: 13, color: "#3D3935" }}>{s.skill}</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: "#6366F1" }}>{s.percentage}%</span>
             </div>
           ))}
@@ -243,7 +243,7 @@ function MinimalTemplate({ data }) {
           <div style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: 2, marginBottom: 14 }}>Performance</div>
           {[{ l: "Tasks Completed", v: tasks.length }, { l: "Average Score", v: avgScore + "%" }, { l: "ELO Rating", v: eloRating }].map((s, i) => (
             <div key={i} style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #f3f4f6", padding: "7px 0" }}>
-              <span style={{ fontSize: 13, color: "#374151" }}>{s.l}</span>
+              <span style={{ fontSize: 13, color: "#3D3935" }}>{s.l}</span>
               <span style={{ fontSize: 13, fontWeight: 700, color: "#FFFFFF" }}>{s.v}</span>
             </div>
           ))}
@@ -289,7 +289,7 @@ function CorporateTemplate({ data }) {
   const avgScore = tasks.length ? Math.round(tasks.reduce((a, t) => a + (t.submission?.score || 0), 0) / tasks.length) : 0
 
   return (
-    <div style={{ width: 794, minHeight: 1123, background: "#F1F5F9", fontFamily: "'Inter','Helvetica Neue',Arial,sans-serif", color: "#1e293b" }}>
+    <div style={{ width: 794, minHeight: 1123, background: "#F2EDE4", fontFamily: "'DM Sans','Helvetica Neue',Arial,sans-serif", color: "#1e293b" }}>
       <div style={{ background: "#1E3A5F", color: "#fff", padding: "0" }}>
         <div style={{ padding: "32px 48px 24px" }}>
           <div style={{ fontSize: 28, fontWeight: 800 }}>{name}</div>
@@ -328,7 +328,7 @@ function CorporateTemplate({ data }) {
           {summary && (
             <div style={{ marginBottom: 20, padding: "12px 16px", background: "#fff", borderRadius: 6, border: "1px solid #e2e8f0" }}>
               <div style={{ fontSize: 9, fontWeight: 800, color: "#0EA5E9", textTransform: "uppercase", letterSpacing: 2, marginBottom: 6 }}>Summary</div>
-              <p style={{ fontSize: 12, lineHeight: 1.7, color: "#374151", margin: 0 }}>{summary}</p>
+              <p style={{ fontSize: 12, lineHeight: 1.7, color: "#3D3935", margin: 0 }}>{summary}</p>
             </div>
           )}
           {tasks.slice(0, 3).length > 0 && (
@@ -378,7 +378,7 @@ function ImpactTemplate({ data }) {
   const avgScore = tasks.length ? Math.round(tasks.reduce((a, t) => a + (t.submission?.score || 0), 0) / tasks.length) : 0
 
   return (
-    <div style={{ width: 794, minHeight: 1123, background: "#FAFAFA", fontFamily: "'Inter','Helvetica Neue',Arial,sans-serif", color: "#111111" }}>
+    <div style={{ width: 794, minHeight: 1123, background: "#FAFAFA", fontFamily: "'DM Sans','Helvetica Neue',Arial,sans-serif", color: "#111111" }}>
       <div style={{ background: "#111111", padding: "44px 48px", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: 0, right: 0, width: 200, height: "100%", background: "#F59E0B", opacity: 0.08 }} />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
@@ -405,7 +405,7 @@ function ImpactTemplate({ data }) {
         <div>
           {summary && (
             <div style={{ marginBottom: 24, padding: "16px 20px", borderLeft: "4px solid #F59E0B", background: "#fff" }}>
-              <p style={{ fontSize: 13, lineHeight: 1.75, color: "#374151", margin: 0 }}>{summary}</p>
+              <p style={{ fontSize: 13, lineHeight: 1.75, color: "#3D3935", margin: 0 }}>{summary}</p>
             </div>
           )}
           {tasks.slice(0, 4).length > 0 && (
@@ -442,7 +442,7 @@ function ImpactTemplate({ data }) {
           {skills.slice(0, 6).map((s, i) => (
             <div key={i} style={{ marginBottom: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>{s.skill}</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "#3D3935" }}>{s.skill}</span>
                 <span style={{ fontSize: 12, fontWeight: 800, color: "#F59E0B" }}>{s.percentage}%</span>
               </div>
               <div style={{ height: 4, background: "#e5e7eb", borderRadius: 99 }}>

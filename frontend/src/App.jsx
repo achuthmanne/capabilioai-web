@@ -241,9 +241,9 @@ function AuthModal({ show, onClose, mode, setMode }) {
 
   // ── Shared input style ────────────────────────────────────────────
   const inputStyle = {
-    width: "100%", padding: "12px 14px", background: "#F9FAFB",
-    border: "1.5px solid #E5E7EB", borderRadius: 8, color: "#111827",
-    fontSize: 14, fontFamily: "Inter,sans-serif", outline: "none",
+    width: "100%", padding: "12px 14px", background: "#FAF7F2",
+    border: "1.5px solid #E8E3DA", borderRadius: 8, color: "#1A1714",
+    fontSize: 14, fontFamily: "DM Sans,sans-serif", outline: "none",
     boxSizing: "border-box", transition: "border-color 0.15s",
   }
   const inp = (val, setter, type="text", placeholder="", extra={}) => (
@@ -252,7 +252,7 @@ function AuthModal({ show, onClose, mode, setMode }) {
       type={type} placeholder={placeholder}
       style={{...inputStyle,...extra}}
       onFocus={e=>e.target.style.borderColor="#FF5701"}
-      onBlur={e=>e.target.style.borderColor="#E5E7EB"}/>
+      onBlur={e=>e.target.style.borderColor="#E8E3DA"}/>
   )
 
   const pm     = PATH_META[selectedPath] || null
@@ -262,9 +262,9 @@ function AuthModal({ show, onClose, mode, setMode }) {
     : (email && password)
 
   return (
-    <div style={{ position:"fixed", inset:0, zIndex:9999, fontFamily:"Inter,sans-serif" }}>
+    <div style={{ position:"fixed", inset:0, zIndex:9999, fontFamily:"DM Sans,sans-serif" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');
         @keyframes modalIn  { from{opacity:0;transform:scale(0.97)} to{opacity:1;transform:scale(1)} }
         @keyframes authSpin { to{transform:rotate(360deg)} }
         .auth-inp:focus{border-color:#FF5701!important}
@@ -273,23 +273,23 @@ function AuthModal({ show, onClose, mode, setMode }) {
       <div style={{ position:"absolute", inset:0, background:"rgba(17,24,39,0.5)", backdropFilter:"blur(8px)" }} onClick={onClose}/>
 
       <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
-        <div style={{ width:"100%", maxWidth:880, background:"#fff", borderRadius:20, overflow:"hidden", border:"1px solid #E5E7EB", boxShadow:"0 24px 60px rgba(0,0,0,0.15)", animation:"modalIn 0.3s cubic-bezier(0.16,1,0.3,1) both", display:"flex", maxHeight:"96vh" }}>
+        <div style={{ width:"100%", maxWidth:880, background:"#fff", borderRadius:20, overflow:"hidden", border:"1px solid #E8E3DA", boxShadow:"0 24px 60px rgba(0,0,0,0.15)", animation:"modalIn 0.3s cubic-bezier(0.16,1,0.3,1) both", display:"flex", maxHeight:"96vh" }}>
 
           {/* ── Left panel ── */}
-          <div style={{ flex:"0 0 36%", background: pm ? pm.bg : "#F6F6F1", display:"flex", flexDirection:"column", justifyContent:"space-between", padding:"36px 28px", borderRight:"1px solid #E5E7EB" }}>
+          <div style={{ flex:"0 0 36%", background: pm ? pm.bg : "#F6F6F1", display:"flex", flexDirection:"column", justifyContent:"space-between", padding:"36px 28px", borderRight:"1px solid #E8E3DA" }}>
             <div>
-              <div style={{ fontFamily:"'Playfair Display',serif", fontSize:22, fontWeight:800, color:"#FFFFFF", marginBottom:16 }}>Capabilio AI</div>
+              <div style={{ fontFamily:"'DM Sans',serif", fontSize:22, fontWeight:800, color:"#FFFFFF", marginBottom:16 }}>Capabilio AI</div>
               {pm && (
                 <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:"#fff", border:`1px solid ${accent}30`, borderRadius:999, padding:"6px 14px", marginBottom:16 }}>
                   <span style={{ fontSize:14 }}>{pm.icon}</span>
-                  <span style={{ fontSize:10, fontWeight:800, color:accent, letterSpacing:"0.12em", textTransform:"uppercase", fontFamily:"'JetBrains Mono',monospace" }}>{pm.label} Path</span>
+                  <span style={{ fontSize:10, fontWeight:800, color:accent, letterSpacing:"0.12em", textTransform:"uppercase", fontFamily:"'DM Mono',monospace" }}>{pm.label} Path</span>
                 </div>
               )}
-              <h2 style={{ fontFamily:"'Playfair Display',serif", fontSize:22, fontWeight:800, color:"#FFFFFF", lineHeight:1.25, marginBottom:10 }}>
+              <h2 style={{ fontFamily:"'DM Sans',serif", fontSize:22, fontWeight:800, color:"#FFFFFF", lineHeight:1.25, marginBottom:10 }}>
                 {pm ? pm.desc.split(".")[0]+"." : "Prove your skills."}<br/>
                 <span style={{ fontStyle:"italic", color:accent }}>{pm ? pm.desc.split(".").slice(1).join(".").trim() : "Not just claim them."}</span>
               </h2>
-              <p style={{ fontSize:12, color:"#6B7280", lineHeight:1.7, marginBottom:20 }}>
+              <p style={{ fontSize:12, color:"#6B6560", lineHeight:1.7, marginBottom:20 }}>
                 {pm ? `Your account will be set for the ${pm.label} path. Change during onboarding.` : "ELO earned through real challenges — not a Word doc."}
               </p>
               <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
@@ -302,47 +302,47 @@ function AuthModal({ show, onClose, mode, setMode }) {
                   { val:"94 Tasks",  label:"Real company challenges",  c:"#FFFFFF" },
                   { val:"Top 3%",    label:"Verified by performance",  c:"#16A34A" },
                 ]).map((s,i)=>(
-                  <div key={i} style={{ display:"flex", gap:10, alignItems:"center", padding:"8px 12px", background:"#fff", border:"1px solid #E5E7EB", borderRadius:10 }}>
-                    <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:12, fontWeight:700, color:s.c, minWidth:68 }}>{s.val}</div>
-                    <div style={{ fontSize:11, color:"#9CA3AF" }}>{s.label}</div>
+                  <div key={i} style={{ display:"flex", gap:10, alignItems:"center", padding:"8px 12px", background:"#fff", border:"1px solid #E8E3DA", borderRadius:10 }}>
+                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:12, fontWeight:700, color:s.c, minWidth:68 }}>{s.val}</div>
+                    <div style={{ fontSize:11, color:"#A8A29E" }}>{s.label}</div>
                   </div>
                 ))}
               </div>
             </div>
-            <div style={{ padding:"9px 12px", background:"#fff", border:"1px solid #E5E7EB", borderRadius:10, fontSize:11, color:"#6B7280" }}>
+            <div style={{ padding:"9px 12px", background:"#fff", border:"1px solid #E8E3DA", borderRadius:10, fontSize:11, color:"#6B6560" }}>
               <span style={{ color:accent, fontWeight:700 }}>2,400+</span> joined this month · Free forever for candidates
             </div>
           </div>
 
           {/* ── Right form ── */}
           <div style={{ flex:1, padding:"28px 32px", overflowY:"auto", display:"flex", flexDirection:"column", justifyContent:"center", position:"relative" }}>
-            <button onClick={onClose} style={{ position:"absolute", top:14, right:14, width:28, height:28, borderRadius:7, background:"#F9FAFB", border:"1px solid #E5E7EB", color:"#6B7280", fontSize:16, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>×</button>
+            <button onClick={onClose} style={{ position:"absolute", top:14, right:14, width:28, height:28, borderRadius:7, background:"#FAF7F2", border:"1px solid #E8E3DA", color:"#6B6560", fontSize:16, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>×</button>
 
             {/* Create / Sign in toggle */}
-            <div style={{ display:"flex", background:"#F9FAFB", borderRadius:10, padding:3, marginBottom:20, border:"1px solid #E5E7EB" }}>
+            <div style={{ display:"flex", background:"#FAF7F2", borderRadius:10, padding:3, marginBottom:20, border:"1px solid #E8E3DA" }}>
               {[["signup","Create account"],["login","Sign in"]].map(([m,lbl])=>(
                 <button key={m} onClick={()=>{setMode(m);setError("")}}
-                  style={{ flex:1, padding:"9px", borderRadius:8, border:"none", cursor:"pointer", background:mode===m?"#FF5701":"transparent", color:mode===m?"#fff":"#6B7280", fontSize:13, fontWeight:mode===m?700:400, fontFamily:"inherit", transition:"all 0.15s" }}>
+                  style={{ flex:1, padding:"9px", borderRadius:8, border:"none", cursor:"pointer", background:mode===m?"#FF5701":"transparent", color:mode===m?"#fff":"#6B6560", fontSize:13, fontWeight:mode===m?700:400, fontFamily:"inherit", transition:"all 0.15s" }}>
                   {lbl}
                 </button>
               ))}
             </div>
 
-            <h3 style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:800, color:"#FFFFFF", marginBottom:3 }}>
+            <h3 style={{ fontFamily:"'DM Sans',serif", fontSize:20, fontWeight:800, color:"#FFFFFF", marginBottom:3 }}>
               {mode==="signup" ? "Create your account" : "Welcome back"}
             </h3>
-            <p style={{ fontSize:12, color:"#9CA3AF", marginBottom:16 }}>
+            <p style={{ fontSize:12, color:"#A8A29E", marginBottom:16 }}>
               {mode==="signup" ? "Free forever. No credit card required." : "Sign in to your Capabilio profile."}
             </p>
 
             {/* Google */}
             <button onClick={handleGoogleSignIn} disabled={googleLoading}
-              style={{ width:"100%", padding:"11px 16px", marginBottom:12, background:"#fff", border:"1.5px solid #E5E7EB", borderRadius:10, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:10, fontSize:14, fontWeight:600, color:"#374151", fontFamily:"Inter,sans-serif", transition:"all 0.15s", boxShadow:"0 2px 6px rgba(17,24,39,0.06)" }}
-              onMouseEnter={e=>{e.currentTarget.style.borderColor="#D1D5DB";e.currentTarget.style.boxShadow="0 4px 12px rgba(17,24,39,0.10)"}}
-              onMouseLeave={e=>{e.currentTarget.style.borderColor="#E5E7EB";e.currentTarget.style.boxShadow="0 2px 6px rgba(17,24,39,0.06)"}}
+              style={{ width:"100%", padding:"11px 16px", marginBottom:12, background:"#fff", border:"1.5px solid #E8E3DA", borderRadius:10, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:10, fontSize:14, fontWeight:600, color:"#3D3935", fontFamily:"DM Sans,sans-serif", transition:"all 0.15s", boxShadow:"0 2px 6px rgba(17,24,39,0.06)" }}
+              onMouseEnter={e=>{e.currentTarget.style.borderColor="#D6D0C8";e.currentTarget.style.boxShadow="0 4px 12px rgba(17,24,39,0.10)"}}
+              onMouseLeave={e=>{e.currentTarget.style.borderColor="#E8E3DA";e.currentTarget.style.boxShadow="0 2px 6px rgba(17,24,39,0.06)"}}
             >
               {googleLoading
-                ? <span style={{ width:18, height:18, border:"2px solid #E5E7EB", borderTopColor:"#6B7280", borderRadius:"50%", display:"inline-block", animation:"authSpin 0.7s linear infinite" }}/>
+                ? <span style={{ width:18, height:18, border:"2px solid #E8E3DA", borderTopColor:"#6B6560", borderRadius:"50%", display:"inline-block", animation:"authSpin 0.7s linear infinite" }}/>
                 : <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
               }
               {googleLoading ? "Redirecting…" : "Continue with Google"}
@@ -350,9 +350,9 @@ function AuthModal({ show, onClose, mode, setMode }) {
 
             {/* ── Divider ── */}
             <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
-              <div style={{ flex:1, height:1, background:"#E5E7EB" }}/>
-              <span style={{ fontSize:11, color:"#9CA3AF", fontWeight:500 }}>or continue with email</span>
-              <div style={{ flex:1, height:1, background:"#E5E7EB" }}/>
+              <div style={{ flex:1, height:1, background:"#E8E3DA" }}/>
+              <span style={{ fontSize:11, color:"#A8A29E", fontWeight:500 }}>or continue with email</span>
+              <div style={{ flex:1, height:1, background:"#E8E3DA" }}/>
             </div>
 
             {/* ── EMAIL FLOW ── */}
@@ -374,15 +374,15 @@ function AuthModal({ show, onClose, mode, setMode }) {
                       placeholder={mode==="signup"?"Create password":"Password"}
                       style={{...inputStyle, paddingRight:44}}
                       onFocus={e=>e.target.style.borderColor="#FF5701"}
-                      onBlur={e=>e.target.style.borderColor="#E5E7EB"}/>
-                    <button onClick={()=>setShowPw(p=>!p)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:"#9CA3AF", fontSize:14, padding:2 }}>
+                      onBlur={e=>e.target.style.borderColor="#E8E3DA"}/>
+                    <button onClick={()=>setShowPw(p=>!p)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:"#A8A29E", fontSize:14, padding:2 }}>
                       {showPw ? "🙈" : "👁"}
                     </button>
                   </div>
                   {/* Strength bar — only show when typing for signup */}
                   {mode === "signup" && password.length > 0 && (
                     <div style={{ marginTop:6 }}>
-                      <div style={{ height:3, background:"#E5E7EB", borderRadius:99, overflow:"hidden", marginBottom:5 }}>
+                      <div style={{ height:3, background:"#E8E3DA", borderRadius:99, overflow:"hidden", marginBottom:5 }}>
                         <div style={{ height:"100%", width:`${pw.pct}%`, background:pw.color, borderRadius:99, transition:"all 0.3s" }}/>
                       </div>
                       <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
@@ -393,7 +393,7 @@ function AuthModal({ show, onClose, mode, setMode }) {
                           { key:"number",    label:"0–9" },
                           { key:"special",   label:"!@#..." },
                         ].map(c=>(
-                          <span key={c.key} style={{ fontSize:10, fontWeight:600, color:pw.checks[c.key]?"#16A34A":"#9CA3AF", display:"flex", alignItems:"center", gap:3 }}>
+                          <span key={c.key} style={{ fontSize:10, fontWeight:600, color:pw.checks[c.key]?"#16A34A":"#A8A29E", display:"flex", alignItems:"center", gap:3 }}>
                             <span style={{ fontSize:9 }}>{pw.checks[c.key]?"✓":"○"}</span>{c.label}
                           </span>
                         ))}
@@ -409,10 +409,10 @@ function AuthModal({ show, onClose, mode, setMode }) {
                       <input value={confirm} onChange={e=>{setConfirm(e.target.value);setError("")}}
                         onKeyDown={e=>e.key==="Enter"&&handleEmailSubmit()}
                         type={showCfm?"text":"password"} placeholder="Confirm password"
-                        style={{ ...inputStyle, paddingRight:44, borderColor: confirm&&password ? (confirm===password?"rgba(22,163,74,0.5)":"#FECACA") : "#E5E7EB" }}
+                        style={{ ...inputStyle, paddingRight:44, borderColor: confirm&&password ? (confirm===password?"rgba(22,163,74,0.5)":"#FECACA") : "#E8E3DA" }}
                         onFocus={e=>e.target.style.borderColor="#FF5701"}
-                        onBlur={e=>e.target.style.borderColor=confirm&&password?(confirm===password?"rgba(22,163,74,0.5)":"#FECACA"):"#E5E7EB"}/>
-                      <button onClick={()=>setShowCfm(p=>!p)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:"#9CA3AF", fontSize:14, padding:2 }}>
+                        onBlur={e=>e.target.style.borderColor=confirm&&password?(confirm===password?"rgba(22,163,74,0.5)":"#FECACA"):"#E8E3DA"}/>
+                      <button onClick={()=>setShowCfm(p=>!p)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:"#A8A29E", fontSize:14, padding:2 }}>
                         {showCfm ? "🙈" : "👁"}
                       </button>
                     </div>
@@ -421,7 +421,7 @@ function AuthModal({ show, onClose, mode, setMode }) {
                     )}
                     {/* Voucher code */}
                     <div>
-                      <div style={{ fontSize:11, fontWeight:500, color:"#6B7280", marginBottom:5 }}>Skill voucher code <span style={{ fontWeight:400 }}>(optional)</span></div>
+                      <div style={{ fontSize:11, fontWeight:500, color:"#6B6560", marginBottom:5 }}>Skill voucher code <span style={{ fontWeight:400 }}>(optional)</span></div>
                       <input value={refCode}
                         onChange={async e=>{
                           const val=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,8)
@@ -429,7 +429,7 @@ function AuthModal({ show, onClose, mode, setMode }) {
                           if(val.length===8){try{const r=await fetch(`${API}/api/referral/validate/${val}`);const d=await r.json();setRefValid(d.valid);setRefData(d)}catch{setRefValid(false)}}
                         }}
                         placeholder="Enter 8-char voucher code" maxLength={8}
-                        style={{ width:"100%", padding:"11px 14px", background:"#F9FAFB", border:`1.5px solid ${refCode.length===8?refValid?"#BBF7D0":"#FECACA":"#E5E7EB"}`, borderRadius:8, color:"#FFFFFF", fontSize:13, fontFamily:"'JetBrains Mono',monospace", letterSpacing:3, outline:"none", boxSizing:"border-box" }}/>
+                        style={{ width:"100%", padding:"11px 14px", background:"#FAF7F2", border:`1.5px solid ${refCode.length===8?refValid?"#BBF7D0":"#FECACA":"#E8E3DA"}`, borderRadius:8, color:"#FFFFFF", fontSize:13, fontFamily:"'DM Mono',monospace", letterSpacing:3, outline:"none", boxSizing:"border-box" }}/>
                       {refCode.length===8&&refValid===true&&<div style={{ marginTop:5, padding:"6px 10px", background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:7, fontSize:11, color:"#15803D" }}>✓ {refData?.message} · +50 ELO + 14-day Pro</div>}
                       {refCode.length===8&&refValid===false&&<div style={{ marginTop:4, fontSize:11, color:"#DC2626" }}>✗ Invalid voucher code</div>}
                     </div>
@@ -439,7 +439,7 @@ function AuthModal({ show, onClose, mode, setMode }) {
                 {error && <div style={{ padding:"9px 12px", background:"#FEF2F2", border:"1px solid #FECACA", borderRadius:9, fontSize:12, color:"#DC2626" }}>⚠️ {error}</div>}
 
                 <button onClick={handleEmailSubmit} disabled={loading || !canSubmitEmail}
-                  style={{ width:"100%", padding:"13px", background:canSubmitEmail?"#FF5701":"#F3F4F6", border:"none", borderRadius:10, color:canSubmitEmail?"#fff":"#9CA3AF", fontSize:15, fontWeight:700, fontFamily:"'Playfair Display',serif", cursor:canSubmitEmail?"pointer":"not-allowed", transition:"background 0.15s" }}
+                  style={{ width:"100%", padding:"13px", background:canSubmitEmail?"#FF5701":"#F3F4F6", border:"none", borderRadius:10, color:canSubmitEmail?"#fff":"#A8A29E", fontSize:15, fontWeight:700, fontFamily:"'DM Sans',serif", cursor:canSubmitEmail?"pointer":"not-allowed", transition:"background 0.15s" }}
                   onMouseEnter={e=>{if(canSubmitEmail)e.currentTarget.style.background="#E04E00"}}
                   onMouseLeave={e=>{if(canSubmitEmail)e.currentTarget.style.background="#FF5701"}}
                 >
@@ -450,7 +450,7 @@ function AuthModal({ show, onClose, mode, setMode }) {
             </div>
 
             {/* Switch mode link */}
-            <div style={{ textAlign:"center", marginTop:14, fontSize:13, color:"#9CA3AF" }}>
+            <div style={{ textAlign:"center", marginTop:14, fontSize:13, color:"#A8A29E" }}>
               {mode==="signup" ? "Already have an account? " : "New to Capabilio? "}
               <button onClick={()=>{setMode(m=>m==="signup"?"login":"signup");setError("")}}
                 style={{ background:"none", border:"none", color:"#FF5701", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
@@ -461,7 +461,7 @@ function AuthModal({ show, onClose, mode, setMode }) {
             {mode==="signup"&&(
               <div style={{ display:"flex", gap:5, justifyContent:"center", flexWrap:"wrap", marginTop:12 }}>
                 {["✓ Free forever","✓ No credit card","✓ No resume","✓ Built in India 🇮🇳"].map((b,i)=>(
-                  <span key={i} style={{ fontSize:10, color:"#9CA3AF", background:"#F9FAFB", border:"1px solid #E5E7EB", borderRadius:100, padding:"2px 8px" }}>{b}</span>
+                  <span key={i} style={{ fontSize:10, color:"#A8A29E", background:"#FAF7F2", border:"1px solid #E8E3DA", borderRadius:100, padding:"2px 8px" }}>{b}</span>
                 ))}
               </div>
             )}
@@ -731,7 +731,7 @@ function App() {
   return (
     <div style={{ background: "var(--cap-bg-page)", minHeight: "100vh" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');
         .cap-nav-item { transition: color 0.12s, background 0.12s; }
         .cap-nav-item:hover { background: rgba(0,0,0,0.04) !important; }
       `}</style>
@@ -740,7 +740,7 @@ function App() {
       <header style={{
         position: "sticky", top: 0, zIndex: 90,
         background: "#fff",
-        borderBottom: "1px solid #E5E7EB",
+        borderBottom: "1px solid #E8E3DA",
         height: 56,
         display: "flex", alignItems: "center",
         justifyContent: "space-between",
@@ -749,7 +749,7 @@ function App() {
         gap: 12,
       }}>
         {/* Logo */}
-        <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, fontWeight: 800, color: "#0F172A", letterSpacing: "-0.3px", flexShrink: 0 }}>
+        <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 18, fontWeight: 800, color: "#1A1714", letterSpacing: "-0.3px", flexShrink: 0 }}>
           Capabilio <span style={{ color: navAccent, fontStyle: "italic" }}>AI</span>
         </span>
 
@@ -765,13 +765,13 @@ function App() {
                     display: "inline-flex", alignItems: "center", gap: 5,
                     padding: "6px 12px", borderRadius: 8, border: "none",
                     background: active ? `${navAccent}12` : "transparent",
-                    color: active ? navAccent : "#6B7280",
+                    color: active ? navAccent : "#6B6560",
                     fontSize: 13, fontWeight: active ? 700 : 500,
                     cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
                     fontFamily: "'DM Sans', sans-serif",
                     borderBottom: active ? `2px solid ${navAccent}` : "2px solid transparent",
                   }}>
-                  <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, opacity: active ? 1 : 0.6 }}>{item.prefix}</span>
+                  <span style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 700, opacity: active ? 1 : 0.6 }}>{item.prefix}</span>
                   {item.label}
                 </button>
               )
@@ -782,7 +782,7 @@ function App() {
         {/* Right: ELO + profile dropdown */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
           {!isAuthority && userData?.eloRating ? (
-            <div style={{ padding: "4px 10px", background: navPath === "student" ? "#FFF1E8" : `${navAccent}10`, border: `1px solid ${navAccent}30`, borderRadius: 100, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700, color: navAccent }}>
+            <div style={{ padding: "4px 10px", background: navPath === "student" ? "#FFF1E8" : `${navAccent}10`, border: `1px solid ${navAccent}30`, borderRadius: 100, fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 700, color: navAccent }}>
               ELO {userData.eloRating.toLocaleString()}
             </div>
           ) : null}
@@ -795,22 +795,22 @@ function App() {
                 display: "flex", alignItems: "center", gap: 6,
                 padding: "4px 10px 4px 4px",
                 background: profileMenuOpen ? `${navAccent}10` : "#fff",
-                border: `1px solid ${profileMenuOpen ? navAccent + "50" : "#E5E7EB"}`,
+                border: `1px solid ${profileMenuOpen ? navAccent + "50" : "#E8E3DA"}`,
                 borderRadius: 99, cursor: "pointer",
                 transition: "all 0.15s",
               }}
               onMouseEnter={e => { if (!profileMenuOpen) { e.currentTarget.style.borderColor = navAccent + "50"; e.currentTarget.style.background = `${navAccent}08` } }}
-              onMouseLeave={e => { if (!profileMenuOpen) { e.currentTarget.style.borderColor = "#E5E7EB"; e.currentTarget.style.background = "#fff" } }}
+              onMouseLeave={e => { if (!profileMenuOpen) { e.currentTarget.style.borderColor = "#E8E3DA"; e.currentTarget.style.background = "#fff" } }}
             >
-              <div style={{ width: 26, height: 26, borderRadius: "50%", overflow: "hidden", border: `2px solid ${navAccent}44`, background: "#F9FAFB", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <div style={{ width: 26, height: 26, borderRadius: "50%", overflow: "hidden", border: `2px solid ${navAccent}44`, background: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 {avatarUrl
                   ? <img src={avatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  : <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 11, fontWeight: 700, color: navAccent }}>{initials}</span>
+                  : <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 700, color: navAccent }}>{initials}</span>
                 }
               </div>
-              <span style={{ fontSize: 13, fontWeight: 600, color: "#374151", fontFamily: "'DM Sans', sans-serif", maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#3D3935", fontFamily: "'DM Sans', sans-serif", maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</span>
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0, transition: "transform 0.2s", transform: profileMenuOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
-                <path d="M2 4l4 4 4-4" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M2 4l4 4 4-4" stroke="#A8A29E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
 
@@ -818,14 +818,14 @@ function App() {
             {profileMenuOpen && (
               <div style={{
                 position: "absolute", top: "calc(100% + 8px)", right: 0,
-                background: "#fff", border: "1px solid #E5E7EB",
+                background: "#fff", border: "1px solid #E8E3DA",
                 borderRadius: 12, boxShadow: "0 8px 24px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)",
                 minWidth: 200, overflow: "hidden", zIndex: 200,
               }}>
                 {/* User info header */}
                 <div style={{ padding: "12px 14px", borderBottom: "1px solid #F3F4F6" }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#111827", fontFamily: "'DM Sans', sans-serif" }}>{displayName}</div>
-                  <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 2 }}>{user?.email || ""}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#1A1714", fontFamily: "'DM Sans', sans-serif" }}>{displayName}</div>
+                  <div style={{ fontSize: 11, color: "#A8A29E", marginTop: 2 }}>{user?.email || ""}</div>
                 </div>
 
                 {/* Settings */}
@@ -840,10 +840,10 @@ function App() {
                     width: "100%", display: "flex", alignItems: "center", gap: 10,
                     padding: "11px 14px", border: "none", background: "transparent",
                     cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
-                    fontSize: 13, fontWeight: 600, color: "#374151",
+                    fontSize: 13, fontWeight: 600, color: "#3D3935",
                     textAlign: "left", transition: "background 0.1s",
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "#F9FAFB" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "#FAF7F2" }}
                   onMouseLeave={e => { e.currentTarget.style.background = "transparent" }}
                 >
                   <span style={{ fontSize: 15 }}>⚙️</span>

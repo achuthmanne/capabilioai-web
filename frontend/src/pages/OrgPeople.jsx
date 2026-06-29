@@ -5,8 +5,8 @@ import { useState } from "react"
 
 const C = {
   teal: "#0F766E", tealL: "#F0FDFA",
-  ink: "#FFFFFF", ink2: "#374151", ink3: "#6B7280", ink4: "#9CA3AF",
-  border: "#E5E7EB", surface: "#fff", bg: "#F6F6F1",
+  ink: "#FFFFFF", ink2: "#3D3935", ink3: "#6B6560", ink4: "#A8A29E",
+  border: "#E8E3DA", surface: "#fff", bg: "#F6F6F1",
   green: "#16A34A", greenL: "#F0FDF4",
   amber: "#D97706", amberL: "#FFFBEB",
   red: "#DC2626", redL: "#FEF2F2",
@@ -37,13 +37,13 @@ export default function OrgPeople({ user, userData }) {
     .filter(m => !search || m.name.toLowerCase().includes(search.toLowerCase()) || m.dept.toLowerCase().includes(search.toLowerCase()))
 
   return (
-    <div style={{ background: C.bg, flex: 1, minHeight: 0, overflowY: "auto", fontFamily: "Inter, sans-serif" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap');`}</style>
+    <div style={{ background: C.bg, flex: 1, minHeight: 0, overflowY: "auto", fontFamily: "DM Sans, sans-serif" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');`}</style>
 
       <div style={{ padding: "20px 16px 0" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
           <div>
-            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, fontWeight: 800, color: C.ink, margin: 0 }}>
+            <h1 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 26, fontWeight: 800, color: C.ink, margin: 0 }}>
               People <span style={{ color: C.teal, fontStyle: "italic" }}>& Roles</span>
             </h1>
             <p style={{ fontSize: 13, color: C.ink3, margin: "4px 0 0" }}>Members, permissions, and verification state.</p>
@@ -59,7 +59,7 @@ export default function OrgPeople({ user, userData }) {
             { val: MEMBERS.filter(m => m.status === "pending").length,  label: "Pending",    color: C.amber },
           ].map((s, i) => (
             <div key={i} style={{ flex: 1, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "12px 10px", textAlign: "center" }}>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 20, fontWeight: 700, color: s.color }}>{s.val}</div>
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 20, fontWeight: 700, color: s.color }}>{s.val}</div>
               <div style={{ fontSize: 11, color: C.ink4, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", marginTop: 2 }}>{s.label}</div>
             </div>
           ))}
@@ -104,7 +104,7 @@ export default function OrgPeople({ user, userData }) {
               </div>
             </div>
             <div style={{ textAlign: "right", flexShrink: 0 }}>
-              {m.elo && <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 14, fontWeight: 700, color: C.teal }}>{m.elo}</div>}
+              {m.elo && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 14, fontWeight: 700, color: C.teal }}>{m.elo}</div>}
               {m.status === "pending"
                 ? <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
                     <button style={{ padding: "4px 10px", background: C.tealL, border: `1px solid ${C.teal}30`, borderRadius: 6, color: C.teal, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>✓</button>
@@ -122,7 +122,7 @@ export default function OrgPeople({ user, userData }) {
         <div style={{ position: "fixed", inset: 0, zIndex: 999, display: "flex", alignItems: "flex-end" }}>
           <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)" }} onClick={() => setInvite(false)} />
           <div style={{ position: "relative", background: C.surface, borderRadius: "20px 20px 0 0", padding: 24, width: "100%", zIndex: 1 }}>
-            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, fontWeight: 800, color: C.ink, marginBottom: 16 }}>Invite Member</div>
+            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 20, fontWeight: 800, color: C.ink, marginBottom: 16 }}>Invite Member</div>
             {[
               { label: "Email address", key: "email", type: "email", placeholder: "name@institution.edu" },
               { label: "Department",    key: "dept",  type: "text",  placeholder: "e.g. CS Department" },
@@ -141,7 +141,7 @@ export default function OrgPeople({ user, userData }) {
               </select>
             </div>
             <button disabled={!invite.email} onClick={() => setInvite(false)}
-              style={{ width: "100%", padding: "14px", background: invite.email ? C.teal : "#F3F4F6", border: "none", borderRadius: 12, color: invite.email ? "#fff" : C.ink4, fontSize: 15, fontWeight: 700, cursor: invite.email ? "pointer" : "not-allowed", fontFamily: "'Playfair Display', serif" }}>
+              style={{ width: "100%", padding: "14px", background: invite.email ? C.teal : "#F3F4F6", border: "none", borderRadius: 12, color: invite.email ? "#fff" : C.ink4, fontSize: 15, fontWeight: 700, cursor: invite.email ? "pointer" : "not-allowed", fontFamily: "'DM Sans', sans-serif" }}>
               Send Invite →
             </button>
           </div>

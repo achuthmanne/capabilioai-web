@@ -16,13 +16,13 @@ import { getPlan } from "../config/plans"
 
 // ── Design tokens (mirrors Aura.jsx T) ───────────────────────────────────────
 const T = {
-  cream:   "#F8F9FA",
+  cream:   "#FAF7F2",
   cream2:  "#FFFFFF",
   cream3:  "rgba(0,0,0,0.05)",
-  ink:     "#0F172A",
+  ink:     "#1A1714",
   ink2:    "#475569",
-  ink3:    "#94A3B8",
-  ink4:    "#64748B",
+  ink3:    "#A8A29E",
+  ink4:    "#6B6560",
   indigo:  "#6366F1",
   indigo2: "#818CF8",
   indigo3: "rgba(99,102,241,0.12)",
@@ -41,7 +41,7 @@ const T = {
 
 // ── ELO tiers (mirrors Arena / Aura) ─────────────────────────────────────────
 const ELO_TIERS = [
-  { min:0,    max:600,  label:"Rookie",       color:"#94A3B8", icon:"🌱" },
+  { min:0,    max:600,  label:"Rookie",       color:"#A8A29E", icon:"🌱" },
   { min:600,  max:800,  label:"Apprentice",   color:"#22C55E", icon:"⚡" },
   { min:800,  max:1000, label:"Practitioner", color:"#3B82F6", icon:"🔵" },
   { min:1000, max:1200, label:"Expert",       color:"#8B5CF6", icon:"💜" },
@@ -176,7 +176,7 @@ function Input({ value, onChange, placeholder, type="text", disabled=false, mono
         width:"100%", padding:"9px 12px", borderRadius:9,
         border:`1.5px solid ${focused ? T.indigo : T.border}`,
         fontSize:13, color: disabled ? T.ink4 : T.ink,
-        fontFamily: monospace ? "'JetBrains Mono',monospace" : "inherit",
+        fontFamily: monospace ? "'DM Mono',monospace" : "inherit",
         background: disabled ? T.cream : "#fff",
         outline:"none", transition:"border 0.15s", boxSizing:"border-box",
       }}
@@ -427,7 +427,7 @@ function AccountSection({ userData, user, save, setUserData }) {
               placeholder="your-username"
               style={{
                 flex:1, padding:"9px 10px", border:"none", fontSize:13,
-                color:T.ink, fontFamily:"'JetBrains Mono',monospace", outline:"none",
+                color:T.ink, fontFamily:"'DM Mono',monospace", outline:"none",
               }}
             />
           </div>
@@ -837,7 +837,7 @@ function UANVerificationSection({ userData, user, save, setUserData }) {
 
         {/* Badge */}
         <div style={{
-          background:"linear-gradient(135deg,#0F172A,#1E293B)", borderRadius:14,
+          background:"linear-gradient(135deg,#1A1714,#1A1714)", borderRadius:14,
           padding:"18px 22px", marginBottom:16, color:"#fff",
           display:"flex", alignItems:"center", gap:14,
         }}>
@@ -1474,7 +1474,7 @@ function SecuritySection({ user }) {
             <FieldLabel>User ID</FieldLabel>
             <div style={{
               fontSize:11, color:T.ink4,
-              fontFamily:"'JetBrains Mono',monospace",
+              fontFamily:"'DM Mono',monospace",
               wordBreak:"break-all",
             }}>{user?.id || "—"}</div>
           </div>
@@ -1744,7 +1744,7 @@ function AdvancedSection({ user, userData, save, setUserData }) {
               borderBottom:`1px solid ${T.border}`,
             }}>
               <span style={{ color:T.ink4, fontWeight:600 }}>{row.label}</span>
-              <span style={{ color:T.ink2, fontFamily:"'JetBrains Mono',monospace", fontWeight:700 }}>{String(row.value)}</span>
+              <span style={{ color:T.ink2, fontFamily:"'DM Mono',monospace", fontWeight:700 }}>{String(row.value)}</span>
             </div>
           ))}
         </div>
@@ -1788,7 +1788,7 @@ function AdvancedSection({ user, userData, save, setUserData }) {
                 style={{
                   flex:1, padding:"9px 12px", borderRadius:8,
                   border:`1.5px solid ${T.red}`, fontSize:13,
-                  color:T.ink, fontFamily:"'JetBrains Mono',monospace",
+                  color:T.ink, fontFamily:"'DM Mono',monospace",
                   outline:"none", background:"#fff",
                 }}
               />
@@ -2004,7 +2004,7 @@ export default function SettingsPanel({ userData, user, save, setUserData, path 
 
       {/* ── Top Profile Identity Card ─────────────────────────────────── */}
       <div style={{
-        background: "linear-gradient(135deg, #0F172A 0%, #1E293B 60%, #312e81 100%)",
+        background: "linear-gradient(135deg, #1A1714 0%, #1A1714 60%, #312e81 100%)",
         borderRadius: 16, padding:"22px 24px", marginBottom:20,
         boxShadow:"0 4px 20px rgba(0,0,0,0.15)", color:"#fff",
         display:"flex", alignItems:"center", gap:18, flexWrap:"wrap",

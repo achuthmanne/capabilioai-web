@@ -562,11 +562,11 @@ function CodeEditor({ value, onChange, language }) {
   }
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", background: T.editor, borderRadius: 0, overflow: "hidden", fontFamily: "'JetBrains Mono','Fira Code','Courier New',monospace", fontSize: 13, minHeight: 0 }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", background: T.editor, borderRadius: 0, overflow: "hidden", fontFamily: "'DM Mono','Fira Code','Courier New',monospace", fontSize: 13, minHeight: 0 }}>
       {/* Language tag */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"6px 14px", borderBottom:"1px solid #E5E7EB", background:"#F9FAFB", flexShrink:0 }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"6px 14px", borderBottom:"1px solid #E8E3DA", background:"#FAF7F2", flexShrink:0 }}>
         <span style={{ fontSize:11, color:"#9CDCFE", fontWeight:600 }}>{language}</span>
-        <span style={{ fontSize:10, color:"#9CA3AF" }}>auto-save ✓</span>
+        <span style={{ fontSize:10, color:"#A8A29E" }}>auto-save ✓</span>
       </div>
       {/* Editor area */}
       <div style={{ flex:1, display:"flex", overflow:"hidden", minHeight:0, position:"relative" }}>
@@ -656,7 +656,7 @@ function SubmitResultOverlay({ result, onClose, onRetry }) {
         {/* Header */}
         <div style={{ padding:"20px 24px 16px", background: score >= 80 ? T.green2 : score >= 60 ? T.indigo3 : T.amber2, borderBottom:`1px solid ${T.border}` }}>
           <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12 }}>
-            <div style={{ width:48, height:48, borderRadius:12, background:T.surface, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'JetBrains Mono',monospace", fontSize:18, fontWeight:900, color:gradeColor, boxShadow:"0 2px 8px rgba(0,0,0,0.1)" }}>{grade}</div>
+            <div style={{ width:48, height:48, borderRadius:12, background:T.surface, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'DM Mono',monospace", fontSize:18, fontWeight:900, color:gradeColor, boxShadow:"0 2px 8px rgba(0,0,0,0.1)" }}>{grade}</div>
             <div>
               <div style={{ fontSize:16, fontWeight:800, color:T.ink }}>{timedOut ? "Time's Up — Partial Review" : score >= 80 ? "Accepted ✓" : score >= 60 ? "Good Attempt" : "Needs Improvement"}</div>
               <div style={{ fontSize:12, color:T.ink3, marginTop:2 }}>{timedOut ? "Partial score awarded based on what was written." : summary}</div>
@@ -669,7 +669,7 @@ function SubmitResultOverlay({ result, onClose, onRetry }) {
               { label:"ATTEMPT",    value:`#${attemptNumber}`, color: attemptNumber > 1 ? T.amber : T.green },
             ].map(s => (
               <div key={s.label} style={{ flex:1, background:T.surface, borderRadius:10, padding:"10px 12px", textAlign:"center", boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
-                <div style={{ fontSize:18, fontWeight:900, color:s.color, fontFamily:"'JetBrains Mono',monospace", lineHeight:1 }}>{s.value}</div>
+                <div style={{ fontSize:18, fontWeight:900, color:s.color, fontFamily:"'DM Mono',monospace", lineHeight:1 }}>{s.value}</div>
                 <div style={{ fontSize:9, color:T.ink4, fontWeight:700, letterSpacing:1, marginTop:4 }}>{s.label}</div>
               </div>
             ))}
@@ -753,7 +753,7 @@ function CommonHistory({ uid }) {
           { label:"Total ELO Gained", value:`+${totalElo}` },
         ].map(s => (
           <div key={s.label}>
-            <div style={{ fontSize:16, fontWeight:800, color:T.ink, fontFamily:"'JetBrains Mono',monospace" }}>{s.value}</div>
+            <div style={{ fontSize:16, fontWeight:800, color:T.ink, fontFamily:"'DM Mono',monospace" }}>{s.value}</div>
             <div style={{ fontSize:10, color:T.ink4, fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>{s.label}</div>
           </div>
         ))}
@@ -809,10 +809,10 @@ function HistoryRecord({ r }) {
                   </div>
                 </div>
                 <div style={{ textAlign:"right", flexShrink:0 }}>
-                  <div style={{ fontSize:16, fontWeight:900, color:sc, fontFamily:"'JetBrains Mono',monospace" }}>
+                  <div style={{ fontSize:16, fontWeight:900, color:sc, fontFamily:"'DM Mono',monospace" }}>
                     {gradeFor(score)}
                   </div>
-                  <div style={{ fontSize:12, fontWeight:800, color:T.indigo, fontFamily:"'JetBrains Mono',monospace" }}>
+                  <div style={{ fontSize:12, fontWeight:800, color:T.indigo, fontFamily:"'DM Mono',monospace" }}>
                     +{elo} ELO
                   </div>
                   <div style={{ fontSize:11, color:T.ink4 }}>{open ? "▲ Hide" : "▼ Detail"}</div>
@@ -821,7 +821,7 @@ function HistoryRecord({ r }) {
 
               {/* Expanded detail */}
               {open && (
-                <div style={{ borderTop:`1px solid ${T.border}`, padding:"14px 16px", background:"#0F172A",
+                <div style={{ borderTop:`1px solid ${T.border}`, padding:"14px 16px", background:"#1A1714",
                   display:"flex", flexDirection:"column", gap:12 }}>
 
                   {/* Scenario */}
@@ -846,7 +846,7 @@ function HistoryRecord({ r }) {
                           <pre style={{ margin:0, fontSize:11, color:T.ink2, background:T.green2,
                             padding:"8px 12px", borderRadius:10, border:`1px solid rgba(22,163,74,0.15)`,
                             whiteSpace:"pre-wrap", wordBreak:"break-word",
-                            fontFamily:"'JetBrains Mono',monospace", lineHeight:1.6,
+                            fontFamily:"'DM Mono',monospace", lineHeight:1.6,
                             maxHeight:100, overflowY:"auto" }}>
                             {expOut}
                           </pre>
@@ -859,7 +859,7 @@ function HistoryRecord({ r }) {
                           <pre style={{ margin:0, fontSize:11, color:T.ink2, background:T.indigo3,
                             padding:"8px 12px", borderRadius:10, border:`1px solid rgba(61,78,172,0.12)`,
                             whiteSpace:"pre-wrap", wordBreak:"break-word",
-                            fontFamily:"'JetBrains Mono',monospace", lineHeight:1.6,
+                            fontFamily:"'DM Mono',monospace", lineHeight:1.6,
                             maxHeight:140, overflowY:"auto" }}>
                             {answer.slice(0,500)}{answer.length > 500 ? "\n…" : ""}
                           </pre>
@@ -931,7 +931,7 @@ function CommonLeaderboard({ uid, userElo }) {
             <div style={{ flex:1, fontSize:13, fontWeight: isMe ? 800 : 600, color: isMe ? T.indigo : T.ink }}>
               {e.display_name || "Anonymous"} {isMe && "(You)"}
             </div>
-            <div style={{ fontSize:13, fontWeight:800, color:T.indigo, fontFamily:"'JetBrains Mono',monospace" }}>{e.elo}</div>
+            <div style={{ fontSize:13, fontWeight:800, color:T.indigo, fontFamily:"'DM Mono',monospace" }}>{e.elo}</div>
             <div style={{ fontSize:11, color:T.ink4 }}>{e.tasks_done} solved</div>
           </div>
         )
@@ -1410,7 +1410,7 @@ export default function ArenaCommonChallenges({ user, userData, onBack }) {
         ))}
         {/* ELO chip */}
         <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:10 }}>
-          <div style={{ padding:"4px 12px", background:T.indigo3, borderRadius:99, fontFamily:"'JetBrains Mono',monospace", fontSize:12, fontWeight:800, color:T.indigo }}>
+          <div style={{ padding:"4px 12px", background:T.indigo3, borderRadius:99, fontFamily:"'DM Mono',monospace", fontSize:12, fontWeight:800, color:T.indigo }}>
             ELO {elo}
           </div>
           <div style={{ fontSize:11, color:T.ink3 }}>{completedIds.size} solved</div>
@@ -1509,7 +1509,7 @@ export default function ArenaCommonChallenges({ user, userData, onBack }) {
                 <select
                   value={language}
                   onChange={e => setLanguage(e.target.value)}
-                  style={{ background:"rgba(0,0,0,0.05)", border:"1px solid rgba(0,0,0,0.07)", borderRadius:6, color:"#D4D4D4", fontSize:12, padding:"4px 10px", cursor:"pointer", fontFamily:"'JetBrains Mono',monospace" }}>
+                  style={{ background:"rgba(0,0,0,0.05)", border:"1px solid rgba(0,0,0,0.07)", borderRadius:6, color:"#D4D4D4", fontSize:12, padding:"4px 10px", cursor:"pointer", fontFamily:"'DM Mono',monospace" }}>
                   {languages.map(l => <option key={l} value={l}>{l}</option>)}
                 </select>
                 <div style={{ flex:1 }} />
@@ -1525,8 +1525,8 @@ export default function ArenaCommonChallenges({ user, userData, onBack }) {
               </div>
 
               {/* Bottom action bar */}
-              <div style={{ padding:"10px 14px", borderTop:"1px solid #E5E7EB", background:"#F8F9FA", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
-                <div style={{ fontSize:11, color:"#6B7280", display:"flex", alignItems:"center", gap:10 }}>
+              <div style={{ padding:"10px 14px", borderTop:"1px solid #E8E3DA", background:"#FAF7F2", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
+                <div style={{ fontSize:11, color:"#6B6560", display:"flex", alignItems:"center", gap:10 }}>
                   {selectedChallenge.difficulty} · {selectedChallenge.estimated_mins || 30} min
                   {/* ELO reward badge */}
                   {!isSolved && (
@@ -1544,7 +1544,7 @@ export default function ArenaCommonChallenges({ user, userData, onBack }) {
                   <button
                     onClick={handleRunTests}
                     disabled={testLoading}
-                    style={{ padding:"9px 18px", background:"#F3F4F6", border:"1px solid #E5E7EB", borderRadius:8, color:"#374151", fontSize:13, fontWeight:600, cursor: testLoading ? "not-allowed" : "pointer", display:"flex", alignItems:"center", gap:7, fontFamily:"inherit" }}>
+                    style={{ padding:"9px 18px", background:"#F3F4F6", border:"1px solid #E8E3DA", borderRadius:8, color:"#3D3935", fontSize:13, fontWeight:600, cursor: testLoading ? "not-allowed" : "pointer", display:"flex", alignItems:"center", gap:7, fontFamily:"inherit" }}>
                     {testLoading ? <Spinner size={13} color="#9CDCFE" /> : "▷"} Run Tests
                   </button>
                   {isSolved ? (
@@ -1644,7 +1644,7 @@ export default function ArenaCommonChallenges({ user, userData, onBack }) {
                           <td style={{ padding:"12px 16px" }}>
                             {solved
                               ? <span style={{ fontSize:11, color:T.green, fontWeight:700 }}>✓ Done</span>
-                              : <span style={{ fontSize:12, fontWeight:800, color:T.indigo, fontFamily:"'JetBrains Mono',monospace" }}>+{eloReward}</span>}
+                              : <span style={{ fontSize:12, fontWeight:800, color:T.indigo, fontFamily:"'DM Mono',monospace" }}>+{eloReward}</span>}
                           </td>
                           <td style={{ padding:"12px 16px", color:T.ink3, fontFamily:"monospace", fontSize:12 }}>
                             {ch.acceptance != null ? `${ch.acceptance}%` : "—"}

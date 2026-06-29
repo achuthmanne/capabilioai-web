@@ -6,10 +6,10 @@ const C = {
   teal:    "#06B6D4",
   tealL:   "rgba(6,182,212,0.12)",
   tealB:   "rgba(6,182,212,0.28)",
-  ink:     "#0F172A",
+  ink:     "#1A1714",
   ink2:    "#475569",
-  ink3:    "#94A3B8",
-  ink4:    "#64748B",
+  ink3:    "#A8A29E",
+  ink4:    "#6B6560",
   border:  "rgba(0,0,0,0.05)",
   surface: "#FFFFFF",
   bg:      "#FFFFFF",
@@ -40,7 +40,7 @@ function Label({ children, color = C.teal, bg = C.tealL }) {
       display: "inline-flex", alignItems: "center",
       padding: "3px 10px", borderRadius: 100,
       background: bg, color, fontSize: 11, fontWeight: 700,
-      fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.06em",
+      fontFamily: "'DM Mono', monospace", letterSpacing: "0.06em",
       textTransform: "uppercase",
     }}>{children}</span>
   )
@@ -49,7 +49,7 @@ function Label({ children, color = C.teal, bg = C.tealL }) {
 function StatCard({ value, label, sub, color }) {
   return (
     <Card style={{ flex: 1, padding: 16, textAlign: "center" }}>
-      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 24, fontWeight: 700, color: color || C.teal }}>{value}</div>
+      <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 24, fontWeight: 700, color: color || C.teal }}>{value}</div>
       <div style={{ fontSize: 11, color: C.ink4, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", marginTop: 2 }}>{label}</div>
       {sub && <div style={{ fontSize: 12, color: C.ink3, marginTop: 3 }}>{sub}</div>}
     </Card>
@@ -91,13 +91,13 @@ export default function OrgHome({ user, userData, onNavigate }) {
   ]
 
   return (
-    <div style={{ background: `radial-gradient(ellipse at 20% 60%, rgba(6,182,212,0.14) 0%, transparent 55%), radial-gradient(ellipse at 75% 30%, rgba(16,185,129,0.07) 0%, transparent 45%), #FFFFFF`, flex: 1, minHeight: 0, overflowY: "auto", padding: "20px 16px 24px", fontFamily: "Inter, sans-serif" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap');`}</style>
+    <div style={{ background: `radial-gradient(ellipse at 20% 60%, rgba(255,87,1,0.05) 0%, transparent 55%), radial-gradient(ellipse at 75% 30%, rgba(255,87,1,0.03) 0%, transparent 45%), #FAF7F2`, flex: 1, minHeight: 0, overflowY: "auto", padding: "20px 16px 24px", fontFamily: "DM Sans, sans-serif" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');`}</style>
 
       {/* ── Greeting ─────────────────────────────────────────── */}
       <div style={{ marginBottom: 20 }}>
         <p style={{ fontSize: 13, color: C.ink3, margin: 0, fontWeight: 500 }}>{greeting}, {firstName} · Admin Console</p>
-        <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, fontWeight: 800, color: C.ink, margin: "4px 0 0", lineHeight: 1.2 }}>
+        <h1 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 24, fontWeight: 800, color: C.ink, margin: "4px 0 0", lineHeight: 1.2 }}>
           What needs <span style={{ color: C.teal, fontStyle: "italic" }}>attention</span> now?
         </h1>
       </div>
@@ -106,7 +106,7 @@ export default function OrgHome({ user, userData, onNavigate }) {
       <div style={{ display: "flex", gap: 10, marginBottom: 16, overflowX: "auto", paddingBottom: 4 }}>
         {cohortStats.map((s, i) => (
           <Card key={i} style={{ flex: "0 0 80px", padding: "12px 8px", textAlign: "center" }}>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 18, fontWeight: 700, color: s.color }}>{s.value}</div>
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 18, fontWeight: 700, color: s.color }}>{s.value}</div>
             <div style={{ fontSize: 10, color: C.ink4, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", marginTop: 2, lineHeight: 1.3 }}>{s.label}</div>
           </Card>
         ))}
@@ -152,7 +152,7 @@ export default function OrgHome({ user, userData, onNavigate }) {
             </div>
             <div style={{ display: "flex", gap: 6 }}>
               <button style={{ padding: "5px 12px", background: C.tealL, border: `1px solid ${C.teal}30`, borderRadius: 8, color: C.teal, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Approve</button>
-              <button style={{ padding: "5px 10px", background: "#F9FAFB", border: `1px solid ${C.border}`, borderRadius: 8, color: C.ink3, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>✕</button>
+              <button style={{ padding: "5px 10px", background: "#FAF7F2", border: `1px solid ${C.border}`, borderRadius: 8, color: C.ink3, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>✕</button>
             </div>
           </div>
         ))}

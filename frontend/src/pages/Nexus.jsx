@@ -53,7 +53,7 @@ function ProfileCard({ profile, currentUser, onConnect, onFollow }) {
       onMouseLeave={e=>e.currentTarget.style.boxShadow=T.shadow}>
       {/* Cover + Avatar */}
       <div style={{height:56,background:`linear-gradient(135deg,${T.indigo}22,${T.purple}22)`,position:"relative"}}>
-        <div style={{position:"absolute",bottom:-20,left:16,width:48,height:48,borderRadius:"50%",border:"3px solid #fff",overflow:"hidden",background:"#F9FAFB",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <div style={{position:"absolute",bottom:-20,left:16,width:48,height:48,borderRadius:"50%",border:"3px solid #fff",overflow:"hidden",background:"#FAF7F2",display:"flex",alignItems:"center",justifyContent:"center"}}>
           {profile.profile_photo_url?<img src={profile.profile_photo_url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:20,fontWeight:800,color:T.indigo}}>{profile.name?.[0]||"?"}</span>}
         </div>
         {profile.is_mentor&&<div style={{position:"absolute",bottom:8,right:12,fontSize:10,background:T.amber2,color:T.amber,padding:"2px 8px",borderRadius:99,fontWeight:700}}>MENTOR</div>}
@@ -72,9 +72,9 @@ function ProfileCard({ profile, currentUser, onConnect, onFollow }) {
         {!isOwn&&(
           <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
             {status==="none"&&<button onClick={handleConnect} style={{flex:1,padding:"7px",background:T.indigo,border:"none",borderRadius:8,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>Connect</button>}
-            {status==="pending"&&<button disabled style={{flex:1,padding:"7px",background:"#F9FAFB",border:`1px solid ${T.border}`,borderRadius:8,color:T.ink3,fontSize:12}}>Pending</button>}
+            {status==="pending"&&<button disabled style={{flex:1,padding:"7px",background:"#FAF7F2",border:`1px solid ${T.border}`,borderRadius:8,color:T.ink3,fontSize:12}}>Pending</button>}
             {status==="accepted"&&<button onClick={()=>setMsgOpen(v=>!v)} style={{flex:1,padding:"7px",background:T.indigo2,border:`1px solid ${T.indigo}33`,borderRadius:8,color:T.indigo,fontSize:12,fontWeight:700,cursor:"pointer"}}>Message</button>}
-            <button onClick={handleFollow} style={{padding:"7px 10px",background:following?T.indigo2:"#F9FAFB",border:`1px solid ${following?T.indigo:T.border}`,borderRadius:8,color:following?T.indigo:T.ink3,fontSize:12,cursor:"pointer"}}>{following?"Following":"Follow"}</button>
+            <button onClick={handleFollow} style={{padding:"7px 10px",background:following?T.indigo2:"#FAF7F2",border:`1px solid ${following?T.indigo:T.border}`,borderRadius:8,color:following?T.indigo:T.ink3,fontSize:12,cursor:"pointer"}}>{following?"Following":"Follow"}</button>
           </div>
         )}
         {msgOpen&&(
@@ -82,7 +82,7 @@ function ProfileCard({ profile, currentUser, onConnect, onFollow }) {
             <textarea value={msgText} onChange={e=>setMsgText(e.target.value)} placeholder={`Message ${profile.name||""}…`} rows={2}
               style={{width:"100%",padding:"8px 10px",border:`1px solid ${T.border}`,borderRadius:8,fontSize:12,resize:"none",fontFamily:"inherit",outline:"none",boxSizing:"border-box",marginBottom:6}}/>
             <div style={{display:"flex",gap:6}}>
-              <button onClick={()=>setMsgOpen(false)} style={{flex:1,padding:"6px",background:"#F9FAFB",border:`1px solid ${T.border}`,borderRadius:7,fontSize:12,cursor:"pointer"}}>Cancel</button>
+              <button onClick={()=>setMsgOpen(false)} style={{flex:1,padding:"6px",background:"#FAF7F2",border:`1px solid ${T.border}`,borderRadius:7,fontSize:12,cursor:"pointer"}}>Cancel</button>
               <button onClick={sendMessage} disabled={sending||!msgText.trim()} style={{flex:2,padding:"6px",background:T.indigo,border:"none",borderRadius:7,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",opacity:sending||!msgText.trim()?0.6:1}}>{sending?"Sending…":"Send"}</button>
             </div>
           </div>
@@ -134,11 +134,11 @@ export default function Nexus({ user, userData, setUserData }) {
   const NOTIF_ICONS = { connection_request:"🤝",connection_accepted:"✅",recruiter_message:"💬",post_acknowledge:"👏",post_signal:"⚡",interview_scheduled:"📅",offer_received:"🎁",booking_request:"📚" }
 
   return (
-    <div style={{background:T.cream,flex:1,minHeight:0,overflowY:"auto",fontFamily:"Inter,sans-serif",paddingBottom:100}}>
+    <div style={{background:T.cream,flex:1,minHeight:0,overflowY:"auto",fontFamily:"DM Sans,sans-serif",paddingBottom:100}}>
       <div style={{background:"#FFFFFF",borderBottom:`1px solid ${T.border}`,padding:"16px 24px",position:"sticky",top:0,zIndex:50}}>
         <div style={{maxWidth:1100,margin:"0 auto",display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
           {[{id:"discover",l:"Discover"},{id:"connections",l:`Connections (${accepted.length})`},{id:"notifications",l:`Notifications${unread>0?` (${unread})`:""}`,urgent:unread>0}].map(t=>(
-            <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"8px 16px",background:tab===t.id?T.indigo:"#F9FAFB",border:`1px solid ${tab===t.id?T.indigo:t.urgent?T.amber:T.border}`,borderRadius:10,color:tab===t.id?"#fff":t.urgent?T.amber:T.ink3,fontSize:13,fontWeight:tab===t.id||t.urgent?700:400,cursor:"pointer"}}>
+            <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"8px 16px",background:tab===t.id?T.indigo:"#FAF7F2",border:`1px solid ${tab===t.id?T.indigo:t.urgent?T.amber:T.border}`,borderRadius:10,color:tab===t.id?"#fff":t.urgent?T.amber:T.ink3,fontSize:13,fontWeight:tab===t.id||t.urgent?700:400,cursor:"pointer"}}>
               {t.l}
             </button>
           ))}
@@ -171,14 +171,14 @@ export default function Nexus({ user, userData, setUserData }) {
                   const other = c.requester_id===user?.id?c.addressee:c.requester
                   return(
                     <div key={c.id} style={{background:"#FFFFFF",border:`1px solid ${T.amber}33`,borderRadius:12,padding:"14px 16px",marginBottom:8,display:"flex",gap:12,alignItems:"center"}}>
-                      <div style={{width:40,height:40,borderRadius:"50%",overflow:"hidden",background:"#F9FAFB",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      <div style={{width:40,height:40,borderRadius:"50%",overflow:"hidden",background:"#FAF7F2",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                         {other?.profile_photo_url?<img src={other.profile_photo_url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontWeight:700,color:T.ink3}}>{other?.name?.[0]||"?"}</span>}
                       </div>
                       <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:T.ink}}>{other?.name||"Unknown"}</div><div style={{fontSize:12,color:T.ink3}}>{other?.headline||""}</div></div>
                       {c.addressee_id===user?.id&&(
                         <div style={{display:"flex",gap:6}}>
                           <button onClick={()=>handleRespond(c.id,"accepted")} style={{padding:"6px 12px",background:T.green,border:"none",borderRadius:8,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>Accept</button>
-                          <button onClick={()=>handleRespond(c.id,"rejected")} style={{padding:"6px 12px",background:"#F9FAFB",border:`1px solid ${T.border}`,borderRadius:8,color:T.ink3,fontSize:12,cursor:"pointer"}}>Decline</button>
+                          <button onClick={()=>handleRespond(c.id,"rejected")} style={{padding:"6px 12px",background:"#FAF7F2",border:`1px solid ${T.border}`,borderRadius:8,color:T.ink3,fontSize:12,cursor:"pointer"}}>Decline</button>
                         </div>
                       )}
                     </div>
@@ -193,7 +193,7 @@ export default function Nexus({ user, userData, setUserData }) {
                 const other = c.requester_id===user?.id?c.addressee:c.requester
                 return(
                   <div key={c.id} style={{background:"#FFFFFF",border:`1px solid ${T.border}`,borderRadius:12,padding:"14px 16px",boxShadow:T.shadow}}>
-                    <div style={{width:36,height:36,borderRadius:"50%",overflow:"hidden",background:"#F9FAFB",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8}}>
+                    <div style={{width:36,height:36,borderRadius:"50%",overflow:"hidden",background:"#FAF7F2",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8}}>
                       {other?.profile_photo_url?<img src={other.profile_photo_url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontWeight:700,color:T.ink3}}>{other?.name?.[0]||"?"}</span>}
                     </div>
                     <div style={{fontSize:12,fontWeight:600,color:T.ink}}>{other?.name||"Unknown"}</div>
@@ -211,7 +211,7 @@ export default function Nexus({ user, userData, setUserData }) {
             {notifications.length===0?<div style={{textAlign:"center",padding:48,color:T.ink3,fontSize:13}}>No notifications yet.</div>:
             notifications.map(n=>(
               <div key={n.id} style={{background:n.is_read?"#fff":"#FFFAF5",border:`1px solid ${n.is_read?T.border:T.amber+"44"}`,borderRadius:12,padding:"14px 16px",marginBottom:8,display:"flex",gap:12,alignItems:"flex-start"}}>
-                <div style={{width:36,height:36,borderRadius:"50%",overflow:"hidden",background:"#F9FAFB",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:18}}>
+                <div style={{width:36,height:36,borderRadius:"50%",overflow:"hidden",background:"#FAF7F2",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:18}}>
                   {n.actor?.profile_photo_url?<img src={n.actor.profile_photo_url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:(NOTIF_ICONS[n.type]||"🔔")}
                 </div>
                 <div style={{flex:1}}>

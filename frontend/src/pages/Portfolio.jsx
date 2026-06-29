@@ -21,12 +21,12 @@ import {
 // ─── Design tokens — full dark mode ────────────────────────────────────────────
 const C = {
   bg:      "#0A0F1E",           // page background — deep navy
-  surface: "#111827",           // card surface — dark
-  surface2:"#1E293B",           // elevated card / inner panel
-  ink:     "#F1F5F9",           // primary text
-  ink2:    "#CBD5E1",           // secondary text
-  ink3:    "#94A3B8",           // muted text
-  ink4:    "#64748B",           // very muted
+  surface: "#1A1714",           // card surface — dark
+  surface2:"#1A1714",           // elevated card / inner panel
+  ink:     "#F2EDE4",           // primary text
+  ink2:    "#D6D0C8",           // secondary text
+  ink3:    "#A8A29E",           // muted text
+  ink4:    "#6B6560",           // very muted
   border:  "rgba(255,255,255,0.07)", // subtle card border
   border2: "rgba(255,255,255,0.12)", // slightly more visible
   blue:    "#3B82F6",
@@ -49,12 +49,12 @@ const C = {
 
 const PATH_CONFIG = {
   student:      { label:"Student",      icon:"🎓", heroBg:"linear-gradient(135deg,#1E3A8A 0%,#1D4ED8 55%,#0F766E 100%)" },
-  professional: { label:"Professional", icon:"💼", heroBg:"linear-gradient(135deg,#0F172A 0%,#0F766E 60%,#14B8A6 100%)" },
+  professional: { label:"Professional", icon:"💼", heroBg:"linear-gradient(135deg,#1A1714 0%,#0F766E 60%,#14B8A6 100%)" },
   authority:    { label:"Expert",       icon:"⭐", heroBg:"linear-gradient(135deg,#1E1B4B 0%,#2D1B69 50%,#0F766E 100%)" },
 }
 
 const ELO_TIERS = [
-  { min:0,    max:500,  label:"Beginner",    color:"#64748B" },
+  { min:0,    max:500,  label:"Beginner",    color:"#6B6560" },
   { min:500,  max:800,  label:"Developing",  color:"#D97706" },
   { min:800,  max:1100, label:"Proficient",  color:"#2563EB" },
   { min:1100, max:1500, label:"Advanced",    color:"#7C3AED" },
@@ -164,7 +164,7 @@ function StatChip({ icon, value, label, color=C.blue }) {
         pointerEvents:"none",
       }}/>
       <div style={{ fontSize:20, marginBottom:5 }}>{icon}</div>
-      <div style={{ fontSize:20, fontWeight:900, color, fontFamily:"'JetBrains Mono',monospace", lineHeight:1 }}>{value}</div>
+      <div style={{ fontSize:20, fontWeight:900, color, fontFamily:"'DM Mono',monospace", lineHeight:1 }}>{value}</div>
       <div style={{ fontSize:10, color:C.ink4, marginTop:5, fontWeight:700, textTransform:"uppercase", letterSpacing:0.8 }}>{label}</div>
     </div>
   )
@@ -303,9 +303,9 @@ function ChallengeDetailModal({ t, onClose }) {
               <div style={{ fontSize:10, fontWeight:800, color:C.blue2, textTransform:"uppercase", letterSpacing:1.5, marginBottom:8 }}>
                 💻 Submitted Solution <span style={{ fontSize:9, color:C.ink4, fontWeight:600, textTransform:"none", letterSpacing:0 }}>({answerStr.length.toLocaleString()} characters)</span>
               </div>
-              <pre style={{ margin:0, fontSize:11.5, color:"#E2E8F0", background:"#0B1120",
+              <pre style={{ margin:0, fontSize:11.5, color:"#E8E3DA", background:"#0B1120",
                 padding:"16px 18px", borderRadius:12, border:`1px solid ${C.border2}`,
-                whiteSpace:"pre-wrap", wordBreak:"break-word", fontFamily:"'JetBrains Mono','DM Mono',monospace",
+                whiteSpace:"pre-wrap", wordBreak:"break-word", fontFamily:"'DM Mono','DM Mono',monospace",
                 lineHeight:1.65, maxHeight:380, overflowY:"auto" }}>
                 {answerStr}
               </pre>
@@ -318,7 +318,7 @@ function ChallengeDetailModal({ t, onClose }) {
               <div style={{ fontSize:10, fontWeight:800, color:C.green, textTransform:"uppercase", letterSpacing:1.5, marginBottom:8 }}>✅ Expected Output</div>
               <pre style={{ margin:0, fontSize:11.5, color:C.ink2, background:C.green2,
                 padding:"14px 18px", borderRadius:12, border:`1px solid rgba(34,197,94,0.2)`,
-                whiteSpace:"pre-wrap", wordBreak:"break-word", fontFamily:"'JetBrains Mono','DM Mono',monospace",
+                whiteSpace:"pre-wrap", wordBreak:"break-word", fontFamily:"'DM Mono','DM Mono',monospace",
                 lineHeight:1.65, maxHeight:200, overflowY:"auto" }}>
                 {t.expectedOutput}
               </pre>
@@ -636,7 +636,7 @@ function PerformanceSummary({ ud, skills, tasks, interviews, accent }) {
               pointerEvents:"none",
             }}/>
             <div style={{fontSize:20,marginBottom:6}}>{m.icon}</div>
-            <div style={{fontSize:22,fontWeight:900,color:m.color,fontFamily:"'JetBrains Mono',monospace",lineHeight:1}}>{m.value}</div>
+            <div style={{fontSize:22,fontWeight:900,color:m.color,fontFamily:"'DM Mono',monospace",lineHeight:1}}>{m.value}</div>
             <div style={{fontSize:11,color:C.ink4,marginTop:4,fontWeight:500}}>{m.sub}</div>
             <div style={{height:4,background:"rgba(255,255,255,0.06)",borderRadius:99,marginTop:10}}>
               <div style={{height:"100%",width:`${m.bar}%`,background:m.color,borderRadius:99,boxShadow:`0 0 6px ${m.color}66`}}/>
@@ -939,7 +939,7 @@ export default function Portfolio({ username: usernameProp }) {
   // ─── Loading ──────────────────────────────────────────────────────────────
   if(loading) return (
     <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:20}}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap');body{background:${C.bg}}@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');body{background:${C.bg}}@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       <div style={{width:48,height:48,border:`3px solid ${C.border2}`,borderTopColor:C.blue,borderRadius:"50%",animation:"spin 0.7s linear infinite"}}/>
       <p style={{color:C.ink4,fontSize:14,margin:0,fontWeight:500}}>Loading portfolio…</p>
     </div>
@@ -989,9 +989,9 @@ export default function Portfolio({ username: usernameProp }) {
   const avgScore = tasks.length ? Math.round(tasks.reduce((s,t)=>s+t.score,0)/tasks.length) : 0
 
   return (
-    <div style={{fontFamily:"Inter,system-ui,sans-serif",background:C.bg,minHeight:"100vh",color:C.ink}}>
+    <div style={{fontFamily:"DM Sans,system-ui,sans-serif",background:C.bg,minHeight:"100vh",color:C.ink}}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');
         *{box-sizing:border-box}
         body{background:${C.bg}}
         ::selection{background:rgba(59,130,246,0.35)}

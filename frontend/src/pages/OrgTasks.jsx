@@ -5,8 +5,8 @@ import { useState } from "react"
 
 const C = {
   teal: "#0F766E", tealL: "#F0FDFA",
-  ink: "#FFFFFF", ink2: "#374151", ink3: "#6B7280", ink4: "#9CA3AF",
-  border: "#E5E7EB", surface: "#fff", bg: "#F6F6F1",
+  ink: "#FFFFFF", ink2: "#3D3935", ink3: "#6B6560", ink4: "#A8A29E",
+  border: "#E8E3DA", surface: "#fff", bg: "#F6F6F1",
   green: "#16A34A", greenL: "#F0FDF4",
   amber: "#D97706", amberL: "#FFFBEB",
   red: "#DC2626", redL: "#FEF2F2",
@@ -22,7 +22,7 @@ const TASKS = [
 ]
 
 const STATUS_COLOR = { active: C.teal, complete: C.green, draft: C.ink4 }
-const STATUS_BG    = { active: C.tealL, complete: C.greenL, draft: "#F9FAFB" }
+const STATUS_BG    = { active: C.tealL, complete: C.greenL, draft: "#FAF7F2" }
 
 export default function OrgTasks({ user, userData }) {
   const [showCreate, setShowCreate] = useState(false)
@@ -32,13 +32,13 @@ export default function OrgTasks({ user, userData }) {
   const filtered = TASKS.filter(t => filter === "all" || t.status === filter)
 
   return (
-    <div style={{ background: C.bg, flex: 1, minHeight: 0, overflowY: "auto", fontFamily: "Inter, sans-serif" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap');`}</style>
+    <div style={{ background: C.bg, flex: 1, minHeight: 0, overflowY: "auto", fontFamily: "DM Sans, sans-serif" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');`}</style>
 
       <div style={{ padding: "20px 16px 0" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
           <div>
-            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, fontWeight: 800, color: C.ink, margin: 0 }}>
+            <h1 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 26, fontWeight: 800, color: C.ink, margin: 0 }}>
               Tasks <span style={{ color: C.teal, fontStyle: "italic" }}>Engine</span>
             </h1>
             <p style={{ fontSize: 13, color: C.ink3, margin: "4px 0 0" }}>Create, assign, monitor, and evaluate challenges.</p>
@@ -54,7 +54,7 @@ export default function OrgTasks({ user, userData }) {
             { val: TASKS.filter(t => t.status === "draft").length,     label: "Draft",    color: C.ink4  },
           ].map((s, i) => (
             <div key={i} style={{ flex: 1, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "12px 10px", textAlign: "center" }}>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 22, fontWeight: 700, color: s.color }}>{s.val}</div>
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 22, fontWeight: 700, color: s.color }}>{s.val}</div>
               <div style={{ fontSize: 11, color: C.ink4, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", marginTop: 2 }}>{s.label}</div>
             </div>
           ))}
@@ -79,14 +79,14 @@ export default function OrgTasks({ user, userData }) {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
                 <div style={{ flex: 1, paddingRight: 12 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                    <span style={{ padding: "2px 8px", background: STATUS_BG[task.status], color: STATUS_COLOR[task.status], borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{task.status.toUpperCase()}</span>
+                    <span style={{ padding: "2px 8px", background: STATUS_BG[task.status], color: STATUS_COLOR[task.status], borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{task.status.toUpperCase()}</span>
                     <span style={{ fontSize: 11, color: C.ink4 }}>{task.type}</span>
                   </div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: C.ink }}>{task.title}</div>
                   <div style={{ fontSize: 12, color: C.ink3, marginTop: 2 }}>By {task.by} · Due {task.deadline}</div>
                 </div>
                 <div style={{ textAlign: "right", flexShrink: 0 }}>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 20, fontWeight: 700, color: C.teal }}>{pct}%</div>
+                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 20, fontWeight: 700, color: C.teal }}>{pct}%</div>
                   <div style={{ fontSize: 11, color: C.ink4 }}>done</div>
                 </div>
               </div>
@@ -110,7 +110,7 @@ export default function OrgTasks({ user, userData }) {
         <div style={{ position: "fixed", inset: 0, zIndex: 999, display: "flex", alignItems: "flex-end" }}>
           <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)" }} onClick={() => setShowCreate(false)} />
           <div style={{ position: "relative", background: C.surface, borderRadius: "20px 20px 0 0", padding: 24, width: "100%", zIndex: 1 }}>
-            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, fontWeight: 800, color: C.ink, marginBottom: 16 }}>Create New Task</div>
+            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 20, fontWeight: 800, color: C.ink, marginBottom: 16 }}>Create New Task</div>
             {[
               { label: "Task Title", key: "title", type: "text", placeholder: "e.g. SQL Advanced Lab — Batch 2024" },
               { label: "Deadline",   key: "deadline", type: "date", placeholder: "" },
@@ -136,7 +136,7 @@ export default function OrgTasks({ user, userData }) {
               </select>
             </div>
             <button disabled={!form.title} onClick={() => setShowCreate(false)}
-              style={{ width: "100%", padding: "14px", background: form.title ? C.teal : "#F3F4F6", border: "none", borderRadius: 12, color: form.title ? "#fff" : C.ink4, fontSize: 15, fontWeight: 700, cursor: form.title ? "pointer" : "not-allowed", fontFamily: "'Playfair Display', serif" }}>
+              style={{ width: "100%", padding: "14px", background: form.title ? C.teal : "#F3F4F6", border: "none", borderRadius: 12, color: form.title ? "#fff" : C.ink4, fontSize: 15, fontWeight: 700, cursor: form.title ? "pointer" : "not-allowed", fontFamily: "'DM Sans', sans-serif" }}>
               Create & Assign Task →
             </button>
           </div>

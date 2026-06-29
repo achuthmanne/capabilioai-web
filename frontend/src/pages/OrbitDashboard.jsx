@@ -7,12 +7,12 @@ import { supabase } from "../lib/supabase"
 import { profileApi, epfoApi, nexusApi, jobsApi, recruiterApi, interviewApi, forgeApi, orbitApi, intelApi } from "../lib/api"
 
 const T = {
-  bg:"#FFFFFF",surface:"#FAFAFA",card:"#FFFFFF",border:"#E5E7EB",
+  bg:"#FFFFFF",surface:"#FAFAFA",card:"#FFFFFF",border:"#E8E3DA",
   borderHi:"rgba(124,58,237,0.35)",ink:"#F0F0F8",ink2:"#B0B0C8",ink3:"#7070A0",
   purple:"#7C3AED",purpleL:"#A78BFA",green:"#10B981",greenL:"#34D399",
   amber:"#F59E0B",amberL:"#FCD34D",red:"#EF4444",redL:"#FCA5A5",
-  blue:"#3B82F6",blueL:"#93C5FD",gold:"#D4A843",mono:"'JetBrains Mono',monospace",
-  display:"'Playfair Display',serif",body:"Inter,sans-serif",
+  blue:"#3B82F6",blueL:"#93C5FD",gold:"#D4A843",mono:"'DM Mono',monospace",
+  display:"'DM Sans',serif",body:"DM Sans,sans-serif",
 }
 
 const VISIBILITY_MODES = [

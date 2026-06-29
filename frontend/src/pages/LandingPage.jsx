@@ -30,36 +30,36 @@ function PortfolioCard({ task }) {
       <div onClick={() => setOpen(o => !o)} style={{ padding: "18px 20px", cursor: "pointer", display: "flex", alignItems: "center", gap: 14 }}>
         <div style={{ width: 42, height: 42, background: `${diffColor}15`, border: `1px solid ${diffColor}22`, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{task.icon}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, fontWeight: 700, color: "#111827", lineHeight: 1.15, marginBottom: 6 }}>{task.title}</div>
+          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 20, fontWeight: 700, color: "#1A1714", lineHeight: 1.15, marginBottom: 6 }}>{task.title}</div>
           <div style={{ display: "flex", gap: 10, marginTop: 4, alignItems: "center", flexWrap: "wrap" }}>
-            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: diffColor, background: `${diffColor}10`, border: `1px solid ${diffColor}22`, borderRadius: 999, padding: "4px 8px", fontFamily: "'JetBrains Mono', monospace" }}>{task.difficulty}</span>
-            <span style={{ fontSize: 11, color: "#6B7280", fontFamily: "'JetBrains Mono', monospace" }}>{task.type} · {task.date}</span>
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: diffColor, background: `${diffColor}10`, border: `1px solid ${diffColor}22`, borderRadius: 999, padding: "4px 8px", fontFamily: "'DM Mono', monospace" }}>{task.difficulty}</span>
+            <span style={{ fontSize: 11, color: "#6B6560", fontFamily: "'DM Mono', monospace" }}>{task.type} · {task.date}</span>
           </div>
         </div>
         <div style={{ textAlign: "right", flexShrink: 0 }}>
-          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 24, fontWeight: 800, color: diffColor, lineHeight: 1 }}>{task.score}</div>
-          <div style={{ fontSize: 10, color: diffColor, opacity: 0.75, letterSpacing: "0.12em", textTransform: "uppercase", fontFamily: "'JetBrains Mono', monospace", marginTop: 3 }}>Score</div>
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 24, fontWeight: 800, color: diffColor, lineHeight: 1 }}>{task.score}</div>
+          <div style={{ fontSize: 10, color: diffColor, opacity: 0.75, letterSpacing: "0.12em", textTransform: "uppercase", fontFamily: "'DM Mono', monospace", marginTop: 3 }}>Score</div>
         </div>
-        <span style={{ color: "#9CA3AF", fontSize: 12, transition: "transform 0.2s", display: "inline-block", transform: open ? "rotate(180deg)" : "rotate(0)" }}>▼</span>
+        <span style={{ color: "#A8A29E", fontSize: 12, transition: "transform 0.2s", display: "inline-block", transform: open ? "rotate(180deg)" : "rotate(0)" }}>▼</span>
       </div>
       {open && (
         <div style={{ padding: "0 20px 20px", borderTop: "1px solid rgba(17,24,39,0.06)" }}>
           <div style={{ background: "rgba(255,87,1,0.04)", border: "1px solid rgba(255,87,1,0.10)", padding: "12px 14px", marginTop: 16, marginBottom: 12, borderRadius: 14 }}>
-            <div style={{ fontSize: 10, fontWeight: 800, color: "#FF5701", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6, fontFamily: "'JetBrains Mono', monospace" }}>Scenario</div>
-            <div style={{ fontSize: 13, color: "#4B5563", lineHeight: 1.72 }}>{task.scenario}</div>
+            <div style={{ fontSize: 10, fontWeight: 800, color: "#FF5701", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6, fontFamily: "'DM Mono', monospace" }}>Scenario</div>
+            <div style={{ fontSize: 13, color: "#6B6560", lineHeight: 1.72 }}>{task.scenario}</div>
           </div>
-          <div style={{ background: "#111827", borderRadius: 14, padding: "12px 14px", fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: "#BBF7D0", marginBottom: 12, border: "1px solid rgba(255,255,255,0.06)", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{task.code}</div>
+          <div style={{ background: "#1A1714", borderRadius: 14, padding: "12px 14px", fontFamily: "'DM Mono', monospace", fontSize: 12, color: "#BBF7D0", marginBottom: 12, border: "1px solid rgba(255,255,255,0.06)", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{task.code}</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <div style={{ background: "rgba(22,163,74,0.05)", border: "1px solid rgba(22,163,74,0.12)", borderRadius: 14, padding: "10px 12px" }}>
-              <div style={{ fontSize: 10, fontWeight: 800, color: "#16A34A", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 5, fontFamily: "'JetBrains Mono', monospace" }}>Strength</div>
-              <div style={{ fontSize: 12, color: "#4B5563", lineHeight: 1.6 }}>{task.strength}</div>
+              <div style={{ fontSize: 10, fontWeight: 800, color: "#16A34A", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 5, fontFamily: "'DM Mono', monospace" }}>Strength</div>
+              <div style={{ fontSize: 12, color: "#6B6560", lineHeight: 1.6 }}>{task.strength}</div>
             </div>
             <div style={{ background: "rgba(217,119,6,0.05)", border: "1px solid rgba(217,119,6,0.12)", borderRadius: 14, padding: "10px 12px" }}>
-              <div style={{ fontSize: 10, fontWeight: 800, color: "#D97706", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 5, fontFamily: "'JetBrains Mono', monospace" }}>Improve</div>
-              <div style={{ fontSize: 12, color: "#4B5563", lineHeight: 1.6 }}>{task.improve}</div>
+              <div style={{ fontSize: 10, fontWeight: 800, color: "#D97706", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 5, fontFamily: "'DM Mono', monospace" }}>Improve</div>
+              <div style={{ fontSize: 12, color: "#6B6560", lineHeight: 1.6 }}>{task.improve}</div>
             </div>
           </div>
-          {task.eloDelta > 0 && <div style={{ fontSize: 12, color: "#16A34A", fontWeight: 700, marginTop: 12, fontFamily: "'JetBrains Mono', monospace" }}>+{task.eloDelta} ELO earned</div>}
+          {task.eloDelta > 0 && <div style={{ fontSize: 12, color: "#16A34A", fontWeight: 700, marginTop: 12, fontFamily: "'DM Mono', monospace" }}>+{task.eloDelta} ELO earned</div>}
         </div>
       )}
     </div>
@@ -70,14 +70,14 @@ function SectionLabel({ children }) {
   return (
     <div style={{ display: "inline-flex", alignItems: "center", gap: 10, background: "#FFFFFF", border: "1px solid rgba(17,24,39,0.08)", borderRadius: 999, padding: "8px 16px", marginBottom: 18, boxShadow: "0 4px 14px rgba(17,24,39,0.04)" }}>
       <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#FF5701", boxShadow: "0 0 0 4px rgba(255,87,1,0.10)" }} />
-      <span style={{ fontSize: 11, color: "#6B7280", fontWeight: 700, letterSpacing: "0.14em", fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase" }}>{children}</span>
+      <span style={{ fontSize: 11, color: "#6B6560", fontWeight: 700, letterSpacing: "0.14em", fontFamily: "'DM Mono', monospace", textTransform: "uppercase" }}>{children}</span>
     </div>
   )
 }
 
 function PrimaryButton({ children, onClick, white = false }) {
   return (
-    <button onClick={onClick} style={{ padding: "14px 20px", borderRadius: 14, border: white ? "1px solid rgba(17,24,39,0.1)" : "1px solid #FF5701", background: white ? "#FFFFFF" : "#FF5701", color: white ? "#111827" : "#FFFFFF", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.06em", boxShadow: white ? "0 8px 24px rgba(17,24,39,0.05)" : "0 12px 26px rgba(255,87,1,0.18)", transition: "all 180ms cubic-bezier(0.16, 1, 0.3, 1)" }}
+    <button onClick={onClick} style={{ padding: "14px 20px", borderRadius: 14, border: white ? "1px solid rgba(17,24,39,0.1)" : "1px solid #FF5701", background: white ? "#FFFFFF" : "#FF5701", color: white ? "#1A1714" : "#FFFFFF", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "'DM Mono', monospace", letterSpacing: "0.06em", boxShadow: white ? "0 8px 24px rgba(17,24,39,0.05)" : "0 12px 26px rgba(255,87,1,0.18)", transition: "all 180ms cubic-bezier(0.16, 1, 0.3, 1)" }}
       onMouseEnter={e => e.currentTarget.style.transform = "translateY(-1px)"}
       onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
     >{children}</button>
@@ -86,9 +86,9 @@ function PrimaryButton({ children, onClick, white = false }) {
 
 function GhostButton({ children, onClick }) {
   return (
-    <button onClick={onClick} style={{ padding: "14px 20px", borderRadius: 14, border: "1px solid rgba(17,24,39,0.1)", background: "#FFFFFF", color: "#374151", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.06em", transition: "all 180ms cubic-bezier(0.16, 1, 0.3, 1)" }}
+    <button onClick={onClick} style={{ padding: "14px 20px", borderRadius: 14, border: "1px solid rgba(17,24,39,0.1)", background: "#FFFFFF", color: "#3D3935", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "'DM Mono', monospace", letterSpacing: "0.06em", transition: "all 180ms cubic-bezier(0.16, 1, 0.3, 1)" }}
       onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,87,1,0.20)"; e.currentTarget.style.color = "#FF5701" }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(17,24,39,0.1)"; e.currentTarget.style.color = "#374151" }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(17,24,39,0.1)"; e.currentTarget.style.color = "#3D3935" }}
     >{children}</button>
   )
 }
@@ -110,8 +110,8 @@ function PathOptionCard({ item, isActive, onClick }) {
       fontFamily: "inherit",
       boxShadow: isActive ? `0 10px 24px rgba(${rgb},0.10)` : "0 6px 18px rgba(17,24,39,0.04)"
     }}>
-      <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, color: isActive ? c : "#111827", marginBottom: 6, fontWeight: 700 }}>{item.label}</div>
-      <div style={{ fontSize: 11, color: isActive ? `rgba(${rgb},0.7)` : "#6B7280", fontWeight: 600, fontFamily: "'JetBrains Mono', monospace" }}>{item.subtitle}</div>
+      <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 18, color: isActive ? c : "#1A1714", marginBottom: 6, fontWeight: 700 }}>{item.label}</div>
+      <div style={{ fontSize: 11, color: isActive ? `rgba(${rgb},0.7)` : "#6B6560", fontWeight: 600, fontFamily: "'DM Mono', monospace" }}>{item.subtitle}</div>
     </button>
   )
 }
@@ -120,8 +120,8 @@ function FeatureCard({ item }) {
   return (
     <div style={{ background: "#FFFFFF", border: "1px solid rgba(17,24,39,0.08)", borderRadius: 22, padding: 24, boxShadow: "0 10px 28px rgba(17,24,39,0.05)" }}>
       <div style={{ width: 46, height: 46, background: "#FFF1E8", border: "1px solid rgba(255,87,1,0.14)", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginBottom: 16 }}>{item.icon}</div>
-      <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 700, color: "#111827", marginBottom: 8 }}>{item.title}</div>
-      <div style={{ fontSize: 15, color: "#4B5563", lineHeight: 1.75 }}>{item.desc}</div>
+      <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 22, fontWeight: 700, color: "#1A1714", marginBottom: 8 }}>{item.title}</div>
+      <div style={{ fontSize: 15, color: "#6B6560", lineHeight: 1.75 }}>{item.desc}</div>
     </div>
   )
 }
@@ -135,11 +135,11 @@ function PathCard({ icon, title, desc, badge, badgeColor = "#FF5701", featured, 
       onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,87,1,0.22)"; e.currentTarget.style.transform = "translateY(-2px)" }}
       onMouseLeave={e => { e.currentTarget.style.borderColor = featured ? "rgba(255,87,1,0.18)" : "rgba(17,24,39,0.08)"; e.currentTarget.style.transform = "translateY(0)" }}
     >
-      {featured && <div style={{ position: "absolute", top: 0, right: 20, background: "#FF5701", color: "#FFFFFF", fontSize: 10, fontWeight: 700, padding: "6px 10px", borderRadius: "0 0 10px 10px", letterSpacing: "0.12em", fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase" }}>Popular</div>}
+      {featured && <div style={{ position: "absolute", top: 0, right: 20, background: "#FF5701", color: "#FFFFFF", fontSize: 10, fontWeight: 700, padding: "6px 10px", borderRadius: "0 0 10px 10px", letterSpacing: "0.12em", fontFamily: "'DM Mono', monospace", textTransform: "uppercase" }}>Popular</div>}
       <div style={{ width: 48, height: 48, background: "#FFF1E8", border: "1px solid rgba(255,87,1,0.14)", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 18 }}>{icon}</div>
-      <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, fontWeight: 700, color: "#111827", marginBottom: 10 }}>{title}</div>
-      <div style={{ fontSize: 15, color: "#4B5563", lineHeight: 1.75, marginBottom: 16 }}>{desc}</div>
-      <span style={{ display: "inline-flex", alignItems: "center", fontSize: 11, fontWeight: 700, padding: "5px 10px", borderRadius: 999, background: badgeBg[badgeColor] || "#F9FAFB", color: badgeText[badgeColor] || "#FF5701", border: `1px solid ${badgeBord[badgeColor] || "#E5E7EB"}`, fontFamily: "'JetBrains Mono', monospace" }}>{badge}</span>
+      <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 24, fontWeight: 700, color: "#1A1714", marginBottom: 10 }}>{title}</div>
+      <div style={{ fontSize: 15, color: "#6B6560", lineHeight: 1.75, marginBottom: 16 }}>{desc}</div>
+      <span style={{ display: "inline-flex", alignItems: "center", fontSize: 11, fontWeight: 700, padding: "5px 10px", borderRadius: 999, background: badgeBg[badgeColor] || "#FAF7F2", color: badgeText[badgeColor] || "#FF5701", border: `1px solid ${badgeBord[badgeColor] || "#E8E3DA"}`, fontFamily: "'DM Mono', monospace" }}>{badge}</span>
     </div>
   )
 }
@@ -148,21 +148,21 @@ function NetworkCard({ item }) {
   return (
     <div style={{ background: "#FFFFFF", border: "1px solid rgba(17,24,39,0.08)", borderRadius: 20, padding: 18, boxShadow: "0 10px 24px rgba(17,24,39,0.05)" }}>
       <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
-        <div style={{ width: 42, height: 42, borderRadius: 12, background: `${item.color}18`, border: `1px solid ${item.color}26`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Playfair Display', serif", fontSize: 16, color: item.color, flexShrink: 0, fontWeight: 700 }}>{item.name[0]}</div>
+        <div style={{ width: 42, height: 42, borderRadius: 12, background: `${item.color}18`, border: `1px solid ${item.color}26`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans', sans-serif", fontSize: 16, color: item.color, flexShrink: 0, fontWeight: 700 }}>{item.name[0]}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>
-          <div style={{ fontSize: 12, color: "#6B7280", marginTop: 3 }}>{item.role} · {item.co}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#1A1714", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>
+          <div style={{ fontSize: 12, color: "#6B6560", marginTop: 3 }}>{item.role} · {item.co}</div>
         </div>
       </div>
       <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 10, color: "#4F46E5", background: "#EEF2FF", border: "1px solid rgba(79,70,229,0.12)", borderRadius: 999, padding: "4px 8px", fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{item.type}</span>
-        <span style={{ fontSize: 10, color: "#16A34A", background: "#F0FDF4", border: "1px solid rgba(22,163,74,0.12)", borderRadius: 999, padding: "4px 8px", fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>Verified</span>
+        <span style={{ fontSize: 10, color: "#4F46E5", background: "#EEF2FF", border: "1px solid rgba(79,70,229,0.12)", borderRadius: 999, padding: "4px 8px", fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{item.type}</span>
+        <span style={{ fontSize: 10, color: "#16A34A", background: "#F0FDF4", border: "1px solid rgba(22,163,74,0.12)", borderRadius: 999, padding: "4px 8px", fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>Verified</span>
       </div>
       <div style={{ display: "flex", borderTop: "1px solid rgba(17,24,39,0.06)", paddingTop: 12 }}>
         {[{ l: "Followers", v: item.followers }, { l: "Posts", v: item.posts }].map((s, j) => (
           <div key={j} style={{ flex: 1, textAlign: "center", borderRight: j === 0 ? "1px solid rgba(17,24,39,0.06)" : "none" }}>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 14, fontWeight: 800, color: "#111827" }}>{s.v}</div>
-            <div style={{ fontSize: 10, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.08em", marginTop: 3, fontFamily: "'JetBrains Mono', monospace" }}>{s.l}</div>
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 14, fontWeight: 800, color: "#1A1714" }}>{s.v}</div>
+            <div style={{ fontSize: 10, color: "#A8A29E", textTransform: "uppercase", letterSpacing: "0.08em", marginTop: 3, fontFamily: "'DM Mono', monospace" }}>{s.l}</div>
           </div>
         ))}
       </div>
@@ -187,29 +187,29 @@ function ExecutivePreview() {
     <div style={{ background:"#fff", border:"1px solid rgba(17,24,39,0.08)", borderRadius:28, padding:24, boxShadow:"0 18px 40px rgba(17,24,39,0.07)" }}>
       <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:14, marginBottom:20 }}>
         <div>
-          <div style={{ fontSize:11, color:"#6B7280", fontWeight:800, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:8, fontFamily:"'JetBrains Mono',monospace" }}>Executive Authority Profile</div>
-          <div style={{ fontFamily:"'Playfair Display',serif", fontSize:26, fontWeight:800, color:INK, marginBottom:4 }}>Arjun Mehta</div>
-          <div style={{ fontSize:13, color:"#6B7280" }}>Founder & CEO · SaaS Advisor</div>
+          <div style={{ fontSize:11, color:"#6B6560", fontWeight:800, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:8, fontFamily:"'DM Mono',monospace" }}>Executive Authority Profile</div>
+          <div style={{ fontFamily:"'DM Sans',serif", fontSize:26, fontWeight:800, color:INK, marginBottom:4 }}>Arjun Mehta</div>
+          <div style={{ fontSize:13, color:"#6B6560" }}>Founder & CEO · SaaS Advisor</div>
         </div>
         <div style={{ background:`${G}18`, border:`1.5px solid ${G}40`, borderRadius:16, padding:"12px 14px", textAlign:"center", flexShrink:0 }}>
-          <div style={{ fontFamily:"'Playfair Display',serif", fontSize:13, fontWeight:800, color:G, lineHeight:1.2 }}>✦</div>
-          <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:10, color:G, letterSpacing:"0.12em", marginTop:5, fontWeight:800, textTransform:"uppercase" }}>Verified</div>
+          <div style={{ fontFamily:"'DM Sans',serif", fontSize:13, fontWeight:800, color:G, lineHeight:1.2 }}>✦</div>
+          <div style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:G, letterSpacing:"0.12em", marginTop:5, fontWeight:800, textTransform:"uppercase" }}>Verified</div>
         </div>
       </div>
       <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginBottom:20 }}>
         {metrics.map((m,i) => (
           <div key={i} style={{ background:"#FAFAF8", border:"1px solid rgba(17,24,39,0.06)", borderRadius:14, padding:"12px 10px", textAlign:"center" }}>
-            <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:18, fontWeight:800, color:INK, marginBottom:3 }}>{m.value}</div>
-            <div style={{ fontSize:10, color:"#6B7280", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase", fontFamily:"'JetBrains Mono',monospace" }}>{m.label}</div>
+            <div style={{ fontFamily:"'DM Mono',monospace", fontSize:18, fontWeight:800, color:INK, marginBottom:3 }}>{m.value}</div>
+            <div style={{ fontSize:10, color:"#6B6560", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase", fontFamily:"'DM Mono',monospace" }}>{m.label}</div>
           </div>
         ))}
       </div>
-      <div style={{ fontSize:11, color:"#6B7280", fontWeight:800, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:10, fontFamily:"'JetBrains Mono',monospace" }}>Recent Activity</div>
+      <div style={{ fontSize:11, color:"#6B6560", fontWeight:800, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:10, fontFamily:"'DM Mono',monospace" }}>Recent Activity</div>
       <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
         {activity.map((a,i) => (
           <div key={i} style={{ display:"flex", gap:10, alignItems:"center", padding:"9px 12px", background:"#FAFAF8", border:"1px solid rgba(17,24,39,0.06)", borderRadius:12 }}>
             <span style={{ fontSize:14, flexShrink:0 }}>{a.icon}</span>
-            <span style={{ fontSize:12, color:"#374151", lineHeight:1.5 }}>{a.text}</span>
+            <span style={{ fontSize:12, color:"#3D3935", lineHeight:1.5 }}>{a.text}</span>
           </div>
         ))}
       </div>
@@ -228,36 +228,36 @@ function OrgPreview() {
     <div style={{ background:"#fff", border:"1px solid rgba(17,24,39,0.08)", borderRadius:28, padding:24, boxShadow:"0 18px 40px rgba(17,24,39,0.07)" }}>
       <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:14, marginBottom:20 }}>
         <div>
-          <div style={{ fontSize:11, color:"#6B7280", fontWeight:800, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:8, fontFamily:"'JetBrains Mono',monospace" }}>Institution Intelligence Hub</div>
-          <div style={{ fontFamily:"'Playfair Display',serif", fontSize:26, fontWeight:800, color:INK, marginBottom:4 }}>BITS Pilani</div>
-          <div style={{ fontSize:13, color:"#6B7280" }}>Premier Institution · Est. 1964</div>
+          <div style={{ fontSize:11, color:"#6B6560", fontWeight:800, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:8, fontFamily:"'DM Mono',monospace" }}>Institution Intelligence Hub</div>
+          <div style={{ fontFamily:"'DM Sans',serif", fontSize:26, fontWeight:800, color:INK, marginBottom:4 }}>BITS Pilani</div>
+          <div style={{ fontSize:13, color:"#6B6560" }}>Premier Institution · Est. 1964</div>
         </div>
         <div style={{ background:`${A}18`, border:`1.5px solid ${A}40`, borderRadius:16, padding:"10px 12px", textAlign:"center", flexShrink:0 }}>
-          <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:18, fontWeight:800, color:A }}>45K</div>
-          <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:9, color:A, letterSpacing:"0.12em", marginTop:4, fontWeight:800, textTransform:"uppercase" }}>Followers</div>
+          <div style={{ fontFamily:"'DM Mono',monospace", fontSize:18, fontWeight:800, color:A }}>45K</div>
+          <div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:A, letterSpacing:"0.12em", marginTop:4, fontWeight:800, textTransform:"uppercase" }}>Followers</div>
         </div>
       </div>
       <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginBottom:18 }}>
         {[{l:"Active Cohorts",v:"8"},{l:"Total Students",v:"1,240"},{l:"Hired this yr",v:"312"}].map((s,i)=>(
           <div key={i} style={{ background:"#FAFAF8", border:"1px solid rgba(17,24,39,0.06)", borderRadius:14, padding:"12px 10px", textAlign:"center" }}>
-            <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:18, fontWeight:800, color:INK, marginBottom:3 }}>{s.v}</div>
-            <div style={{ fontSize:10, color:"#6B7280", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase", fontFamily:"'JetBrains Mono',monospace" }}>{s.l}</div>
+            <div style={{ fontFamily:"'DM Mono',monospace", fontSize:18, fontWeight:800, color:INK, marginBottom:3 }}>{s.v}</div>
+            <div style={{ fontSize:10, color:"#6B6560", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase", fontFamily:"'DM Mono',monospace" }}>{s.l}</div>
           </div>
         ))}
       </div>
-      <div style={{ fontSize:11, color:"#6B7280", fontWeight:800, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:10, fontFamily:"'JetBrains Mono',monospace" }}>Cohort ELO Leaderboard</div>
+      <div style={{ fontSize:11, color:"#6B6560", fontWeight:800, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:10, fontFamily:"'DM Mono',monospace" }}>Cohort ELO Leaderboard</div>
       <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
         {cohorts.map((c,i)=>(
           <div key={i} style={{ padding:"10px 14px", background:"#FAFAF8", border:"1px solid rgba(17,24,39,0.06)", borderRadius:12 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
               <span style={{ fontSize:12, fontWeight:700, color:INK }}>{c.name}</span>
-              <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:11, color:A, fontWeight:800 }}>Top: {c.topElo}</span>
+              <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:A, fontWeight:800 }}>Top: {c.topElo}</span>
             </div>
             <div style={{ display:"flex", gap:8, alignItems:"center" }}>
               <div style={{ flex:1, height:6, borderRadius:999, background:"rgba(17,24,39,0.07)", overflow:"hidden" }}>
                 <div style={{ height:"100%", width:`${Math.round(c.avgElo/2000*100)}%`, borderRadius:999, background:`linear-gradient(90deg,${A},#F59E0B)` }}/>
               </div>
-              <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:10, color:"#6B7280", fontWeight:700, whiteSpace:"nowrap" }}>avg {c.avgElo}</span>
+              <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:"#6B6560", fontWeight:700, whiteSpace:"nowrap" }}>avg {c.avgElo}</span>
             </div>
           </div>
         ))}
@@ -280,30 +280,30 @@ function ProfessionalOrbitPreview({ eloAnim }) {
     <div style={{ background:"#FFFFFF", border:"1px solid rgba(139,92,246,0.14)", borderRadius:28, padding:24, boxShadow:"0 18px 40px rgba(139,92,246,0.08)" }}>
       <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:18, marginBottom:18 }}>
         <div>
-          <div style={{ fontSize:11, color:"#6B7280", fontWeight:800, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:8, fontFamily:"'JetBrains Mono',monospace" }}>Career Intelligence — Orbit</div>
-          <div style={{ fontFamily:"'Playfair Display',serif", fontSize:26, fontWeight:800, color:"#111827", marginBottom:4 }}>Priya Nambiar</div>
-          <div style={{ fontSize:13, color:"#6B7280" }}>Senior SDE · Verified ✓</div>
+          <div style={{ fontSize:11, color:"#6B6560", fontWeight:800, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:8, fontFamily:"'DM Mono',monospace" }}>Career Intelligence — Orbit</div>
+          <div style={{ fontFamily:"'DM Sans',serif", fontSize:26, fontWeight:800, color:"#1A1714", marginBottom:4 }}>Priya Nambiar</div>
+          <div style={{ fontSize:13, color:"#6B6560" }}>Senior SDE · Verified ✓</div>
         </div>
         <div style={{ minWidth:112, background:`${P}0F`, border:`1.5px solid ${P}30`, borderRadius:18, padding:"12px 12px 10px", textAlign:"center" }}>
-          <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:30, fontWeight:800, color:P, lineHeight:1 }}>{eloAnim.toLocaleString()}</div>
-          <div style={{ fontSize:9, color:P, letterSpacing:"0.12em", marginTop:5, textTransform:"uppercase", fontFamily:"'JetBrains Mono',monospace", fontWeight:800 }}>ELO Score</div>
+          <div style={{ fontFamily:"'DM Mono',monospace", fontSize:30, fontWeight:800, color:P, lineHeight:1 }}>{eloAnim.toLocaleString()}</div>
+          <div style={{ fontSize:9, color:P, letterSpacing:"0.12em", marginTop:5, textTransform:"uppercase", fontFamily:"'DM Mono',monospace", fontWeight:800 }}>ELO Score</div>
         </div>
       </div>
       <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:18 }}>
         {[{ l:"Market Value", v:"₹21.4L" },{ l:"Layoff Shield", v:"82/100" },{ l:"Career Velocity", v:"+14%" }].map((s,i) => (
           <div key={i} style={{ background:"#FAFAF8", border:"1px solid rgba(17,24,39,0.06)", borderRadius:14, padding:"10px 8px", textAlign:"center" }}>
-            <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:i===0?14:16, fontWeight:800, color:"#111827", marginBottom:2, lineHeight:1.1 }}>{s.v}</div>
-            <div style={{ fontSize:9, color:"#6B7280", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase", fontFamily:"'JetBrains Mono',monospace" }}>{s.l}</div>
+            <div style={{ fontFamily:"'DM Mono',monospace", fontSize:i===0?14:16, fontWeight:800, color:"#1A1714", marginBottom:2, lineHeight:1.1 }}>{s.v}</div>
+            <div style={{ fontSize:9, color:"#6B6560", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase", fontFamily:"'DM Mono',monospace" }}>{s.l}</div>
           </div>
         ))}
       </div>
-      <div style={{ fontSize:10, color:"#6B7280", fontWeight:800, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:10, fontFamily:"'JetBrains Mono',monospace" }}>Skill Half-Life Radar</div>
+      <div style={{ fontSize:10, color:"#6B6560", fontWeight:800, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:10, fontFamily:"'DM Mono',monospace" }}>Skill Half-Life Radar</div>
       <div style={{ display:"flex", flexDirection:"column", gap:9, marginBottom:18 }}>
         {skills.map((sk,i) => (
           <div key={i}>
             <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-              <span style={{ fontSize:13, color:"#374151", fontWeight:600 }}>{sk.label}</span>
-              <span style={{ fontSize:11, color:sk.color, fontWeight:800, fontFamily:"'JetBrains Mono',monospace" }}>{sk.value}% fresh</span>
+              <span style={{ fontSize:13, color:"#3D3935", fontWeight:600 }}>{sk.label}</span>
+              <span style={{ fontSize:11, color:sk.color, fontWeight:800, fontFamily:"'DM Mono',monospace" }}>{sk.value}% fresh</span>
             </div>
             <div style={{ height:7, borderRadius:999, background:"#F3F4F6", overflow:"hidden" }}>
               <div style={{ height:"100%", width:`${sk.value}%`, borderRadius:999, background:sk.color }} />
@@ -311,10 +311,10 @@ function ProfessionalOrbitPreview({ eloAnim }) {
           </div>
         ))}
       </div>
-      <div style={{ fontSize:10, color:"#6B7280", fontWeight:800, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:8, fontFamily:"'JetBrains Mono',monospace" }}>Your modules</div>
+      <div style={{ fontSize:10, color:"#6B6560", fontWeight:800, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:8, fontFamily:"'DM Mono',monospace" }}>Your modules</div>
       <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
         {modules.map((m,i) => (
-          <span key={i} style={{ fontSize:10, fontWeight:700, padding:"4px 10px", borderRadius:999, background:`${moduleColors[i]}10`, color:moduleColors[i], border:`1px solid ${moduleColors[i]}26`, fontFamily:"'JetBrains Mono',monospace" }}>{m}</span>
+          <span key={i} style={{ fontSize:10, fontWeight:700, padding:"4px 10px", borderRadius:999, background:`${moduleColors[i]}10`, color:moduleColors[i], border:`1px solid ${moduleColors[i]}26`, fontFamily:"'DM Mono',monospace" }}>{m}</span>
         ))}
       </div>
     </div>
@@ -326,30 +326,30 @@ function AuraPreview({ eloAnim, skills }) {
     <div style={{ background: "#FFFFFF", border: "1px solid rgba(17,24,39,0.08)", borderRadius: 28, padding: 24, boxShadow: "0 18px 40px rgba(17,24,39,0.07)" }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 18, marginBottom: 20 }}>
         <div>
-          <div style={{ fontSize: 11, color: "#6B7280", fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 8, fontFamily: "'JetBrains Mono', monospace" }}>Live Aura Preview</div>
-          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, fontWeight: 700, color: "#111827", marginBottom: 4 }}>Rahul Sharma</div>
-          <div style={{ fontSize: 14, color: "#6B7280", lineHeight: 1.6 }}>Professional · Full Stack Developer</div>
+          <div style={{ fontSize: 11, color: "#6B6560", fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 8, fontFamily: "'DM Mono', monospace" }}>Live Aura Preview</div>
+          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 28, fontWeight: 700, color: "#1A1714", marginBottom: 4 }}>Rahul Sharma</div>
+          <div style={{ fontSize: 14, color: "#6B6560", lineHeight: 1.6 }}>Professional · Full Stack Developer</div>
         </div>
         <div style={{ minWidth: 118, background: "#FFF1E8", border: "1px solid rgba(255,87,1,0.14)", borderRadius: 18, padding: "14px 14px 12px", textAlign: "center" }}>
-          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 32, fontWeight: 800, color: "#FF5701", lineHeight: 1 }}>{eloAnim.toLocaleString()}</div>
-          <div style={{ fontSize: 10, color: "#FF5701", letterSpacing: "0.12em", marginTop: 6, textTransform: "uppercase", fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>Live ELO</div>
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 32, fontWeight: 800, color: "#FF5701", lineHeight: 1 }}>{eloAnim.toLocaleString()}</div>
+          <div style={{ fontSize: 10, color: "#FF5701", letterSpacing: "0.12em", marginTop: 6, textTransform: "uppercase", fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>Live ELO</div>
         </div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 22 }}>
         {[{ label: "Streak", value: "12" }, { label: "Tasks", value: "94" }, { label: "Job ready", value: "87%" }].map(stat => (
           <div key={stat.label} style={{ background: "#FAFAF8", border: "1px solid rgba(17,24,39,0.06)", borderRadius: 16, padding: "14px 12px" }}>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 20, fontWeight: 800, color: "#111827", marginBottom: 4 }}>{stat.value}</div>
-            <div style={{ fontSize: 10, color: "#6B7280", fontWeight: 700, letterSpacing: "0.10em", textTransform: "uppercase", fontFamily: "'JetBrains Mono', monospace" }}>{stat.label}</div>
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 20, fontWeight: 800, color: "#1A1714", marginBottom: 4 }}>{stat.value}</div>
+            <div style={{ fontSize: 10, color: "#6B6560", fontWeight: 700, letterSpacing: "0.10em", textTransform: "uppercase", fontFamily: "'DM Mono', monospace" }}>{stat.label}</div>
           </div>
         ))}
       </div>
-      <div style={{ fontSize: 11, color: "#6B7280", fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 12, fontFamily: "'JetBrains Mono', monospace" }}>Skill graph</div>
+      <div style={{ fontSize: 11, color: "#6B6560", fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 12, fontFamily: "'DM Mono', monospace" }}>Skill graph</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {skills.map((skill, i) => (
           <div key={i}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 6, alignItems: "center" }}>
-              <span style={{ fontSize: 14, color: "#374151", fontWeight: 600 }}>{skill.label}</span>
-              <span style={{ fontSize: 12, color: skill.color || "#FF5701", fontWeight: 800, fontFamily: "'JetBrains Mono', monospace" }}>{skill.value}%</span>
+              <span style={{ fontSize: 14, color: "#3D3935", fontWeight: 600 }}>{skill.label}</span>
+              <span style={{ fontSize: 12, color: skill.color || "#FF5701", fontWeight: 800, fontFamily: "'DM Mono', monospace" }}>{skill.value}%</span>
             </div>
             <div style={{ height: 8, borderRadius: 999, background: "#F3F4F6", overflow: "hidden" }}>
               <div style={{ height: "100%", width: `${skill.value}%`, borderRadius: 999, background: skill.color || "linear-gradient(90deg, #FF5701, #FF8A4C)" }} />
@@ -495,7 +495,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       sub: "ELO-ranked proof, AI interviews, and market intelligence — start free, no card needed.",
       note: "Monthly plans · Cancel anytime · Powered by Razorpay · Prices in INR",
       plans: [
-        { label:"Free",  price:null,      accent:"#6B7280", featured:false, features:["1 Arena task every 15 days","Portfolio generation","Locked premium previews","Market reports at ₹49/report"], cta:"GET STARTED FREE →", ctaStyle:{ background:"#111827", color:"#fff" } },
+        { label:"Free",  price:null,      accent:"#6B6560", featured:false, features:["1 Arena task every 15 days","Portfolio generation","Locked premium previews","Market reports at ₹49/report"], cta:"GET STARTED FREE →", ctaStyle:{ background:"#1A1714", color:"#fff" } },
         { label:"Pro",   price:"₹299/mo", sub:"Billed monthly", accent:"#3D4EAC", featured:false, features:["3 Arena tasks per day","3 AI Interview sessions/month","1 market report/month","Full Arena access","Portfolio generation"], cta:"START PRO →", ctaStyle:{ background:"#3D4EAC", color:"#fff" } },
         { label:"Elite", price:"₹599/mo", sub:"Best value",    accent:"#B8620A", featured:true,  features:["6 Arena tasks per day","5 AI Interview sessions/month","2 market reports/month","Personal branding video","Full advanced Arena","Portfolio generation"], cta:"GO ELITE →", ctaStyle:{ background:"#B8620A", color:"#fff" } },
       ],
@@ -505,7 +505,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       sub: "Compensation Intelligence alone can unlock a ₹2–5L salary bump. Mentor Hub earnings cover your plan in one session.",
       note: "Monthly plans · Cancel anytime · Powered by Razorpay · Prices in INR",
       plans: [
-        { label:"Free",        price:null,      accent:"#6B7280", featured:false, features:["Basic Orbit dashboard","1 Forge challenge/week","Public verified profile","UAN verification"], cta:"START FREE →", ctaStyle:{ background:"#111827", color:"#fff" } },
+        { label:"Free",        price:null,      accent:"#6B6560", featured:false, features:["Basic Orbit dashboard","1 Forge challenge/week","Public verified profile","UAN verification"], cta:"START FREE →", ctaStyle:{ background:"#1A1714", color:"#fff" } },
         { label:"Capabilio Pro",   price:"₹499/mo", sub:"₹3,999/yr — save 33%", accent:"#8B5CF6", featured:true,  features:["Full Orbit — all 4 career signals","Unlimited Forge challenges","Signal — 3 market reports/mo","Compensation Intelligence","Gap Mode + Gap Narrative Engine","Vault full verification","Nexus verified network"], cta:"GO CAPABILIO PRO →", ctaStyle:{ background:"#8B5CF6", color:"#fff" } },
         { label:"Capabilio Elite", price:"₹999/mo", sub:"₹7,999/yr — save 33%", accent:"#4F46E5", featured:false, features:["Everything in Capabilio Pro","AI Interview — 5 sessions/mo","Mentor Hub listing (15% commission)","Transition Tracks access","Return-Ready Sprint","Signal — unlimited reports","Priority Launchpad matching"], cta:"GO CAPABILIO ELITE →", ctaStyle:{ background:"#4F46E5", color:"#fff" } },
       ],
@@ -525,7 +525,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       sub: "A bad hire costs ₹80,000+. One better placement decision pays for a year of Growth plan. Zero placement officer overhead.",
       note: "Annual contracts available · Powered by Razorpay · GST applicable · Prices in INR",
       plans: [
-        { label:"Starter",              price:null,             sub:"Up to 50 students / 50 employees",    accent:"#6B7280", featured:false, features:["Verified profile + badge","Basic cohort / team view","Anonymous Rating System","3 job posts / month","Up to 2 admin accounts"], cta:"START FREE →", ctaStyle:{ background:"#111827", color:"#fff" } },
+        { label:"Starter",              price:null,             sub:"Up to 50 students / 50 employees",    accent:"#6B6560", featured:false, features:["Verified profile + badge","Basic cohort / team view","Anonymous Rating System","3 job posts / month","Up to 2 admin accounts"], cta:"START FREE →", ctaStyle:{ background:"#1A1714", color:"#fff" } },
         { label:"Campus / Growth",      price:"₹2,499–3,999/mo",sub:"College ₹2,499 · Company ₹3,999",   accent:"#D97706", featured:true,  features:["Full cohort / team intelligence","Professor Task Engine (college)","Placement Command Center (college)","Culture DNA + ATS Integration (company)","Unlimited jobs · 500 students/employees","Alumni Intelligence (college)","Hiring Funnel Analytics (company)"], cta:"GET STARTED →", ctaStyle:{ background:"#D97706", color:"#fff" } },
         { label:"University / Enterprise",price:"Custom",        sub:"Annual contract · Unlimited",         accent:"#92580A", featured:false, features:["Everything in Campus/Growth","Unlimited students / employees","Multi-campus admin (college)","Dedicated account manager","Custom API access","SLA + white-glove onboarding","Priority ELO candidate pool"], cta:"TALK TO SALES →", ctaStyle:{ background:"#1D4ED8", color:"#fff" } },
       ],
@@ -533,9 +533,9 @@ export default function LandingPage({ onGetStarted, onLogin }) {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "radial-gradient(circle at top left, rgba(255,87,1,0.06), transparent 18%), linear-gradient(to bottom, #FFFFFF, #F6F6F1)", color: "#111827", overflowX: "hidden", fontFamily: "'Playfair Display', serif" }}>
+    <div style={{ minHeight: "100vh", background: "radial-gradient(circle at top left, rgba(255,87,1,0.06), transparent 18%), linear-gradient(to bottom, #FFFFFF, #F6F6F1)", color: "#1A1714", overflowX: "hidden", fontFamily: "'DM Sans', sans-serif" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');
         * { box-sizing: border-box; }
         .lp-container { max-width: 1180px; margin: 0 auto; padding-left: 24px; padding-right: 24px; }
         .lp-grid-hero { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 40px; align-items: center; }
@@ -563,7 +563,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       {/* NAV */}
       <nav style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(255,255,255,0.88)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(17,24,39,0.08)" }}>
         <div className="lp-container" style={{ minHeight: 72, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap", paddingTop: 12, paddingBottom: 12 }}>
-          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, fontWeight: 800, color: "#111827", letterSpacing: "-0.03em" }}>Capabilio AI</div>
+          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 24, fontWeight: 800, color: "#1A1714", letterSpacing: "-0.03em" }}>Capabilio AI</div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <GhostButton onClick={onLogin}>SIGN IN</GhostButton>
             <PrimaryButton onClick={() => openPath(activeFlow, "nav")}>GET STARTED</PrimaryButton>
@@ -577,7 +577,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
           <div className="lp-grid-hero">
             <div className="lp-fade-up">
               <SectionLabel>{hero.sectionLabel}</SectionLabel>
-              <h1 style={{ color:"#111827", marginBottom:20, fontSize:"clamp(40px, 6vw, 68px)", lineHeight:0.98, letterSpacing:"-0.05em", fontWeight:800 }}>
+              <h1 style={{ color:"#1A1714", marginBottom:20, fontSize:"clamp(40px, 6vw, 68px)", lineHeight:0.98, letterSpacing:"-0.05em", fontWeight:800 }}>
                 {activeFlow === "student" ? (
                   <>Your resume lies.<br /><span style={{ color:"#FF5701", fontStyle:"italic" }}>Your ELO doesn&apos;t.</span></>
                 ) : activeFlow === "professional" ? (
@@ -588,7 +588,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
                   <>One platform.<br /><span style={{ color:"#D97706", fontStyle:"italic" }}>Two institution types.</span></>
                 )}
               </h1>
-              <p style={{ fontSize:18, color:"#4B5563", maxWidth:590, marginBottom:34, lineHeight:1.85, fontFamily:"Inter, sans-serif" }}>
+              <p style={{ fontSize:18, color:"#6B6560", maxWidth:590, marginBottom:34, lineHeight:1.85, fontFamily:"DM Sans, sans-serif" }}>
                 {hero.desc}
               </p>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:30 }}>
@@ -603,8 +603,8 @@ export default function LandingPage({ onGetStarted, onLogin }) {
               <div style={{ display:"flex", gap:24, paddingTop:22, borderTop:"1px solid rgba(17,24,39,0.08)", flexWrap:"wrap" }}>
                 {hero.stats.map((s,i) => (
                   <div key={i}>
-                    <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:24, color:flow.color, lineHeight:1, fontWeight:800 }}>{s.val}</div>
-                    <div style={{ fontSize:10, color:"#6B7280", textTransform:"uppercase", letterSpacing:"0.12em", fontWeight:700, marginTop:5, fontFamily:"'JetBrains Mono',monospace" }}>{s.lbl}</div>
+                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:24, color:flow.color, lineHeight:1, fontWeight:800 }}>{s.val}</div>
+                    <div style={{ fontSize:10, color:"#6B6560", textTransform:"uppercase", letterSpacing:"0.12em", fontWeight:700, marginTop:5, fontFamily:"'DM Mono',monospace" }}>{s.lbl}</div>
                   </div>
                 ))}
               </div>
@@ -624,9 +624,9 @@ export default function LandingPage({ onGetStarted, onLogin }) {
         <div className="lp-container">
           <div style={{ textAlign: "center", marginBottom: 40 }}>
             <SectionLabel>Choose your path</SectionLabel>
-            <h2 style={{ fontSize: "clamp(34px, 5vw, 56px)", lineHeight: 1.05, letterSpacing: "-0.04em", color: "#111827", marginBottom: 14, fontWeight: 800 }}>One platform.<br /><span style={{ color: "#FF5701", fontStyle: "italic" }}>Four journeys.</span></h2>
-            <p style={{ fontSize: 17, color: "#4B5563", maxWidth: 760, margin: "0 auto 10px", lineHeight: 1.85, fontFamily: "Inter, sans-serif" }}>Students prove readiness. Professionals maintain relevance. Organisations measure talent health. Executives monetize authority.</p>
-            <p style={{ fontSize: 14, color: "#9CA3AF", maxWidth: 600, margin: "0 auto", lineHeight: 1.7, fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>All powered by one trust-and-ELO backbone.</p>
+            <h2 style={{ fontSize: "clamp(34px, 5vw, 56px)", lineHeight: 1.05, letterSpacing: "-0.04em", color: "#1A1714", marginBottom: 14, fontWeight: 800 }}>One platform.<br /><span style={{ color: "#FF5701", fontStyle: "italic" }}>Four journeys.</span></h2>
+            <p style={{ fontSize: 17, color: "#6B6560", maxWidth: 760, margin: "0 auto 10px", lineHeight: 1.85, fontFamily: "DM Sans, sans-serif" }}>Students prove readiness. Professionals maintain relevance. Organisations measure talent health. Executives monetize authority.</p>
+            <p style={{ fontSize: 14, color: "#A8A29E", maxWidth: 600, margin: "0 auto", lineHeight: 1.7, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>All powered by one trust-and-ELO backbone.</p>
           </div>
           <div className="lp-grid-2">
             <PathCard icon="🎓" title="Student"      desc="25 beginner MCQs calibrate your starting radar. ELO begins at 400 and compounds through daily Arena challenges." badge="ELO starts at 400" onClick={() => openPath("student", "path-card")} />
@@ -643,16 +643,16 @@ export default function LandingPage({ onGetStarted, onLogin }) {
           <div style={{ background: "#FFFFFF", border: "1px solid rgba(17,24,39,0.08)", borderRadius: 30, padding: "38px 26px", boxShadow: "0 18px 40px rgba(17,24,39,0.05)" }}>
             <div style={{ textAlign: "center", marginBottom: 36 }}>
               <SectionLabel>The problem nobody talks about</SectionLabel>
-              <h2 style={{ fontSize: "clamp(32px, 5vw, 52px)", lineHeight: 1.06, color: "#111827", marginBottom: 14, letterSpacing: "-0.04em", fontWeight: 800 }}>Resumes are the world&apos;s most<br /><span style={{ color: "#FF5701", fontStyle: "italic" }}>successful lie.</span></h2>
-              <p style={{ fontSize: 16, color: "#4B5563", maxWidth: 680, margin: "0 auto", lineHeight: 1.8, fontFamily: "Inter, sans-serif" }}>Every hiring manager knows this. They spend 6 seconds on a resume and still can't tell who can actually do the job.</p>
+              <h2 style={{ fontSize: "clamp(32px, 5vw, 52px)", lineHeight: 1.06, color: "#1A1714", marginBottom: 14, letterSpacing: "-0.04em", fontWeight: 800 }}>Resumes are the world&apos;s most<br /><span style={{ color: "#FF5701", fontStyle: "italic" }}>successful lie.</span></h2>
+              <p style={{ fontSize: 16, color: "#6B6560", maxWidth: 680, margin: "0 auto", lineHeight: 1.8, fontFamily: "DM Sans, sans-serif" }}>Every hiring manager knows this. They spend 6 seconds on a resume and still can't tell who can actually do the job.</p>
             </div>
             <div className="lp-grid-3">
               {problemRows.map((r, i) => (
                 <div key={i} style={{ background: "#FAFAF8", border: "1px solid rgba(17,24,39,0.06)", borderRadius: 20, padding: 20 }}>
                   <div style={{ fontSize: 28, marginBottom: 12 }}>{r.icon}</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 10, lineHeight: 1.45, fontStyle: "italic", fontFamily: "'Playfair Display', serif" }}>{r.claim}</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: "#1A1714", marginBottom: 10, lineHeight: 1.45, fontStyle: "italic", fontFamily: "'DM Sans', sans-serif" }}>{r.claim}</div>
                   <div style={{ height: 1, background: "rgba(220,38,38,0.16)", marginBottom: 10 }} />
-                  <div style={{ fontSize: 13, color: "#DC2626", lineHeight: 1.6, fontFamily: "Inter, sans-serif" }}>Reality: {r.reality}</div>
+                  <div style={{ fontSize: 13, color: "#DC2626", lineHeight: 1.6, fontFamily: "DM Sans, sans-serif" }}>Reality: {r.reality}</div>
                 </div>
               ))}
             </div>
@@ -666,37 +666,37 @@ export default function LandingPage({ onGetStarted, onLogin }) {
           <div className="lp-grid-2" style={{ alignItems: "center" }}>
             <div>
               <SectionLabel>Live skill rating</SectionLabel>
-              <h2 style={{ fontSize: "clamp(34px, 5vw, 54px)", lineHeight: 1.05, color: "#111827", marginBottom: 16, letterSpacing: "-0.04em", fontWeight: 800 }}>A number that<br /><span style={{ color: "#FF5701", fontStyle: "italic" }}>can&apos;t be faked.</span></h2>
-              <p style={{ fontSize: 16, color: "#4B5563", marginBottom: 28, lineHeight: 1.85, fontFamily: "Inter, sans-serif" }}>Like chess.com — your ELO is earned through real performance. It rises when you solve hard problems, drops when you go inactive, and cannot be self-reported or inflated.</p>
+              <h2 style={{ fontSize: "clamp(34px, 5vw, 54px)", lineHeight: 1.05, color: "#1A1714", marginBottom: 16, letterSpacing: "-0.04em", fontWeight: 800 }}>A number that<br /><span style={{ color: "#FF5701", fontStyle: "italic" }}>can&apos;t be faked.</span></h2>
+              <p style={{ fontSize: 16, color: "#6B6560", marginBottom: 28, lineHeight: 1.85, fontFamily: "DM Sans, sans-serif" }}>Like chess.com — your ELO is earned through real performance. It rises when you solve hard problems, drops when you go inactive, and cannot be self-reported or inflated.</p>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
                 {["400+ Student", "800+ Professional", "1000+ Proficient", "1400+ Expert"].map((tier, i) => (
-                  <span key={i} style={{ padding: "8px 12px", borderRadius: 999, fontSize: 10, letterSpacing: "0.10em", textTransform: "uppercase", fontWeight: 800, fontFamily: "'JetBrains Mono', monospace", background: tier.includes("1000+") ? "#FFF1E8" : "#FFFFFF", color: tier.includes("1000+") ? "#FF5701" : "#6B7280", border: `1px solid ${tier.includes("1000+") ? "rgba(255,87,1,0.18)" : "rgba(17,24,39,0.08)"}` }}>{tier}</span>
+                  <span key={i} style={{ padding: "8px 12px", borderRadius: 999, fontSize: 10, letterSpacing: "0.10em", textTransform: "uppercase", fontWeight: 800, fontFamily: "'DM Mono', monospace", background: tier.includes("1000+") ? "#FFF1E8" : "#FFFFFF", color: tier.includes("1000+") ? "#FF5701" : "#6B6560", border: `1px solid ${tier.includes("1000+") ? "rgba(255,87,1,0.18)" : "rgba(17,24,39,0.08)"}` }}>{tier}</span>
                 ))}
               </div>
               {["Goes up when you solve hard problems.", "Drops if you are inactive for 7+ days.", "Cannot be self-reported or inflated.", "Comparable across all users globally."].map((t, i) => (
                 <div key={i} style={{ display: "flex", gap: 10, alignItems: "center", padding: "12px 14px", background: "#FFFFFF", border: "1px solid rgba(17,24,39,0.08)", borderRadius: 16, marginBottom: 10, boxShadow: "0 6px 18px rgba(17,24,39,0.04)" }}>
                   <span style={{ fontSize: 15, color: "#FF5701" }}>✦</span>
-                  <span style={{ fontSize: 14, color: "#4B5563", fontFamily: "Inter, sans-serif" }}>{t}</span>
+                  <span style={{ fontSize: 14, color: "#6B6560", fontFamily: "DM Sans, sans-serif" }}>{t}</span>
                 </div>
               ))}
             </div>
             <div style={{ background: "#FFFFFF", border: "1px solid rgba(17,24,39,0.08)", borderRadius: 28, padding: 24, boxShadow: "0 18px 40px rgba(17,24,39,0.06)" }}>
               <div style={{ textAlign: "center", marginBottom: 24 }}>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 66, color: "#FF5701", lineHeight: 1, marginBottom: 6, fontWeight: 800 }}>1,847</div>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "#6B7280", letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700 }}>Proficient · Top 8%</div>
+                <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 66, color: "#FF5701", lineHeight: 1, marginBottom: 6, fontWeight: 800 }}>1,847</div>
+                <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: "#6B6560", letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700 }}>Proficient · Top 8%</div>
               </div>
               <div style={{ marginBottom: 20 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, gap: 14 }}>
-                  <span style={{ fontSize: 10, color: "#6B7280", letterSpacing: "0.10em", textTransform: "uppercase", fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>ELO Growth</span>
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "#FF5701", fontWeight: 700 }}>400 → 1,847</span>
+                  <span style={{ fontSize: 10, color: "#6B6560", letterSpacing: "0.10em", textTransform: "uppercase", fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>ELO Growth</span>
+                  <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: "#FF5701", fontWeight: 700 }}>400 → 1,847</span>
                 </div>
                 <EloSparkline points={ELO_HISTORY} width={380} height={70} />
               </div>
               <div style={{ border: "1px solid rgba(17,24,39,0.08)", borderRadius: 18, overflow: "hidden" }}>
                 {VERSUS_ROWS.map((row, i) => (
                   <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderBottom: i !== VERSUS_ROWS.length - 1 ? "1px solid rgba(17,24,39,0.06)" : "none" }}>
-                    <div style={{ padding: "12px 14px", background: "#FAFAF8", color: "#6B7280", fontSize: 13, lineHeight: 1.6, fontFamily: "Inter, sans-serif" }}>{row.old}</div>
-                    <div style={{ padding: "12px 14px", background: "#FFF1E8", color: "#111827", fontSize: 13, lineHeight: 1.6, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{row.new}</div>
+                    <div style={{ padding: "12px 14px", background: "#FAFAF8", color: "#6B6560", fontSize: 13, lineHeight: 1.6, fontFamily: "DM Sans, sans-serif" }}>{row.old}</div>
+                    <div style={{ padding: "12px 14px", background: "#FFF1E8", color: "#1A1714", fontSize: 13, lineHeight: 1.6, fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{row.new}</div>
                   </div>
                 ))}
               </div>
@@ -712,23 +712,23 @@ export default function LandingPage({ onGetStarted, onLogin }) {
             <SectionLabel>Platform modules</SectionLabel>
             {activeFlow === "professional" ? (
               <>
-                <h2 style={{ fontSize: "clamp(34px, 5vw, 54px)", lineHeight: 1.05, color: "#111827", marginBottom: 14, letterSpacing: "-0.04em", fontWeight: 800 }}>Eight modules.<br /><span style={{ color: "#8B5CF6", fontStyle: "italic" }}>One verified career.</span></h2>
-                <p style={{ fontSize: 16, color: "#4B5563", maxWidth: 700, margin: "0 auto", lineHeight: 1.85, fontFamily: "Inter, sans-serif" }}>Career intelligence, market signals, skill maintenance, and passive job matching — for professionals who are employed and want to stay ahead without grinding daily tasks.</p>
+                <h2 style={{ fontSize: "clamp(34px, 5vw, 54px)", lineHeight: 1.05, color: "#1A1714", marginBottom: 14, letterSpacing: "-0.04em", fontWeight: 800 }}>Eight modules.<br /><span style={{ color: "#8B5CF6", fontStyle: "italic" }}>One verified career.</span></h2>
+                <p style={{ fontSize: 16, color: "#6B6560", maxWidth: 700, margin: "0 auto", lineHeight: 1.85, fontFamily: "DM Sans, sans-serif" }}>Career intelligence, market signals, skill maintenance, and passive job matching — for professionals who are employed and want to stay ahead without grinding daily tasks.</p>
               </>
             ) : activeFlow === "executive" ? (
               <>
-                <h2 style={{ fontSize: "clamp(34px, 5vw, 54px)", lineHeight: 1.05, color: "#111827", marginBottom: 14, letterSpacing: "-0.04em", fontWeight: 800 }}>Nine surfaces.<br /><span style={{ color: "#C9A84C", fontStyle: "italic" }}>One authority network.</span></h2>
-                <p style={{ fontSize: 16, color: "#4B5563", maxWidth: 700, margin: "0 auto", lineHeight: 1.85, fontFamily: "Inter, sans-serif" }}>A premium verified network where founders, CEOs, and domain authorities monetize time, match privately, and build influence — with an integrity floor no other platform enforces.</p>
+                <h2 style={{ fontSize: "clamp(34px, 5vw, 54px)", lineHeight: 1.05, color: "#1A1714", marginBottom: 14, letterSpacing: "-0.04em", fontWeight: 800 }}>Nine surfaces.<br /><span style={{ color: "#C9A84C", fontStyle: "italic" }}>One authority network.</span></h2>
+                <p style={{ fontSize: 16, color: "#6B6560", maxWidth: 700, margin: "0 auto", lineHeight: 1.85, fontFamily: "DM Sans, sans-serif" }}>A premium verified network where founders, CEOs, and domain authorities monetize time, match privately, and build influence — with an integrity floor no other platform enforces.</p>
               </>
             ) : activeFlow === "institution" ? (
               <>
-                <h2 style={{ fontSize: "clamp(34px, 5vw, 54px)", lineHeight: 1.05, color: "#111827", marginBottom: 14, letterSpacing: "-0.04em", fontWeight: 800 }}>Nine modules.<br /><span style={{ color: "#D97706", fontStyle: "italic" }}>One verified ecosystem.</span></h2>
-                <p style={{ fontSize: 16, color: "#4B5563", maxWidth: 700, margin: "0 auto", lineHeight: 1.85, fontFamily: "Inter, sans-serif" }}>Colleges track cohort ELO and automate placements. Companies build verified profiles and earn trust through anonymous ratings. Both run on the same talent intelligence backbone.</p>
+                <h2 style={{ fontSize: "clamp(34px, 5vw, 54px)", lineHeight: 1.05, color: "#1A1714", marginBottom: 14, letterSpacing: "-0.04em", fontWeight: 800 }}>Nine modules.<br /><span style={{ color: "#D97706", fontStyle: "italic" }}>One verified ecosystem.</span></h2>
+                <p style={{ fontSize: 16, color: "#6B6560", maxWidth: 700, margin: "0 auto", lineHeight: 1.85, fontFamily: "DM Sans, sans-serif" }}>Colleges track cohort ELO and automate placements. Companies build verified profiles and earn trust through anonymous ratings. Both run on the same talent intelligence backbone.</p>
               </>
             ) : (
               <>
-                <h2 style={{ fontSize: "clamp(34px, 5vw, 54px)", lineHeight: 1.05, color: "#111827", marginBottom: 14, letterSpacing: "-0.04em", fontWeight: 800 }}>Five modules.<br /><span style={{ color: "#FF5701", fontStyle: "italic" }}>Zero resumes.</span></h2>
-                <p style={{ fontSize: 16, color: "#4B5563", maxWidth: 700, margin: "0 auto", lineHeight: 1.85, fontFamily: "Inter, sans-serif" }}>Interlocking modules replace your resume, cover letter, and LinkedIn with live, verifiable proof of work.</p>
+                <h2 style={{ fontSize: "clamp(34px, 5vw, 54px)", lineHeight: 1.05, color: "#1A1714", marginBottom: 14, letterSpacing: "-0.04em", fontWeight: 800 }}>Five modules.<br /><span style={{ color: "#FF5701", fontStyle: "italic" }}>Zero resumes.</span></h2>
+                <p style={{ fontSize: 16, color: "#6B6560", maxWidth: 700, margin: "0 auto", lineHeight: 1.85, fontFamily: "DM Sans, sans-serif" }}>Interlocking modules replace your resume, cover letter, and LinkedIn with live, verifiable proof of work.</p>
               </>
             )}
           </div>
@@ -746,8 +746,8 @@ export default function LandingPage({ onGetStarted, onLogin }) {
             <div style={{ background: "linear-gradient(135deg, #FFFDF5, #FFF9E6)", border: "1px solid rgba(201,168,76,0.2)", borderRadius: 30, padding: "38px 26px", boxShadow: "0 18px 40px rgba(201,168,76,0.08)" }}>
               <div style={{ textAlign: "center", marginBottom: 36 }}>
                 <SectionLabel>Verified legacy profile</SectionLabel>
-                <h2 style={{ fontSize: "clamp(32px, 5vw, 52px)", lineHeight: 1.06, color: "#111827", marginBottom: 14, letterSpacing: "-0.04em", fontWeight: 800 }}>Your authority timeline.<br /><span style={{ color: "#C9A84C", fontStyle: "italic" }}>Verified, not claimed.</span></h2>
-                <p style={{ fontSize: 16, color: "#4B5563", maxWidth: 680, margin: "0 auto 28px", lineHeight: 1.8, fontFamily: "Inter, sans-serif" }}>Every funding round, board seat, exit, patent, and keynote — cross-verified with news sources and company data. Not self-reported. Your legacy profile is the single most credible executive record in India.</p>
+                <h2 style={{ fontSize: "clamp(32px, 5vw, 52px)", lineHeight: 1.06, color: "#1A1714", marginBottom: 14, letterSpacing: "-0.04em", fontWeight: 800 }}>Your authority timeline.<br /><span style={{ color: "#C9A84C", fontStyle: "italic" }}>Verified, not claimed.</span></h2>
+                <p style={{ fontSize: 16, color: "#6B6560", maxWidth: 680, margin: "0 auto 28px", lineHeight: 1.8, fontFamily: "DM Sans, sans-serif" }}>Every funding round, board seat, exit, patent, and keynote — cross-verified with news sources and company data. Not self-reported. Your legacy profile is the single most credible executive record in India.</p>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 680, margin: "0 auto 28px" }}>
                 {[
@@ -759,8 +759,8 @@ export default function LandingPage({ onGetStarted, onLogin }) {
                   <div key={i} style={{ display: "flex", gap: 14, alignItems: "flex-start", padding: "14px 18px", background: "rgba(255,255,255,0.7)", border: "1px solid rgba(201,168,76,0.12)", borderRadius: 16 }}>
                     <div style={{ width: 36, height: 36, borderRadius: 10, background: `${row.color}12`, border: `1px solid ${row.color}22`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{row.icon}</div>
                     <div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#111827", marginBottom: 3 }}>{row.label}</div>
-                      <div style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.6, fontFamily: "Inter, sans-serif" }}>{row.desc}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#1A1714", marginBottom: 3 }}>{row.label}</div>
+                      <div style={{ fontSize: 13, color: "#6B6560", lineHeight: 1.6, fontFamily: "DM Sans, sans-serif" }}>{row.desc}</div>
                     </div>
                   </div>
                 ))}
@@ -771,8 +771,8 @@ export default function LandingPage({ onGetStarted, onLogin }) {
             <div style={{ background: "#FFFFFF", border: "1px solid rgba(217,119,6,0.12)", borderRadius: 30, padding: "38px 26px", boxShadow: "0 18px 40px rgba(217,119,6,0.06)" }}>
               <div style={{ textAlign: "center", marginBottom: 36 }}>
                 <SectionLabel>Cohort intelligence + company trust</SectionLabel>
-                <h2 style={{ fontSize: "clamp(32px, 5vw, 52px)", lineHeight: 1.06, color: "#111827", marginBottom: 14, letterSpacing: "-0.04em", fontWeight: 800 }}>Talent health, measured.<br /><span style={{ color: "#D97706", fontStyle: "italic" }}>Trust, built automatically.</span></h2>
-                <p style={{ fontSize: 16, color: "#4B5563", maxWidth: 680, margin: "0 auto 28px", lineHeight: 1.8, fontFamily: "Inter, sans-serif" }}>Colleges see cohort ELO in real time. Students auto-transition to Professional path when placed. Companies earn a verified Company ELO from anonymous employee ratings — and it cannot be gamed.</p>
+                <h2 style={{ fontSize: "clamp(32px, 5vw, 52px)", lineHeight: 1.06, color: "#1A1714", marginBottom: 14, letterSpacing: "-0.04em", fontWeight: 800 }}>Talent health, measured.<br /><span style={{ color: "#D97706", fontStyle: "italic" }}>Trust, built automatically.</span></h2>
+                <p style={{ fontSize: 16, color: "#6B6560", maxWidth: 680, margin: "0 auto 28px", lineHeight: 1.8, fontFamily: "DM Sans, sans-serif" }}>Colleges see cohort ELO in real time. Students auto-transition to Professional path when placed. Companies earn a verified Company ELO from anonymous employee ratings — and it cannot be gamed.</p>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, maxWidth: 720, margin: "0 auto 28px" }}>
                 {[
@@ -784,8 +784,8 @@ export default function LandingPage({ onGetStarted, onLogin }) {
                   <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "14px 16px", background: "#FAFAF8", border: "1px solid rgba(17,24,39,0.06)", borderRadius: 16 }}>
                     <div style={{ width: 34, height: 34, borderRadius: 10, background: `${row.color}12`, border: `1px solid ${row.color}22`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, flexShrink: 0 }}>{row.icon}</div>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "#111827", marginBottom: 3 }}>{row.label}</div>
-                      <div style={{ fontSize: 12, color: "#6B7280", lineHeight: 1.6, fontFamily: "Inter, sans-serif" }}>{row.desc}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#1A1714", marginBottom: 3 }}>{row.label}</div>
+                      <div style={{ fontSize: 12, color: "#6B6560", lineHeight: 1.6, fontFamily: "DM Sans, sans-serif" }}>{row.desc}</div>
                     </div>
                   </div>
                 ))}
@@ -796,8 +796,8 @@ export default function LandingPage({ onGetStarted, onLogin }) {
             <div style={{ background: "#FFFFFF", border: "1px solid rgba(139,92,246,0.12)", borderRadius: 30, padding: "38px 26px", boxShadow: "0 18px 40px rgba(139,92,246,0.06)" }}>
               <div style={{ textAlign: "center", marginBottom: 36 }}>
                 <SectionLabel>Auto-verified career timeline</SectionLabel>
-                <h2 style={{ fontSize: "clamp(32px, 5vw, 52px)", lineHeight: 1.06, color: "#111827", marginBottom: 14, letterSpacing: "-0.04em", fontWeight: 800 }}>Every career move.<br /><span style={{ color: "#8B5CF6", fontStyle: "italic" }}>Verified, not claimed.</span></h2>
-                <p style={{ fontSize: 16, color: "#4B5563", maxWidth: 680, margin: "0 auto 28px", lineHeight: 1.8, fontFamily: "Inter, sans-serif" }}>When you join a new company through Capabilio, your timeline auto-updates with the JD, skills, and start date. When you're promoted, your recruiter updates it and a new branch appears. You never touch it. Anything you add yourself is flagged as self-claimed.</p>
+                <h2 style={{ fontSize: "clamp(32px, 5vw, 52px)", lineHeight: 1.06, color: "#1A1714", marginBottom: 14, letterSpacing: "-0.04em", fontWeight: 800 }}>Every career move.<br /><span style={{ color: "#8B5CF6", fontStyle: "italic" }}>Verified, not claimed.</span></h2>
+                <p style={{ fontSize: 16, color: "#6B6560", maxWidth: 680, margin: "0 auto 28px", lineHeight: 1.8, fontFamily: "DM Sans, sans-serif" }}>When you join a new company through Capabilio, your timeline auto-updates with the JD, skills, and start date. When you're promoted, your recruiter updates it and a new branch appears. You never touch it. Anything you add yourself is flagged as self-claimed.</p>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 680, margin: "0 auto 28px" }}>
                 {[
@@ -809,8 +809,8 @@ export default function LandingPage({ onGetStarted, onLogin }) {
                   <div key={i} style={{ display: "flex", gap: 14, alignItems: "flex-start", padding: "14px 18px", background: "#FAFAF8", border: "1px solid rgba(17,24,39,0.06)", borderRadius: 16 }}>
                     <div style={{ width: 36, height: 36, borderRadius: 10, background: `${row.color}12`, border: `1px solid ${row.color}22`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{row.icon}</div>
                     <div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#111827", marginBottom: 3 }}>{row.label}</div>
-                      <div style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.6, fontFamily: "Inter, sans-serif" }}>{row.desc}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#1A1714", marginBottom: 3 }}>{row.label}</div>
+                      <div style={{ fontSize: 13, color: "#6B6560", lineHeight: 1.6, fontFamily: "DM Sans, sans-serif" }}>{row.desc}</div>
                     </div>
                   </div>
                 ))}
@@ -821,8 +821,8 @@ export default function LandingPage({ onGetStarted, onLogin }) {
             <>
               <div style={{ textAlign: "center", marginBottom: 34 }}>
                 <SectionLabel>Public portfolio</SectionLabel>
-                <h2 style={{ fontSize: "clamp(34px, 5vw, 54px)", lineHeight: 1.05, color: "#111827", marginBottom: 14, letterSpacing: "-0.04em", fontWeight: 800 }}>Show recruiters<br /><span style={{ color: "#FF5701", fontStyle: "italic" }}>how you think.</span></h2>
-                <p style={{ fontSize: 16, color: "#4B5563", maxWidth: 700, margin: "0 auto", lineHeight: 1.85, fontFamily: "Inter, sans-serif" }}>Every Arena task builds your public portfolio. Recruiters see the actual problem, your solution, and the AI review.</p>
+                <h2 style={{ fontSize: "clamp(34px, 5vw, 54px)", lineHeight: 1.05, color: "#1A1714", marginBottom: 14, letterSpacing: "-0.04em", fontWeight: 800 }}>Show recruiters<br /><span style={{ color: "#FF5701", fontStyle: "italic" }}>how you think.</span></h2>
+                <p style={{ fontSize: 16, color: "#6B6560", maxWidth: 700, margin: "0 auto", lineHeight: 1.85, fontFamily: "DM Sans, sans-serif" }}>Every Arena task builds your public portfolio. Recruiters see the actual problem, your solution, and the AI review.</p>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>{PORTFOLIO_TASKS.map((t, i) => <PortfolioCard key={i} task={t} />)}</div>
               <div style={{ textAlign: "center", marginTop: 28 }}><PrimaryButton onClick={() => openPath(activeFlow, "portfolio-cta")}>START BUILDING YOUR PORTFOLIO →</PrimaryButton></div>
@@ -836,8 +836,8 @@ export default function LandingPage({ onGetStarted, onLogin }) {
         <div className="lp-container">
           <div style={{ textAlign:"center", marginBottom:44 }}>
             <SectionLabel>Pricing</SectionLabel>
-            <h2 style={{ fontSize:"clamp(34px,5vw,54px)", lineHeight:1.05, color:"#111827", marginBottom:14, letterSpacing:"-0.04em", fontWeight:800 }}>Simple pricing.<br /><span style={{ color:"#FF5701", fontStyle:"italic" }}>Serious value.</span></h2>
-            <p style={{ fontSize:16, color:"#4B5563", maxWidth:560, margin:"0 auto", lineHeight:1.85, fontFamily:"Inter, sans-serif" }}>Pick your path below. Every plan is designed so the value you get far exceeds what you pay.</p>
+            <h2 style={{ fontSize:"clamp(34px,5vw,54px)", lineHeight:1.05, color:"#1A1714", marginBottom:14, letterSpacing:"-0.04em", fontWeight:800 }}>Simple pricing.<br /><span style={{ color:"#FF5701", fontStyle:"italic" }}>Serious value.</span></h2>
+            <p style={{ fontSize:16, color:"#6B6560", maxWidth:560, margin:"0 auto", lineHeight:1.85, fontFamily:"DM Sans, sans-serif" }}>Pick your path below. Every plan is designed so the value you get far exceeds what you pay.</p>
           </div>
 
           {/* 4 path selector tiles */}
@@ -857,9 +857,9 @@ export default function LandingPage({ onGetStarted, onLogin }) {
                 >
                   {isActive && <div style={{ position:"absolute", top:0, left:0, right:0, height:3, background:tile.color, borderRadius:"20px 20px 0 0" }} />}
                   <div style={{ fontSize:26, marginBottom:8 }}>{tile.icon}</div>
-                  <div style={{ fontFamily:"'Playfair Display',serif", fontSize:16, fontWeight:800, color:"#111827", marginBottom:4 }}>{tile.label}</div>
-                  <div style={{ fontSize:10, color:"#6B7280", lineHeight:1.5, fontFamily:"Inter,sans-serif", marginBottom:10 }}>{tile.tagline}</div>
-                  <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:10, fontWeight:800, color:tile.color, letterSpacing:"0.06em" }}>{tile.from}</div>
+                  <div style={{ fontFamily:"'DM Sans',serif", fontSize:16, fontWeight:800, color:"#1A1714", marginBottom:4 }}>{tile.label}</div>
+                  <div style={{ fontSize:10, color:"#6B6560", lineHeight:1.5, fontFamily:"DM Sans,sans-serif", marginBottom:10 }}>{tile.tagline}</div>
+                  <div style={{ fontFamily:"'DM Mono',monospace", fontSize:10, fontWeight:800, color:tile.color, letterSpacing:"0.06em" }}>{tile.from}</div>
                   {isActive && (
                     <div style={{ position:"absolute", top:12, right:12, width:18, height:18, borderRadius:"50%", background:tile.color, display:"flex", alignItems:"center", justifyContent:"center" }}>
                       <span style={{ color:"#fff", fontSize:10, fontWeight:800 }}>✓</span>
@@ -876,8 +876,8 @@ export default function LandingPage({ onGetStarted, onLogin }) {
             return (
               <div key={pricingKey}>
                 <div style={{ textAlign:"center", marginBottom:32 }}>
-                  <h3 style={{ fontSize:"clamp(22px,3.5vw,36px)", lineHeight:1.1, color:"#111827", marginBottom:10, letterSpacing:"-0.03em", fontWeight:800 }}>{p.headline}</h3>
-                  <p style={{ fontSize:15, color:"#6B7280", maxWidth:560, margin:"0 auto", lineHeight:1.8, fontFamily:"Inter, sans-serif" }}>{p.sub}</p>
+                  <h3 style={{ fontSize:"clamp(22px,3.5vw,36px)", lineHeight:1.1, color:"#1A1714", marginBottom:10, letterSpacing:"-0.03em", fontWeight:800 }}>{p.headline}</h3>
+                  <p style={{ fontSize:15, color:"#6B6560", maxWidth:560, margin:"0 auto", lineHeight:1.8, fontFamily:"DM Sans, sans-serif" }}>{p.sub}</p>
                 </div>
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))", gap:22, marginBottom:24 }}>
                   {p.plans.map((plan, i) => (
@@ -885,32 +885,32 @@ export default function LandingPage({ onGetStarted, onLogin }) {
                       {plan.featured && (
                         <>
                           <div style={{ position:"absolute", top:0, left:0, right:0, height:4, background:`linear-gradient(90deg,${plan.accent},${plan.accent}88)`, borderRadius:"22px 22px 0 0" }} />
-                          <div style={{ position:"absolute", top:0, right:20, background:plan.accent, color:"#fff", fontSize:10, fontWeight:800, padding:"6px 10px", borderRadius:"0 0 10px 10px", letterSpacing:"0.12em", fontFamily:"'JetBrains Mono',monospace", textTransform:"uppercase" }}>Recommended</div>
+                          <div style={{ position:"absolute", top:0, right:20, background:plan.accent, color:"#fff", fontSize:10, fontWeight:800, padding:"6px 10px", borderRadius:"0 0 10px 10px", letterSpacing:"0.12em", fontFamily:"'DM Mono',monospace", textTransform:"uppercase" }}>Recommended</div>
                         </>
                       )}
                       <div style={{ marginBottom:20 }}>
-                        <div style={{ fontSize:11, fontWeight:800, color:plan.accent, letterSpacing:2, textTransform:"uppercase", marginBottom:8, fontFamily:"'JetBrains Mono',monospace" }}>{plan.label}</div>
-                        <div style={{ fontSize: plan.price === "Custom" ? 28 : 40, fontWeight:900, color:"#111827", letterSpacing:-1, lineHeight:1 }}>{plan.price || "Free"}</div>
-                        {plan.sub && <div style={{ fontSize:11, color:"#6B7280", marginTop:5, fontFamily:"'JetBrains Mono',monospace" }}>{plan.sub}</div>}
+                        <div style={{ fontSize:11, fontWeight:800, color:plan.accent, letterSpacing:2, textTransform:"uppercase", marginBottom:8, fontFamily:"'DM Mono',monospace" }}>{plan.label}</div>
+                        <div style={{ fontSize: plan.price === "Custom" ? 28 : 40, fontWeight:900, color:"#1A1714", letterSpacing:-1, lineHeight:1 }}>{plan.price || "Free"}</div>
+                        {plan.sub && <div style={{ fontSize:11, color:"#6B6560", marginTop:5, fontFamily:"'DM Mono',monospace" }}>{plan.sub}</div>}
                       </div>
                       <div style={{ flex:1, marginBottom:24, display:"grid", gap:9 }}>
                         {plan.features.map((f, fi) => (
                           <div key={fi} style={{ display:"flex", gap:8, alignItems:"flex-start" }}>
                             <span style={{ color: plan.featured ? plan.accent : "#1A7A4A", fontWeight:800, flexShrink:0, marginTop:1 }}>✓</span>
-                            <span style={{ fontSize:13, color:"#374151", lineHeight:1.5, fontFamily:"Inter, sans-serif" }}>{f}</span>
+                            <span style={{ fontSize:13, color:"#3D3935", lineHeight:1.5, fontFamily:"DM Sans, sans-serif" }}>{f}</span>
                           </div>
                         ))}
                       </div>
                       <button
                         onClick={() => openPath(pricingFlow, `pricing-${i}-cta`)}
-                        style={{ width:"100%", padding:"14px", border:"none", borderRadius:12, fontSize:13, fontWeight:800, cursor:"pointer", letterSpacing:"0.04em", fontFamily:"'JetBrains Mono',monospace", transition:"all 180ms cubic-bezier(0.16,1,0.3,1)", ...plan.ctaStyle }}
+                        style={{ width:"100%", padding:"14px", border:"none", borderRadius:12, fontSize:13, fontWeight:800, cursor:"pointer", letterSpacing:"0.04em", fontFamily:"'DM Mono',monospace", transition:"all 180ms cubic-bezier(0.16,1,0.3,1)", ...plan.ctaStyle }}
                         onMouseEnter={e => { e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.opacity="0.92" }}
                         onMouseLeave={e => { e.currentTarget.style.transform="translateY(0)"; e.currentTarget.style.opacity="1" }}
                       >{plan.cta}</button>
                     </div>
                   ))}
                 </div>
-                <div style={{ textAlign:"center", fontSize:11, color:"#9CA3AF", fontFamily:"'JetBrains Mono',monospace", lineHeight:1.8 }}>{p.note}</div>
+                <div style={{ textAlign:"center", fontSize:11, color:"#A8A29E", fontFamily:"'DM Mono',monospace", lineHeight:1.8 }}>{p.note}</div>
               </div>
             )
           })()}
@@ -922,8 +922,8 @@ export default function LandingPage({ onGetStarted, onLogin }) {
         <div className="lp-container">
           <div style={{ textAlign: "center", marginBottom: 36 }}>
             <SectionLabel>Executive network</SectionLabel>
-            <h2 style={{ fontSize: "clamp(34px, 5vw, 54px)", lineHeight: 1.05, color: "#111827", marginBottom: 14, letterSpacing: "-0.04em", fontWeight: 800 }}>Learn from people who<br /><span style={{ color: "#FF5701", fontStyle: "italic" }}>proved it.</span></h2>
-            <p style={{ fontSize: 16, color: "#4B5563", maxWidth: 760, margin: "0 auto", lineHeight: 1.85, fontFamily: "Inter, sans-serif" }}>Founders, professors, experts, and institutions share knowledge and mentor learners through verified authority profiles.</p>
+            <h2 style={{ fontSize: "clamp(34px, 5vw, 54px)", lineHeight: 1.05, color: "#1A1714", marginBottom: 14, letterSpacing: "-0.04em", fontWeight: 800 }}>Learn from people who<br /><span style={{ color: "#FF5701", fontStyle: "italic" }}>proved it.</span></h2>
+            <p style={{ fontSize: 16, color: "#6B6560", maxWidth: 760, margin: "0 auto", lineHeight: 1.85, fontFamily: "DM Sans, sans-serif" }}>Founders, professors, experts, and institutions share knowledge and mentor learners through verified authority profiles.</p>
           </div>
           <div className="lp-grid-4">{networkRows.map((a, i) => <NetworkCard key={i} item={a} />)}</div>
           <div style={{ textAlign: "center", marginTop: 28 }}><GhostButton onClick={() => openPath("executive", "exec-cta")}>CREATE AUTHORITY PROFILE →</GhostButton></div>
@@ -934,13 +934,13 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       <section style={{ padding: "0 0 88px" }}>
         <div className="lp-container">
           <div style={{ background: "linear-gradient(135deg, #0D0D1A, #1A1A2E)", borderRadius: 30, padding: "52px 28px", textAlign: "center", boxShadow: "0 22px 50px rgba(0,0,0,0.28)" }}>
-            <div style={{ fontSize: 11, color: "#FF5701", fontWeight: 800, letterSpacing: "0.18em", textTransform: "uppercase", fontFamily: "'JetBrains Mono', monospace", marginBottom: 18 }}>One trust-and-ELO backbone</div>
+            <div style={{ fontSize: 11, color: "#FF5701", fontWeight: 800, letterSpacing: "0.18em", textTransform: "uppercase", fontFamily: "'DM Mono', monospace", marginBottom: 18 }}>One trust-and-ELO backbone</div>
             <h2 style={{ color: "#FFFFFF", marginBottom: 20, fontSize: "clamp(28px, 4vw, 46px)", lineHeight: 1.12, letterSpacing: "-0.03em", fontWeight: 800 }}>Students prove readiness.<br />Professionals maintain relevance.<br /><span style={{ color: "#FF5701", fontStyle: "italic" }}>Organisations measure talent health.<br />Executives monetize authority.</span></h2>
-            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.6)", marginBottom: 34, lineHeight: 1.85, maxWidth: 640, marginLeft: "auto", marginRight: "auto", fontFamily: "Inter, sans-serif" }}>One verified intelligence network. No resumes exchanged at any point.</p>
+            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.6)", marginBottom: 34, lineHeight: 1.85, maxWidth: 640, marginLeft: "auto", marginRight: "auto", fontFamily: "DM Sans, sans-serif" }}>One verified intelligence network. No resumes exchanged at any point.</p>
             <PrimaryButton onClick={() => openPath(activeFlow, "final-cta")}>CHOOSE YOUR PATH →</PrimaryButton>
             <div style={{ display: "flex", gap: 20, justifyContent: "center", marginTop: 24, flexWrap: "wrap" }}>
               {["Free for candidates", "18+ domains", "UAN verified", "Built in India"].map((f, i) => (
-                <span key={i} style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.02em" }}>✓ {f}</span>
+                <span key={i} style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontWeight: 700, fontFamily: "'DM Mono', monospace", letterSpacing: "0.02em" }}>✓ {f}</span>
               ))}
             </div>
           </div>
@@ -950,14 +950,14 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       {/* FOOTER */}
       <footer style={{ borderTop: "1px solid rgba(17,24,39,0.08)", padding: "28px 0 44px" }}>
         <div className="lp-container" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, fontWeight: 700, color: "#111827" }}>Capabilio AI</div>
-          <div style={{ fontSize: 12, color: "#6B7280", fontFamily: "'JetBrains Mono', monospace", textAlign: "center" }}>
+          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 20, fontWeight: 700, color: "#1A1714" }}>Capabilio AI</div>
+          <div style={{ fontSize: 12, color: "#6B6560", fontFamily: "'DM Mono', monospace", textAlign: "center" }}>
             Hiring team?{" "}
             <a href="https://recruiter.capabilio.online" target="_blank" rel="noopener noreferrer" style={{ color: "#FF5701", textDecoration: "none", fontWeight: 700 }}>
               Search verified talent by ELO at recruiter.capabilio.online
             </a>
           </div>
-          <div style={{ fontSize: 12, color: "#6B7280", fontFamily: "'JetBrains Mono', monospace" }}>Amaravati, Andhra Pradesh ❤️ from India</div>
+          <div style={{ fontSize: 12, color: "#6B6560", fontFamily: "'DM Mono', monospace" }}>Amaravati, Andhra Pradesh ❤️ from India</div>
         </div>
       </footer>
     </div>

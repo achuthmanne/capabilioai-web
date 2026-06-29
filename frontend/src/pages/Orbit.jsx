@@ -12,7 +12,7 @@ const API = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.c
 // ─── Design System ────────────────────────────────────────────────────────────
 const DS = {
   bg:"#FFFFFF", surface:"#FFFFFF", surface2:"rgba(0,0,0,0.03)",
-  ink:"#0F172A", ink2:"#475569", ink3:"#94A3B8", ink4:"#64748B",
+  ink:"#1A1714", ink2:"#475569", ink3:"#A8A29E", ink4:"#6B6560",
   border:"rgba(0,0,0,0.05)", border2:"rgba(0,0,0,0.08)",
   primary:"#6366F1", pBg:"rgba(99,102,241,0.12)", pBd:"rgba(99,102,241,0.28)",
   green:"#10B981", gBg:"rgba(16,185,129,0.12)", gBd:"rgba(16,185,129,0.28)",
@@ -21,14 +21,14 @@ const DS = {
   purple:"#8B5CF6", purBg:"rgba(139,92,246,0.12)", purBd:"rgba(139,92,246,0.28)",
   red:"#F43F5E", rBg:"rgba(244,63,94,0.12)", rBd:"rgba(244,63,94,0.28)",
   teal:"#06B6D4", tBg:"rgba(6,182,212,0.12)", tBd:"rgba(6,182,212,0.28)",
-  display:"'Inter', sans-serif", mono:"'JetBrains Mono', monospace", body:"'Inter', system-ui, sans-serif",
+  display:"'DM Sans', sans-serif", mono:"'DM Mono', monospace", body:"'DM Sans', system-ui, sans-serif",
   sh:"0 4px 12px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.3)",
   sh2:"0 8px 24px rgba(0,0,0,0.08)), 0 4px 12px rgba(0,0,0,0.4)",
   sh3:"0 20px 60px rgba(0,0,0,0.7), 0 8px 24px rgba(0,0,0,0.5)",
   r:12, r2:16, r3:20,
 }
 const G=`
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
@@ -78,7 +78,7 @@ function Tag({children,color=DS.ink3,bg=DS.surface2,border=DS.border}){return<sp
 function SL({children,color=DS.ink4}){return<div style={{fontSize:10,fontWeight:700,letterSpacing:2.2,color,textTransform:"uppercase",fontFamily:DS.mono,marginBottom:8}}>{children}</div>}
 function Card({children,style={},className=""}){return<div className={`ocard ${className}`} style={{background:DS.surface,border:`1px solid ${DS.border}`,borderRadius:DS.r2,boxShadow:DS.sh,padding:"20px 22px",...style}}>{children}</div>}
 function Btn({children,onClick,variant="primary",size="md",disabled=false,loading=false,full=false,style={}}){
-  const V={primary:{bg:DS.primary,color:"#0F172A",bd:"none"},ghost:{bg:"transparent",color:DS.ink2,bd:`1px solid ${DS.border2}`},danger:{bg:DS.rBg,color:DS.red,bd:`1px solid ${DS.rBd}`},success:{bg:DS.gBg,color:DS.green,bd:`1px solid ${DS.gBd}`},amber:{bg:DS.aBg,color:DS.amber,bd:`1px solid ${DS.aBd}`},subtle:{bg:DS.surface2,color:DS.ink3,bd:`1px solid ${DS.border}`}}
+  const V={primary:{bg:DS.primary,color:"#1A1714",bd:"none"},ghost:{bg:"transparent",color:DS.ink2,bd:`1px solid ${DS.border2}`},danger:{bg:DS.rBg,color:DS.red,bd:`1px solid ${DS.rBd}`},success:{bg:DS.gBg,color:DS.green,bd:`1px solid ${DS.gBd}`},amber:{bg:DS.aBg,color:DS.amber,bd:`1px solid ${DS.aBd}`},subtle:{bg:DS.surface2,color:DS.ink3,bd:`1px solid ${DS.border}`}}
   const S={sm:"7px 13px",md:"10px 18px",lg:"13px 24px"}
   const v=V[variant]||V.primary
   return<button className="obtn" onClick={onClick} disabled={disabled||loading} style={{width:full?"100%":undefined,padding:S[size],background:v.bg,color:v.color,border:v.bd,borderRadius:DS.r,fontSize:size==="sm"?11:13,fontWeight:700,fontFamily:DS.body,display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,outline:"none",opacity:disabled?.5:1,...style}}>{loading&&<Spin color={v.color} size={12}/>}{children}</button>
@@ -189,7 +189,7 @@ function PlanBanner({ plan, onUpgrade }) {
           <div style={{fontSize:12,color:DS.ink2}}>Unlock <strong>{hint}</strong> — {price}</div>
         </div>
       </div>
-      <Btn onClick={onUpgrade} style={{background:DS.purple,color:"#0F172A",border:"none",flexShrink:0,boxShadow:`0 4px 14px ${DS.purple}30`}}>Upgrade to {upgradeTo} →</Btn>
+      <Btn onClick={onUpgrade} style={{background:DS.purple,color:"#1A1714",border:"none",flexShrink:0,boxShadow:`0 4px 14px ${DS.purple}30`}}>Upgrade to {upgradeTo} →</Btn>
     </div>
   )
 }
@@ -207,7 +207,7 @@ function LockedCard({ children, title, desc, requiredPlan="orbit_pro", onUpgrade
           <div style={{fontFamily:DS.display,fontSize:14,fontWeight:800,color:DS.ink,marginBottom:5}}>{title}</div>
           <div style={{fontSize:11,color:DS.ink3,marginBottom:12,lineHeight:1.55}}>{desc}</div>
           <div style={{fontFamily:DS.mono,fontSize:10,fontWeight:700,color:DS.purple,marginBottom:12,textTransform:"uppercase",letterSpacing:1}}>{rLabel} · {rPrice}</div>
-          <Btn onClick={onUpgrade} size="sm" style={{background:DS.purple,color:"#0F172A",border:"none",boxShadow:`0 4px 14px ${DS.purple}30`}}>Upgrade to {rLabel} →</Btn>
+          <Btn onClick={onUpgrade} size="sm" style={{background:DS.purple,color:"#1A1714",border:"none",boxShadow:`0 4px 14px ${DS.purple}30`}}>Upgrade to {rLabel} →</Btn>
         </div>
       </div>
     </div>
@@ -482,7 +482,7 @@ function AIInterviewCard({ud,onNav,locked,onUpgrade}){
         </button>
       ))}
     </div>
-    <Btn onClick={()=>onNav("aura")} style={{background:DS.purple,color:"#0F172A",border:"none",boxShadow:`0 4px 14px ${DS.purple}30`}} full>{remaining>0?"Start Interview Session →":"Sessions exhausted — resets next month"}</Btn>
+    <Btn onClick={()=>onNav("aura")} style={{background:DS.purple,color:"#1A1714",border:"none",boxShadow:`0 4px 14px ${DS.purple}30`}} full>{remaining>0?"Start Interview Session →":"Sessions exhausted — resets next month"}</Btn>
   </Card>
 }
 
@@ -520,7 +520,7 @@ function MentorHubCard({ud,onNav,locked,onUpgrade}){
             </div>
           ))}
         </div>
-        <Btn onClick={()=>onNav("nexus")} style={{background:DS.amber,color:"#0F172A",border:"none"}} full>List on Mentor Hub →</Btn>
+        <Btn onClick={()=>onNav("nexus")} style={{background:DS.amber,color:"#1A1714",border:"none"}} full>List on Mentor Hub →</Btn>
       </div>
     )}
   </Card>
@@ -874,7 +874,7 @@ function OrbitDash({ud,user,onSave,onNav,onPricing}){
         {!hasHistory&&<Btn onClick={()=>setShowResume(true)}>📄 Import Resume</Btn>}
         <Btn onClick={()=>setShowLayoff(true)} variant="danger" size="sm">🛑 Layoff Mode</Btn>
         <Btn onClick={()=>setEditing(e=>!e)} variant="ghost" size="sm">{editing?"Cancel":"⚙ Settings"}</Btn>
-        {!plan.isElite&&<Btn onClick={goUpgrade} style={{background:DS.purple,color:"#0F172A",border:"none"}} size="sm">⬆ Upgrade</Btn>}
+        {!plan.isElite&&<Btn onClick={goUpgrade} style={{background:DS.purple,color:"#1A1714",border:"none"}} size="sm">⬆ Upgrade</Btn>}
       </div>
     </div>
 
@@ -900,7 +900,7 @@ function OrbitDash({ud,user,onSave,onNav,onPricing}){
             </span>
           </div>
           <div style={{display:"flex",gap:8}}>
-            {!plan.isElite&&<Btn onClick={goUpgrade} style={{background:DS.purple,color:"#0F172A",border:"none"}} size="sm">{plan.isFree?"Upgrade to Pro →":"Upgrade to Elite →"}</Btn>}
+            {!plan.isElite&&<Btn onClick={goUpgrade} style={{background:DS.purple,color:"#1A1714",border:"none"}} size="sm">{plan.isFree?"Upgrade to Pro →":"Upgrade to Elite →"}</Btn>}
             {!plan.isFree&&<Btn variant="ghost" size="sm" onClick={goUpgrade}>Manage Plan</Btn>}
           </div>
         </div>
@@ -1010,7 +1010,7 @@ function CompTab({ud,user,onSave,onNav,onPricing}){
         <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap",marginBottom:24}}>
           {["Market Low/Mid/High bands for your role","Underpayment detection vs. market","Switch gain estimate","Negotiation anchor scripts"].map((f,i)=><div key={i} style={{padding:"6px 14px",background:DS.purBg,border:`1px solid ${DS.purBd}`,borderRadius:99,fontSize:12,fontWeight:600,color:DS.purple}}>✓ {f}</div>)}
         </div>
-        <Btn onClick={goUpgrade} style={{background:DS.purple,color:"#0F172A",border:"none",boxShadow:`0 4px 14px ${DS.purple}30`}}>Upgrade to Capabilio Pro — ₹499/mo →</Btn>
+        <Btn onClick={goUpgrade} style={{background:DS.purple,color:"#1A1714",border:"none",boxShadow:`0 4px 14px ${DS.purple}30`}}>Upgrade to Capabilio Pro — ₹499/mo →</Btn>
       </div>
     }
     <div style={{marginTop:18,padding:"14px 18px",background:DS.blBg,border:`1px solid ${DS.blBd}`,borderRadius:DS.r,fontSize:12,color:DS.blue}}>

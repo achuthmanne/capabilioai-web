@@ -121,7 +121,7 @@ export const ARCHETYPE_CONFIG = {
 
     typography: {
       headingFont: "'DM Sans', sans-serif",
-      codeFont:    "'JetBrains Mono', monospace",
+      codeFont:    "'DM Mono', monospace",
       headingWeight: 800,
       heroSize:    52,
       monoAccent:  false,
@@ -191,8 +191,8 @@ export const ARCHETYPE_CONFIG = {
     },
 
     typography: {
-      headingFont: "'JetBrains Mono', monospace",
-      codeFont:    "'JetBrains Mono', monospace",
+      headingFont: "'DM Mono', monospace",
+      codeFont:    "'DM Mono', monospace",
       headingWeight: 700,
       heroSize:    44,
       monoAccent:  true,
@@ -263,8 +263,8 @@ export const ARCHETYPE_CONFIG = {
     },
 
     typography: {
-      headingFont: "'JetBrains Mono', monospace",
-      codeFont:    "'JetBrains Mono', monospace",
+      headingFont: "'DM Mono', monospace",
+      codeFont:    "'DM Mono', monospace",
       headingWeight: 700,
       heroSize:    44,
       monoAccent:  true,
@@ -337,7 +337,7 @@ export const ARCHETYPE_CONFIG = {
 
     typography: {
       headingFont: "'DM Sans', sans-serif",
-      codeFont:    "'JetBrains Mono', monospace",
+      codeFont:    "'DM Mono', monospace",
       headingWeight: 800,
       heroSize:    48,
       monoAccent:  false,
@@ -410,8 +410,8 @@ export const ARCHETYPE_CONFIG = {
     },
 
     typography: {
-      headingFont: "'Playfair Display', serif",
-      codeFont:    "'JetBrains Mono', monospace",
+      headingFont: "'DM Sans', sans-serif",
+      codeFont:    "'DM Mono', monospace",
       headingWeight: 800,
       heroSize:    54,
       monoAccent:  false,
@@ -481,7 +481,7 @@ export const ARCHETYPE_CONFIG = {
 
     typography: {
       headingFont: "'DM Sans', sans-serif",
-      codeFont:    "'JetBrains Mono', monospace",
+      codeFont:    "'DM Mono', monospace",
       headingWeight: 800,
       heroSize:    48,
       monoAccent:  false,
@@ -547,7 +547,7 @@ export const ARCHETYPE_CONFIG = {
     },
 
     typography: {
-      headingFont: "'Playfair Display', serif",
+      headingFont: "'DM Sans', sans-serif",
       codeFont:    "'DM Sans', sans-serif",
       headingWeight: 900,
       heroSize:    58,
@@ -616,7 +616,7 @@ export const ARCHETYPE_CONFIG = {
 
     typography: {
       headingFont: "'DM Sans', sans-serif",
-      codeFont:    "'JetBrains Mono', monospace",
+      codeFont:    "'DM Mono', monospace",
       headingWeight: 800,
       heroSize:    46,
       monoAccent:  false,
@@ -687,7 +687,7 @@ export const ARCHETYPE_CONFIG = {
 
     typography: {
       headingFont: "'DM Sans', sans-serif",
-      codeFont:    "'JetBrains Mono', monospace",
+      codeFont:    "'DM Mono', monospace",
       headingWeight: 800,
       heroSize:    48,
       monoAccent:  false,
@@ -754,7 +754,7 @@ export const ARCHETYPE_CONFIG = {
 
     typography: {
       headingFont: "'DM Sans', sans-serif",
-      codeFont:    "'JetBrains Mono', monospace",
+      codeFont:    "'DM Mono', monospace",
       headingWeight: 800,
       heroSize:    48,
       monoAccent:  false,

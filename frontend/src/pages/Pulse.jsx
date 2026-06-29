@@ -7,12 +7,12 @@ import { pulseApi } from "../lib/api"
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const T = {
-  bg:      "#FFFFFF",
+  bg:      "#FAF7F2",
   surface: "#FFFFFF",
-  ink:     "#0F172A",
+  ink:     "#1A1714",
   ink2:    "#475569",
-  ink3:    "#94A3B8",
-  ink4:    "#64748B",
+  ink3:    "#A8A29E",
+  ink4:    "#6B6560",
   indigo:  "#6366F1",
   indigo2: "rgba(99,102,241,0.12)",
   green:   "#10B981",
@@ -21,13 +21,13 @@ const T = {
   border:  "rgba(0,0,0,0.05)",
   shadow:  "0 4px 12px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.3)",
   r:       8,
-  mono:    "'JetBrains Mono', monospace",
-  serif:   "'Playfair Display', serif",
+  mono:    "'DM Mono', monospace",
+  serif:   "'DM Sans', sans-serif",
   sans:    "'DM Sans', -apple-system, sans-serif",
 }
 
 const G = `
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');
 @keyframes spin { to { transform: rotate(360deg) } }
 @keyframes fadeUp { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:translateY(0) } }
 @keyframes shimmer { 0% { background-position: -400px 0 } 100% { background-position: 400px 0 } }
@@ -226,7 +226,7 @@ function RightSidebar({ user, domain = "software engineering", role = "Software 
         {newsLoading
           ? [0,1,2,3].map(i => (
               <div key={i} style={{ padding:"10px 16px", borderTop: i>0?`1px solid ${T.border}`:"none" }}>
-                <div style={{ height:10, background:"#E5E7EB", borderRadius:4, marginBottom:5, width:"85%" }}/>
+                <div style={{ height:10, background:"#E8E3DA", borderRadius:4, marginBottom:5, width:"85%" }}/>
                 <div style={{ height:9, background:"#F3F4F6", borderRadius:4, width:"50%" }}/>
               </div>
             ))
@@ -917,7 +917,7 @@ function StudentPulse({ user, userData }) {
     win:      { label: "WIN",      color: "#059669", bg: "#ECFDF5" },
     question: { label: "QUESTION", color: "#0891B2", bg: "#EFF6FF" },
     code:     { label: "CODE",     color: "#D97706", bg: "#FFF7ED" },
-    text:     { label: "POST",     color: "#6B7280", bg: "#F3F4F6" },
+    text:     { label: "POST",     color: "#6B6560", bg: "#F3F4F6" },
   }
 
   // ── Static fallbacks (used until live data loads, or if API unavailable) ──────
@@ -956,7 +956,7 @@ function StudentPulse({ user, userData }) {
   const colorForId = (id) => AVATAR_COLORS[(id?.charCodeAt(0) || 0) % AVATAR_COLORS.length]
 
   const P = {
-    bg:"#F3F4F6", surface:"#FFFFFF", ink:"#0F172A", ink2:"#374151", ink3:"#6B7280", ink4:"#9CA3AF",
+    bg:"#F3F4F6", surface:"#FFFFFF", ink:"#1A1714", ink2:"#3D3935", ink3:"#6B6560", ink4:"#A8A29E",
     accent:"#FF5701", accent2:"#FFF1E8", border:"rgba(0,0,0,0.08)",
     shadow:"0 1px 3px rgba(0,0,0,0.06),0 0 0 1px rgba(0,0,0,0.04)", r:12,
   }
@@ -965,7 +965,7 @@ function StudentPulse({ user, userData }) {
   return (
     <div style={{ background:P.bg, flex:1, minHeight:0, overflowY:"auto", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');
         @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
         @keyframes spin{to{transform:rotate(360deg)}}
         .pc{transition:box-shadow 0.15s;} .pc:hover{box-shadow:0 4px 16px rgba(0,0,0,0.10)!important;}
@@ -1021,7 +1021,7 @@ function StudentPulse({ user, userData }) {
           <div style={{flex:1}}/>
           {[{label:"HIRING VELOCITY",value:stats.hiring,color:"#34D399"},{label:"ACTIVE PROJECTS",value:stats.projects,color:"#60A5FA"},{label:"AVG SALARY",value:stats.salary,color:"#FBBF24"},{label:"OPEN ROLES",value:stats.openRoles,color:"#F472B6"}].map((s,i)=>(
             <div key={i} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"2px 16px",borderLeft:"1px solid rgba(0,0,0,0.05)",flexShrink:0}}>
-              <span style={{fontSize:15,fontWeight:800,color:s.color,fontFamily:"'JetBrains Mono',monospace"}}>{s.value}</span>
+              <span style={{fontSize:15,fontWeight:800,color:s.color,fontFamily:"'DM Mono',monospace"}}>{s.value}</span>
               <span style={{fontSize:9,color:"rgba(255,255,255,0.4)",fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",marginTop:1}}>{s.label}</span>
             </div>
           ))}
@@ -1210,7 +1210,7 @@ function StudentPulse({ user, userData }) {
                                 <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                                   <span style={{fontSize:13,fontWeight:700,color:P.ink}}>{authorName(post)}</span>
                                   {post.author?.verification_state==="verified"&&<span style={{fontSize:10,fontWeight:800,color:"#0891B2",background:"#EFF6FF",padding:"1px 7px",borderRadius:99}}>+ VERIFIED</span>}
-                                  <span style={{fontSize:11,fontWeight:700,color:P.accent,background:P.accent2,padding:"1px 8px",borderRadius:99,fontFamily:"'JetBrains Mono',monospace"}}>🔥{authorElo(post)}</span>
+                                  <span style={{fontSize:11,fontWeight:700,color:P.accent,background:P.accent2,padding:"1px 8px",borderRadius:99,fontFamily:"'DM Mono',monospace"}}>🔥{authorElo(post)}</span>
                                 </div>
                                 <div style={{fontSize:11,color:P.ink4}}>{post.author?.keyword||""} · {timeAgo(post.created_at)}</div>
                               </div>
@@ -1322,7 +1322,7 @@ function StudentPulse({ user, userData }) {
                 ? <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
                     {[0,1,2,3].map(i=>(
                       <div key={i} style={{padding:"8px 10px",background:"rgba(0,0,0,0.02)",borderRadius:8}}>
-                        <div style={{height:8,background:"#E5E7EB",borderRadius:3,marginBottom:5,width:"60%"}}/>
+                        <div style={{height:8,background:"#E8E3DA",borderRadius:3,marginBottom:5,width:"60%"}}/>
                         <div style={{height:10,background:"#F3F4F6",borderRadius:3}}/>
                       </div>
                     ))}
@@ -1331,7 +1331,7 @@ function StudentPulse({ user, userData }) {
                     {[{l:"HIRING",v:stats.hiring,c:"#34D399"},{l:"OPEN ROLES",v:stats.openRoles,c:P.ink2},{l:"AVG SALARY",v:stats.salary,c:P.ink2},{l:"TRENDING",v:stats.trending,c:P.accent}].map((s,i)=>(
                       <div key={i} style={{padding:"8px 10px",background:"rgba(0,0,0,0.02)",borderRadius:8}}>
                         <div style={{fontSize:9,color:P.ink4,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:2}}>{s.l}</div>
-                        <div style={{fontSize:11,fontWeight:800,color:s.c,fontFamily:"'JetBrains Mono',monospace",overflow:"hidden",wordBreak:"break-word",lineHeight:1.3}}>{s.v}</div>
+                        <div style={{fontSize:11,fontWeight:800,color:s.c,fontFamily:"'DM Mono',monospace",overflow:"hidden",wordBreak:"break-word",lineHeight:1.3}}>{s.v}</div>
                       </div>
                     ))}
                   </div>
@@ -1372,7 +1372,7 @@ function StudentPulse({ user, userData }) {
                       <div style={{fontSize:12,fontWeight:700,color:P.ink2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{bName}</div>
                       <div style={{fontSize:10,color:P.ink4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.keyword||b.path||""}</div>
                     </div>
-                    <span style={{fontSize:11,fontWeight:700,color:P.accent,fontFamily:"'JetBrains Mono',monospace",flexShrink:0}}>🔥{b.elo_rating||400}</span>
+                    <span style={{fontSize:11,fontWeight:700,color:P.accent,fontFamily:"'DM Mono',monospace",flexShrink:0}}>🔥{b.elo_rating||400}</span>
                   </div>
                 )
               })}
@@ -1413,7 +1413,7 @@ function StudentPulse({ user, userData }) {
               <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6}}>
                 {[{l:"ELO",v:elo},{l:"TASKS",v:userData?.arena_completed||0},{l:"STREAK",v:`${userData?.arena_streak||0}d`}].map((s,i)=>(
                   <div key={i} style={{textAlign:"center"}}>
-                    <div style={{fontSize:18,fontWeight:800,color:"#fff",fontFamily:"'JetBrains Mono',monospace"}}>{s.v}</div>
+                    <div style={{fontSize:18,fontWeight:800,color:"#fff",fontFamily:"'DM Mono',monospace"}}>{s.v}</div>
                     <div style={{fontSize:9,color:"rgba(255,255,255,0.7)",fontWeight:700,letterSpacing:"0.08em"}}>{s.l}</div>
                   </div>
                 ))}

@@ -38,14 +38,14 @@ const NAV_BY_PATH = {
 
 const PATH_COLOR = {
   student:      "#FF5701",
-  professional: "#6D28D9",
-  authority:    "#1D4ED8",
-  institution:  "#0F766E",
+  professional: "#4F46E5",
+  authority:    "#2563EB",
+  institution:  "#0891B2",
 }
 
 function HomeIcon({ active, color }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? color : "none"} stroke={active ? color : "#9CA3AF"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? color : "none"} stroke={active ? color : "#A8A29E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/>
       <polyline points="9,21 9,12 15,12 15,21"/>
     </svg>
@@ -53,28 +53,28 @@ function HomeIcon({ active, color }) {
 }
 function ArenaIcon({ active, color }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#9CA3AF"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#A8A29E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polygon points="13,2 3,14 12,14 11,22 21,10 12,10 13,2"/>
     </svg>
   )
 }
 function ForgeIcon({ active, color }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#9CA3AF"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#A8A29E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
     </svg>
   )
 }
 function PulseIcon({ active, color }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#9CA3AF"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#A8A29E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/>
     </svg>
   )
 }
 function AuraIcon({ active, color }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#9CA3AF"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#A8A29E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
       <circle cx="12" cy="7" r="4"/>
     </svg>
@@ -82,7 +82,7 @@ function AuraIcon({ active, color }) {
 }
 function CommunityIcon({ active, color }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#9CA3AF"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#A8A29E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
       <circle cx="9" cy="7" r="4"/>
       <path d="M23 21v-2a4 4 0 00-3-3.87"/>
@@ -92,7 +92,7 @@ function CommunityIcon({ active, color }) {
 }
 function OrbitIcon({ active, color }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#9CA3AF"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#A8A29E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="3"/>
       <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(45 12 12)"/>
       <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(-45 12 12)"/>
@@ -101,7 +101,7 @@ function OrbitIcon({ active, color }) {
 }
 function TimeIcon({ active, color }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#9CA3AF"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#A8A29E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="10"/>
       <polyline points="12,6 12,12 16,14"/>
     </svg>
@@ -109,14 +109,14 @@ function TimeIcon({ active, color }) {
 }
 function SignalIcon({ active, color }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#9CA3AF"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#A8A29E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.5a19.79 19.79 0 01-3.07-8.63A2 2 0 012 .82h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>
     </svg>
   )
 }
 function NetworkIcon({ active, color }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#9CA3AF"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#A8A29E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="5"  r="2"/>
       <circle cx="5"  cy="19" r="2"/>
       <circle cx="19" cy="19" r="2"/>
@@ -127,7 +127,7 @@ function NetworkIcon({ active, color }) {
 }
 function IntelIcon({ active, color }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#9CA3AF"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#A8A29E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <line x1="18" y1="20" x2="18" y2="10"/>
       <line x1="12" y1="20" x2="12" y2="4"/>
       <line x1="6"  y1="20" x2="6"  y2="14"/>
@@ -136,7 +136,7 @@ function IntelIcon({ active, color }) {
 }
 function TasksIcon({ active, color }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#9CA3AF"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#A8A29E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="9,11 12,14 22,4"/>
       <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
     </svg>
@@ -144,7 +144,7 @@ function TasksIcon({ active, color }) {
 }
 function PeopleIcon({ active, color }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#9CA3AF"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#A8A29E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
       <circle cx="9" cy="7" r="4"/>
       <path d="M23 21v-2a4 4 0 00-3-3.87"/>
@@ -154,7 +154,7 @@ function PeopleIcon({ active, color }) {
 }
 function SettingsIcon({ active, color }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#9CA3AF"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#A8A29E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="3"/>
       <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
     </svg>
@@ -202,7 +202,7 @@ function NavItem({ item, active, accent, onNavigate }) {
           position: "absolute",
           left: rp.x - 20, top: rp.y - 20,
           width: 40, height: 40, borderRadius: "50%",
-          background: active ? `${accent}28` : "rgba(17,24,39,0.07)",
+          background: active ? `${accent}28` : "rgba(26,23,20,0.06)",
           animation: "bnRipple 0.55s linear forwards",
           pointerEvents: "none",
         }} />
@@ -246,9 +246,9 @@ function NavItem({ item, active, accent, onNavigate }) {
       <span style={{
         fontSize: 10,
         fontWeight: active ? 700 : 500,
-        color: active ? accent : "#9CA3AF",
+        color: active ? accent : "#A8A29E",
         letterSpacing: "0.02em",
-        fontFamily: "'Inter', sans-serif",
+        fontFamily: "'DM Sans', sans-serif",
         whiteSpace: "nowrap",
         transition: "all 0.22s ease",
         transform: active ? "scale(1.06)" : "scale(1)",
@@ -280,13 +280,13 @@ export default function BottomNav({ path = "student", activeItem, onNavigate }) 
         }
         .cap-bottom-nav {
           position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
-          background: rgba(255,255,255,0.97);
+          background: rgba(250,247,242,0.97);
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
-          border-top: 1px solid rgba(17,24,39,0.08);
+          border-top: 1px solid #E8E3DA;
           display: flex; align-items: stretch;
           height: 64px;
-          box-shadow: 0 -4px 32px rgba(17,24,39,0.07);
+          box-shadow: 0 -4px 32px rgba(26,23,20,0.07);
           padding-bottom: env(safe-area-inset-bottom, 0px);
           animation: bnSlideUp 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.1s both;
         }

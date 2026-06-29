@@ -12,7 +12,7 @@ const API = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.c
 // ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
 const D = {
   void:    "#FFFFFF",
-  base:    "#F8F9FA",
+  base:    "#FAF7F2",
   raised:  "#FFFFFF",
   float:   "#F5F5F5",
   glass:   "rgba(0,0,0,0.03)",
@@ -26,9 +26,9 @@ const D = {
   violet:  "#8B5CF6",
   cyan:    "#06B6D4",
   amber:   "#F59E0B",
-  text1:   "#0F172A",
+  text1:   "#1A1714",
   text2:   "#475569",
-  muted:   "#64748B",
+  muted:   "#6B6560",
 }
 
 const DOMAIN_COLOR = {
@@ -300,7 +300,7 @@ function DiagnoseTab({ gaps, decayAlerts, jobTitle, domainColor, onSkillFocus })
         <span style={{ fontSize: 13, fontWeight: 700, color: D.text1 }}>{g.name}</span>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <Chip color={g.score < 50 ? D.rose : g.score < 65 ? D.gold : D.emerald}>{g.score < 50 ? "CRITICAL" : g.score < 65 ? "DEVELOPING" : "OK"}</Chip>
-          <span style={{ fontSize: 12, fontWeight: 800, color: D.text2, fontFamily: "'JetBrains Mono',monospace" }}>{g.score}<span style={{ color: D.muted, fontWeight: 400 }}>/100</span></span>
+          <span style={{ fontSize: 12, fontWeight: 800, color: D.text2, fontFamily: "'DM Mono',monospace" }}>{g.score}<span style={{ color: D.muted, fontWeight: 400 }}>/100</span></span>
         </div>
       </div>
       <ScoreBar score={g.score} target={g.target} />
@@ -314,7 +314,7 @@ function DiagnoseTab({ gaps, decayAlerts, jobTitle, domainColor, onSkillFocus })
   return (
     <div style={{ animation: "ss-fade 0.25s ease" }}>
       <div style={{ background: `linear-gradient(135deg, ${domainColor}15, ${domainColor}05)`, border: `1px solid ${domainColor}30`, borderRadius: 16, padding: "20px 24px", marginBottom: 18, backdropFilter: "blur(12px)" }}>
-        <div style={{ fontSize: 10, fontWeight: 800, color: domainColor, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 5, fontFamily: "'JetBrains Mono',monospace" }}>Role Gap Analysis</div>
+        <div style={{ fontSize: 10, fontWeight: 800, color: domainColor, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 5, fontFamily: "'DM Mono',monospace" }}>Role Gap Analysis</div>
         <div style={{ fontSize: 18, fontWeight: 900, color: D.text1, marginBottom: 5 }}>What you're weak at for <span style={{ color: domainColor }}>{jobTitle}</span></div>
         <div style={{ fontSize: 12, color: D.muted, lineHeight: 1.6 }}>Based on your assessment, Arena history, and market benchmarks. Click any skill to filter modules.</div>
       </div>
@@ -323,7 +323,7 @@ function DiagnoseTab({ gaps, decayAlerts, jobTitle, domainColor, onSkillFocus })
         <div style={{ background: D.raised, border: `1px solid ${D.rose}25`, borderRadius: 16, padding: "20px 24px", marginBottom: 14 }}>
           <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 3 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: D.rose, boxShadow: `0 0 8px ${D.rose}` }} />
-            <span style={{ fontSize: 10, fontWeight: 800, color: D.rose, letterSpacing: 1, textTransform: "uppercase", fontFamily: "'JetBrains Mono',monospace" }}>Critical gaps — blocking your readiness</span>
+            <span style={{ fontSize: 10, fontWeight: 800, color: D.rose, letterSpacing: 1, textTransform: "uppercase", fontFamily: "'DM Mono',monospace" }}>Critical gaps — blocking your readiness</span>
           </div>
           <div style={{ fontSize: 11, color: D.muted, marginBottom: 4 }}>Fix these first. They're the highest priority for {jobTitle} roles.</div>
           {critical.map((g, i) => <GapRow key={i} g={g} />)}
@@ -334,7 +334,7 @@ function DiagnoseTab({ gaps, decayAlerts, jobTitle, domainColor, onSkillFocus })
         <div style={{ background: D.raised, border: `1px solid ${D.gold}20`, borderRadius: 16, padding: "20px 24px", marginBottom: 14 }}>
           <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 3 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: D.gold, boxShadow: `0 0 8px ${D.gold}` }} />
-            <span style={{ fontSize: 10, fontWeight: 800, color: D.gold, letterSpacing: 1, textTransform: "uppercase", fontFamily: "'JetBrains Mono',monospace" }}>Developing — needed for mid/senior roles</span>
+            <span style={{ fontSize: 10, fontWeight: 800, color: D.gold, letterSpacing: 1, textTransform: "uppercase", fontFamily: "'DM Mono',monospace" }}>Developing — needed for mid/senior roles</span>
           </div>
           <div style={{ fontSize: 11, color: D.muted, marginBottom: 4 }}>Not urgent yet, but required for promotion-level positions.</div>
           {developing.map((g, i) => <GapRow key={i} g={g} />)}
@@ -345,7 +345,7 @@ function DiagnoseTab({ gaps, decayAlerts, jobTitle, domainColor, onSkillFocus })
         <div style={{ background: D.raised, border: `1px solid ${D.emerald}20`, borderRadius: 16, padding: "18px 24px", marginBottom: 14 }}>
           <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: D.emerald, boxShadow: `0 0 8px ${D.emerald}` }} />
-            <span style={{ fontSize: 10, fontWeight: 800, color: D.emerald, letterSpacing: 1, textTransform: "uppercase", fontFamily: "'JetBrains Mono',monospace" }}>Strengths — recruiters can verify these</span>
+            <span style={{ fontSize: 10, fontWeight: 800, color: D.emerald, letterSpacing: 1, textTransform: "uppercase", fontFamily: "'DM Mono',monospace" }}>Strengths — recruiters can verify these</span>
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {healthy.map((g, i) => (
@@ -359,7 +359,7 @@ function DiagnoseTab({ gaps, decayAlerts, jobTitle, domainColor, onSkillFocus })
         <div style={{ background: D.raised, border: `1px solid ${D.gold}25`, borderRadius: 16, padding: "18px 24px" }}>
           <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
             <span>⏳</span>
-            <span style={{ fontSize: 10, fontWeight: 800, color: D.gold, letterSpacing: 1, textTransform: "uppercase", fontFamily: "'JetBrains Mono',monospace" }}>Concept decay alerts</span>
+            <span style={{ fontSize: 10, fontWeight: 800, color: D.gold, letterSpacing: 1, textTransform: "uppercase", fontFamily: "'DM Mono',monospace" }}>Concept decay alerts</span>
           </div>
           <div style={{ fontSize: 11, color: D.muted, marginBottom: 12 }}>Skills you know but haven't practiced recently. They may be weakening.</div>
           {decayAlerts.map((d, i) => (
@@ -415,7 +415,7 @@ function RoadmapTab({ learningPath, loading, eloRating, domainColor, jobTitle, o
   return (
     <div style={{ animation: "ss-fade 0.25s ease" }}>
       <div style={{ background: `linear-gradient(135deg, ${domainColor}14, ${domainColor}04)`, border: `1px solid ${domainColor}25`, borderRadius: 16, padding: "20px 24px", marginBottom: 18, backdropFilter: "blur(12px)" }}>
-        <div style={{ fontSize: 10, fontWeight: 800, color: domainColor, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 5, fontFamily: "'JetBrains Mono',monospace" }}>Your Learning Roadmap</div>
+        <div style={{ fontSize: 10, fontWeight: 800, color: domainColor, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 5, fontFamily: "'DM Mono',monospace" }}>Your Learning Roadmap</div>
         <div style={{ fontSize: 18, fontWeight: 900, color: D.text1, marginBottom: 4 }}>Phase-by-phase path to <span style={{ color: domainColor }}>{jobTitle}</span> mastery</div>
         <div style={{ fontSize: 12, color: D.muted }}>ELO {eloRating} · {learningPath?.totalDuration || "8–12 weeks total"} · Expected gain: +{learningPath?.expectedEloGain || 200} ELO</div>
       </div>
@@ -447,7 +447,7 @@ function RoadmapTab({ learningPath, loading, eloRating, domainColor, jobTitle, o
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                    <span style={{ fontSize: 10, fontWeight: 800, color: D.muted, letterSpacing: 1, textTransform: "uppercase", fontFamily: "'JetBrains Mono',monospace" }}>Phase {phase.phase || pi + 1}</span>
+                    <span style={{ fontSize: 10, fontWeight: 800, color: D.muted, letterSpacing: 1, textTransform: "uppercase", fontFamily: "'DM Mono',monospace" }}>Phase {phase.phase || pi + 1}</span>
                     {isActive && <Chip color={domainColor}>YOU ARE HERE</Chip>}
                     {isDone && <Chip color={D.emerald}>COMPLETED</Chip>}
                     {isLocked && <Chip color={D.muted}>LOCKED</Chip>}
@@ -455,8 +455,8 @@ function RoadmapTab({ learningPath, loading, eloRating, domainColor, jobTitle, o
                   <div style={{ fontSize: 15, fontWeight: 800, color: D.text1 }}>{phase.title || `Phase ${pi + 1}`}</div>
                 </div>
                 <div style={{ textAlign: "right", flexShrink: 0 }}>
-                  <div style={{ fontSize: 9, color: D.muted, fontWeight: 700, textTransform: "uppercase", fontFamily: "'JetBrains Mono',monospace" }}>ELO Target</div>
-                  <div style={{ fontSize: 14, fontWeight: 900, color: isActive ? domainColor : D.text2, fontFamily: "'JetBrains Mono',monospace" }}>{eloTarget}</div>
+                  <div style={{ fontSize: 9, color: D.muted, fontWeight: 700, textTransform: "uppercase", fontFamily: "'DM Mono',monospace" }}>ELO Target</div>
+                  <div style={{ fontSize: 14, fontWeight: 900, color: isActive ? domainColor : D.text2, fontFamily: "'DM Mono',monospace" }}>{eloTarget}</div>
                   {phase.duration && <div style={{ fontSize: 10, color: D.muted, marginTop: 1 }}>{phase.duration}</div>}
                 </div>
               </div>
@@ -537,12 +537,12 @@ function ModulesTab({ recs, completedSet, domainColor, onStart, onComplete }) {
                       {r.recruiterDemand && <Chip color={DEMAND_COLOR[r.recruiterDemand] || D.indigo}>Recruiter demand: {r.recruiterDemand}</Chip>}
                       {done && <Chip color={D.emerald}>✓ Done</Chip>}
                     </div>
-                    <div style={{ fontSize: 9, fontWeight: 800, color: accent, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 3, fontFamily: "'JetBrains Mono',monospace" }}>Why this now</div>
+                    <div style={{ fontSize: 9, fontWeight: 800, color: accent, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 3, fontFamily: "'DM Mono',monospace" }}>Why this now</div>
                     <div style={{ fontSize: 11, color: D.muted, lineHeight: 1.5, marginBottom: 7 }}>{r.why}</div>
                     <div style={{ fontSize: 15, fontWeight: 800, color: D.text1, lineHeight: 1.3 }}>{r.title}</div>
                   </div>
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 900, color: D.gold, fontFamily: "'JetBrains Mono',monospace" }}>+{r.eloGain} ELO</div>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: D.gold, fontFamily: "'DM Mono',monospace" }}>+{r.eloGain} ELO</div>
                     <div style={{ fontSize: 10, color: D.muted, marginTop: 2 }}>{r.duration}</div>
                     <div style={{ fontSize: 14, color: D.muted, marginTop: 6 }}>{isOpen ? "▲" : "▼"}</div>
                   </div>
@@ -553,7 +553,7 @@ function ModulesTab({ recs, completedSet, domainColor, onStart, onComplete }) {
                 <div style={{ padding: "0 20px 16px", borderTop: `1px solid ${D.border}` }}>
                   <div style={{ marginTop: 14, marginBottom: 14 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                      <span style={{ fontSize: 9, fontWeight: 800, color: D.muted, textTransform: "uppercase", letterSpacing: 1, fontFamily: "'JetBrains Mono',monospace" }}>Confidence Forecast</span>
+                      <span style={{ fontSize: 9, fontWeight: 800, color: D.muted, textTransform: "uppercase", letterSpacing: 1, fontFamily: "'DM Mono',monospace" }}>Confidence Forecast</span>
                       <span style={{ fontSize: 10, color: D.muted }}>{r.preScore}% → <strong style={{ color: D.emerald }}>{r.postScore}%</strong></span>
                     </div>
                     <div style={{ position: "relative", height: 5, background: "rgba(0,0,0,0.05)", borderRadius: 99 }}>
@@ -564,7 +564,7 @@ function ModulesTab({ recs, completedSet, domainColor, onStart, onComplete }) {
                   </div>
 
                   <div style={{ background: accent + "10", border: `1px solid ${accent}25`, borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
-                    <div style={{ fontSize: 9, fontWeight: 800, color: accent, textTransform: "uppercase", letterSpacing: 1, marginBottom: 5, fontFamily: "'JetBrains Mono',monospace" }}>What you'll prove</div>
+                    <div style={{ fontSize: 9, fontWeight: 800, color: accent, textTransform: "uppercase", letterSpacing: 1, marginBottom: 5, fontFamily: "'DM Mono',monospace" }}>What you'll prove</div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ fontSize: 14 }}>⚡</span>
                       <div>
@@ -606,7 +606,7 @@ function PracticeTab({ arenaHistory, gaps, domainColor, jobTitle }) {
   return (
     <div style={{ animation: "ss-fade 0.25s ease" }}>
       <div style={{ background: D.raised, border: `1px solid ${D.gold}25`, borderRadius: 16, padding: "20px 24px", marginBottom: 14 }}>
-        <div style={{ fontSize: 10, fontWeight: 800, color: D.gold, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 4, fontFamily: "'JetBrains Mono',monospace" }}>⚡ Arena-Linked Practice</div>
+        <div style={{ fontSize: 10, fontWeight: 800, color: D.gold, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 4, fontFamily: "'DM Mono',monospace" }}>⚡ Arena-Linked Practice</div>
         <div style={{ fontSize: 16, fontWeight: 800, color: D.text1, marginBottom: 4 }}>Challenges mapped to your gaps</div>
         <div style={{ fontSize: 12, color: D.muted, marginBottom: 16 }}>Complete these in Arena to convert learning into verified performance records.</div>
 
@@ -634,7 +634,7 @@ function PracticeTab({ arenaHistory, gaps, domainColor, jobTitle }) {
       </div>
 
       <div style={{ background: D.raised, border: `1px solid ${D.border}`, borderRadius: 16, padding: "20px 24px" }}>
-        <div style={{ fontSize: 10, fontWeight: 800, color: D.muted, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 12, fontFamily: "'JetBrains Mono',monospace" }}>Recent Arena Missions</div>
+        <div style={{ fontSize: 10, fontWeight: 800, color: D.muted, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 12, fontFamily: "'DM Mono',monospace" }}>Recent Arena Missions</div>
         {recent.length > 0 ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {recent.map((h, i) => {
@@ -648,7 +648,7 @@ function PracticeTab({ arenaHistory, gaps, domainColor, jobTitle }) {
                     <div style={{ fontSize: 10, color: D.muted, marginTop: 1 }}>{h.difficulty || "Medium"} · {h.domain || h.category || jobTitle}</div>
                   </div>
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <div style={{ fontSize: 15, fontWeight: 900, color: sc, fontFamily: "'JetBrains Mono',monospace" }}>{score}<span style={{ fontSize: 9, color: D.muted }}>/100</span></div>
+                    <div style={{ fontSize: 15, fontWeight: 900, color: sc, fontFamily: "'DM Mono',monospace" }}>{score}<span style={{ fontSize: 9, color: D.muted }}>/100</span></div>
                   </div>
                 </div>
               )
@@ -681,7 +681,7 @@ function ProofTab({ completedActions, recs, arenaHistory, gaps, domainColor }) {
         ].map((s, i) => (
           <div key={i} style={{ padding: "14px 16px", background: D.raised, border: `1px solid ${s.c}20`, borderRadius: 14, textAlign: "center" }}>
             <div style={{ fontSize: 20, marginBottom: 4 }}>{s.i}</div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: s.c, fontFamily: "'JetBrains Mono',monospace" }}>{s.v}</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: s.c, fontFamily: "'DM Mono',monospace" }}>{s.v}</div>
             <div style={{ fontSize: 9, fontWeight: 700, color: D.muted, textTransform: "uppercase", letterSpacing: 0.6 }}>{s.l}</div>
           </div>
         ))}
@@ -691,7 +691,7 @@ function ProofTab({ completedActions, recs, arenaHistory, gaps, domainColor }) {
         <div style={{ background: D.raised, border: `1px solid ${D.emerald}20`, borderRadius: 16, padding: "18px 22px", marginBottom: 12 }}>
           <div style={{ display: "flex", gap: 7, alignItems: "center", marginBottom: 12 }}>
             <span>✅</span>
-            <span style={{ fontSize: 10, fontWeight: 800, color: D.emerald, letterSpacing: 1, textTransform: "uppercase", fontFamily: "'JetBrains Mono',monospace" }}>Verified skills — visible on recruiter profile</span>
+            <span style={{ fontSize: 10, fontWeight: 800, color: D.emerald, letterSpacing: 1, textTransform: "uppercase", fontFamily: "'DM Mono',monospace" }}>Verified skills — visible on recruiter profile</span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {doneRecs.map((r, i) => (
@@ -722,7 +722,7 @@ function ProofTab({ completedActions, recs, arenaHistory, gaps, domainColor }) {
         <div style={{ background: D.raised, border: `1px solid ${D.rose}25`, borderRadius: 16, padding: "18px 22px", marginBottom: 12 }}>
           <div style={{ display: "flex", gap: 7, alignItems: "center", marginBottom: 8 }}>
             <span>⚠️</span>
-            <span style={{ fontSize: 10, fontWeight: 800, color: D.rose, letterSpacing: 1, textTransform: "uppercase", fontFamily: "'JetBrains Mono',monospace" }}>Naked skills — recruiters can't verify these</span>
+            <span style={{ fontSize: 10, fontWeight: 800, color: D.rose, letterSpacing: 1, textTransform: "uppercase", fontFamily: "'DM Mono',monospace" }}>Naked skills — recruiters can't verify these</span>
           </div>
           <div style={{ fontSize: 11, color: D.muted, lineHeight: 1.5, marginBottom: 12 }}>You know these skills but have no proof. Recruiters can't trust what they can't verify.</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -808,7 +808,7 @@ function ActionModal({ action, jobTitle, eloRating, onClose, onComplete }) {
       <div style={{ width: "100%", maxWidth: 800, maxHeight: "90vh", background: D.base, border: `1px solid ${D.border}`, borderRadius: 24, boxShadow: `0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px ${accent}20`, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <div style={{ padding: "18px 24px", borderBottom: `1px solid ${D.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <div style={{ fontSize: 9, color: accent, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 4, fontFamily: "'JetBrains Mono',monospace" }}>{action.type?.toUpperCase()} · {action.skill}</div>
+            <div style={{ fontSize: 9, color: accent, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 4, fontFamily: "'DM Mono',monospace" }}>{action.type?.toUpperCase()} · {action.skill}</div>
             <div style={{ fontSize: 17, fontWeight: 900, color: D.text1 }}>{action.title}</div>
           </div>
           <button onClick={onClose} style={{ width: 34, height: 34, borderRadius: 9, border: `1px solid ${D.border}`, background: D.glass, color: D.muted, cursor: "pointer", fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit" }}>×</button>
@@ -826,7 +826,7 @@ function ActionModal({ action, jobTitle, eloRating, onClose, onComplete }) {
           {phase === "learn" && lesson && (
             <div>
               <div style={{ background: accent + "10", border: `1px solid ${accent}22`, borderRadius: 12, padding: "12px 16px", marginBottom: 16 }}>
-                <div style={{ fontSize: 9, color: accent, fontWeight: 800, textTransform: "uppercase", marginBottom: 5, fontFamily: "'JetBrains Mono',monospace" }}>Learning objective</div>
+                <div style={{ fontSize: 9, color: accent, fontWeight: 800, textTransform: "uppercase", marginBottom: 5, fontFamily: "'DM Mono',monospace" }}>Learning objective</div>
                 <div style={{ fontSize: 12, color: D.text2, lineHeight: 1.6 }}>{lesson.objective || `Master the fundamentals of ${action.skill}.`}</div>
               </div>
               {(lesson.sections || []).map((s, i) => (
@@ -834,13 +834,13 @@ function ActionModal({ action, jobTitle, eloRating, onClose, onComplete }) {
                   <div style={{ fontSize: 14, fontWeight: 800, color: D.text1, marginBottom: 7 }}>{s.heading || s.title}</div>
                   <div style={{ fontSize: 12, color: D.muted, lineHeight: 1.75 }}>{s.content}</div>
                   {s.codeExample && (
-                    <pre style={{ background: D.void, color: "#A5B4FC", padding: "13px 15px", borderRadius: 9, fontSize: 11, overflow: "auto", marginTop: 10, lineHeight: 1.6, fontFamily: "'JetBrains Mono',monospace", borderLeft: `3px solid ${D.indigo}` }}>
+                    <pre style={{ background: D.void, color: "#A5B4FC", padding: "13px 15px", borderRadius: 9, fontSize: 11, overflow: "auto", marginTop: 10, lineHeight: 1.6, fontFamily: "'DM Mono',monospace", borderLeft: `3px solid ${D.indigo}` }}>
                       {s.codeExample}
                     </pre>
                   )}
                 </div>
               ))}
-              {lesson.practiceTask && <div style={{ background: D.gold + "10", border: `1px solid ${D.gold}22`, borderRadius: 12, padding: "12px 16px", marginBottom: 14 }}><div style={{ fontSize: 9, color: D.gold, fontWeight: 800, textTransform: "uppercase", marginBottom: 5, fontFamily: "'JetBrains Mono',monospace" }}>Practice task</div><div style={{ fontSize: 12, color: D.text2, lineHeight: 1.6 }}>{lesson.practiceTask}</div></div>}
+              {lesson.practiceTask && <div style={{ background: D.gold + "10", border: `1px solid ${D.gold}22`, borderRadius: 12, padding: "12px 16px", marginBottom: 14 }}><div style={{ fontSize: 9, color: D.gold, fontWeight: 800, textTransform: "uppercase", marginBottom: 5, fontFamily: "'DM Mono',monospace" }}>Practice task</div><div style={{ fontSize: 12, color: D.text2, lineHeight: 1.6 }}>{lesson.practiceTask}</div></div>}
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
                 {lesson.quiz?.length > 0
                   ? <button onClick={() => setPhase("quiz")} style={{ padding: "10px 18px", background: `linear-gradient(135deg, ${accent}, ${accent}cc)`, border: "none", borderRadius: 11, color: "#fff", fontWeight: 800, fontSize: 12, cursor: "pointer", fontFamily: "inherit", boxShadow: `0 4px 14px ${accent}40` }}>Take quiz →</button>
@@ -874,7 +874,7 @@ function ActionModal({ action, jobTitle, eloRating, onClose, onComplete }) {
           {phase === "task" && (
             <div>
               <div style={{ background: D.raised, border: `1px solid ${D.border}`, borderRadius: 13, padding: "14px 17px", marginBottom: 12 }}>
-                <div style={{ fontSize: 9, color: accent, fontWeight: 800, textTransform: "uppercase", marginBottom: 5, fontFamily: "'JetBrains Mono',monospace" }}>Task brief</div>
+                <div style={{ fontSize: 9, color: accent, fontWeight: 800, textTransform: "uppercase", marginBottom: 5, fontFamily: "'DM Mono',monospace" }}>Task brief</div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: D.text1, marginBottom: 5 }}>{action.title}</div>
                 <div style={{ fontSize: 12, color: D.muted, lineHeight: 1.7 }}>{lesson?.practiceTask || action.why}</div>
               </div>
@@ -923,8 +923,8 @@ function ActionModal({ action, jobTitle, eloRating, onClose, onComplete }) {
               </div>
               {review && (
                 <div style={{ background: review.score >= 70 ? D.emerald + "10" : D.gold + "10", border: `1px solid ${review.score >= 70 ? D.emerald : D.gold}28`, borderRadius: 13, padding: "14px 17px", marginBottom: 14 }}>
-                  <div style={{ fontSize: 9, fontWeight: 800, color: review.score >= 70 ? D.emerald : D.gold, textTransform: "uppercase", marginBottom: 6, fontFamily: "'JetBrains Mono',monospace" }}>AI Feedback</div>
-                  <div style={{ fontSize: 24, fontWeight: 900, color: review.score >= 70 ? D.emerald : D.gold, marginBottom: 5, fontFamily: "'JetBrains Mono',monospace" }}>{review.score}/100 <span style={{ fontSize: 12, color: D.muted }}>· {review.grade || "B"}</span></div>
+                  <div style={{ fontSize: 9, fontWeight: 800, color: review.score >= 70 ? D.emerald : D.gold, textTransform: "uppercase", marginBottom: 6, fontFamily: "'DM Mono',monospace" }}>AI Feedback</div>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: review.score >= 70 ? D.emerald : D.gold, marginBottom: 5, fontFamily: "'DM Mono',monospace" }}>{review.score}/100 <span style={{ fontSize: 12, color: D.muted }}>· {review.grade || "B"}</span></div>
                   <div style={{ fontSize: 12, color: D.muted, lineHeight: 1.7 }}>{review.summary}</div>
                 </div>
               )}
@@ -1021,10 +1021,10 @@ export default function SkillStudio({ user, userData }) {
       minHeight: "100%",
       height: "100%",
       overflowY: "auto",
-      fontFamily: "'Inter', -apple-system, sans-serif",
+      fontFamily: "'DM Sans', -apple-system, sans-serif",
     }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');
         @keyframes ss-spin  { to { transform: rotate(360deg) } }
         @keyframes ss-fade  { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:translateY(0) } }
         @keyframes ss-pulse { 0%,100%{ opacity:0.4 } 50%{ opacity:0.9 } }
@@ -1044,16 +1044,16 @@ export default function SkillStudio({ user, userData }) {
           <div style={{ display: "flex", alignItems: "center", gap: 9, flexShrink: 0 }}>
             <div style={{ width: 30, height: 30, borderRadius: 8, background: domainColor + "20", border: `1px solid ${domainColor}40`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>{domainIcon}</div>
             <div>
-              <div style={{ fontSize: 9, fontWeight: 800, color: D.muted, textTransform: "uppercase", letterSpacing: 1.2, fontFamily: "'JetBrains Mono',monospace" }}>Skill Studio</div>
+              <div style={{ fontSize: 9, fontWeight: 800, color: D.muted, textTransform: "uppercase", letterSpacing: 1.2, fontFamily: "'DM Mono',monospace" }}>Skill Studio</div>
               <div style={{ fontSize: 12, fontWeight: 800, color: D.text1 }}>{jobTitle}</div>
             </div>
           </div>
           <div style={{ width: 1, height: 26, background: D.border, flexShrink: 0 }} />
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
             <div>
-              <div style={{ fontSize: 9, color: D.muted, fontWeight: 700, textTransform: "uppercase", fontFamily: "'JetBrains Mono',monospace" }}>Readiness</div>
+              <div style={{ fontSize: 9, color: D.muted, fontWeight: 700, textTransform: "uppercase", fontFamily: "'DM Mono',monospace" }}>Readiness</div>
               <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                <span style={{ fontSize: 14, fontWeight: 900, color: D.text1, fontFamily: "'JetBrains Mono',monospace" }}>{readiness}%</span>
+                <span style={{ fontSize: 14, fontWeight: 900, color: D.text1, fontFamily: "'DM Mono',monospace" }}>{readiness}%</span>
                 <span style={{ fontSize: 10, fontWeight: 700, color: D.emerald }}>+3% this week</span>
               </div>
             </div>
@@ -1063,14 +1063,14 @@ export default function SkillStudio({ user, userData }) {
           </div>
           <div style={{ width: 1, height: 26, background: D.border, flexShrink: 0 }} />
           <div style={{ flexShrink: 0 }}>
-            <div style={{ fontSize: 9, color: D.muted, fontWeight: 700, textTransform: "uppercase", fontFamily: "'JetBrains Mono',monospace" }}>ELO</div>
-            <div style={{ fontSize: 14, fontWeight: 900, color: D.gold, fontFamily: "'JetBrains Mono',monospace" }}>{eloRating}</div>
+            <div style={{ fontSize: 9, color: D.muted, fontWeight: 700, textTransform: "uppercase", fontFamily: "'DM Mono',monospace" }}>ELO</div>
+            <div style={{ fontSize: 14, fontWeight: 900, color: D.gold, fontFamily: "'DM Mono',monospace" }}>{eloRating}</div>
           </div>
           <div style={{ display: "flex", gap: 6, marginLeft: "auto", flexWrap: "wrap", alignItems: "center" }}>
             {criticalCount > 0 && <button onClick={() => setActiveTab("diagnose")} style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px", background: D.rose + "15", border: `1px solid ${D.rose}30`, borderRadius: 99, fontSize: 10, fontWeight: 700, color: D.rose, cursor: "pointer", fontFamily: "inherit" }}>🔴 {criticalCount} critical</button>}
             {decayAlerts.length > 0 && <button onClick={() => setActiveTab("diagnose")} style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px", background: D.gold + "15", border: `1px solid ${D.gold}30`, borderRadius: 99, fontSize: 10, fontWeight: 700, color: D.gold, cursor: "pointer", fontFamily: "inherit" }}>⏳ {decayAlerts.length} decaying</button>}
             {pendingProof > 0 && <button onClick={() => setActiveTab("proof")} style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px", background: D.indigo + "15", border: `1px solid ${D.indigo}30`, borderRadius: 99, fontSize: 10, fontWeight: 700, color: D.indigo, cursor: "pointer", fontFamily: "inherit" }}>⚡ {pendingProof} proof pending</button>}
-            <div style={{ padding: "4px 10px", background: D.gold + "15", border: `1px solid ${D.gold}30`, borderRadius: 99, fontSize: 10, fontWeight: 700, color: D.gold, fontFamily: "'JetBrains Mono',monospace" }}>⚡ {studioXP} XP</div>
+            <div style={{ padding: "4px 10px", background: D.gold + "15", border: `1px solid ${D.gold}30`, borderRadius: 99, fontSize: 10, fontWeight: 700, color: D.gold, fontFamily: "'DM Mono',monospace" }}>⚡ {studioXP} XP</div>
           </div>
         </div>
       </div>
@@ -1087,7 +1087,7 @@ export default function SkillStudio({ user, userData }) {
           }}>
             {/* Learning Path Header */}
             <div style={{ padding: "16px 18px", borderBottom: `1px solid ${D.border}` }}>
-              <div style={{ fontSize: 10, fontWeight: 800, color: D.indigo, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 10, fontFamily: "'JetBrains Mono',monospace" }}>Learning Path</div>
+              <div style={{ fontSize: 10, fontWeight: 800, color: D.indigo, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 10, fontFamily: "'DM Mono',monospace" }}>Learning Path</div>
               {/* Phase list */}
               <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                 {TABS.map((tab, i) => {
@@ -1125,7 +1125,7 @@ export default function SkillStudio({ user, userData }) {
             {/* DNA Map */}
             <div style={{ padding: "16px 14px", borderBottom: `1px solid ${D.border}` }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <div style={{ fontSize: 9, fontWeight: 800, color: D.muted, textTransform: "uppercase", letterSpacing: 1, fontFamily: "'JetBrains Mono',monospace" }}>Role DNA</div>
+                <div style={{ fontSize: 9, fontWeight: 800, color: D.muted, textTransform: "uppercase", letterSpacing: 1, fontFamily: "'DM Mono',monospace" }}>Role DNA</div>
                 {activeSkill && <button onClick={() => setActiveSkill(null)} style={{ fontSize: 9, color: D.muted, background: D.glass, border: `1px solid ${D.border}`, borderRadius: 6, padding: "2px 7px", cursor: "pointer", fontFamily: "inherit" }}>× Clear</button>}
               </div>
               <RoleDNAMap skillGraph={skillGraph} weakAreas={weakAreas} domainColor={domainColor}
@@ -1135,7 +1135,7 @@ export default function SkillStudio({ user, userData }) {
 
             {/* NBA Queue */}
             <div style={{ padding: "16px 14px" }}>
-              <div style={{ fontSize: 9, fontWeight: 800, color: D.muted, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 12, fontFamily: "'JetBrains Mono',monospace" }}>Next Best Action</div>
+              <div style={{ fontSize: 9, fontWeight: 800, color: D.muted, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 12, fontFamily: "'DM Mono',monospace" }}>Next Best Action</div>
               <NBAQueue recs={filteredRecs} completedSet={completedSet} onStart={(r) => setActiveAction(r)} loading={loading} />
             </div>
           </div>

@@ -30,13 +30,13 @@ import { useDomainChallengeSlots } from "../hooks/useDomainChallengeSlots"
 // ─────────────────────────────────────────────────────────────────────────────
 const T = {
   // ── Glassmorphic Cosmos dark tokens ────────────────────────────────────
-  cream:   "#F8F9FA",          // page bg → dark base
+  cream:   "#FAF7F2",          // page bg → dark base
   cream2:  "#FFFFFF",          // raised surface
   cream3:  "rgba(0,0,0,0.05)", // dividers / subtle tracks
-  ink:     "#0F172A",          // primary text → near-white
+  ink:     "#1A1714",          // primary text → near-white
   ink2:    "#475569",          // secondary text
-  ink3:    "#94A3B8",          // muted text
-  ink4:    "#64748B",          // ghost / placeholder
+  ink3:    "#A8A29E",          // muted text
+  ink4:    "#6B6560",          // ghost / placeholder
   indigo:  "#6366F1",          // primary action
   indigo2: "#818CF8",          // lighter indigo
   indigo3: "rgba(99,102,241,0.12)", // soft indigo background
@@ -53,7 +53,7 @@ const T = {
 // ELO SYSTEM
 // ─────────────────────────────────────────────────────────────────────────────
 const ELO_TIERS = [
-  { min:0,    max:600,  label:"Rookie",       color:"#94A3B8", icon:"🌱" },
+  { min:0,    max:600,  label:"Rookie",       color:"#A8A29E", icon:"🌱" },
   { min:600,  max:800,  label:"Apprentice",   color:"#22C55E", icon:"⚡" },
   { min:800,  max:1000, label:"Practitioner", color:"#3B82F6", icon:"🔵" },
   { min:1000, max:1200, label:"Expert",       color:"#8B5CF6", icon:"💜" },
@@ -628,11 +628,11 @@ function MissionPanel({ slots, activeMission, onSelect, onRefresh, domain, loadi
                 <div style={{ fontSize: 11, fontWeight: 800, color: "#991B1B", marginBottom: 6 }}>
                   {isProdTimeout ? "Server waking up…" : "Couldn't load mission"}
                 </div>
-                <div style={{ fontSize: 9, color: "#6B7280", lineHeight: 1.6, marginBottom: 10 }}>
+                <div style={{ fontSize: 9, color: "#6B6560", lineHeight: 1.6, marginBottom: 10 }}>
                   {isProdTimeout
                     ? <>Production server is cold-starting (Render.com).<br/>Click retry — it should work on the next attempt.</>
                     : <>Start the local server for instant response:<br/>
-                        <code style={{ background: "#1A1A18", color: "#E2E8F0", padding: "2px 6px",
+                        <code style={{ background: "#1A1A18", color: "#E8E3DA", padding: "2px 6px",
                           borderRadius: 4, fontSize: 8, display: "inline-block", marginTop: 4 }}>
                           npm run dev:all
                         </code>
@@ -854,7 +854,7 @@ function DeliverablesPanel({ domain, onSubmit, submitting }) {
 
       <div style={{ padding: "8px 12px 14px" }}>
         <button onClick={onSubmit} disabled={submitting || readiness < 40}
-          style={{ width: "100%", padding: "10px", borderRadius: 10, border: "none", background: readiness >= 40 ? (domain?.color || T.indigo) : "#475569", color: readiness >= 40 ? "#fff" : "#94A3B8", fontSize: 12, fontWeight: 700, cursor: readiness >= 40 ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontFamily: "inherit" }}>
+          style={{ width: "100%", padding: "10px", borderRadius: 10, border: "none", background: readiness >= 40 ? (domain?.color || T.indigo) : "#475569", color: readiness >= 40 ? "#fff" : "#A8A29E", fontSize: 12, fontWeight: 700, cursor: readiness >= 40 ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontFamily: "inherit" }}>
           {submitting ? <><Spinner color="#fff" size={11} />Evaluating...</> : "✦ Submit for Evaluation"}
         </button>
         {readiness < 40 && <div style={{ fontSize: 9, color: T.ink4, textAlign: "center", marginTop: 4 }}>Complete at least 40% of rubric criteria</div>}
@@ -873,28 +873,28 @@ function CodeEditor({ value, onChange, sandbox, language, domainKey }) {
   return (
     <div style={{ position: "relative", height: "100%", display: "flex", flexDirection: "column" }}>
       {/* Toolbar */}
-      <div style={{ padding: "7px 12px", background: "#0F172A", borderBottom: "1px solid rgba(0,0,0,0.03)", display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+      <div style={{ padding: "7px 12px", background: "#1A1714", borderBottom: "1px solid rgba(0,0,0,0.03)", display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
         <div style={{ display: "flex", gap: 4 }}>
           {["#EF4444", "#F59E0B", "#22C55E"].map((c, i) => <div key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: c }} />)}
         </div>
-        <span style={{ fontSize: 9, color: "#9CA3AF", fontFamily: "'DM Mono',monospace", marginLeft: 4 }}>
+        <span style={{ fontSize: 9, color: "#A8A29E", fontFamily: "'DM Mono',monospace", marginLeft: 4 }}>
           {sandbox === "sql" ? "SQL" : sandbox === "terminal" ? "bash" : sandbox === "notebook" ? "python" : sandbox === "markdown" ? "markdown" : sandbox === "react" ? "jsx" : sandbox === "diagram" ? "md" : language || "code"} · {lineCount} ln
         </span>
         <div style={{ marginLeft: "auto", display: "flex", gap: 5 }}>
-          <button onClick={() => navigator.clipboard?.writeText(value || "")} style={{ padding: "2px 7px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, color: "#6B7280", fontSize: 9, fontWeight: 600, cursor: "pointer" }}>copy</button>
-          <button onClick={() => onChange("")} style={{ padding: "2px 7px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, color: "#6B7280", fontSize: 9, fontWeight: 600, cursor: "pointer" }}>clear</button>
+          <button onClick={() => navigator.clipboard?.writeText(value || "")} style={{ padding: "2px 7px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, color: "#6B6560", fontSize: 9, fontWeight: 600, cursor: "pointer" }}>copy</button>
+          <button onClick={() => onChange("")} style={{ padding: "2px 7px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, color: "#6B6560", fontSize: 9, fontWeight: 600, cursor: "pointer" }}>clear</button>
         </div>
       </div>
 
       {/* Editor body */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
         {/* Line numbers */}
-        <div style={{ background: "#0B1120", padding: "10px 8px 10px 10px", color: "#CBD5E1", fontSize: 11, fontFamily: "'DM Mono',monospace", lineHeight: 1.65, userSelect: "none", minWidth: 38, textAlign: "right", overflowY: "hidden", flexShrink: 0 }}>
+        <div style={{ background: "#0B1120", padding: "10px 8px 10px 10px", color: "#D6D0C8", fontSize: 11, fontFamily: "'DM Mono',monospace", lineHeight: 1.65, userSelect: "none", minWidth: 38, textAlign: "right", overflowY: "hidden", flexShrink: 0 }}>
           {Array.from({ length: lineCount }, (_, i) => <div key={i}>{i + 1}</div>)}
         </div>
         <textarea value={value || ""} onChange={e => onChange(e.target.value)}
           spellCheck={false}
-          style={{ flex: 1, background: "#0F172A", color: "#E2E8F0", fontFamily: "'DM Mono','Fira Code',monospace", fontSize: 12.5, lineHeight: 1.65, padding: "10px 14px", border: "none", outline: "none", resize: "none", height: "100%", boxSizing: "border-box" }} />
+          style={{ flex: 1, background: "#1A1714", color: "#E8E3DA", fontFamily: "'DM Mono','Fira Code',monospace", fontSize: 12.5, lineHeight: 1.65, padding: "10px 14px", border: "none", outline: "none", resize: "none", height: "100%", boxSizing: "border-box" }} />
       </div>
     </div>
   )
@@ -1359,9 +1359,9 @@ function HistoryDetailModal({ r, domain, onClose }) {
               <div style={{ fontSize:9, fontWeight:800, color:"#2563EB", textTransform:"uppercase", letterSpacing:1.2, marginBottom:8 }}>
                 💻 Your Submitted Solution <span style={{ fontSize:8, color:T.ink4, fontWeight:600, textTransform:"none" }}>({answerStr.length.toLocaleString()} chars)</span>
               </div>
-              <pre style={{ margin:0, fontSize:11, color:"#E2E8F0", background:"#0B1120",
+              <pre style={{ margin:0, fontSize:11, color:"#E8E3DA", background:"#0B1120",
                 padding:"14px 16px", borderRadius:10, border:`1px solid ${T.border}`,
-                whiteSpace:"pre-wrap", wordBreak:"break-word", fontFamily:"'JetBrains Mono','DM Mono',monospace",
+                whiteSpace:"pre-wrap", wordBreak:"break-word", fontFamily:"'DM Mono','DM Mono',monospace",
                 lineHeight:1.65, maxHeight:360, overflowY:"auto" }}>
                 {answerStr}
               </pre>
@@ -1374,7 +1374,7 @@ function HistoryDetailModal({ r, domain, onClose }) {
               <div style={{ fontSize:9, fontWeight:800, color:"#16A34A", textTransform:"uppercase", letterSpacing:1.2, marginBottom:8 }}>✅ Expected Output</div>
               <pre style={{ margin:0, fontSize:11, color:T.ink2, background:"#f0fdf4",
                 padding:"12px 16px", borderRadius:10, border:"1px solid #bbf7d0",
-                whiteSpace:"pre-wrap", wordBreak:"break-word", fontFamily:"'JetBrains Mono','DM Mono',monospace",
+                whiteSpace:"pre-wrap", wordBreak:"break-word", fontFamily:"'DM Mono','DM Mono',monospace",
                 lineHeight:1.65, maxHeight:180, overflowY:"auto" }}>
                 {r.expectedOutput}
               </pre>
@@ -2370,7 +2370,7 @@ function CountdownDisplay({ cooldownUntil, color = "#B45309" }) {
 // ─────────────────────────────────────────────────────────────────────────────
 const D = {
   void:    "#FFFFFF",
-  base:    "#F8F9FA",
+  base:    "#FAF7F2",
   raised:  "#FFFFFF",
   float:   "#F5F5F5",
   indigo:  "#6366F1",
@@ -2380,9 +2380,9 @@ const D = {
   amber:   "#F59E0B",
   violet:  "#8B5CF6",
   cyan:    "#06B6D4",
-  text1:   "#0F172A",
+  text1:   "#1A1714",
   text2:   "#475569",
-  muted:   "#64748B",
+  muted:   "#6B6560",
   border:  "rgba(0,0,0,0.05)",
   borderH: "rgba(0,0,0,0.08)",
   glass:   "rgba(0,0,0,0.03)",
@@ -2495,7 +2495,7 @@ function ArenaLanding({ userData, onSelect }) {
         .arena-ws-tile:hover { background: rgba(0,0,0,0.03) !important; border-color: rgba(0,0,0,0.08) !important; transform: translateY(-2px) !important; }
         ::-webkit-scrollbar { width: 4px; height: 4px }
         ::-webkit-scrollbar-track { background: transparent }
-        ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 99px }
+        ::-webkit-scrollbar-thumb { background: #D6D0C8; border-radius: 99px }
       `}</style>
 
       {/* ─── TOP HEADER BAR ─── */}
@@ -2512,7 +2512,7 @@ function ArenaLanding({ userData, onSelect }) {
             <path d="M8 1L3 4.5V11.5L8 15L13 11.5V4.5L8 1Z" stroke="#6366F1" strokeWidth="1.5" strokeLinejoin="round"/>
             <path d="M8 1L8 15M3 4.5L13 11.5M13 4.5L3 11.5" stroke="#6366F1" strokeWidth="0.8" opacity="0.5"/>
           </svg>
-          <span style={{ fontFamily: "'JetBrains Mono','DM Mono',monospace", fontSize: 12, fontWeight: 800, color: D.text1, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+          <span style={{ fontFamily: "'DM Mono','DM Mono',monospace", fontSize: 12, fontWeight: 800, color: D.text1, letterSpacing: "0.12em", textTransform: "uppercase" }}>
             ARENA
           </span>
         </div>
@@ -2522,13 +2522,13 @@ function ArenaLanding({ userData, onSelect }) {
           {/* Domain chip */}
           <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 12px", background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)", borderRadius: 99 }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#A5B4FC", display: "inline-block" }} />
-            <span style={{ fontSize: 11, fontWeight: 600, color: "#A5B4FC", fontFamily: "'JetBrains Mono',monospace" }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: "#A5B4FC", fontFamily: "'DM Mono',monospace" }}>
               {domain.label}
             </span>
           </div>
           {/* ELO chip */}
           <div style={{ padding: "4px 12px", background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 99 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: D.gold, fontFamily: "'JetBrains Mono',monospace" }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: D.gold, fontFamily: "'DM Mono',monospace" }}>
               {elo} ELO
             </span>
           </div>
@@ -2542,7 +2542,7 @@ function ArenaLanding({ userData, onSelect }) {
 
         {/* Right: Countdown + Generate */}
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono',monospace", color: D.muted }}>
+          <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: D.muted }}>
             Resets in {getResetCountdown()}
           </span>
           <button
@@ -2608,7 +2608,7 @@ function ArenaLanding({ userData, onSelect }) {
                       padding: "3px 9px", borderRadius: 99,
                       border: `1px solid ${dc}30`,
                     }}>{ch.difficulty}</span>
-                    <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: D.muted }}>
+                    <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: D.muted }}>
                       {ch.tools?.[0] || "Capabilio"}
                     </span>
                   </div>
@@ -2636,7 +2636,7 @@ function ArenaLanding({ userData, onSelect }) {
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     {/* Workstation chip */}
                     <span style={{
-                      fontSize: 9, fontFamily: "'JetBrains Mono',monospace", fontWeight: 700,
+                      fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700,
                       color: wsColor,
                       background: wsColor + "14",
                       padding: "3px 8px", borderRadius: 6,
@@ -2645,11 +2645,11 @@ function ArenaLanding({ userData, onSelect }) {
                       [{ch.workstation || "Workstation"}]
                     </span>
                     {/* Time */}
-                    <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: D.muted }}>
+                    <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: D.muted }}>
                       ⏱ {ch.timeLimit || "25 min"}
                     </span>
                     {/* ELO */}
-                    <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: D.emerald, fontWeight: 700 }}>
+                    <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: D.emerald, fontWeight: 700 }}>
                       +{ch.eloGain || 15} ELO
                     </span>
                     {/* Start button */}
@@ -2706,10 +2706,10 @@ function ArenaLanding({ userData, onSelect }) {
           }}>
             <div style={{ flex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, fontWeight: 700, color: D.muted, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, fontWeight: 700, color: D.muted, letterSpacing: "0.1em", textTransform: "uppercase" }}>
                   THIS WEEK
                 </span>
-                <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono',monospace", color: D.text2 }}>
+                <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: D.text2 }}>
                   {weekDone}/{weekTotal} challenges
                 </span>
               </div>
@@ -2740,7 +2740,7 @@ function ArenaLanding({ userData, onSelect }) {
                 background: hovMode === "domain"
                   ? `linear-gradient(135deg, rgba(99,102,241,0.08), rgba(99,102,241,0.04))`
                   : "#FFFFFF",
-                border: `1.5px solid ${hovMode === "domain" ? "rgba(99,102,241,0.45)" : "#E5E7EB"}`,
+                border: `1.5px solid ${hovMode === "domain" ? "rgba(99,102,241,0.45)" : "#E8E3DA"}`,
                 borderRadius: 20, padding: "28px 28px 24px", cursor: "pointer",
                 transition: "all 0.2s",
                 transform: hovMode === "domain" ? "translateY(-4px)" : "none",
@@ -2789,7 +2789,7 @@ function ArenaLanding({ userData, onSelect }) {
                 background: hovMode === "common"
                   ? "linear-gradient(135deg, rgba(139,92,246,0.08), rgba(139,92,246,0.04))"
                   : "#FFFFFF",
-                border: `1.5px solid ${hovMode === "common" ? "rgba(139,92,246,0.45)" : "#E5E7EB"}`,
+                border: `1.5px solid ${hovMode === "common" ? "rgba(139,92,246,0.45)" : "#E8E3DA"}`,
                 borderRadius: 20, padding: "28px 28px 24px", cursor: "pointer",
                 transition: "all 0.2s",
                 transform: hovMode === "common" ? "translateY(-4px)" : "none",
@@ -3543,14 +3543,14 @@ function ArenaDomain({ user, userData, onBack }) {
               <span style={{ fontSize: 16 }}>{domain.icon}</span>
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: domain.color, lineHeight: 1.2 }}>{domain.label}</div>
-                <div style={{ fontSize: 9, color: "#9CA3AF", letterSpacing: 0.3 }}>your domain</div>
+                <div style={{ fontSize: 9, color: "#A8A29E", letterSpacing: 0.3 }}>your domain</div>
               </div>
             </div>
           </div>
 
           {/* Nav */}
           <div style={{ flex: 1, padding: "8px 8px", overflowY: "auto" }}>
-            <div style={{ fontSize: 9, fontWeight: 700, color: "#9CA3AF", letterSpacing: 1, textTransform: "uppercase", padding: "10px 8px 5px" }}>Arena</div>
+            <div style={{ fontSize: 9, fontWeight: 700, color: "#A8A29E", letterSpacing: 1, textTransform: "uppercase", padding: "10px 8px 5px" }}>Arena</div>
             {ARENA_TABS.map(t => {
               const isActive = arenaTab === t.id
               return (
@@ -3560,7 +3560,7 @@ function ArenaDomain({ user, userData, onBack }) {
                     padding: "8px 10px", borderRadius: 6, cursor: "pointer", border: "none",
                     marginBottom: 2, fontFamily: "inherit", textAlign: "left",
                     background: isActive ? `${domain.color}22` : "transparent",
-                    color: isActive ? domain.color : "#6B7280",
+                    color: isActive ? domain.color : "#6B6560",
                     fontSize: 12.5, fontWeight: isActive ? 700 : 400,
                     transition: "all 0.12s",
                   }}
@@ -3582,7 +3582,7 @@ function ArenaDomain({ user, userData, onBack }) {
               </div>
             )}
             <div style={{ background: "rgba(0,0,0,0.02)", borderRadius: 8, padding: "10px 12px", border: "1px solid rgba(255,255,255,0.07)" }}>
-              <div style={{ fontSize: 9, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: 0.9, marginBottom: 2 }}>ELO Rating</div>
+              <div style={{ fontSize: 9, color: "#A8A29E", textTransform: "uppercase", letterSpacing: 0.9, marginBottom: 2 }}>ELO Rating</div>
               <div style={{ fontSize: 24, fontWeight: 900, color: "#fff", fontVariantNumeric: "tabular-nums", lineHeight: 1.1 }}>{elo}</div>
               <div style={{ fontSize: 10, color: tier.color, fontWeight: 700, marginTop: 3 }}>{tier.icon} {tier.label}</div>
               <div style={{ marginTop: 8, background: "rgba(0,0,0,0.05)", borderRadius: 99, height: 3, overflow: "hidden" }}>

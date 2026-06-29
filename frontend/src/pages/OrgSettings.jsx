@@ -5,8 +5,8 @@ import { useState } from "react"
 
 const C = {
   teal: "#0F766E", tealL: "#F0FDFA",
-  ink: "#FFFFFF", ink2: "#374151", ink3: "#6B7280", ink4: "#9CA3AF",
-  border: "#E5E7EB", surface: "#fff", bg: "#F6F6F1",
+  ink: "#FFFFFF", ink2: "#3D3935", ink3: "#6B6560", ink4: "#A8A29E",
+  border: "#E8E3DA", surface: "#fff", bg: "#F6F6F1",
   green: "#16A34A", greenL: "#F0FDF4",
   amber: "#D97706", amberL: "#FFFBEB",
   red: "#DC2626", redL: "#FEF2F2",
@@ -15,7 +15,7 @@ const C = {
 
 function Toggle({ value, onChange }) {
   return (
-    <div onClick={() => onChange(!value)} style={{ width: 44, height: 24, background: value ? C.teal : "#E5E7EB", borderRadius: 99, position: "relative", cursor: "pointer", transition: "background 0.2s", flexShrink: 0 }}>
+    <div onClick={() => onChange(!value)} style={{ width: 44, height: 24, background: value ? C.teal : "#E8E3DA", borderRadius: 99, position: "relative", cursor: "pointer", transition: "background 0.2s", flexShrink: 0 }}>
       <div style={{ position: "absolute", top: 3, left: value ? 22 : 3, width: 18, height: 18, background: "#FFFFFF", borderRadius: "50%", transition: "left 0.2s", boxShadow: "0 1px 4px rgba(0,0,0,0.2)" }} />
     </div>
   )
@@ -60,10 +60,10 @@ export default function OrgSettings({ user, userData }) {
   const set = (key, val) => setS(p => ({ ...p, [key]: val }))
 
   return (
-    <div style={{ background: C.bg, flex: 1, minHeight: 0, overflowY: "auto", padding: "20px 16px 40px", fontFamily: "Inter, sans-serif" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap');`}</style>
+    <div style={{ background: C.bg, flex: 1, minHeight: 0, overflowY: "auto", padding: "20px 16px 40px", fontFamily: "DM Sans, sans-serif" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');`}</style>
 
-      <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, fontWeight: 800, color: C.ink, margin: "0 0 4px" }}>
+      <h1 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 26, fontWeight: 800, color: C.ink, margin: "0 0 4px" }}>
         Settings <span style={{ color: C.teal, fontStyle: "italic" }}>& Controls</span>
       </h1>
       <p style={{ fontSize: 13, color: C.ink3, margin: "0 0 0" }}>Tenant configuration, integrations, and access policies.</p>

@@ -10,10 +10,10 @@ const C = {
   goldB:   "rgba(201,168,76,0.15)",
   navy:    "#1a1a2e",
   ink:     "#FFFFFF",
-  ink2:    "#374151",
-  ink3:    "#6B7280",
-  ink4:    "#9CA3AF",
-  border:  "#E5E7EB",
+  ink2:    "#3D3935",
+  ink3:    "#6B6560",
+  ink4:    "#A8A29E",
+  border:  "#E8E3DA",
   surface: "#fff",
   bg:      "#F6F6F1",
   green:   "#16A34A",
@@ -50,12 +50,12 @@ export default function ExecutiveNetwork({ user, userData }) {
   const [connected, setConn]  = useState(PEERS.filter(p => p.connected).map(p => p.name))
 
   return (
-    <div style={{ background: C.bg, flex: 1, minHeight: 0, overflowY: "auto", fontFamily: "Inter, sans-serif" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap');`}</style>
+    <div style={{ background: C.bg, flex: 1, minHeight: 0, overflowY: "auto", fontFamily: "DM Sans, sans-serif" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');`}</style>
 
       {/* ── Header ───────────────────────────────────────────── */}
       <div style={{ padding: "20px 16px 0" }}>
-        <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, fontWeight: 800, color: C.ink, margin: 0 }}>
+        <h1 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 26, fontWeight: 800, color: C.ink, margin: 0 }}>
           Network <span style={{ color: C.gold, fontStyle: "italic" }}>Graph</span>
         </h1>
         <p style={{ fontSize: 13, color: C.ink3, margin: "4px 0 16px" }}>Your curated executive circle. Private by design.</p>
@@ -68,7 +68,7 @@ export default function ExecutiveNetwork({ user, userData }) {
             { val: "2",              label: "Intros Waiting", color: C.blue  },
           ].map((s, i) => (
             <div key={i} style={{ flex: 1, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "12px 10px", textAlign: "center" }}>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 20, fontWeight: 700, color: s.color }}>{s.val}</div>
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 20, fontWeight: 700, color: s.color }}>{s.val}</div>
               <div style={{ fontSize: 11, color: C.ink4, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", marginTop: 2 }}>{s.label}</div>
             </div>
           ))}
@@ -95,7 +95,7 @@ export default function ExecutiveNetwork({ user, userData }) {
               return (
                 <div key={p.name} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: 16 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{ width: 44, height: 44, borderRadius: "50%", background: C.navy, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, color: C.gold, fontFamily: "'Playfair Display', serif", flexShrink: 0 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: "50%", background: C.navy, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, color: C.gold, fontFamily: "'DM Sans', sans-serif", flexShrink: 0 }}>
                       {p.name.charAt(0)}
                     </div>
                     <div style={{ flex: 1 }}>
@@ -127,13 +127,13 @@ export default function ExecutiveNetwork({ user, userData }) {
               <div key={i} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
                   <div>
-                    <span style={{ padding: "2px 8px", background: C.blueL, color: C.blue, borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{v.stage}</span>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginTop: 6, fontFamily: "'Playfair Display', serif" }}>{v.company}</div>
+                    <span style={{ padding: "2px 8px", background: C.blueL, color: C.blue, borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{v.stage}</span>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginTop: 6, fontFamily: "'DM Sans', sans-serif" }}>{v.company}</div>
                     <div style={{ fontSize: 13, color: C.ink3, marginTop: 2 }}>Looking for: <strong>{v.ask}</strong></div>
                     <div style={{ fontSize: 12, color: C.ink4, marginTop: 1 }}>Sector: {v.sector}</div>
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 22, fontWeight: 700, color: v.fit >= 85 ? C.green : C.amber }}>{v.fit}%</div>
+                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 22, fontWeight: 700, color: v.fit >= 85 ? C.green : C.amber }}>{v.fit}%</div>
                     <div style={{ fontSize: 11, color: C.ink4 }}>Profile fit</div>
                   </div>
                 </div>
@@ -152,13 +152,13 @@ export default function ExecutiveNetwork({ user, userData }) {
               <div key={i} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
                   <div>
-                    <span style={{ padding: "2px 8px", background: C.purpleL, color: C.purple, borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{b.type}</span>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginTop: 6, fontFamily: "'Playfair Display', serif" }}>{b.org}</div>
+                    <span style={{ padding: "2px 8px", background: C.purpleL, color: C.purple, borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{b.type}</span>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginTop: 6, fontFamily: "'DM Sans', sans-serif" }}>{b.org}</div>
                     <div style={{ fontSize: 13, color: C.ink3, marginTop: 2 }}>Domain: {b.domain}</div>
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <div style={{ fontSize: 11, color: C.ink4 }}>Deadline</div>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: b.deadline === "Open" ? C.green : C.amber }}>{b.deadline}</div>
+                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, fontWeight: 700, color: b.deadline === "Open" ? C.green : C.amber }}>{b.deadline}</div>
                   </div>
                 </div>
                 <button style={{ width: "100%", padding: "10px", background: C.goldL, border: `1px solid ${C.gold}40`, borderRadius: 10, color: C.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>

@@ -9,10 +9,10 @@ const C = {
   goldB:   "rgba(201,168,76,0.15)",
   navy:    "#1a1a2e",
   ink:     "#FFFFFF",
-  ink2:    "#374151",
-  ink3:    "#6B7280",
-  ink4:    "#9CA3AF",
-  border:  "#E5E7EB",
+  ink2:    "#3D3935",
+  ink3:    "#6B6560",
+  ink4:    "#A8A29E",
+  border:  "#E8E3DA",
   surface: "#fff",
   bg:      "#F6F6F1",
   green:   "#16A34A",
@@ -74,7 +74,7 @@ function StatusBadge({ status }) {
   }
   const s = map[status] || map.recorded
   return (
-    <span style={{ padding: "3px 10px", borderRadius: 100, background: s.bg, color: s.color, fontSize: 11, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.06em" }}>
+    <span style={{ padding: "3px 10px", borderRadius: 100, background: s.bg, color: s.color, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono', monospace", letterSpacing: "0.06em" }}>
       {s.label}
     </span>
   )
@@ -86,13 +86,13 @@ export default function SignalRooms({ user, userData }) {
   const [gated, setGated]           = useState(false)
 
   return (
-    <div style={{ background: C.bg, flex: 1, minHeight: 0, overflowY: "auto", padding: "20px 16px 24px", fontFamily: "Inter, sans-serif" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap');`}</style>
+    <div style={{ background: C.bg, flex: 1, minHeight: 0, overflowY: "auto", padding: "20px 16px 24px", fontFamily: "DM Sans, sans-serif" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');`}</style>
 
       {/* ── Header ───────────────────────────────────────────── */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
-          <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, fontWeight: 800, color: C.ink, margin: 0 }}>
+          <h1 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 26, fontWeight: 800, color: C.ink, margin: 0 }}>
             Signal <span style={{ color: C.gold, fontStyle: "italic" }}>Rooms</span>
           </h1>
           <p style={{ fontSize: 13, color: C.ink3, margin: "4px 0 0" }}>Your verified live stage. Build audience. Sell access.</p>
@@ -111,7 +111,7 @@ export default function SignalRooms({ user, userData }) {
           { val: "₹2.4k", label: "Gated Revenue",   color: C.green  },
         ].map((s, i) => (
           <div key={i} style={{ flex: 1, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 12px", textAlign: "center" }}>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 20, fontWeight: 700, color: s.color }}>{s.val}</div>
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 20, fontWeight: 700, color: s.color }}>{s.val}</div>
             <div style={{ fontSize: 11, color: C.ink4, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", marginTop: 2 }}>{s.label}</div>
           </div>
         ))}
@@ -124,13 +124,13 @@ export default function SignalRooms({ user, userData }) {
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
               <div style={{ flex: 1 }}>
                 <div style={{ marginBottom: 6 }}><StatusBadge status={room.status} /></div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, lineHeight: 1.3, fontFamily: "'Playfair Display', serif" }}>{room.title}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, lineHeight: 1.3, fontFamily: "'DM Sans', sans-serif" }}>{room.title}</div>
                 {room.scheduled && <div style={{ fontSize: 12, color: C.blue, fontWeight: 600, marginTop: 4 }}>🕐 {room.scheduled}</div>}
                 {room.duration  && room.status !== "upcoming" && <div style={{ fontSize: 12, color: C.ink4, marginTop: 2 }}>⏱ {room.duration}</div>}
               </div>
               {room.gated && (
                 <div style={{ flexShrink: 0, textAlign: "right" }}>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 14, fontWeight: 700, color: C.gold }}>{room.price}</div>
+                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 14, fontWeight: 700, color: C.gold }}>{room.price}</div>
                   <div style={{ fontSize: 11, color: C.ink4 }}>gated</div>
                 </div>
               )}
@@ -179,7 +179,7 @@ export default function SignalRooms({ user, userData }) {
         <div style={{ position: "fixed", inset: 0, zIndex: 999, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
           <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)" }} onClick={() => setShowCreate(false)} />
           <div style={{ position: "relative", background: C.surface, borderRadius: "20px 20px 0 0", padding: 24, width: "100%", maxWidth: 480, zIndex: 1 }}>
-            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, fontWeight: 800, color: C.ink, marginBottom: 16 }}>Schedule a Signal Room</div>
+            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 20, fontWeight: 800, color: C.ink, marginBottom: 16 }}>Schedule a Signal Room</div>
             <input
               value={title}
               onChange={e => setTitle(e.target.value)}
@@ -189,7 +189,7 @@ export default function SignalRooms({ user, userData }) {
             <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, cursor: "pointer" }}>
               <div
                 onClick={() => setGated(g => !g)}
-                style={{ width: 40, height: 22, background: gated ? C.gold : "#E5E7EB", borderRadius: 99, position: "relative", transition: "background 0.2s", cursor: "pointer" }}
+                style={{ width: 40, height: 22, background: gated ? C.gold : "#E8E3DA", borderRadius: 99, position: "relative", transition: "background 0.2s", cursor: "pointer" }}
               >
                 <div style={{ position: "absolute", top: 2, left: gated ? 20 : 2, width: 18, height: 18, background: "#FFFFFF", borderRadius: "50%", transition: "left 0.2s", boxShadow: "0 1px 4px rgba(0,0,0,0.2)" }} />
               </div>
@@ -197,7 +197,7 @@ export default function SignalRooms({ user, userData }) {
             </label>
             <button
               disabled={!title.trim()}
-              style={{ width: "100%", padding: "14px", background: title.trim() ? C.navy : "#F3F4F6", border: "none", borderRadius: 12, color: title.trim() ? C.gold : C.ink4, fontSize: 15, fontWeight: 700, cursor: title.trim() ? "pointer" : "not-allowed", fontFamily: "'Playfair Display', serif" }}
+              style={{ width: "100%", padding: "14px", background: title.trim() ? C.navy : "#F3F4F6", border: "none", borderRadius: 12, color: title.trim() ? C.gold : C.ink4, fontSize: 15, fontWeight: 700, cursor: title.trim() ? "pointer" : "not-allowed", fontFamily: "'DM Sans', sans-serif" }}
             >Schedule Room →</button>
           </div>
         </div>

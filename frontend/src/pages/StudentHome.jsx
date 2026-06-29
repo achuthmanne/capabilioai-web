@@ -9,21 +9,21 @@ import { arenaDb } from "../lib/db"
 const D = {
   void:    '#FFFFFF',
   deep:    '#FAFAFA',
-  base:    '#F8F9FA',
+  base:    '#FAF7F2',
   raised:  '#FFFFFF',
   float:   '#F5F5F5',
   glass:   'rgba(0,0,0,0.03)',
   glassH:  'rgba(0,0,0,0.06)',
-  border:  '#E5E7EB',
-  borderH: '#D1D5DB',
+  border:  '#E8E3DA',
+  borderH: '#D6D0C8',
   indigo:  '#6366F1',
   gold:    '#F59E0B',
   emerald: '#10B981',
   rose:    '#F43F5E',
   violet:  '#8B5CF6',
-  text1:   '#0F172A',
+  text1:   '#1A1714',
   text2:   '#475569',
-  muted:   '#94A3B8',
+  muted:   '#A8A29E',
 }
 
 // ── Animated number counter ────────────────────────────────────────────────
@@ -150,11 +150,11 @@ export default function StudentHome({ user, userData, onNavigate }) {
                    ${D.void}`,
       minHeight: "100vh",
       padding: "24px 24px 48px",
-      fontFamily: "'Inter', sans-serif",
+      fontFamily: "'DM Sans', sans-serif",
       boxSizing: "border-box",
     }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');
 
         @keyframes bentoReveal {
           from { opacity: 0; transform: translateY(20px) scale(0.97); }
@@ -303,7 +303,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
         >
           {/* Label */}
           <div style={{
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: "'DM Mono', monospace",
             fontSize: 10,
             fontWeight: 700,
             color: "#A5B4FC",
@@ -370,7 +370,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
           }}
         >
           <div style={{
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: "'DM Mono', monospace",
             fontSize: 10,
             fontWeight: 700,
             color: "rgba(245,158,11,0.6)",
@@ -382,7 +382,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
           </div>
 
           <div style={{
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: "'DM Mono', monospace",
             fontSize: 44,
             fontWeight: 800,
             color: D.gold,
@@ -422,7 +422,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
             color: tierColor,
             fontSize: 11,
             fontWeight: 700,
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: "'DM Mono', monospace",
             letterSpacing: "0.06em",
           }}>
             {tier}
@@ -446,7 +446,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
           </div>
 
           <div style={{
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: "'DM Mono', monospace",
             fontSize: 32,
             fontWeight: 800,
             color: D.gold,
@@ -489,7 +489,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
           {/* Left */}
           <div>
             <div style={{
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "'DM Mono', monospace",
               fontSize: 10,
               fontWeight: 700,
               color: "#A5B4FC",
@@ -519,7 +519,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
                 color: pill.color,
                 fontSize: 12,
                 fontWeight: 700,
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: "'DM Mono', monospace",
                 whiteSpace: "nowrap",
               }}>
                 {pill.label} <span style={{ opacity: 0.8 }}>{pill.elo}</span>
@@ -546,7 +546,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
           }}
         >
           <div style={{
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: "'DM Mono', monospace",
             fontSize: 10,
             fontWeight: 700,
             color: "#A5B4FC",
@@ -594,7 +594,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
           }}
         >
           <div style={{
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: "'DM Mono', monospace",
             fontSize: 10,
             fontWeight: 700,
             color: D.muted,
@@ -665,7 +665,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
                           border: "1px solid rgba(99,102,241,0.20)",
                           borderRadius: 6,
                           padding: "2px 8px",
-                          fontFamily: "'JetBrains Mono', monospace",
+                          fontFamily: "'DM Mono', monospace",
                         }}>
                           {p.company}
                         </span>
@@ -677,7 +677,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
                     {p.score != null && (
                       <div style={{
-                        fontFamily: "'JetBrains Mono', monospace",
+                        fontFamily: "'DM Mono', monospace",
                         fontSize: 20,
                         fontWeight: 800,
                         color: p.score >= 80 ? D.emerald : p.score >= 50 ? D.gold : D.rose,
@@ -712,7 +712,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
           }}
         >
           <div style={{
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: "'DM Mono', monospace",
             fontSize: 10,
             fontWeight: 700,
             color: D.muted,

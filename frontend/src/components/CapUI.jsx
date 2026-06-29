@@ -2,7 +2,7 @@
  * CAPABILIO — SHARED COMPONENT LIBRARY (Agentic Design System)
  * src/components/CapUI.jsx
  *
- * White/cream surfaces, Playfair Display headings, #FF5701 orange primary.
+ * Parchment surfaces, DM Sans headings, #FF5701 orange primary.
  * All inner app pages use these — consistent with landing page.
  */
 
@@ -156,7 +156,7 @@ export function AppNavBar({ user, currentPage, onNavigate, onTabChange, onSignOu
     <nav style={{ background: "#FFFFFF", borderBottom: "1px solid rgba(17,24,39,0.08)", height: 64, display: "flex", alignItems: "center", padding: "0 28px", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100, boxShadow: "0 1px 12px rgba(17,24,39,0.05)" }}>
       {/* Brand */}
       <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
-        <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, fontWeight: 800, color: "#FFFFFF", letterSpacing: "-0.5px", whiteSpace: "nowrap" }}>
+        <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 20, fontWeight: 800, color: "#FFFFFF", letterSpacing: "-0.5px", whiteSpace: "nowrap" }}>
           Capabilio <span style={{ color: "#FF5701", fontStyle: "italic" }}>AI</span>
         </span>
         <div style={{ display: "flex", gap: 2 }}>
@@ -165,9 +165,9 @@ export function AppNavBar({ user, currentPage, onNavigate, onTabChange, onSignOu
             return (
               <button key={p.id}
                 onClick={() => { onNavigate(p.id); if (onTabChange && p.id === "aura") onTabChange("dashboard") }}
-                style={{ padding: "6px 14px", borderRadius: 10, background: "transparent", border: "none", borderBottom: active ? "2px solid #FF5701" : "2px solid transparent", color: active ? "#FF5701" : "#6B7280", fontFamily: "Inter, sans-serif", fontSize: 14, fontWeight: active ? 600 : 400, cursor: "pointer", transition: "all 0.15s", display: "flex", alignItems: "center", gap: 6, paddingBottom: 4 }}
+                style={{ padding: "6px 14px", borderRadius: 10, background: "transparent", border: "none", borderBottom: active ? "2px solid #FF5701" : "2px solid transparent", color: active ? "#FF5701" : "#6B6560", fontFamily: "DM Sans, sans-serif", fontSize: 14, fontWeight: active ? 600 : 400, cursor: "pointer", transition: "all 0.15s", display: "flex", alignItems: "center", gap: 6, paddingBottom: 4 }}
                 onMouseEnter={e => { if (!active) { e.currentTarget.style.color = "#FFFFFF" }}}
-                onMouseLeave={e => { if (!active) { e.currentTarget.style.color = "#6B7280" }}}
+                onMouseLeave={e => { if (!active) { e.currentTarget.style.color = "#6B6560" }}}
               >
                 <span style={{ fontSize: 13 }}>{p.icon}</span>{p.label}
               </button>
@@ -181,7 +181,7 @@ export function AppNavBar({ user, currentPage, onNavigate, onTabChange, onSignOu
         {/* ELO badge — standard users only */}
         {!isExecutive && userData?.eloRating ? (
           <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px", background: "#FFF1E8", border: "1px solid rgba(255,87,1,0.18)", borderRadius: 100 }}>
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: "#FF5701" }}>ELO {userData.eloRating.toLocaleString()}</span>
+            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, fontWeight: 700, color: "#FF5701" }}>ELO {userData.eloRating.toLocaleString()}</span>
           </div>
         ) : null}
         {/* Avatar + Username */}
@@ -189,16 +189,16 @@ export function AppNavBar({ user, currentPage, onNavigate, onTabChange, onSignOu
           <div style={{ width: 34, height: 34, borderRadius: "50%", overflow: "hidden", border: isExecutive ? "2px solid rgba(201,168,76,0.5)" : "2px solid rgba(255,87,1,0.22)", flexShrink: 0, background: isExecutive ? "#1a1a2e" : "#FFF1E8", display: "flex", alignItems: "center", justifyContent: "center" }}>
             {avatarUrl
               ? <img src={avatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              : <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 14, fontWeight: 700, color: isExecutive ? "#C9A84C" : "#FF5701" }}>{initial}</span>
+              : <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 700, color: isExecutive ? "#C9A84C" : "#FF5701" }}>{initial}</span>
             }
           </div>
           <span style={{ fontSize: 13, fontWeight: 600, color: "#FFFFFF", maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {user?.displayName || userData?.name || "User"}
           </span>
         </div>
-        <button style={{ padding: "7px 16px", background: "#FFFFFF", border: "1px solid rgba(17,24,39,0.12)", borderRadius: 10, color: "#374151", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif", transition: "all 0.15s" }}
+        <button style={{ padding: "7px 16px", background: "#FFFFFF", border: "1px solid rgba(17,24,39,0.12)", borderRadius: 10, color: "#3D3935", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans, sans-serif", transition: "all 0.15s" }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,87,1,0.22)"; e.currentTarget.style.color = "#FF5701" }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(17,24,39,0.12)"; e.currentTarget.style.color = "#374151" }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(17,24,39,0.12)"; e.currentTarget.style.color = "#3D3935" }}
           onClick={onSignOut}
         >Sign out</button>
       </div>
@@ -223,14 +223,14 @@ export function AuraTabBar({ activeTab, onTabChange, vaultFiles = [] }) {
     <div style={{ background: "#FFFFFF", borderBottom: "1px solid rgba(17,24,39,0.08)", padding: "0 28px", display: "flex", alignItems: "center", position: "sticky", top: 64, zIndex: 99, overflowX: "auto", boxShadow: "0 1px 8px rgba(17,24,39,0.04)" }}>
       <div style={{ marginRight: 20, paddingRight: 20, paddingTop: 8, paddingBottom: 8, borderRight: "1px solid var(--cap-border)", flexShrink: 0 }}>
         <div style={{ fontFamily: "var(--cap-font-display)", fontSize: 14, fontWeight: 700, color: "#FFFFFF" }}>Aura</div>
-        <div style={{ fontSize: 10, color: "#9CA3AF" }}>Career profile</div>
+        <div style={{ fontSize: 10, color: "#A8A29E" }}>Career profile</div>
       </div>
       {TABS.map(tab => {
         const active = activeTab === tab.id
         return (
           <button key={tab.id}
             onClick={() => onTabChange(tab.id)}
-            style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "10px 12px", border: "none", borderBottom: active ? "2px solid var(--cap-primary)" : "2px solid transparent", borderTop: "2px solid transparent", cursor: "pointer", fontFamily: "var(--cap-font-body)", fontSize: 13, fontWeight: active ? 600 : 400, color: active ? "#FF5701" : "#6B7280", background: "transparent", transition: "all 0.15s", whiteSpace: "nowrap", flexShrink: 0 }}
+            style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "10px 12px", border: "none", borderBottom: active ? "2px solid var(--cap-primary)" : "2px solid transparent", borderTop: "2px solid transparent", cursor: "pointer", fontFamily: "var(--cap-font-body)", fontSize: 13, fontWeight: active ? 600 : 400, color: active ? "#FF5701" : "#6B6560", background: "transparent", transition: "all 0.15s", whiteSpace: "nowrap", flexShrink: 0 }}
             onMouseEnter={e => { if (!active) e.currentTarget.style.color = "var(--cap-text-primary)" }}
             onMouseLeave={e => { if (!active) e.currentTarget.style.color = "var(--cap-text-muted)" }}
           >
@@ -319,8 +319,8 @@ export function FeatureCard({ icon, title, desc, onClick, style, dark = false })
         style={{ background: "var(--cap-dark-card)", border: `1px solid ${hovered ? "var(--cap-primary)" : "var(--cap-dark-border)"}`, borderRadius: "var(--cap-radius-lg)", padding: 24, cursor: onClick ? "pointer" : "default", transition: "border-color 0.15s", ...style }}
       >
         <div style={{ width: 38, height: 38, background: "rgba(255,87,1,0.12)", border: "1px solid rgba(255,87,1,0.25)", borderRadius: "var(--cap-radius-md)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, marginBottom: 14 }}>{icon}</div>
-        <div style={{ fontFamily: "var(--cap-font-display)", fontSize: 15, fontWeight: 700, color: "#F9FAFB", marginBottom: 6 }}>{title}</div>
-        <div style={{ fontSize: 12, color: "#6B7280", lineHeight: 1.6 }}>{desc}</div>
+        <div style={{ fontFamily: "var(--cap-font-display)", fontSize: 15, fontWeight: 700, color: "#FAF7F2", marginBottom: 6 }}>{title}</div>
+        <div style={{ fontSize: 12, color: "#6B6560", lineHeight: 1.6 }}>{desc}</div>
       </div>
     )
   }
@@ -490,18 +490,18 @@ export function Footer() {
   return (
     <footer style={{ background: "var(--cap-dark)", borderTop: "1px solid #1F2937", padding: "24px var(--cap-page-pad)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <span style={{ fontFamily: "var(--cap-font-display)", fontSize: 16, color: "#F9FAFB", fontWeight: 700 }}>Capabilio</span>
-        <span style={{ fontSize: 12, color: "#6B7280" }}>· Amravati, Andhra Pradesh ❤️ from India</span>
+        <span style={{ fontFamily: "var(--cap-font-display)", fontSize: 16, color: "#FAF7F2", fontWeight: 700 }}>Capabilio</span>
+        <span style={{ fontSize: 12, color: "#6B6560" }}>· Amravati, Andhra Pradesh ❤️ from India</span>
       </div>
       <div style={{ display: "flex", gap: 20 }}>
         {["Privacy", "Terms", "careers@capabilioai.com"].map(l => (
-          <span key={l} style={{ fontSize: 12, color: "#6B7280", cursor: "pointer", transition: "color 0.15s" }}
-            onMouseEnter={e => e.currentTarget.style.color = "#9CA3AF"}
-            onMouseLeave={e => e.currentTarget.style.color = "#6B7280"}
+          <span key={l} style={{ fontSize: 12, color: "#6B6560", cursor: "pointer", transition: "color 0.15s" }}
+            onMouseEnter={e => e.currentTarget.style.color = "#A8A29E"}
+            onMouseLeave={e => e.currentTarget.style.color = "#6B6560"}
           >{l}</span>
         ))}
       </div>
-      <div style={{ fontSize: 12, color: "#374151" }}>© 2026 Capabilio</div>
+      <div style={{ fontSize: 12, color: "#3D3935" }}>© 2026 Capabilio</div>
     </footer>
   )
 }
@@ -542,7 +542,7 @@ export function AnimatedFeatureCard({ icon, title, desc, onClick, style, color =
         transform: hovered ? "scale(1.1) rotate(-4deg)" : "scale(1)",
       }}>{icon}</div>
       <div style={{ fontFamily: "var(--cap-font-display)", fontSize: 15, fontWeight: 700, color: "#FFFFFF", marginBottom: 6 }}>{title}</div>
-      <div style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.65 }}>{desc}</div>
+      <div style={{ fontSize: 13, color: "#6B6560", lineHeight: 1.65 }}>{desc}</div>
     </div>
   )
 }
@@ -560,11 +560,11 @@ export function AnimatedProgressBar({ value, color = "#FF5701", label, showValue
     <div ref={ref} style={{ marginBottom: 12 }}>
       {(label || showValue) && (
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-          {label && <span style={{ fontSize: 13, color: "#374151", fontWeight: 500 }}>{label}</span>}
+          {label && <span style={{ fontSize: 13, color: "#3D3935", fontWeight: 500 }}>{label}</span>}
           {showValue && <span style={{ fontSize: 12, color, fontWeight: 800, fontFamily: "var(--cap-font-mono)" }}>{value}%</span>}
         </div>
       )}
-      <div style={{ height, borderRadius: 999, background: "#E5E7EB", overflow: "hidden" }}>
+      <div style={{ height, borderRadius: 999, background: "#E8E3DA", overflow: "hidden" }}>
         <div style={{
           height: "100%",
           width: started ? `${value}%` : "0%",
@@ -583,7 +583,7 @@ export function AnimatedMetricCard({ label, value, icon, color = "#FF5701", sub,
   return (
     <div style={{
       background: "#FFFFFF",
-      border: "1px solid #E5E7EB",
+      border: "1px solid #E8E3DA",
       borderRadius: 16, padding: "18px 14px",
       textAlign: "center",
       boxShadow: "0 1px 8px rgba(0,0,0,0.04)",
@@ -596,8 +596,8 @@ export function AnimatedMetricCard({ label, value, icon, color = "#FF5701", sub,
     >
       {icon && <div style={{ fontSize: 22, marginBottom: 8 }}>{icon}</div>}
       <div style={{ fontFamily: "var(--cap-font-mono)", fontSize: 26, fontWeight: 800, color, lineHeight: 1 }}>{value}</div>
-      <div style={{ fontSize: 10, color: "#9CA3AF", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", marginTop: 5 }}>{label}</div>
-      {sub && <div style={{ fontSize: 11, color: "#6B7280", marginTop: 3 }}>{sub}</div>}
+      <div style={{ fontSize: 10, color: "#A8A29E", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", marginTop: 5 }}>{label}</div>
+      {sub && <div style={{ fontSize: 11, color: "#6B6560", marginTop: 3 }}>{sub}</div>}
     </div>
   )
 }
@@ -633,13 +633,13 @@ export function Toast({ message, type = "success", onClose }) {
       background: "#FFFFFF", border: `1px solid ${color}30`,
       borderRadius: 14, padding: "12px 18px",
       boxShadow: `0 8px 32px rgba(0,0,0,0.12), 0 0 0 1px ${color}15`,
-      fontFamily: "var(--cap-font-body)", fontSize: 13, color: "#374151", fontWeight: 500,
+      fontFamily: "var(--cap-font-body)", fontSize: 13, color: "#3D3935", fontWeight: 500,
       animation: "capToastIn 0.35s cubic-bezier(0.34,1.56,0.64,1) both",
       whiteSpace: "nowrap", maxWidth: "90vw",
     }}>
       <div style={{ width: 22, height: 22, borderRadius: "50%", background: `${color}15`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color, fontWeight: 800, flexShrink: 0 }}>{icons[type]}</div>
       <span>{message}</span>
-      <button onClick={onClose} style={{ marginLeft: 8, background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", fontSize: 16, lineHeight: 1, padding: 0 }}>✕</button>
+      <button onClick={onClose} style={{ marginLeft: 8, background: "none", border: "none", cursor: "pointer", color: "#A8A29E", fontSize: 16, lineHeight: 1, padding: 0 }}>✕</button>
       <style>{`
         @keyframes capToastIn {
           from { opacity:0; transform:translateX(-50%) translateY(20px) scale(0.95); }
@@ -669,7 +669,7 @@ export function AnimatedSkillBar({ label, value, color = "#FF5701", delay = 0 })
   return (
     <div ref={ref} style={{ marginBottom: 10 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-        <span style={{ fontSize: 13, color: "#374151", fontWeight: 500 }}>{label}</span>
+        <span style={{ fontSize: 13, color: "#3D3935", fontWeight: 500 }}>{label}</span>
         <span style={{ fontFamily: "var(--cap-font-mono)", fontSize: 12, color, fontWeight: 800 }}>{value}%</span>
       </div>
       <div style={{ height: 7, background: "#F3F4F6", borderRadius: 999, overflow: "hidden" }}>
@@ -694,7 +694,7 @@ export function AnimatedPageLoader() {
         <div style={{ width: 60, height: 60, borderRadius: 16, background: "linear-gradient(135deg, #FF5701, #FF8C42)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--cap-font-display)", fontSize: 24, fontWeight: 800, color: "#fff", boxShadow: "0 8px 24px rgba(255,87,1,0.35)", animation: "capLogoPulse 2s ease-in-out infinite" }}>C</div>
       </div>
       <span style={{ fontFamily: "var(--cap-font-display)", fontSize: 26, fontWeight: 800, color: "#FFFFFF", letterSpacing: "-0.5px" }}>Capabilio</span>
-      <div style={{ width: 32, height: 3, background: "#E5E7EB", borderRadius: 999, overflow: "hidden" }}>
+      <div style={{ width: 32, height: 3, background: "#E8E3DA", borderRadius: 999, overflow: "hidden" }}>
         <div style={{ height: "100%", background: "#FF5701", borderRadius: 999, animation: "capLoadBar 1.5s ease-in-out infinite" }} />
       </div>
       <style>{`

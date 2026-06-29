@@ -65,14 +65,14 @@ function SkillCard({ skill, onProof, onRemove, onToggleTarget }) {
               {!skill.is_current && <span style={{fontSize:10,background:"#F4F4F0",color:T.ink3,padding:"1px 6px",borderRadius:99}}>Historical</span>}
             </div>
           </div>
-          <div style={{fontSize:14,fontWeight:700,color:barColor,fontFamily:"'JetBrains Mono',monospace",flexShrink:0}}>{skill.elo_value||500}</div>
+          <div style={{fontSize:14,fontWeight:700,color:barColor,fontFamily:"'DM Mono',monospace",flexShrink:0}}>{skill.elo_value||500}</div>
         </div>
 
         {/* Confidence bar */}
         <div style={{marginBottom:10}}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
             <span style={{fontSize:10,color:T.ink3}}>Confidence</span>
-            <span style={{fontSize:10,color:T.ink3,fontFamily:"'JetBrains Mono',monospace"}}>{confidencePct}%</span>
+            <span style={{fontSize:10,color:T.ink3,fontFamily:"'DM Mono',monospace"}}>{confidencePct}%</span>
           </div>
           <div style={{height:3,borderRadius:3,background:"#F0F0EC",overflow:"hidden"}}>
             <div style={{height:"100%",width:`${confidencePct}%`,background:barColor,borderRadius:3,transition:"width .5s ease"}}/>
@@ -109,7 +109,7 @@ function SkillCard({ skill, onProof, onRemove, onToggleTarget }) {
           <textarea value={proofNotes} onChange={e=>setProofNotes(e.target.value)} placeholder="Brief description (optional)" rows={2}
             style={{width:"100%",padding:"8px 10px",border:`1px solid ${T.border}`,borderRadius:8,fontSize:12,outline:"none",resize:"none",fontFamily:"inherit",boxSizing:"border-box",marginBottom:8}}/>
           <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>setShowProof(false)} style={{flex:1,padding:"7px",background:"#F9FAFB",border:`1px solid ${T.border}`,borderRadius:8,cursor:"pointer",fontSize:12}}>Cancel</button>
+            <button onClick={()=>setShowProof(false)} style={{flex:1,padding:"7px",background:"#FAF7F2",border:`1px solid ${T.border}`,borderRadius:8,cursor:"pointer",fontSize:12}}>Cancel</button>
             <button onClick={submitProof} disabled={submitting||!proofUrl.trim()} style={{flex:2,padding:"7px",background:T.indigo,border:"none",borderRadius:8,color:"#fff",fontWeight:700,cursor:"pointer",fontSize:12,opacity:submitting||!proofUrl.trim()?0.6:1}}>
               {submitting?"Submitting…":"Submit Proof"}
             </button>
@@ -187,7 +187,7 @@ export default function SkillGraphView({ user }) {
   })
 
   return (
-    <div style={{fontFamily:"Inter,sans-serif"}}>
+    <div style={{fontFamily:"DM Sans,sans-serif"}}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
 
       {/* Header */}
@@ -207,7 +207,7 @@ export default function SkillGraphView({ user }) {
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search skills…"
           style={{flex:1,minWidth:160,padding:"8px 12px",border:`1px solid ${T.border}`,borderRadius:8,fontSize:13,outline:"none"}}/>
         {["all","verified","current","target"].map(f=>(
-          <button key={f} onClick={()=>setFilter(f)} style={{padding:"7px 14px",background:filter===f?T.indigo:"#F9FAFB",border:`1px solid ${filter===f?T.indigo:T.border}`,borderRadius:8,color:filter===f?"#fff":T.ink3,fontSize:12,fontWeight:filter===f?700:400,cursor:"pointer",textTransform:"capitalize"}}>
+          <button key={f} onClick={()=>setFilter(f)} style={{padding:"7px 14px",background:filter===f?T.indigo:"#FAF7F2",border:`1px solid ${filter===f?T.indigo:T.border}`,borderRadius:8,color:filter===f?"#fff":T.ink3,fontSize:12,fontWeight:filter===f?700:400,cursor:"pointer",textTransform:"capitalize"}}>
             {f==="all"?"All Skills":f==="verified"?"Verified":f==="current"?"Current":f==="target"?"Target Skills":""}
           </button>
         ))}
@@ -256,7 +256,7 @@ export default function SkillGraphView({ user }) {
               style={{width:"100%",padding:"10px 12px",border:`1px solid ${T.border}`,borderRadius:10,fontSize:14,outline:"none",boxSizing:"border-box",marginBottom:14}}
               autoFocus/>
             <div style={{display:"flex",gap:8}}>
-              <button onClick={()=>setShowAdd(false)} style={{flex:1,padding:"10px",background:"#F9FAFB",border:`1px solid ${T.border}`,borderRadius:10,cursor:"pointer",fontSize:13}}>Cancel</button>
+              <button onClick={()=>setShowAdd(false)} style={{flex:1,padding:"10px",background:"#FAF7F2",border:`1px solid ${T.border}`,borderRadius:10,cursor:"pointer",fontSize:13}}>Cancel</button>
               <button onClick={handleAdd} disabled={!newSkill.trim()} style={{flex:2,padding:"10px",background:T.indigo,border:"none",borderRadius:10,color:"#fff",fontWeight:700,cursor:"pointer",fontSize:13,opacity:!newSkill.trim()?0.6:1}}>Add Skill</button>
             </div>
           </div>
