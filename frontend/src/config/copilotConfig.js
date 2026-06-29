@@ -61,28 +61,55 @@ export const TIER_CONFIG = {
 
 // ── 2. INTENT CLASSIFIER ────────────────────────────────────
 
-export const CLASSIFIER_SYSTEM_PROMPT = `You are a topic classifier for a career platform.
+export const CLASSIFIER_SYSTEM_PROMPT = `You are a topic classifier for Capabilio — a career OS platform.
 Classify the user message into exactly one label.
 
 CAREER — if the message is about any of:
   profile, resume, skills, projects, portfolio, career timeline, job search,
-  interview prep, promotions, salary, domain expertise, ELO score, Aura dashboard,
-  recruiter visibility, employment, career transitions, LinkedIn, GitHub,
+  interview prep, promotions, salary, domain expertise, ELO score, Aura score,
+  Aura dashboard, recruiter visibility, employment, career transitions, LinkedIn, GitHub,
   certifications, freelance, internships, hackathons, coding career,
   professional growth, skill gaps, learning goals, work experience,
-  company switching, role progression, tech stacks for career purposes
+  company switching, role progression, tech stacks for career purposes,
+  Arena challenges, Arena workstation, Arena ELO, domain challenges,
+  Capabilio platform features, Orbit dashboard, Pulse network, Vault verification,
+  Forge projects, skill graph, career score, career copilot, EPFO verification
+
+  Platform-specific terms that are ALWAYS CAREER:
+  - "Aura" or "Aura score" = career profile strength metric
+  - "ELO" or "ELO rating" = skill performance score
+  - "Arena" = coding/skill challenge platform
+  - "Orbit" = career dashboard
+  - "Vault" = document and verification center
+  - "Forge" = project builder
+  - "Pulse" = professional network feed
+  - "Capi" = career AI copilot
 
 BLOCKED — if the message is about any of:
   general knowledge, entertainment, news, politics, sports, cooking, travel,
-  coding help unrelated to career (e.g. "fix this bug"), math homework,
-  writing unrelated to career, relationship advice, health, finance unrelated to career,
-  science questions, history, geography, random chat
+  coding help unrelated to career (e.g. "fix this bug for me"),
+  math homework, creative writing, relationship advice, health, medical,
+  science questions, history, geography, random chat, jokes
 
 IMPORTANT: If someone wraps an off-topic question in career framing like
-"for my career, explain quantum physics" or "my interviewer asked about the French Revolution"
-classify it as BLOCKED — the core question has no career utility.
+"for my career, explain quantum physics" — classify it as BLOCKED.
+When in doubt, classify as CAREER.
 
 Reply with exactly one word: CAREER or BLOCKED`
+
+// Local keyword pre-check — if any of these match, it's CAREER without calling the API
+export const CAREER_FAST_PATTERNS = [
+  /\b(aura|elo|arena|orbit|vault|forge|pulse|capi|capabilio)\b/i,
+  /\b(skill|career|resume|job|interview|portfolio|project|linkedin|github)\b/i,
+  /\b(score|rating|rank|tier|challenge|domain|profile|recruiter)\b/i,
+  /\b(salary|promotion|hike|ctc|lpa|experience|internship|placement)\b/i,
+  /\b(learn|certif|gap|improve|boost|grow|progress|upskill)\b/i,
+  /\b(epfo|uan|verify|verification|employment|company|switch)\b/i,
+]
+
+export function isCareerFastPath(message) {
+  return CAREER_FAST_PATTERNS.some(p => p.test(message))
+}
 
 export const TOPIC_BUCKETS = {
   profile:           "profile",

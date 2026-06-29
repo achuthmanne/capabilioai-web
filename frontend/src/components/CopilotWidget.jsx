@@ -12,6 +12,7 @@ import {
   qualityCheck,
   getSuggestionChips,
   classifyBucket,
+  isCareerFastPath,
   canSendMessage,
   getRemainingQuestions,
   shouldShowLimitWarning,
@@ -186,6 +187,11 @@ export default function CopilotWidget({ user, userData }) {
 
   // ── Intent classifier ────────────────────────────────────────
   const classify = useCallback(async (message) => {
+    // Fast-path: if the message clearly matches career keywords, skip the API call.
+    // This prevents the small LLM from incorrectly blocking Capabilio-specific
+    // terms like "Aura score", "ELO", "Arena", "Orbit", etc.
+    if (isCareerFastPath(message)) return "CAREER"
+
     if (!GROQ_KEY) return "CAREER"  // dev fallback — no key
     try {
       const res = await fetch(GROQ_API, {
@@ -240,8 +246,9 @@ export default function CopilotWidget({ user, userData }) {
     const { allowed } = canSendMessage(tier, usage)
     if (!allowed) { setLimitHit(true); return }
 
-    // Add user message
+    // Add user message, remove the chip that was just clicked so it's not re-suggested
     setMessages(prev => [...prev, { role: "user", content: msg }])
+    setChips(prev => prev.filter(c => c !== msg))
     setLoading(true)
     setStreamText("")
 
