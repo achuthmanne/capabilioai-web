@@ -18,53 +18,57 @@ import {
   LineChart, Line, XAxis, YAxis, Area, AreaChart,
 } from "recharts"
 
-// ─── Design tokens — premium dark ────────────────────────────────────────────
+// ─── Design tokens — GenZ premium dark ───────────────────────────────────────
 const C = {
-  bg:      "#060912",           // near-black with deep blue tint
-  bgCard:  "rgba(255,255,255,0.035)", // glassmorphism card
-  bgCard2: "rgba(255,255,255,0.06)",  // elevated card
-  bgInner: "rgba(0,0,0,0.25)",  // inner panels / code blocks
-  ink:     "#F0EDE8",           // warm white
-  ink2:    "#C4C0BB",           // body text
-  ink3:    "#88847F",           // muted labels
-  ink4:    "#504C48",           // ghost
+  bg:      "#07080F",           // near-black with deep indigo tint
+  bgCard:  "rgba(255,255,255,0.04)",
+  bgCard2: "rgba(255,255,255,0.07)",
+  bgInner: "rgba(0,0,0,0.3)",
+  ink:     "#F4F1FF",           // slight purple-tinted white
+  ink2:    "#C8C4D8",
+  ink3:    "#7E7A8F",
+  ink4:    "#4A4658",
   border:  "rgba(255,255,255,0.08)",
   border2: "rgba(255,255,255,0.14)",
-  borderStr:"rgba(255,255,255,0.22)",
-  blue:    "#3B82F6",
-  blue2:   "#60A5FA",
-  blue3:   "rgba(59,130,246,0.12)",
-  teal:    "#06B6D4",
-  teal2:   "#22D3EE",
-  teal3:   "rgba(6,182,212,0.12)",
-  green:   "#10B981",
-  green2:  "rgba(16,185,129,0.12)",
-  amber:   "#F59E0B",
-  amber2:  "rgba(245,158,11,0.12)",
-  red:     "#EF4444",
-  red2:    "rgba(239,68,68,0.12)",
-  purple:  "#8B5CF6",
-  purple2: "rgba(139,92,246,0.12)",
-  brand:   "#FF5701",
-  brand2:  "rgba(255,87,1,0.12)",
-  shadow:  "0 2px 8px rgba(0,0,0,0.45)",
-  shadow2: "0 16px 48px rgba(0,0,0,0.6)",
-  shadowGlow: (col) => `0 0 24px ${col}28, 0 2px 8px rgba(0,0,0,0.4)`,
-  // keep legacy surface aliases
-  surface: "rgba(255,255,255,0.035)",
-  surface2:"rgba(255,255,255,0.055)",
+  borderStr:"rgba(255,255,255,0.24)",
+  blue:    "#4F8EF7",
+  blue2:   "#7FB3FF",
+  blue3:   "rgba(79,142,247,0.14)",
+  teal:    "#00D4FF",
+  teal2:   "#44E4FF",
+  teal3:   "rgba(0,212,255,0.12)",
+  green:   "#00E5A0",
+  green2:  "rgba(0,229,160,0.12)",
+  amber:   "#FFB800",
+  amber2:  "rgba(255,184,0,0.12)",
+  red:     "#FF4757",
+  red2:    "rgba(255,71,87,0.12)",
+  purple:  "#A855F7",
+  purple2: "rgba(168,85,247,0.14)",
+  brand:   "#7C3AED",           // deep violet — GenZ brand
+  brand2:  "rgba(124,58,237,0.15)",
+  pink:    "#EC4899",
+  pink2:   "rgba(236,72,153,0.12)",
+  shadow:  "0 4px 16px rgba(0,0,0,0.5)",
+  shadow2: "0 20px 60px rgba(0,0,0,0.7)",
+  shadowGlow: (col) => `0 0 32px ${col}35, 0 4px 16px rgba(0,0,0,0.5)`,
+  glass:   "rgba(255,255,255,0.04)",
+  glassBorder: "rgba(255,255,255,0.10)",
+  // legacy aliases
+  surface: "rgba(255,255,255,0.04)",
+  surface2:"rgba(255,255,255,0.07)",
 }
 
 const PATH_CONFIG = {
   student:      { label:"Student",      icon:"🎓",
-    heroBg:"radial-gradient(ellipse at 25% 30%, rgba(29,78,216,0.55) 0%, transparent 55%), radial-gradient(ellipse at 75% 70%, rgba(6,182,212,0.35) 0%, transparent 50%), radial-gradient(ellipse at 60% 10%, rgba(139,92,246,0.2) 0%, transparent 40%), #060912",
-    accent:"#3B82F6" },
+    heroBg:"radial-gradient(ellipse at 20% 50%, rgba(124,58,237,0.65) 0%, transparent 50%), radial-gradient(ellipse at 80% 20%, rgba(0,212,255,0.4) 0%, transparent 45%), radial-gradient(ellipse at 60% 80%, rgba(236,72,153,0.25) 0%, transparent 40%), #07080F",
+    accent:"#A855F7" },
   professional: { label:"Professional", icon:"💼",
-    heroBg:"radial-gradient(ellipse at 20% 40%, rgba(6,182,212,0.5) 0%, transparent 55%), radial-gradient(ellipse at 80% 20%, rgba(16,185,129,0.3) 0%, transparent 50%), radial-gradient(ellipse at 50% 80%, rgba(59,130,246,0.25) 0%, transparent 45%), #060912",
-    accent:"#06B6D4" },
+    heroBg:"radial-gradient(ellipse at 15% 50%, rgba(0,212,255,0.55) 0%, transparent 50%), radial-gradient(ellipse at 85% 30%, rgba(0,229,160,0.35) 0%, transparent 45%), radial-gradient(ellipse at 50% 85%, rgba(79,142,247,0.3) 0%, transparent 40%), #07080F",
+    accent:"#00D4FF" },
   authority:    { label:"Expert",       icon:"⭐",
-    heroBg:"radial-gradient(ellipse at 30% 20%, rgba(139,92,246,0.6) 0%, transparent 50%), radial-gradient(ellipse at 70% 70%, rgba(236,72,153,0.3) 0%, transparent 50%), radial-gradient(ellipse at 60% 40%, rgba(59,130,246,0.2) 0%, transparent 45%), #060912",
-    accent:"#8B5CF6" },
+    heroBg:"radial-gradient(ellipse at 25% 40%, rgba(168,85,247,0.7) 0%, transparent 50%), radial-gradient(ellipse at 75% 60%, rgba(236,72,153,0.45) 0%, transparent 45%), radial-gradient(ellipse at 55% 15%, rgba(0,212,255,0.2) 0%, transparent 40%), #07080F",
+    accent:"#EC4899" },
 }
 
 // ─── Skill icon mapping (skillicons.dev slugs) ────────────────────────────────
@@ -344,8 +348,8 @@ function ChallengeDetailModal({ t, onClose }) {
           width:"100%", maxWidth:760, maxHeight:"92vh", overflowY:"auto",
           boxShadow:"0 40px 120px rgba(0,0,0,0.7)", display:"flex", flexDirection:"column" }}
       >
-        {/* ── Modal header ── */}
-        <div style={{ padding:"20px 24px 16px", borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"flex-start", gap:16, flexShrink:0 }}>
+        {/* ── Modal header — sticky so close button always visible ── */}
+        <div style={{ padding:"20px 24px 16px", borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"flex-start", gap:16, flexShrink:0, position:"sticky", top:0, background:C.bg, zIndex:10, borderRadius:"20px 20px 0 0" }}>
           <ScoreRing score={t.score} size={56} />
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ fontSize:17, fontWeight:800, color:C.ink, marginBottom:5, lineHeight:1.3 }}>{t.title}</div>
@@ -465,8 +469,8 @@ function ChallengeDetailModal({ t, onClose }) {
             </div>
           </div>
 
-          {/* Footer close bar */}
-          <div style={{ padding:"16px 24px", borderTop:`1px solid ${C.border}`, display:"flex", justifyContent:"center", flexShrink:0 }}>
+          {/* Footer close bar — sticky at bottom */}
+          <div style={{ padding:"16px 24px", borderTop:`1px solid ${C.border}`, display:"flex", justifyContent:"center", flexShrink:0, position:"sticky", bottom:0, background:C.bg, zIndex:10, borderRadius:"0 0 20px 20px" }}>
             <button onClick={onClose} style={{
               display:"inline-flex", alignItems:"center", gap:8,
               padding:"10px 32px", borderRadius:99,
@@ -1292,230 +1296,249 @@ export default function Portfolio({ username: usernameProp }) {
       {/* HERO                                                              */}
       {/* ══════════════════════════════════════════════════════════════════ */}
       <div ref={refs.overview}>
-        {/* ── CINEMATIC HERO ──────────────────────────────────────────────── */}
-        <div style={{background:heroBg,padding:"80px 32px 100px",position:"relative",overflow:"hidden",minHeight:420}}>
-          {/* Mesh dot grid */}
-          <div style={{position:"absolute",inset:0,opacity:0.045,
-            backgroundImage:"radial-gradient(circle,#fff 1px,transparent 1px)",backgroundSize:"28px 28px"}}/>
-          {/* Noise texture overlay */}
-          <div style={{position:"absolute",inset:0,opacity:0.03,
-            backgroundImage:"url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E\")",
-            backgroundSize:"200px 200px",pointerEvents:"none"}}/>
-          {/* Accent glows */}
-          <div style={{
-            position:"absolute",top:-150,right:-100,width:700,height:700,
-            background:aConfig?.palette?.accent||"#3B82F6",
-            borderRadius:"50%",filter:"blur(120px)",opacity:0.12, pointerEvents:"none",
-          }}/>
-          <div style={{
-            position:"absolute",bottom:-150,left:-80,width:500,height:500,
-            background:pc.accent||"#06B6D4",
-            borderRadius:"50%",filter:"blur(100px)",opacity:0.08, pointerEvents:"none",
-          }}/>
+        {/* ── GENZ HERO — 2-col split: left=text, right=avatar ───────────── */}
+        <div style={{background:heroBg,position:"relative",overflow:"hidden",minHeight:520}}>
+          {/* Dot grid */}
+          <div style={{position:"absolute",inset:0,opacity:0.04,
+            backgroundImage:"radial-gradient(circle,#fff 1px,transparent 1px)",backgroundSize:"30px 30px",pointerEvents:"none"}}/>
+          {/* Big accent glows */}
+          <div style={{position:"absolute",top:-200,left:-100,width:700,height:700,
+            background:aConfig?.palette?.accent||C.purple,borderRadius:"50%",
+            filter:"blur(130px)",opacity:0.2,pointerEvents:"none"}}/>
+          <div style={{position:"absolute",bottom:-200,right:-100,width:600,height:600,
+            background:pc.accent||C.teal,borderRadius:"50%",
+            filter:"blur(110px)",opacity:0.15,pointerEvents:"none"}}/>
+          {/* Diagonal line accents */}
+          <div style={{position:"absolute",top:0,right:"38%",width:1,height:"100%",
+            background:"linear-gradient(180deg,transparent,rgba(255,255,255,0.06),transparent)",pointerEvents:"none"}}/>
 
-          <div style={{position:"relative",maxWidth:900,margin:"0 auto"}}>
+          <div style={{position:"relative",maxWidth:1100,margin:"0 auto",
+            padding:"80px 40px 90px",display:"flex",alignItems:"center",
+            gap:48,flexWrap:"wrap"}}>
 
-            {/* Archetype tagline pill */}
-            {aConfig?.heroTagline&&(
+            {/* ── LEFT: Text content ── */}
+            <div style={{flex:"1 1 380px",minWidth:0}}>
+              {/* Role label pill */}
               <div style={{
-                display:"inline-flex",alignItems:"center",gap:8,
-                marginBottom:28,
-                background:"rgba(255,255,255,0.06)",
-                backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",
-                padding:"7px 20px",borderRadius:99,
-                border:"1px solid rgba(255,255,255,0.14)",
-                boxShadow:"0 4px 20px rgba(0,0,0,0.3)",
+                display:"inline-flex",alignItems:"center",gap:8,marginBottom:20,
+                background:`${aConfig?.palette?.accent||C.purple}18`,
+                border:`1px solid ${aConfig?.palette?.accent||C.purple}40`,
+                padding:"6px 16px",borderRadius:99,
+                backdropFilter:"blur(12px)",
               }}>
-                <span style={{fontSize:14}}>{aConfig.icon}</span>
-                <span style={{fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.85)",letterSpacing:0.5,fontStyle:"italic"}}>
-                  {aConfig.heroTagline}
+                <span style={{fontSize:13}}>{pc.icon}</span>
+                <span style={{fontSize:11,fontWeight:800,
+                  color:aConfig?.palette?.accent||C.purple,
+                  textTransform:"uppercase",letterSpacing:1.5}}>
+                  {ud.keyword||pc.label}
                 </span>
               </div>
-            )}
 
-            <div style={{display:"flex",gap:40,alignItems:"center",flexWrap:"wrap"}}>
-              {/* Floating avatar card */}
-              <div style={{position:"relative",flexShrink:0}}>
-                {/* Outer glow ring */}
+              {/* Big name — GenZ style */}
+              <h1 style={{
+                fontSize:clamp(36,5.8,68),fontWeight:900,
+                margin:"0 0 8px",lineHeight:1.0,letterSpacing:"-0.03em",
+                color:"rgba(255,255,255,0.92)",
+              }}>
+                Hi, I'm <span style={{
+                  background:`linear-gradient(135deg, ${aConfig?.palette?.accent||C.purple}, ${pc.accent||C.teal})`,
+                  WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",
+                  backgroundClip:"text",
+                }}>
+                  {(ud.displayName||"").split(" ")[0]}
+                </span>
+              </h1>
+              {/* Full name subtitle */}
+              {(ud.displayName||"").split(" ").length>1&&(
+                <div style={{fontSize:clamp(18,2.5,28),fontWeight:700,
+                  color:"rgba(255,255,255,0.45)",marginBottom:16,letterSpacing:"-0.01em"}}>
+                  {ud.displayName}
+                </div>
+              )}
+
+              {/* Archetype tagline */}
+              {aConfig?.heroTagline&&(
+                <p style={{fontSize:14,fontStyle:"italic",
+                  color:"rgba(255,255,255,0.4)",marginBottom:8,fontWeight:500}}>
+                  {aConfig.heroTagline}
+                </p>
+              )}
+
+              {/* Bio summary */}
+              <p style={{
+                fontSize:14,color:"rgba(255,255,255,0.5)",
+                lineHeight:1.9,maxWidth:480,margin:"0 0 24px",
+              }}>
+                {summary||archetypeSummary||`${pc.label} building real skills on Capabilio Arena.`}
+              </p>
+
+              {/* Location */}
+              {ud.location&&(
                 <div style={{
-                  position:"absolute",inset:-4,borderRadius:"50%",
-                  background:`conic-gradient(from 180deg, ${aConfig?.palette?.accent||"#3B82F6"}, rgba(255,255,255,0.1), ${aConfig?.palette?.accent||"#3B82F6"})`,
-                  filter:"blur(2px)",opacity:0.7,
+                  display:"inline-flex",alignItems:"center",gap:5,
+                  marginBottom:20,
+                  background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.10)",
+                  padding:"4px 14px",borderRadius:99,fontSize:12,
+                  color:"rgba(255,255,255,0.45)",fontWeight:500,
+                }}>
+                  📍 {ud.location}
+                </div>
+              )}
+
+              {/* CTA Buttons */}
+              <div style={{display:"flex",gap:12,flexWrap:"wrap",alignItems:"center",marginBottom:32}}>
+                {ud.linkedInUrl&&(
+                  <a href={ud.linkedInUrl} target="_blank" rel="noreferrer" style={{
+                    display:"inline-flex",alignItems:"center",gap:8,
+                    padding:"12px 24px",borderRadius:99,
+                    background:`linear-gradient(135deg,${aConfig?.palette?.accent||C.purple},${pc.accent||C.teal})`,
+                    color:"#fff",fontSize:13,fontWeight:800,textDecoration:"none",
+                    boxShadow:`0 8px 24px ${aConfig?.palette?.accent||C.purple}40`,
+                    letterSpacing:0.3,
+                  }}>
+                    <span style={{fontWeight:900}}>in</span> LinkedIn ↗
+                  </a>
+                )}
+                {(ud.githubUrl||ud.githubUsername)&&(
+                  <a href={ud.githubUrl||`https://github.com/${ud.githubUsername}`} target="_blank" rel="noreferrer" style={{
+                    display:"inline-flex",alignItems:"center",gap:8,
+                    padding:"11px 22px",borderRadius:99,
+                    background:"rgba(255,255,255,0.07)",
+                    border:"1.5px solid rgba(255,255,255,0.20)",
+                    color:"#fff",fontSize:13,fontWeight:700,textDecoration:"none",
+                    backdropFilter:"blur(10px)",
+                  }}>
+                    ⌥ GitHub ↗
+                  </a>
+                )}
+                {(ud.portfolioUrl||ud.websiteUrl)&&(
+                  <a href={ud.portfolioUrl||ud.websiteUrl} target="_blank" rel="noreferrer" style={{
+                    display:"inline-flex",alignItems:"center",gap:8,
+                    padding:"11px 22px",borderRadius:99,
+                    background:"rgba(255,255,255,0.07)",
+                    border:"1.5px solid rgba(255,255,255,0.18)",
+                    color:"#fff",fontSize:13,fontWeight:700,textDecoration:"none",
+                    backdropFilter:"blur(10px)",
+                  }}>
+                    🌐 Website ↗
+                  </a>
+                )}
+              </div>
+
+              {/* Tech stack icons strip */}
+              {skills.length>0&&(
+                <div>
+                  <div style={{fontSize:10,fontWeight:800,color:"rgba(255,255,255,0.3)",
+                    textTransform:"uppercase",letterSpacing:2,marginBottom:12}}>
+                    Technologies I work with
+                  </div>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+                    {skills.slice(0,10).map((s,i)=>{
+                      const icon=getSkillIcon(s.skill)
+                      const accent=aConfig?.palette?.accent||C.purple
+                      return (
+                        <div key={i} title={s.skill} style={{
+                          width:40,height:40,borderRadius:12,
+                          background:"rgba(255,255,255,0.07)",
+                          border:`1px solid rgba(255,255,255,0.12)`,
+                          display:"flex",alignItems:"center",justifyContent:"center",
+                          flexShrink:0,transition:"transform 0.15s",
+                        }}>
+                          {icon
+                            ? <img src={icon} alt={s.skill}
+                                style={{width:24,height:24,borderRadius:4}}
+                                onError={e=>{e.target.style.display="none";if(e.target.nextSibling)e.target.nextSibling.style.display="flex"}}/>
+                            : null}
+                          <div style={{
+                            width:24,height:24,borderRadius:6,
+                            background:`${accent}22`,
+                            display:icon?"none":"flex",alignItems:"center",justifyContent:"center",
+                            fontSize:9,fontWeight:900,color:accent}}>
+                            {s.skill.slice(0,2).toUpperCase()}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── RIGHT: Avatar with glow rings + floating stat card ── */}
+            <div style={{flex:"0 0 auto",display:"flex",flexDirection:"column",alignItems:"center",gap:20}}>
+              {/* Avatar ring stack */}
+              <div style={{position:"relative",width:220,height:220}}>
+                {/* Outer pulse ring */}
+                <div style={{
+                  position:"absolute",inset:-16,borderRadius:"50%",
+                  border:`2px solid ${aConfig?.palette?.accent||C.purple}25`,
                 }}/>
                 <div style={{
-                  position:"relative",width:128,height:128,borderRadius:"50%",padding:3,
-                  background:`linear-gradient(135deg, ${aConfig?.palette?.accent||"#3B82F6"} 0%, rgba(255,255,255,0.15) 100%)`,
-                  boxShadow:`0 0 60px ${aConfig?.palette?.accent||"#3B82F6"}44, 0 8px 32px rgba(0,0,0,0.6)`,
+                  position:"absolute",inset:-8,borderRadius:"50%",
+                  border:`2px solid ${aConfig?.palette?.accent||C.purple}40`,
+                }}/>
+                {/* Glow backdrop */}
+                <div style={{
+                  position:"absolute",inset:0,borderRadius:"50%",
+                  background:`radial-gradient(circle, ${aConfig?.palette?.accent||C.purple}30 0%, transparent 70%)`,
+                  filter:"blur(20px)",
+                }}/>
+                {/* Avatar */}
+                <div style={{
+                  position:"absolute",inset:0,borderRadius:"50%",padding:4,
+                  background:`linear-gradient(135deg,${aConfig?.palette?.accent||C.purple},${pc.accent||C.teal},${aConfig?.palette?.accent||C.purple})`,
+                  boxShadow:`0 0 80px ${aConfig?.palette?.accent||C.purple}50,0 20px 60px rgba(0,0,0,0.7)`,
                 }}>
-                  <Avatar name={ud.displayName} url={ud.avatarUrl} size={122} fontSize={38}/>
+                  <div style={{borderRadius:"50%",overflow:"hidden",width:"100%",height:"100%"}}>
+                    <Avatar name={ud.displayName} url={ud.avatarUrl} size={212} fontSize={64}/>
+                  </div>
                 </div>
                 {/* Tier badge */}
                 <div style={{
-                  position:"absolute",bottom:2,right:-8,
-                  background:tier.color,color:"#fff",fontSize:9,fontWeight:900,
-                  padding:"4px 10px",borderRadius:99,
+                  position:"absolute",bottom:8,left:"50%",transform:"translateX(-50%)",
+                  background:tier.color,color:"#fff",fontSize:10,fontWeight:900,
+                  padding:"5px 16px",borderRadius:99,whiteSpace:"nowrap",
                   border:"2px solid rgba(0,0,0,0.5)",
-                  boxShadow:`0 4px 12px ${tier.color}55`,
-                  whiteSpace:"nowrap",letterSpacing:0.8,textTransform:"uppercase",
+                  boxShadow:`0 4px 16px ${tier.color}60`,letterSpacing:1,textTransform:"uppercase",
                 }}>
-                  {tier.label}
+                  ⚡ {tier.label}
                 </div>
               </div>
 
-              {/* Identity block — right side */}
-              <div style={{flex:1,minWidth:260}}>
-                {/* Location / availability badge */}
-                {ud.location&&(
-                  <div style={{
-                    display:"inline-flex",alignItems:"center",gap:5,
-                    marginBottom:10,
-                    background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.12)",
-                    padding:"3px 12px",borderRadius:99,fontSize:11,
-                    color:"rgba(255,255,255,0.55)",fontWeight:500,
-                  }}>
-                    📍 {ud.location}
-                  </div>
-                )}
-
-                <h1 style={{
-                  fontSize:clamp(36,5.5,58),fontWeight:900,color:"#fff",margin:"0 0 6px",
-                  letterSpacing:"-0.04em",lineHeight:1.0,
-                  textShadow:"0 4px 30px rgba(0,0,0,0.5)",
-                }}>
-                  {ud.displayName}
-                </h1>
-                {ud.keyword&&(
-                  <p style={{
-                    fontSize:17,color:"rgba(255,255,255,0.6)",
-                    margin:"0 0 18px",fontWeight:500,letterSpacing:0.3,
-                    display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",
-                  }}>
-                    {ud.keyword}
-                    {aConfig&&(
-                      <span style={{
-                        fontSize:11,fontWeight:800,
-                        color:aConfig.palette.accent,
-                        background:`${aConfig.palette.accent}18`,
-                        padding:"3px 12px",borderRadius:99,
-                        border:`1px solid ${aConfig.palette.accent}35`,
-                        letterSpacing:0.5,
-                      }}>
-                        {aConfig.name}
-                      </span>
-                    )}
-                  </p>
-                )}
-
-                <p style={{
-                  fontSize:14,color:"rgba(255,255,255,0.5)",
-                  lineHeight:1.85,maxWidth:520,margin:"0 0 28px",
-                }}>
-                  {summary||archetypeSummary||`${pc.label} building career on Capabilio.`}
-                </p>
-
-                {/* Tech stack icon row — inspired by CodeCraft reference */}
-                {skills.length>0&&(
-                  <div style={{marginBottom:22}}>
-                    <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.35)",
-                      textTransform:"uppercase",letterSpacing:1.5,marginBottom:10}}>
-                      Technologies I work with
-                    </div>
-                    <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-                      {skills.slice(0,10).map((s,i)=>{
-                        const icon=getSkillIcon(s.skill)
-                        return (
-                          <div key={i} title={s.skill} style={{
-                            width:36,height:36,borderRadius:10,
-                            background:"rgba(255,255,255,0.08)",
-                            border:"1px solid rgba(255,255,255,0.14)",
-                            display:"flex",alignItems:"center",justifyContent:"center",
-                            backdropFilter:"blur(8px)",
-                            flexShrink:0,
-                          }}>
-                            {icon
-                              ? <img src={icon} alt={s.skill} style={{width:22,height:22,borderRadius:4}}
-                                  onError={e=>{e.target.style.display="none";e.target.nextSibling.style.display="block"}}/>
-                              : null}
-                            <span style={{fontSize:9,fontWeight:900,color:"rgba(255,255,255,0.7)",
-                              display:icon?"none":"block",lineHeight:1}}>
-                              {s.skill.slice(0,2).toUpperCase()}
-                            </span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Action links row */}
-                <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
-                  {ud.linkedInUrl&&(
-                    <a href={ud.linkedInUrl} target="_blank" rel="noreferrer"
-                      style={{
-                        display:"inline-flex",alignItems:"center",gap:7,
-                        padding:"10px 20px",borderRadius:99,
-                        background:"rgba(10,102,194,0.25)",
-                        border:"1px solid rgba(10,102,194,0.5)",
-                        color:"#fff",fontSize:12,fontWeight:700,textDecoration:"none",
-                        backdropFilter:"blur(10px)",letterSpacing:0.3,
-                      }}>
-                      <span style={{fontWeight:900,fontSize:13}}>in</span> LinkedIn ↗
-                    </a>
-                  )}
-                  {(ud.githubUrl||ud.githubUsername)&&(
-                    <a href={ud.githubUrl||`https://github.com/${ud.githubUsername}`} target="_blank" rel="noreferrer"
-                      style={{
-                        display:"inline-flex",alignItems:"center",gap:7,
-                        padding:"10px 20px",borderRadius:99,
-                        background:"rgba(255,255,255,0.08)",
-                        border:"1px solid rgba(255,255,255,0.18)",
-                        color:"#fff",fontSize:12,fontWeight:700,textDecoration:"none",
-                        backdropFilter:"blur(10px)",
-                      }}>
-                      ⌥ GitHub ↗
-                    </a>
-                  )}
-                  {(ud.portfolioUrl||ud.websiteUrl)&&(
-                    <a href={ud.portfolioUrl||ud.websiteUrl} target="_blank" rel="noreferrer"
-                      style={{
-                        display:"inline-flex",alignItems:"center",gap:7,
-                        padding:"10px 20px",borderRadius:99,
-                        background:"rgba(255,255,255,0.08)",
-                        border:"1px solid rgba(255,255,255,0.18)",
-                        color:"#fff",fontSize:12,fontWeight:700,textDecoration:"none",
-                        backdropFilter:"blur(10px)",
-                      }}>
-                      🌐 Website ↗
-                    </a>
-                  )}
-                  <div style={{
-                    display:"inline-flex",alignItems:"center",gap:7,
-                    padding:"10px 20px",borderRadius:99,
-                    background:`${tier.color}1a`,
-                    border:`1px solid ${tier.color}45`,
-                    color:tier.color,fontSize:12,fontWeight:800,
-                    boxShadow:`0 0 16px ${tier.color}28`,letterSpacing:0.2,
-                  }}>
-                    ⚡ {ud.eloRating} ELO · {tier.label}
-                  </div>
+              {/* Floating ELO card */}
+              <div style={{
+                background:"rgba(255,255,255,0.06)",
+                backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",
+                border:`1px solid rgba(255,255,255,0.12)`,
+                borderTop:`2px solid ${aConfig?.palette?.accent||C.purple}`,
+                borderRadius:16,padding:"14px 24px",textAlign:"center",
+                boxShadow:`0 8px 32px rgba(0,0,0,0.4),0 0 0 1px rgba(255,255,255,0.04)`,
+                minWidth:180,
+              }}>
+                <div style={{fontSize:10,fontWeight:800,color:"rgba(255,255,255,0.35)",
+                  textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>Arena Rating</div>
+                <div style={{fontSize:32,fontWeight:900,color:aConfig?.palette?.accent||C.purple,
+                  fontFamily:"'DM Mono',monospace",lineHeight:1,
+                  textShadow:`0 0 30px ${aConfig?.palette?.accent||C.purple}80`}}>
+                  {ud.eloRating}
+                </div>
+                <div style={{fontSize:11,color:tier.color,fontWeight:700,marginTop:4}}>
+                  {tier.label} Tier
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* ── STATS BAR ───────────────────────────────────────────────────── */}
+        {/* ── STATS BAR — horizontal chips below hero ──────────────────────── */}
         <div style={{
-          background:"rgba(6,9,18,0.85)",
-          backdropFilter:"blur(20px)",
-          WebkitBackdropFilter:"blur(20px)",
+          background:"rgba(7,8,15,0.92)",
+          backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",
           borderBottom:`1px solid rgba(255,255,255,0.07)`,
-          borderTop:`1px solid rgba(255,255,255,0.04)`,
-          padding:"20px 32px",
-          marginTop:-2,
+          borderTop:`1px solid rgba(255,255,255,0.05)`,
+          padding:"20px 40px",
         }}>
-          <div style={{maxWidth:900,margin:"0 auto",display:"flex",gap:10,flexWrap:"wrap",justifyContent:"center"}}>
-            <StatChip icon="⚡" value={ud.eloRating} label="ELO Score" color={tier.color}/>
+          <div style={{maxWidth:1100,margin:"0 auto",display:"flex",gap:10,flexWrap:"wrap",justifyContent:"center"}}>
             <StatChip icon="✅" value={tasks.length} label="Challenges" color={C.green}/>
             <StatChip icon="🔥" value={ud.arenaStreak||0} label="Day Streak" color={C.amber}/>
             {interviews.length>0&&<StatChip icon="🎤" value={interviews.length} label="Interviews" color={C.purple}/>}
@@ -1529,7 +1552,7 @@ export default function Portfolio({ username: usernameProp }) {
       </div>
 
       {/* ── Main content ─────────────────────────────────────────────────────── */}
-      <div style={{maxWidth:900,margin:"36px auto",padding:"0 24px 80px",display:"flex",flexDirection:"column",gap:24}}>
+      <div style={{maxWidth:1100,margin:"36px auto",padding:"0 32px 80px",display:"flex",flexDirection:"column",gap:24}}>
 
         {/* ══ ARCHETYPE ROLE CONTEXT BANNER ══════════════════════════════════ */}
         {aConfig&&(
