@@ -939,7 +939,7 @@ function EmptyWorkstation({ domain, onStartMission }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // EVALUATION RESULT MODAL — premium redesign
 // ─────────────────────────────────────────────────────────────────────────────
-function EvaluationModal({ result, domain, onClose }) {
+function EvaluationModal({ result, domain, onClose, userEmail }) {
   if (!result) return null
 
   const tier       = getTier(result.newElo || 0)
@@ -967,15 +967,40 @@ function EvaluationModal({ result, domain, onClose }) {
         score: Math.min(98, Math.max(score - 5 + (i * 7 % 20) - 10, timedOut ? 15 : 35)),
       })))
 
+  const wmLabel = userEmail || "capabilio.online"
+  const wmDate  = new Date().toISOString().slice(0, 10)
+
   return (
     <div
       style={{ position:"fixed", inset:0, zIndex:900, background:"rgba(0,0,0,0.65)", backdropFilter:"blur(10px)", display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}
       onClick={onClose}
     >
       <div
-        style={{ background:"#FFFFFF", borderRadius:24, width:"100%", maxWidth:440, boxShadow:"0 32px 80px rgba(0,0,0,0.25)", overflow:"hidden", fontFamily:"'DM Sans',sans-serif" }}
+        style={{ background:"#FFFFFF", borderRadius:24, width:"100%", maxWidth:460, maxHeight:"92vh", overflowY:"auto", boxShadow:"0 32px 80px rgba(0,0,0,0.25)", fontFamily:"'DM Sans',sans-serif", position:"relative", userSelect:"none" }}
         onClick={e => e.stopPropagation()}
+        onCopy={e => e.preventDefault()}
       >
+        {/* Diagonal watermark — visible in screenshots, impossible to remove */}
+        <div aria-hidden="true" style={{ position:"absolute", inset:0, pointerEvents:"none", overflow:"hidden", borderRadius:24, zIndex:1 }}>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} style={{
+              position:"absolute",
+              left: "-20%", top: `${i * 14 - 10}%`,
+              width:"160%",
+              fontSize:11, fontWeight:700, letterSpacing:2,
+              color:"rgba(0,0,0,0.055)",
+              whiteSpace:"nowrap",
+              transform:"rotate(-20deg)",
+              fontFamily:"'DM Mono',monospace",
+              userSelect:"none",
+            }}>
+              {`${wmLabel} · ${wmDate} · Capabilio Arena  `.repeat(4)}
+            </div>
+          ))}
+        </div>
+
+        {/* Actual modal content sits above watermark */}
+        <div style={{ position:"relative", zIndex:2 }}>
 
         {/* ══ INTEGRITY FLAG HEADER (replaces normal header when cheating detected) ══ */}
         {isFlagged ? (
@@ -1120,6 +1145,41 @@ function EvaluationModal({ result, domain, onClose }) {
                 })}
               </div>
 
+              {/* ── Validation check breakdown (shown when checks ran) ── */}
+              {result.validationTotal > 0 && (
+                <div style={{ marginTop:14, border:`1px solid ${T.border}`, borderRadius:12, overflow:"hidden" }}>
+                  <div style={{ padding:"8px 14px", background:T.bg2, borderBottom:`1px solid ${T.border}`, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                    <span style={{ fontSize:9, fontWeight:800, color:T.ink4, letterSpacing:1.5, textTransform:"uppercase" }}>🎯 Validation Results</span>
+                    <span style={{ fontSize:10, fontWeight:800, fontFamily:"'DM Mono',monospace", color: result.validationPassCount === result.validationTotal ? T.green : T.amber }}>
+                      {result.validationPassCount}/{result.validationTotal} passing
+                    </span>
+                  </div>
+                  {(result.validationChecks || []).map((v, i) => (
+                    <div key={i} style={{ padding:"8px 14px", borderBottom: i < (result.validationChecks.length-1) ? `1px solid ${T.border}` : "none", background: v.passed ? "#F0FDF4" : "#FEF2F2" }}>
+                      <div style={{ display:"flex", alignItems:"flex-start", gap:8 }}>
+                        <span style={{ fontSize:12, flexShrink:0, marginTop:1 }}>{v.passed ? "✅" : "❌"}</span>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontSize:11, fontWeight:700, color: v.passed ? "#15803D" : "#DC2626" }}>{v.input}</div>
+                          {!v.passed && v.actual && (
+                            <div style={{ fontSize:10, color:"#B91C1C", marginTop:3, lineHeight:1.4, fontFamily:"'DM Mono',monospace", wordBreak:"break-word" }}>
+                              {String(v.actual).slice(0, 200)}
+                            </div>
+                          )}
+                          {!v.passed && v.expected && (
+                            <div style={{ fontSize:10, color:T.ink4, marginTop:2 }}>Expected: <span style={{ fontFamily:"'DM Mono',monospace", color:T.ink3 }}>{String(v.expected).slice(0,100)}</span></div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {result.validationsRun > 0 && (
+                    <div style={{ padding:"6px 14px", background:T.bg, borderTop:`1px solid ${T.border}`, fontSize:9.5, color:T.ink4 }}>
+                      Validate was run <strong style={{ color:T.ink3 }}>{result.validationsRun}</strong> time{result.validationsRun > 1 ? "s" : ""} before submitting
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* AI Feedback */}
               {(result.feedback || result.summary || result.tip) && (
                 <div style={{ marginTop:14, padding:"12px 14px", background:domColor+"08", border:`1px solid ${domColor}20`, borderRadius:12 }}>
@@ -1155,24 +1215,25 @@ function EvaluationModal({ result, domain, onClose }) {
                   {result.strengths?.length > 0 && (
                     <div style={{ flex:1, padding:"10px 12px", background:"#F0FDF4", borderRadius:10, border:"1px solid #BBF7D0" }}>
                       <div style={{ fontSize:9, fontWeight:800, color:"#166534", letterSpacing:1, marginBottom:5 }}>✓ STRENGTHS</div>
-                      {result.strengths.slice(0,2).map((s,i) => <div key={i} style={{ fontSize:10, color:"#15803d", marginBottom:3, lineHeight:1.4 }}>• {s}</div>)}
+                      {result.strengths.slice(0,3).map((s,i) => <div key={i} style={{ fontSize:10, color:"#15803d", marginBottom:3, lineHeight:1.4 }}>• {s}</div>)}
                     </div>
                   )}
                   {result.improvements?.length > 0 && (
                     <div style={{ flex:1, padding:"10px 12px", background:"#FFFBEB", borderRadius:10, border:"1px solid #FDE68A" }}>
-                      <div style={{ fontSize:9, fontWeight:800, color:"#92400e", letterSpacing:1, marginBottom:5 }}>→ IMPROVE</div>
-                      {result.improvements.slice(0,2).map((s,i) => <div key={i} style={{ fontSize:10, color:"#78350f", marginBottom:3, lineHeight:1.4 }}>• {s}</div>)}
+                      <div style={{ fontSize:9, fontWeight:800, color:"#92400e", letterSpacing:1, marginBottom:5 }}>→ WHAT WENT WRONG</div>
+                      {result.improvements.slice(0,4).map((s,i) => <div key={i} style={{ fontSize:10, color:"#78350f", marginBottom:4, lineHeight:1.45 }}>• {s}</div>)}
                     </div>
                   )}
                 </div>
               )}
 
-              <button onClick={onClose} style={{ width:"100%", marginTop:16, padding:"13px", background:domColor, border:"none", borderRadius:12, color:"#fff", fontSize:13, fontWeight:800, cursor:"pointer", fontFamily:"inherit", letterSpacing:-0.2 }}>
+              <button onClick={onClose} style={{ width:"100%", marginTop:16, padding:"13px", background:domColor, border:"none", borderRadius:12, color:"#fff", fontSize:13, fontWeight:800, cursor:"pointer", fontFamily:"inherit", letterSpacing:-0.2, userSelect:"none" }}>
                 View in History →
               </button>
             </div>
           </>
         )}
+        </div>{/* end zIndex:2 content wrapper */}
       </div>
     </div>
   )
@@ -2898,7 +2959,20 @@ function ArenaDomain({ user, userData, onBack }) {
     return { isCheat, flags, verdict }
   }
 
-  const handleSubmit = async (timedOut = false) => {
+  const handleSubmit = async (timedOutOrPayload = false, _unused = null) => {
+    // handleSubmit is called two ways:
+    //   1. timeout auto-submit: handleSubmit(true)
+    //   2. manual submit from ChallengeShell: handleSubmit({ validation, passCount, totalChecks, hintsUsed, validationsRun })
+    const timedOut = timedOutOrPayload === true
+    const validationPayload = (timedOutOrPayload && typeof timedOutOrPayload === "object") ? timedOutOrPayload : null
+
+    // Extract real validation results if available
+    const valChecks    = validationPayload?.validation || []
+    const realChecks   = valChecks.filter(v => !v.info)
+    const valPassCount = validationPayload?.passCount ?? realChecks.filter(v => v.passed).length
+    const valTotal     = validationPayload?.totalChecks ?? realChecks.length
+    const failedChecks = realChecks.filter(v => !v.passed)
+
     // ── For multi-workstation missions, aggregate all workstation code ──
     const isMulti = activeMission?.isMultiWorkstation && Object.keys(codeMap).length > 0
     const submissionAnswer = isMulti ? codeMap : code
@@ -2935,8 +3009,8 @@ function ArenaDomain({ user, userData, onBack }) {
     const keystrokeCount = behavioral.keystrokeCount || 0
     const timeOnTaskSecs = behavioral.timeOnTaskSecs || 0
     const starterLen     = behavioral.starterLen     || 0
-    const hintsUsed      = behavioral.hintsUsed      || 0
-    const validationsRun = behavioral.validationsRun || 0
+    const hintsUsed      = validationPayload?.hintsUsed ?? behavioral.hintsUsed ?? 0
+    const validationsRun = validationPayload?.validationsRun ?? behavioral.validationsRun ?? 0
     const typedLen       = Math.max(0, allContent.length - starterLen)
     // Suspect if >60% of non-starter code was pasted and keystrokes are low
     const pasteRatio     = typedLen > 0 ? Math.round((pasteCount * 80) / Math.max(typedLen, 1) * 100) / 100 : 0
@@ -2960,6 +3034,13 @@ function ArenaDomain({ user, userData, onBack }) {
             streak,
             challengeType: isDSA ? "dsa" : "domain",
             timedOut,
+            // Validation context — gives AI ground truth about what actually passed/failed
+            validationResults: {
+              passCount: valPassCount,
+              totalChecks: valTotal,
+              passRate: valTotal > 0 ? valPassCount / valTotal : null,
+              failedChecks: failedChecks.map(f => ({ label: f.input, error: f.actual || f.expected })),
+            },
             // Behavioral signals — used by AI to give honest, personalised feedback
             behavioral: { pasteCount, keystrokeCount, timeOnTaskSecs, pasteRatio, typedLen, hintsUsed, validationsRun },
           }),
@@ -2991,8 +3072,19 @@ function ArenaDomain({ user, userData, onBack }) {
     ]
     const activeRubric = isDSA ? DSA_RUBRIC : (domain.rubric || DSA_RUBRIC)
 
-    // ── Final score: AI wins, fallback to line-count ──
-    const finalScore = aiReview?.score ?? baseScore
+    // ── Final score: Validation pass rate is ground truth, AI adds nuance ──
+    // If the workstation ran validation checks, those results are authoritative.
+    // A 3/5 pass rate means at most ~60% — the AI score cannot inflate this.
+    const validationScore = valTotal > 0
+      ? Math.round((valPassCount / valTotal) * 100)
+      : null
+
+    // Blend: validation score is the ceiling. AI can lower it further (quality issues)
+    // but cannot raise it above what the checks actually passed.
+    const rawFinalScore = aiReview?.score ?? baseScore
+    const finalScore = validationScore !== null
+      ? Math.min(validationScore, rawFinalScore)   // validation caps the score
+      : rawFinalScore
 
     // ── Rubric rows: use AI-provided breakdown if available, else derive deterministically ──
     // Never use Math.random — that produces scores inconsistent with the summary and
@@ -3054,13 +3146,24 @@ function ArenaDomain({ user, userData, onBack }) {
         ? "Focus on Time Complexity and Edge Cases — these are what interviewers check first."
         : `For ${domain.label} roles, recruiters look for: ${activeRubric.slice(0,2).map(r => r.criterion).join(", ")}, and clear professional reasoning.`)
 
+    // Build a contextual summary that references the specific failed checks
+    const failedCheckSummary = failedChecks.length > 0
+      ? ` ${failedChecks.length} check${failedChecks.length > 1 ? "s" : ""} failed: ${failedChecks.map(f => f.input).join("; ")}.`
+      : ""
+    const passRateSummary = valTotal > 0
+      ? ` You passed ${valPassCount}/${valTotal} validation checks.`
+      : ""
+    const attemptsSummary = validationsRun > 1
+      ? ` You ran validation ${validationsRun} time${validationsRun > 1 ? "s" : ""} before submitting.`
+      : ""
+
     const fallbackSummary = timedOut
-      ? `Time's up on "${mTitle}". A partial score has been awarded based on the work submitted. ${category ? `For ${category} challenges, the most important areas to complete are the core deliverable and the reasoning behind your approach.` : "Focus on completing the core deliverable next time."}`
+      ? `Time's up on "${mTitle}".${passRateSummary}${failedCheckSummary} A partial score has been awarded based on work completed.`
       : finalScore >= 80
-        ? `Strong submission on "${mTitle}". ${category ? `Your ${category} work demonstrates solid professional competence — the depth of approach and clarity of execution are what recruiters look for.` : "Clean logic and solid execution."}`
+        ? `Strong submission on "${mTitle}".${passRateSummary} ${category ? `Your ${category} work demonstrates solid professional competence.` : "Clean logic and solid execution."}`
         : finalScore >= 60
-          ? `Good attempt on "${mTitle}". ${category ? `Your ${category} solution covers the core requirement but has room for improvement in ${activeRubric.slice(1,2).map(r=>r.criterion).join(" and ")}.` : "Core requirement met — focus on edge cases and depth next time."}`
-          : `"${mTitle}" needs more work. ${category ? `For ${category} challenges, the key is ${activeRubric[0]?.criterion || "correctness"} first — ensure your solution handles the primary scenario completely before optimising.` : "Ensure the core requirement is met before attempting optimisations."}`
+          ? `Good attempt on "${mTitle}".${passRateSummary}${failedCheckSummary}${attemptsSummary} ${category ? `Your ${category} solution covers the core requirement but those failing checks held back your score.` : "Core requirement met — fix the failing checks to reach a strong solve."}`
+          : `"${mTitle}" needs more work.${passRateSummary}${failedCheckSummary}${attemptsSummary} ${category ? `For ${category} challenges, focus on the failing checks above before submitting — each one costs significant score.` : "Ensure the core validation requirements are met before submitting."}`
 
     // ── Integrity override — build cheat-specific feedback ──
     const integritySummary = integrity.isCheat
@@ -3071,6 +3174,13 @@ function ArenaDomain({ user, userData, onBack }) {
         `Capabilio measures genuine professional competence — copy-pasting from an AI tool or Stack Overflow won't build the muscle memory that holds up in a real interview. ` +
         `Work through the problem from scratch to earn real ELO and develop lasting skills.`
       : null
+
+    // Build improvements list that explicitly names the failing checks
+    const validationImprovements = failedChecks.map(f =>
+      `Fix "${f.input}"${f.actual ? `: ${String(f.actual).slice(0, 120)}` : ""}`
+    )
+    const baseImprovements = aiReview?.improvements || (finalScore < 80 ? [`Deepen ${activeRubric[1]?.criterion || "quality"}`, `Review ${category || domain.label} best practices`] : [])
+    const mergedImprovements = [...validationImprovements, ...baseImprovements.filter(i => !validationImprovements.some(v => v.includes(i.slice(0,15))))]
 
     const reviewResult = {
       score:          integrity.isCheat ? 0 : finalScore,
@@ -3084,12 +3194,17 @@ function ArenaDomain({ user, userData, onBack }) {
       strengths:      integrity.isCheat ? [] : (aiReview?.strengths || (finalScore >= 70 ? [`Completed the core ${category || "challenge"} objective`, "Showed structured thinking"] : [])),
       improvements:   integrity.isCheat
         ? ["Submit only work you wrote yourself", "Use the Brief and Hints to guide your thinking", "Build your skills through genuine practice"]
-        : (aiReview?.improvements || (finalScore < 80 ? [`Deepen ${activeRubric[1]?.criterion || "quality"}`, `Review ${category || domain.label} best practices`] : [])),
+        : mergedImprovements,
       tip:            integrity.isCheat ? null : (aiReview?.tip || fallbackTip),
       feedback:       integritySummary || aiReview?.summary || fallbackSummary,
       challengeType:  isDSA ? "dsa" : "domain",
       answer:         code,
       behavioral:     { pasteCount, keystrokeCount, timeOnTaskSecs, pasteRatio },
+      // Validation breakdown — shown in result modal
+      validationChecks: realChecks,
+      validationPassCount: valPassCount,
+      validationTotal:    valTotal,
+      validationsRun,
       // Integrity metadata — used by EvaluationModal for the red flag banner
       integrityFlag:  integrity.isCheat,
       integrityFlags: integrity.flags,
@@ -3406,7 +3521,7 @@ function ArenaDomain({ user, userData, onBack }) {
         </div>
       )}
 
-      {evalResult && <EvaluationModal result={evalResult} domain={domain} onClose={() => {
+      {evalResult && <EvaluationModal result={evalResult} domain={domain} userEmail={user?.email || user?.user_metadata?.email} onClose={() => {
         setEvalResult(null)
         setActiveMission(null)
         setActiveMissionSlot(null)

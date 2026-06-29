@@ -92,16 +92,26 @@ function ProofOverlay({ draft, mission, meta, validation, onClose }) {
 
 // ── Submit confirmation (spec §8.3 — shows what is at stake) ─────────────────
 function SubmitConfirm({ mission, meta, validation, hintsUsed, isPractice, onConfirm, onCancel }) {
-  const real = (validation || []).filter(v => !v.info)
+  const real   = (validation || []).filter(v => !v.info)
   const passed = real.filter(v => v.passed).length
+  const failed = real.filter(v => !v.passed)
+  // Dynamic ELO estimate based on validation pass rate
+  const maxElo = mission.eloGain || mission.eloReward || 12
+  const estimatedScore = real.length > 0 ? Math.round((passed / real.length) * 100) : null
+  const estimatedElo = isPractice ? 0
+    : estimatedScore === null ? maxElo                          // no validation → full stake
+    : estimatedScore >= 80   ? maxElo
+    : estimatedScore >= 60   ? Math.round(maxElo * 0.5)
+    : estimatedScore >= 40   ? Math.round(maxElo * 0.2)
+    : 3
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 960, background: "rgba(15,23,42,0.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-      <div style={{ background: "#fff", borderRadius: 16, width: 420, padding: "22px 24px", boxShadow: "0 24px 64px rgba(0,0,0,0.3)" }}>
+      <div style={{ background: "#fff", borderRadius: 16, width: 440, padding: "22px 24px", boxShadow: "0 24px 64px rgba(0,0,0,0.3)" }}>
         <div style={{ fontSize: 16, fontWeight: 900, color: T.ink, marginBottom: 4 }}>{meta.actions.submit}?</div>
         <div style={{ fontSize: 12, color: T.ink3, lineHeight: 1.6, marginBottom: 14 }}>
           Submitting freezes this attempt permanently — your work and its outputs become an immutable proof record. You cannot edit it afterwards.
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
             <span style={{ color: T.ink3 }}>Validation checks</span>
             <span style={{ fontWeight: 800, color: real.length === 0 ? T.ink4 : passed === real.length ? T.green : T.amber, fontFamily: "'DM Mono',monospace" }}>
@@ -113,15 +123,29 @@ function SubmitConfirm({ mission, meta, validation, hintsUsed, isPractice, onCon
             <span style={{ fontWeight: 800, color: T.ink2, fontFamily: "'DM Mono',monospace" }}>{hintsUsed}</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-            <span style={{ color: T.ink3 }}>ELO at stake</span>
-            <span style={{ fontWeight: 800, color: isPractice ? T.ink4 : T.green, fontFamily: "'DM Mono',monospace" }}>
-              {isPractice ? "unranked practice" : `+${mission.eloGain || mission.eloReward || 12} on strong solve`}
+            <span style={{ color: T.ink3 }}>Estimated ELO change</span>
+            <span style={{ fontWeight: 800, color: isPractice ? T.ink4 : estimatedElo > 0 ? T.green : T.red, fontFamily: "'DM Mono',monospace" }}>
+              {isPractice ? "unranked practice"
+                : estimatedScore === null ? `up to +${maxElo} (run Validate first)`
+                : `+${estimatedElo} pts (based on ${passed}/${real.length} checks)`}
             </span>
           </div>
         </div>
-        {real.length > 0 && passed < real.length && (
-          <div style={{ fontSize: 11, color: T.amber, background: T.amberBg, border: "1px solid #FDE68A", borderRadius: 8, padding: "8px 11px", marginBottom: 14, lineHeight: 1.5 }}>
-            ⚠️ {real.length - passed} check{real.length - passed === 1 ? "" : "s"} still failing. You can submit anyway — the score will reflect it.
+        {/* Show which specific checks are failing */}
+        {failed.length > 0 && (
+          <div style={{ fontSize: 11, color: T.red, background: T.redBg, border: `1px solid #FECACA`, borderRadius: 8, padding: "10px 12px", marginBottom: 14, lineHeight: 1.5 }}>
+            <div style={{ fontWeight: 800, marginBottom: 6 }}>❌ {failed.length} check{failed.length === 1 ? "" : "s"} failing — score will reflect this:</div>
+            {failed.map((f, i) => (
+              <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:5, marginBottom:3 }}>
+                <span style={{ flexShrink:0 }}>·</span>
+                <span><strong>{f.input}</strong>{f.actual ? ` — ${String(f.actual).slice(0,100)}` : ""}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {real.length > 0 && passed === real.length && (
+          <div style={{ fontSize: 11, color: T.green, background: T.greenBg, border: `1px solid #BBF7D0`, borderRadius: 8, padding: "8px 11px", marginBottom: 14, lineHeight: 1.5 }}>
+            ✅ All {real.length} checks passing — strong solve!
           </div>
         )}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
@@ -709,7 +733,7 @@ export default function ChallengeShell({
       {proofDraft && <ProofOverlay draft={proofDraft} mission={mission} meta={meta} validation={validation} onClose={() => setProofDraft(null)} />}
       {confirming && (
         <SubmitConfirm mission={mission} meta={meta} validation={validation} hintsUsed={revealedHints} isPractice={isPractice}
-          onConfirm={() => { setConfirming(false); onSubmit() }}
+          onConfirm={() => { setConfirming(false); onSubmit({ validation, passCount, totalChecks: realChecks.length, hintsUsed: revealedHints, validationsRun }) }}
           onCancel={() => setConfirming(false)} />
       )}
     </div>
