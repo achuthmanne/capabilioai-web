@@ -140,6 +140,48 @@ router.get("/jobs/list", async (req, res) => {
 // Keep legacy /jobs for backwards compat (redirects to /jobs/list)
 router.get("/jobs", (req, res) => res.redirect(`/api/jobs/list?${new URLSearchParams(req.query)}`))
 
+// ─── GET /api/jobs/applications — user's job applications (from Supabase) ─────
+router.get("/jobs/applications", async (req, res) => {
+  try {
+    const { supabaseAdmin } = await import("../lib/supabase.js")
+    const token = (req.headers.authorization || "").replace("Bearer ", "").trim()
+    if (!token) return res.json({ applications: [] })
+    const { data: { user } } = await supabaseAdmin.auth.getUser(token)
+    if (!user) return res.json({ applications: [] })
+    const { data } = await supabaseAdmin
+      .from("job_applications")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("applied_at", { ascending: false })
+      .limit(50)
+    return res.json({ applications: data || [] })
+  } catch (e) {
+    console.error("[jobs/applications]", e.message)
+    return res.json({ applications: [] })   // never 500 — return empty gracefully
+  }
+})
+
+// ─── GET /api/jobs/saved — user's saved jobs (from Supabase) ──────────────────
+router.get("/jobs/saved", async (req, res) => {
+  try {
+    const { supabaseAdmin } = await import("../lib/supabase.js")
+    const token = (req.headers.authorization || "").replace("Bearer ", "").trim()
+    if (!token) return res.json({ saved: [] })
+    const { data: { user } } = await supabaseAdmin.auth.getUser(token)
+    if (!user) return res.json({ saved: [] })
+    const { data } = await supabaseAdmin
+      .from("saved_jobs")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("saved_at", { ascending: false })
+      .limit(50)
+    return res.json({ saved: data || [] })
+  } catch (e) {
+    console.error("[jobs/saved]", e.message)
+    return res.json({ saved: [] })   // never 500 — return empty gracefully
+  }
+})
+
 // ─── GET /api/jobs/:id — fetch single job details ─────────────────────────────
 router.get("/jobs/:id", async (req, res) => {
   const { id } = req.params

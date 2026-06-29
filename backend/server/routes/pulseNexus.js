@@ -25,6 +25,7 @@
 import { Router }     from "express"
 import { supabaseAdmin } from "../lib/supabase.js"
 import { geminiSearch }  from "../lib/gemini.js"
+import { groq, GROQ_FAST } from "../lib/groq.js"
 
 const router = Router()
 
@@ -55,6 +56,35 @@ function optionalAuth(req, res, next) {
 // Called by Pulse page for market trends and technology news.
 // Gemini Search uses Google Search grounding — returns real, current data.
 // Cached per domain for 2 hours so we don't burn API quota on repeated page loads.
+// ── GET /pulse/mentors — top mentors filtered by domain ──────────────────────
+// Called by Arena page sidebar to show relevant mentors.
+router.get("/pulse/mentors", optionalAuth, async (req, res) => {
+  try {
+    const domain = (req.query.domain || "").toLowerCase().trim()
+    const limit  = Math.min(parseInt(req.query.limit) || 5, 20)
+
+    let q = supabaseAdmin
+      .from("mentor_profiles")
+      .select("id, hourly_rate_inr, rating, session_count, is_active, specializations, profiles(id,name,display_name,headline,profile_photo_url,current_company,current_role_title,elo_rating,keyword)")
+      .eq("is_active", true)
+      .order("rating", { ascending: false })
+      .limit(limit)
+
+    if (domain) {
+      // filter by domain keyword in specializations array or profiles.keyword
+      q = q.or(`specializations.cs.{"${domain}"}`)
+    }
+
+    const { data, error } = await q
+    if (error) throw error
+    return res.json({ mentors: data || [] })
+  } catch (e) {
+    console.error("[pulse/mentors]", e.message)
+    // Graceful fallback — never crash the Arena page over mentor sidebar
+    return res.json({ mentors: [] })
+  }
+})
+
 router.get("/pulse/market-insights", optionalAuth, async (req, res) => {
   const domain = (req.query.domain || "software engineering").toLowerCase().trim()
   const role   = req.query.role   || "Software Engineer"
@@ -86,9 +116,33 @@ Format as JSON:
   "outlook_reason": "1-2 sentences"
 }`
 
-    const { text } = await geminiSearch(prompt, { maxTokens: 2000 })
+    let text
+    const hasGemini = process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== "your_gemini_key_here"
 
-    // Extract JSON from Gemini response
+    if (hasGemini) {
+      try {
+        ;({ text } = await geminiSearch(prompt, { maxTokens: 2000 }))
+      } catch (geminiErr) {
+        console.warn("[pulse/market-insights] Gemini failed, falling back to Groq:", geminiErr.message)
+        text = null
+      }
+    }
+
+    // Groq fallback — no live search but still generates plausible structured data
+    if (!text) {
+      const completion = await groq.chat.completions.create({
+        model:       GROQ_FAST,
+        max_tokens:  1500,
+        temperature: 0.4,
+        messages: [
+          { role: "system", content: "You are a tech career market analyst. Respond ONLY with valid JSON, no markdown." },
+          { role: "user",   content: prompt },
+        ],
+      })
+      text = completion.choices[0]?.message?.content || "{}"
+    }
+
+    // Extract JSON from response
     const match = text.match(/```json\s*([\s\S]*?)```/) || text.match(/(\{[\s\S]*\})/)
     const data  = JSON.parse(match ? (match[1] || match[0]) : text)
 
@@ -101,7 +155,8 @@ Format as JSON:
     console.error("[pulse/market-insights]", e.message)
     // Return stale cache if available rather than a hard error
     if (cached) return res.json({ ...cached.data, cached: true, stale: true })
-    res.status(500).json({ error: e.message })
+    // Last resort: empty but valid response so UI doesn't crash
+    return res.json({ domain, role, trending_techs: [], hiring_companies: [], skills: { rising: [], declining: [] }, news: [], market_outlook: "Stable", outlook_reason: "Data temporarily unavailable.", generatedAt: new Date().toISOString(), _error: true })
   }
 })
 
