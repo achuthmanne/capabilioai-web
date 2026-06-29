@@ -18,39 +18,73 @@ import {
   LineChart, Line, XAxis, YAxis, Area, AreaChart,
 } from "recharts"
 
-// ─── Design tokens — full dark mode ────────────────────────────────────────────
+// ─── Design tokens — premium dark ────────────────────────────────────────────
 const C = {
-  bg:      "#0A0F1E",           // page background — deep navy
-  surface: "#1A1714",           // card surface — dark
-  surface2:"#1A1714",           // elevated card / inner panel
-  ink:     "#F2EDE4",           // primary text
-  ink2:    "#D6D0C8",           // secondary text
-  ink3:    "#A8A29E",           // muted text
-  ink4:    "#6B6560",           // very muted
-  border:  "rgba(255,255,255,0.07)", // subtle card border
-  border2: "rgba(255,255,255,0.12)", // slightly more visible
+  bg:      "#060912",           // near-black with deep blue tint
+  bgCard:  "rgba(255,255,255,0.035)", // glassmorphism card
+  bgCard2: "rgba(255,255,255,0.06)",  // elevated card
+  bgInner: "rgba(0,0,0,0.25)",  // inner panels / code blocks
+  ink:     "#F0EDE8",           // warm white
+  ink2:    "#C4C0BB",           // body text
+  ink3:    "#88847F",           // muted labels
+  ink4:    "#504C48",           // ghost
+  border:  "rgba(255,255,255,0.08)",
+  border2: "rgba(255,255,255,0.14)",
+  borderStr:"rgba(255,255,255,0.22)",
   blue:    "#3B82F6",
   blue2:   "#60A5FA",
   blue3:   "rgba(59,130,246,0.12)",
-  teal:    "#14B8A6",
-  teal2:   "#2DD4BF",
-  teal3:   "rgba(20,184,166,0.12)",
-  green:   "#22C55E",
-  green2:  "rgba(34,197,94,0.12)",
+  teal:    "#06B6D4",
+  teal2:   "#22D3EE",
+  teal3:   "rgba(6,182,212,0.12)",
+  green:   "#10B981",
+  green2:  "rgba(16,185,129,0.12)",
   amber:   "#F59E0B",
   amber2:  "rgba(245,158,11,0.12)",
   red:     "#EF4444",
   red2:    "rgba(239,68,68,0.12)",
-  purple:  "#A78BFA",
-  purple2: "rgba(167,139,250,0.12)",
-  shadow:  "0 1px 4px rgba(0,0,0,0.4)",
-  shadow2: "0 8px 32px rgba(0,0,0,0.5)",
+  purple:  "#8B5CF6",
+  purple2: "rgba(139,92,246,0.12)",
+  brand:   "#FF5701",
+  brand2:  "rgba(255,87,1,0.12)",
+  shadow:  "0 2px 8px rgba(0,0,0,0.45)",
+  shadow2: "0 16px 48px rgba(0,0,0,0.6)",
+  shadowGlow: (col) => `0 0 24px ${col}28, 0 2px 8px rgba(0,0,0,0.4)`,
+  // keep legacy surface aliases
+  surface: "rgba(255,255,255,0.035)",
+  surface2:"rgba(255,255,255,0.055)",
 }
 
 const PATH_CONFIG = {
-  student:      { label:"Student",      icon:"🎓", heroBg:"linear-gradient(135deg,#1E3A8A 0%,#1D4ED8 55%,#0F766E 100%)" },
-  professional: { label:"Professional", icon:"💼", heroBg:"linear-gradient(135deg,#1A1714 0%,#0F766E 60%,#14B8A6 100%)" },
-  authority:    { label:"Expert",       icon:"⭐", heroBg:"linear-gradient(135deg,#1E1B4B 0%,#2D1B69 50%,#0F766E 100%)" },
+  student:      { label:"Student",      icon:"🎓",
+    heroBg:"radial-gradient(ellipse at 25% 30%, rgba(29,78,216,0.55) 0%, transparent 55%), radial-gradient(ellipse at 75% 70%, rgba(6,182,212,0.35) 0%, transparent 50%), radial-gradient(ellipse at 60% 10%, rgba(139,92,246,0.2) 0%, transparent 40%), #060912",
+    accent:"#3B82F6" },
+  professional: { label:"Professional", icon:"💼",
+    heroBg:"radial-gradient(ellipse at 20% 40%, rgba(6,182,212,0.5) 0%, transparent 55%), radial-gradient(ellipse at 80% 20%, rgba(16,185,129,0.3) 0%, transparent 50%), radial-gradient(ellipse at 50% 80%, rgba(59,130,246,0.25) 0%, transparent 45%), #060912",
+    accent:"#06B6D4" },
+  authority:    { label:"Expert",       icon:"⭐",
+    heroBg:"radial-gradient(ellipse at 30% 20%, rgba(139,92,246,0.6) 0%, transparent 50%), radial-gradient(ellipse at 70% 70%, rgba(236,72,153,0.3) 0%, transparent 50%), radial-gradient(ellipse at 60% 40%, rgba(59,130,246,0.2) 0%, transparent 45%), #060912",
+    accent:"#8B5CF6" },
+}
+
+// ─── Skill icon mapping (skillicons.dev slugs) ────────────────────────────────
+const SKILL_SLUG = {
+  "python":"python","sql":"mysql","javascript":"js","typescript":"ts","react":"react",
+  "node.js":"nodejs","nodejs":"nodejs","java":"java","c++":"cpp","c#":"cs","go":"go",
+  "rust":"rust","swift":"swift","kotlin":"kotlin","dart":"dart","php":"php","ruby":"ruby",
+  "docker":"docker","kubernetes":"kubernetes","aws":"aws","gcp":"gcp","azure":"azure",
+  "postgresql":"postgres","mysql":"mysql","mongodb":"mongodb","redis":"redis","sqlite":"sqlite",
+  "tensorflow":"tensorflow","pytorch":"pytorch","pandas":"py","numpy":"py","scikit-learn":"sklearn",
+  "django":"django","flask":"flask","fastapi":"fastapi","spring":"spring","express":"express",
+  "vue":"vue","angular":"angular","svelte":"svelte","next.js":"nextjs","nextjs":"nextjs",
+  "tailwind":"tailwind","css":"css","html":"html","sass":"sass","graphql":"graphql",
+  "git":"git","linux":"linux","figma":"figma","firebase":"firebase","supabase":"supabase",
+  "nginx":"nginx","bash":"bash","r":"r","scala":"scala","elixir":"elixir",
+}
+function getSkillIcon(name) {
+  const slug = SKILL_SLUG[(name||"").toLowerCase().trim()]
+  if (!slug) return null
+  return `https://skillicons.dev/icons?i=${slug}&theme=dark`
 }
 
 const ELO_TIERS = [
@@ -61,6 +95,8 @@ const ELO_TIERS = [
   { min:1500, max:9999, label:"Elite",       color:"#DC2626" },
 ]
 const getTier = elo => ELO_TIERS.find(t => elo >= t.min && elo < t.max) || ELO_TIERS[0]
+// CSS clamp helper for responsive font sizes
+const clamp = (minPx, vw, maxPx) => `clamp(${minPx}px, ${vw}vw, ${maxPx}px)`
 
 const DIFF = {
   Easy:   { color:C.green,  bg:C.green2 },
@@ -113,22 +149,24 @@ function ScoreRing({ score, size=48 }) {
 function Card({ children, style={}, accent=null }) {
   return (
     <div style={{
-      background:C.surface, borderRadius:20,
-      border:`1px solid ${C.border}`,
-      boxShadow:C.shadow2,
-      padding:"28px 32px",
-      position:"relative",
-      overflow:"hidden",
-      ...(accent ? { borderTop:`2.5px solid ${accent}` } : {}),
+      background: "rgba(255,255,255,0.04)",
+      backdropFilter: "blur(24px)",
+      WebkitBackdropFilter: "blur(24px)",
+      borderRadius: 24,
+      border: `1px solid rgba(255,255,255,0.10)`,
+      boxShadow: "0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)",
+      padding: "28px 32px",
+      position: "relative",
+      overflow: "hidden",
+      ...(accent ? { borderTop: `2px solid ${accent}` } : {}),
       ...style,
     }}>
-      {/* subtle inner glow from accent */}
       {accent && <div style={{
-        position:"absolute", top:0, left:0, right:0, height:80,
-        background:`linear-gradient(180deg, ${accent}08 0%, transparent 100%)`,
-        pointerEvents:"none",
+        position:"absolute", top:0, left:0, right:0, height:120,
+        background:`linear-gradient(180deg, ${accent}10 0%, transparent 100%)`,
+        pointerEvents:"none", borderRadius:"24px 24px 0 0",
       }}/>}
-      {children}
+      <div style={{ position:"relative", zIndex:1 }}>{children}</div>
     </div>
   )
 }
@@ -136,13 +174,15 @@ function Card({ children, style={}, accent=null }) {
 function SectionTitle({ icon, title, sub, accent=C.blue }) {
   return (
     <div style={{ marginBottom:24 }}>
-      <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:4 }}>
-        <div style={{ width:4, height:22, borderRadius:99, background:accent }} />
-        <span style={{ fontSize:11, fontWeight:800, color:accent, letterSpacing:2, textTransform:"uppercase" }}>
-          {icon} {title}
+      <div style={{ display:"inline-flex", alignItems:"center", gap:8,
+        background:`${accent}14`, border:`1px solid ${accent}30`,
+        borderRadius:99, padding:"5px 14px 5px 10px", marginBottom:sub?8:0 }}>
+        <span style={{ fontSize:14 }}>{icon}</span>
+        <span style={{ fontSize:10, fontWeight:900, color:accent, letterSpacing:1.8, textTransform:"uppercase" }}>
+          {title}
         </span>
       </div>
-      {sub && <p style={{ margin:"4px 0 0 14px", fontSize:13, color:C.ink4, lineHeight:1.5 }}>{sub}</p>}
+      {sub && <p style={{ margin:"6px 0 0", fontSize:13, color:C.ink3, lineHeight:1.6 }}>{sub}</p>}
     </div>
   )
 }
@@ -150,45 +190,82 @@ function SectionTitle({ icon, title, sub, accent=C.blue }) {
 function StatChip({ icon, value, label, color=C.blue }) {
   return (
     <div style={{
-      textAlign:"center", padding:"18px 22px",
-      background:C.surface2,
-      borderRadius:16,
-      border:`1px solid ${C.border2}`,
-      boxShadow:C.shadow,
-      minWidth:92,
+      textAlign:"center", padding:"20px 16px",
+      background:"rgba(255,255,255,0.05)",
+      backdropFilter:"blur(20px)",
+      WebkitBackdropFilter:"blur(20px)",
+      borderRadius:18,
+      border:`1px solid rgba(255,255,255,0.10)`,
+      borderTop:`2px solid ${color}`,
+      boxShadow:`0 8px 32px rgba(0,0,0,0.4), 0 0 0 0 ${color}00`,
+      minWidth:90,
+      flex:1,
       position:"relative", overflow:"hidden",
+      transition:"transform 0.2s, box-shadow 0.2s",
     }}>
       <div style={{
         position:"absolute", inset:0,
-        background:`radial-gradient(circle at 50% 0%, ${color}12 0%, transparent 70%)`,
+        background:`radial-gradient(ellipse at 50% 0%, ${color}18 0%, transparent 65%)`,
         pointerEvents:"none",
       }}/>
-      <div style={{ fontSize:20, marginBottom:5 }}>{icon}</div>
-      <div style={{ fontSize:20, fontWeight:900, color, fontFamily:"'DM Mono',monospace", lineHeight:1 }}>{value}</div>
-      <div style={{ fontSize:10, color:C.ink4, marginTop:5, fontWeight:700, textTransform:"uppercase", letterSpacing:0.8 }}>{label}</div>
+      <div style={{ fontSize:22, marginBottom:6, lineHeight:1 }}>{icon}</div>
+      <div style={{ fontSize:22, fontWeight:900, color, fontFamily:"'DM Mono',monospace", lineHeight:1.1,
+        textShadow:`0 0 20px ${color}60` }}>{value}</div>
+      <div style={{ fontSize:9, color:C.ink3, marginTop:6, fontWeight:800, textTransform:"uppercase", letterSpacing:1.2 }}>{label}</div>
     </div>
   )
 }
 
-function SkillBar({ label, pct, color=C.blue }) {
+function SkillBadge({ label, pct, color=C.blue }) {
   const p = Math.min(100, Math.max(0, pct))
+  const icon = getSkillIcon(label)
+  const ring = 2 * Math.PI * 20
+  const filled = (p / 100) * ring
   return (
-    <div style={{ marginBottom:14 }}>
-      <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
-        <span style={{ fontSize:13, fontWeight:600, color:C.ink2 }}>{label}</span>
-        <span style={{ fontSize:12, fontWeight:800, color, fontFamily:"monospace" }}>{p}%</span>
+    <div style={{ display:"flex", alignItems:"center", gap:14,
+      background:"rgba(255,255,255,0.04)", border:`1px solid rgba(255,255,255,0.08)`,
+      borderRadius:14, padding:"12px 16px", marginBottom:10,
+      backdropFilter:"blur(12px)" }}>
+      {/* Icon or initial circle */}
+      <div style={{ position:"relative", width:46, height:46, flexShrink:0 }}>
+        <svg width="46" height="46" style={{ transform:"rotate(-90deg)", position:"absolute", top:0, left:0 }}>
+          <circle cx="23" cy="23" r="20" fill="none" stroke={`${color}20`} strokeWidth="3"/>
+          <circle cx="23" cy="23" r="20" fill="none" stroke={color} strokeWidth="3"
+            strokeDasharray={`${filled} ${ring}`} strokeLinecap="round"
+            style={{ filter:`drop-shadow(0 0 4px ${color}80)` }}/>
+        </svg>
+        {icon
+          ? <img src={icon} alt={label} style={{ position:"absolute", top:"50%", left:"50%",
+              transform:"translate(-50%,-50%)", width:22, height:22, borderRadius:4 }}
+              onError={e=>{ e.target.style.display="none"; e.target.nextSibling.style.display="flex" }}/>
+          : null}
+        <div style={{ position:"absolute", top:"50%", left:"50%", transform:"translate(-50%,-50%)",
+          width:22, height:22, borderRadius:"50%", background:`${color}22`,
+          display: icon ? "none" : "flex", alignItems:"center", justifyContent:"center",
+          fontSize:10, fontWeight:900, color, border:`1px solid ${color}40` }}>
+          {label.slice(0,2).toUpperCase()}
+        </div>
       </div>
-      <div style={{ height:6, background:C.surface2, borderRadius:99 }}>
-        <div style={{
-          height:"100%", width:`${p}%`,
-          background:`linear-gradient(90deg, ${color}aa, ${color})`,
-          borderRadius:99,
-          boxShadow:`0 0 8px ${color}44`,
-        }} />
+      {/* Label + bar */}
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:7 }}>
+          <span style={{ fontSize:13, fontWeight:700, color:C.ink, whiteSpace:"nowrap", overflow:"hidden",
+            textOverflow:"ellipsis", maxWidth:140 }}>{label}</span>
+          <span style={{ fontSize:11, fontWeight:800, color, fontFamily:"'DM Mono',monospace",
+            textShadow:`0 0 10px ${color}60`, flexShrink:0, marginLeft:8 }}>{p}%</span>
+        </div>
+        <div style={{ height:5, background:"rgba(255,255,255,0.07)", borderRadius:99 }}>
+          <div style={{ height:"100%", width:`${p}%`,
+            background:`linear-gradient(90deg, ${color}88, ${color})`,
+            borderRadius:99, boxShadow:`0 0 10px ${color}50`, transition:"width 0.8s ease" }}/>
+        </div>
       </div>
     </div>
   )
 }
+
+// keep alias for any remaining direct SkillBar calls
+const SkillBar = SkillBadge
 
 function TLine({ icon, title, sub, score, time, meta, last }) {
   return (
@@ -991,6 +1068,7 @@ export default function Portfolio({ username: usernameProp }) {
         linkedInUrl:   row.linkedInUrl   ||row.linkedin_url    ||"",
         githubUrl:     row.githubUrl     ||row.github_url      ||"",
         avatarUrl:     row.profilePhotoURL||row.profile_photo_url||row.avatarUrl||"",
+        location:      row.location      ||row.city            ||"",
         createdAt:     row.createdAt     ||row.created_at      ||"",
         certificates:  row.certificates  ||row.certifications  ||[],
         testimonials:  row.testimonials  ||row.recommendations ||[],
@@ -1173,84 +1251,112 @@ export default function Portfolio({ username: usernameProp }) {
       {/* ══════════════════════════════════════════════════════════════════ */}
       <div ref={refs.overview}>
         {/* ── CINEMATIC HERO ──────────────────────────────────────────────── */}
-        <div style={{background:heroBg,padding:"72px 32px 80px",position:"relative",overflow:"hidden",minHeight:380}}>
-          {/* Mesh dot pattern */}
-          <div style={{position:"absolute",inset:0,opacity:0.06,
-            backgroundImage:"radial-gradient(circle,#fff 1px,transparent 1px)",backgroundSize:"24px 24px"}}/>
-          {/* Large background glow using archetype accent */}
+        <div style={{background:heroBg,padding:"80px 32px 100px",position:"relative",overflow:"hidden",minHeight:420}}>
+          {/* Mesh dot grid */}
+          <div style={{position:"absolute",inset:0,opacity:0.045,
+            backgroundImage:"radial-gradient(circle,#fff 1px,transparent 1px)",backgroundSize:"28px 28px"}}/>
+          {/* Noise texture overlay */}
+          <div style={{position:"absolute",inset:0,opacity:0.03,
+            backgroundImage:"url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E\")",
+            backgroundSize:"200px 200px",pointerEvents:"none"}}/>
+          {/* Accent glows */}
           <div style={{
-            position:"absolute",top:-200,right:-200,width:600,height:600,
-            background:aConfig?.palette?.accent||"rgba(255,255,255,0.05)",
-            borderRadius:"50%",filter:"blur(100px)",opacity:0.18,
+            position:"absolute",top:-150,right:-100,width:700,height:700,
+            background:aConfig?.palette?.accent||"#3B82F6",
+            borderRadius:"50%",filter:"blur(120px)",opacity:0.12, pointerEvents:"none",
           }}/>
           <div style={{
-            position:"absolute",bottom:-100,left:-100,width:400,height:400,
-            background:"rgba(255,255,255,0.03)",
-            borderRadius:"50%",filter:"blur(80px)",
+            position:"absolute",bottom:-150,left:-80,width:500,height:500,
+            background:pc.accent||"#06B6D4",
+            borderRadius:"50%",filter:"blur(100px)",opacity:0.08, pointerEvents:"none",
           }}/>
 
           <div style={{position:"relative",maxWidth:900,margin:"0 auto"}}>
 
-            {/* Top: archetype tagline — the lead copy */}
+            {/* Archetype tagline pill */}
             {aConfig?.heroTagline&&(
               <div style={{
                 display:"inline-flex",alignItems:"center",gap:8,
-                marginBottom:24,
-                background:"rgba(255,255,255,0.05)",
-                backdropFilter:"blur(12px)",
-                padding:"6px 18px",borderRadius:99,
-                border:"1px solid rgba(255,255,255,0.12)",
+                marginBottom:28,
+                background:"rgba(255,255,255,0.06)",
+                backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",
+                padding:"7px 20px",borderRadius:99,
+                border:"1px solid rgba(255,255,255,0.14)",
+                boxShadow:"0 4px 20px rgba(0,0,0,0.3)",
               }}>
-                <span style={{fontSize:13}}>{aConfig.icon}</span>
-                <span style={{fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.8)",letterSpacing:0.4,fontStyle:"italic"}}>
+                <span style={{fontSize:14}}>{aConfig.icon}</span>
+                <span style={{fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.85)",letterSpacing:0.5,fontStyle:"italic"}}>
                   {aConfig.heroTagline}
                 </span>
               </div>
             )}
 
-            <div style={{display:"flex",gap:32,alignItems:"flex-start",flexWrap:"wrap"}}>
-              {/* Avatar — larger, with glowing ring */}
+            <div style={{display:"flex",gap:40,alignItems:"center",flexWrap:"wrap"}}>
+              {/* Floating avatar card */}
               <div style={{position:"relative",flexShrink:0}}>
+                {/* Outer glow ring */}
                 <div style={{
-                  width:120,height:120,borderRadius:"50%",padding:3,
-                  background:`linear-gradient(135deg, ${aConfig?.palette?.accent||"#3B82F6"}, rgba(255,255,255,0.2))`,
-                  boxShadow:`0 0 40px ${aConfig?.palette?.accent||"#3B82F6"}55`,
+                  position:"absolute",inset:-4,borderRadius:"50%",
+                  background:`conic-gradient(from 180deg, ${aConfig?.palette?.accent||"#3B82F6"}, rgba(255,255,255,0.1), ${aConfig?.palette?.accent||"#3B82F6"})`,
+                  filter:"blur(2px)",opacity:0.7,
+                }}/>
+                <div style={{
+                  position:"relative",width:128,height:128,borderRadius:"50%",padding:3,
+                  background:`linear-gradient(135deg, ${aConfig?.palette?.accent||"#3B82F6"} 0%, rgba(255,255,255,0.15) 100%)`,
+                  boxShadow:`0 0 60px ${aConfig?.palette?.accent||"#3B82F6"}44, 0 8px 32px rgba(0,0,0,0.6)`,
                 }}>
-                  <Avatar name={ud.displayName} url={ud.avatarUrl} size={114} fontSize={36}/>
+                  <Avatar name={ud.displayName} url={ud.avatarUrl} size={122} fontSize={38}/>
                 </div>
+                {/* Tier badge */}
                 <div style={{
-                  position:"absolute",bottom:4,right:4,
+                  position:"absolute",bottom:2,right:-8,
                   background:tier.color,color:"#fff",fontSize:9,fontWeight:900,
-                  padding:"3px 8px",borderRadius:99,
-                  border:"2px solid rgba(0,0,0,0.4)",
-                  whiteSpace:"nowrap",letterSpacing:0.5,textTransform:"uppercase",
+                  padding:"4px 10px",borderRadius:99,
+                  border:"2px solid rgba(0,0,0,0.5)",
+                  boxShadow:`0 4px 12px ${tier.color}55`,
+                  whiteSpace:"nowrap",letterSpacing:0.8,textTransform:"uppercase",
                 }}>
                   {tier.label}
                 </div>
               </div>
 
-              {/* Identity block */}
-              <div style={{flex:1,minWidth:240}}>
+              {/* Identity block — right side */}
+              <div style={{flex:1,minWidth:260}}>
+                {/* Location / availability badge */}
+                {ud.location&&(
+                  <div style={{
+                    display:"inline-flex",alignItems:"center",gap:5,
+                    marginBottom:10,
+                    background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.12)",
+                    padding:"3px 12px",borderRadius:99,fontSize:11,
+                    color:"rgba(255,255,255,0.55)",fontWeight:500,
+                  }}>
+                    📍 {ud.location}
+                  </div>
+                )}
+
                 <h1 style={{
-                  fontSize:52,fontWeight:900,color:"#fff",margin:"0 0 8px",
+                  fontSize:clamp(36,5.5,58),fontWeight:900,color:"#fff",margin:"0 0 6px",
                   letterSpacing:"-0.04em",lineHeight:1.0,
-                  textShadow:"0 2px 20px rgba(0,0,0,0.4)",
+                  textShadow:"0 4px 30px rgba(0,0,0,0.5)",
                 }}>
                   {ud.displayName}
                 </h1>
                 {ud.keyword&&(
                   <p style={{
-                    fontSize:17,color:"rgba(255,255,255,0.65)",
-                    margin:"0 0 16px",fontWeight:500,letterSpacing:0.2,
+                    fontSize:17,color:"rgba(255,255,255,0.6)",
+                    margin:"0 0 18px",fontWeight:500,letterSpacing:0.3,
+                    display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",
                   }}>
                     {ud.keyword}
                     {aConfig&&(
                       <span style={{
-                        marginLeft:10,fontSize:12,fontWeight:700,
+                        fontSize:11,fontWeight:800,
                         color:aConfig.palette.accent,
-                        background:`${aConfig.palette.accent}20`,
-                        padding:"2px 10px",borderRadius:99,
-                        border:`1px solid ${aConfig.palette.accent}40`,
+                        background:`${aConfig.palette.accent}18`,
+                        padding:"3px 12px",borderRadius:99,
+                        border:`1px solid ${aConfig.palette.accent}35`,
+                        letterSpacing:0.5,
                       }}>
                         {aConfig.name}
                       </span>
@@ -1258,39 +1364,37 @@ export default function Portfolio({ username: usernameProp }) {
                   </p>
                 )}
 
-                {/* Summary text */}
                 <p style={{
-                  fontSize:14,color:"rgba(255,255,255,0.55)",
-                  lineHeight:1.8,maxWidth:540,margin:"0 0 24px",
+                  fontSize:14,color:"rgba(255,255,255,0.5)",
+                  lineHeight:1.85,maxWidth:520,margin:"0 0 28px",
                 }}>
                   {summary||archetypeSummary||`${pc.label} building career on Capabilio.`}
                 </p>
 
-                {/* Action links + ELO pill */}
+                {/* Action links row */}
                 <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
                   {ud.linkedInUrl&&(
                     <a href={ud.linkedInUrl} target="_blank" rel="noreferrer"
                       style={{
-                        display:"inline-flex",alignItems:"center",gap:6,
-                        padding:"9px 18px",borderRadius:99,
-                        background:"rgba(255,255,255,0.08)",
-                        border:"1px solid rgba(255,255,255,0.18)",
+                        display:"inline-flex",alignItems:"center",gap:7,
+                        padding:"10px 20px",borderRadius:99,
+                        background:"rgba(10,102,194,0.25)",
+                        border:"1px solid rgba(10,102,194,0.5)",
                         color:"#fff",fontSize:12,fontWeight:700,textDecoration:"none",
-                        backdropFilter:"blur(8px)",
-                        transition:"background 0.2s",
+                        backdropFilter:"blur(10px)",letterSpacing:0.3,
                       }}>
-                      in LinkedIn ↗
+                      <span style={{fontWeight:900,fontSize:13}}>in</span> LinkedIn ↗
                     </a>
                   )}
                   {(ud.githubUrl||ud.githubUsername)&&(
                     <a href={ud.githubUrl||`https://github.com/${ud.githubUsername}`} target="_blank" rel="noreferrer"
                       style={{
-                        display:"inline-flex",alignItems:"center",gap:6,
-                        padding:"9px 18px",borderRadius:99,
+                        display:"inline-flex",alignItems:"center",gap:7,
+                        padding:"10px 20px",borderRadius:99,
                         background:"rgba(255,255,255,0.08)",
                         border:"1px solid rgba(255,255,255,0.18)",
                         color:"#fff",fontSize:12,fontWeight:700,textDecoration:"none",
-                        backdropFilter:"blur(8px)",
+                        backdropFilter:"blur(10px)",
                       }}>
                       ⌥ GitHub ↗
                     </a>
@@ -1298,23 +1402,23 @@ export default function Portfolio({ username: usernameProp }) {
                   {(ud.portfolioUrl||ud.websiteUrl)&&(
                     <a href={ud.portfolioUrl||ud.websiteUrl} target="_blank" rel="noreferrer"
                       style={{
-                        display:"inline-flex",alignItems:"center",gap:6,
-                        padding:"9px 18px",borderRadius:99,
+                        display:"inline-flex",alignItems:"center",gap:7,
+                        padding:"10px 20px",borderRadius:99,
                         background:"rgba(255,255,255,0.08)",
                         border:"1px solid rgba(255,255,255,0.18)",
                         color:"#fff",fontSize:12,fontWeight:700,textDecoration:"none",
-                        backdropFilter:"blur(8px)",
+                        backdropFilter:"blur(10px)",
                       }}>
-                      🌐 Portfolio ↗
+                      🌐 Website ↗
                     </a>
                   )}
-                  {/* ELO pill — styled with tier color */}
                   <div style={{
                     display:"inline-flex",alignItems:"center",gap:7,
-                    padding:"9px 18px",borderRadius:99,
-                    background:`${tier.color}22`,
-                    border:`1px solid ${tier.color}55`,
-                    color:tier.color,fontSize:13,fontWeight:800,
+                    padding:"10px 20px",borderRadius:99,
+                    background:`${tier.color}1a`,
+                    border:`1px solid ${tier.color}45`,
+                    color:tier.color,fontSize:12,fontWeight:800,
+                    boxShadow:`0 0 16px ${tier.color}28`,letterSpacing:0.2,
                   }}>
                     ⚡ {ud.eloRating} ELO · {tier.label}
                   </div>
@@ -1326,11 +1430,15 @@ export default function Portfolio({ username: usernameProp }) {
 
         {/* ── STATS BAR ───────────────────────────────────────────────────── */}
         <div style={{
-          background:`linear-gradient(180deg, ${C.bg} 0%, ${C.surface} 100%)`,
-          borderBottom:`1px solid ${C.border}`,
-          padding:"24px 32px",
+          background:"rgba(6,9,18,0.85)",
+          backdropFilter:"blur(20px)",
+          WebkitBackdropFilter:"blur(20px)",
+          borderBottom:`1px solid rgba(255,255,255,0.07)`,
+          borderTop:`1px solid rgba(255,255,255,0.04)`,
+          padding:"20px 32px",
+          marginTop:-2,
         }}>
-          <div style={{maxWidth:900,margin:"0 auto",display:"flex",gap:12,flexWrap:"wrap",justifyContent:"center"}}>
+          <div style={{maxWidth:900,margin:"0 auto",display:"flex",gap:10,flexWrap:"wrap",justifyContent:"center"}}>
             <StatChip icon="⚡" value={ud.eloRating} label="ELO Score" color={tier.color}/>
             <StatChip icon="✅" value={tasks.length} label="Challenges" color={C.green}/>
             <StatChip icon="🔥" value={ud.arenaStreak||0} label="Day Streak" color={C.amber}/>
