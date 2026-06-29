@@ -1242,11 +1242,222 @@ function EvaluationModal({ result, domain, onClose, userEmail }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // HISTORY PANEL — full mission transparency, reads arenaHistory subcollection
 // ─────────────────────────────────────────────────────────────────────────────
+// HISTORY DETAIL MODAL — full-screen popup for a history record
+// ─────────────────────────────────────────────────────────────────────────────
+function HistoryDetailModal({ r, domain, onClose }) {
+  const score   = r.score ?? r.review?.score ?? 0
+  const elo     = r.eloDelta ?? r.review?.eloDelta ?? 0
+  const grade   = r.review?.grade || r.grade || ""
+  const diff    = r.difficulty || "Medium"
+  const diffColor = diff === "Easy" ? "#16A34A" : diff === "Hard" ? "#DC2626" : "#D97706"
+  const sc  = s => s >= 80 ? "#16A34A" : s >= 60 ? "#D97706" : "#DC2626"
+  const sbg = s => s >= 80 ? "#f0fdf4" : s >= 60 ? "#fffbeb" : "#fef2f2"
+  const domColor = domain?.color || T.indigo
+
+  const answerStr = r.submittedAnswer
+    ? (typeof r.submittedAnswer === "object" ? JSON.stringify(r.submittedAnswer, null, 2) : r.submittedAnswer)
+    : null
+
+  const dateStr = r.completedAt
+    ? new Date(r.completedAt).toLocaleDateString("en-IN", { day:"numeric", month:"long", year:"numeric" })
+      + " · " + new Date(r.completedAt).toLocaleTimeString("en-IN", { hour:"2-digit", minute:"2-digit" })
+    : ""
+
+  useEffect(() => {
+    const onKey = e => { if (e.key === "Escape") onClose() }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [onClose])
+
+  return (
+    <div onClick={onClose}
+      style={{ position:"fixed", inset:0, zIndex:3000, background:"rgba(0,0,0,0.72)", backdropFilter:"blur(8px)",
+        display:"flex", alignItems:"center", justifyContent:"center", padding:20, fontFamily:"'DM Sans',sans-serif" }}>
+      <div onClick={e => e.stopPropagation()}
+        style={{ background:T.bg, border:`1px solid ${T.border}`, borderRadius:20, width:"100%", maxWidth:740,
+          maxHeight:"92vh", overflowY:"auto", boxShadow:"0 40px 120px rgba(0,0,0,0.5)", display:"flex", flexDirection:"column" }}>
+
+        {/* Header */}
+        <div style={{ padding:"18px 22px 14px", borderBottom:`1px solid ${T.border}`, display:"flex", alignItems:"flex-start", gap:14, flexShrink:0 }}>
+          {/* Score circle */}
+          <div style={{ width:52, height:52, borderRadius:"50%", background:sbg(score), border:`3px solid ${sc(score)}`,
+            display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+            <span style={{ fontSize:14, fontWeight:900, color:sc(score), fontFamily:"'DM Mono',monospace", lineHeight:1 }}>{score}</span>
+          </div>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontSize:16, fontWeight:800, color:T.ink, marginBottom:5, lineHeight:1.3 }}>
+              {r.title || "Arena Mission"}
+              {r.isMultiWorkstation && <span style={{ marginLeft:8, fontSize:10, fontWeight:800, background:domColor+"18", color:domColor, padding:"2px 7px", borderRadius:99 }}>MULTI-WS</span>}
+            </div>
+            <div style={{ display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
+              <span style={{ fontSize:10, fontWeight:800, color:diffColor }}>{diff}</span>
+              {r.skillTags?.map((tag, i) => (
+                <span key={i} style={{ fontSize:9, fontWeight:600, background:T.cream2, color:T.ink3, padding:"1px 7px", borderRadius:99, border:`1px solid ${T.border}` }}>{tag}</span>
+              ))}
+              {dateStr && <span style={{ fontSize:10, color:T.ink4 }}>📅 {dateStr}</span>}
+            </div>
+          </div>
+          <div style={{ display:"flex", gap:10, alignItems:"center", flexShrink:0 }}>
+            {grade && (
+              <div style={{ textAlign:"center" }}>
+                <div style={{ fontSize:26, fontWeight:900, color:sc(score), fontFamily:"monospace", lineHeight:1 }}>{grade}</div>
+                <div style={{ fontSize:9, color:T.ink4, marginTop:1 }}>GRADE</div>
+              </div>
+            )}
+            <div style={{ textAlign:"center" }}>
+              <div style={{ fontSize:18, fontWeight:900, color:elo>=0?"#16A34A":"#DC2626", fontFamily:"monospace", lineHeight:1 }}>{elo>=0?"+":""}{elo}</div>
+              <div style={{ fontSize:9, color:T.ink4, marginTop:1 }}>ELO</div>
+            </div>
+            <button onClick={onClose}
+              style={{ width:30, height:30, borderRadius:"50%", background:T.cream2, border:`1px solid ${T.border}`,
+                color:T.ink3, fontSize:16, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"inherit" }}>×</button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding:"18px 22px", display:"flex", flexDirection:"column", gap:18 }}>
+
+          {/* Multi-workstation steps */}
+          {r.isMultiWorkstation && r.workstations?.length > 0 && (
+            <div>
+              <div style={{ fontSize:9, fontWeight:800, color:T.ink4, textTransform:"uppercase", letterSpacing:1.2, marginBottom:8 }}>🔀 Workstation Steps</div>
+              <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                {r.workstations.map((ws, wi) => (
+                  <span key={wi} style={{ fontSize:10, fontWeight:700, background:domColor+"15", color:domColor, padding:"3px 10px", borderRadius:99, border:`1px solid ${domColor}30` }}>
+                    Step {wi+1}: {ws.toUpperCase()}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Scenario */}
+          {r.scenario && (
+            <div>
+              <div style={{ fontSize:9, fontWeight:800, color:domColor, textTransform:"uppercase", letterSpacing:1.2, marginBottom:8 }}>📋 Challenge Scenario</div>
+              <div style={{ fontSize:12.5, color:T.ink2, lineHeight:1.8, background:T.cream, padding:"12px 16px",
+                borderRadius:10, border:`1px solid ${T.border}`, whiteSpace:"pre-wrap" }}>
+                {r.scenario}
+              </div>
+            </div>
+          )}
+
+          {/* Objective */}
+          {r.objective && (
+            <div>
+              <div style={{ fontSize:9, fontWeight:800, color:"#D97706", textTransform:"uppercase", letterSpacing:1.2, marginBottom:8 }}>🎯 Objective</div>
+              <div style={{ fontSize:12.5, color:T.ink2, lineHeight:1.8, background:T.cream, padding:"12px 16px",
+                borderRadius:10, border:`1px solid ${T.border}` }}>
+                {r.objective}
+              </div>
+            </div>
+          )}
+
+          {/* Submitted solution — FULL, no truncation */}
+          {answerStr && (
+            <div>
+              <div style={{ fontSize:9, fontWeight:800, color:"#2563EB", textTransform:"uppercase", letterSpacing:1.2, marginBottom:8 }}>
+                💻 Your Submitted Solution <span style={{ fontSize:8, color:T.ink4, fontWeight:600, textTransform:"none" }}>({answerStr.length.toLocaleString()} chars)</span>
+              </div>
+              <pre style={{ margin:0, fontSize:11, color:"#E2E8F0", background:"#0B1120",
+                padding:"14px 16px", borderRadius:10, border:`1px solid ${T.border}`,
+                whiteSpace:"pre-wrap", wordBreak:"break-word", fontFamily:"'JetBrains Mono','DM Mono',monospace",
+                lineHeight:1.65, maxHeight:360, overflowY:"auto" }}>
+                {answerStr}
+              </pre>
+            </div>
+          )}
+
+          {/* Expected output */}
+          {r.expectedOutput && (
+            <div>
+              <div style={{ fontSize:9, fontWeight:800, color:"#16A34A", textTransform:"uppercase", letterSpacing:1.2, marginBottom:8 }}>✅ Expected Output</div>
+              <pre style={{ margin:0, fontSize:11, color:T.ink2, background:"#f0fdf4",
+                padding:"12px 16px", borderRadius:10, border:"1px solid #bbf7d0",
+                whiteSpace:"pre-wrap", wordBreak:"break-word", fontFamily:"'JetBrains Mono','DM Mono',monospace",
+                lineHeight:1.65, maxHeight:180, overflowY:"auto" }}>
+                {r.expectedOutput}
+              </pre>
+            </div>
+          )}
+
+          {/* AI Review */}
+          {(r.review?.summary || r.review?.strengths?.length || r.review?.improvements?.length) && (
+            <div>
+              <div style={{ fontSize:9, fontWeight:800, color:"#7C3AED", textTransform:"uppercase", letterSpacing:1.2, marginBottom:8 }}>🤖 AI Feedback</div>
+              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                {r.review?.summary && (
+                  <div style={{ fontSize:12.5, color:T.ink2, lineHeight:1.8, background:"#f5f3ff",
+                    padding:"12px 16px", borderRadius:10, border:"1px solid rgba(124,58,237,0.15)", borderLeft:"3px solid #7C3AED" }}>
+                    {r.review.summary}
+                  </div>
+                )}
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                  {r.review?.strengths?.length > 0 && (
+                    <div style={{ padding:"10px 12px", background:"#f0fdf4", borderRadius:10, border:"1px solid #bbf7d0" }}>
+                      <div style={{ fontSize:9, fontWeight:800, color:"#166534", letterSpacing:"0.7px", marginBottom:6 }}>✓ STRENGTHS</div>
+                      {r.review.strengths.map((s, j) => <p key={j} style={{ margin:"3px 0 0", fontSize:11, color:"#15803d", lineHeight:1.5 }}>• {s}</p>)}
+                    </div>
+                  )}
+                  {r.review?.improvements?.length > 0 && (
+                    <div style={{ padding:"10px 12px", background:"#fffbeb", borderRadius:10, border:"1px solid #fde68a" }}>
+                      <div style={{ fontSize:9, fontWeight:800, color:"#92400e", letterSpacing:"0.7px", marginBottom:6 }}>→ IMPROVEMENTS</div>
+                      {r.review.improvements.map((s, j) => <p key={j} style={{ margin:"3px 0 0", fontSize:11, color:"#92400e", lineHeight:1.5 }}>• {s}</p>)}
+                    </div>
+                  )}
+                </div>
+                {r.review?.tip && (
+                  <div style={{ padding:"10px 14px", background:"#fffbeb", borderRadius:10, border:"1px solid #fde68a", fontSize:12, color:"#92400e", lineHeight:1.6 }}>
+                    💡 {r.review.tip}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Per-workstation feedback */}
+          {r.review?.workstationFeedback && (
+            <div>
+              <div style={{ fontSize:9, fontWeight:800, color:T.ink4, textTransform:"uppercase", letterSpacing:1.2, marginBottom:8 }}>🔀 Workstation Feedback</div>
+              {Object.entries(r.review.workstationFeedback).map(([ws, fb]) => (
+                <div key={ws} style={{ marginBottom:8, padding:"10px 14px", background:T.cream, borderRadius:10, border:`1px solid ${T.border}` }}>
+                  <div style={{ fontSize:10, fontWeight:800, color:domColor, marginBottom:4 }}>{ws.toUpperCase()}</div>
+                  <p style={{ margin:0, fontSize:12, color:T.ink2, lineHeight:1.6 }}>{fb}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Rubric */}
+          {r.rubric?.length > 0 && (
+            <div>
+              <div style={{ fontSize:9, fontWeight:800, color:T.ink4, textTransform:"uppercase", letterSpacing:1.2, marginBottom:8 }}>📊 Rubric Breakdown</div>
+              {r.rubric.map((rb, j) => (
+                <div key={j} style={{ marginBottom:8 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
+                    <span style={{ fontSize:11, color:T.ink2 }}>{rb.criterion}</span>
+                    <span style={{ fontSize:11, fontWeight:700, color:sc(rb.score), fontFamily:"'DM Mono',monospace" }}>{rb.score}%</span>
+                  </div>
+                  <div style={{ height:4, borderRadius:2, background:T.cream3 }}>
+                    <div style={{ width:`${rb.score}%`, height:"100%", background:sc(rb.score), borderRadius:2 }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 function HistoryPanel({ uid, domain }) {
   const [records, setRecords]   = useState([])
   const [loading, setLoading]   = useState(true)
   const [expanded, setExpanded] = useState(null)
   const [filter, setFilter]     = useState("all")   // all | Easy | Medium | Hard | multi
+  const [modalRec, setModalRec] = useState(null)
 
   useEffect(() => {
     if (!uid) { setLoading(false); return }
@@ -1481,12 +1692,23 @@ function HistoryPanel({ uid, domain }) {
                       ))}
                     </div>
                   )}
+
+                  {/* View Full Details button */}
+                  <button onClick={() => setModalRec(r)}
+                    style={{ alignSelf:"flex-end", padding:"5px 14px", background:"transparent",
+                      border:`1px solid ${domain?.color||T.indigo}`, borderRadius:6, color:domain?.color||T.indigo,
+                      fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                    View Full Details →
+                  </button>
                 </div>
               )}
             </div>
           )
         })}
       </div>
+
+      {/* Full-screen detail modal */}
+      {modalRec && <HistoryDetailModal r={modalRec} domain={domain} onClose={() => setModalRec(null)} />}
     </div>
   )
 }

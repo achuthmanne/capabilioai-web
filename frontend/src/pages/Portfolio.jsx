@@ -213,9 +213,159 @@ function TLine({ icon, title, sub, score, time, meta, last }) {
   )
 }
 
-// Expandable challenge card — shows full scenario, feedback, ELO, attempts
+// ── Full-screen detail modal for a completed challenge ───────────────────────
+function ChallengeDetailModal({ t, onClose }) {
+  const col = scoreColor(t.score)
+  // close on backdrop click or Escape
+  useEffect(() => {
+    const onKey = e => { if (e.key === "Escape") onClose() }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [onClose])
+
+  const answerStr = t.userAnswer
+    ? (typeof t.userAnswer === "object" ? JSON.stringify(t.userAnswer, null, 2) : t.userAnswer)
+    : null
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position:"fixed", inset:0, zIndex:2000, background:"rgba(0,0,0,0.75)", backdropFilter:"blur(8px)",
+        display:"flex", alignItems:"center", justifyContent:"center", padding:20, fontFamily:"'DM Sans',sans-serif" }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{ background:C.bg, border:`1px solid ${C.border2}`, borderRadius:20,
+          width:"100%", maxWidth:760, maxHeight:"92vh", overflowY:"auto",
+          boxShadow:"0 40px 120px rgba(0,0,0,0.7)", display:"flex", flexDirection:"column" }}
+      >
+        {/* ── Modal header ── */}
+        <div style={{ padding:"20px 24px 16px", borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"flex-start", gap:16, flexShrink:0 }}>
+          <ScoreRing score={t.score} size={56} />
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontSize:17, fontWeight:800, color:C.ink, marginBottom:5, lineHeight:1.3 }}>{t.title}</div>
+            <div style={{ display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
+              <DiffBadge diff={t.difficulty} />
+              {t.domain && t.domain !== "dsa" && (
+                <span style={{ fontSize:11, color:C.teal, fontWeight:700, background:C.teal3, padding:"2px 8px", borderRadius:99 }}>{t.domain}</span>
+              )}
+              {t.attempts > 1 && (
+                <span style={{ fontSize:11, color:C.amber, fontWeight:700, background:C.amber2, padding:"2px 8px", borderRadius:99 }}>🔁 {t.attempts} attempt{t.attempts>1?"s":""}</span>
+              )}
+              {t.completedAt && <span style={{ fontSize:11, color:C.ink4 }}>📅 {fmtFull(t.completedAt)}</span>}
+            </div>
+          </div>
+          {/* Score + ELO + Close */}
+          <div style={{ display:"flex", gap:10, alignItems:"center", flexShrink:0 }}>
+            <div style={{ textAlign:"center" }}>
+              <div style={{ fontSize:26, fontWeight:900, color:col, fontFamily:"monospace", lineHeight:1 }}>{gradeFor(t.score)}</div>
+              <div style={{ fontSize:11, color:col, fontWeight:700, marginTop:1 }}>{t.score}/100</div>
+            </div>
+            <div style={{ textAlign:"center" }}>
+              <div style={{ fontSize:18, fontWeight:900, color:C.blue, fontFamily:"monospace", lineHeight:1 }}>+{t.eloDelta}</div>
+              <div style={{ fontSize:9, color:C.ink4, fontWeight:700, letterSpacing:0.5, marginTop:1 }}>ELO</div>
+            </div>
+            <button onClick={onClose}
+              style={{ width:32, height:32, borderRadius:"50%", background:C.surface2, border:`1px solid ${C.border2}`,
+                color:C.ink3, fontSize:16, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center",
+                fontFamily:"inherit", marginLeft:4 }}>×</button>
+          </div>
+        </div>
+
+        {/* ── Scrollable body ── */}
+        <div style={{ padding:"20px 24px", display:"flex", flexDirection:"column", gap:20 }}>
+
+          {/* Scenario */}
+          {t.scenario && (
+            <div>
+              <div style={{ fontSize:10, fontWeight:800, color:C.teal, textTransform:"uppercase", letterSpacing:1.5, marginBottom:8 }}>📋 Challenge Scenario</div>
+              <div style={{ fontSize:13, color:C.ink2, lineHeight:1.8, background:C.surface, padding:"14px 18px",
+                borderRadius:12, border:`1px solid ${C.border}`, whiteSpace:"pre-wrap" }}>
+                {t.scenario}
+              </div>
+            </div>
+          )}
+
+          {/* Objective */}
+          {t.objective && (
+            <div>
+              <div style={{ fontSize:10, fontWeight:800, color:C.amber, textTransform:"uppercase", letterSpacing:1.5, marginBottom:8 }}>🎯 Objective</div>
+              <div style={{ fontSize:13, color:C.ink2, lineHeight:1.8, background:C.surface, padding:"14px 18px",
+                borderRadius:12, border:`1px solid ${C.border}` }}>
+                {t.objective}
+              </div>
+            </div>
+          )}
+
+          {/* Submitted Solution — FULL, no truncation */}
+          {answerStr && (
+            <div>
+              <div style={{ fontSize:10, fontWeight:800, color:C.blue2, textTransform:"uppercase", letterSpacing:1.5, marginBottom:8 }}>
+                💻 Submitted Solution <span style={{ fontSize:9, color:C.ink4, fontWeight:600, textTransform:"none", letterSpacing:0 }}>({answerStr.length.toLocaleString()} characters)</span>
+              </div>
+              <pre style={{ margin:0, fontSize:11.5, color:"#E2E8F0", background:"#0B1120",
+                padding:"16px 18px", borderRadius:12, border:`1px solid ${C.border2}`,
+                whiteSpace:"pre-wrap", wordBreak:"break-word", fontFamily:"'JetBrains Mono','DM Mono',monospace",
+                lineHeight:1.65, maxHeight:380, overflowY:"auto" }}>
+                {answerStr}
+              </pre>
+            </div>
+          )}
+
+          {/* Expected output (if any) */}
+          {t.expectedOutput && (
+            <div>
+              <div style={{ fontSize:10, fontWeight:800, color:C.green, textTransform:"uppercase", letterSpacing:1.5, marginBottom:8 }}>✅ Expected Output</div>
+              <pre style={{ margin:0, fontSize:11.5, color:C.ink2, background:C.green2,
+                padding:"14px 18px", borderRadius:12, border:`1px solid rgba(34,197,94,0.2)`,
+                whiteSpace:"pre-wrap", wordBreak:"break-word", fontFamily:"'JetBrains Mono','DM Mono',monospace",
+                lineHeight:1.65, maxHeight:200, overflowY:"auto" }}>
+                {t.expectedOutput}
+              </pre>
+            </div>
+          )}
+
+          {/* AI Feedback */}
+          {t.feedback && (
+            <div>
+              <div style={{ fontSize:10, fontWeight:800, color:C.purple, textTransform:"uppercase", letterSpacing:1.5, marginBottom:8 }}>🤖 AI Feedback</div>
+              <div style={{ fontSize:13, color:C.ink2, lineHeight:1.8, background:C.purple2,
+                padding:"14px 18px", borderRadius:12, border:`1px solid rgba(167,139,250,0.2)`,
+                borderLeft:`3px solid ${C.purple}` }}>
+                {t.feedback}
+              </div>
+            </div>
+          )}
+
+          {/* Full stats row */}
+          <div>
+            <div style={{ fontSize:10, fontWeight:800, color:C.ink4, textTransform:"uppercase", letterSpacing:1.5, marginBottom:10 }}>📊 Result Summary</div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:8 }}>
+              {[
+                { label:"Score",    value:`${t.score}/100`,  color:col      },
+                { label:"Grade",    value:gradeFor(t.score), color:col      },
+                { label:"ELO Earned",value:`+${t.eloDelta}`, color:C.blue   },
+                { label:"Attempts", value: String(t.attempts||1),  color:C.amber  },
+                { label:"Completed",value:fmt(t.completedAt), color:C.ink3  },
+              ].filter(s=>s.value).map((s,i)=>(
+                <div key={i} style={{ padding:"10px 8px", background:C.surface2, borderRadius:10,
+                  border:`1px solid ${C.border}`, textAlign:"center" }}>
+                  <div style={{ fontSize:13, fontWeight:800, color:s.color, fontFamily:"monospace" }}>{s.value}</div>
+                  <div style={{ fontSize:9, color:C.ink4, fontWeight:700, textTransform:"uppercase",
+                    letterSpacing:0.8, marginTop:3 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Compact challenge card — click "View Details" to open full modal
 function ChallengeCard({ t, last }) {
-  const [open, setOpen] = useState(false)
+  const [showModal, setShowModal] = useState(false)
   const col = scoreColor(t.score)
   return (
     <div style={{ position:"relative" }}>
@@ -225,9 +375,7 @@ function ChallengeCard({ t, last }) {
         background:C.surface2, boxShadow:C.shadow, marginBottom: last?0:16, position:"relative", zIndex:1 }}>
 
         {/* Header row */}
-        <div style={{ padding:"14px 18px", display:"flex", alignItems:"center", gap:12,
-          cursor:"pointer", userSelect:"none" }}
-          onClick={() => setOpen(o=>!o)}>
+        <div style={{ padding:"14px 18px", display:"flex", alignItems:"center", gap:12 }}>
           <ScoreRing score={t.score} size={48} />
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ fontSize:14, fontWeight:700, color:C.ink, marginBottom:3 }}>{t.title}</div>
@@ -244,109 +392,36 @@ function ChallengeCard({ t, last }) {
               {t.completedAt && <span style={{ fontSize:11, color:C.ink4 }}>📅 {fmt(t.completedAt)}</span>}
             </div>
           </div>
-          <div style={{ textAlign:"right", flexShrink:0 }}>
-            <div style={{ fontSize:20, fontWeight:900, color:col, fontFamily:"monospace" }}>
-              {gradeFor(t.score)}
+          <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:6, flexShrink:0 }}>
+            <div style={{ display:"flex", alignItems:"baseline", gap:4 }}>
+              <span style={{ fontSize:22, fontWeight:900, color:col, fontFamily:"monospace" }}>{gradeFor(t.score)}</span>
+              <span style={{ fontSize:12, color:col, fontWeight:700 }}>{t.score}/100</span>
             </div>
-            <div style={{ fontSize:11, fontWeight:700, color:C.blue }}>
-              +{t.eloDelta} ELO
-            </div>
-            <div style={{ fontSize:11, color:C.ink4, marginTop:2 }}>{open?"▲ Hide":"▼ Detail"}</div>
+            <div style={{ fontSize:11, fontWeight:700, color:C.blue }}>+{t.eloDelta} ELO</div>
+            <button onClick={() => setShowModal(true)}
+              style={{ padding:"4px 12px", background:"transparent", border:`1px solid ${C.border2}`,
+                borderRadius:6, color:C.ink3, fontSize:10, fontWeight:700, cursor:"pointer",
+                fontFamily:"inherit", transition:"all 0.15s" }}
+              onMouseEnter={e => { e.currentTarget.style.background = C.surface; e.currentTarget.style.color = C.ink }}
+              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.ink3 }}>
+              View Details →
+            </button>
           </div>
         </div>
 
-        {/* Expanded detail */}
-        {open && (
-          <div style={{ borderTop:`1px solid ${C.border}`, padding:"16px 18px",
-            background:"#0F172A", display:"flex", flexDirection:"column", gap:14 }}>
-
-            {/* Scenario */}
-            {t.scenario && (
-              <div>
-                <div style={{ fontSize:11, fontWeight:800, color:C.ink3, textTransform:"uppercase",
-                  letterSpacing:1, marginBottom:6 }}>📋 Scenario</div>
-                <div style={{ fontSize:13, color:C.ink2, lineHeight:1.7, background:C.surface,
-                  padding:"10px 14px", borderRadius:10, border:`1px solid ${C.border}` }}>
-                  {t.scenario}
-                </div>
-              </div>
-            )}
-
-            {/* Objective */}
-            {t.objective && (
-              <div>
-                <div style={{ fontSize:11, fontWeight:800, color:C.ink3, textTransform:"uppercase",
-                  letterSpacing:1, marginBottom:6 }}>🎯 Objective</div>
-                <div style={{ fontSize:13, color:C.ink2, lineHeight:1.7, background:C.surface,
-                  padding:"10px 14px", borderRadius:10, border:`1px solid ${C.border}` }}>
-                  {t.objective}
-                </div>
-              </div>
-            )}
-
-            {/* Two-col: Expected Output + User's Answer */}
-            {(t.expectedOutput || t.userAnswer) && (
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-                {t.expectedOutput && (
-                  <div>
-                    <div style={{ fontSize:11, fontWeight:800, color:C.green, textTransform:"uppercase",
-                      letterSpacing:1, marginBottom:6 }}>✓ Expected Output</div>
-                    <pre style={{ margin:0, fontSize:12, color:C.ink2, background:C.green2,
-                      padding:"10px 12px", borderRadius:10, border:`1px solid rgba(22,163,74,0.15)`,
-                      whiteSpace:"pre-wrap", wordBreak:"break-word", fontFamily:"'JetBrains Mono',monospace",
-                      lineHeight:1.6, maxHeight:120, overflowY:"auto" }}>
-                      {t.expectedOutput}
-                    </pre>
-                  </div>
-                )}
-                {t.userAnswer && (
-                  <div>
-                    <div style={{ fontSize:11, fontWeight:800, color:C.blue, textTransform:"uppercase",
-                      letterSpacing:1, marginBottom:6 }}>💻 Submitted Solution</div>
-                    <pre style={{ margin:0, fontSize:11, color:C.ink2, background:C.blue3,
-                      padding:"10px 12px", borderRadius:10, border:`1px solid rgba(37,99,235,0.12)`,
-                      whiteSpace:"pre-wrap", wordBreak:"break-word", fontFamily:"'JetBrains Mono',monospace",
-                      lineHeight:1.6, maxHeight:160, overflowY:"auto" }}>
-                      {t.userAnswer.slice(0, 600)}{t.userAnswer.length > 600 ? "\n…" : ""}
-                    </pre>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* AI Feedback */}
-            {t.feedback && (
-              <div>
-                <div style={{ fontSize:11, fontWeight:800, color:C.purple, textTransform:"uppercase",
-                  letterSpacing:1, marginBottom:6 }}>🤖 AI Feedback</div>
-                <div style={{ fontSize:13, color:C.ink2, lineHeight:1.7, background:C.purple2,
-                  padding:"12px 14px", borderRadius:10, border:`1px solid rgba(124,58,237,0.12)`,
-                  borderLeft:`3px solid ${C.purple}` }}>
-                  {t.feedback}
-                </div>
-              </div>
-            )}
-
-            {/* Stats row */}
-            <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
-              {[
-                { label:"Score",    value:`${t.score}/100`,          color:col           },
-                { label:"Grade",    value:gradeFor(t.score),         color:col           },
-                { label:"ELO Earned",value:`+${t.eloDelta}`,         color:C.indigo??C.blue },
-                { label:"Attempts", value:t.attempts,                 color:C.amber       },
-                { label:"Completed",value:fmt(t.completedAt),        color:C.ink3        },
-              ].filter(s=>s.value).map((s,i)=>(
-                <div key={i} style={{ padding:"8px 14px", background:C.surface, borderRadius:10,
-                  border:`1px solid ${C.border}`, textAlign:"center" }}>
-                  <div style={{ fontSize:14, fontWeight:800, color:s.color, fontFamily:"monospace" }}>{s.value}</div>
-                  <div style={{ fontSize:10, color:C.ink4, fontWeight:700, textTransform:"uppercase",
-                    letterSpacing:0.8, marginTop:2 }}>{s.label}</div>
-                </div>
-              ))}
+        {/* Compact preview of scenario */}
+        {t.scenario && (
+          <div style={{ padding:"0 18px 14px" }}>
+            <div style={{ fontSize:11, color:C.ink4, lineHeight:1.6,
+              background:C.surface, padding:"8px 12px", borderRadius:8, border:`1px solid ${C.border}`,
+              overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>
+              {t.scenario}
             </div>
           </div>
         )}
       </div>
+
+      {showModal && <ChallengeDetailModal t={t} onClose={() => setShowModal(false)} />}
     </div>
   )
 }
