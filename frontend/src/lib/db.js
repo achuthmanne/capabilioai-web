@@ -22,13 +22,16 @@ const CAMEL_TO_SNAKE = {
   // Core identity
   displayName:          'display_name',
   profilePhotoURL:      'profile_photo_url',
+  profilePhotoUrl:      'profile_photo_url',   // lowercase-url alias
+  avatarUrl:            'profile_photo_url',   // avatar alias → same column
   coverPhotoURL:        'cover_photo_url',
+  coverPhotoUrl:        'cover_photo_url',     // lowercase-url alias
   // Onboarding / path
   onboardingComplete:   'onboarding_complete',
   // ELO / Arena
   eloRating:            'elo_rating',
-  baseElo:              'elo_rating',        // alias — map to elo_rating
-  initialElo:           'elo_rating',        // alias
+  baseElo:              'elo_rating',          // alias — map to elo_rating
+  initialElo:           'elo_rating',          // alias
   arenaCompleted:       'arena_completed',
   arenaStreak:          'arena_streak',
   arenaLastActive:      'arena_last_active',
@@ -40,6 +43,9 @@ const CAMEL_TO_SNAKE = {
   resumeProjects:       'resume_projects',
   resumeFileName:       'resume_file_name',
   resumeUploadedAt:     'resume_uploaded_at',
+  // Career data — camelCase aliases to snake_case columns
+  certificates:         'certifications',      // DB column is certifications
+  testimonials:         'testimonials',        // passthrough (column added via migration)
   // Social
   githubUsername:       'github_username',
   githubData:           'github_data',
@@ -56,7 +62,7 @@ const CAMEL_TO_SNAKE = {
   coverPosition:        'cover_position',
   personalInfo:         'personal_info',
   subscriptionCycleStart: 'subscription_cycle_start',
-  eloHistory:           'raw_data',           // stored in raw_data jsonb
+  eloHistory:           'raw_data',            // stored in raw_data jsonb
   // Assessment (student path)
   assessmentType:       'assessment_type',
   assessmentScore:      'assessment_score',
@@ -65,6 +71,8 @@ const CAMEL_TO_SNAKE = {
   lastResumeUpload:     'last_resume_upload',
   // Recommendations
   recommendedTasks:     'recommended_tasks',
+  // Keys to silently drop — no DB column exists, including in payload kills the whole update
+  resumeSkills:         null,                  // no column — drop silently
 }
 
 /**
@@ -78,6 +86,7 @@ const toSnake = (payload) => {
   for (const [k, v] of Object.entries(payload)) {
     if (v === undefined) continue
     const mapped = CAMEL_TO_SNAKE[k]
+    if (mapped === null) continue          // null → explicitly drop (no DB column)
     if (mapped) {
       // Only write the mapped key if we haven't already written it via its snake_case form
       if (out[mapped] === undefined) out[mapped] = v
@@ -137,7 +146,8 @@ const toCompat = (data) => {
     experiences:          data.experiences          || [],
     education:            data.education            || [],
     certifications:       data.certifications       || [],
-    skills:               data.skills               || [],
+    certificates:         data.certifications       || [],   // alias: code saving 'certificates' reads back here
+    testimonials:         data.testimonials         || [],
     strengths:            data.strengths            || [],
     weakAreas:            data.weak_areas           || data.weakAreas           || [],
     auraScoreBreakdown:   data.aura_score_breakdown || data.auraScoreBreakdown  || {},

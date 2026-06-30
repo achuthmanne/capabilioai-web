@@ -2909,10 +2909,10 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
       const mergedExperiences=[...newExps,...existingOtherResumes,...existingManual]
 
       // Save all data
+      // NOTE: resumeSkills has no DB column — omit it or Supabase rejects the entire update
       const updates={
         experiences:mergedExperiences,
         vaultFiles:updatedVault,
-        resumeSkills:resumeSkillsList.slice(0,20),
         resumeFileName:file.name,
         resumeUploadedAt:new Date().toISOString(),
       }
