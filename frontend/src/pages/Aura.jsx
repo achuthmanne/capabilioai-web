@@ -2858,44 +2858,31 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
     setResumeUploading(true); setResumeStatus("Extracting resume…")
     try {
       const formData=new FormData(); formData.append("resume",file)
-      const extractData=await fetch(`${API}/api/extract-pdf`,{method:"POST",body:formData}).then(r=>r.json())
+      // Use /professional/parse-resume — richer schema with responsibilities[], roleSkills[], projects[]
+      const extractData=await fetch(`${API}/api/professional/parse-resume`,{method:"POST",body:formData}).then(r=>r.json())
       setResumeStatus("Parsing career history with AI…")
 
-      // Split experience array into professional employment vs projects
-      const allExperience = extractData.experience || []
-      const professionalExps = allExperience.filter(e => !isProjectEntry(e))
-      const projectsFromExp  = allExperience.filter(e => isProjectEntry(e))
+      // /professional/parse-resume returns { experiences:[], skills:[], projects:[], certifications:[], summary:"" }
+      // Each experience is already flat: { company, role, startDate, endDate, isCurrent, description, skills[], verificationStatus, _source }
+      const newExps = (extractData.experiences || []).map(e => ({
+        ...e,
+        industry: e.industry || "Technology",
+        verificationStatus: "self-claimed",
+        _source: "resume",
+        resumeFile: file.name,
+        // Ensure skills is always an array
+        skills: Array.isArray(e.skills) ? e.skills.filter(Boolean) : [],
+      }))
 
-      // Parse professional experiences — keep all fields including dates and responsibilities
-      let newExps=[]
-      if(professionalExps.length>0) {
-        newExps=professionalExps.map(e=>{
-          const dur=e.duration||""
-          const parts=dur.split(/\s*[-–]\s*/)
-          return {
-            company:e.company||"Unknown", industry:e.industry||"Technology",
-            location:e.location||"", verificationStatus:"self-claimed", _source:"resume",
-            resumeFile:file.name,
-            roles:[{
-              title:e.role||e.title||e.position||"Professional",
-              startDate:parts[0]?.trim()||e.startDate||"",
-              endDate:parts[1]?.toLowerCase().includes("present")?"":parts[1]?.trim()||e.endDate||"",
-              current:dur.toLowerCase().includes("present")||e.current||false,
-              responsibilities:Array.isArray(e.responsibilities)?e.responsibilities.join("\n"):(e.description||e.responsibilities||""),
-              skills:(e.skills||[]).filter(Boolean).slice(0,6).join(", ")
-            }]
-          }
-        })
-      }
-
-      // Parse projects — from dedicated projects section AND misclassified experience entries
-      let newProjects=[]
-      const apiProjects = extractData.projects || []
-      const allProjectSources = [
-        ...apiProjects.map(p=>({ title:p.title||p.name||"Project", description:p.description||"", techStack:Array.isArray(p.technologies)?p.technologies:(Array.isArray(p.skills)?p.skills:[]), url:p.url||p.link||"", _source:"resume", resumeFile:file.name })),
-        ...projectsFromExp.map(e=>({ title:e.role||e.title||e.company||"Project", description:Array.isArray(e.responsibilities)?e.responsibilities.join("\n"):(e.description||e.responsibilities||""), techStack:(e.skills||[]).filter(Boolean), url:"", _source:"resume", resumeFile:file.name })),
-      ]
-      newProjects = allProjectSources
+      // Parse projects — from dedicated projects section
+      const newProjects = (extractData.projects || []).map(p => ({
+        title: p.title || p.name || "Project",
+        description: p.description || "",
+        techStack: Array.isArray(p.techStack) ? p.techStack : (Array.isArray(p.technologies) ? p.technologies : (Array.isArray(p.skills) ? p.skills : [])),
+        url: p.url || p.link || "",
+        _source: "resume",
+        resumeFile: file.name,
+      }))
 
       // Build/update skill graph from resume skills
       const resumeSkillsList=(extractData.skills||[]).filter(Boolean)

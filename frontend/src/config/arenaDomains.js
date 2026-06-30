@@ -1010,15 +1010,46 @@ export const resolveSandboxType = (task, domainKey) => {
     case "swe":           return "code"
     case "bi_analyst":    return cat.includes("sql") || cat.includes("query") ? "sql" : "dashboard"
     case "data_engineer": return cat.includes("sql") || cat.includes("transform") ? "sql" : "notebook"
-    case "sre":           return "terminal"
-    case "soc":           return "terminal"
-    case "qa":            return cat.includes("api") ? "api" : "code"
-    case "ba_product":    return cat.includes("sql") || cat.includes("metric") ? "sql" : "markdown"
+    case "sre": {
+      // SLO/runbook writing → markdown; incident/k8s ops → sre_console
+      if (cat.includes("slo") || cat.includes("runbook") || cat.includes("postmortem")) return "markdown"
+      return "sre_console"
+    }
+    case "soc": {
+      // Writing reports → report; triage/investigate → soc_console
+      if (cat.includes("report") || cat.includes("write")) return "report"
+      return "soc_console"
+    }
+    case "qa": {
+      // API testing → api; bug report writing → markdown; all others → qa_lab
+      if (cat.includes("api")) return "api"
+      if (cat.includes("bug") || cat.includes("report")) return "markdown"
+      return "qa_lab"
+    }
+    case "ba_product": {
+      // Metrics / SQL analysis → sql; requirements, process, docs → business_analysis
+      if (cat.includes("sql") || cat.includes("metric") || cat.includes("analys")) return "sql"
+      return "business_analysis"
+    }
     case "devops":        return "terminal"
-    case "aws":           return cat.includes("lambda") || cat.includes("serverless") ? "code" : "terminal"
-    case "azure":         return cat.includes("kql") ? "code" : "terminal"
-    case "cyber":         return "terminal"
-    case "medical":       return "markdown"
+    case "aws": {
+      // Lambda/IaC/IAM code tasks → code; cost review → markdown; arch/design → system_design
+      if (cat.includes("lambda") || cat.includes("serverless") || cat.includes("iac") || cat.includes("iam")) return "code"
+      if (cat.includes("cost")) return "markdown"
+      return "system_design"
+    }
+    case "azure": {
+      // Bicep/KQL/RBAC/IaC code tasks → code; cost review → markdown; arch/design → system_design
+      if (cat.includes("kql") || cat.includes("bicep") || cat.includes("iac") || cat.includes("rbac")) return "code"
+      if (cat.includes("cost")) return "markdown"
+      return "system_design"
+    }
+    case "cyber": {
+      // Incident/vuln reports → markdown; all threat/pentest/triage ops → security_console
+      if (cat.includes("incident") || cat.includes("vuln_report") || cat.includes("report")) return "markdown"
+      return "security_console"
+    }
+    case "medical":       return "medical_coding"
     case "ece":           return "code"
     default:              return "code"
   }
