@@ -2842,13 +2842,16 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
   const isProjectEntry = (e) => {
     const company = (e.company||"").toLowerCase().trim()
     const title   = (e.role||e.title||e.position||"").toLowerCase()
-    if (!company || company === "unknown" || company === "") return true
+    // No company → personal/academic project
+    if (!company || company === "unknown" || company === "self" || company === "personal" || company === "n/a") return true
     // University / college / school → project
-    if (/university|college|institute|school|iit|nit|iim|iiit|academy|polytechnic|campus/.test(company)) return true
-    // Title screams project
-    if (/\bproject\b|capstone|thesis|dissertation|final year|hackathon|intern project/.test(title)) return true
-    // No duration and no recognisable job-sounding title
-    const hasJobTitle = /engineer|developer|analyst|manager|intern|lead|head|consultant|architect|designer|officer|specialist|director|associate|executive/.test(title)
+    if (/university|college|institute|school|iit|nit|iim|iiit|academy|polytechnic|campus|dept\.|department/.test(company)) return true
+    // Company name is itself a project label
+    if (/\bproject\b|mini[\s-]?project|main[\s-]?project|college[\s-]?project|academic/.test(company)) return true
+    // Title explicitly describes a project type
+    if (/\bproject\b|mini[\s-]?project|main[\s-]?project|college[\s-]?project|academic[\s-]?project|personal[\s-]?project|side[\s-]?project|capstone|thesis|dissertation|final[\s-]?year|hackathon|open[\s-]?source|freelance[\s-]?project/.test(title)) return true
+    // No duration and no recognisable professional job title
+    const hasJobTitle = /engineer|developer|analyst|manager|intern|lead|head|consultant|architect|designer|officer|specialist|director|associate|executive|trainee|apprentice|researcher|scientist/.test(title)
     if (!hasJobTitle && !e.duration && !e.startDate) return true
     return false
   }

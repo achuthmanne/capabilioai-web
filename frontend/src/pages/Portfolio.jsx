@@ -1476,7 +1476,7 @@ export default function Portfolio({ username: usernameProp }) {
             skills.length>0&&{k:"skills",    l:"Skills"},
             tasks.length>0&&{k:"challenges", l:"Challenges"},
             interviews.length>0&&{k:"interviews",l:"Interviews"},
-            (ud.experiences?.length>0||ud.resumeProjects?.length>0)&&{k:"experience",l:"Projects"},
+            (ud.experiences?.length>0||ud.resumeProjects?.length>0)&&{k:"experience",l:"Timeline"},
             ud.certificates?.length>0&&{k:"certificates",l:"Certificates"},
             ud.testimonials?.length>0&&{k:"testimonials",l:"Reviews"},
           ].filter(Boolean).map(({k,l})=>(
@@ -2115,17 +2115,9 @@ export default function Portfolio({ username: usernameProp }) {
         {(ud.experiences?.length>0||ud.resumeProjects?.length>0)&&(
           <div ref={refs.experience} className="ps">
             <Card accent={aConfig?.palette?.accent}>
-              <SectionTitle icon="💼"
-                title={
-                  ud.path==="student" ? "Projects & Internships" :
-                  archetype===ARCHETYPES.MOBILE?"Published Apps & Experience":
-                  archetype===ARCHETYPES.CRAFTSMAN?"Built Projects & Work History":
-                  archetype===ARCHETYPES.ANALYST?"Analytics Projects & Case Studies":
-                  archetype===ARCHETYPES.DESIGNER?"Case Studies & Work History":
-                  archetype===ARCHETYPES.PM?"Product Work & Outcomes":
-                  "Experience & Projects"
-                }
-                sub={ud.path==="student" ? "Real-world work, internships, and personal builds" : undefined}
+              <SectionTitle icon="🗂️"
+                title="Career Timeline"
+                sub="Professional experience, internships, and verified work history"
                 accent={aConfig?.palette?.accent||C.teal}/>
 
               {/* Work / internship history */}
@@ -2159,7 +2151,7 @@ export default function Portfolio({ username: usernameProp }) {
                 return (
                 <div style={{marginBottom:ud.resumeProjects?.length>0?28:0}}>
                   <div style={{fontSize:11,fontWeight:800,color:C.ink4,textTransform:"uppercase",letterSpacing:1,marginBottom:16}}>
-                    {ud.path==="student" ? "Internships & Work" : "Work History"}
+                    Work Experience & Internships
                   </div>
                   {normExps.map((e,i)=>{
                     const isLast = i === normExps.length - 1
@@ -2208,7 +2200,7 @@ export default function Portfolio({ username: usernameProp }) {
               {ud.resumeProjects?.length>0&&(
                 <div>
                   <div style={{fontSize:11,fontWeight:800,color:C.ink4,textTransform:"uppercase",letterSpacing:1,marginBottom:16}}>
-                    {ud.path==="student" ? "Projects & Builds" : "Projects"}
+                    Personal & Academic Projects
                   </div>
                   {ud.resumeProjects.map((p,i)=>(
                     <ProjectCard key={i} p={p} last={i===ud.resumeProjects.length-1}/>

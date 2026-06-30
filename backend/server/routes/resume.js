@@ -166,11 +166,23 @@ CRITICAL: For each experience, "roleSkills" must ONLY contain skills explicitly 
 function _isProject(e) {
   const co = (e.company || "").toLowerCase().trim()
   const title = (e.role || e.title || "").toLowerCase()
-  if (!co || co === "unknown") return true
-  if (/university|college|institute|school|iit|nit|iim|iiit|academy|polytechnic/.test(co)) return true
-  if (/\bproject\b|capstone|thesis|dissertation|final year|hackathon/.test(title)) return true
-  const hasJobTitle = /engineer|developer|analyst|manager|intern|lead|head|consultant|architect|designer|officer|specialist|director|associate|executive/.test(title)
+
+  // No company → almost certainly a personal/academic project
+  if (!co || co === "unknown" || co === "self" || co === "personal" || co === "n/a") return true
+
+  // Company name looks like an academic institution
+  if (/university|college|institute|school|iit|nit|iim|iiit|academy|polytechnic|dept\.|department/.test(co)) return true
+
+  // Title explicitly describes a project type — NOT professional employment
+  if (/\bproject\b|mini[\s-]?project|main[\s-]?project|college[\s-]?project|academic[\s-]?project|personal[\s-]?project|side[\s-]?project|capstone|thesis|dissertation|final[\s-]?year|hackathon|open[\s-]?source|freelance[\s-]?project/.test(title)) return true
+
+  // Company name itself suggests it's a project label, not an employer
+  if (/\bproject\b|mini[\s-]?project|main[\s-]?project|college[\s-]?project|academic/.test(co)) return true
+
+  // Title has no recognizable professional job-title words AND has no dates → likely a project
+  const hasJobTitle = /engineer|developer|analyst|manager|intern|lead|head|consultant|architect|designer|officer|specialist|director|associate|executive|trainee|apprentice|researcher|scientist/.test(title)
   if (!hasJobTitle && !e.startDate && !e.endDate) return true
+
   return false
 }
 function _toExp(e, i) {
