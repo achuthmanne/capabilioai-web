@@ -71,8 +71,13 @@ const CAMEL_TO_SNAKE = {
   lastResumeUpload:     'last_resume_upload',
   // Recommendations
   recommendedTasks:     'recommended_tasks',
-  // Keys to silently drop — no DB column exists, including in payload kills the whole update
+  // Keys to silently drop — no DB column exists; including them kills the whole update
   resumeSkills:         null,                  // no column — drop silently
+  // EPFO verification: backend writes epfo_verified/epfo_data directly via service_role.
+  // Frontend onUpdate just updates local state; don't try to write these columns.
+  epfoVerified:         null,
+  epfoData:             null,
+  uan:                  null,
 }
 
 /**

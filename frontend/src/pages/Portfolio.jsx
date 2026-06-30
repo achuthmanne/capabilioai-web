@@ -2168,7 +2168,22 @@ export default function Portfolio({ username: usernameProp }) {
                           {ud.path==="student" ? "🏫" : "🏢"}
                         </div>
                         <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ fontSize:14, fontWeight:700, color:C.ink }}>{e.role||"Role"} — {e.company||"Company"}</div>
+                          {/* Company name + verification badge */}
+                          <div style={{ display:"flex", alignItems:"center", gap:7, flexWrap:"wrap", marginBottom:1 }}>
+                            <span style={{ fontSize:14, fontWeight:700, color:C.ink }}>{e.company||"Company"}</span>
+                            {e.verificationStatus==="verified"
+                              ? <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 8px", borderRadius:100, background:"#e6f9f4", color:"#0D9E72", fontSize:9, fontWeight:700, letterSpacing:"0.06em", textTransform:"uppercase" }}>✓ VERIFIED · UAN/EPFO</span>
+                              : <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 8px", borderRadius:100, background:"#FFF8E6", color:"#C77D00", fontSize:9, fontWeight:700, letterSpacing:"0.06em", textTransform:"uppercase" }}>SELF-CLAIMED</span>}
+                          </div>
+                          {/* Legal entity line — only shown after EPFO verification */}
+                          {e.legalName && e.legalName !== e.company && (
+                            <div style={{ fontSize:10, color:C.ink4, marginBottom:2, display:"flex", alignItems:"center", gap:4 }}>
+                              <span style={{ color:"#0D9E72", fontSize:9 }}>⚖</span>
+                              <span>Legal entity: <span style={{ fontWeight:600, color:C.ink3 }}>{e.legalName}</span></span>
+                            </div>
+                          )}
+                          {/* Role + dates */}
+                          <div style={{ fontSize:13, fontWeight:600, color:C.ink2 }}>{e.role||"Role"}</div>
                           {dateStr && <div style={{ fontSize:11, color:C.ink4, marginTop:2 }}>📅 {dateStr}</div>}
                           {descLines.length > 0 && (
                             <div style={{ marginTop:8 }}>

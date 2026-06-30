@@ -601,10 +601,18 @@ function CareerTimeline({ experiences, onAdd, onEdit, onDelete }) {
                   <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom:3 }}>
                     <span style={{ fontFamily:"'DM Sans',serif", fontSize:17, fontWeight:700, color:T.ink }}>{e.company}</span>
                     {e.verificationStatus==="verified"
-                      ? <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 9px", borderRadius:100, background:T.green2, color:T.green, fontSize:10, fontWeight:700, fontFamily:"'DM Mono',monospace", letterSpacing:"0.06em", textTransform:"uppercase" }}>✓ VERIFIED</span>
-                      : <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 9px", borderRadius:100, background:T.amber2, color:T.amber, fontSize:10, fontWeight:700, fontFamily:"'DM Mono',monospace", letterSpacing:"0.06em", textTransform:"uppercase" }}>SELF-CLAIMED</span>}
+                      ? <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 9px", borderRadius:100, background:T.green2, color:T.green, fontSize:10, fontWeight:700, fontFamily:"'DM Mono',monospace", letterSpacing:"0.06em", textTransform:"uppercase" }}>✓ VERIFIED · UAN/EPFO</span>
+                      : <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 9px", borderRadius:100, background:T.amber2, color:T.amber, fontSize:10, fontWeight:700, fontFamily:"'DM Mono',monospace", letterSpacing:"0.06em", textTransform:"uppercase" }}>SELF-CLAIMED · {e.verificationSource||"Resume"}</span>}
                     {e.isCurrent && <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 8px", borderRadius:100, background:T.green2, color:T.green, fontSize:10, fontWeight:700, fontFamily:"'DM Mono',monospace", letterSpacing:"0.06em" }}>● CURRENT</span>}
                   </div>
+                  {/* Two-name model: legal entity line shown only after EPFO verification */}
+                  {e.legalName && e.legalName !== e.company && (
+                    <div style={{ fontSize:11, color:T.ink3, fontFamily:"'DM Mono',monospace", letterSpacing:"0.04em", marginBottom:3, display:"flex", alignItems:"center", gap:4 }}>
+                      <span style={{ color:T.green, fontSize:10 }}>⚖</span>
+                      <span>Legal entity: <span style={{ color:T.ink2, fontWeight:600 }}>{e.legalName}</span></span>
+                      {e.matchConfidence && <span style={{ color:T.ink4 }}>· {e.matchConfidence}% match</span>}
+                    </div>
+                  )}
                   <div style={{ fontSize:11, color:T.ink4, display:"flex", gap:6, flexWrap:"wrap", fontFamily:"'DM Mono',monospace", letterSpacing:"0.04em" }}>
                     {e.industry&&<span>{e.industry}</span>}
                     {e.location&&<><span>·</span><span>📍 {e.location}</span></>}
@@ -706,7 +714,15 @@ function VerificationSection({ userData, user, onUpdate }) {
     setLoading(true); setError("")
     try {
       const res = await fetch(`${API}/api/verify/epfo/confirm`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({otp,txnId,uan,uid:user.id||user.uid})}).then(r=>r.json())
-      if (res.verified) { await onUpdate({epfoVerified:true,epfoData:res.data||{},uan}); setStep(3) }
+      if (res.verified) {
+        const updates = { epfoVerified:true, epfoData:res.data||{}, uan }
+        // Apply per-experience verification statuses returned from employer matching
+        if (res.data?.updatedExperiences?.length) {
+          updates.experiences = res.data.updatedExperiences
+        }
+        await onUpdate(updates)
+        setStep(3)
+      }
       else setError(res.error||"Invalid OTP.")
     } catch { setError("Server error.") }
     setLoading(false)
