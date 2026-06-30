@@ -2168,18 +2168,17 @@ export default function Portfolio({ username: usernameProp }) {
                           {ud.path==="student" ? "🏫" : "🏢"}
                         </div>
                         <div style={{ flex:1, minWidth:0 }}>
-                          {/* Company name + verification badge */}
+                          {/* Company name + verification badge (public-safe: no UAN, no internal IDs) */}
                           <div style={{ display:"flex", alignItems:"center", gap:7, flexWrap:"wrap", marginBottom:1 }}>
                             <span style={{ fontSize:14, fontWeight:700, color:C.ink }}>{e.company||"Company"}</span>
                             {e.verificationStatus==="verified"
-                              ? <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 8px", borderRadius:100, background:"#e6f9f4", color:"#0D9E72", fontSize:9, fontWeight:700, letterSpacing:"0.06em", textTransform:"uppercase" }}>✓ VERIFIED · UAN/EPFO</span>
-                              : <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 8px", borderRadius:100, background:"#FFF8E6", color:"#C77D00", fontSize:9, fontWeight:700, letterSpacing:"0.06em", textTransform:"uppercase" }}>SELF-CLAIMED</span>}
+                              ? <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 8px", borderRadius:100, background:"#e6f9f4", color:"#0D9E72", fontSize:9, fontWeight:700, letterSpacing:"0.06em", textTransform:"uppercase" }}>✓ Verified</span>
+                              : <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 8px", borderRadius:100, background:"#F5F5F5", color:"#888", fontSize:9, fontWeight:600, letterSpacing:"0.04em", textTransform:"uppercase" }}>Self-reported</span>}
                           </div>
-                          {/* Legal entity line — only shown after EPFO verification */}
-                          {e.legalName && e.legalName !== e.company && (
-                            <div style={{ fontSize:10, color:C.ink4, marginBottom:2, display:"flex", alignItems:"center", gap:4 }}>
-                              <span style={{ color:"#0D9E72", fontSize:9 }}>⚖</span>
-                              <span>Legal entity: <span style={{ fontWeight:600, color:C.ink3 }}>{e.legalName}</span></span>
+                          {/* Legal entity — shows registered name, never UAN or internal IDs */}
+                          {e.legalName && e.legalName !== e.company && e.verificationStatus==="verified" && (
+                            <div style={{ fontSize:10, color:C.ink4, marginBottom:2 }}>
+                              Registered as: <span style={{ fontWeight:600 }}>{e.legalName}</span>
                             </div>
                           )}
                           {/* Role + dates */}

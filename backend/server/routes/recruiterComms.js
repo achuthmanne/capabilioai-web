@@ -398,16 +398,92 @@ router.get("/offers", requireAuth, async (req, res) => {
 router.put("/offers/:id/respond", requireAuth, async (req, res) => {
   try {
     const { response } = req.body  // "accepted" | "rejected" | "countered"
-    const { data: offer } = await supabaseAdmin.from("offers").select("candidate_id,recruiter_id").eq("id", req.params.id).single()
+
+    // Fetch full offer details — we need company/role/dates for auto-profile update
+    const { data: offer } = await supabaseAdmin
+      .from("offers")
+      .select("candidate_id,recruiter_id,company,role_title,joining_date,salary_lpa,job_id")
+      .eq("id", req.params.id)
+      .single()
     if (!offer || offer.candidate_id !== req.user.id) return res.status(403).json({ error: "Forbidden" })
 
     const { data, error } = await supabaseAdmin.from("offers").update({
-      status:            response,
+      status:             response,
       candidate_response: response,
-      responded_at:      new Date().toISOString(),
-      updated_at:        new Date().toISOString(),
+      responded_at:       new Date().toISOString(),
+      updated_at:         new Date().toISOString(),
     }).eq("id", req.params.id).select().single()
     if (error) throw error
+
+    // ── Auto-update career timeline when offer is accepted ──────────────────
+    // Pull job JD + skills if a job_id is attached; otherwise use offer fields.
+    if (response === "accepted") {
+      try {
+        let jobDescription = ""
+        let requiredSkills = []
+
+        if (offer.job_id) {
+          const { data: job } = await supabaseAdmin
+            .from("job_postings")
+            .select("description,required_skills,essential_skills")
+            .eq("id", offer.job_id)
+            .single()
+          if (job) {
+            jobDescription = job.description || ""
+            requiredSkills = [
+              ...(job.required_skills  || []),
+              ...(job.essential_skills || []),
+            ].map(s => (typeof s === "string" ? s : s.name || "")).filter(Boolean)
+          }
+        }
+
+        // Build the new experience entry
+        const newExp = {
+          company:            offer.company    || "New Company",
+          role:               offer.role_title || "New Role",
+          startDate:          offer.joining_date
+                                ? offer.joining_date.slice(0, 7)  // "YYYY-MM"
+                                : new Date().toISOString().slice(0, 7),
+          endDate:            null,
+          isCurrent:          true,
+          description:        jobDescription
+                                ? jobDescription.slice(0, 600)
+                                : `Role: ${offer.role_title || "New Role"} at ${offer.company || "New Company"}`,
+          skills:             requiredSkills.slice(0, 12),
+          industry:           "Technology",
+          verificationStatus: "self-claimed",
+          verificationSource: "Capabilio Offer",
+          _source:            "offer_accepted",
+          offerId:            req.params.id,
+        }
+
+        // Prepend to existing experiences (new job goes first)
+        const { data: profile } = await supabaseAdmin
+          .from("profiles")
+          .select("experiences")
+          .eq("id", req.user.id)
+          .single()
+
+        const existing = Array.isArray(profile?.experiences) ? profile.experiences : []
+
+        // Mark any previous "isCurrent" entry as ended
+        const today = new Date().toISOString().slice(0, 7)
+        const updated = existing.map(e =>
+          e.isCurrent ? { ...e, isCurrent: false, endDate: e.endDate || today } : e
+        )
+
+        await supabaseAdmin
+          .from("profiles")
+          .update({ experiences: [newExp, ...updated] })
+          .eq("id", req.user.id)
+
+        console.log(`[offer-accept] Auto-added "${newExp.role}" at "${newExp.company}" to timeline for user ${req.user.id}`)
+      } catch (autoErr) {
+        // Non-fatal — offer acceptance still succeeds even if timeline update fails
+        console.error("[offer-accept] Timeline auto-update failed:", autoErr.message)
+      }
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
     await supabaseAdmin.from("notifications").insert({
       user_id:        offer.recruiter_id,
