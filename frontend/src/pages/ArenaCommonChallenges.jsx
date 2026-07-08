@@ -1009,8 +1009,9 @@ function CalculatorWorkstation({ challenge, isSolved, onSubmitAnswer, submitting
   const [localResult, setLocalResult] = useState(null) // {pass: bool, expected, got}
 
   const tc = challenge?.test_cases?.[0]
-  const expected    = tc?.expected ?? tc?.expectedOutput ?? null
-  const tolerance   = tc?.tolerance ?? 0.01
+  // DB stores as expected_output (snake_case); also handle legacy camelCase variants
+  const expected    = tc?.expected ?? tc?.expected_output ?? tc?.expectedOutput ?? null
+  const tolerance   = tc?.tolerance ?? tc?.tolerance_pct ?? 0.01
 
   const handleCheck = () => {
     const val = parseFloat(answer)
@@ -1322,10 +1323,22 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
   const [sortField, setSortField]             = useState("id")
   const [sortDir, setSortDir]                 = useState("asc")
 
-  // Stream-specific categories that belong to engineering/non-IT streams.
-  // These are NEVER shown to IT / CSE / MCA / DevOps students.
+  // Categories that should NEVER appear in Common Challenges for IT / CSE / MCA / DevOps students.
+  // Covers: engineering streams + aptitude/placement test categories (eLitmus, AMCAT, etc.)
   const NON_IT_STREAM_CATS = new Set([
+    // Core engineering streams
     "ECE", "EEE", "Mechanical", "Civil", "Pharmacy", "MBA", "IoT", "AI_DS", "AI_ML",
+    // Aptitude / quantitative / placement categories (not IT-specific DSA/CS content)
+    "Aptitude", "aptitude", "APTITUDE",
+    "Quantitative", "quantitative", "Quant", "quant", "QUANTITATIVE",
+    "Verbal", "verbal", "VERBAL",
+    "Reasoning", "reasoning", "REASONING",
+    "LogicalReasoning", "logical_reasoning", "Logical",
+    "Placement", "placement", "PLACEMENT",
+    "eLitmus", "elitmus", "ELITMUS",
+    "AMCAT", "amcat", "Amcat",
+    "GRE", "gre", "GMAT", "gmat",
+    "HCF_LCM", "hcf_lcm", "Number_Theory", "number_theory",
   ])
 
   // ── Load challenges from problemsDb ─────────────────────────────────────────
@@ -1726,8 +1739,9 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
     setSubmitting(true)
     const val    = parseFloat(answerStr)
     const tc     = selectedChallenge.test_cases?.[0]
-    const exp    = parseFloat(tc?.expected ?? tc?.expectedOutput ?? NaN)
-    const tol    = tc?.tolerance ?? 0.01
+    // DB stores expected as expected_output (snake_case); also handle legacy camelCase
+    const exp    = parseFloat(tc?.expected ?? tc?.expected_output ?? tc?.expectedOutput ?? NaN)
+    const tol    = tc?.tolerance ?? tc?.tolerance_pct ?? 0.01
     const passed = !isNaN(exp) && Math.abs(val - exp) <= tol
 
     const result = { correct: passed, message: passed ? "Correct!" : "Incorrect" }
@@ -1738,7 +1752,7 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
         const isRetry  = completedIds.has(String(selectedChallenge.id))
         const eloGain  = isRetry ? 0 : Math.max(1, (selectedChallenge.eloReward || 5) - prev * 2)
         const newElo   = elo + eloGain
-        await userDoc(uid).update({ eloRating: newElo, elo_rating: newElo })
+        await userDoc.update(uid, { eloRating: newElo })
         await arenaDb.addHistory(uid, {
           challengeId: selectedChallenge.id,
           challengeTitle: selectedChallenge.title,
