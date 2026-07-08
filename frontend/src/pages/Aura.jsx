@@ -156,7 +156,6 @@ const getTier = elo => ELO_TIERS.find(t => elo >= t.min && elo < t.max) || ELO_T
 const getNextTier = elo => ELO_TIERS.find(t => elo < t.max && t.max < 9999) || null
 
 function EloHistoryCard({ history, currentElo, eloDecayToday }) {
-  const canvasRef = useRef()
   const tier = getTier(currentElo)
   const nextTier = getNextTier(currentElo)
   const progressToNext = nextTier ? Math.round(((currentElo - getTier(currentElo).min) / (getTier(currentElo).max - getTier(currentElo).min)) * 100) : 100
@@ -165,156 +164,64 @@ function EloHistoryCard({ history, currentElo, eloDecayToday }) {
   const peakElo = history.length > 0 ? Math.max(...history.filter(h=>h.elo!=null).map(h=>h.elo), currentElo) : currentElo
   const isPeak = currentElo >= peakElo
 
-  useEffect(() => {
-    const canvas = canvasRef.current; if (!canvas) return
-    const ctx = canvas.getContext("2d"), W = canvas.width, H = canvas.height
-    ctx.clearRect(0, 0, W, H)
+  // Build event list with computed deltas, most-recent first
+  const events = history.map((h, i) => {
+    const delta = h.delta != null ? h.delta : (i === 0 ? 0 : h.elo - history[i - 1].elo)
+    return { ...h, delta }
+  }).reverse()
 
-    if (!history || history.length < 2) {
-      ctx.font = "12px 'DM Sans',sans-serif"; ctx.fillStyle = "#A8A29E"
-      ctx.textAlign = "center"
-      ctx.fillText("Complete Arena tasks to build your ELO history", W/2, H/2 - 8)
-      ctx.font = "10px 'DM Sans',sans-serif"
-      ctx.fillText("Each task updates your rank in real time", W/2, H/2 + 12)
-      return
-    }
+  // Sparkline SVG data
+  const sparkVals = history.filter(h => h.elo != null).map(h => h.elo)
+  const renderSparkline = () => {
+    if (sparkVals.length < 2) return null
+    const W = 400, H = 52
+    const min = Math.min(...sparkVals), max = Math.max(...sparkVals)
+    const range = max - min || 1
+    const n = sparkVals.length
+    const pts = sparkVals.map((v, i) => [
+      (i / (n - 1)) * W,
+      H - 6 - ((v - min) / range) * (H - 12)
+    ])
+    const linePath = pts.map((p, i) => `${i===0?"M":"L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ")
+    const areaPath = `${linePath} L${W},${H} L0,${H} Z`
+    const peakIdx = sparkVals.indexOf(Math.max(...sparkVals))
+    const [lx, ly] = pts[pts.length - 1]
+    const [px, py] = pts[peakIdx]
+    return (
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{width:"100%",height:H,display:"block"}}>
+        <defs>
+          <linearGradient id={`sg_${tier.label}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={tier.color} stopOpacity="0.28"/>
+            <stop offset="100%" stopColor={tier.color} stopOpacity="0.02"/>
+          </linearGradient>
+        </defs>
+        <path d={areaPath} fill={`url(#sg_${tier.label})`}/>
+        <path d={linePath} fill="none" stroke={tier.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        {peakIdx !== n - 1 && <circle cx={px} cy={py} r="3.5" fill="#F59E0B" stroke="#fff" strokeWidth="1.5"/>}
+        <circle cx={lx} cy={ly} r="4.5" fill={tier.color} stroke="#fff" strokeWidth="2"/>
+      </svg>
+    )
+  }
 
-    const vals = history.map(h => h.elo)
-    const pad = {l:40, r:16, t:18, b:32}
-    const W2 = W - pad.l - pad.r, H2 = H - pad.t - pad.b
-    const minV = Math.min(...vals) - 25
-    const maxV = Math.max(...vals) + 25
-    const yOf = v => pad.t + H2 - ((v - minV) / (maxV - minV)) * H2
-
-    // Build OHLC-style bars from consecutive ELO values
-    // Each bar: open = prev elo, close = curr elo, high/low = simulated wick
-    const bars = vals.map((close, i) => {
-      const open = i === 0 ? close : vals[i - 1]
-      const change = close - open
-      const wick = Math.max(4, Math.abs(change) * 0.4)
-      const high = Math.max(open, close) + wick
-      const low  = Math.min(open, close) - wick
-      return { open, close, high, low, bullish: close >= open }
-    })
-
-    const n = bars.length
-    const barW = Math.max(4, Math.min(14, (W2 / n) * 0.65))
-    const gap  = (W2 - barW * n) / (n - 1 || 1)
-    const xOf  = i => pad.l + i * (barW + gap) + barW / 2
-
-    // Grid lines + ELO axis labels
-    const gridCount = 4
-    for (let g = 0; g <= gridCount; g++) {
-      const v = minV + ((maxV - minV) * g) / gridCount
-      const y = yOf(v)
-      ctx.strokeStyle = "rgba(0,0,0,0.05)"; ctx.lineWidth = 1; ctx.setLineDash([3, 5])
-      ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke()
-      ctx.setLineDash([])
-      ctx.font = "8px 'DM Mono',monospace"; ctx.fillStyle = "#A8A29E"
-      ctx.textAlign = "right"
-      ctx.fillText(Math.round(v), pad.l - 5, y + 3)
-    }
-
-    // Volume-style base bars (thin, 30% opacity)
-    const volH = H2 * 0.18
-    bars.forEach((b, i) => {
-      const x = xOf(i) - barW / 2
-      const height = volH * Math.max(0.15, Math.abs(b.close - b.open) / (maxV - minV) * 6)
-      ctx.fillStyle = b.bullish ? "rgba(34,197,94,0.18)" : "rgba(239,68,68,0.18)"
-      ctx.fillRect(x, pad.t + H2 - height, barW, height)
-    })
-
-    // Draw candlestick wicks + bodies
-    bars.forEach((b, i) => {
-      const x  = xOf(i)
-      const x0 = x - barW / 2
-      const yH = yOf(b.high)
-      const yL = yOf(b.low)
-      const yO = yOf(b.open)
-      const yC = yOf(b.close)
-      const bullColor = "#22C55E", bearColor = "#EF4444"
-      const col = b.bullish ? bullColor : bearColor
-
-      // Wick (center line)
-      ctx.strokeStyle = col + "99"; ctx.lineWidth = 1; ctx.setLineDash([])
-      ctx.beginPath(); ctx.moveTo(x, yH); ctx.lineTo(x, yL); ctx.stroke()
-
-      // Body rectangle
-      const bodyY = Math.min(yO, yC)
-      const bodyH = Math.max(2, Math.abs(yO - yC))
-      if (b.bullish) {
-        ctx.fillStyle = col
-        ctx.fillRect(x0, bodyY, barW, bodyH)
-        ctx.strokeStyle = col; ctx.lineWidth = 1
-        ctx.strokeRect(x0, bodyY, barW, bodyH)
-      } else {
-        ctx.fillStyle = bearColor + "CC"
-        ctx.fillRect(x0, bodyY, barW, bodyH)
-        ctx.strokeStyle = bearColor; ctx.lineWidth = 1
-        ctx.strokeRect(x0, bodyY, barW, bodyH)
-      }
-    })
-
-    // Overlay smooth trend line (thin, muted)
-    ctx.beginPath()
-    vals.forEach((v, i) => {
-      const x = xOf(i), y = yOf(v)
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
-    })
-    ctx.strokeStyle = tier.color + "55"; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4])
-    ctx.stroke(); ctx.setLineDash([])
-
-    // Peak marker
-    const peakIdx = vals.indexOf(Math.max(...vals))
-    if (peakIdx >= 0) {
-      const px = xOf(peakIdx), py = yOf(vals[peakIdx]) - 14
-      ctx.font = "bold 8px 'DM Mono',monospace"; ctx.fillStyle = "#F59E0B"
-      ctx.textAlign = "center"; ctx.fillText("PEAK", px, py)
-      ctx.beginPath(); ctx.arc(xOf(peakIdx), yOf(vals[peakIdx]), 4, 0, Math.PI * 2)
-      ctx.fillStyle = "#F59E0B"; ctx.fill()
-      ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.stroke()
-    }
-
-    // Latest dot
-    const lastX = xOf(n - 1), lastY = yOf(vals[n - 1])
-    ctx.beginPath(); ctx.arc(lastX, lastY, 5, 0, Math.PI * 2)
-    ctx.fillStyle = tier.color; ctx.fill()
-    ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.stroke()
-
-    // Delta label on latest bar
-    const lastDelta = vals[n - 1] - vals[0]
-    if (lastDelta !== 0) {
-      ctx.font = "bold 9px 'DM Sans',sans-serif"
-      ctx.fillStyle = lastDelta > 0 ? "#22C55E" : "#EF4444"
-      ctx.textAlign = "center"
-      ctx.fillText((lastDelta > 0 ? "+" : "") + lastDelta, lastX, lastY - 12)
-    }
-
-    // Date labels (first, middle, last)
-    ctx.font = "9px 'DM Sans',sans-serif"; ctx.fillStyle = "#A8A29E"; ctx.textAlign = "center"
-    ;[0, Math.floor(n / 2), n - 1].forEach(i => {
-      const d = new Date(history[i]?.date || Date.now())
-      ctx.fillText(d.toLocaleDateString("en-US", {month:"short", day:"numeric"}), xOf(i), H - 4)
-    })
-  }, [history, currentElo])
+  const gainCount = events.filter(e => e.delta > 0).length
+  const lossCount = events.filter(e => e.delta < 0).length
 
   return (
     <div>
-      {/* Top stat row */}
+      {/* ── Top stat row ── */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
         <div>
-          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
             <div style={{fontSize:38,fontWeight:900,color:T.ink,fontFamily:"'DM Mono',monospace",lineHeight:1}}>{currentElo}</div>
             {totalDelta !== 0 && (
               <div style={{display:"flex",flexDirection:"column",gap:2}}>
                 <span style={{fontSize:12,fontWeight:800,color:totalDelta>=0?T.green:T.red,background:totalDelta>=0?"#DCFCE7":"#FEE2E2",padding:"2px 7px",borderRadius:99}}>
                   {totalDelta>=0?"▲ +":"▼ "}{totalDelta} pts
                 </span>
-                <span style={{fontSize:9,color:T.ink4,textAlign:"center"}}>vs 30d ago</span>
+                <span style={{fontSize:9,color:T.ink4,textAlign:"center"}}>vs start</span>
               </div>
             )}
           </div>
-          {/* Tier badge */}
           <div style={{display:"inline-flex",alignItems:"center",gap:6,background:tier.color+"15",border:`1.5px solid ${tier.color}30`,borderRadius:99,padding:"4px 10px"}}>
             <span style={{fontSize:13}}>{tier.icon}</span>
             <span style={{fontSize:11,fontWeight:800,color:tier.color}}>{tier.label}</span>
@@ -327,34 +234,135 @@ function EloHistoryCard({ history, currentElo, eloDecayToday }) {
         </div>
       </div>
 
-      {/* Progress to next tier */}
+      {/* ── Progress to next tier ── */}
       {nextTier && (
-        <div style={{marginBottom:12}}>
+        <div style={{marginBottom:14}}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
             <span style={{fontSize:10,color:T.ink3,fontWeight:600}}>Progress to <strong style={{color:nextTier.color}}>{nextTier.icon} {nextTier.label}</strong></span>
             <span style={{fontSize:10,fontWeight:800,color:nextTier.color}}>{progressToNext}% · {nextTier.min - currentElo} ELO to go</span>
           </div>
-          <div style={{height:5,background:T.cream3,borderRadius:99,overflow:"hidden"}}>
+          <div style={{height:6,background:T.cream3,borderRadius:99,overflow:"hidden"}}>
             <div style={{height:"100%",width:progressToNext+"%",background:`linear-gradient(90deg,${tier.color},${nextTier.color})`,borderRadius:99,transition:"width 1s ease"}}/>
           </div>
         </div>
       )}
 
-      {/* Chart */}
-      <div style={{background:"#FAFAFA",borderRadius:12,padding:"12px 6px 4px",border:"1px solid #E8E3DA",marginBottom:10,position:"relative"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 10px 8px"}}>
-          <span style={{fontSize:9,fontWeight:700,color:"#A8A29E",letterSpacing:"0.1em",textTransform:"uppercase"}}>ELO / Session</span>
-          <div style={{display:"flex",gap:10}}>
-            <span style={{display:"flex",alignItems:"center",gap:3,fontSize:9,color:"#22C55E",fontWeight:700}}><span style={{width:8,height:8,background:"#22C55E",display:"inline-block",borderRadius:1}}/>Gain</span>
-            <span style={{display:"flex",alignItems:"center",gap:3,fontSize:9,color:"#EF4444",fontWeight:700}}><span style={{width:8,height:8,background:"#EF4444CC",display:"inline-block",borderRadius:1}}/>Loss</span>
-            <span style={{display:"flex",alignItems:"center",gap:3,fontSize:9,color:"#A8A29E",fontWeight:700}}><span style={{width:14,height:1.5,background:"#A8A29E55",display:"inline-block"}}/>Trend</span>
+      {/* ── Sparkline trend overview ── */}
+      {sparkVals.length >= 2 && (
+        <div style={{background:"#FAFAFA",borderRadius:12,padding:"10px 12px 6px",border:"1px solid #E8E3DA",marginBottom:14}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+            <span style={{fontSize:9,fontWeight:700,color:"#A8A29E",letterSpacing:"0.1em",textTransform:"uppercase"}}>Rating Trend</span>
+            <div style={{display:"flex",gap:8}}>
+              <span style={{fontSize:9,fontWeight:700,color:"#22C55E",background:"#F0FDF4",padding:"1px 7px",borderRadius:99}}>▲ {gainCount} gains</span>
+              <span style={{fontSize:9,fontWeight:700,color:"#EF4444",background:"#FFF1F2",padding:"1px 7px",borderRadius:99}}>▼ {lossCount} losses</span>
+            </div>
+          </div>
+          {renderSparkline()}
+          <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
+            <span style={{fontSize:8,color:"#A8A29E"}}>{history[0]?.date ? new Date(history[0].date).toLocaleDateString("en-US",{month:"short",day:"numeric"}) : "Start"}</span>
+            <span style={{fontSize:8,color:"#A8A29E",fontWeight:600}}>{peakElo > currentElo ? `Peak: ${peakElo}` : "📈 At peak"}</span>
+            <span style={{fontSize:8,color:"#A8A29E"}}>Now</span>
           </div>
         </div>
-        <canvas ref={canvasRef} width={500} height={150} style={{width:"100%",height:150,display:"block"}}/>
+      )}
+
+      {/* ── ELO event timeline feed ── */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+        <span style={{fontSize:10,fontWeight:700,color:T.ink4,textTransform:"uppercase",letterSpacing:"0.1em"}}>
+          History {events.length > 0 && `· ${events.length} events`}
+        </span>
+        {events.length > 4 && <span style={{fontSize:9,color:T.ink4}}>scroll for more ↓</span>}
       </div>
 
-      {/* Bottom legend */}
-      <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
+      {events.length === 0 ? (
+        <div style={{textAlign:"center",padding:"28px 0 20px",color:T.ink4}}>
+          <div style={{fontSize:32,marginBottom:8}}>⚔️</div>
+          <div style={{fontSize:13,fontWeight:700,color:T.ink3,marginBottom:4}}>No arena events yet</div>
+          <div style={{fontSize:10,color:T.ink4}}>Complete Arena challenges to build your ELO history</div>
+        </div>
+      ) : (
+        <div style={{maxHeight:228,overflowY:"auto",paddingRight:2,scrollbarWidth:"thin"}}>
+          <div style={{position:"relative",paddingLeft:22}}>
+            {/* Vertical connecting line */}
+            <div style={{
+              position:"absolute",left:7,top:8,bottom:8,width:2,
+              background:`linear-gradient(180deg,${tier.color}55,${tier.color}11)`,
+              borderRadius:2
+            }}/>
+
+            {events.map((ev, i) => {
+              const d = ev.delta ?? 0
+              const isGain = d > 0
+              const isNeutral = d === 0
+              const dateStr = ev.date
+                ? new Date(ev.date).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})
+                : "—"
+              const dotColor = isGain ? "#22C55E" : isNeutral ? "#A8A29E" : "#EF4444"
+              const cardBg  = isGain ? "#F0FDF4" : isNeutral ? "#F9F9F9" : "#FFF1F2"
+              const cardBdr = isGain ? "#BBF7D0" : isNeutral ? "#E5E5E5" : "#FECDD3"
+              const deltaColor = isGain ? "#16A34A" : isNeutral ? "#A8A29E" : "#DC2626"
+              const source = ev.source || ev.reason || (isGain ? "Arena Challenge" : d < 0 ? "ELO Decay" : "Rating Update")
+              const isLatest = i === 0
+
+              return (
+                <div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:7,position:"relative"}}>
+                  {/* Timeline dot */}
+                  <div style={{
+                    position:"absolute",left:-16,top:"50%",transform:"translateY(-50%)",
+                    width:isLatest?12:9,height:isLatest?12:9,borderRadius:"50%",
+                    background:dotColor,
+                    border:`2px solid #fff`,
+                    boxShadow:isLatest?`0 0 0 2px ${dotColor}44`:`0 0 0 1px ${dotColor}33`,
+                    flexShrink:0,zIndex:1
+                  }}/>
+
+                  {/* Event card */}
+                  <div style={{
+                    flex:1,
+                    background:isLatest?`linear-gradient(135deg,${cardBg},#fff)`:cardBg,
+                    border:`1px solid ${cardBdr}`,
+                    borderRadius:10,
+                    padding:"8px 11px",
+                    display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,
+                    boxShadow:isLatest?"0 1px 4px rgba(0,0,0,0.06)":"none"
+                  }}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{
+                        fontSize:11,fontWeight:700,color:T.ink2,marginBottom:1,
+                        whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"
+                      }}>
+                        {isLatest && <span style={{fontSize:8,fontWeight:800,color:tier.color,background:tier.color+"15",padding:"1px 5px",borderRadius:4,marginRight:5,verticalAlign:"middle"}}>NOW</span>}
+                        {source}
+                      </div>
+                      <div style={{fontSize:9,color:T.ink4}}>{dateStr}</div>
+                    </div>
+                    <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2,flexShrink:0}}>
+                      <div style={{
+                        fontSize:13,fontWeight:900,color:deltaColor,
+                        fontFamily:"'DM Mono',monospace",
+                        background:deltaColor+"14",
+                        padding:"2px 9px",borderRadius:99,
+                        minWidth:54,textAlign:"center",
+                        letterSpacing:"-0.01em"
+                      }}>
+                        {d > 0 ? `+${d}` : d < 0 ? `${d}` : "±0"}
+                      </div>
+                      {ev.elo != null && (
+                        <div style={{fontSize:9,color:T.ink4,fontFamily:"'DM Mono',monospace",fontWeight:600}}>
+                          → {ev.elo}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Bottom legend + decay warning ── */}
+      <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center",marginTop:12,paddingTop:10,borderTop:`1px solid ${T.cream3}`}}>
         {[{l:"Easy",v:"+15",c:"#22C55E"},{l:"Medium",v:"+30",c:"#F59E0B"},{l:"Hard",v:"+55",c:"#EF4444"}].map((t,i)=>(
           <div key={i} style={{display:"flex",alignItems:"center",gap:4}}>
             <div style={{width:7,height:7,borderRadius:2,background:t.c}}/>
@@ -363,7 +371,9 @@ function EloHistoryCard({ history, currentElo, eloDecayToday }) {
           </div>
         ))}
         {eloDecayToday > 0 && (
-          <span style={{marginLeft:"auto",fontSize:10,fontWeight:700,color:T.red,background:"#FEE2E2",padding:"2px 8px",borderRadius:99}}>⚠️ −{eloDecayToday} decay today</span>
+          <span style={{marginLeft:"auto",fontSize:10,fontWeight:700,color:T.red,background:"#FEE2E2",padding:"2px 8px",borderRadius:99}}>
+            ⚠️ −{eloDecayToday} decay today
+          </span>
         )}
       </div>
     </div>
