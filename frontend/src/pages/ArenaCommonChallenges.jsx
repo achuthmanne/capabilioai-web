@@ -1136,6 +1136,93 @@ function CalculatorWorkstation({ challenge, isSolved, onSubmitAnswer, submitting
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// SQL WORKSTATION
+// Shown for SQL challenges (languages: ["sql"] or interaction_type: "sql").
+// Uses a styled SQL textarea editor with Run Tests + Submit flow identical
+// to the code workstation, but pre-seeded with a SELECT template.
+// ─────────────────────────────────────────────────────────────────────────────
+function SQLWorkstation({ challenge, code, onChange, isSolved, onRunTests, onSubmit, submitting, testResults, testLoading, testError }) {
+  const taRef    = useRef()
+  const lines    = (code || "").split("\n").length
+  const eloReward = challenge?.eloReward ?? eloForDiff(challenge?.difficulty)
+
+  const handleTab = (e) => {
+    if (e.key === "Tab") {
+      e.preventDefault()
+      const ta  = taRef.current
+      const s   = ta.selectionStart
+      const end = ta.selectionEnd
+      const nv  = code.substring(0, s) + "  " + code.substring(end)
+      onChange(nv)
+      setTimeout(() => { ta.selectionStart = ta.selectionEnd = s + 2 }, 0)
+    }
+  }
+
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "#1E1E1E", overflow: "hidden" }}>
+      {/* SQL banner */}
+      <div style={{ padding: "6px 14px", borderBottom: "1px solid rgba(255,255,255,0.07)", background: "#252526", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+        <span style={{ fontSize: 11, color: "#9CDCFE", fontWeight: 700 }}>SQL</span>
+        <span style={{ fontSize: 10, color: "#A8A29E" }}>auto-save ✓</span>
+      </div>
+
+      {/* Editor area */}
+      <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
+        {/* Line numbers */}
+        <div style={{ padding: "12px 0", minWidth: 42, textAlign: "right", paddingRight: 12, color: "rgba(255,255,255,0.18)", fontSize: 12, lineHeight: "1.6em", userSelect: "none", background: "rgba(0,0,0,0.2)", flexShrink: 0, overflowY: "hidden" }}>
+          {Array.from({ length: Math.max(lines, 12) }, (_, i) => (
+            <div key={i}>{i + 1}</div>
+          ))}
+        </div>
+        <textarea
+          ref={taRef}
+          value={code}
+          onChange={e => onChange(e.target.value)}
+          onKeyDown={handleTab}
+          spellCheck={false}
+          placeholder="-- Write your SQL query here"
+          style={{ flex: 1, padding: "12px", background: "transparent", border: "none", outline: "none", color: "#D4D4D4", fontSize: 13, lineHeight: "1.6em", resize: "none", fontFamily: "'DM Mono','Fira Code','Courier New',monospace", whiteSpace: "pre", overflowWrap: "normal", overflowX: "auto" }}
+        />
+      </div>
+
+      {/* Test results */}
+      <TestResults results={testResults} loading={testLoading} error={testError} />
+
+      {/* Action bar */}
+      <div style={{ padding: "10px 14px", borderTop: "1px solid #E8E3DA", background: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+        <div style={{ fontSize: 11, color: "#6B6560", display: "flex", alignItems: "center", gap: 10 }}>
+          {challenge?.difficulty} · SQL Query
+          {!isSolved && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#9CDCFE", background: "rgba(156,220,254,0.1)", padding: "2px 8px", borderRadius: 99, border: "1px solid rgba(156,220,254,0.2)" }}>
+              +{eloReward} ELO ⚡
+            </span>
+          )}
+          {isSolved && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: T.green, background: T.green2, padding: "2px 8px", borderRadius: 99 }}>🔒 Solved</span>
+          )}
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={onRunTests} disabled={testLoading || !code?.trim()}
+            style={{ padding: "9px 18px", background: "#F3F4F6", border: "1px solid #E8E3DA", borderRadius: 8, color: "#3D3935", fontSize: 13, fontWeight: 600, cursor: testLoading || !code?.trim() ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 7, fontFamily: "inherit" }}>
+            {testLoading ? <Spinner size={13} color="#9CDCFE" /> : "▷"} Run Tests
+          </button>
+          {isSolved ? (
+            <button disabled style={{ padding: "9px 22px", background: "rgba(78,201,148,0.15)", border: "1px solid rgba(78,201,148,0.3)", borderRadius: 8, color: T.green, fontSize: 13, fontWeight: 700, cursor: "not-allowed", fontFamily: "inherit" }}>
+              🔒 Already Solved
+            </button>
+          ) : (
+            <button onClick={onSubmit} disabled={submitting || !code?.trim()}
+              style={{ padding: "9px 22px", background: submitting ? "rgba(61,78,172,0.5)" : T.indigo, border: "none", borderRadius: 8, color: "#fff", fontSize: 13, fontWeight: 700, cursor: submitting || !code?.trim() ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 7, fontFamily: "inherit" }}>
+              {submitting ? <><Spinner size={13} color="#fff" /> Evaluating…</> : "✓ Submit Solution"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // MULTIPLE CHOICE WORKSTATION
 // Shown for select / predict / diagnose / compare / inspect / troubleshoot
 // challenges (interaction_type = 'multiple_choice').
@@ -1522,18 +1609,20 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
     // ── Step 3: AI review for detailed feedback & code quality ──────────────
     let aiReview = null
     try {
+      const challengeType = language === "SQL" ? "sql" : "dsa"
+      const keyword       = language === "SQL" ? "SQL & Databases" : "Data Structures & Algorithms"
       const res = await fetch(`${SERVER}/api/arena/review`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           challenge:     selectedChallenge,
           answer:        code,
-          keyword:       "Data Structures & Algorithms",
+          keyword,
           eloRating:     elo,
-          challengeType: "dsa",
+          challengeType,
           language,
           attemptNumber,
-          testResults:   runResults,   // give AI the actual test outcomes
+          testResults:   runResults,
         }),
       })
       if (res.ok) {
@@ -1664,12 +1753,13 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
           }).then(() => {})  // fire-and-forget
         }
 
+        const _cType = language === "SQL" ? "sql" : "dsa"
         await arenaDb.addSubmission(uid, {
           task_id:          selectedChallenge.id || selectedChallenge.slug,
           title:            selectedChallenge.title,
           difficulty:       selectedChallenge.difficulty || "Medium",
-          domain:           "dsa",
-          challenge_type:   "dsa",
+          domain:           _cType,
+          challenge_type:   _cType,
           score:            finalScore,
           elo_delta:        eloGain,
           summary:          result.summary,
@@ -1725,12 +1815,18 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
     setTestError(null)
     setSubmitResult(null)
     setActiveDescTab("description")
-    // Pre-fill starter code for code workstation
     const wsT = resolveWorkstationType(ch)
-    if (wsT === "code") {
-      const starter = `# ${ch.title}\n\ndef ${(ch.slug || "solution").replace(/-/g, "_")}(*args):\n    # TODO: implement\n    pass\n`
-      setCode(starter)
+    if (wsT === "sql") {
+      setLanguage("SQL")
+      // SQL starter: derive table name hints from the problem tags/track
+      const track = ch.track || ch.topic_group || ""
+      setCode(`-- ${ch.title}\n-- Write your SQL solution below\n\nSELECT\n    \nFROM\n    \nWHERE\n    ;\n`)
+    } else if (wsT === "code") {
+      setLanguage("Python")
+      const fnName = (ch.slug || "solution").replace(/-/g, "_")
+      setCode(`# ${ch.title}\n\ndef ${fnName}(*args):\n    # TODO: implement\n    pass\n`)
     }
+    // calculator / multiple_choice: no code state needed
   }, [])
 
   // ── Calculator submit ─────────────────────────────────────────────────────
@@ -1971,6 +2067,22 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
                   onSubmitMC={handleSubmitMC}
                   submitting={submitting}
                   submitResult={submitResult}
+                />
+              )}
+
+              {/* ── SQL workstation ── */}
+              {wsType === "sql" && (
+                <SQLWorkstation
+                  challenge={selectedChallenge}
+                  code={code}
+                  onChange={setCode}
+                  isSolved={isSolved}
+                  onRunTests={handleRunTests}
+                  onSubmit={handleSubmit}
+                  submitting={submitting}
+                  testResults={testResults}
+                  testLoading={testLoading}
+                  testError={testError}
                 />
               )}
 
