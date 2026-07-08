@@ -1972,10 +1972,13 @@ function getModuleStarter(modId, mission, domainKey) {
   const title = mission?.title || "Mission"
   const schema = mission?.contextSpec || mission?.sampleData || "-- schema not provided"
   const objective = mission?.objective || "Complete the objective"
+  // FIX: guard DB starterCode by length so a full solution never seeds a module editor.
+  const _sc = mission?.starterCode || ""
+  const safeStarter = _sc.length > 0 && _sc.length < 250 ? _sc : null
 
   const starters = {
     // ── Data Analyst ──────────────────────────────────────────────────────
-    sql_studio:   `-- SQL Studio: ${title}\n-- Objective: ${objective}\n\n${mission?.starterCode || `SELECT\n    -- TODO: specify columns\nFROM\n    -- TODO: specify table\nWHERE\n    -- TODO: add conditions\nORDER BY 1\nLIMIT 100;`}`,
+    sql_studio:   `-- SQL Studio: ${title}\n-- Objective: ${objective}\n\n${safeStarter || `SELECT\n    -- TODO: specify columns\nFROM\n    -- TODO: specify table\nWHERE\n    -- TODO: add conditions\nORDER BY 1\nLIMIT 100;`}`,
     dataset:      `-- Dataset Explorer\n-- Explore the schema and sample data before writing your solution\n\n-- 1. See all tables in the database:\n-- SHOW TABLES;\n\n-- 2. Inspect schema:\nDESCRIBE orders;\nDESCRIBE users;\n\n-- 3. Sample rows:\nSELECT * FROM orders LIMIT 10;\nSELECT * FROM users LIMIT 10;\n\n-- 4. Row counts:\nSELECT\n    'orders'  AS tbl, COUNT(*) AS rows FROM orders UNION ALL\n    SELECT 'users', COUNT(*) FROM users;\n\n-- Context from mission:\n${schema}`,
     dashboard:    `# Dashboard Builder: ${title}\n\nimport pandas as pd\nimport matplotlib.pyplot as plt\nimport matplotlib.gridspec as gridspec\n\n# ── Load your query results here ─────────────────────────────────────────\n# df = pd.read_csv('results.csv')  # or paste data directly\ndf = pd.DataFrame({\n    'month': ['Jan','Feb','Mar','Apr','May','Jun'],\n    'revenue': [0, 0, 0, 0, 0, 0],   # TODO: fill from your SQL results\n    'users':   [0, 0, 0, 0, 0, 0],\n})\n\n# ── KPI Cards ────────────────────────────────────────────────────────────\ntotal_rev = df['revenue'].sum()\ntotal_usr = df['users'].sum()\nprint(f"Total Revenue: {total_rev:,}")\nprint(f"Total Users:   {total_usr:,}")\n\n# ── Chart ────────────────────────────────────────────────────────────────\nfig, axes = plt.subplots(1, 2, figsize=(12, 4))\naxes[0].bar(df['month'], df['revenue'], color='#3D4EAC')\naxes[0].set_title('Monthly Revenue')\naxes[1].plot(df['month'], df['users'], marker='o', color='#1A7A4A')\naxes[1].set_title('User Growth')\nplt.tight_layout()\nplt.show()`,
     kpi_monitor:  `# KPI Monitor: ${title}\n\n## Mission KPIs to Track\n\n**Objective:** ${objective}\n\n---\n\n### KPI Definitions\n\n| KPI | Formula | Target | Status |\n|-----|---------|--------|---------|\n| Revenue Growth | (current - prev) / prev * 100 | > 10% | 🔴 TODO |\n| Conversion Rate | conversions / visitors * 100 | > 3% | 🔴 TODO |\n| Avg Order Value | revenue / orders | > ₹500 | 🔴 TODO |\n\n---\n\n### Calculations\n\`\`\`sql\n-- Revenue Growth %\nSELECT\n    this_month,\n    last_month,\n    ROUND((this_month - last_month) * 100.0 / last_month, 2) AS growth_pct\nFROM (\n    SELECT\n        SUM(CASE WHEN month = DATE_TRUNC('month', NOW()) THEN amount END) AS this_month,\n        SUM(CASE WHEN month = DATE_TRUNC('month', NOW() - INTERVAL '1 month') THEN amount END) AS last_month\n    FROM orders\n) t;\n\`\`\`\n\n### Findings\n\n<!-- TODO: Write your KPI observations here -->`,
@@ -1983,8 +1986,8 @@ function getModuleStarter(modId, mission, domainKey) {
     ai_insights:  `# AI Insight Generator: ${title}\n\n## How to Use This Tab\n\n1. **Complete your SQL/Python solution** in the SQL Studio tab first\n2. **Paste your query results** below\n3. **Go to the Copilot panel** (right side) and ask:\n   - "What key insights can you find in these results?"\n   - "What anomalies or outliers do you see?"\n   - "Write a 3-bullet executive summary of these metrics"\n   - "What business decision would you recommend based on this data?"\n\n---\n\n## Paste Results Here\n\n\`\`\`\n-- TODO: paste your query output here\n\`\`\`\n\n## Insight Template\n\n**Key Finding 1:** \n\n**Key Finding 2:** \n\n**Recommendation:** \n\n**Risk / Caveat:** `,
 
     // ── DBA ───────────────────────────────────────────────────────────────
-    schema:       `-- Schema Manager: ${title}\n-- Objective: ${objective}\n\n-- View all tables:\nSELECT table_name, table_rows FROM information_schema.tables\nWHERE table_schema = DATABASE() ORDER BY table_rows DESC;\n\n-- Check indexes:\nSHOW INDEX FROM orders;\n\n-- Check constraints:\nSELECT constraint_name, constraint_type, table_name\nFROM information_schema.table_constraints\nWHERE table_schema = DATABASE();\n\n-- Your schema solution:\n${mission?.starterCode || "-- TODO: write DDL here"}`,
-    query:        `-- Query Analyzer: ${title}\n-- Use EXPLAIN ANALYZE to profile your query\n\n-- Step 1: Run the slow query with EXPLAIN:\nEXPLAIN ANALYZE\n${mission?.starterCode || "SELECT * FROM orders WHERE user_id = 1;"}`,
+    schema:       `-- Schema Manager: ${title}\n-- Objective: ${objective}\n\n-- View all tables:\nSELECT table_name, table_rows FROM information_schema.tables\nWHERE table_schema = DATABASE() ORDER BY table_rows DESC;\n\n-- Check indexes:\nSHOW INDEX FROM orders;\n\n-- Check constraints:\nSELECT constraint_name, constraint_type, table_name\nFROM information_schema.table_constraints\nWHERE table_schema = DATABASE();\n\n-- Your schema solution:\n${safeStarter || "-- TODO: write DDL here"}`,
+    query:        `-- Query Analyzer: ${title}\n-- Use EXPLAIN ANALYZE to profile your query\n\n-- Step 1: Run the slow query with EXPLAIN:\nEXPLAIN ANALYZE\n${safeStarter || "SELECT * FROM orders WHERE user_id = 1;"}`,
     index:        `-- Index Optimizer: ${title}\n\n-- Find missing indexes (columns in WHERE/JOIN with no index):\nSELECT table_name, column_name FROM information_schema.columns\nWHERE table_schema = DATABASE()\nAND column_name IN (\n    -- TODO: list your WHERE/JOIN columns\n);\n\n-- Check existing indexes:\nSELECT table_name, index_name, column_name, cardinality\nFROM information_schema.statistics\nWHERE table_schema = DATABASE()\nORDER BY table_name, index_name;\n\n-- Create composite index:\n-- CREATE INDEX idx_name ON table_name (col1, col2);`,
 
     // ── DevOps ─────────────────────────────────────────────────────────────
@@ -1998,7 +2001,11 @@ function getModuleStarter(modId, mission, domainKey) {
     ui_builder:   `// UI Builder: ${title}\nimport { useState, useEffect } from 'react'\n\n// TODO: Build your component\nexport default function Solution() {\n  const [data, setData] = useState(null)\n  const [loading, setLoading] = useState(false)\n\n  // Objective: ${objective}\n\n  return (\n    <div style={{ fontFamily: 'sans-serif', padding: 24, maxWidth: 800, margin: '0 auto' }}>\n      <h1>${title}</h1>\n      {/* TODO: implement UI */}\n    </div>\n  )\n}`,
   }
 
-  return starters[modId] || mission?.starterCode || `// ${title}\n// Module: ${modId}\n// Objective: ${objective}\n\n// TODO: implement`
+  // FIX: only fall back to DB starterCode if it's short (a hint/skeleton, < 250 chars).
+  // Long starterCodes are almost always full solutions and must not leak into the editor.
+  const sc = mission?.starterCode || ""
+  const safeSc = sc.length > 0 && sc.length < 250 ? sc : null
+  return starters[modId] || safeSc || `// ${title}\n// Module: ${modId}\n// Objective: ${objective}\n\n// TODO: implement`
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

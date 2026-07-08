@@ -324,6 +324,68 @@ Return ONLY this JSON (no extra text):
   return results
 }
 
+// ─── Config / manifest evaluation via AI (Groq) ──────────────────────────────
+// YAML (K8s manifests, CI/CD pipelines), HCL (Terraform), Bicep, JSON policies
+// etc. CANNOT be executed by python3/node — running them through executeCode
+// produces a syntax error and fails every test. Instead we AI-evaluate structure
+// and correctness against the challenge brief, mirroring evaluateSQLWithAI.
+async function evaluateConfigWithAI(config, testCases, challenge, language) {
+  const brief   = challenge.statement || challenge.description || challenge.title || ""
+  const results = []
+  const cases   = testCases.length ? testCases : [{ input: "spec compliance", expected_output: "" }]
+
+  for (const tc of cases) {
+    const start    = Date.now()
+    const expected = String(tc.expected_output ?? tc.expectedOutput ?? "")
+    try {
+      const raw = await groq([
+        { role: "system", content: `You are a senior DevOps / infrastructure engineer. Evaluate ${language.toUpperCase()} manifests/config for validity and correctness against the requirement. These are declarative files — judge structure, required fields, and values, not runtime output. Return ONLY valid JSON, no markdown.` },
+        { role: "user", content:
+`Requirement / Brief:
+${brief}
+
+Expected outcome: ${expected || "A valid, correct manifest that satisfies the brief."}
+
+${language.toUpperCase()} submitted:
+${config}
+
+Task: Determine if the submitted config is syntactically valid AND correctly satisfies the requirement (correct kind/apiVersion, required fields present, sensible values, no placeholders/TODOs left).
+
+Return ONLY this JSON:
+{
+  "passed": true_or_false,
+  "actual": "one sentence describing what this config does",
+  "error": null_or_"specific issue (missing field, wrong value, leftover TODO, invalid syntax)"
+}` },
+      ], { max_tokens: 500, json: false })
+
+      const cleaned = raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)
+      const obj     = JSON.parse(cleaned)
+      results.push({
+        input:    tc.input ?? "spec compliance",
+        expected,
+        actual:   obj.actual || (obj.passed ? "Config appears correct" : "Config may be incorrect"),
+        passed:   obj.passed === true,
+        runtime:  `${Date.now() - start}ms`,
+        error:    obj.error || null,
+      })
+    } catch {
+      results.push({
+        input:    tc.input ?? "spec compliance",
+        expected,
+        actual:   "AI evaluation unavailable — click Submit for full review",
+        passed:   false,
+        runtime:  `${Date.now() - start}ms`,
+        error:    null,
+      })
+    }
+  }
+  return results
+}
+
+// Languages that are declarative config, not executable programs.
+const CONFIG_LANGUAGES = new Set(["yaml", "yml", "hcl", "terraform", "bicep", "dockerfile", "json", "helm"])
+
 // ─── 9. Run Tests — ACTUAL code execution, zero AI tokens ────────────────────
 // Executes user code in a sandboxed child_process for each test case.
 // Compares stdout to expectedOutput. Fast, deterministic, no rate limits.
@@ -338,11 +400,23 @@ router.post("/run-tests", async (req, res) => {
     return res.status(400).json({ error: "No test cases provided." })
   }
 
+  const langLower = language.toLowerCase()
+
   // ── SQL: route to AI evaluation instead of Python/JS execution ───────────
-  if (language.toLowerCase() === "sql") {
+  if (langLower === "sql") {
     const results = await evaluateSQLWithAI(code, testCases, challenge)
     const passed  = results.filter(r => r.passed).length
     console.log(`[arena/run-tests] SQL "${challenge.title}" — AI eval: ${passed}/${results.length} passed`)
+    return res.json({ results })
+  }
+
+  // ── FIX: YAML / Terraform / Bicep / Dockerfile etc. are declarative config
+  // and CANNOT be run through python3/node. Route to AI evaluation so DevOps
+  // "Run Tests" doesn't fail every case with a python3 syntax error.
+  if (CONFIG_LANGUAGES.has(langLower)) {
+    const results = await evaluateConfigWithAI(code, testCases, challenge, langLower)
+    const passed  = results.filter(r => r.passed).length
+    console.log(`[arena/run-tests] ${langLower.toUpperCase()} "${challenge.title}" — AI eval: ${passed}/${results.length} passed`)
     return res.json({ results })
   }
 
