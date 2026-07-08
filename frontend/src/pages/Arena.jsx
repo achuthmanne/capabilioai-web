@@ -1011,51 +1011,81 @@ function EvaluationModal({ result, domain, onClose, userEmail }) {
         <div style={{ position:"relative", zIndex:2 }}>
 
         {/* ══ INTEGRITY FLAG HEADER (replaces normal header when cheating detected) ══ */}
-        {isFlagged ? (
+        {isFlagged ? (() => {
+          const cw           = result.cheatWarning || {}
+          const warnCount    = cw.warningCount || 1
+          const isBanned     = cw.isBanned || false
+          const banUntil     = cw.banUntil  || null
+          const eloPenalty   = cw.eloPenalty || -10
+          const warnLeft     = Math.max(0, 3 - warnCount)
+          const banDate      = banUntil ? new Date(banUntil).toLocaleDateString("en-IN", { day:"numeric", month:"long", year:"numeric" }) : null
+          return (
           <>
-            {/* Red flag banner */}
-            <div style={{ padding:"22px 24px 18px", background:"linear-gradient(135deg,#FEF2F2,#FFF1F2)", borderBottom:"2px solid #FECACA" }}>
+            {/* ── Severity header ── */}
+            <div style={{ padding:"20px 24px 16px", background: isBanned ? "linear-gradient(135deg,#1C0000,#2D0000)" : "linear-gradient(135deg,#FEF2F2,#FFF1F2)", borderBottom: isBanned ? "2px solid #7F1D1D" : "2px solid #FECACA" }}>
               <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-                {/* VOID badge */}
+                {/* Badge */}
                 <div style={{
                   width:64, height:64, borderRadius:"50%", flexShrink:0,
-                  background:"#FEF2F2", border:"3px solid #DC2626",
+                  background: isBanned ? "#7F1D1D" : "#FEF2F2",
+                  border: `3px solid ${isBanned ? "#DC2626" : "#DC2626"}`,
                   display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-                  boxShadow:"0 0 0 6px #DC262618",
+                  boxShadow: isBanned ? "0 0 0 6px #DC262640" : "0 0 0 6px #DC262618",
                 }}>
-                  <div style={{ fontSize:11, fontWeight:900, color:"#DC2626", fontFamily:"'DM Mono',monospace", lineHeight:1, textAlign:"center" }}>VOID</div>
+                  <div style={{ fontSize: isBanned ? 22 : 11, fontWeight:900, color: isBanned ? "#FCA5A5" : "#DC2626", fontFamily:"'DM Mono',monospace", lineHeight:1, textAlign:"center" }}>
+                    {isBanned ? "🔒" : "VOID"}
+                  </div>
                 </div>
                 <div style={{ flex:1 }}>
-                  <div style={{ fontSize:15, fontWeight:900, color:"#991B1B", marginBottom:4, letterSpacing:-0.3, display:"flex", alignItems:"center", gap:6 }}>
-                    🚨 Integrity Flag Raised
+                  <div style={{ fontSize:15, fontWeight:900, color: isBanned ? "#FCA5A5" : "#991B1B", marginBottom:4 }}>
+                    {isBanned ? "🚫 Account Suspended" : "🚨 Integrity Violation Detected"}
                   </div>
-                  <div style={{ fontSize:11, color:"#B91C1C", lineHeight:1.5 }}>
-                    This submission was not independently written. ELO awarded: <strong>0 pts</strong>.
+                  <div style={{ fontSize:11, color: isBanned ? "#F87171" : "#B91C1C", lineHeight:1.55 }}>
+                    {isBanned
+                      ? <>Your account has been suspended for <strong>30 days</strong> due to repeated integrity violations. Access resumes on <strong>{banDate}</strong>.</>
+                      : <>Your submission was not independently written. This is Warning <strong>#{warnCount} of 3</strong>. {warnLeft > 0 ? `${warnLeft} more violation${warnLeft > 1 ? "s" : ""} will result in a 30-day account suspension.` : "Next violation triggers a 30-day suspension."}</>
+                    }
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* 0 ELO strip */}
-            <div style={{ display:"flex", borderBottom:`1px solid ${T.border}` }}>
+            {/* ── Warning progress bar ── */}
+            {!isBanned && (
+              <div style={{ padding:"10px 24px 0", background:"#FEF2F2" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+                  <span style={{ fontSize:9, fontWeight:800, color:"#991B1B", letterSpacing:1 }}>WARNING LEVEL</span>
+                  <span style={{ marginLeft:"auto", fontSize:10, fontWeight:900, color:"#DC2626", fontFamily:"'DM Mono',monospace" }}>
+                    {warnCount} / 3
+                  </span>
+                </div>
+                <div style={{ height:6, borderRadius:99, background:"#FECACA", overflow:"hidden", marginBottom:10 }}>
+                  <div style={{ width:`${(warnCount/3)*100}%`, height:"100%", background: warnCount >= 2 ? "#DC2626" : "#F87171", borderRadius:99, transition:"width 0.6s ease" }} />
+                </div>
+              </div>
+            )}
+
+            {/* ── Stats strip: score | ELO penalty | warning count ── */}
+            <div style={{ display:"flex", borderBottom:`1px solid #FECACA` }}>
               {[
-                { label:"SCORE",      value:"0",   unit:"/100",  color:"#DC2626", bg:"#FEF2F2" },
-                { label:"ELO GAINED", value:"+0",  unit:"pts",   color:"#DC2626", bg:"#FEF2F2" },
-                { label:"STATUS",     value:"🚩",  unit:"Flagged", color:"#DC2626", bg:"#FEF2F2" },
+                { label:"SCORE",       value:"0",               unit:"/100",                         color:"#DC2626", bg:"#FEF2F2" },
+                { label:"ELO PENALTY", value:`${eloPenalty}`,   unit:"pts deducted",                 color:"#7C2D12", bg:"#FFF7ED" },
+                { label:"WARNING",     value:`#${warnCount}`,   unit: isBanned ? "BANNED" : "of 3", color: isBanned ? "#DC2626" : "#B45309", bg: isBanned ? "#FEF2F2" : "#FFFBEB" },
               ].map((s,i) => (
                 <div key={i} style={{ flex:1, padding:"14px 10px", textAlign:"center", borderRight: i < 2 ? `1px solid #FECACA` : "none", background:s.bg }}>
                   <div style={{ fontSize:22, fontWeight:900, color:s.color, fontFamily:"'DM Mono',monospace", lineHeight:1 }}>{s.value}</div>
                   <div style={{ fontSize:8, color:s.color, fontWeight:700, marginTop:3, letterSpacing:0.8, textTransform:"uppercase" }}>{s.label}</div>
-                  <div style={{ fontSize:9, color:"#EF4444", marginTop:1 }}>{s.unit}</div>
+                  <div style={{ fontSize:9, color:s.color+"99", marginTop:1 }}>{s.unit}</div>
                 </div>
               ))}
             </div>
 
-            {/* Detailed integrity breakdown */}
+            {/* ── Detailed breakdown ── */}
             <div style={{ padding:"16px 22px" }}>
-              {/* What was detected */}
+
+              {/* What exactly was detected */}
               <div style={{ padding:"12px 14px", background:"#FFF1F2", border:"1.5px solid #FECACA", borderRadius:12, marginBottom:12 }}>
-                <div style={{ fontSize:9, fontWeight:800, color:"#991B1B", letterSpacing:1.5, marginBottom:8 }}>🔍 SIGNALS DETECTED</div>
+                <div style={{ fontSize:9, fontWeight:800, color:"#991B1B", letterSpacing:1.5, marginBottom:8 }}>🔍 WHAT OUR SYSTEM DETECTED</div>
                 {(result.integrityFlags || []).map((f, i) => (
                   <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:7, marginBottom:6 }}>
                     <span style={{ fontSize:10, color:"#DC2626", flexShrink:0, marginTop:1 }}>⚑</span>
@@ -1065,15 +1095,15 @@ function EvaluationModal({ result, domain, onClose, userEmail }) {
                     </div>
                   </div>
                 ))}
-                {/* Always show the raw numbers */}
+                {/* Raw behavioral numbers */}
                 <div style={{ marginTop:8, paddingTop:8, borderTop:"1px solid #FECACA", display:"flex", gap:12, flexWrap:"wrap" }}>
                   <span style={{ fontSize:9.5, color:"#B91C1C" }}>⏱ {Math.floor((result.behavioral?.timeOnTaskSecs||0)/60)}m {(result.behavioral?.timeOnTaskSecs||0)%60}s on task</span>
-                  <span style={{ fontSize:9.5, color:"#B91C1C" }}>⌨️ {result.behavioral?.keystrokeCount||0} keystrokes</span>
+                  <span style={{ fontSize:9.5, color:"#B91C1C" }}>⌨️ {result.behavioral?.keystrokeCount||0} keystroke(s)</span>
                   <span style={{ fontSize:9.5, color:"#B91C1C" }}>📋 {result.behavioral?.pasteCount||0} paste event(s)</span>
                 </div>
               </div>
 
-              {/* Honest guidance */}
+              {/* What happens next (honest and constructive) */}
               <div style={{ padding:"12px 14px", background:"#F8F8F5", border:"1px solid rgba(0,0,0,0.08)", borderRadius:12, marginBottom:12 }}>
                 <div style={{ fontSize:9, fontWeight:800, color:T.ink4, letterSpacing:1.5, marginBottom:6 }}>HOW TO EARN REAL ELO</div>
                 {(result.improvements || []).map((s,i) => (
@@ -1083,12 +1113,23 @@ function EvaluationModal({ result, domain, onClose, userEmail }) {
                 ))}
               </div>
 
-              <button onClick={onClose} style={{ width:"100%", padding:"13px", background:"#DC2626", border:"none", borderRadius:12, color:"#fff", fontSize:13, fontWeight:800, cursor:"pointer", fontFamily:"inherit" }}>
-                Try Again — Write It Yourself →
-              </button>
+              {isBanned ? (
+                <div style={{ padding:"12px 14px", background:"#FEF2F2", border:"1.5px solid #FECACA", borderRadius:12, marginBottom:12, textAlign:"center" }}>
+                  <div style={{ fontSize:13, fontWeight:900, color:"#DC2626", marginBottom:4 }}>🔒 Account Suspended</div>
+                  <div style={{ fontSize:11, color:"#B91C1C", lineHeight:1.6 }}>
+                    Your account access is suspended until <strong>{banDate}</strong>.<br />
+                    Contact <strong>support@capabilio.online</strong> if you believe this is an error.
+                  </div>
+                </div>
+              ) : (
+                <button onClick={onClose} style={{ width:"100%", padding:"13px", background:"#DC2626", border:"none", borderRadius:12, color:"#fff", fontSize:13, fontWeight:800, cursor:"pointer", fontFamily:"inherit" }}>
+                  I understand — Try Again Honestly →
+                </button>
+              )}
             </div>
           </>
-        ) : (
+          )
+        })() : (
           <>
             {/* ══ NORMAL HEADER ══ */}
             <div style={{ padding:"22px 24px 18px", background: scoreGrad, borderBottom:`1px solid ${scoreColor}20` }}>
@@ -3591,6 +3632,31 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
     // ── Integrity check ──
     const integrity = detectIntegrity({ pasteCount, keystrokeCount, timeOnTaskSecs, typedLen })
 
+    // ── If cheat detected: record warning + ELO penalty via backend ──
+    // Returns { warningCount, eloPenalty, newElo, isBanned, banUntil }
+    let cheatWarning = null
+    if (integrity.isCheat && !isPractice) {
+      const _uid = user?.id || user?.uid
+      if (_uid) {
+        try {
+          const _SERVER = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
+          const flagRes = await fetch(`${_SERVER}/api/arena/flag-integrity`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              uid:          _uid,
+              missionId:    activeMission?.id || activeMission?.slug || null,
+              missionTitle: activeMission?.title || "",
+              flags:        integrity.flags,
+              verdict:      integrity.verdict,
+              behavioral:   { pasteCount, keystrokeCount, timeOnTaskSecs, typedLen },
+            }),
+          })
+          if (flagRes.ok) cheatWarning = await flagRes.json()
+        } catch { /* non-fatal — modal shows with fallback */ }
+      }
+    }
+
     // ── Call AI review endpoint with behavioral context ──
     let aiReview = null
     if (meaningful.length >= 2) {
@@ -3684,11 +3750,12 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
     // A student who wrote real code and scored 40+ on timeout shouldn't get the same as blank.
     const isPractice = !!activeMission?._practice
 
-    // Integrity override: cheated submissions earn 0 ELO regardless of score
-    const eloGain = isPractice ? 0 : integrity.isCheat ? 0 : timedOut
+    // Integrity override: cheated submissions lose ELO (-10 penalty, floored at 0)
+    const ELO_CHEAT_PENALTY = -10
+    const eloGain = isPractice ? 0 : integrity.isCheat ? ELO_CHEAT_PENALTY : timedOut
       ? (finalScore >= 60 ? 8 : finalScore >= 40 ? 4 : meaningful.length >= 5 ? 2 : 0)
       : (finalScore >= 80 ? 25 : finalScore >= 60 ? 12 : finalScore >= 40 ? 5 : 3)
-    const newElo = elo + eloGain
+    const newElo = Math.max(0, elo + eloGain)
 
     const gradeFor = s => s >= 90 ? "A+" : s >= 80 ? "A" : s >= 70 ? "B+" : s >= 60 ? "B" : s >= 50 ? "C" : "D"
 
@@ -3779,9 +3846,11 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
       validationTotal:    valTotal,
       validationsRun,
       // Integrity metadata — used by EvaluationModal for the red flag banner
-      integrityFlag:  integrity.isCheat,
-      integrityFlags: integrity.flags,
+      integrityFlag:    integrity.isCheat,
+      integrityFlags:   integrity.flags,
       integrityVerdict: integrity.verdict,
+      // Warning tracking from backend (warningCount, isBanned, banUntil, eloPenalty)
+      cheatWarning,
     }
 
     // ── Persist: ELO + arena_history + leaderboard ──

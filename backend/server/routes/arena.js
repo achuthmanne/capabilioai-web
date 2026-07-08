@@ -530,6 +530,68 @@ freshness: high (70-90) = healthy, low urgency` },
 })
 
 // ─── 9. Hint ──────────────────────────────────────────────────────────────────
+// ── Integrity violation — record warning, apply ELO penalty, ban if 3rd ────────
+// Called by the frontend immediately after detectIntegrity fires isCheat=true.
+// Atomically: inserts audit row, increments warning count, bans on 3rd strike.
+router.post("/flag-integrity", async (req, res) => {
+  const { uid, missionId, missionTitle, flags, verdict, behavioral } = req.body
+  if (!uid) return res.status(400).json({ error: "uid required" })
+
+  const ELO_PENALTY = -10
+
+  try {
+    const { supabase: sb } = await import("../lib/supabase.js")
+    const db = sb()
+
+    // 1. Insert audit row
+    await db.from("integrity_warnings").insert({
+      uid,
+      mission_id:    missionId   || null,
+      mission_title: missionTitle || null,
+      flags:         JSON.stringify(flags || []),
+      verdict:       verdict || "definite_paste",
+      elo_penalty:   ELO_PENALTY,
+    })
+
+    // 2. Fetch current user state
+    const { data: userData } = await db
+      .from("users")
+      .select("integrity_warning_count, elo_rating, integrity_banned_until")
+      .eq("id", uid)
+      .single()
+
+    const prevCount = userData?.integrity_warning_count || 0
+    const newCount  = prevCount + 1
+    const isBanned  = newCount >= 3
+    const banUntil  = isBanned
+      ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+      : (userData?.integrity_banned_until || null)
+    const currentElo = userData?.elo_rating || 800
+    const newElo    = Math.max(0, currentElo + ELO_PENALTY) // floor at 0
+
+    // 3. Update user: warning count + ELO penalty + ban if applicable
+    const updatePayload = {
+      integrity_warning_count: newCount,
+      elo_rating:              newElo,
+    }
+    if (isBanned) updatePayload.integrity_banned_until = banUntil
+
+    await db.from("users").update(updatePayload).eq("id", uid)
+
+    return res.json({
+      warningCount: newCount,
+      eloPenalty:   ELO_PENALTY,
+      newElo,
+      isBanned,
+      banUntil,
+    })
+  } catch (e) {
+    console.error("[arena/flag-integrity]", e.message)
+    // Non-fatal — return safe defaults so frontend still shows the modal
+    return res.json({ warningCount: 1, eloPenalty: ELO_PENALTY, newElo: null, isBanned: false, banUntil: null })
+  }
+})
+
 router.post("/hint", async (req, res) => {
   const { challenge={}, currentAnswer="", eloRating=800 } = req.body
   try {

@@ -91,7 +91,7 @@ function ProofOverlay({ draft, mission, meta, validation, onClose }) {
 }
 
 // ── Submit confirmation (spec §8.3 — shows what is at stake) ─────────────────
-function SubmitConfirm({ mission, meta, validation, hintsUsed, isPractice, onConfirm, onCancel }) {
+function SubmitConfirm({ mission, meta, validation, hintsUsed, isPractice, pasteDetected, onConfirm, onCancel }) {
   const real   = (validation || []).filter(v => !v.info)
   const passed = real.filter(v => v.passed).length
   const failed = real.filter(v => !v.passed)
@@ -143,14 +143,58 @@ function SubmitConfirm({ mission, meta, validation, hintsUsed, isPractice, onCon
             ))}
           </div>
         )}
-        {real.length > 0 && passed === real.length && (
+        {real.length > 0 && passed === real.length && !pasteDetected && (
           <div style={{ fontSize: 11, color: T.green, background: T.greenBg, border: `1px solid #BBF7D0`, borderRadius: 8, padding: "8px 11px", marginBottom: 14, lineHeight: 1.5 }}>
             ✅ All {real.length} checks passing — strong solve!
+          </div>
+        )}
+        {/* ── Paste integrity warning ── */}
+        {pasteDetected && (
+          <div style={{ fontSize: 11, color: "#7C2D12", background: "#FFF7ED", border: "1px solid #FDBA74", borderRadius: 8, padding: "10px 12px", marginBottom: 14, lineHeight: 1.6 }}>
+            <div style={{ fontWeight: 900, marginBottom: 4 }}>⚠️ Paste detected — this submission will be flagged</div>
+            <div>AI-generated or copied solutions earn <strong>0 ELO</strong> and are marked <strong>VOID</strong> on your proof record. Recruiters can see this.</div>
           </div>
         )}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
           <button onClick={onCancel} style={{ padding: "8px 16px", borderRadius: 8, border: `1px solid ${T.border}`, background: "#fff", fontSize: 12, fontWeight: 700, color: T.ink3, cursor: "pointer", fontFamily: "inherit" }}>Keep working</button>
           <button onClick={onConfirm} style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: meta.hue, color: "#fff", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>{meta.actions.submit}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Paste intervention modal (anti-cheat UX — fires in real-time on paste) ───
+function PasteInterventionModal({ chars, onClear, onDismiss }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 970, background: "rgba(15,23,42,0.72)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div style={{ background: "#fff", borderRadius: 16, width: 480, padding: "24px 26px", boxShadow: "0 24px 64px rgba(0,0,0,0.35)" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 14 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: "#FEF2F2", border: "1px solid #FECACA", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0, marginTop: 1 }}>⚠️</div>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 900, color: "#DC2626", marginBottom: 3 }}>Large paste detected</div>
+            <div style={{ fontSize: 11.5, color: T.ink3, lineHeight: 1.5 }}>{chars.toLocaleString()} characters appeared in a single action — consistent with AI-generated or copied code.</div>
+          </div>
+        </div>
+        <div style={{ fontSize: 12.5, color: T.ink2, lineHeight: 1.75, marginBottom: 14 }}>
+          Capabilio's integrity system will flag this submission as AI-assisted.<br />
+          <strong>Result: 0 ELO, VOID grade</strong> — permanently visible on your recruiter-facing proof record.
+        </div>
+        <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 9, padding: "10px 13px", marginBottom: 18, display: "flex", gap: 9, alignItems: "flex-start" }}>
+          <span style={{ fontSize: 14, flexShrink: 0 }}>💡</span>
+          <span style={{ fontSize: 11.5, color: "#92400E", lineHeight: 1.6 }}>
+            Recruiters use your proof to assess real-world thinking — a flagged submission signals AI-dependency, not skill. Clear and work through it to earn genuine ELO.
+          </span>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={onClear}
+            style={{ flex: 1, padding: "11px 14px", borderRadius: 9, border: "none", background: "#16A34A", color: "#fff", fontSize: 12.5, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            🗑️ Clear &amp; solve myself
+          </button>
+          <button onClick={onDismiss}
+            style={{ padding: "11px 16px", borderRadius: 9, border: `1px solid ${T.border}`, background: "#fff", fontSize: 11.5, fontWeight: 700, color: T.ink3, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+            Keep it (0 ELO)
+          </button>
         </div>
       </div>
     </div>
@@ -229,6 +273,10 @@ export default function ChallengeShell({
   const [draftBanner, setDraftBanner] = useState(null)
   const [saveState, setSaveState]     = useState("saved")
 
+  // ── paste intervention ──
+  const [pasteWarning, setPasteWarning] = useState(null) // { chars: N } — triggers modal
+  const prevLenRef = useRef((mission.starterCode || "").length)
+
   // ── anti-cheat ──
   const [tabHidden, setTabHidden]         = useState(false)
   const [screenShareAlert, setScreenShareAlert] = useState(false)
@@ -261,7 +309,14 @@ export default function ChallengeShell({
     get validationsRun() { return validationsRef.current },
   }
 
-  const handleCodeChange = v => { keysRef.current += 1; onCodeChange(v) }
+  const handleCodeChange = v => {
+    const delta = v.length - prevLenRef.current
+    prevLenRef.current = v.length
+    keysRef.current += 1
+    // Real-time paste detection: single onChange with >80 char delta = large paste
+    if (delta > 80 && !isPractice) setPasteWarning({ chars: delta })
+    onCodeChange(v)
+  }
 
   // ── autosave drafts (spec §4.4) ──
   const draftKey = `arena_draft_${mission.id || mission.title}`
@@ -731,8 +786,23 @@ export default function ChallengeShell({
 
       {/* overlays */}
       {proofDraft && <ProofOverlay draft={proofDraft} mission={mission} meta={meta} validation={validation} onClose={() => setProofDraft(null)} />}
+      {/* ── Paste intervention — fires immediately on large paste ── */}
+      {pasteWarning && !isPractice && (
+        <PasteInterventionModal
+          chars={pasteWarning.chars}
+          onClear={() => {
+            onCodeChange("")
+            prevLenRef.current = 0
+            pasteRef.current = 0
+            keysRef.current = 0
+            setPasteWarning(null)
+          }}
+          onDismiss={() => setPasteWarning(null)}
+        />
+      )}
       {confirming && (
         <SubmitConfirm mission={mission} meta={meta} validation={validation} hintsUsed={revealedHints} isPractice={isPractice}
+          pasteDetected={pasteRef.current > 0}
           onConfirm={() => { setConfirming(false); onSubmit({ validation, passCount, totalChecks: realChecks.length, hintsUsed: revealedHints, validationsRun }) }}
           onCancel={() => setConfirming(false)} />
       )}
