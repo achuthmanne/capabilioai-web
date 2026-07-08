@@ -3869,6 +3869,88 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
                   ))}
                 </div>
 
+                {/* ── Skill Health panel ── always visible ── */}
+                {(()=>{
+                  // Build skill health rows: weakest skills from skill graph, or fall back to weakAreas strings
+                  const graphSkills = rawSkillGraphForStrengths
+                    .filter(s => (s.value||s.score||0) > 0)
+                    .sort((a,b)=>(a.value||a.score||0)-(b.value||b.score||0))
+                    .slice(0,3)
+
+                  // Colors by score bracket
+                  const hColor = v => v < 40 ? "#EF4444" : v < 65 ? "#F59E0B" : "#22C55E"
+                  const hLabel = v => v < 40 ? "Needs Work" : v < 65 ? "Improving" : "Strong"
+
+                  // Fallback: show weak area strings if no graph data
+                  const fallbackSkills = weakAreas.slice(0,3).map(s=>({label:s,score:null}))
+                  const hasGraph = graphSkills.length > 0
+
+                  // Days since each skill was last practiced (approximate via recentTasks domain match)
+                  const recentDomains = new Set(recentTasks.map(t=>(t.domain||"").toLowerCase()))
+
+                  return (
+                    <div style={{marginTop:12,background:"rgba(255,255,255,0.6)",backdropFilter:"blur(4px)",border:`1px solid ${T.border}`,borderRadius:12,padding:"10px 12px"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:9}}>
+                        <span style={{fontSize:10,fontWeight:700,color:T.ink3,textTransform:"uppercase",letterSpacing:"0.08em"}}>
+                          🧠 Skill Health
+                        </span>
+                        {hasGraph && (
+                          <span style={{fontSize:9,color:T.ink4}}>from your skill graph</span>
+                        )}
+                      </div>
+
+                      {hasGraph ? (
+                        <div style={{display:"flex",flexDirection:"column",gap:7}}>
+                          {graphSkills.map((s,i)=>{
+                            const val = Math.round(s.value||s.score||0)
+                            const col = hColor(val)
+                            const lbl = hLabel(val)
+                            const skillName = s.label||s.skill||"Skill"
+                            const isPracticed = recentDomains.has(skillName.toLowerCase())
+                            return (
+                              <div key={i}>
+                                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
+                                  <div style={{display:"flex",alignItems:"center",gap:5}}>
+                                    <span style={{fontSize:10,fontWeight:700,color:T.ink2}}>{skillName}</span>
+                                    {isPracticed && <span style={{fontSize:8,color:T.green,background:"#F0FDF4",padding:"1px 5px",borderRadius:4,fontWeight:700}}>practiced</span>}
+                                  </div>
+                                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                                    <span style={{fontSize:9,fontWeight:800,color:col}}>{val}%</span>
+                                    <span style={{fontSize:8,color:col,background:col+"15",padding:"1px 6px",borderRadius:4,fontWeight:700}}>{lbl}</span>
+                                  </div>
+                                </div>
+                                <div style={{height:5,background:T.cream3,borderRadius:99,overflow:"hidden"}}>
+                                  <div style={{height:"100%",width:val+"%",background:col,borderRadius:99,transition:"width 1s ease",opacity:0.85}}/>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : fallbackSkills.length > 0 ? (
+                        <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:2}}>
+                          {fallbackSkills.map((s,i)=>(
+                            <span key={i} style={{fontSize:10,fontWeight:600,color:"#EF4444",background:"#FFF1F2",border:"1px solid #FECDD3",padding:"3px 9px",borderRadius:99}}>
+                              ⚠️ {s.label}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={{fontSize:10,color:T.ink4,textAlign:"center",padding:"6px 0"}}>
+                          Complete Arena tasks to track your skill health
+                        </div>
+                      )}
+
+                      {/* CTA */}
+                      <button
+                        onClick={()=>onNavigate("arena")}
+                        style={{marginTop:10,width:"100%",padding:"7px",background:`linear-gradient(135deg,${momentumForm.color},${momentumForm.color}BB)`,border:"none",borderRadius:8,color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:"0.02em"}}
+                      >
+                        {graphSkills.length > 0 && graphSkills[0] ? `Practice ${graphSkills[0].label||graphSkills[0].skill} in Arena →` : "Practice in Arena →"}
+                      </button>
+                    </div>
+                  )
+                })()}
+
                 {daysSinceActive>=15&&(
                   <div style={{marginTop:12,background:T.red2,border:`1.5px solid rgba(192,57,43,0.2)`,borderRadius:10,padding:"10px 12px"}}>
                     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
