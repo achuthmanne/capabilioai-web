@@ -553,16 +553,19 @@ export const ARENA_DOMAINS = {
     tracks: ["Kubernetes / Docker", "CI/CD (GitHub Actions/GitLab)", "Terraform / IaC", "AWS / GCP / Azure", "SRE / Observability"],
 
     modules: [
-      { id: "pipeline",    label: "Pipeline Center",      icon: "⚙️", desc: "CI/CD YAML authoring and visualiser",     sandbox: "terminal" },
-      { id: "infra",       label: "Infrastructure Explorer",icon:"🏗️", desc: "Terraform / CDK IaC workbench",          sandbox: "terminal" },
-      { id: "k8s",         label: "Kubernetes Dashboard", icon: "☸️", desc: "kubectl, manifests, Helm charts",         sandbox: "terminal" },
-      { id: "monitoring",  label: "Monitoring Center",    icon: "📡", desc: "Prometheus, Grafana, alerting rules",      sandbox: "terminal" },
+      // FIX: these are YAML/HCL AUTHORING workstations (write manifests), not
+      // interactive shell sessions. sandbox "code" routes buildSkeleton/starters
+      // to the YAML/Terraform editor. Was wrongly "terminal".
+      { id: "pipeline",    label: "Pipeline Center",      icon: "⚙️", desc: "CI/CD YAML authoring and visualiser",     sandbox: "code" },
+      { id: "infra",       label: "Infrastructure Explorer",icon:"🏗️", desc: "Terraform / CDK IaC workbench",          sandbox: "code" },
+      { id: "k8s",         label: "Kubernetes Dashboard", icon: "☸️", desc: "kubectl, manifests, Helm charts",         sandbox: "code" },
+      { id: "monitoring",  label: "Monitoring Center",    icon: "📡", desc: "Prometheus, Grafana, alerting rules",      sandbox: "code" },
       { id: "alerts",      label: "Alert Manager",        icon: "🚨", desc: "SLO/SLA config, alert routing, runbooks",  sandbox: "markdown" },
       { id: "cost",        label: "Cost Analytics",       icon: "💰", desc: "Cloud spend, rightsizing, waste reports",  sandbox: "markdown" },
     ],
 
     defaultModule: "pipeline",
-    defaultSandbox: "terminal",
+    defaultSandbox: "code",   // FIX: default module "pipeline" writes YAML → code editor, not terminal
 
     deliverables: ["CI/CD Pipelines", "IaC Modules", "K8s Manifests", "Runbooks", "SLO Dashboards"],
 
@@ -574,9 +577,9 @@ export const ARENA_DOMAINS = {
     ],
 
     missionCategories: [
-      { id: "pipeline",    label: "Pipeline Build",       sandbox: "terminal", lang: "YAML",     icon: "⚙️" },
-      { id: "iac",         label: "IaC Module",           sandbox: "terminal", lang: "HCL",      icon: "🏗️" },
-      { id: "k8s",         label: "K8s Manifest",         sandbox: "terminal", lang: "YAML",     icon: "☸️" },
+      { id: "pipeline",    label: "Pipeline Build",       sandbox: "code",     lang: "YAML",     icon: "⚙️" },
+      { id: "iac",         label: "IaC Module",           sandbox: "code",     lang: "HCL",      icon: "🏗️" },
+      { id: "k8s",         label: "K8s Manifest",         sandbox: "code",     lang: "YAML",     icon: "☸️" },
       { id: "incident",    label: "Incident Response",    sandbox: "markdown", lang: "Markdown", icon: "🚨" },
       { id: "runbook",     label: "Runbook",              sandbox: "markdown", lang: "Markdown", icon: "📋" },
     ],
@@ -1007,7 +1010,10 @@ export const resolveSandboxType = (task, domainKey) => {
     case "frontend":      return "react"
     case "backend":       return "code"
     case "fullstack":     return "code"
-    case "swe":           return "code"
+    case "swe":
+      // System-design / architecture SWE tasks use the design workspace, not the IDE.
+      if (cat.includes("systemdesign") || cat.includes("architecture") || cat.includes("design")) return "system_design"
+      return "code"
     case "bi_analyst":    return cat.includes("sql") || cat.includes("query") ? "sql" : "dashboard"
     case "data_engineer": return cat.includes("sql") || cat.includes("transform") ? "sql" : "notebook"
     case "sre": {
@@ -1031,7 +1037,14 @@ export const resolveSandboxType = (task, domainKey) => {
       if (cat.includes("sql") || cat.includes("metric") || cat.includes("analys")) return "sql"
       return "business_analysis"
     }
-    case "devops":        return "terminal"
+    case "devops": {
+      // FIX: DevOps work is mostly YAML/HCL manifest AUTHORING (CI/CD, K8s, Terraform)
+      // → "code" editor (buildSkeleton routes to the YAML scaffold). Only shell-oriented
+      // tasks (scripts, debugging, log inspection) use the terminal. Was blanket "terminal".
+      if (cat.includes("script") || cat.includes("bash") || cat.includes("shell") ||
+          cat.includes("debug")  || cat.includes("log")  || cat.includes("terminal")) return "terminal"
+      return "code"
+    }
     case "aws": {
       // Lambda/IaC/IAM code tasks → code; cost review → markdown; arch/design → system_design
       if (cat.includes("lambda") || cat.includes("serverless") || cat.includes("iac") || cat.includes("iam")) return "code"

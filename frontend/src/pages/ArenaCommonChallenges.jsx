@@ -1702,7 +1702,19 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
     if (completedIds.has(String(selectedChallenge.id))) return
     setSubmitting(true)
 
-    const meaningful = code.split("\n").filter(l => l.trim() && !l.trim().startsWith("#") && !l.trim().startsWith("//") && !l.toLowerCase().includes("todo")).length
+    // Count real solution lines: strip blanks, comments (# // --) and TODO lines.
+    // FIX: previously "--" (SQL comments) were NOT stripped, so the empty SQL
+    // starter scaffold (SELECT / FROM / WHERE / ;) counted as 4 "meaningful" lines
+    // and let students submit a blank query.
+    const meaningful = code.split("\n").filter(l => {
+      const t = l.trim().toLowerCase()
+      if (!t) return false
+      if (t.startsWith("#") || t.startsWith("//") || t.startsWith("--")) return false
+      if (t.includes("todo")) return false
+      // Bare SQL clause keywords with no body aren't a real query
+      if (/^(select|from|where|order by|group by|;)\s*$/.test(t)) return false
+      return true
+    }).length
     if (meaningful < 3) {
       alert("⚠ Write your solution first — empty or comment-only submissions are not accepted.")
       setSubmitting(false)
@@ -2236,6 +2248,25 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
                   submitResult={submitResult}
                   testResults={testResults}
                 />
+              )}
+
+              {/* ── Unimplemented interaction types (sequence / diagram_click) ──
+                   resolveWorkstationType can return "sequence" or "diagram_click"
+                   from the interaction_type column, but those workstations are not
+                   built yet. Without this guard the pane rendered BLANK. Show a
+                   graceful placeholder so the challenge is never a dead end. */}
+              {(wsType === "sequence" || wsType === "diagram_click") && (
+                <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:12, padding:"40px 24px", textAlign:"center", color:"#6B6560" }}>
+                  <div style={{ fontSize:34 }}>{wsType === "sequence" ? "🔢" : "🖱️"}</div>
+                  <div style={{ fontSize:15, fontWeight:800, color:"#3D3935" }}>
+                    {wsType === "sequence" ? "Sequence Ordering" : "Interactive Diagram"} coming soon
+                  </div>
+                  <div style={{ fontSize:12, maxWidth:420, lineHeight:1.6 }}>
+                    This challenge uses an interaction type we haven't finished building.
+                    Review the problem statement on the left — you can revisit this
+                    challenge once the workstation ships.
+                  </div>
+                </div>
               )}
 
               {/* ── Code editor workstation (Python / JS / TS / Java problems) ── */}
