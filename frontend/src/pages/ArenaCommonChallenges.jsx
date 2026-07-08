@@ -1136,12 +1136,146 @@ function CalculatorWorkstation({ challenge, isSolved, onSubmitAnswer, submitting
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// SQL RESULTS PANEL
+// Renders the AI-evaluated SQL output as a styled data table + auto bar chart.
+// Shows columns/rows returned by the AI evaluator alongside pass/fail status.
+// ─────────────────────────────────────────────────────────────────────────────
+function SQLResultsPanel({ results, loading, error }) {
+  if (loading) return (
+    <div style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 10, color: T.ink3, fontSize: 12, borderTop: `1px solid ${T.border}`, background: "#fff", flexShrink: 0 }}>
+      <Spinner size={14} color={T.indigo} />
+      <span>Evaluating SQL query with AI…</span>
+    </div>
+  )
+  if (error) return (
+    <div style={{ padding: 14, background: T.red2, borderTop: `1px solid ${T.border}`, flexShrink: 0 }}>
+      <div style={{ fontSize: 12, color: T.red, fontWeight: 600 }}>{error}</div>
+    </div>
+  )
+  if (!results?.length) return null
+
+  const allPassed    = results.every(r => r.passed)
+  const passedCount  = results.filter(r => r.passed).length
+  const first        = results[0]
+  const columns      = first?.columns      || []
+  const sampleRows   = first?.sample_rows  || first?.sampleRows || []
+  const hasSampleData = columns.length > 0 && sampleRows.length > 0
+
+  // Detect a numeric column for the bar chart
+  const numericCol = columns.slice(1).find(col =>
+    sampleRows.length > 0 && sampleRows.every(r => !isNaN(parseFloat(r[col])) && r[col] !== "")
+  ) || (columns.length > 1 && sampleRows.every(r => !isNaN(parseFloat(r[columns[1]]))) ? columns[1] : null)
+  const labelCol   = numericCol ? columns.find(c => c !== numericCol) : null
+  const chartData  = numericCol && labelCol
+    ? sampleRows.map(r => ({ label: String(r[labelCol] ?? "").slice(0, 12), value: parseFloat(r[numericCol]) || 0 }))
+    : []
+  const maxVal = chartData.length ? Math.max(...chartData.map(d => d.value), 0.001) : 1
+
+  return (
+    <div style={{ borderTop: `1px solid ${T.border}`, background: "#fff", flexShrink: 0, maxHeight: 420, overflowY: "auto" }}>
+
+      {/* Status bar */}
+      <div style={{ padding: "9px 14px", background: allPassed ? T.green2 : T.red2, borderBottom: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: allPassed ? T.green : T.red }}>
+          {allPassed ? "✓ All tests passed" : `${passedCount}/${results.length} tests passed`}
+        </span>
+        {hasSampleData && (
+          <span style={{ fontSize: 11, color: T.ink3, fontFamily: "monospace" }}>
+            {sampleRows.length} rows · {columns.length} cols
+          </span>
+        )}
+      </div>
+
+      {hasSampleData && (
+        <div style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 14 }}>
+
+          {/* Section label */}
+          <div style={{ fontSize: 10, fontWeight: 800, color: T.indigo, letterSpacing: 1.4, textTransform: "uppercase" }}>
+            📊 Query Output
+          </div>
+
+          {/* Data table */}
+          <div style={{ overflowX: "auto", borderRadius: 10, border: `1px solid ${T.border}`, boxShadow: "0 1px 6px rgba(0,0,0,0.05)" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead>
+                <tr>
+                  {columns.map((col, ci) => (
+                    <th key={ci} style={{
+                      padding: "9px 14px", textAlign: "left", fontWeight: 700, fontSize: 11,
+                      letterSpacing: 0.6, whiteSpace: "nowrap",
+                      background: T.indigo, color: "#fff",
+                      borderRight: ci < columns.length - 1 ? "1px solid rgba(255,255,255,0.15)" : "none",
+                    }}>{col}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {sampleRows.map((row, ri) => (
+                  <tr key={ri} style={{ background: ri % 2 === 0 ? "#fff" : "#F8F8F6", borderBottom: `1px solid ${T.border}` }}>
+                    {columns.map((col, ci) => (
+                      <td key={ci} style={{
+                        padding: "8px 14px", color: T.ink2,
+                        fontFamily: "'DM Mono','Fira Code',monospace", fontSize: 12,
+                        borderRight: ci < columns.length - 1 ? `1px solid ${T.border}` : "none",
+                      }}>
+                        {row[col] === null || row[col] === undefined ? <span style={{ color: T.ink4, fontStyle: "italic" }}>NULL</span> : String(row[col])}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Bar chart — auto-rendered when there's a numeric column */}
+          {chartData.length >= 2 && (
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 800, color: T.ink4, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 10 }}>
+                📈 {numericCol} by {labelCol}
+              </div>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 100, padding: "0 2px" }}>
+                {chartData.map((d, i) => {
+                  const barH = Math.max(4, Math.round((d.value / maxVal) * 72))
+                  const hue  = 220 + (i * 25) % 120
+                  return (
+                    <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, minWidth: 0 }}>
+                      <div style={{ fontSize: 9, color: T.ink3, fontFamily: "monospace", whiteSpace: "nowrap" }}>{d.value}</div>
+                      <div style={{
+                        width: "100%", height: barH,
+                        background: `hsl(${hue},65%,52%)`,
+                        borderRadius: "4px 4px 0 0",
+                        transition: "height 0.6s cubic-bezier(.34,1.56,.64,1)",
+                        boxShadow: "0 -2px 6px rgba(0,0,0,0.1)",
+                      }} />
+                      <div style={{ fontSize: 9, color: T.ink3, textAlign: "center", width: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "monospace" }}>
+                        {d.label}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Failure detail — only shown for failed cases */}
+      {results.map((r, i) => !r.passed && (
+        <div key={i} style={{ padding: "10px 14px", borderTop: `1px solid ${T.border}`, background: "#FFFAFA", fontSize: 12, color: T.red, lineHeight: 1.5 }}>
+          <strong>Case {i + 1}:</strong> {r.error || r.actual}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SQL WORKSTATION
 // Shown for SQL challenges (languages: ["sql"] or interaction_type: "sql").
 // Uses a styled SQL textarea editor with Run Tests + Submit flow identical
 // to the code workstation, but pre-seeded with a SELECT template.
 // ─────────────────────────────────────────────────────────────────────────────
-function SQLWorkstation({ challenge, code, onChange, isSolved, onRunTests, onSubmit, submitting, testResults, testLoading, testError }) {
+function SQLWorkstation({ challenge, code, onChange, isSolved, onRunTests, onSubmit, submitting, testResults, testLoading, testError, sqlResults }) {
   const taRef    = useRef()
   const lines    = (code || "").split("\n").length
   const eloReward = challenge?.eloReward ?? eloForDiff(challenge?.difficulty)
@@ -1185,8 +1319,8 @@ function SQLWorkstation({ challenge, code, onChange, isSolved, onRunTests, onSub
         />
       </div>
 
-      {/* Test results */}
-      <TestResults results={testResults} loading={testLoading} error={testError} />
+      {/* SQL Results — table + bar chart */}
+      <SQLResultsPanel results={sqlResults} loading={testLoading} error={testError} />
 
       {/* Action bar */}
       <div style={{ padding: "10px 14px", borderTop: "1px solid #E8E3DA", background: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
@@ -1394,6 +1528,7 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
   const [language, setLanguage]               = useState("Python")
   const [code, setCode]                       = useState("")
   const [testResults, setTestResults]         = useState(null)
+  const [sqlResults, setSqlResults]           = useState(null)  // SQL-specific: has columns + sample_rows
   const [testLoading, setTestLoading]         = useState(false)
   const [testError, setTestError]             = useState(null)
   const [submitting, setSubmitting]           = useState(false)
@@ -1546,7 +1681,10 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
       })
       if (res.ok) {
         const data = await res.json()
-        setTestResults(data.results || [])
+        const results = data.results || []
+        setTestResults(results)
+        // For SQL: store separately so SQLResultsPanel can render table + chart
+        if (language === "SQL") setSqlResults(results)
       } else {
         // Server error — never fake-pass tests, show honest error
         setTestError("Test runner error. Check your server is running and try again.")
@@ -1812,6 +1950,7 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
   const openChallenge = useCallback((ch) => {
     setSelectedChallenge(ch)
     setTestResults(null)
+    setSqlResults(null)
     setTestError(null)
     setSubmitResult(null)
     setActiveDescTab("description")
@@ -2081,6 +2220,7 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
                   onSubmit={handleSubmit}
                   submitting={submitting}
                   testResults={testResults}
+                  sqlResults={sqlResults}
                   testLoading={testLoading}
                   testError={testError}
                 />

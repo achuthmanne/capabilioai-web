@@ -260,37 +260,64 @@ Return JSON: {"score":${passRate !== null ? passRate : "<0-100>"},"grade":"<A+|A
 // as described"), not actual data rows — so we can't execute them in a process.
 // Instead, ask Groq to evaluate the query's correctness against the schema.
 async function evaluateSQLWithAI(sqlQuery, testCases, challenge) {
-  const schema    = challenge.statement || challenge.description || challenge.title || ""
-  const results   = []
+  const schema  = challenge.statement || challenge.description || challenge.title || ""
+  const results = []
 
   for (const tc of testCases) {
     const start    = Date.now()
     const expected = String(tc.expected_output ?? tc.expectedOutput ?? "")
     try {
       const raw = await groq([
-        { role: "system", content: "You are a senior SQL expert and interviewer. Evaluate SQL queries accurately. Return ONLY valid JSON, no markdown." },
+        { role: "system", content: "You are a senior SQL expert. Evaluate queries accurately AND generate realistic sample output rows. Return ONLY valid JSON, no markdown, no explanation outside JSON." },
         { role: "user",   content:
-`Problem schema:\n${schema}\n\nExpected output: ${expected}\n\nSQL query submitted:\n${sqlQuery}\n\nEvaluate: Is this SQL syntactically valid and logically correct for the expected output? Check table names, join conditions, WHERE clauses, GROUP BY, ROUND/CAST, and date filters.\n\nReturn exactly: {"passed":true_or_false,"actual":"one sentence describing what this query computes","error":null_or_"specific SQL issue found"}` },
-      ], { max_tokens: 400, json: false })
+`Schema / Problem:
+${schema}
+
+Expected output description: ${expected}
+
+SQL submitted:
+${sqlQuery}
+
+Tasks:
+1. Evaluate: Is the SQL syntactically valid and logically correct for the expected output? Check table names, JOIN conditions, WHERE clauses, GROUP BY, ROUND/CAST, date filters.
+2. Generate 3–5 realistic sample output rows that this query WOULD return (invent plausible values matching the schema).
+
+Return ONLY this JSON (no extra text):
+{
+  "passed": true_or_false,
+  "actual": "one sentence describing what this query computes",
+  "error": null_or_"specific SQL issue found",
+  "columns": ["ColName1", "ColName2"],
+  "sample_rows": [
+    {"ColName1": "value", "ColName2": "value"},
+    {"ColName1": "value", "ColName2": "value"}
+  ]
+}` },
+      ], { max_tokens: 700, json: false })
 
       const cleaned = raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)
       const obj     = JSON.parse(cleaned)
       results.push({
-        input:    tc.input ?? "Schema as described",
+        input:       tc.input ?? "Schema as described",
         expected,
-        actual:   obj.actual || (obj.passed ? "Query appears correct" : "Query may be incorrect — see error"),
-        passed:   obj.passed === true,
-        runtime:  `${Date.now() - start}ms`,
-        error:    obj.error || null,
+        actual:      obj.actual || (obj.passed ? "Query appears correct" : "Query may be incorrect"),
+        passed:      obj.passed === true,
+        runtime:     `${Date.now() - start}ms`,
+        error:       obj.error || null,
+        // Visual output — rendered as a table + chart in the frontend
+        columns:     Array.isArray(obj.columns)     ? obj.columns     : [],
+        sample_rows: Array.isArray(obj.sample_rows) ? obj.sample_rows : [],
       })
     } catch {
       results.push({
-        input:    tc.input ?? "Schema as described",
+        input:       tc.input ?? "Schema as described",
         expected,
-        actual:   "AI evaluation unavailable — click Submit Solution for full review",
-        passed:   false,
-        runtime:  `${Date.now() - start}ms`,
-        error:    null,
+        actual:      "AI evaluation unavailable — click Submit for full review",
+        passed:      false,
+        runtime:     `${Date.now() - start}ms`,
+        error:       null,
+        columns:     [],
+        sample_rows: [],
       })
     }
   }
