@@ -95,6 +95,8 @@ export function resolveWorkstationType(mission) {
   // Derive from title / category / description keywords
   const text = ((mission.title || "") + " " + (mission.category || "") + " " + (mission.description || "")).toLowerCase()
   if (/\bsql\b|query|select|insert|join|database/.test(text))         return "sql"
+  // ── DevOps / Kubernetes / IaC — MUST come before api check because K8s uses HTTP probes ──
+  if (/\bkubernetes\b|\bkubectl\b|\bk8s\b|\bhelm\b|kind:\s*(deployment|service|configmap|ingress|hpa|pod)|apiversion:\s*apps|yaml.*manifest|manifest.*yaml|dockerfile|docker[\s-]?compose|terraform|ansible|ci[\s/]?cd|github.*action|jenkinsfile|rolling.*update|horizontal.*pod|pod.*autoscaler|liveness.*probe|readiness.*probe|resource.*limit|replica/.test(text)) return "code"
   if (/\bapi\b|rest|http|endpoint|fetch|curl|request/.test(text))     return "api"
   if (/\breact\b|jsx|css|html|frontend|component|dom/.test(text))     return "frontend"
   if (/\bbash\b|shell|terminal|command|linux|script/.test(text))      return "terminal"

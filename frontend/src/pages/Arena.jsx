@@ -80,6 +80,7 @@ const buildSkeleton = (task, domainKey) => {
     markdown: `# ${title}\n\n**Objective:** ${desc}\n\n---\n\n## Approach\n\n<!-- TODO: describe your approach -->\n\n## Results\n\n<!-- TODO: present findings -->\n\n## Conclusion\n\n<!-- TODO: key takeaways -->\n`,
     notebook: `# ${title}\n\nimport pandas as pd\nimport numpy as np\nimport matplotlib.pyplot as plt\n\n# ─── LOAD DATA ────────────────────────────────────────────────────────────────\n# df = pd.read_csv('data.csv')\n\n# ─── EXPLORE ──────────────────────────────────────────────────────────────────\n# df.describe()\n# df.isnull().sum()\n\n# ─── ANALYSIS ─────────────────────────────────────────────────────────────────\n# TODO: perform analysis\n`,
     diagram: `# ${title}\n\n## System Overview\n\nDescribe the architecture here.\n\n## Components\n\n\`\`\`\n[Client] → [Load Balancer] → [API Gateway]\n                                    ↓\n                          [Service Layer]\n                                    ↓\n                             [Database]\n\`\`\`\n\n## Design Decisions\n\n| Decision | Chosen | Reason |\n|----------|--------|---------|\n| TODO     | TODO   | TODO    |\n`,
+    yaml: `# ${title}\n# ──────────────────────────────────────────────────────────────────\n# Objective: ${desc}\n#\n${(task?.steps||[]).map((s,i)=>`# ✦ Step ${i+1}: ${typeof s==="string"?s:s.text||s.label||""}`).join("\n")}\n#\n# Write all required manifests below. Separate multiple resources with ---\n# ──────────────────────────────────────────────────────────────────\n\n# --- Resource 1 -----------------------------------------------\napiVersion:    # TODO: e.g. v1 / apps/v1 / autoscaling/v2\nkind:          # TODO: Deployment | Service | ConfigMap | HPA | ...\nmetadata:\n  name:        # TODO: resource name\n  namespace:   # TODO: namespace (e.g. production)\nspec:\n  # TODO: complete the spec for this resource\n  # Refer to the Steps in the left panel for each requirement.\n\n\n# --- Resource 2 (add more --- blocks as needed) ---------------\n`,
     code: {
       TypeScript: `// Mission: ${title}\n\ninterface Input {\n  // TODO: define types\n}\n\nfunction solve(input: Input): unknown {\n  // TODO: implement\n  throw new Error('Not implemented')\n}\n\nexport { solve }\n`,
       Python: `# Mission: ${title}\n\ndef solve(input_data):\n    """\n    ${desc}\n    """\n    # TODO: implement\n    pass\n\nif __name__ == '__main__':\n    print(solve({}))\n`,
@@ -91,6 +92,11 @@ const buildSkeleton = (task, domainKey) => {
   }
 
   if (sandbox === "code") {
+    // Kubernetes / IaC challenges: use YAML scaffold so students write manifests, not JS
+    const fullText = ((task?.title || "") + " " + (task?.description || "") + " " + (task?.category || "")).toLowerCase()
+    if (/\bkubernetes\b|\bk8s\b|\bhelm\b|yaml.*manifest|manifest.*yaml|dockerfile|docker[\s-]?compose|terraform|ansible|kind:\s*(deployment|service)|rolling.*update|liveness.*probe|readiness.*probe|replica|horizontal.*pod/.test(fullText)) {
+      return templates.yaml
+    }
     return templates.code[lang] || templates.code.default
   }
   return templates[sandbox] || templates.code.default
@@ -3404,8 +3410,12 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
       setActiveWsTab(mission.workstations[0])
     } else {
       setCodeMap({})
-      // Use challenge's own starterCode if provided (domain challenges always have it)
-      const starter = mission?.starterCode || buildSkeleton(mission, domainKey)
+      // Build a clean scaffold from mission steps/objective so students aren't given the answer.
+      // Only use starterCode from DB if it's short (< 250 chars) — a genuine hint/skeleton.
+      // Long starterCodes are almost always full solutions accidentally set during challenge generation.
+      const sc = mission?.starterCode || ""
+      const starterIsSafe = sc.length > 0 && sc.length < 250
+      const starter = starterIsSafe ? sc : buildSkeleton(mission, domainKey)
       setCode(starter)
       setActiveWsTab(null)
       // Respect the challenge's sandbox type (sql, notebook, react, markdown, code, etc.)
