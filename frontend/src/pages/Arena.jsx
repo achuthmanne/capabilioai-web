@@ -2495,10 +2495,10 @@ const STREAM_CARD_CONFIG = {
     role: {
       icon: "🔌", label: "ECE Domain Practice",
       color: "#0891B2", colorBg: "rgba(8,145,178,0.1)", colorBorder: "rgba(8,145,178,0.2)",
-      desc: "RC filters, op-amp circuits, Shannon capacity, antenna sizing, PCB design. Problems your employer will actually test you on.",
-      tags: ["🔌 Circuit Design", "📡 RF & Comm", "🔧 Embedded", "💻 VLSI", "📊 Signal Processing"],
+      desc: "GPIO bare-metal, UART/I2C/SPI drivers, Verilog FSMs, PWM motor control. Hands-on embedded coding challenges.",
+      tags: ["🔌 Embedded C", "📡 UART / I2C / SPI", "🔧 Microcontrollers", "💻 Verilog / FPGA", "⚡ GPIO & PWM"],
       cta: "Open ECE Challenges →", count: null,
-      categories: ["ECE"],
+      categories: null,  // null → routes to domain workstation (ECE_CHALLENGES), not Common Challenges
     },
   },
   EEE: {

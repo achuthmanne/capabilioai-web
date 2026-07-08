@@ -86,35 +86,44 @@ function Spinner({ color = T.indigo, size = 14 }) {
 }
 
 // ─── DOMAIN → SKILLS MAP ──────────────────────────────────────────────────────
-// Phase 1: 6 locked domains. Skills are ONLY those core to that specific field.
+// Skills are ONLY those core to that specific field.
 const domainSkillsMap = {
-  // ── DATA ANALYST ──────────────────────────────────────────────────────────
+  // ── IT / CS DOMAINS ───────────────────────────────────────────────────────
   "Data Analyst":     ["SQL","Python","Data Cleaning","Exploratory Data Analysis","Data Visualization","Statistical Analysis","A/B Testing","Business Intelligence","Funnel Analysis","KPI Reporting","Dashboard Design","Storytelling with Data"],
-  // ── FULL-STACK / SWE ──────────────────────────────────────────────────────
   "Full-Stack":       ["React","Node.js","TypeScript","SQL","REST APIs","Authentication","State Management","Testing","System Design","Performance","Deployment","CSS"],
-  // ── FRONTEND DEVELOPER ────────────────────────────────────────────────────
+  "Software Developer":["Data Structures","Algorithms","OOP Concepts","System Design","Database Basics","REST APIs","Version Control (Git)","Testing","Problem Solving","Design Patterns","Time Complexity","Debugging"],
   "Frontend":         ["React","TypeScript","JavaScript","CSS / Tailwind","HTML","State Management","Web Performance","Accessibility (WCAG)","Testing (Jest/RTL)","Design Systems","API Integration","Responsive Design"],
-  // ── BACKEND DEVELOPER ─────────────────────────────────────────────────────
   "Backend":          ["Node.js / Express","REST API Design","Authentication (JWT/OAuth)","Caching (Redis)","Message Queues","Database Queries","Rate Limiting","Pagination","Microservices","Testing (Supertest)","Performance","Error Handling"],
-  // ── DEVOPS ENGINEER ───────────────────────────────────────────────────────
   "DevOps":           ["Docker","Kubernetes","CI/CD Pipelines","Terraform / IaC","Linux & Bash","Monitoring (Prometheus/Grafana)","Helm Charts","SRE Practices","Incident Management","Cloud Platforms","Networking","Security & Secrets"],
-  // ── DATABASE ADMINISTRATOR ────────────────────────────────────────────────
   "DBA":              ["Query Optimisation","Index Strategy","Schema Design","Stored Procedures","Performance Tuning","Backup & Recovery","Replication","Schema Migration","EXPLAIN / Query Plans","PL/SQL / T-SQL","Data Integrity","High Availability"],
-  // ── CYBER SECURITY ───────────────────────────────────────────────────────
+  "Machine Learning": ["Python","NumPy / Pandas","Scikit-learn","Model Evaluation","Feature Engineering","Neural Networks","Data Preprocessing","Statistics","Regression / Classification","Deep Learning Basics","Model Deployment","Experiment Tracking"],
   "Cyber Security":   ["Network Security","Penetration Testing","SIEM & Log Analysis","Vulnerability Assessment","Incident Response","Threat Intelligence","Endpoint Security","Firewall & IDS/IPS","Cloud Security","Cryptography","Risk & Compliance","Identity & Access Management"],
+
+  // ── CORE ENGINEERING DOMAINS ───────────────────────────────────────────────
+  "ECE":        ["Digital Electronics","Analog Circuits","Microcontrollers (ARM/AVR)","Embedded C","Signals & Systems","Communication Systems","RTOS Basics","PCB Design Fundamentals","FPGA & VHDL Basics","Sensors & Interfacing","Wireless Communication","IoT Protocols"],
+  "EEE":        ["Circuit Analysis","Electrical Machines","Power Systems","Control Systems","Power Electronics","Transformers & Transmission","Protection Systems","Renewable Energy Systems","PLC & SCADA Basics","Instrumentation & Measurement","Three-Phase Systems","High Voltage Engineering"],
+  "Mechanical": ["Thermodynamics","Fluid Mechanics","Strength of Materials","Manufacturing Processes","Machine Design","Heat Transfer","CAD & Engineering Drawing","Kinematics & Dynamics","Industrial Engineering","Material Science","Quality Control & Metrology","Refrigeration & HVAC"],
+  "Civil":      ["Structural Analysis","Concrete Technology","Soil Mechanics & Foundation","Surveying","Fluid Mechanics (Civil)","Transportation Engineering","Environmental Engineering","Construction Management","Steel Structures","Hydrology & Irrigation","Building Materials","Estimation & Costing"],
+  "IoT":        ["Embedded C / C++","Arduino & Raspberry Pi","MQTT & CoAP Protocols","Sensor Integration","IoT Cloud Platforms","Network Protocols (BLE, Zigbee, LoRa)","Edge Computing","PCB & Circuit Design","Python for IoT","Data Acquisition & Processing","Security in IoT","Real-Time Operating Systems"],
+  "Pharmacy":   ["Pharmaceutics","Pharmacology","Medicinal Chemistry","Drug Design & Discovery","Clinical Pharmacy","Pharmacokinetics & Pharmacodynamics","Drug Regulatory Affairs","Quality Assurance & GMP","Biopharmaceutics","Hospital & Community Pharmacy","Industrial Pharmacy","Pharmaceutical Analysis"],
+  "MBA":        ["Management Principles","Financial Accounting","Marketing Management","Business Strategy","Operations Management","Human Resource Management","Business Analytics","Financial Management","Entrepreneurship","Business Law & Ethics","Supply Chain Management","Organisational Behaviour"],
 }
 
-// Normalize keyword → canonical domain name (Phase 1 domains)
+// Normalize keyword → canonical domain name
 function normalizeDomain(keyword) {
   if (!keyword) return "Full-Stack"
   const k = keyword.toLowerCase().trim()
-  // DBA / Database keywords — check FIRST (before generic "data" catches them)
+
+  // ── IT / CS roles ──────────────────────────────────────────────────────────
+  // DBA — check FIRST (before generic "data" catches them)
   if (k.includes("dba") || k.includes("database admin") || k.includes("database administrator") ||
-      k.includes("sql dba") || k.includes("oracle dba") || k.includes("mysql dba") ||
-      k.includes("postgres dba") || k.includes("db admin")) return "DBA"
+      k.includes("sql dba") || k.includes("oracle dba") || k.includes("db admin")) return "DBA"
   // Data Analyst
   if (k.includes("data analyst") || k.includes("business analyst") || k.includes("bi analyst") ||
       k.includes("data analysis") || k.includes("analytics")) return "Data Analyst"
+  // Machine Learning
+  if (k.includes("machine learning") || k.includes("ml engineer") || k.includes("ai engineer") ||
+      k.includes("deep learning") || k.includes("data scientist")) return "Machine Learning"
   // Frontend
   if (k.includes("frontend") || k.includes("front-end") || k.includes("front end") ||
       k.includes("ui developer") || k.includes("react developer")) return "Frontend"
@@ -127,13 +136,45 @@ function normalizeDomain(keyword) {
   // Full-Stack / SWE
   if ((k.includes("full") && k.includes("stack")) || k.includes("software engineer") ||
       k.includes("software developer") || k.includes("swe")) return "Full-Stack"
-  // Cyber Security — check broadly for security-related keywords
+  // Cyber Security
   if (k.includes("cyber") || k.includes("security") || k.includes("infosec") ||
       k.includes("penetration") || k.includes("pentest") || k.includes("soc analyst") ||
       k.includes("appsec") || k.includes("netsec") || k.includes("siem") ||
       k.includes("threat intel") || k.includes("vulnerability") || k.includes("ethical hack"))
     return "Cyber Security"
-  // Exact key match fallback
+
+  // ── Core Engineering roles — MUST come BEFORE the Full-Stack fallback ──────
+  // ECE — embedded, VLSI, electronics, firmware, hardware, RF, PCB
+  if (k.includes("embedded") || k.includes("vlsi") || k.includes("electronics engineer") ||
+      k.includes("firmware") || k.includes("hardware engineer") || k.includes("rf engineer") ||
+      k.includes("signal processing") || k.includes("pcb") || k.includes("fpga"))
+    return "ECE"
+  // EEE — power, electrical
+  if (k.includes("power engineer") || k.includes("power systems") ||
+      k.includes("electrical engineer") || k.includes("control systems engineer") ||
+      k.includes("eee"))
+    return "EEE"
+  // Mechanical
+  if (k.includes("mechanical engineer") || k.includes("manufacturing engineer") ||
+      k.includes("automobile engineer") || k.includes("automotive engineer") ||
+      k.includes("thermal engineer") || k.includes("production engineer"))
+    return "Mechanical"
+  // Civil
+  if (k.includes("civil engineer") || k.includes("structural engineer") ||
+      k.includes("construction engineer") || k.includes("site engineer"))
+    return "Civil"
+  // IoT
+  if (k.includes("iot") || k.includes("internet of things"))
+    return "IoT"
+  // Pharmacy
+  if (k.includes("pharmacist") || k.includes("pharmacy"))
+    return "Pharmacy"
+  // MBA
+  if (k.includes("mba") || k.includes("business manager") || k.includes("operations manager") ||
+      k.includes("hr manager") || k.includes("marketing manager"))
+    return "MBA"
+
+  // Exact key match then Full-Stack as last resort
   return Object.keys(domainSkillsMap).find(d => d.toLowerCase() === k) || "Full-Stack"
 }
 
