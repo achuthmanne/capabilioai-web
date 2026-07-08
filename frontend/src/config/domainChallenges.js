@@ -2464,6 +2464,528 @@ app.listen(3000, () => console.log('Server running'))`,
 ]
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ECE / EMBEDDED SYSTEMS CHALLENGES
+// ─────────────────────────────────────────────────────────────────────────────
+export const ECE_CHALLENGES = [
+  {
+    id: "ece-001",
+    title: "GPIO LED Blink — Bare-Metal ARM",
+    category: "Embedded C",
+    icon: "🤖",
+    difficulty: "Easy",
+    timeLimit: "25 min",
+    eloGain: 15,
+    tools: ["C", "ARM Cortex-M"],
+    scenario:
+      "You're bring-up engineer for a new STM32F103 board. The hardware team says the LED on PA5 isn't blinking during factory test. Your job: write the bare-metal C code that configures the GPIO pin and toggles the LED at 1 Hz without any HAL library.",
+    objective:
+      "Write bare-metal C code to enable GPIOA clock, configure PA5 as push-pull output, and toggle it in a delay loop to produce a 1 Hz blink.",
+    steps: [
+      "Enable GPIOA clock via RCC_APB2ENR (bit 2)",
+      "Configure PA5 as output push-pull, max 2 MHz speed in CRL register",
+      "Write a software delay loop calibrated for ~500 ms at 8 MHz HSI",
+      "Toggle PA5 using BSRR (set) and BRR (reset) registers",
+      "Verify the output toggles correctly in your simulation",
+    ],
+    workstation: "code",
+    starterCode: `// GPIO LED Blink — STM32F103 (no HAL)
+// Clock: 8 MHz HSI, LED on PA5
+
+#include <stdint.h>
+
+// Register base addresses
+#define RCC_BASE    0x40021000
+#define GPIOA_BASE  0x40010800
+
+#define RCC_APB2ENR  (*(volatile uint32_t *)(RCC_BASE   + 0x18))
+#define GPIOA_CRL    (*(volatile uint32_t *)(GPIOA_BASE + 0x00))
+#define GPIOA_BSRR   (*(volatile uint32_t *)(GPIOA_BASE + 0x10))
+#define GPIOA_BRR    (*(volatile uint32_t *)(GPIOA_BASE + 0x14))
+
+void delay_ms(uint32_t ms) {
+  // TODO: implement software delay (~8000 cycles per ms at 8 MHz)
+}
+
+int main(void) {
+  // TODO: 1. Enable GPIOA clock
+
+  // TODO: 2. Configure PA5 as output push-pull, 2 MHz
+
+  // TODO: 3. Toggle PA5 every 500 ms
+  while (1) {
+
+  }
+}`,
+    skillTags: ["GPIO", "RCC", "Bare-Metal", "ARM Cortex-M", "BSRR/BRR"],
+    hints: [
+      "RCC_APB2ENR bit 2 enables GPIOA clock",
+      "CRL controls pins 0-7: bits [23:20] control PA5 — set to 0b0010 for 2 MHz output",
+      "BSRR bit 5 sets PA5 HIGH; BRR bit 5 sets PA5 LOW",
+    ],
+  },
+  {
+    id: "ece-002",
+    title: "UART Transmit — Polling Mode",
+    category: "Communication Protocols",
+    icon: "🔌",
+    difficulty: "Easy",
+    timeLimit: "30 min",
+    eloGain: 18,
+    tools: ["C", "UART", "STM32"],
+    scenario:
+      "Your embedded system needs to send debug strings over UART1 to a host PC. The bootloader runs at 115200 baud, 8N1. There's no DMA or interrupt budget — it must be a simple polling implementation.",
+    objective:
+      "Configure USART1 on STM32 at 115200 baud and implement a blocking uart_send_string() function using the TXE flag.",
+    steps: [
+      "Enable USART1 and GPIOA clocks via RCC",
+      "Configure PA9 (TX) as alternate function push-pull",
+      "Calculate and set BRR for 115200 baud at 36 MHz APB2",
+      "Enable USART1 with TE (transmit enable) bit",
+      "Implement uart_send_char() that waits for TXE then writes to DR",
+      "Build uart_send_string() on top and send 'Hello ECE!' over UART",
+    ],
+    workstation: "code",
+    starterCode: `// UART1 Polling — STM32F103 @ 36 MHz APB2
+#include <stdint.h>
+
+#define RCC_BASE    0x40021000
+#define GPIOA_BASE  0x40010800
+#define USART1_BASE 0x40013800
+
+#define RCC_APB2ENR  (*(volatile uint32_t *)(RCC_BASE   + 0x18))
+#define GPIOA_CRH    (*(volatile uint32_t *)(GPIOA_BASE + 0x04))
+#define USART1_SR    (*(volatile uint32_t *)(USART1_BASE + 0x00))
+#define USART1_DR    (*(volatile uint32_t *)(USART1_BASE + 0x04))
+#define USART1_BRR   (*(volatile uint32_t *)(USART1_BASE + 0x08))
+#define USART1_CR1   (*(volatile uint32_t *)(USART1_BASE + 0x0C))
+
+// TXE bit in SR
+#define USART_SR_TXE  (1 << 7)
+#define USART_CR1_TE  (1 << 3)
+#define USART_CR1_UE  (1 << 13)
+
+void uart_send_char(char c) {
+  // TODO: wait for TXE, then write c to DR
+}
+
+void uart_send_string(const char *s) {
+  // TODO: iterate and call uart_send_char
+}
+
+int main(void) {
+  // TODO: 1. Enable GPIOA + USART1 clocks
+  // TODO: 2. Configure PA9 as AF push-pull
+  // TODO: 3. Set BRR for 115200 baud (hint: 36000000/115200 ≈ 313)
+  // TODO: 4. Enable USART1 with TE + UE
+
+  uart_send_string("Hello ECE!\\r\\n");
+  while (1) {}
+}`,
+    skillTags: ["UART", "Polling", "Baud Rate", "STM32", "Serial Communication"],
+    hints: [
+      "BRR = f_PCLK / baud_rate. At 36 MHz: 36000000 / 115200 ≈ 312 (0x138)",
+      "PA9 is USART1_TX — CRH bits [7:4] → 0b1011 for AF push-pull 50 MHz",
+      "Check SR_TXE before writing to DR. Don't write while the shift register is busy.",
+    ],
+  },
+  {
+    id: "ece-003",
+    title: "RC Filter — Cutoff Frequency Calculation",
+    category: "Circuit Design",
+    icon: "⚡",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python", "NumPy"],
+    scenario:
+      "A sensor output has significant 50 Hz mains noise. You need a first-order RC low-pass filter with a cutoff frequency of 10 Hz so only the slow DC drift signal passes to the ADC. Calculate the required R and C values and verify the transfer function.",
+    objective:
+      "Calculate R and C for a 10 Hz low-pass filter, then write Python code to plot the Bode magnitude response and confirm the -3 dB point.",
+    steps: [
+      "Use the formula fc = 1 / (2π × R × C)",
+      "Choose R = 10 kΩ and compute the required C",
+      "Generate frequency array from 1 Hz to 10 kHz (log scale)",
+      "Compute |H(jω)| = 1 / √(1 + (f/fc)²) for each frequency",
+      "Plot magnitude in dB vs frequency (Bode plot)",
+      "Verify the magnitude is -3 dB (≈ 0.707) at exactly 10 Hz",
+    ],
+    workstation: "code",
+    starterCode: `import numpy as np
+import math
+
+# Target cutoff frequency
+fc = 10  # Hz
+
+# Step 1: Choose R = 10 kΩ, calculate C
+R = 10_000  # ohms
+C = None  # TODO: C = 1 / (2 * pi * R * fc)
+
+print(f"R = {R/1000:.1f} kΩ")
+print(f"C = {C*1e6:.2f} µF" if C else "C not calculated yet")
+
+# Step 2: Frequency sweep (1 Hz to 10 kHz)
+freqs = np.logspace(0, 4, 500)  # 10^0 to 10^4
+
+# Step 3: Transfer function magnitude |H(f)| = 1 / sqrt(1 + (f/fc)^2)
+H_mag = None  # TODO
+
+# Step 4: Convert to dB
+H_dB = None   # TODO: 20 * log10(H_mag)
+
+# Step 5: Find -3 dB point
+# TODO: find index where H_dB is closest to -3 and print that frequency
+
+print(f"\\nExpected -3dB frequency: {fc} Hz")
+# print(f"Actual -3dB frequency: {freqs[idx]:.2f} Hz")
+`,
+    skillTags: ["RC Circuit", "Low-Pass Filter", "Transfer Function", "Bode Plot", "Signal Processing"],
+    hints: [
+      "C = 1 / (2 × π × R × fc). At R=10kΩ and fc=10Hz: C ≈ 1.59 µF",
+      "H_dB = 20 × log10(H_mag). At fc, |H| = 1/√2 ≈ 0.707 → -3.01 dB",
+      "np.argmin(np.abs(H_dB - (-3))) finds the index closest to -3 dB",
+    ],
+  },
+  {
+    id: "ece-004",
+    title: "I2C Sensor Read — Write Your Own Driver",
+    category: "Communication Protocols",
+    icon: "🔌",
+    difficulty: "Medium",
+    timeLimit: "40 min",
+    eloGain: 25,
+    tools: ["C", "I2C", "Embedded"],
+    scenario:
+      "You're integrating an MPU-6050 IMU with an STM32 over I2C1. The HAL library is forbidden (memory constraints). Implement a minimal blocking I2C driver that reads the WHO_AM_I register (0x75) and returns its value (expected: 0x68).",
+    objective:
+      "Write bare-metal I2C master functions (start, address, write byte, read byte, stop) and use them to read register 0x75 from the MPU-6050 at I2C address 0x68.",
+    steps: [
+      "Enable I2C1 and GPIOB clocks; configure PB6 (SCL) and PB7 (SDA) as open-drain AF",
+      "Configure I2C1: 100 kHz standard mode, PCLK1 = 36 MHz, set CR2, CCR, TRISE",
+      "Implement i2c_start() — set START bit, wait for SB flag",
+      "Implement i2c_write_addr(addr, rw) — write address byte, wait for ADDR, clear by reading SR1+SR2",
+      "Implement i2c_write_byte(data) and i2c_read_byte(ack)",
+      "Combine into i2c_read_reg(dev_addr, reg_addr) — write reg pointer then restart + read",
+      "Call it to read WHO_AM_I and assert the result equals 0x68",
+    ],
+    workstation: "code",
+    starterCode: `// I2C1 Bare-Metal Driver — STM32F103 PCLK1=36MHz
+#include <stdint.h>
+
+#define I2C1_BASE  0x40005400
+#define I2C_CR1    (*(volatile uint32_t *)(I2C1_BASE + 0x00))
+#define I2C_CR2    (*(volatile uint32_t *)(I2C1_BASE + 0x04))
+#define I2C_CCR    (*(volatile uint32_t *)(I2C1_BASE + 0x1C))
+#define I2C_TRISE  (*(volatile uint32_t *)(I2C1_BASE + 0x20))
+#define I2C_SR1    (*(volatile uint32_t *)(I2C1_BASE + 0x14))
+#define I2C_SR2    (*(volatile uint32_t *)(I2C1_BASE + 0x18))
+#define I2C_DR     (*(volatile uint32_t *)(I2C1_BASE + 0x10))
+
+#define MPU6050_ADDR  0x68
+#define WHO_AM_I_REG  0x75
+
+void i2c_init(void) {
+  // TODO: configure PCLK1=36, CCR for 100kHz, TRISE, enable I2C1
+}
+
+void i2c_start(void) {
+  // TODO: set START bit, wait SB flag in SR1
+}
+
+void i2c_write_addr(uint8_t addr, uint8_t rw) {
+  // TODO: write (addr<<1)|rw to DR, wait ADDR, clear by reading SR1+SR2
+}
+
+uint8_t i2c_read_byte(int ack) {
+  // TODO: set/clear ACK bit, wait RXNE, return DR
+  return 0;
+}
+
+void i2c_write_byte(uint8_t data) {
+  // TODO: write to DR, wait BTF
+}
+
+void i2c_stop(void) {
+  I2C_CR1 |= (1 << 9);  // STOP bit
+}
+
+uint8_t i2c_read_reg(uint8_t dev, uint8_t reg) {
+  // TODO: start → write addr (W) → write reg → restart → read addr (R) → read byte → stop
+  return 0;
+}
+
+int main(void) {
+  i2c_init();
+  uint8_t who = i2c_read_reg(MPU6050_ADDR, WHO_AM_I_REG);
+  // Expected: who == 0x68
+  return (who == 0x68) ? 0 : 1;
+}`,
+    skillTags: ["I2C", "Master Mode", "MPU-6050", "Bare-Metal", "Register Map"],
+    hints: [
+      "CCR = PCLK1 / (2 × f_I2C). At 36 MHz and 100 kHz: CCR = 180 (0xB4)",
+      "TRISE = (PCLK1_MHz + 1) = 37 for standard mode",
+      "Clear ADDR by reading SR1 then SR2 in sequence — don't just read SR1",
+    ],
+  },
+  {
+    id: "ece-005",
+    title: "Digital Logic — 4-bit Ripple Carry Adder",
+    category: "Digital Electronics",
+    icon: "💾",
+    difficulty: "Easy",
+    timeLimit: "25 min",
+    eloGain: 14,
+    tools: ["Verilog"],
+    scenario:
+      "Your VLSI team needs a structural Verilog model of a 4-bit ripple carry adder (RCA) to use as a sub-module in an ALU. The model must be fully structural — wire full adder modules together, no behavioral addition operator allowed.",
+    objective:
+      "Write structural Verilog for a full adder and instantiate four of them to build a 4-bit ripple carry adder. Verify with a testbench that 0b0110 + 0b0101 = 0b1011 with Cout = 0.",
+    steps: [
+      "Define a full_adder module with inputs a, b, cin and outputs sum, cout",
+      "Implement full adder using only AND, OR, XOR gate primitives",
+      "Define rca_4bit module with inputs a[3:0], b[3:0], cin and outputs sum[3:0], cout",
+      "Instantiate four full_adder modules, chaining cout → cin",
+      "Write a testbench: apply a=6, b=5, cin=0 and check sum=11, cout=0",
+    ],
+    workstation: "code",
+    starterCode: `// 4-bit Ripple Carry Adder — Structural Verilog
+// DO NOT use + operator — structural gate-level only
+
+module full_adder (
+  input  a, b, cin,
+  output sum, cout
+);
+  // TODO: implement using XOR, AND, OR gates
+  // sum  = a ^ b ^ cin
+  // cout = (a & b) | (b & cin) | (a & cin)
+endmodule
+
+module rca_4bit (
+  input  [3:0] a, b,
+  input        cin,
+  output [3:0] sum,
+  output       cout
+);
+  wire c1, c2, c3;
+  // TODO: instantiate four full_adder modules
+  // fa0: a[0], b[0], cin  → sum[0], c1
+  // fa1: a[1], b[1], c1   → sum[1], c2
+  // ...
+endmodule
+
+// Testbench
+module tb;
+  reg  [3:0] a, b;
+  reg        cin;
+  wire [3:0] sum;
+  wire       cout;
+
+  rca_4bit uut (.a(a), .b(b), .cin(cin), .sum(sum), .cout(cout));
+
+  initial begin
+    a = 4'b0110; b = 4'b0101; cin = 0;
+    #10;
+    $display("a=%b b=%b cin=%b → sum=%b cout=%b", a, b, cin, sum, cout);
+    // Expected: sum = 4'b1011, cout = 0
+    if (sum === 4'b1011 && cout === 0)
+      $display("PASS");
+    else
+      $display("FAIL");
+    $finish;
+  end
+endmodule`,
+    skillTags: ["Verilog", "Full Adder", "Ripple Carry", "Structural Design", "Gate Primitives"],
+    hints: [
+      "full_adder: sum = a ^ b ^ cin; cout = (a&b)|(b&cin)|(a&cin)",
+      "Use named port connections: full_adder fa0 (.a(a[0]), .b(b[0]), .cin(cin), .sum(sum[0]), .cout(c1))",
+      "In Verilog, gate primitives are: and(out,a,b), or(out,a,b), xor(out,a,b)",
+    ],
+  },
+  {
+    id: "ece-006",
+    title: "SPI ADC Read — Bit-Bang Implementation",
+    category: "Communication Protocols",
+    icon: "🔌",
+    difficulty: "Medium",
+    timeLimit: "35 min",
+    eloGain: 22,
+    tools: ["C", "SPI", "Embedded"],
+    scenario:
+      "Your hardware uses an MCP3201 (12-bit SPI ADC) but the SPI peripheral is occupied by another device. Implement a software (bit-bang) SPI master to read a single 12-bit sample from the MCP3201 using GPIO pins for SCK, MOSI, MISO, and CS.",
+    objective:
+      "Implement bit-bang SPI (mode 0,0) that clocks 16 bits from MCP3201 and extracts the 12-bit ADC result from the response frame.",
+    steps: [
+      "Define GPIO macros for CS (PA4), SCK (PA5), MOSI (PA7), MISO (PA6)",
+      "Implement spi_transfer_byte(tx) — 8-bit half-duplex, MSB first, mode 0",
+      "Assert CS low, transfer 0x00 twice to clock out 16 bits, deassert CS",
+      "Extract 12-bit result: MCP3201 sends null+B11..B0 across 16 clocks",
+      "Print the raw ADC value and the corresponding voltage (Vref = 3.3 V)",
+    ],
+    workstation: "code",
+    starterCode: `// Bit-Bang SPI — MCP3201 12-bit ADC on STM32
+#include <stdint.h>
+
+// GPIO bit-bang pins (assume configured as output/input already)
+#define CS_LOW()   // TODO: PA4 = 0
+#define CS_HIGH()  // TODO: PA4 = 1
+#define SCK_LOW()  // TODO: PA5 = 0
+#define SCK_HIGH() // TODO: PA5 = 1
+#define MOSI(v)    // TODO: PA7 = v
+#define MISO_READ() 0 // TODO: return PA6 state
+
+void spi_delay(void) {
+  for (volatile int i = 0; i < 10; i++);  // ~100 ns @ 72 MHz
+}
+
+uint8_t spi_transfer_byte(uint8_t tx) {
+  uint8_t rx = 0;
+  // TODO: 8 clock cycles, MSB first, sample MISO on rising edge
+  return rx;
+}
+
+uint16_t mcp3201_read(void) {
+  CS_LOW();
+  // TODO: clock out 16 bits (two 0x00 bytes), reconstruct 12-bit result
+  // MCP3201 frame: 1 null bit + B11..B0 across 13 remaining clocks
+  uint16_t raw = 0;
+  CS_HIGH();
+  return raw & 0x0FFF;
+}
+
+int main(void) {
+  // gpio_init();  // assume already done
+  uint16_t adc = mcp3201_read();
+  float voltage = (adc / 4095.0f) * 3.3f;
+  // Expected: adc in [0, 4095], voltage in [0.0, 3.3]
+  return 0;
+}`,
+    skillTags: ["SPI", "Bit-Bang", "ADC", "MCP3201", "Bit Manipulation"],
+    hints: [
+      "SPI mode 0: clock idle low, data sampled on rising edge",
+      "On rising SCK edge: MISO_READ() → shift into rx (MSB first)",
+      "MCP3201 sends a leading null bit — discard bit 15, bits 14..3 are B11..B0",
+    ],
+  },
+  {
+    id: "ece-007",
+    title: "D Flip-Flop — Timing Diagram Analysis",
+    category: "Digital Electronics",
+    icon: "💾",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Verilog"],
+    scenario:
+      "A junior engineer's D flip-flop design is failing timing closure. Your job: write a synthesizable Verilog model of a positive-edge-triggered D FF with synchronous reset, and then identify the setup-time violation in a given timing scenario.",
+    objective:
+      "Write a D flip-flop module with synchronous active-high reset. Then analyse whether a given input change meets the setup time requirement of 2 ns before the clock edge.",
+    steps: [
+      "Write module dff_sync_rst with inputs clk, rst, d and output q",
+      "Use always @(posedge clk): if rst → q <= 0, else q <= d",
+      "Write a testbench: apply rst for 2 cycles, then set d=1 and toggle clk",
+      "Check q captures d correctly at each rising edge",
+      "Identify: if d changes 1.5 ns before clk edge with t_setup = 2 ns — does it violate?",
+    ],
+    workstation: "code",
+    starterCode: `// D Flip-Flop with Synchronous Reset — Verilog
+module dff_sync_rst (
+  input  clk, rst, d,
+  output reg q
+);
+  // TODO: synchronous reset, positive edge triggered
+endmodule
+
+module tb;
+  reg clk, rst, d;
+  wire q;
+
+  dff_sync_rst uut (.clk(clk), .rst(rst), .d(d), .q(q));
+
+  // 10 ns clock period
+  initial clk = 0;
+  always #5 clk = ~clk;
+
+  initial begin
+    rst = 1; d = 0;
+    #20 rst = 0;
+    #10 d = 1;  // d goes high 10ns before next edge
+    #10;        // posedge clk — should capture d=1
+    $display("q = %b (expected 1)", q);
+    // Timing question: t_setup = 2ns, d changes 1.5ns before clk rising edge
+    // Answer: VIOLATION — d must be stable at least 2ns before the edge
+    #10 $finish;
+  end
+endmodule`,
+    skillTags: ["D Flip-Flop", "Synchronous Reset", "Setup Time", "Timing Analysis", "Verilog"],
+    hints: [
+      "Synchronous reset: both rst and d are only sampled at posedge clk",
+      "Setup time violation: if data changes within the setup window before the clock edge, the output is metastable",
+      "1.5 ns < 2 ns setup time → this IS a violation. The FF may latch wrong value.",
+    ],
+  },
+  {
+    id: "ece-008",
+    title: "PWM Motor Speed Control",
+    category: "Embedded C",
+    icon: "🤖",
+    difficulty: "Medium",
+    timeLimit: "35 min",
+    eloGain: 20,
+    tools: ["C", "ARM Cortex-M", "Timer"],
+    scenario:
+      "A DC motor driver accepts a 20 kHz PWM signal where 0% duty = stopped and 100% duty = full speed. You need to configure TIM2 on STM32F103 to output PWM on PA1 (TIM2_CH2) and implement a function that sets motor speed from 0 to 100%.",
+    objective:
+      "Configure TIM2 in PWM mode 1 on channel 2 (PA1) at 20 kHz with 72 MHz system clock. Implement set_motor_speed(percent) that updates the duty cycle without restarting the timer.",
+    steps: [
+      "Enable TIM2 and GPIOA clocks",
+      "Configure PA1 as alternate function push-pull output",
+      "Set TIM2 PSC = 0, ARR = 3599 for 20 kHz (72 MHz / 3600 = 20 kHz)",
+      "Configure CCR2 in PWM mode 1 (OC2M = 110)",
+      "Enable CCR2 preload and TIM2 auto-reload preload",
+      "Enable OC2 output and start the timer (CEN bit)",
+      "set_motor_speed(50) should set CCR2 = 1799 for 50% duty",
+    ],
+    workstation: "code",
+    starterCode: `// PWM Motor Speed — TIM2_CH2 (PA1), 20 kHz, 72 MHz system clock
+#include <stdint.h>
+
+#define RCC_BASE  0x40021000
+#define GPIOA_BASE 0x40010800
+#define TIM2_BASE 0x40000000
+
+#define RCC_APB2ENR (*(volatile uint32_t *)(RCC_BASE + 0x18))
+#define RCC_APB1ENR (*(volatile uint32_t *)(RCC_BASE + 0x1C))
+#define GPIOA_CRL   (*(volatile uint32_t *)(GPIOA_BASE))
+#define TIM2_CR1    (*(volatile uint32_t *)(TIM2_BASE + 0x00))
+#define TIM2_CCMR1  (*(volatile uint32_t *)(TIM2_BASE + 0x18))
+#define TIM2_CCER   (*(volatile uint32_t *)(TIM2_BASE + 0x20))
+#define TIM2_PSC    (*(volatile uint32_t *)(TIM2_BASE + 0x28))
+#define TIM2_ARR    (*(volatile uint32_t *)(TIM2_BASE + 0x2C))
+#define TIM2_CCR2   (*(volatile uint32_t *)(TIM2_BASE + 0x38))
+
+void pwm_init(void) {
+  // TODO: clocks, GPIO AF, timer config
+}
+
+void set_motor_speed(uint8_t percent) {
+  if (percent > 100) percent = 100;
+  // TODO: CCR2 = (percent * ARR) / 100
+}
+
+int main(void) {
+  pwm_init();
+  set_motor_speed(50);   // 50% duty → half speed
+  while (1) {}
+}`,
+    skillTags: ["PWM", "TIM2", "Motor Control", "Duty Cycle", "ARR/CCR"],
+    hints: [
+      "ARR = (f_clk / (PSC+1) / f_pwm) - 1 = (72MHz / 1 / 20kHz) - 1 = 3599",
+      "PWM mode 1: OC2M bits [6:4] in CCMR1 = 0b110 (bits 14:12 for CH2)",
+      "duty CCR2 = (percent × (ARR+1)) / 100. At 50%: CCR2 = 1800",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
 // MASTER EXPORT — map domain key → challenges array
 // ─────────────────────────────────────────────────────────────────────────────
 export const DOMAIN_CHALLENGES = {
@@ -2481,9 +3003,9 @@ export const DOMAIN_CHALLENGES = {
   data_engineer: DBA_CHALLENGES,
   cyber:     CYBER_CHALLENGES,
   soc:       CYBER_CHALLENGES,
-  // Medical and ECE use generic SWE challenges as placeholders
+  ece:       ECE_CHALLENGES,
+  // Medical and QA still use generic SWE challenges as placeholders
   medical:   SWE_CHALLENGES,
-  ece:       SWE_CHALLENGES,
   qa:        SWE_CHALLENGES,
   ba_product:DATA_ANALYST_CHALLENGES,
 }

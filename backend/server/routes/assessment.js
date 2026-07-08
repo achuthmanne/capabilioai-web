@@ -29,6 +29,7 @@ async function claudeOrGroq(messages, { model = CLAUDE_HAIKU, groqMaxTokens = 10
 // ─── Domain skill map — mirrors Aura.jsx domainSkillsMap exactly ─────────────
 // CRITICAL: category names in MCQs MUST match these exactly so radar aligns.
 const DOMAIN_SKILLS = {
+  // ── IT / CS domains ──────────────────────────────────────────────────────────
   "Data Analyst":     ["SQL","Python","Data Cleaning","Exploratory Data Analysis","Data Visualization","Statistical Analysis","A/B Testing","Business Intelligence","Funnel Analysis","KPI Reporting","Dashboard Design","Storytelling with Data"],
   "Full-Stack":       ["React","Node.js","TypeScript","SQL","REST APIs","Authentication","State Management","Testing","System Design","Performance","Deployment","CSS"],
   "Frontend":         ["React","TypeScript","JavaScript","CSS / Tailwind","HTML","State Management","Web Performance","Accessibility (WCAG)","Testing (Jest/RTL)","Design Systems","API Integration","Responsive Design"],
@@ -41,41 +42,80 @@ const DOMAIN_SKILLS = {
   "iOS Developer":    ["Swift","Xcode","UIKit","SwiftUI","Core Data","Networking (URLSession)","MVC/MVVM","Auto Layout","Push Notifications","App Store Deployment","Testing (XCTest)","Memory Management"],
   "Cybersecurity":    ["Network Security","Linux","Ethical Hacking Basics","OWASP Top 10","Cryptography","Firewalls & IDS","Penetration Testing","Vulnerability Assessment","Security Auditing","Incident Response","Compliance (ISO 27001)","SIEM Tools"],
   "Cloud Engineer":   ["AWS / Azure / GCP","IAM & Security","Compute (EC2/VMs)","Storage (S3/Blob)","Networking (VPC)","Containers (ECS/AKS)","Serverless","Monitoring (CloudWatch)","Infrastructure as Code","Cost Optimisation","Databases","CI/CD"],
+
+  // ── Core Engineering domains ──────────────────────────────────────────────────
+  "ECE":        ["Digital Electronics","Analog Circuits","Microcontrollers (ARM/AVR)","Embedded C","Signals & Systems","Communication Systems","RTOS Basics","PCB Design Fundamentals","FPGA & VHDL Basics","Sensors & Interfacing","Wireless Communication","IoT Protocols"],
+  "EEE":        ["Circuit Analysis","Electrical Machines","Power Systems","Control Systems","Power Electronics","Transformers & Transmission","Protection Systems","Renewable Energy Systems","PLC & SCADA Basics","Instrumentation & Measurement","Three-Phase Systems","High Voltage Engineering"],
+  "Mechanical": ["Thermodynamics","Fluid Mechanics","Strength of Materials","Manufacturing Processes","Machine Design","Heat Transfer","CAD & Engineering Drawing","Kinematics & Dynamics","Industrial Engineering","Material Science","Quality Control & Metrology","Refrigeration & HVAC"],
+  "Civil":      ["Structural Analysis","Concrete Technology","Soil Mechanics & Foundation","Surveying","Fluid Mechanics (Civil)","Transportation Engineering","Environmental Engineering","Construction Management","Steel Structures","Hydrology & Irrigation","Building Materials","Estimation & Costing"],
+  "IoT":        ["Embedded C / C++","Arduino & Raspberry Pi","MQTT & CoAP Protocols","Sensor Integration","IoT Cloud Platforms","Network Protocols (BLE, Zigbee, LoRa)","Edge Computing","PCB & Circuit Design","Python for IoT","Data Acquisition & Processing","Security in IoT","Real-Time Operating Systems"],
+  "Pharmacy":   ["Pharmaceutics","Pharmacology","Medicinal Chemistry","Drug Design & Discovery","Clinical Pharmacy","Pharmacokinetics & Pharmacodynamics","Drug Regulatory Affairs","Quality Assurance & GMP","Biopharmaceutics","Hospital & Community Pharmacy","Industrial Pharmacy","Pharmaceutical Analysis"],
+  "MBA":        ["Management Principles","Financial Accounting","Marketing Management","Business Strategy","Operations Management","Human Resource Management","Business Analytics","Financial Management","Entrepreneurship","Business Law & Ethics","Supply Chain Management","Organisational Behaviour"],
 }
 
-function getDomainSkills(jobTitle) {
+// ── Branch → domain key (branch-based fallback when jobTitle keyword misses) ──
+const BRANCH_DOMAIN_KEY = {
+  ECE: "ECE", EEE: "EEE", Mechanical: "Mechanical", Civil: "Civil",
+  IoT: "IoT", Pharmacy: "Pharmacy", MBA: "MBA",
+}
+
+function getDomainSkills(jobTitle, branch = "") {
   const k = (jobTitle || "").toLowerCase()
-  if (k.includes("data analyst") || k.includes("business analyst") || k.includes("analytics")) return DOMAIN_SKILLS["Data Analyst"]
-  if (k.includes("machine learning") || k.includes("ml engineer") || k.includes("ai engineer")) return DOMAIN_SKILLS["Machine Learning"]
+
+  // ── IT / CS role detection ──────────────────────────────────────────────────
+  if (k.includes("data analyst") || k.includes("analytics")) return DOMAIN_SKILLS["Data Analyst"]
+  if (k.includes("machine learning") || k.includes("ml engineer") || k.includes("ai engineer") || k.includes("deep learning")) return DOMAIN_SKILLS["Machine Learning"]
   if (k.includes("frontend") || k.includes("front-end") || k.includes("react developer") || k.includes("ui developer")) return DOMAIN_SKILLS["Frontend"]
   if (k.includes("backend") || k.includes("back-end") || k.includes("api developer")) return DOMAIN_SKILLS["Backend"]
   if (k.includes("devops") || k.includes("sre") || k.includes("platform engineer") || k.includes("infrastructure")) return DOMAIN_SKILLS["DevOps"]
   if (k.includes("dba") || k.includes("database admin")) return DOMAIN_SKILLS["DBA"]
   if (k.includes("android")) return DOMAIN_SKILLS["Android Developer"]
-  if (k.includes("ios")) return DOMAIN_SKILLS["iOS Developer"]
-  if (k.includes("cyber") || k.includes("security engineer")) return DOMAIN_SKILLS["Cybersecurity"]
+  if (k.includes("ios") || k.includes("swift developer")) return DOMAIN_SKILLS["iOS Developer"]
+  if (k.includes("cyber") || k.includes("security engineer") || k.includes("ethical hack") || k.includes("penetration")) return DOMAIN_SKILLS["Cybersecurity"]
   if (k.includes("cloud")) return DOMAIN_SKILLS["Cloud Engineer"]
   if ((k.includes("full") && k.includes("stack")) || k.includes("software engineer") || k.includes("software developer") || k.includes("swe")) return DOMAIN_SKILLS["Full-Stack"]
+
+  // ── Non-IT / Core Engineering role detection ────────────────────────────────
+  // ECE — embedded, VLSI, electronics, firmware, hardware, RF, signal, PCB
+  if (k.includes("embedded") || k.includes("vlsi") || k.includes("electronics engineer") || k.includes("firmware") || k.includes("hardware engineer") || k.includes("rf engineer") || k.includes("signal processing") || k.includes("pcb designer")) return DOMAIN_SKILLS["ECE"]
+  // EEE — power, electrical, control systems
+  if (k.includes("power engineer") || k.includes("power systems") || k.includes("electrical engineer") || k.includes("control systems engineer")) return DOMAIN_SKILLS["EEE"]
+  // Mechanical
+  if (k.includes("mechanical engineer") || k.includes("manufacturing engineer") || k.includes("automobile engineer") || k.includes("automotive engineer") || k.includes("thermal engineer") || k.includes("production engineer")) return DOMAIN_SKILLS["Mechanical"]
+  // Civil
+  if (k.includes("civil engineer") || k.includes("structural engineer") || k.includes("construction engineer") || k.includes("site engineer") || k.includes("geotechnical")) return DOMAIN_SKILLS["Civil"]
+  // IoT
+  if (k.includes("iot") || k.includes("internet of things")) return DOMAIN_SKILLS["IoT"]
+  // Pharmacy
+  if (k.includes("pharmacist") || k.includes("pharmacy") || k.includes("drug formulation")) return DOMAIN_SKILLS["Pharmacy"]
+  // MBA
+  if (k.includes("mba") || k.includes("business manager") || k.includes("operations manager") || k.includes("hr manager") || k.includes("marketing manager")) return DOMAIN_SKILLS["MBA"]
+
+  // ── Branch-based fallback — handles generic titles (e.g. just "Engineer") ───
+  // If jobTitle keyword matched nothing, use the student's actual branch.
+  if (branch && BRANCH_DOMAIN_KEY[branch]) return DOMAIN_SKILLS[BRANCH_DOMAIN_KEY[branch]]
+
+  // ── Default: generic software developer ─────────────────────────────────────
   return DOMAIN_SKILLS["Software Developer"]
 }
 
 // ─── 3. Generate MCQ ── Groq (generation, not user-visible analysis) ──────────
 router.post("/generate-mcq", async (req, res) => {
-  const { jobTitle="Software Developer", count=25, skills=[], resumeContext="", resumeSummary="" } = req.body
+  const { jobTitle="Software Developer", branch="", count=25, skills=[], resumeContext="", resumeSummary="" } = req.body
 
   // Get the EXACT skills for this domain — these become mandatory question categories
-  const domainSkills = getDomainSkills(jobTitle)
+  // branch is the student's enrolled branch (ECE/EEE/Mechanical/Civil/etc.) used as fallback
+  // when the jobTitle keyword alone doesn't resolve to a known non-IT domain.
+  const domainSkills = getDomainSkills(jobTitle, branch)
   // Ensure every domain skill gets at least 1-2 questions for full radar coverage
   const questionsPerSkill = Math.max(1, Math.floor(count / domainSkills.length))
   const extra = count - (questionsPerSkill * domainSkills.length)
 
-  const mix = {
-    mcq:             Math.round(count * 0.30),
-    code_output:     Math.round(count * 0.25),
-    problem_solving: Math.round(count * 0.20),
-    scenario:        Math.round(count * 0.15),  // real-world data/work scenario
-    fill_blank:      Math.round(count * 0.10),
-  }
+  // For non-IT/engineering domains, swap code_output for numerical/diagram questions
+  const isEngineeringBranch = branch && ["ECE","EEE","Mechanical","Civil","IoT","Pharmacy","MBA"].includes(branch)
+  const mix = isEngineeringBranch
+    ? { mcq: Math.round(count * 0.45), numerical: Math.round(count * 0.20), problem_solving: Math.round(count * 0.20), scenario: Math.round(count * 0.10), fill_blank: Math.round(count * 0.05) }
+    : { mcq: Math.round(count * 0.30), code_output: Math.round(count * 0.25), problem_solving: Math.round(count * 0.20), scenario: Math.round(count * 0.15), fill_blank: Math.round(count * 0.10) }
 
   const summaryLine = resumeSummary ? `Candidate background: ${resumeSummary.slice(0,250)}` : ""
   const contextLine = resumeContext ? `Extra context: ${resumeContext.slice(0,300)}` : ""
@@ -150,10 +190,16 @@ router.post("/generate-mcq", async (req, res) => {
   // No json:true — strict JSON mode causes json_validate_failed on the small model.
   // parseQuestions() handles plain-text JSON, code-fenced JSON, and truncated JSON.
   try {
+    // Detect if this is a non-IT/engineering domain so we can set the right context
+    const nonItDomainKey = branch && BRANCH_DOMAIN_KEY[branch] ? BRANCH_DOMAIN_KEY[branch] : null
+    const isEngineeringDomain = nonItDomainKey && ["ECE","EEE","Mechanical","Civil","IoT"].includes(nonItDomainKey)
+    const isNonItDomain = !!nonItDomainKey
+
     const raw = await groq([
       {
         role: "system",
-        content: `You are an MCQ generator for Indian fresher tech assessments (campus-level: Wipro, TCS, Infosys).
+        content: `You are an MCQ generator for Indian fresher ${isEngineeringDomain ? "core engineering" : isNonItDomain ? "professional" : "tech"} assessments (campus placement level).
+${isNonItDomain ? `DOMAIN: ${nonItDomainKey} — questions must be about ${nonItDomainKey} subject matter. Do NOT generate software/programming/CS questions.` : ""}
 STRICT OUTPUT RULES:
 - Return ONLY a raw JSON object. No markdown, no code fences, no explanation text.
 - Top-level key must be "questions" with an array of exactly ${count} question objects.
@@ -165,7 +211,7 @@ STRICT OUTPUT RULES:
       },
       {
         role: "user",
-        content: `Generate ${count} fresher-level MCQs for a "${jobTitle}" assessment.
+        content: `Generate ${count} fresher-level MCQs for a "${jobTitle}" assessment.${isNonItDomain ? `\nThis student is from ${nonItDomainKey} branch — all questions must cover ${nonItDomainKey} engineering fundamentals, NOT software/CS topics.` : ""}
 
 Skills to cover (use EXACTLY as category):
 ${domainSkills.map((s, i) => `${i + 1}. ${s}`).join("\n")}
@@ -175,7 +221,9 @@ Type mix: mcq:${mix.mcq}, code_output:${mix.code_output}, problem_solving:${mix.
 ${summaryLine}
 ${contextLine}
 
-For code_output questions: show a short code snippet (≤6 lines) in "question" and ask "What is the output?" — options are 4 possible outputs.
+${isEngineeringBranch
+  ? `For numerical questions: present a formula/circuit/equation problem; options are 4 numerical values with units.`
+  : `For code_output questions: show a short code snippet (≤6 lines) in "question" and ask "What is the output?" — options are 4 possible outputs.`}
 For fill_blank: use "___" in question text, options are 4 completions.
 Never start a question with "Write a..." or "Create a..." — those are open-ended, not MCQ.
 

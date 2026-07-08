@@ -1213,7 +1213,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
 
   // ── MCQ generation ───────────────────────────────────────────────
   const fetchMCQBatch = async (count, topicsHint = "") => {
-    const res = await fetch(`${SERVER}/api/generate-mcq`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ jobTitle:keyword, count, difficulty:"Beginner", skills:resumeData?.skills||resumeSkills||[], resumeContext:resumeText, topicsHint, resumeTitle:resumeData?.title||"", resumeKeywords:resumeData?.keywords||[], resumeSummary:resumeData?.summary||"", resumeExp:(resumeData?.experience||[]).map(e=>e.role||e.title||"").filter(Boolean).join(", "), assessmentMode:"student-foundation", audience:"entry-level student", questionStyle:"fundamentals, beginner practical, interview basics", avoidAdvanced:true, isResumeBased:!!resumeData }) })
+    const res = await fetch(`${SERVER}/api/generate-mcq`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ jobTitle:keyword, branch, count, difficulty:"Beginner", skills:resumeData?.skills||resumeSkills||[], resumeContext:resumeText, topicsHint, resumeTitle:resumeData?.title||"", resumeKeywords:resumeData?.keywords||[], resumeSummary:resumeData?.summary||"", resumeExp:(resumeData?.experience||[]).map(e=>e.role||e.title||"").filter(Boolean).join(", "), assessmentMode:"student-foundation", audience:"entry-level student", questionStyle:"fundamentals, beginner practical, interview basics", avoidAdvanced:true, isResumeBased:!!resumeData }) })
     if (!res.ok) { const d = await res.json().catch(()=>({})); throw new Error(d?.error?.message||`Server error ${res.status}`) }
     const data = await res.json()
     return sanitizeQuestions(data.questions || [])

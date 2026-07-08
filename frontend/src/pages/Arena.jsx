@@ -2415,6 +2415,22 @@ function detectStudentStream(userData) {
     if (b === "AI_ML")      return "AI_ML"
     return null  // CSE / IT / MCA / Other → default IT path
   }
+
+  // Keyword-based fallback — for users who onboarded before branch/slug were stored.
+  // Reads the domain role the student typed (same field resolveArenaDomain uses).
+  if (!slug && !branchDirect) {
+    const kw = (userData?.keyword || userData?.authority || userData?.jobTitle || "").toLowerCase()
+    if (kw.includes("embedded") || kw.includes("vlsi") || kw.includes("fpga") || kw.includes("firmware") || kw.includes("electronics engineer") || kw.includes("hardware engineer") || kw.includes("rf engineer") || kw.includes("signal processing") || kw.includes("pcb")) return "ECE"
+    if (kw.includes("power engineer") || kw.includes("power systems") || kw.includes("electrical engineer") || kw.includes("control systems engineer")) return "EEE"
+    if (kw.includes("mechanical engineer") || kw.includes("manufacturing engineer") || kw.includes("automobile engineer") || kw.includes("automotive engineer") || kw.includes("thermal engineer") || kw.includes("production engineer")) return "Mechanical"
+    if (kw.includes("civil engineer") || kw.includes("structural engineer") || kw.includes("construction engineer") || kw.includes("site engineer")) return "Civil"
+    if (kw.includes("iot") || kw.includes("internet of things")) return "IoT"
+    if (kw.includes("pharmacist") || kw.includes("pharmacy")) return "Pharmacy"
+    if (kw.includes("mba") || kw.includes("business manager") || kw.includes("operations manager") || kw.includes("hr manager") || kw.includes("marketing manager")) return "MBA"
+    // Note: intentionally NOT matching "software engineer", "data analyst" etc here —
+    // those are IT roles and should stay on the default IT path (return null).
+  }
+
   if (!slug) return null
 
   // ── Engineering streams ──────────────────────────────────────────────────
