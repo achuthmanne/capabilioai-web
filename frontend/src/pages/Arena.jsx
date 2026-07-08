@@ -2396,7 +2396,25 @@ function UpgradeModal({ planId, user, userData, onSuccess, onClose }) {
 //   null  →  IT / CSE / MCA students use the default coding (DSA) path
 // ─────────────────────────────────────────────────────────────────────────────
 function detectStudentStream(userData) {
+  // Primary: career_track_slug (set during onboarding from branch mapping)
+  // Fallback: branch field (stored directly from signup form)
   const slug = (userData?.career_track_slug || "").toLowerCase().trim()
+  const branchDirect = (userData?.branch || "").trim()
+
+  // Branch direct-match shortcuts (set at signup, no slug needed)
+  if (!slug && branchDirect) {
+    const b = branchDirect
+    if (b === "ECE")        return "ECE"
+    if (b === "EEE")        return "EEE"
+    if (b === "Mechanical") return "Mechanical"
+    if (b === "Civil")      return "Civil"
+    if (b === "Pharmacy")   return "Pharmacy"
+    if (b === "MBA")        return "MBA"
+    if (b === "IoT")        return "IoT"
+    if (b === "AI_DS")      return "AI_DS"
+    if (b === "AI_ML")      return "AI_ML"
+    return null  // CSE / IT / MCA / Other → default IT path
+  }
   if (!slug) return null
 
   // ── Engineering streams ──────────────────────────────────────────────────

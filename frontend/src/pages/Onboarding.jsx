@@ -396,13 +396,35 @@ const buildResumeProjects = (allExperience, apiProjects, fileName) => {
   return sources
 }
 
+// ─── Branch → career_track_slug mapping ─────────────────────────────
+// Matches detectStudentStream() in Arena.jsx so Arena auto-filters correctly.
+const BRANCH_TO_CAREER_SLUG = {
+  CSE:        null,          // IT path — no slug needed (default DSA/SQL)
+  IT:         null,
+  MCA:        null,
+  DevOps:     null,
+  AI_DS:      "ai-ds",
+  AI_ML:      "ai-ml",
+  ECE:        "ece",
+  EEE:        "eee",
+  Mechanical: "mechanical",
+  Civil:      "civil",
+  IoT:        "iot",
+  Pharmacy:   "pharmacy",
+  MBA:        "mba",
+  Other:      null,
+}
+
 // ─── Payload builders ───────────────────────────────────────────────
 const buildStudentSavePayload = ({ path, user, username, data }) => {
-  const { keyword, result, resumeData, resumeFileObj, resumeBase64 } = data
+  const { keyword, college, branch, result, resumeData, resumeFileObj, resumeBase64 } = data
   const analysis = result?.analysis || {}
   const score = safeNumber(result?.score, 0)
   const total = safeNumber(result?.total, 25)
   const eloRating = getStudentDisplayElo({ score, total })
+  const careerSlug = branch && Object.prototype.hasOwnProperty.call(BRANCH_TO_CAREER_SLUG, branch)
+    ? BRANCH_TO_CAREER_SLUG[branch]
+    : null
 
   const allExp = resumeData?.experience || []
   const professionalExps = allExp.filter(e => !isProjectEntry(e))
@@ -435,6 +457,9 @@ const buildStudentSavePayload = ({ path, user, username, data }) => {
   return {
     displayName: user.user_metadata?.full_name || user.user_metadata?.name || resumeData?.name || user.email?.split("@")[0] || "", email: user.email || resumeData?.email || "",
     username, path: "student", keyword: keyword || "", onboardingComplete: true, onboarding_complete: true,
+    college: college || user.user_metadata?.college || "",
+    branch:  branch  || user.user_metadata?.branch  || "",
+    ...(careerSlug ? { career_track_slug: careerSlug } : {}),
     eloRating, baseElo: getBaseEloByPath("student"), initialElo: eloRating,
     assessmentType: "student-mcq", assessmentScore: score, assessmentTotal: total,
     score: `${score}/${total}`,
@@ -880,6 +905,9 @@ export default function Onboarding({ user, onComplete, onBack }) {
 
   // Student
   const [keyword, setKeyword] = useState("")
+  // College / branch — pre-filled from signup user_metadata, editable
+  const [college, setCollege] = useState(user?.user_metadata?.college || "")
+  const [branch,  setBranch]  = useState(user?.user_metadata?.branch  || "")
   const [resumeFile, setResumeFile] = useState(null)
   const [resumeText, setResumeText] = useState("")
   const [resumeStatus, setResumeStatus] = useState("idle")
@@ -1266,7 +1294,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
       if (resumeFile && resumeFile.size < 3 * 1024 * 1024) {
         try { resumeBase64 = await fileToBase64(resumeFile) } catch {}
       }
-      const payload = buildUserSavePayload({ path:"student", user: { ...user, displayName: getUserDisplayName() }, username, data:{ keyword, result, resumeData, resumeFileObj: resumeFile, resumeBase64 } })
+      const payload = buildUserSavePayload({ path:"student", user: { ...user, displayName: getUserDisplayName() }, username, data:{ keyword, college, branch, result, resumeData, resumeFileObj: resumeFile, resumeBase64 } })
       // ✅ Use Supabase via userDoc (user.id, not user.uid)
       // ⚠️  Do NOT set onboarding_complete here — that would fire the real-time
       // listener in App.jsx and unmount Onboarding before the plan step shows.
@@ -1722,8 +1750,38 @@ export default function Onboarding({ user, onComplete, onBack }) {
             <H2>Pick your domain</H2>
             <Sub>You'll get 25 beginner-level assessment questions focused on fundamentals and early-stage practical reasoning. Your ELO starts at 400 from here.</Sub>
             {apiError && <div style={{ background:`${T.red}10`,border:`1px solid ${T.red}30`,borderRadius:T.radius,padding:"12px 14px",color:"#F87171",fontSize:13,marginBottom:16 }}>{apiError}</div>}
+            {/* College + Branch — pre-filled from signup, editable */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16 }}>
+              <FieldRow label="College / University">
+                <FieldInput value={college} onChange={e=>setCollege(e.target.value)} placeholder="e.g. VIT Vellore" />
+              </FieldRow>
+              <FieldRow label="Branch / Stream">
+                <FieldSelect value={branch} onChange={e=>setBranch(e.target.value)}>
+                  <option value="">Select branch</option>
+                  <optgroup label="IT / CS">
+                    <option value="CSE">CSE</option>
+                    <option value="IT">IT</option>
+                    <option value="MCA">MCA</option>
+                    <option value="AI_DS">AI &amp; Data Science</option>
+                    <option value="AI_ML">AI &amp; ML</option>
+                  </optgroup>
+                  <optgroup label="Core Engineering">
+                    <option value="ECE">ECE</option>
+                    <option value="EEE">EEE</option>
+                    <option value="Mechanical">Mechanical</option>
+                    <option value="Civil">Civil</option>
+                    <option value="IoT">IoT</option>
+                  </optgroup>
+                  <optgroup label="Other">
+                    <option value="Pharmacy">Pharmacy</option>
+                    <option value="MBA">MBA</option>
+                    <option value="Other">Other</option>
+                  </optgroup>
+                </FieldSelect>
+              </FieldRow>
+            </div>
             <FieldRow label="Target role / domain">
-              <FieldInput value={keyword} onChange={e=>setKeyword(e.target.value)} placeholder="e.g. Frontend Developer, Data Analyst, Java Developer" />
+              <FieldInput value={keyword} onChange={e=>setKeyword(e.target.value)} placeholder="e.g. Frontend Developer, Data Analyst, ECE Engineer" />
             </FieldRow>
             <FieldRow label="Resume upload — optional" hint={resumeStatus==="done"?"✓ Resume parsed successfully.":resumeStatus==="reading"?"Reading…":resumeStatus==="error"?"Uploaded but parsing was partial.":"Optional — used to personalise questions."}>
               <UploadBox file={resumeFile} status={resumeStatus} onUpload={handleFileUpload} label="Upload resume or profile PDF" hint="Personalises beginner-level questions around your foundation areas." color={T.primary} />

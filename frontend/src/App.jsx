@@ -142,7 +142,7 @@ function pwStrength(pw) {
 }
 
 function AuthModal({ show, onClose, mode, setMode }) {
-  // ── Email auth only (Phone OTP removed — Twilio trial limitation) ─
+  // ── Email auth only ──────────────────────────────────────────────
   const [email,    setEmail]    = useState("")
   const [password, setPassword] = useState("")
   const [showPw,   setShowPw]   = useState(false)
@@ -150,13 +150,14 @@ function AuthModal({ show, onClose, mode, setMode }) {
   const [confirm,  setConfirm]  = useState("")
   const [first,    setFirst]    = useState("")
   const [last,     setLast]     = useState("")
+  const [college,  setCollege]  = useState("")
+  const [branch,   setBranch]   = useState("")
   const [refCode,  setRefCode]  = useState("")
   const [refValid, setRefValid] = useState(null)
   const [refData,  setRefData]  = useState(null)
   // shared
   const [error,    setError]    = useState("")
   const [loading,  setLoading]  = useState(false)
-  const [googleLoading, setGoogleLoading] = useState(false)
 
   const selectedPath = (() => { try { return localStorage.getItem("capabilio_selected_path") } catch { return null } })()
   const pw = pwStrength(password)
@@ -164,7 +165,8 @@ function AuthModal({ show, onClose, mode, setMode }) {
   useEffect(() => {
     if (show) {
       setEmail(""); setPassword(""); setConfirm(""); setShowPw(false); setShowCfm(false)
-      setFirst(""); setLast(""); setRefCode(""); setRefValid(null); setRefData(null)
+      setFirst(""); setLast(""); setCollege(""); setBranch("")
+      setRefCode(""); setRefValid(null); setRefData(null)
       setError(""); setLoading(false)
     }
   }, [show])
@@ -186,8 +188,10 @@ function AuthModal({ show, onClose, mode, setMode }) {
     setLoading(true); setError("")
     try {
       if (mode === "signup") {
-        if (!first.trim()) { setError("First name is required"); setLoading(false); return }
-        if (!last.trim())  { setError("Last name is required");  setLoading(false); return }
+        if (!first.trim())   { setError("First name is required");   setLoading(false); return }
+        if (!last.trim())    { setError("Last name is required");    setLoading(false); return }
+        if (!college.trim()) { setError("College name is required"); setLoading(false); return }
+        if (!branch)         { setError("Please select your branch");setLoading(false); return }
         const pwErr = validatePassword(password)
         if (pwErr) { setError(pwErr); setLoading(false); return }
         if (password !== confirm) { setError("Passwords do not match."); setLoading(false); return }
@@ -195,7 +199,7 @@ function AuthModal({ show, onClose, mode, setMode }) {
         const fullName = `${first.trim()} ${last.trim()}`
         const { data, error: signUpError } = await supabase.auth.signUp({
           email, password,
-          options: { data: { full_name: fullName, first_name: first.trim(), last_name: last.trim() } },
+          options: { data: { full_name: fullName, first_name: first.trim(), last_name: last.trim(), college: college.trim(), branch } },
         })
         if (signUpError) throw signUpError
         if (refCode.trim() && data.user) {
@@ -225,22 +229,6 @@ function AuthModal({ show, onClose, mode, setMode }) {
     }
   }
 
-  // ── Google OAuth ─────────────────────────────────────────────────
-  const handleGoogleSignIn = async () => {
-    setGoogleLoading(true); setError("")
-    try {
-      const { error: oauthErr } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: window.location.origin, queryParams: { access_type: "offline", prompt: "consent" } },
-      })
-      if (oauthErr) throw oauthErr
-      onClose()
-    } catch (e) {
-      setError(e.message || "Google sign-in failed. Try again.")
-      setGoogleLoading(false)
-    }
-  }
-
   // ── Shared input style ────────────────────────────────────────────
   const inputStyle = {
     width: "100%", padding: "12px 14px", background: "#FAF7F2",
@@ -260,7 +248,7 @@ function AuthModal({ show, onClose, mode, setMode }) {
   const pm     = PATH_META[selectedPath] || null
   const accent = pm?.color || "#FF5701"
   const canSubmitEmail = mode === "signup"
-    ? (first && last && email && password && confirm)
+    ? (first && last && college && branch && email && password && confirm)
     : (email && password)
 
   return (
@@ -337,33 +325,41 @@ function AuthModal({ show, onClose, mode, setMode }) {
               {mode==="signup" ? "Free forever. No credit card required." : "Sign in to your Capabilio profile."}
             </p>
 
-            {/* Google */}
-            <button onClick={handleGoogleSignIn} disabled={googleLoading}
-              style={{ width:"100%", padding:"11px 16px", marginBottom:12, background:"#fff", border:"1.5px solid #E8E3DA", borderRadius:10, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:10, fontSize:14, fontWeight:600, color:"#3D3935", fontFamily:"DM Sans,sans-serif", transition:"all 0.15s", boxShadow:"0 2px 6px rgba(17,24,39,0.06)" }}
-              onMouseEnter={e=>{e.currentTarget.style.borderColor="#D6D0C8";e.currentTarget.style.boxShadow="0 4px 12px rgba(17,24,39,0.10)"}}
-              onMouseLeave={e=>{e.currentTarget.style.borderColor="#E8E3DA";e.currentTarget.style.boxShadow="0 2px 6px rgba(17,24,39,0.06)"}}
-            >
-              {googleLoading
-                ? <span style={{ width:18, height:18, border:"2px solid #E8E3DA", borderTopColor:"#6B6560", borderRadius:"50%", display:"inline-block", animation:"authSpin 0.7s linear infinite" }}/>
-                : <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-              }
-              {googleLoading ? "Redirecting…" : "Continue with Google"}
-            </button>
-
-            {/* ── Divider ── */}
-            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
-              <div style={{ flex:1, height:1, background:"#E8E3DA" }}/>
-              <span style={{ fontSize:11, color:"#A8A29E", fontWeight:500 }}>or continue with email</span>
-              <div style={{ flex:1, height:1, background:"#E8E3DA" }}/>
-            </div>
-
             {/* ── EMAIL FLOW ── */}
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
                 {mode === "signup" && (
+                  <>
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                     {inp(first, setFirst, "text", "First name")}
                     {inp(last,  setLast,  "text", "Last name")}
                   </div>
+                  {inp(college, setCollege, "text", "College / University name")}
+                  <select value={branch} onChange={e=>{setBranch(e.target.value);setError("")}}
+                    style={{ ...inputStyle, color: branch ? "#1A1714" : "#A8A29E" }}
+                    onFocus={e=>e.target.style.borderColor="#FF5701"}
+                    onBlur={e=>e.target.style.borderColor="#E8E3DA"}>
+                    <option value="">Select your branch / stream</option>
+                    <optgroup label="IT / CS Streams">
+                      <option value="CSE">Computer Science Engineering (CSE)</option>
+                      <option value="IT">Information Technology (IT)</option>
+                      <option value="MCA">MCA / Computer Applications</option>
+                      <option value="AI_DS">AI &amp; Data Science (AI/DS)</option>
+                      <option value="AI_ML">AI &amp; Machine Learning (AI/ML)</option>
+                    </optgroup>
+                    <optgroup label="Core Engineering">
+                      <option value="ECE">Electronics &amp; Communication (ECE)</option>
+                      <option value="EEE">Electrical &amp; Electronics (EEE)</option>
+                      <option value="Mechanical">Mechanical Engineering</option>
+                      <option value="Civil">Civil Engineering</option>
+                      <option value="IoT">Internet of Things (IoT)</option>
+                    </optgroup>
+                    <optgroup label="Other">
+                      <option value="Pharmacy">Pharmacy / Pharma</option>
+                      <option value="MBA">MBA / Business Administration</option>
+                      <option value="Other">Other</option>
+                    </optgroup>
+                  </select>
+                  </>
                 )}
                 {inp(email, setEmail, "email", "Email address")}
 

@@ -553,9 +553,9 @@ router.post("/flag-integrity", async (req, res) => {
       elo_penalty:   ELO_PENALTY,
     })
 
-    // 2. Fetch current user state
+    // 2. Fetch current profile state
     const { data: userData } = await db
-      .from("users")
+      .from("profiles")
       .select("integrity_warning_count, elo_rating, integrity_banned_until")
       .eq("id", uid)
       .single()
@@ -569,14 +569,14 @@ router.post("/flag-integrity", async (req, res) => {
     const currentElo = userData?.elo_rating || 800
     const newElo    = Math.max(0, currentElo + ELO_PENALTY) // floor at 0
 
-    // 3. Update user: warning count + ELO penalty + ban if applicable
+    // 3. Update profile: warning count + ELO penalty + ban if applicable
     const updatePayload = {
       integrity_warning_count: newCount,
       elo_rating:              newElo,
     }
     if (isBanned) updatePayload.integrity_banned_until = banUntil
 
-    await db.from("users").update(updatePayload).eq("id", uid)
+    await db.from("profiles").update(updatePayload).eq("id", uid)
 
     return res.json({
       warningCount: newCount,

@@ -645,11 +645,143 @@ function TestResults({ results, loading, error }) {
 }
 
 // ─── Result overlay shown after submission ────────────────────────────────────
+// ─── Integrity detection (mirrors Arena.jsx detectIntegrity exactly) ─────────
+function detectIntegrity({ pasteCount, keystrokeCount, timeOnTaskSecs, typedLen }) {
+  const flags = []
+  if (typedLen > 80 && keystrokeCount <= 5)
+    flags.push({ code: "PASTE_NO_KEYS", msg: `${typedLen} chars written with only ${keystrokeCount} editor event(s)` })
+  if (pasteCount >= 1 && keystrokeCount <= 10 && typedLen > 100)
+    flags.push({ code: "DIRECT_PASTE", msg: `${pasteCount} paste event(s) with only ${keystrokeCount} keystroke(s)` })
+  const charsPerSec = timeOnTaskSecs > 5 ? typedLen / timeOnTaskSecs : 0
+  if (charsPerSec > 15 && typedLen > 150)
+    flags.push({ code: "IMPOSSIBLE_SPEED", msg: `${Math.round(charsPerSec)} chars/sec (max human rate ~10)` })
+  const hardFlags = flags.filter(f => ["PASTE_NO_KEYS","DIRECT_PASTE"].includes(f.code))
+  const isCheat   = hardFlags.length >= 1 || flags.length >= 2
+  const verdict   = isCheat && hardFlags.length >= 1 ? "definite_paste" : isCheat ? "suspicious" : "clean"
+  return { isCheat, flags, verdict }
+}
+
+// ─── Paste intervention modal (real-time — fires before submit) ───────────────
+function PasteInterventionModal({ chars, onClear, onDismiss }) {
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:10000, background:"rgba(15,23,42,0.72)", backdropFilter:"blur(8px)", display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
+      <div style={{ background:"#fff", borderRadius:16, width:480, padding:"24px 26px", boxShadow:"0 24px 64px rgba(0,0,0,0.35)", fontFamily:"'DM Sans',sans-serif" }}>
+        <div style={{ display:"flex", alignItems:"flex-start", gap:12, marginBottom:14 }}>
+          <div style={{ width:40, height:40, borderRadius:10, background:"#FEF2F2", border:"1px solid #FECACA", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0, marginTop:1 }}>⚠️</div>
+          <div>
+            <div style={{ fontSize:15, fontWeight:900, color:"#DC2626", marginBottom:3 }}>Large paste detected</div>
+            <div style={{ fontSize:11.5, color:"#6B6560", lineHeight:1.5 }}>{chars.toLocaleString()} characters appeared in a single action — consistent with AI-generated or copied code.</div>
+          </div>
+        </div>
+        <div style={{ fontSize:12.5, color:"#3A3A38", lineHeight:1.75, marginBottom:14 }}>
+          Capabilio's integrity system will flag this submission as AI-assisted.<br />
+          <strong>Result: -10 ELO penalty, VOID grade</strong> — permanently on your recruiter-facing proof record.
+        </div>
+        <div style={{ background:"#FFFBEB", border:"1px solid #FDE68A", borderRadius:9, padding:"10px 13px", marginBottom:18, display:"flex", gap:9, alignItems:"flex-start" }}>
+          <span style={{ fontSize:14, flexShrink:0 }}>💡</span>
+          <span style={{ fontSize:11.5, color:"#92400E", lineHeight:1.6 }}>Recruiters review your proof to assess real-world thinking. Clear this and solve it yourself to earn genuine ELO.</span>
+        </div>
+        <div style={{ display:"flex", gap:8 }}>
+          <button onClick={onClear} style={{ flex:1, padding:"11px 14px", borderRadius:9, border:"none", background:"#16A34A", color:"#fff", fontSize:12.5, fontWeight:800, cursor:"pointer", fontFamily:"inherit" }}>
+            🗑️ Clear &amp; solve myself
+          </button>
+          <button onClick={onDismiss} style={{ padding:"11px 16px", borderRadius:9, border:"1px solid #E8E3DA", background:"#fff", fontSize:11.5, fontWeight:700, color:"#6B6560", cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}>
+            Keep it (−10 ELO)
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Submit result overlay ────────────────────────────────────────────────────
 function SubmitResultOverlay({ result, onClose, onRetry }) {
   if (!result) return null
-  const { score, eloGain, newElo, grade, summary, rubric, attemptNumber, timedOut, feedback, tip } = result
-  const gradeColor = grade === "A+" || grade === "A" ? T.green : grade === "B+" || grade === "B" ? T.indigo : grade === "C" ? T.amber : T.red
+  const { score, eloGain, newElo, grade, summary, rubric, attemptNumber, timedOut, feedback, tip, integrityFlag, integrityFlags, cheatWarning } = result
+  const isFlagged  = !!integrityFlag
+  const gradeColor = isFlagged ? "#DC2626" : grade === "A+" || grade === "A" ? T.green : grade === "B+" || grade === "B" ? T.indigo : grade === "C" ? T.amber : T.red
 
+  // ── Integrity violation view ──
+  if (isFlagged) {
+    const cw         = cheatWarning || {}
+    const warnCount  = cw.warningCount || 1
+    const isBanned   = cw.isBanned || false
+    const banDate    = cw.banUntil ? new Date(cw.banUntil).toLocaleDateString("en-IN", { day:"numeric", month:"long", year:"numeric" }) : null
+    const eloPenalty = cw.eloPenalty || -10
+    const warnLeft   = Math.max(0, 3 - warnCount)
+    return (
+      <div style={{ position:"fixed", inset:0, zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.65)", backdropFilter:"blur(8px)", padding:16 }}>
+        <div style={{ width:"100%", maxWidth:500, background:"#fff", borderRadius:20, overflow:"hidden", boxShadow:"0 32px 80px rgba(0,0,0,0.3)", fontFamily:"'DM Sans',sans-serif" }}>
+          {/* Red header */}
+          <div style={{ padding:"20px 24px 16px", background: isBanned ? "linear-gradient(135deg,#1C0000,#2D0000)" : "linear-gradient(135deg,#FEF2F2,#FFF1F2)", borderBottom:"2px solid #FECACA" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:10 }}>
+              <div style={{ width:48, height:48, borderRadius:12, background: isBanned ? "#7F1D1D" : "#FEF2F2", border:"2px solid #DC2626", display:"flex", alignItems:"center", justifyContent:"center", fontSize: isBanned ? 22 : 13, fontWeight:900, color: isBanned ? "#FCA5A5" : "#DC2626", fontFamily:"'DM Mono',monospace" }}>
+                {isBanned ? "🔒" : "VOID"}
+              </div>
+              <div>
+                <div style={{ fontSize:15, fontWeight:900, color: isBanned ? "#FCA5A5" : "#991B1B" }}>
+                  {isBanned ? "🚫 Account Suspended" : "🚨 Integrity Violation Detected"}
+                </div>
+                <div style={{ fontSize:11, color: isBanned ? "#F87171" : "#B91C1C", lineHeight:1.55, marginTop:2 }}>
+                  {isBanned
+                    ? `Suspended for 30 days due to repeated violations. Access resumes on ${banDate}.`
+                    : `This is Warning #${warnCount} of 3. ${warnLeft > 0 ? `${warnLeft} more violation${warnLeft > 1 ? "s" : ""} = 30-day suspension.` : "Next violation = 30-day suspension."}`
+                  }
+                </div>
+              </div>
+            </div>
+            {/* Warning progress bar */}
+            {!isBanned && (
+              <div>
+                <div style={{ height:5, borderRadius:99, background:"#FECACA", overflow:"hidden" }}>
+                  <div style={{ width:`${(warnCount/3)*100}%`, height:"100%", background: warnCount >= 2 ? "#DC2626" : "#F87171", borderRadius:99 }} />
+                </div>
+                <div style={{ fontSize:9, color:"#B91C1C", fontWeight:700, marginTop:4, textAlign:"right" }}>WARNING {warnCount} / 3</div>
+              </div>
+            )}
+          </div>
+
+          {/* Stats strip */}
+          <div style={{ display:"flex", borderBottom:"1px solid #FECACA" }}>
+            {[
+              { label:"SCORE",       value:"0/100",          color:"#DC2626", bg:"#FEF2F2" },
+              { label:"ELO PENALTY", value:`${eloPenalty}`,  color:"#7C2D12", bg:"#FFF7ED" },
+              { label:"WARNING",     value:`#${warnCount}`,  color: isBanned ? "#DC2626" : "#B45309", bg: isBanned ? "#FEF2F2" : "#FFFBEB" },
+            ].map((s,i) => (
+              <div key={i} style={{ flex:1, padding:"12px 10px", textAlign:"center", borderRight: i < 2 ? "1px solid #FECACA" : "none", background:s.bg }}>
+                <div style={{ fontSize:20, fontWeight:900, color:s.color, fontFamily:"'DM Mono',monospace", lineHeight:1 }}>{s.value}</div>
+                <div style={{ fontSize:8, color:s.color, fontWeight:700, marginTop:3, letterSpacing:0.8, textTransform:"uppercase" }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* What was detected */}
+          <div style={{ padding:"14px 20px" }}>
+            <div style={{ padding:"11px 13px", background:"#FFF1F2", border:"1.5px solid #FECACA", borderRadius:10, marginBottom:12 }}>
+              <div style={{ fontSize:9, fontWeight:800, color:"#991B1B", letterSpacing:1.5, marginBottom:7 }}>🔍 WHAT OUR SYSTEM DETECTED</div>
+              {(integrityFlags || []).map((f, i) => (
+                <div key={i} style={{ display:"flex", gap:7, alignItems:"flex-start", marginBottom:5 }}>
+                  <span style={{ fontSize:10, color:"#DC2626", flexShrink:0 }}>⚑</span>
+                  <div>
+                    <div style={{ fontSize:10, fontWeight:700, color:"#991B1B" }}>{f.code.replace(/_/g," ")}</div>
+                    <div style={{ fontSize:9.5, color:"#B91C1C" }}>{f.msg}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ padding:"10px 12px", background:"#F8F8F5", border:"1px solid rgba(0,0,0,0.07)", borderRadius:10, marginBottom:14, fontSize:11.5, color:"#3A3A38", lineHeight:1.65 }}>
+              💡 Solve challenges yourself to build the muscle memory that holds up in real interviews. Recruiters see your proof — a flagged submission signals AI-dependency, not skill.
+            </div>
+            <button onClick={onRetry} style={{ width:"100%", padding:"12px", background:"#DC2626", border:"none", borderRadius:10, color:"#fff", fontSize:13, fontWeight:800, cursor:"pointer", fontFamily:"inherit" }}>
+              I understand — Try Again Honestly →
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Normal result view ──
   return (
     <div style={{ position:"fixed", inset:0, zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.55)", backdropFilter:"blur(8px)", padding:16 }}>
       <div style={{ width:"100%", maxWidth:500, background:T.surface, borderRadius:20, overflow:"hidden", boxShadow:"0 32px 80px rgba(0,0,0,0.25)", border:`1px solid ${T.border}` }}>
@@ -1538,6 +1670,13 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
   // ── ELO ─────────────────────────────────────────────────────────────────────
   const [elo, setElo] = useState(userData?.eloRating || userData?.elo_rating || 400)
 
+  // ── Integrity / anti-cheat ───────────────────────────────────────────────────
+  const pasteRef   = useRef(0)   // paste event count
+  const keysRef    = useRef(0)   // editor onChange event count
+  const startRef   = useRef(null) // Date when student first edits
+  const prevLenRef = useRef(0)   // previous code length (for delta detection)
+  const [pasteWarning, setPasteWarning] = useState(null) // { chars } when large paste detected
+
   // Filter / sort state
   const [diffFilter, setDiffFilter]           = useState("All")
   const [statusFilter, setStatusFilter]       = useState("All")  // All | Todo | Solved
@@ -1647,7 +1786,7 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
     return () => supabase.removeChannel(channel)
   }, [uid])
 
-  // ── When challenge selected, set starter code ────────────────────────────
+  // ── When challenge selected, set starter code + reset integrity refs ────────
   useEffect(() => {
     if (!selectedChallenge) return
     const detail = buildDetail(selectedChallenge)
@@ -1656,7 +1795,28 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
     setTestResults(null)
     setTestError(null)
     setSubmitResult(null)
+    // Reset behavioral tracking for new challenge
+    pasteRef.current   = 0
+    keysRef.current    = 0
+    startRef.current   = null
+    prevLenRef.current = (starter || "").length
+    setPasteWarning(null)
   }, [selectedChallenge?.id, language])
+
+  // ── Code change handler — wraps setCode with integrity tracking ────────────
+  const handleCodeChange = useCallback((v) => {
+    const wsType = selectedChallenge ? resolveWorkstationType(selectedChallenge) : "code"
+    if (wsType !== "code" && wsType !== "sql") { setCode(v); return }
+    const delta = v.length - prevLenRef.current
+    prevLenRef.current = v.length
+    keysRef.current += 1
+    if (!startRef.current) startRef.current = Date.now()
+    if (delta > 80) {
+      pasteRef.current += 1
+      setPasteWarning({ chars: delta })
+    }
+    setCode(v)
+  }, [selectedChallenge])
 
   // ── Run Tests ────────────────────────────────────────────────────────────
   const handleRunTests = useCallback(async () => {
@@ -1702,6 +1862,36 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
     // Hard lock — solved challenges cannot earn ELO again
     if (completedIds.has(String(selectedChallenge.id))) return
     setSubmitting(true)
+
+    // ── Integrity check (code + sql workstations only) ───────────────────────
+    const wsType = resolveWorkstationType(selectedChallenge)
+    const isCodeWs = wsType === "code" || wsType === "sql"
+    const pasteCount     = pasteRef.current
+    const keystrokeCount = keysRef.current
+    const timeOnTaskSecs = startRef.current ? Math.round((Date.now() - startRef.current) / 1000) : 0
+    const typedLen       = code.length
+    const integrity = isCodeWs
+      ? detectIntegrity({ pasteCount, keystrokeCount, timeOnTaskSecs, typedLen })
+      : { isCheat: false, flags: [], verdict: "clean" }
+
+    let cheatWarning = null
+    if (integrity.isCheat && isCodeWs && uid) {
+      try {
+        const flagRes = await fetch(`${SERVER}/api/arena/flag-integrity`, {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            uid,
+            missionId:    selectedChallenge?.id || selectedChallenge?.slug || null,
+            missionTitle: selectedChallenge?.title || "",
+            flags:        integrity.flags,
+            verdict:      integrity.verdict,
+            behavioral:   { pasteCount, keystrokeCount, timeOnTaskSecs, typedLen },
+          }),
+        })
+        if (flagRes.ok) cheatWarning = await flagRes.json()
+      } catch {}
+    }
 
     // Count real solution lines: strip blanks, comments (# // --) and TODO lines.
     // FIX: previously "--" (SQL comments) were NOT stripped, so the empty SQL
@@ -1810,16 +2000,19 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
     const maxElo     = selectedChallenge.eloReward ?? eloForDiff(selectedChallenge.difficulty)
     const alreadySolved = completedIds.has(String(selectedChallenge.id))
 
-    const baseEloGain = alreadySolved
-      ? 0   // locked — already earned ELO for this challenge
-      : allPassed
-        ? maxElo                                                           // full reward
-        : passedTests > 0
-          ? Math.round((passedTests / Math.max(totalTests, 1)) * maxElo)  // partial
-          : 0   // all tests failed → 0 ELO
+    const ELO_CHEAT_PENALTY = -10
+    const baseEloGain = integrity.isCheat
+      ? ELO_CHEAT_PENALTY
+      : alreadySolved
+        ? 0   // locked — already earned ELO for this challenge
+        : allPassed
+          ? maxElo                                                           // full reward
+          : passedTests > 0
+            ? Math.round((passedTests / Math.max(totalTests, 1)) * maxElo)  // partial
+            : 0   // all tests failed → 0 ELO
 
-    const eloGain = Math.round(baseEloGain * attemptMultiplier)
-    const newElo  = elo + eloGain
+    const eloGain = integrity.isCheat ? ELO_CHEAT_PENALTY : Math.round(baseEloGain * attemptMultiplier)
+    const newElo  = Math.max(0, elo + eloGain)
     const gradeFor = s => s >= 90 ? "A+" : s >= 80 ? "A" : s >= 70 ? "B+" : s >= 60 ? "B" : s >= 50 ? "C" : "D"
 
     const testSummary = totalTests > 0
@@ -1827,28 +2020,31 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
       : ""
 
     const result = {
-      score:         Math.round(finalScore),
+      score:          integrity.isCheat ? 0 : Math.round(finalScore),
       eloGain,
       newElo,
-      passed:        allPassed,
-      testsPassed:   passedTests,
-      testsTotal:    totalTests,
-      grade:         aiReview?.grade || gradeFor(finalScore),
-      summary:       testSummary || aiReview?.summary || (finalScore >= 80
+      passed:         integrity.isCheat ? false : allPassed,
+      testsPassed:    passedTests,
+      testsTotal:     totalTests,
+      grade:          integrity.isCheat ? "VOID" : (aiReview?.grade || gradeFor(finalScore)),
+      summary:        testSummary || aiReview?.summary || (finalScore >= 80
         ? "Excellent — clean logic and strong edge case handling."
         : finalScore >= 60 ? "Good attempt. Consider optimizing your approach."
         : "Incorrect solution — review the algorithm and try again."),
       rubric,
       attemptNumber,
-      timedOut:      false,
-      feedback:      aiReview?.feedback || aiReview?.summary || "",
-      tip:           aiReview?.tip || (allPassed
+      timedOut:       false,
+      feedback:       aiReview?.feedback || aiReview?.summary || "",
+      tip:            aiReview?.tip || (allPassed
         ? "Great work! Now optimise for time complexity."
         : "Trace through each test case manually to find where the logic breaks."),
+      integrityFlag:  integrity.isCheat,
+      integrityFlags: integrity.flags,
+      cheatWarning,
     }
 
-    // ── Persist to Supabase ──────────────────────────────────────────────────
-    if (uid) {
+    // ── Persist to Supabase (skip for integrity violations) ─────────────────
+    if (uid && !integrity.isCheat) {
       try {
         const nowIso = new Date().toISOString()
 
@@ -1929,7 +2125,7 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
 
     setSubmitResult(result)
     setSubmitting(false)
-  }, [code, selectedChallenge, language, submitting, elo, uid, userData, attemptCounts])
+  }, [code, selectedChallenge, language, submitting, elo, uid, userData, attemptCounts, completedIds])
 
   // ── Challenge selection (defined below as openChallenge; aliased in JSX) ──
 
@@ -2230,7 +2426,7 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
                 <SQLWorkstation
                   challenge={selectedChallenge}
                   code={code}
-                  onChange={setCode}
+                  onChange={handleCodeChange}
                   isSolved={isSolved}
                   onRunTests={handleRunTests}
                   onSubmit={handleSubmit}
@@ -2290,8 +2486,10 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
                 </div>
 
                 {/* Code editor */}
-                <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden", minHeight:0 }}>
-                  <CodeEditor value={code} onChange={setCode} language={language} />
+                <div
+                  style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden", minHeight:0 }}
+                  onPaste={() => { pasteRef.current += 1; if (!startRef.current) startRef.current = Date.now() }}>
+                  <CodeEditor value={code} onChange={handleCodeChange} language={language} />
                   <TestResults results={testResults} loading={testLoading} error={testError} />
                 </div>
 
@@ -2436,12 +2634,39 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
         )
       )}
 
+      {/* ── Real-time paste intervention modal ── */}
+      {pasteWarning && selectedChallenge && (resolveWorkstationType(selectedChallenge) === "code" || resolveWorkstationType(selectedChallenge) === "sql") && (
+        <PasteInterventionModal
+          chars={pasteWarning.chars}
+          onClear={() => {
+            // Reset code to blank starter + wipe all behavioral tracking
+            const wsType = resolveWorkstationType(selectedChallenge)
+            const blankStarter = wsType === "sql"
+              ? `-- ${selectedChallenge.title}\n-- Write your SQL solution below\n\nSELECT\n    \nFROM\n    \nWHERE\n    ;\n`
+              : `# ${selectedChallenge.title}\n\ndef ${(selectedChallenge.slug || "solution").replace(/-/g,"_")}(*args):\n    # TODO: implement\n    pass\n`
+            setCode(blankStarter)
+            prevLenRef.current = blankStarter.length
+            pasteRef.current   = 0
+            keysRef.current    = 0
+            startRef.current   = null
+            setPasteWarning(null)
+          }}
+          onDismiss={() => setPasteWarning(null)}
+        />
+      )}
+
       {/* ── Submit result overlay (code workstation only — MC/calculator show inline feedback) ── */}
       {submitResult && typeof submitResult.score === "number" && (
         <SubmitResultOverlay
           result={submitResult}
           onClose={() => { setSubmitResult(null); setTab("history"); setSelectedChallenge(null) }}
-          onRetry={() => { setSubmitResult(null) }}
+          onRetry={() => {
+            setSubmitResult(null)
+            // Reset behavioral refs so re-attempt starts fresh
+            pasteRef.current   = 0
+            keysRef.current    = 0
+            startRef.current   = null
+          }}
         />
       )}
     </div>
