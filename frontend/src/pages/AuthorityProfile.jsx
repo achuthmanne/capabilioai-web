@@ -17,7 +17,7 @@ const T = {
   purple:"#6D28D9", purple2:"#EDE9FE",
   border:"rgba(26,26,24,0.09)",
   shadow:"0 2px 12px rgba(26,26,24,0.07), 0 1px 3px rgba(26,26,24,0.05)",
-  shadow2:"0 8px 24px rgba(0,0,0,0.08)), 0 2px 8px rgba(26,26,24,0.06)",
+  shadow2:"0 8px 24px rgba(0,0,0,0.08), 0 2px 8px rgba(26,26,24,0.06)",
 }
 
 // ─── UTILITY COMPONENTS ──────────────────────────────────────────────────────

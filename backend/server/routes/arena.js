@@ -9,7 +9,7 @@ import { groq, GROQ_FAST }                 from "../lib/groq.js"
 import { gradeSubmission }                 from "../lib/claude.js"
 import { geminiGenerateMission }           from "../lib/gemini.js"
 import { exec }                            from "child_process"
-import { writeFile, unlink, mkdtemp }      from "fs/promises"
+import { writeFile, unlink, mkdtemp, rm }   from "fs/promises"
 import { tmpdir }                          from "os"
 import { join }                            from "path"
 
@@ -32,7 +32,7 @@ async function executeCode(code, language = "python", timeoutMs = 8000) {
         { timeout: timeoutMs, maxBuffer: 1024 * 512 },
         async (error, stdout, stderr) => {
           try { await unlink(file) } catch {}
-          try { await unlink(dir).catch(() => {}) } catch {}
+          try { await rm(dir, { recursive: true, force: true }) } catch {}
           if (error && error.killed) {
             resolve({ stdout: "", stderr: "", error: "Time Limit Exceeded (>8s)" })
           } else {
@@ -170,7 +170,7 @@ Return ONE JSON object (concise strings):
 {"id":"slug","title":"short task-specific title","company":"Indian co","difficulty":"${difficulty}","type":"Software Engineering","scenario":"1-2 sentences of context only — no solution hints","taskDescription":"what to build only — not how","objective":"1 measurable outcome","workstation":"code_editor","starterCode":"// scaffold only","expectedOutput":"what correct output looks like","eloGain":${eloGain},"timeLimit":${difficulty === "Hard" ? 55 : difficulty === "Medium" ? 30 : 20},"tags":["t1","t2"],"hints":["guiding question 1","guiding question 2"]}` },
     ], { max_tokens: 1200, json: false })
 
-    const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim()
+    const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim()
     const obj = JSON.parse(cleaned.slice(cleaned.indexOf("{"), cleaned.lastIndexOf("}") + 1))
     if (!obj?.title) throw new Error("Groq returned invalid mission structure")
 
@@ -446,7 +446,7 @@ router.post("/run-tests", async (req, res) => {
           if (JSON.stringify(a) === JSON.stringify(e)) passed = true
           // For problems like Two Sum where [0,1] == [1,0]
           else if (Array.isArray(a) && Array.isArray(e) && a.length === e.length) {
-            passed = JSON.stringify([...a].sort()) === JSON.stringify([...e].sort())
+            passed = JSON.stringify([...a].sort((x,y)=>x-y)) === JSON.stringify([...e].sort((x,y)=>x-y))
           }
         } catch {}
       }

@@ -52,7 +52,6 @@ export const T = {
   // Convenience
   slate:  "#F2EDE4",
   slate2: "#E8E3DA",
-  indigo: "#4F46E5",
 }
 
 export const ELO_TIERS = [

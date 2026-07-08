@@ -1664,6 +1664,7 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
     setTestLoading(true)
     setTestError(null)
     setTestResults(null)
+    setSqlResults(null)
 
     const detail = buildDetail(selectedChallenge)
     const cases  = detail?.testCases || []
@@ -2000,13 +2001,16 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
         const eloGain  = isRetry ? 0 : Math.max(1, (selectedChallenge.eloReward || 5) - prev * 2)
         const newElo   = elo + eloGain
         await userDoc.update(uid, { eloRating: newElo })
-        await arenaDb.addHistory(uid, {
-          challengeId: selectedChallenge.id,
-          challengeTitle: selectedChallenge.title,
-          domain: "common_challenge",
-          status: "accepted",
-          answer: answerStr,
-          eloChange: eloGain,
+        await arenaDb.addSubmission(uid, {
+          task_id:    selectedChallenge.id || selectedChallenge.slug,
+          title:      selectedChallenge.title,
+          difficulty: selectedChallenge.difficulty || "Medium",
+          domain:     selectedChallenge.category || "common_challenge",
+          challenge_type: "calculator",
+          score:      100,
+          elo_delta:  eloGain,
+          summary:    `Answer: ${answerStr}`,
+          status:     "accepted",
         })
         setAttemptCounts(prev => ({ ...prev, [selectedChallenge.id]: (prev[selectedChallenge.id] || 0) + 1 }))
         setCompletedIds(prev => new Set([...prev, String(selectedChallenge.id)]))

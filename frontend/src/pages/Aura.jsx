@@ -39,7 +39,7 @@ const T = {
   // structural
   border:  "rgba(0,0,0,0.05)",
   shadow:  "0 4px 12px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.3)",
-  shadow2: "0 8px 24px rgba(0,0,0,0.08)), 0 4px 12px rgba(0,0,0,0.4)",
+  shadow2: "0 8px 24px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.4)",
 }
 
 const API = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
@@ -899,32 +899,34 @@ function SkillVoucherPanel({ user, userData }) {
   const [leaderboard, setLeaderboard] = useState([])
   useEffect(() => {
     if (!user?.uid) return
-    const load = async () => {
-      try {
-        // Generate a referral code from the user's UID if the API is not available
-        const _uid = user.id||user.uid
-        const code = (_uid.slice(0,6)+"XYZABC".slice(0,2)).toUpperCase().replace(/[^A-Z0-9]/g,"X").slice(0,8)
-        const [vRes,lRes] = await Promise.all([
-          fetch(API+"/api/referral/profile/"+_uid),
-          fetch(API+"/api/referral/leaderboard")
-        ])
-        const vType=vRes.headers.get("content-type")||""
-        const lType=lRes.headers.get("content-type")||""
-        const eloFloor=userData?.path==='professional'||userData?.path==='authority'?800:400
-        const v=vType.includes("json")?await vRes.json():{code,eloRating:userData?.eloRating||eloFloor,domain:userData?.keyword||"Tech",completedReferrals:0,pendingReferrals:0,monthsEarned:0,skillChain:[]}
-        const l=lType.includes("json")?await lRes.json():[]
-        setVoucherData(v); setLeaderboard(Array.isArray(l)?l:[])
-      } catch(e) {
-        // Fallback: generate code locally from uid
-        const code=((user.id||user.uid).slice(0,6)).toUpperCase().replace(/[^A-Z0-9]/g,"C")
-        const eloFallback=userData?.path==='professional'||userData?.path==='authority'?800:400
-        setVoucherData({code,eloRating:userData?.eloRating||eloFallback,domain:userData?.keyword||"Tech",completedReferrals:0,pendingReferrals:0,monthsEarned:0,skillChain:[]})
-        setLeaderboard([])
-        console.warn("Referral API not available:",e)
+    const _uid = user.id || user.uid
+    const eloFloor = userData?.path==='professional'||userData?.path==='authority' ? 800 : 400
+    // Step 1: show UI immediately with locally-derived data (no spinner wait)
+    const localCode = (_uid.slice(0,8)).toUpperCase().replace(/[^A-Z0-9]/g,"X")
+    setVoucherData({ code: localCode, eloRating: userData?.eloRating||eloFloor, domain: userData?.keyword||"Tech", completedReferrals:0, pendingReferrals:0, monthsEarned:0, skillChain:[] })
+    setLoading(false)
+    // Step 2: silently try to fetch real data from API with 5-second timeout
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), 5000)
+    Promise.all([
+      fetch(API+"/api/referral/profile/"+_uid, { signal: ctrl.signal }),
+      fetch(API+"/api/referral/leaderboard",   { signal: ctrl.signal }),
+    ]).then(async ([vRes, lRes]) => {
+      clearTimeout(timer)
+      const vType = vRes.headers.get("content-type") || ""
+      const lType = lRes.headers.get("content-type") || ""
+      if (vType.includes("json")) {
+        const v = await vRes.json()
+        if (v && v.code) setVoucherData(v)
       }
-      setLoading(false)
-    }
-    load()
+      if (lType.includes("json")) {
+        const l = await lRes.json()
+        setLeaderboard(Array.isArray(l) ? l : [])
+      }
+    }).catch(() => {
+      clearTimeout(timer)
+      // Silently ignore — local data already shown
+    })
   },[user?.uid])
   const copyCode = () => {
     navigator.clipboard.writeText("Join Capabilio — India's first skill-verified platform. Use my code: "+(voucherData?.code||"")+" → https://capabilio.online")
@@ -3656,7 +3658,7 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
         @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
         .hover-card{transition:transform 0.25s cubic-bezier(.22,1,.36,1),box-shadow 0.25s!important}
-        .hover-card:hover{transform:translateY(-3px)!important;box-shadow:0 8px 24px rgba(0,0,0,0.08)),0 4px 12px rgba(0,0,0,0.3)!important}
+        .hover-card:hover{transform:translateY(-3px)!important;box-shadow:0 8px 24px rgba(0,0,0,0.08),0 4px 12px rgba(0,0,0,0.3)!important}
       `}</style>
 
       {showExpModal&&<AddExperienceModal onSave={saveExperience} onClose={()=>{setShowExpModal(false);setEditingIdx(null)}} existing={editingIdx!==null?experiences[editingIdx]:null}/>}

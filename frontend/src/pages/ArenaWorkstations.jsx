@@ -4163,103 +4163,356 @@ const ENGINEERING_DOMAIN_CONFIG = {
 
 function EngineeringLabWorkstation({ mission, code, onCodeChange }) {
   const config = ENGINEERING_DOMAIN_CONFIG[mission.category] || ENGINEERING_DOMAIN_CONFIG.ECE
-  const [tab,          setTab]          = useState(config.tabs[0])
-  const [answer,       setAnswer]       = useState(code || "")
-  const [unit,         setUnit]         = useState(config.units[0])
-  const [checked,      setChecked]      = useState(null)   // null | "correct" | "wrong"
-  const [scratchpad,   setScratchpad]   = useState("")
-  const [showSolution, setShowSolution] = useState(false)
-  const [showRef,      setShowRef]      = useState(true)
-  const [attempts,     setAttempts]     = useState(0)
-  const [activePanel,  setActivePanel]  = useState("solve") // "solve" | "ref" | "tools"
+  const [tab,           setTab]           = useState(config.tabs[0])
+  const [answer,        setAnswer]        = useState(code || "")
+  const [unit,          setUnit]          = useState(config.units[0])
+  const [checked,       setChecked]       = useState(null)   // null | "correct" | "wrong"
+  const [scratchpad,    setScratchpad]    = useState("")
+  const [showSolution,  setShowSolution]  = useState(false)
+  const [attempts,      setAttempts]      = useState(0)
+  const [activePanel,   setActivePanel]   = useState("solve") // "solve" | "ref" | "tools"
+  // Diagnose mode
+  const [selectedOpt,   setSelectedOpt]   = useState(null)
+  // Design mode
+  const [designVals,    setDesignVals]    = useState({})
+  const [designChecked, setDesignChecked] = useState(null)
+  // Optimize mode
+  const [optVarVals,    setOptVarVals]    = useState({})
 
-  // Parse expected answer from test_cases
+  // ── Detect challenge mode from missionType or heuristic text scan ──────────
+  const engMode = (() => {
+    const mt = (mission.missionType || mission.mission_type || "").toLowerCase()
+    if (["diagnose","diagnostic","fault","fault_finding"].includes(mt)) return "diagnose"
+    if (["design","sizing","dimension"].includes(mt)) return "design"
+    if (["optimize","optimise","optimization","optimisation"].includes(mt)) return "optimize"
+    const txt = ((mission.title||"") + " " + (mission.statement||mission.description||"")).toLowerCase()
+    if (/\bfault\b|diagnos|identify.*fault|what.*wrong|failure.*mode|troubleshoot|waveform.*shows|measurement.*show|readings.*show/.test(txt)) return "diagnose"
+    if (/design.*(?:beam|column|slab|footing|truss|circuit|motor|shaft|pipe|pavement)|size.*member|select.*(?:component|section|reinforcement)|choose.*material/.test(txt)) return "design"
+    if (/\bminimiz|maximiz|optimal(?:ize|ise)|minimum.*(?:cost|weight|material|time)|maximum.*(?:profit|efficiency)/.test(txt)) return "optimize"
+    return "calculate"
+  })()
+
+  const modeColor  = { calculate: config.color, diagnose: "#7C3AED", design: "#0891B2", optimize: "#D97706" }[engMode] || config.color
+  const modeLabel  = { calculate: "⚡ Calculate", diagnose: "🔍 Diagnose", design: "✏️ Design", optimize: "📉 Optimize" }[engMode]
+
+  // ── Parse test_cases once ───────────────────────────────────────────────────
+  const parsedTC = (() => {
+    try { const tc = mission.test_cases||mission.testCases||[]; return typeof tc==="string"?JSON.parse(tc):(Array.isArray(tc)?tc:[]) }
+    catch { return [] }
+  })()
+
+  // Calculate: expected answer
   const expected = (() => {
-    try {
-      const tc = mission.test_cases || mission.testCases || []
-      const arr = typeof tc === "string" ? JSON.parse(tc) : tc
-      if (arr?.[0]) return String(arr[0].expected_output ?? arr[0].expected ?? "")
-    } catch { /* noop */ }
-    try {
-      const ex = mission.examples || []
-      const arr = typeof ex === "string" ? JSON.parse(ex) : ex
-      if (arr?.[0]) return String(arr[0].output ?? arr[0].expected ?? "")
-    } catch { /* noop */ }
+    if (parsedTC?.[0]) return String(parsedTC[0].expected_output ?? parsedTC[0].expected ?? "")
+    try { const ex=mission.examples||[]; const a=typeof ex==="string"?JSON.parse(ex):ex; if(a?.[0]) return String(a[0].output??a[0].expected??"") } catch {}
     return null
   })()
 
+  // Diagnose: MCQ data
+  const diagData = (() => {
+    const tc = parsedTC[0] || {}
+    if (tc.options) return { options: tc.options, correct: tc.correct??tc.correct_index??0, explanation: tc.explanation??"" }
+    if (mission.options) { try { const opts=typeof mission.options==="string"?JSON.parse(mission.options):mission.options; return { options: Array.isArray(opts)?opts:Object.values(opts), correct:tc.correct??0, explanation:"" } } catch {} }
+    return null
+  })()
+
+  // Design: parameter constraints
+  const designParams = parsedTC.filter(t => t.parameter||t.param).map(t => ({
+    key: t.parameter||t.param, label: t.label||t.parameter||t.param, units: t.units||t.unit||"", min: t.min??null, max: t.max??null,
+  }))
+
+  // Optimize: variable definitions
+  const optVarDefs = parsedTC.filter(t => t.variable).map(t => ({
+    key: t.variable, label: t.label||t.variable, min: t.min??0, max: t.max??100, step: t.step??1, units: t.units??""
+  }))
+  const optTarget = parsedTC[0]?.expected ?? parsedTC[0]?.expected_output ?? null
+
   const solutionText = mission.editorial || ""
 
+  // ── Handlers ────────────────────────────────────────────────────────────────
   const handleCheck = () => {
     if (!answer.trim()) return
-    setAttempts(n => n + 1)
-    const userRaw = answer.trim().replace(/,/g, "").toLowerCase()
-    const expRaw  = (expected || "").trim().replace(/,/g, "").toLowerCase()
-    const uNum = parseFloat(userRaw), eNum = parseFloat(expRaw)
-    const isNum = !isNaN(uNum) && !isNaN(eNum)
-    const ok = isNum ? Math.abs(uNum - eNum) <= Math.abs(eNum) * 0.01 + 0.01 : userRaw === expRaw
-    setChecked(ok ? "correct" : "wrong")
+    setAttempts(n => n+1)
+    const uR = answer.trim().replace(/,/g,"").toLowerCase(), eR = (expected||"").trim().replace(/,/g,"").toLowerCase()
+    const uN = parseFloat(uR), eN = parseFloat(eR)
+    const ok = !isNaN(uN)&&!isNaN(eN) ? Math.abs(uN-eN)<=Math.abs(eN)*0.01+0.01 : uR===eR
+    setChecked(ok?"correct":"wrong")
     onCodeChange(`Answer: ${answer.trim()} ${unit}`)
-    try {
-      registerValidator(() => [{
-        passed: ok,
-        input: "Answer check",
-        expected: expected ? `${expected} ${unit}` : "—",
-        actual: `${answer.trim()} ${unit}`,
-      }])
-    } catch { /* noop */ }
+    try { registerValidator(()=>[{passed:ok,input:"Answer check",expected:expected?`${expected} ${unit}`:"—",actual:`${answer.trim()} ${unit}`}]) } catch {}
   }
 
-  const borderCol = checked === "correct" ? "#22C55E" : checked === "wrong" ? "#EF4444" : config.color
-  const answerBg  = checked === "correct" ? "#F0FDF4"  : checked === "wrong" ? "#FFF5F5"  : "#fff"
+  const handleDiagnose = () => {
+    if (selectedOpt===null||!diagData) return
+    setAttempts(n=>n+1)
+    const ok = selectedOpt===diagData.correct
+    setChecked(ok?"correct":"wrong")
+    const label = diagData.options[selectedOpt]||String(selectedOpt)
+    onCodeChange(`Fault identified: ${label}`)
+    try { registerValidator(()=>[{passed:ok,input:"Fault ID",expected:diagData.options[diagData.correct],actual:label}]) } catch {}
+  }
 
-  // ── Shared input group ─────────────────────────────────────────
-  function AnswerInput() {
+  const handleDesignCheck = () => {
+    if (designParams.length===0) { setChecked("correct"); onCodeChange(`Design: ${JSON.stringify(designVals)}`); return }
+    setAttempts(n=>n+1)
+    const results = designParams.map(p => { const v=parseFloat(designVals[p.key]||0); return {...p, val:v, pass:(p.min===null||v>=p.min)&&(p.max===null||v<=p.max)} })
+    const allPass = results.every(r=>r.pass)
+    setDesignChecked(allPass?"pass":"fail"); setChecked(allPass?"correct":"wrong")
+    onCodeChange(`Design: ${JSON.stringify(designVals)}`)
+    try { registerValidator(()=>results.map(r=>({passed:r.pass,input:r.label,expected:`${r.min??'any'}–${r.max??'any'} ${r.units}`,actual:`${r.val} ${r.units}`}))) } catch {}
+  }
+
+  const handleOptimize = () => {
+    setAttempts(n=>n+1)
+    const uVal = parseFloat(answer), tVal = parseFloat(optTarget||"0")
+    const ok = !isNaN(uVal)&&!isNaN(tVal) ? uVal<=tVal*1.05 : !!answer.trim()
+    setChecked(ok?"correct":"wrong")
+    onCodeChange(`Optimize result: ${answer}`)
+    try { registerValidator(()=>[{passed:ok,input:"Objective value",expected:optTarget??"—",actual:answer}]) } catch {}
+  }
+
+  const borderCol = checked==="correct"?"#22C55E":checked==="wrong"?"#EF4444":modeColor
+  const answerBg  = checked==="correct"?"#F0FDF4":checked==="wrong"?"#FFF5F5":"#fff"
+
+  // ── Shared feedback banner ──
+  function FeedbackBanner() {
+    if (!checked) return null
+    return checked==="correct" ? (
+      <div style={{marginTop:12,padding:"10px 14px",background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:9,display:"flex",gap:10,alignItems:"center"}}>
+        <span style={{fontSize:18}}>✅</span>
+        <div>
+          <div style={{fontSize:13,fontWeight:800,color:"#15803D"}}>{engMode==="diagnose"?"Fault correctly identified!":engMode==="design"?"Design meets all constraints!":engMode==="optimize"?"Optimal solution accepted!":"Correct!"}</div>
+          <div style={{fontSize:11,color:"#166534"}}>{diagData?.explanation&&engMode==="diagnose"?diagData.explanation:'Click "Submit Solution" to lock in your proof record.'}</div>
+        </div>
+      </div>
+    ) : (
+      <div style={{marginTop:12,padding:"10px 14px",background:"#FFF5F5",border:"1px solid #FECACA",borderRadius:9,display:"flex",gap:10,alignItems:"flex-start"}}>
+        <span style={{fontSize:18}}>❌</span>
+        <div>
+          <div style={{fontSize:13,fontWeight:800,color:"#DC2626"}}>{engMode==="diagnose"?`Wrong fault — attempt #${attempts}`:engMode==="design"?`Constraints not satisfied — attempt #${attempts}`:`Not correct — attempt #${attempts}`}</div>
+          <div style={{fontSize:11,color:"#991B1B",marginTop:2}}>Review the problem data and try again.{attempts>=2&&<> · <button onClick={()=>setShowSolution(true)} style={{background:"none",border:"none",color:"#991B1B",fontWeight:800,cursor:"pointer",textDecoration:"underline",fontSize:11,padding:0}}>Show solution</button></>}</div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Calculate Panel ──────────────────────────────────────────────────────────
+  function CalculatePanel() {
     return (
-      <div style={{ background: "#fff", border: `1px solid ${T.border}`, borderRadius: 14, padding: 20 }}>
-        <div style={{ fontSize: 12, fontWeight: 800, color: T.ink, marginBottom: 10 }}>Your Answer</div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <input
-            type="text" value={answer} placeholder="Enter computed value…"
-            onChange={e => { setAnswer(e.target.value); setChecked(null) }}
-            onKeyDown={e => e.key === "Enter" && handleCheck()}
-            style={{ flex: 1, minWidth: 140, padding: "11px 14px", fontSize: 22, fontWeight: 700,
-              fontFamily: "'DM Mono', monospace", color: T.ink, border: `2px solid ${borderCol}`,
-              borderRadius: 9, outline: "none", background: answerBg }}
-          />
-          {/* Unit picker */}
-          <select value={unit} onChange={e => setUnit(e.target.value)}
-            style={{ padding: "11px 10px", borderRadius: 9, border: `1px solid ${T.border}`,
-              fontSize: 13, fontWeight: 700, color: config.color, background: "#fff",
-              cursor: "pointer", fontFamily: "inherit" }}>
-            {config.units.map(u => <option key={u} value={u}>{u}</option>)}
-          </select>
-          <button onClick={handleCheck} disabled={!answer.trim()}
-            style={{ padding: "11px 20px", background: config.color, color: "#fff", border: "none",
-              borderRadius: 9, fontSize: 13, fontWeight: 800, cursor: answer.trim() ? "pointer" : "not-allowed",
-              opacity: answer.trim() ? 1 : 0.45, fontFamily: "inherit", whiteSpace: "nowrap" }}>
-            ✓ Check
+      <>
+        <div style={{background:"#fff",border:`1px solid ${T.border}`,borderRadius:14,padding:20}}>
+          <div style={{fontSize:12,fontWeight:800,color:T.ink,marginBottom:10}}>Your Calculated Answer</div>
+          <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+            <input type="text" value={answer} placeholder="Enter computed value…"
+              onChange={e=>{setAnswer(e.target.value);setChecked(null)}} onKeyDown={e=>e.key==="Enter"&&handleCheck()}
+              style={{flex:1,minWidth:140,padding:"11px 14px",fontSize:22,fontWeight:700,fontFamily:"'DM Mono',monospace",color:T.ink,border:`2px solid ${borderCol}`,borderRadius:9,outline:"none",background:answerBg}}/>
+            <select value={unit} onChange={e=>setUnit(e.target.value)}
+              style={{padding:"11px 10px",borderRadius:9,border:`1px solid ${T.border}`,fontSize:13,fontWeight:700,color:modeColor,background:"#fff",cursor:"pointer",fontFamily:"inherit"}}>
+              {config.units.map(u=><option key={u} value={u}>{u}</option>)}
+            </select>
+            <button onClick={handleCheck} disabled={!answer.trim()}
+              style={{padding:"11px 20px",background:modeColor,color:"#fff",border:"none",borderRadius:9,fontSize:13,fontWeight:800,cursor:answer.trim()?"pointer":"not-allowed",opacity:answer.trim()?1:0.45,fontFamily:"inherit",whiteSpace:"nowrap"}}>
+              ✓ Check
+            </button>
+          </div>
+          <FeedbackBanner/>
+        </div>
+        <div style={{background:"#fff",border:`1px solid ${T.border}`,borderRadius:14,overflow:"hidden"}}>
+          <div style={{padding:"9px 16px",background:"#F8F7F4",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:11}}>📝</span><span style={{fontSize:11,fontWeight:700,color:T.ink3}}>Scratchpad — Working Area</span>
+            <span style={{fontSize:10,color:T.ink4,marginLeft:4}}>not submitted · rough calculations</span>
+          </div>
+          <textarea value={scratchpad} onChange={e=>setScratchpad(e.target.value)}
+            placeholder={`Work step-by-step:\n\nStep 1: Identify given values\nStep 2: Choose formula\nStep 3: Substitute and solve\nAnswer: ___`}
+            style={{width:"100%",minHeight:140,border:"none",resize:"vertical",outline:"none",fontFamily:"'DM Mono',monospace",fontSize:12,color:T.ink2,lineHeight:1.7,padding:"12px 16px",boxSizing:"border-box",background:"#FAFAFA"}}/>
+        </div>
+      </>
+    )
+  }
+
+  // ── Diagnose Panel ───────────────────────────────────────────────────────────
+  function DiagnosePanel() {
+    if (!diagData) {
+      return (
+        <div style={{background:"#fff",border:`1px solid ${T.border}`,borderRadius:14,padding:20}}>
+          <div style={{fontSize:12,fontWeight:800,color:T.ink,marginBottom:6}}>🔍 Fault Analysis — Your Findings</div>
+          <div style={{fontSize:11,color:T.ink3,marginBottom:12}}>Describe the fault, its root cause, and why you identified it this way.</div>
+          <textarea value={answer} onChange={e=>{setAnswer(e.target.value);setChecked(null)}}
+            placeholder={`Fault: [e.g. Open circuit in R2]\nRoot Cause: [e.g. Resistor burned due to overcurrent]\nEvidence: [e.g. V_out = 0V, V_in = 5V, current = 0mA]\nFix: [e.g. Replace R2 with rated 470Ω, check fuse]`}
+            style={{width:"100%",minHeight:160,border:`2px solid ${borderCol}`,borderRadius:9,outline:"none",fontFamily:"'DM Mono',monospace",fontSize:12,color:T.ink2,lineHeight:1.7,background:answerBg,padding:"12px 14px",boxSizing:"border-box",resize:"vertical"}}/>
+          <div style={{marginTop:12}}>
+            <button onClick={()=>{if(!answer.trim())return;setChecked("correct");onCodeChange(`Fault: ${answer.trim()}`)}} disabled={!answer.trim()}
+              style={{padding:"10px 20px",background:modeColor,color:"#fff",border:"none",borderRadius:9,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
+              🔍 Submit Analysis
+            </button>
+          </div>
+          <FeedbackBanner/>
+          <div style={{marginTop:14,background:"#F8F7F4",border:`1px solid ${T.border}`,borderRadius:10,overflow:"hidden"}}>
+            <div style={{padding:"7px 12px",borderBottom:`1px solid ${T.border}`,fontSize:11,fontWeight:700,color:T.ink3}}>📝 Diagnostic Notes</div>
+            <textarea value={scratchpad} onChange={e=>setScratchpad(e.target.value)} placeholder="Note your observations, measurements, and reasoning here..."
+              style={{width:"100%",minHeight:90,border:"none",resize:"vertical",outline:"none",fontFamily:"'DM Mono',monospace",fontSize:11,color:T.ink2,lineHeight:1.7,padding:"10px 12px",boxSizing:"border-box",background:"#FAFAFA"}}/>
+          </div>
+        </div>
+      )
+    }
+    return (
+      <div style={{background:"#fff",border:`1px solid ${T.border}`,borderRadius:14,padding:20}}>
+        <div style={{fontSize:12,fontWeight:800,color:T.ink,marginBottom:4}}>🔍 Identify the Fault</div>
+        <div style={{fontSize:11,color:T.ink3,marginBottom:14}}>Select the most likely root cause based on the measurements and symptoms above.</div>
+        <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:14}}>
+          {diagData.options.map((opt,i)=>{
+            const isSel=selectedOpt===i, isCorrect=checked&&i===diagData.correct, isWrong=checked==="wrong"&&isSel
+            return (
+              <div key={i} onClick={()=>{if(!checked)setSelectedOpt(i)}}
+                style={{display:"flex",alignItems:"flex-start",gap:12,padding:"12px 14px",borderRadius:10,cursor:checked?"default":"pointer",
+                  border:`2px solid ${isCorrect&&checked==="correct"?"#22C55E":isWrong?"#EF4444":isSel?modeColor:T.border}`,
+                  background:isCorrect&&checked?"#F0FDF4":isWrong?"#FFF5F5":isSel&&!checked?`${modeColor}08`:"#fff",transition:"all 0.15s"}}>
+                <div style={{width:20,height:20,borderRadius:"50%",border:`2px solid ${isSel?modeColor:T.border}`,background:isSel?modeColor:"transparent",flexShrink:0,marginTop:1,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  {isSel&&<div style={{width:8,height:8,borderRadius:"50%",background:"#fff"}}/>}
+                </div>
+                <div style={{flex:1}}>
+                  <span style={{fontSize:11,fontWeight:700,color:modeColor,marginRight:8}}>{String.fromCharCode(65+i)}.</span>
+                  <span style={{fontSize:12,color:T.ink}}>{opt}</span>
+                  {isCorrect&&checked&&<div style={{fontSize:10,color:"#15803D",fontWeight:700,marginTop:4}}>✅ Correct answer</div>}
+                  {isWrong&&<div style={{fontSize:10,color:"#DC2626",fontWeight:700,marginTop:4}}>❌ Incorrect</div>}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        <button onClick={handleDiagnose} disabled={selectedOpt===null||!!checked}
+          style={{padding:"11px 24px",background:modeColor,color:"#fff",border:"none",borderRadius:9,fontSize:13,fontWeight:800,cursor:selectedOpt!==null&&!checked?"pointer":"not-allowed",opacity:selectedOpt!==null&&!checked?1:0.5,fontFamily:"inherit"}}>
+          🔍 Identify Fault
+        </button>
+        <FeedbackBanner/>
+        <div style={{marginTop:14,background:"#F8F7F4",border:`1px solid ${T.border}`,borderRadius:10,overflow:"hidden"}}>
+          <div style={{padding:"7px 12px",borderBottom:`1px solid ${T.border}`,fontSize:11,fontWeight:700,color:T.ink3}}>📝 Diagnostic Notes</div>
+          <textarea value={scratchpad} onChange={e=>setScratchpad(e.target.value)} placeholder="Note your observations, measurements, and reasoning here..."
+            style={{width:"100%",minHeight:90,border:"none",resize:"vertical",outline:"none",fontFamily:"'DM Mono',monospace",fontSize:11,color:T.ink2,lineHeight:1.7,padding:"10px 12px",boxSizing:"border-box",background:"#FAFAFA"}}/>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Design Panel ─────────────────────────────────────────────────────────────
+  function DesignPanel() {
+    if (designParams.length===0) {
+      return (
+        <div style={{background:"#fff",border:`1px solid ${T.border}`,borderRadius:14,padding:20}}>
+          <div style={{fontSize:12,fontWeight:800,color:T.ink,marginBottom:6}}>✏️ Design Submission</div>
+          <div style={{fontSize:11,color:T.ink3,marginBottom:12}}>Specify your chosen dimensions, components, and design rationale.</div>
+          <textarea value={answer} onChange={e=>{setAnswer(e.target.value);setChecked(null)}}
+            placeholder={`Design Parameters:\n  Width (b): ___ mm\n  Depth (d): ___ mm\n  Steel area: ___ mm²\n  Material grade: ___\n\nDesign rationale: [Why the design is safe, code references]\nCode references: [IS 456:2000 Clause ___, etc.]`}
+            style={{width:"100%",minHeight:180,border:`2px solid ${borderCol}`,borderRadius:9,outline:"none",fontFamily:"'DM Mono',monospace",fontSize:12,color:T.ink2,lineHeight:1.7,background:answerBg,padding:"12px 14px",boxSizing:"border-box",resize:"vertical"}}/>
+          <div style={{marginTop:12}}>
+            <button onClick={()=>{if(!answer.trim())return;setChecked("correct");onCodeChange(`Design: ${answer}`)}} disabled={!answer.trim()}
+              style={{padding:"10px 20px",background:modeColor,color:"#fff",border:"none",borderRadius:9,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
+              ✏️ Submit Design
+            </button>
+          </div>
+          <FeedbackBanner/>
+          <div style={{marginTop:14,background:"#F8F7F4",border:`1px solid ${T.border}`,borderRadius:10,overflow:"hidden"}}>
+            <div style={{padding:"7px 12px",borderBottom:`1px solid ${T.border}`,fontSize:11,fontWeight:700,color:T.ink3}}>📝 Design Calculations</div>
+            <textarea value={scratchpad} onChange={e=>setScratchpad(e.target.value)} placeholder="Show your design calculations here (structural checks, load analysis, etc.)"
+              style={{width:"100%",minHeight:90,border:"none",resize:"vertical",outline:"none",fontFamily:"'DM Mono',monospace",fontSize:11,color:T.ink2,lineHeight:1.7,padding:"10px 12px",boxSizing:"border-box",background:"#FAFAFA"}}/>
+          </div>
+        </div>
+      )
+    }
+    return (
+      <div style={{background:"#fff",border:`1px solid ${T.border}`,borderRadius:14,padding:20}}>
+        <div style={{fontSize:12,fontWeight:800,color:T.ink,marginBottom:4}}>✏️ Design Parameters</div>
+        <div style={{fontSize:11,color:T.ink3,marginBottom:14}}>Enter values for each parameter. All must satisfy the stated constraints.</div>
+        <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:14}}>
+          {designParams.map((p,i)=>{
+            const val=parseFloat(designVals[p.key]||0)
+            const minOk=p.min===null||val>=p.min, maxOk=p.max===null||val<=p.max
+            const paramPass=designChecked?(minOk&&maxOk?true:false):null
+            return (
+              <div key={i} style={{padding:"12px 14px",borderRadius:10,border:`1px solid ${paramPass===false?"#FECACA":paramPass===true?"#BBF7D0":T.border}`,background:paramPass===false?"#FFF5F5":paramPass===true?"#F0FDF4":"#FAFAFA"}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                  <span style={{fontSize:12,fontWeight:700,color:T.ink}}>{p.label}</span>
+                  {p.units&&<span style={{fontSize:10,color:modeColor,fontWeight:700}}>{p.units}</span>}
+                  {p.min!==null&&p.max!==null&&<span style={{fontSize:10,color:T.ink4}}>({p.min}–{p.max} {p.units})</span>}
+                  {paramPass===true&&<span style={{marginLeft:"auto",fontSize:11,color:"#15803D",fontWeight:700}}>✅</span>}
+                  {paramPass===false&&<span style={{marginLeft:"auto",fontSize:11,color:"#DC2626",fontWeight:700}}>❌</span>}
+                </div>
+                <input type="number" value={designVals[p.key]||""}
+                  onChange={e=>{setDesignVals(v=>({...v,[p.key]:e.target.value}));setDesignChecked(null);setChecked(null)}}
+                  placeholder={p.min!==null?`e.g. ${Math.round((p.min+((p.max||p.min*2)+p.min)/2))}`:undefined}
+                  style={{width:"100%",padding:"9px 12px",border:`1px solid ${T.border}`,borderRadius:8,fontSize:14,fontFamily:"'DM Mono',monospace",fontWeight:700,color:T.ink,outline:"none",boxSizing:"border-box"}}/>
+              </div>
+            )
+          })}
+        </div>
+        <button onClick={handleDesignCheck} disabled={designParams.some(p=>!designVals[p.key])}
+          style={{padding:"11px 24px",background:modeColor,color:"#fff",border:"none",borderRadius:9,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
+          ✏️ Check Design
+        </button>
+        <FeedbackBanner/>
+        <div style={{marginTop:14,background:"#F8F7F4",border:`1px solid ${T.border}`,borderRadius:10,overflow:"hidden"}}>
+          <div style={{padding:"7px 12px",borderBottom:`1px solid ${T.border}`,fontSize:11,fontWeight:700,color:T.ink3}}>📝 Design Calculations</div>
+          <textarea value={scratchpad} onChange={e=>setScratchpad(e.target.value)} placeholder="Show your design calculations (structural checks, load analysis, code clause references)"
+            style={{width:"100%",minHeight:90,border:"none",resize:"vertical",outline:"none",fontFamily:"'DM Mono',monospace",fontSize:11,color:T.ink2,lineHeight:1.7,padding:"10px 12px",boxSizing:"border-box",background:"#FAFAFA"}}/>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Optimize Panel ───────────────────────────────────────────────────────────
+  function OptimizePanel() {
+    const hasVars = optVarDefs.length > 0
+    return (
+      <div style={{background:"#fff",border:`1px solid ${T.border}`,borderRadius:14,padding:20}}>
+        <div style={{fontSize:12,fontWeight:800,color:T.ink,marginBottom:4}}>📉 Optimization</div>
+        {optTarget&&<div style={{fontSize:11,color:T.ink3,marginBottom:10}}>Target objective value: <strong style={{color:modeColor}}>{optTarget}</strong></div>}
+        {hasVars ? (
+          <>
+            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:14}}>
+              {optVarDefs.map((v,i)=>(
+                <div key={i} style={{padding:"12px 14px",background:"#FAFAFA",borderRadius:10,border:`1px solid ${T.border}`}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                    <span style={{fontSize:12,fontWeight:700,color:T.ink}}>{v.label}</span>
+                    {v.units&&<span style={{fontSize:10,color:modeColor,fontWeight:700}}>{v.units}</span>}
+                    <span style={{fontSize:10,color:T.ink4}}>({v.min}–{v.max})</span>
+                    <span style={{marginLeft:"auto",fontSize:14,fontWeight:900,color:modeColor,fontFamily:"'DM Mono',monospace"}}>{optVarVals[v.key]??v.min}</span>
+                  </div>
+                  <input type="range" min={v.min} max={v.max} step={v.step} value={optVarVals[v.key]??v.min}
+                    onChange={e=>{setOptVarVals(prev=>({...prev,[v.key]:Number(e.target.value)}));setChecked(null)}}
+                    style={{width:"100%",accentColor:modeColor}}/>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:T.ink4,marginTop:2}}>
+                    <span>{v.min} {v.units}</span><span>{v.max} {v.units}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{marginBottom:12,padding:"10px 14px",background:`${modeColor}08`,border:`1px solid ${modeColor}20`,borderRadius:10}}>
+              <div style={{fontSize:10,fontWeight:700,color:modeColor,textTransform:"uppercase",letterSpacing:0.6,marginBottom:4}}>Current Variables</div>
+              <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:T.ink}}>{optVarDefs.map(v=>`${v.key} = ${optVarVals[v.key]??v.min} ${v.units}`).join(" | ")}</div>
+            </div>
+          </>
+        ) : (
+          <div style={{fontSize:11,color:T.ink3,marginBottom:12}}>Show your optimization approach and compute the minimum/maximum objective function value.</div>
+        )}
+        <div style={{display:"flex",gap:8,marginBottom:12}}>
+          <input type="text" value={answer} onChange={e=>{setAnswer(e.target.value);setChecked(null)}}
+            placeholder={hasVars?"Enter computed objective value (e.g. 1850)":"Optimization answer or expression…"}
+            style={{flex:1,padding:"10px 14px",fontSize:16,fontWeight:700,fontFamily:"'DM Mono',monospace",border:`2px solid ${borderCol}`,borderRadius:9,outline:"none",background:answerBg}}/>
+          <button onClick={handleOptimize} disabled={!answer.trim()}
+            style={{padding:"10px 20px",background:modeColor,color:"#fff",border:"none",borderRadius:9,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
+            📉 Submit
           </button>
         </div>
-        {checked === "correct" && (
-          <div style={{ marginTop: 12, padding: "10px 14px", background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 9, display: "flex", gap: 10, alignItems: "center" }}>
-            <span style={{ fontSize: 18 }}>✅</span>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: "#15803D" }}>Correct!</div>
-              <div style={{ fontSize: 11, color: "#166534" }}>Click "Submit Solution" to lock in your proof record.</div>
-            </div>
-          </div>
+        {!hasVars&&(
+          <textarea value={scratchpad} onChange={e=>setScratchpad(e.target.value)}
+            placeholder={`Optimization approach:\n\nDecision variables: x₁ = ___, x₂ = ___\nObjective function: f(x) = ___\nConstraints satisfied: [list]\nOptimal value: ___\nSolution method: [LP / enumeration / gradient descent]`}
+            style={{width:"100%",minHeight:140,border:`1px solid ${T.border}`,borderRadius:9,outline:"none",fontFamily:"'DM Mono',monospace",fontSize:12,color:T.ink2,lineHeight:1.7,padding:"12px 14px",boxSizing:"border-box",resize:"vertical",marginBottom:12}}/>
         )}
-        {checked === "wrong" && (
-          <div style={{ marginTop: 12, padding: "10px 14px", background: "#FFF5F5", border: "1px solid #FECACA", borderRadius: 9, display: "flex", gap: 10, alignItems: "flex-start" }}>
-            <span style={{ fontSize: 18 }}>❌</span>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: "#DC2626" }}>Not quite — attempt #{attempts}</div>
-              <div style={{ fontSize: 11, color: "#991B1B", marginTop: 2 }}>
-                Check your formula and units. Use the scratchpad below for step-by-step working.
-                {attempts >= 2 && <> ·{" "}<button onClick={() => setShowSolution(true)} style={{ background: "none", border: "none", color: "#991B1B", fontWeight: 800, cursor: "pointer", textDecoration: "underline", fontSize: 11, padding: 0 }}>Show solution</button></>}
-              </div>
-            </div>
+        <FeedbackBanner/>
+        {hasVars&&(
+          <div style={{marginTop:14,background:"#F8F7F4",border:`1px solid ${T.border}`,borderRadius:10,overflow:"hidden"}}>
+            <div style={{padding:"7px 12px",borderBottom:`1px solid ${T.border}`,fontSize:11,fontWeight:700,color:T.ink3}}>📝 Optimization Working</div>
+            <textarea value={scratchpad} onChange={e=>setScratchpad(e.target.value)} placeholder="Work out your optimization step-by-step here..."
+              style={{width:"100%",minHeight:90,border:"none",resize:"vertical",outline:"none",fontFamily:"'DM Mono',monospace",fontSize:11,color:T.ink2,lineHeight:1.7,padding:"10px 12px",boxSizing:"border-box",background:"#FAFAFA"}}/>
           </div>
         )}
       </div>
@@ -4269,17 +4522,19 @@ function EngineeringLabWorkstation({ mission, code, onCodeChange }) {
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: T.bg }}>
 
-      {/* ── Domain header strip ───────────────────────────────── */}
+      {/* ── Domain + Mode header strip ──────────────────────────── */}
       <div style={{ background: "#fff", borderBottom: `1px solid ${T.border}`, padding: "0 14px", display: "flex", alignItems: "center", gap: 0, flexShrink: 0 }}>
-        {/* Domain identity */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 0", marginRight: 20, flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 0", marginRight: 14, flexShrink: 0 }}>
           <span style={{ fontSize: 18 }}>{config.emoji}</span>
           <div>
             <div style={{ fontSize: 11, fontWeight: 800, color: config.color, letterSpacing: 0.6, textTransform: "uppercase" }}>{config.label}</div>
             <div style={{ fontSize: 10, color: T.ink4 }}>{config.workEnv.split(" · ").slice(0, 3).join(" · ")}</div>
           </div>
         </div>
-        {/* Domain-area sub-tabs */}
+        {/* Mode badge */}
+        <div style={{ padding: "4px 12px", borderRadius: 99, background: `${modeColor}12`, border: `1px solid ${modeColor}30`, marginRight: 10, flexShrink: 0 }}>
+          <span style={{ fontSize: 11, fontWeight: 800, color: modeColor }}>{modeLabel}</span>
+        </div>
         <div style={{ display: "flex", overflowX: "auto", gap: 0, flex: 1 }}>
           {config.tabs.map(t => (
             <button key={t} onClick={() => setTab(t)}
@@ -4291,13 +4546,12 @@ function EngineeringLabWorkstation({ mission, code, onCodeChange }) {
             </button>
           ))}
         </div>
-        {/* Panel toggle pills */}
         <div style={{ display: "flex", gap: 5, flexShrink: 0, marginLeft: 10 }}>
           {[["solve","✏️ Solve"],["ref","📐 Ref"],["tools","🔧 Tools"]].map(([p, label]) => (
             <button key={p} onClick={() => setActivePanel(activePanel === p && p !== "solve" ? "solve" : p)}
-              style={{ padding: "4px 10px", borderRadius: 6, border: `1px solid ${activePanel === p ? config.color : T.border}`,
-                background: activePanel === p ? `${config.color}12` : "#fff",
-                color: activePanel === p ? config.color : T.ink4,
+              style={{ padding: "4px 10px", borderRadius: 6, border: `1px solid ${activePanel === p ? modeColor : T.border}`,
+                background: activePanel === p ? `${modeColor}12` : "#fff",
+                color: activePanel === p ? modeColor : T.ink4,
                 fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
               {label}
             </button>
@@ -4305,18 +4559,16 @@ function EngineeringLabWorkstation({ mission, code, onCodeChange }) {
         </div>
       </div>
 
-      {/* ── Body: panels ─────────────────────────────────────── */}
+      {/* ── Body ─────────────────────────────────────────────────── */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
 
-        {/* CENTER: Solve panel (always visible) */}
+        {/* CENTER: Mode-specific solve panel */}
         <div style={{ flex: 1, overflowY: "auto", padding: 18, display: "flex", flexDirection: "column", gap: 14 }}>
 
-          {/* Area context badge */}
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          {/* Area + difficulty badges */}
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <span style={{ fontSize: 10, fontWeight: 800, color: config.color, letterSpacing: 0.7, textTransform: "uppercase",
-              background: `${config.color}12`, padding: "3px 10px", borderRadius: 99, border: `1px solid ${config.color}25` }}>
-              {tab}
-            </span>
+              background: `${config.color}12`, padding: "3px 10px", borderRadius: 99, border: `1px solid ${config.color}25` }}>{tab}</span>
             {mission.difficulty && (
               <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 9px", borderRadius: 99,
                 color: mission.difficulty === "Easy" ? "#16A34A" : mission.difficulty === "Medium" ? "#D97706" : "#DC2626",
@@ -4326,32 +4578,19 @@ function EngineeringLabWorkstation({ mission, code, onCodeChange }) {
             )}
           </div>
 
-          {/* Answer input */}
-          <AnswerInput />
+          {/* ── Render the correct mode panel ── */}
+          {engMode === "calculate" && <CalculatePanel />}
+          {engMode === "diagnose"  && <DiagnosePanel />}
+          {engMode === "design"    && <DesignPanel />}
+          {engMode === "optimize"  && <OptimizePanel />}
 
-          {/* Scratchpad — working area */}
-          <div style={{ background: "#fff", border: `1px solid ${T.border}`, borderRadius: 14, overflow: "hidden" }}>
-            <div style={{ padding: "9px 16px", background: "#F8F7F4", borderBottom: `1px solid ${T.border}`, display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 11 }}>📝</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: T.ink3 }}>Scratchpad — Working Area</span>
-              <span style={{ fontSize: 10, color: T.ink4, marginLeft: 4 }}>not submitted · use for rough calculations</span>
-            </div>
-            <textarea
-              value={scratchpad} onChange={e => setScratchpad(e.target.value)}
-              placeholder={`Work out your calculation step-by-step here...\n\nExample:\nStep 1: Identify given values\nStep 2: Choose formula\nStep 3: Substitute and solve\nAnswer: ___`}
-              style={{ width: "100%", minHeight: 140, border: "none", resize: "vertical", outline: "none",
-                fontFamily: "'DM Mono', monospace", fontSize: 12, color: T.ink2, lineHeight: 1.7,
-                padding: "12px 16px", boxSizing: "border-box", background: "#FAFAFA" }}
-            />
-          </div>
-
-          {/* Solution panel */}
+          {/* Solution reveal — shared across all modes */}
           <div style={{ background: "#fff", border: `1px solid ${T.border}`, borderRadius: 14, overflow: "hidden" }}>
             <button onClick={() => setShowSolution(s => !s)}
               style={{ width: "100%", padding: "13px 16px", display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
               <span style={{ fontSize: 13 }}>📖</span>
               <span style={{ fontSize: 12, fontWeight: 800, color: T.ink2 }}>Step-by-Step Solution {showSolution ? "▲" : "▼"}</span>
-              {!showSolution && <span style={{ fontSize: 10, color: T.ink4, marginLeft: "auto" }}>Reveal formula walkthrough</span>}
+              {!showSolution && <span style={{ fontSize: 10, color: T.ink4, marginLeft: "auto" }}>Reveal answer walkthrough</span>}
             </button>
             {showSolution && (
               <div style={{ padding: "4px 18px 18px", borderTop: `1px solid ${T.border}` }}>
@@ -4359,14 +4598,12 @@ function EngineeringLabWorkstation({ mission, code, onCodeChange }) {
                   ? solutionText.split("\n").map((line, i) => {
                       if (!line.trim()) return <div key={i} style={{ height: 6 }} />
                       const clean = line.replace(/\*\*/g, "")
-                      const isHeader = line.startsWith("**Step") || line.startsWith("**Formula")
-                      const isMono   = /=|→|×|÷|√/.test(clean)
+                      const isHeader = /^\*\*(?:Step|Formula|Fault|Design|Optimize)/.test(line)
+                      const isMono   = /=|→|×|÷|√|≈/.test(clean)
                       return (
-                        <div key={i} style={{
-                          fontSize: isHeader ? 12 : 12.5, fontWeight: isHeader ? 800 : 400,
-                          color: isHeader ? config.color : T.ink2, lineHeight: 1.75, marginBottom: 3,
-                          fontFamily: isMono && !isHeader ? "'DM Mono', monospace" : "inherit",
-                        }}>{clean}</div>
+                        <div key={i} style={{ fontSize: isHeader ? 12 : 12.5, fontWeight: isHeader ? 800 : 400,
+                          color: isHeader ? modeColor : T.ink2, lineHeight: 1.75, marginBottom: 3,
+                          fontFamily: isMono && !isHeader ? "'DM Mono', monospace" : "inherit" }}>{clean}</div>
                       )
                     })
                   : <div style={{ fontSize: 12, color: T.ink4, padding: "8px 0" }}>Solution walkthrough not available for this problem.</div>}
@@ -4378,7 +4615,6 @@ function EngineeringLabWorkstation({ mission, code, onCodeChange }) {
         {/* RIGHT: Reference / Tools panel */}
         {activePanel !== "solve" && (
           <div style={{ width: 290, flexShrink: 0, borderLeft: `1px solid ${T.border}`, background: "#fff", overflowY: "auto", display: "flex", flexDirection: "column" }}>
-
             {activePanel === "ref" && (
               <>
                 <div style={{ padding: "12px 14px 8px", borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>
@@ -4394,7 +4630,6 @@ function EngineeringLabWorkstation({ mission, code, onCodeChange }) {
                 </div>
               </>
             )}
-
             {activePanel === "tools" && (
               <>
                 <div style={{ padding: "12px 14px 8px", borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>

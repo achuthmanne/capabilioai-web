@@ -46,7 +46,9 @@ const T = {
   red:     "#F43F5E",          // error / critical
   border:  "rgba(0,0,0,0.05)",
   shadow:  "0 4px 12px rgba(0,0,0,0.08),0 1px 4px rgba(0,0,0,0.3)",
-  shadow2: "0 8px 24px rgba(0,0,0,0.08)),0 4px 12px rgba(0,0,0,0.4)",
+  shadow2: "0 8px 24px rgba(0,0,0,0.08),0 4px 12px rgba(0,0,0,0.4)",
+  bg:      "#F8F7F4",
+  bg2:     "#F1EFE9",
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2861,7 +2863,7 @@ function ArenaLanding({ userData, onSelect }) {
                     transition: "transform 250ms, box-shadow 250ms, border-color 250ms",
                     transform: isHov ? "translateY(-4px) scale(1.01)" : "none",
                     boxShadow: isHov
-                      ? `0 8px 24px rgba(0,0,0,0.08)), 0 0 0 1px ${dc}30, 0 4px 20px ${dc}20`
+                      ? `0 8px 24px rgba(0,0,0,0.08), 0 0 0 1px ${dc}30, 0 4px 20px ${dc}20`
                       : "0 2px 8px rgba(0,0,0,0.3)",
                     animation: `bentoReveal 0.4s ease ${idx * 0.08}s both`,
                     position: "relative",
