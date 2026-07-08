@@ -725,6 +725,200 @@ function ChallengeCard({ t, last }) {
   )
 }
 
+// ── Redesigned Arena Challenges section ──────────────────────────────────────
+// Compact, recruiter-friendly: stats dashboard + top 3 featured + compact grouped list
+function ArenaChallengesSection({ tasks, commonTasks, domainTasks, avgScore, aConfig }) {
+  const [showAllCommon, setShowAllCommon] = useState(false)
+  const [expandedDomains, setExpandedDomains] = useState({})
+  const [modalTask, setModalTask] = useState(null)
+  const ROWS_PREVIEW = 6
+
+  if (tasks.length === 0) return null
+
+  const accent = aConfig?.palette?.accent || C.blue
+  const totalElo = tasks.reduce((s, t) => s + (t.eloDelta || 0), 0)
+  const hardPlus = tasks.filter(t => t.difficulty === "Hard" || t.difficulty === "Expert").length
+
+  // Top 3 by score — featured "best performances"
+  const featured = [...tasks].sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 3)
+  const featuredIds = new Set(featured.map(t => t.id))
+
+  // Remaining common tasks beyond featured
+  const remainingCommon = commonTasks.filter(t => !featuredIds.has(t.id))
+
+  // Domain tasks grouped by domain
+  const domainGroups = {}
+  domainTasks.filter(t => !featuredIds.has(t.id)).forEach(t => {
+    const key = t.domain || "Other"
+    if (!domainGroups[key]) domainGroups[key] = []
+    domainGroups[key].push(t)
+  })
+
+  const toggleDomain = key => setExpandedDomains(p => ({ ...p, [key]: !p[key] }))
+
+  // Compact single-line row (click opens modal)
+  const CompactRow = ({ t }) => {
+    const col = scoreColor(t.score)
+    const dc = DIFF[t.difficulty] || DIFF.Medium
+    return (
+      <div
+        onClick={() => setModalTask(t)}
+        style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 10px",
+          borderRadius:8, cursor:"pointer", borderLeft:`3px solid ${dc.color}`,
+          transition:"background 0.15s", marginBottom:2 }}
+        onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.04)"}
+        onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+      >
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontSize:12, fontWeight:600, color:C.ink2, whiteSpace:"nowrap",
+            overflow:"hidden", textOverflow:"ellipsis" }}>{t.title}</div>
+          {t.completedAt && <div style={{ fontSize:9, color:C.ink4, marginTop:1 }}>{fmt(t.completedAt)}</div>}
+        </div>
+        <span style={{ fontSize:10, fontWeight:700, color:dc.color, background:dc.bg,
+          padding:"2px 7px", borderRadius:99, flexShrink:0 }}>{t.difficulty}</span>
+        <span style={{ fontSize:13, fontWeight:900, color:col, fontFamily:"monospace",
+          flexShrink:0, minWidth:36, textAlign:"right" }}>{t.score}</span>
+        <span style={{ fontSize:10, fontWeight:700, color:C.blue,
+          flexShrink:0, minWidth:44, textAlign:"right" }}>+{t.eloDelta}</span>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      {/* Stats dashboard */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8, marginBottom:22 }}>
+        {[
+          { label:"Completed",  value:tasks.length,   icon:"⚔️",  color:accent   },
+          { label:"Avg Score",  value:`${avgScore}%`, icon:"📊",  color:C.green  },
+          { label:"ELO Earned", value:`+${totalElo}`, icon:"⚡",  color:C.amber  },
+          { label:"Hard+",      value:hardPlus,       icon:"🔥",  color:C.red    },
+        ].map((s, i) => (
+          <div key={i} style={{ background:`linear-gradient(135deg,${s.color}18,${s.color}06)`,
+            border:`1px solid ${s.color}30`, borderRadius:12, padding:"12px 8px", textAlign:"center" }}>
+            <div style={{ fontSize:15, marginBottom:3 }}>{s.icon}</div>
+            <div style={{ fontSize:18, fontWeight:900, color:s.color, fontFamily:"monospace", lineHeight:1 }}>{s.value}</div>
+            <div style={{ fontSize:9, color:C.ink4, textTransform:"uppercase", letterSpacing:"0.07em", marginTop:4 }}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Difficulty proportion bar */}
+      <div style={{ marginBottom:22 }}>
+        <div style={{ display:"flex", height:6, borderRadius:99, overflow:"hidden", gap:2, marginBottom:8 }}>
+          {["Easy","Medium","Hard","Expert"].map(d => {
+            const n = tasks.filter(t => t.difficulty === d).length
+            if (!n) return null
+            return <div key={d} style={{ flex:n, background:(DIFF[d]||DIFF.Medium).color, borderRadius:99 }}/>
+          })}
+        </div>
+        <div style={{ display:"flex", gap:14, flexWrap:"wrap" }}>
+          {["Easy","Medium","Hard","Expert"].map(d => {
+            const n = tasks.filter(t => t.difficulty === d).length
+            if (!n) return null
+            const dc = DIFF[d] || DIFF.Medium
+            return (
+              <div key={d} style={{ display:"flex", alignItems:"center", gap:5 }}>
+                <div style={{ width:8, height:8, borderRadius:2, background:dc.color }}/>
+                <span style={{ fontSize:10, color:C.ink3, fontWeight:600 }}>{d}</span>
+                <span style={{ fontSize:10, fontWeight:800, color:dc.color }}>{n}</span>
+                <span style={{ fontSize:9, color:C.ink4 }}>({Math.round((n/tasks.length)*100)}%)</span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* ⭐ Best Performances (top 3) */}
+      {featured.length > 0 && (
+        <div style={{ marginBottom:28 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14 }}>
+            <div style={{ width:3, height:18, background:`linear-gradient(180deg,${C.amber},${accent})`, borderRadius:99 }}/>
+            <span style={{ fontSize:13, fontWeight:800, color:C.ink2 }}>⭐ Best Performances</span>
+            <span style={{ fontSize:11, color:C.ink4 }}>· Top {featured.length} by score</span>
+          </div>
+          {featured.map((t, i) => <ChallengeCard key={t.id+i} t={t} last={i===featured.length-1}/>)}
+        </div>
+      )}
+
+      {/* Remaining common challenges — compact list */}
+      {remainingCommon.length > 0 && (
+        <div style={{ marginBottom:22 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
+            <div style={{ width:3, height:16, background:C.blue, borderRadius:99 }}/>
+            <span style={{ fontSize:12, fontWeight:700, color:C.ink3 }}>Common Challenges — DSA / Algorithms</span>
+            <span style={{ fontSize:11, color:C.ink4 }}>· {remainingCommon.length} more</span>
+          </div>
+          <div style={{ background:"rgba(255,255,255,0.02)", border:`1px solid ${C.border}`, borderRadius:12, padding:"6px 6px 2px" }}>
+            {(showAllCommon ? remainingCommon : remainingCommon.slice(0, ROWS_PREVIEW)).map((t, i) => (
+              <CompactRow key={t.id+i} t={t}/>
+            ))}
+            {remainingCommon.length > ROWS_PREVIEW && (
+              <button onClick={() => setShowAllCommon(p => !p)} style={{ width:"100%", padding:"9px",
+                background:"transparent", border:"none", borderTop:`1px solid ${C.border}`,
+                color:C.blue, fontSize:11, fontWeight:700, cursor:"pointer", marginTop:2 }}>
+                {showAllCommon ? "▲ Show less" : `▼ Show all ${remainingCommon.length} challenges`}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Domain challenges — grouped & collapsible */}
+      {Object.keys(domainGroups).length > 0 && (
+        <div>
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
+            <div style={{ width:3, height:16, background:C.teal, borderRadius:99 }}/>
+            <span style={{ fontSize:12, fontWeight:700, color:C.ink3 }}>Domain Challenges</span>
+            <span style={{ fontSize:11, color:C.ink4 }}>
+              · {domainTasks.filter(t=>!featuredIds.has(t.id)).length} across {Object.keys(domainGroups).length} domain{Object.keys(domainGroups).length>1?"s":""}
+            </span>
+          </div>
+          <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+            {Object.entries(domainGroups).map(([domain, dTasks]) => {
+              const isOpen = expandedDomains[domain]
+              const domainAvg = Math.round(dTasks.reduce((s,t)=>s+(t.score||0),0)/dTasks.length)
+              const domainElo = dTasks.reduce((s,t)=>s+(t.eloDelta||0),0)
+              const topDiff = dTasks.some(t=>t.difficulty==="Expert")?"Expert"
+                :dTasks.some(t=>t.difficulty==="Hard")?"Hard"
+                :dTasks.some(t=>t.difficulty==="Medium")?"Medium":"Easy"
+              const dc = DIFF[topDiff] || DIFF.Medium
+              return (
+                <div key={domain} style={{ border:`1px solid ${C.border2}`, borderRadius:12, overflow:"hidden" }}>
+                  <div
+                    onClick={() => toggleDomain(domain)}
+                    style={{ display:"flex", alignItems:"center", gap:10, padding:"11px 16px",
+                      cursor:"pointer", background:"rgba(255,255,255,0.03)", transition:"background 0.15s" }}
+                    onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,0.06)"}
+                    onMouseLeave={e=>e.currentTarget.style.background="rgba(255,255,255,0.03)"}
+                  >
+                    <div style={{ width:10, height:10, borderRadius:"50%", background:dc.color, flexShrink:0 }}/>
+                    <div style={{ flex:1 }}>
+                      <span style={{ fontSize:12, fontWeight:700, color:C.ink2, textTransform:"capitalize" }}>{domain}</span>
+                    </div>
+                    <span style={{ fontSize:10, color:C.ink4, fontWeight:600 }}>{dTasks.length} solved</span>
+                    <span style={{ fontSize:11, fontWeight:800, color:scoreColor(domainAvg), fontFamily:"monospace", marginLeft:8 }}>{domainAvg}%</span>
+                    <span style={{ fontSize:10, fontWeight:700, color:C.blue, marginLeft:8 }}>+{domainElo} ELO</span>
+                    <span style={{ fontSize:10, color:C.ink4, marginLeft:6, display:"inline-block",
+                      transform:isOpen?"rotate(180deg)":"none", transition:"transform 0.2s" }}>▼</span>
+                  </div>
+                  {isOpen && (
+                    <div style={{ padding:"6px 8px 6px", borderTop:`1px solid ${C.border}` }}>
+                      {dTasks.map((t, i) => <CompactRow key={t.id+i} t={t}/>)}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {modalTask && <ChallengeDetailModal t={modalTask} onClose={() => setModalTask(null)}/>}
+    </>
+  )
+}
+
 // Interview card with expandable detail
 function InterviewCard({ iv }) {
   const [open, setOpen] = useState(false)
@@ -2057,43 +2251,13 @@ export default function Portfolio({ username: usernameProp }) {
                 accent={aConfig?.palette?.accent||C.blue}
                 sub={`${tasks.length} challenges completed · avg score ${avgScore}/100`}/>
 
-              {/* Difficulty summary */}
-              <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:28}}>
-                {["Easy","Medium","Hard","Expert"].map(d=>{
-                  const n=tasks.filter(t=>t.difficulty===d).length
-                  if(!n) return null
-                  const dc=DIFF[d]||DIFF.Medium
-                  return <div key={d} style={{padding:"5px 14px",background:dc.bg,border:`1px solid ${dc.color}33`,borderRadius:99,fontSize:12,fontWeight:700,color:dc.color}}>{n} {d}</div>
-                })}
-              </div>
-
-              {/* Common challenges */}
-              {commonTasks.length>0&&(
-                <div style={{marginBottom:32}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
-                    <div style={{width:3,height:18,background:C.blue,borderRadius:99}}/>
-                    <span style={{fontSize:13,fontWeight:700,color:C.ink2}}>Common Challenges — DSA / Algorithms</span>
-                    <span style={{fontSize:12,color:C.ink4}}>· {commonTasks.length} solved</span>
-                  </div>
-                  {commonTasks.map((t,i)=>(
-                    <ChallengeCard key={t.id+i} t={t} last={i===commonTasks.length-1} />
-                  ))}
-                </div>
-              )}
-
-              {/* Domain challenges */}
-              {domainTasks.length>0&&(
-                <div>
-                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
-                    <div style={{width:3,height:18,background:C.teal,borderRadius:99}}/>
-                    <span style={{fontSize:13,fontWeight:700,color:C.ink2}}>Domain Challenges</span>
-                    <span style={{fontSize:12,color:C.ink4}}>· {domainTasks.length} solved</span>
-                  </div>
-                  {domainTasks.map((t,i)=>(
-                    <ChallengeCard key={t.id+i+"d"} t={t} last={i===domainTasks.length-1} />
-                  ))}
-                </div>
-              )}
+              <ArenaChallengesSection
+                tasks={tasks}
+                commonTasks={commonTasks}
+                domainTasks={domainTasks}
+                avgScore={avgScore}
+                aConfig={aConfig}
+              />
             </Card>
           </div>
         )}
