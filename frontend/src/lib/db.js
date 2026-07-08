@@ -36,6 +36,10 @@ const CAMEL_TO_SNAKE = {
   arenaStreak:          'arena_streak',
   arenaLastActive:      'arena_last_active',
   lastArenaDate:        'last_arena_day',
+  // ELO decay tracking — single source of truth, written by Arena, read by Aura
+  arenaDecayAppliedAt:  'arena_decay_applied_at',
+  eloDecayDate:         'arena_decay_applied_at',  // Aura's legacy field → same column
+  eloDecayToday:        null,                       // computed on-the-fly, no DB column — drop
   // Profile content
   skillGraph:           'skill_graph',
   weakAreas:            'weak_areas',
@@ -118,6 +122,11 @@ const toCompat = (data) => {
     arenaStreak:          data.arena_streak         ?? data.arenaStreak         ?? 0,
     arenaLastActive:      data.arena_last_active    || data.arenaLastActive    || null,
     lastArenaDate:        data.last_arena_day       || data.lastArenaDate      || null,
+    arenaDecayAppliedAt:  data.arena_decay_applied_at || data.arenaDecayAppliedAt || null,
+    // Aura's legacy eloDecayDate reads from the same column
+    eloDecayDate:         data.arena_decay_applied_at
+                            ? data.arena_decay_applied_at.slice(0, 10)
+                            : (data.eloDecayDate || null),
     // Profile content
     skillGraph:           data.skill_graph          || data.skillGraph          || [],
     weakAreas:            data.weak_areas           || data.weakAreas           || [],

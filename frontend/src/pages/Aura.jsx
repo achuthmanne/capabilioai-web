@@ -2781,34 +2781,42 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
     } catch(e) { console.warn(e) }
   }
 
-  // ELO decay — starts after 15 days, 5pts/day, never decays below role floor
+  // ELO history logger — records today's ELO snapshot for the trend chart.
+  // Decay is NOT applied here; Arena.jsx is the single authoritative decay engine.
+  // Aura's job is only to: (1) log history, (2) rehydrate ELO=0, (3) read decay state.
   useEffect(()=>{
     if(!userData||!user) return
-    // Use arena_last_active (snake_case Supabase) with camelCase fallback
-    const lastActiveRaw=userData.arenaLastActive||userData.arena_last_active||null
-    const now=new Date(), lastActive=lastActiveRaw?new Date(lastActiveRaw):null
-    // Cap daysSince at 60 — prevents absurd decay on users who never set arenaLastActive
-    const rawDaysSince=lastActive?Math.floor((now-lastActive)/(1000*60*60*24)):0
-    const daysSince=Math.min(rawDaysSince, 60)
-    // Role-based starting ELO: professionals/authority → 800, students → 400
+    const todayStr=new Date().toISOString().slice(0,10)
+
+    // ── Guard: if Arena already applied decay today, don't touch eloRating ──
+    // arena_decay_applied_at is normalised to eloDecayDate in toCompat() (db.js)
+    const decayAlreadyApplied = (userData.eloDecayDate||userData.arenaDecayAppliedAt||'').slice(0,10) === todayStr
+
+    // Role-based ELO floor
     const defaultElo=userData?.path==='professional'||userData?.path==='authority'?800:400
-    // Treat stored 0 same as null — always rehydrate to role floor
     const currentElo=(userData.eloRating!=null&&userData.eloRating>0)?userData.eloRating:defaultElo
-    let decayPts=0
-    // Decay triggers after 15 days of inactivity, 5 pts per day, floor = role default (never below)
-    if(daysSince>=15) decayPts=Math.min((daysSince-14)*5, Math.max(0, currentElo-defaultElo))
-    const todayStr=now.toISOString().slice(0,10)
-    const history=userData.eloHistory||[], alreadyLogged=history.some(h=>h.date===todayStr)
-    const decayAlreadyApplied=userData.eloDecayDate===todayStr
-    const arenaActiveToday=lastActiveRaw&&new Date(lastActiveRaw).toISOString().slice(0,10)===todayStr
-    // Floor: ELO never goes below role default
-    const newElo=Math.max(defaultElo, currentElo-decayPts); let updates={}
-    if(!alreadyLogged) { const trimmed=[...history.slice(-29),{date:todayStr,elo:currentElo}]; updates.eloHistory=trimmed }
+
+    const history=userData.eloHistory||[]
+    const alreadyLogged=history.some(h=>h.date===todayStr)
     const onboardedToday=userData.createdAt&&new Date(userData.createdAt).toISOString().slice(0,10)===todayStr
-    // Rehydrate: set starting ELO if not set OR if it was zeroed out by old decay bug
+
+    let updates={}
+    // Log today's ELO into history if not already done
+    if(!alreadyLogged&&!onboardedToday){
+      const trimmed=[...history.slice(-29),{date:todayStr,elo:currentElo}]
+      updates.eloHistory=trimmed
+    }
+    // Rehydrate: if ELO was zeroed by an old bug, restore to floor
     if(userData.eloRating==null||userData.eloRating===0) updates.eloRating=defaultElo
-    if(decayPts>0&&!decayAlreadyApplied&&!arenaActiveToday&&!onboardedToday) { updates.eloRating=newElo; updates.eloDecayToday=decayPts; updates.eloDecayDate=todayStr }
-    if(Object.keys(updates).length>0) { save(updates); if(setUserData) setUserData(d=>({...d,...updates})) }
+
+    // DECAY is intentionally skipped here — Arena handles it via arena_decay_applied_at.
+    // Keeping decay in one place prevents double-application and ELO drift between pages.
+    if(!decayAlreadyApplied){
+      // Safety: if user has never visited Arena (no decay cursor) and is badly overdue,
+      // Arena will handle it on their next visit. Aura just updates history here.
+    }
+
+    if(Object.keys(updates).length>0){ save(updates); if(setUserData) setUserData(d=>({...d,...updates})) }
   },[user?.uid])
 
   // Handle cover photo upload

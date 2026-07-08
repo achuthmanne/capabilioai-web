@@ -2329,9 +2329,257 @@ function UpgradeModal({ planId, user, userData, onSuccess, onClose }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ARENA LANDING — two path cards
+// STREAM DETECTION — maps career_track_slug → student stream key
+//
+// Returns one of:
+//   "ECE" | "EEE" | "Mechanical" | "Civil" | "Pharmacy" | "MBA" | "IoT"
+//   "AI_DS" | "AI_ML"
+//   null  →  IT / CSE / MCA students use the default coding (DSA) path
 // ─────────────────────────────────────────────────────────────────────────────
+function detectStudentStream(userData) {
+  const slug = (userData?.career_track_slug || "").toLowerCase().trim()
+  if (!slug) return null
+
+  // ── Engineering streams ──────────────────────────────────────────────────
+  if (slug === "ece" || slug.startsWith("ece-") || slug.includes("electronics-communication"))
+    return "ECE"
+  if (slug === "eee" || slug.startsWith("eee-") ||
+      (slug.includes("electrical") && slug.includes("electronic")))
+    return "EEE"
+  if (slug === "mechanical" || slug.startsWith("mechanical-") ||
+      slug === "mech" || slug.startsWith("mech-"))
+    return "Mechanical"
+  if (slug === "civil" || slug.startsWith("civil-"))
+    return "Civil"
+  if (slug === "pharmacy" || slug.startsWith("pharmacy-") || slug.startsWith("pharm-"))
+    return "Pharmacy"
+  if (slug === "mba" || slug.startsWith("mba-") ||
+      slug.includes("business-administration"))
+    return "MBA"
+  if (slug === "iot" || slug.startsWith("iot-") ||
+      slug.includes("internet-of-things"))
+    return "IoT"
+
+  // ── AI / Data Science streams ────────────────────────────────────────────
+  if (slug === "ai-ds" || slug === "aids" || slug === "ai_ds" ||
+      slug.startsWith("artificial-intelligence-data") ||
+      slug.includes("data-science") || slug.startsWith("ai-ds-"))
+    return "AI_DS"
+  if (slug === "ai-ml" || slug === "aiml" || slug === "ai_ml" ||
+      slug.startsWith("artificial-intelligence-machine") ||
+      slug.includes("machine-learning") || slug.startsWith("ai-ml-"))
+    return "AI_ML"
+
+  // ── DevOps / Cloud / SRE streams ─────────────────────────────────────────
+  if (slug === "devops" || slug.startsWith("devops-") ||
+      slug.includes("site-reliability") || slug === "sre" ||
+      slug.includes("cloud-engineer") || slug === "cloud" ||
+      slug.startsWith("cloud-") || slug.includes("platform-engineer"))
+    return "DevOps"
+
+  // ── CSE / IT / MCA — all share the default coding path (return null) ─────
+  // Explicitly matching so future additions don't accidentally fall through
+  return null
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
+// STREAM CARD CONFIG
+// Drives both the COMMON CHALLENGES and YOUR ROLE cards for non-IT students.
+// Each stream has:
+//   common → what appears on the right "COMMON CHALLENGES" card
+//   role   → what appears on the left "YOUR ROLE" card
+// ─────────────────────────────────────────────────────────────────────────────
+const STREAM_CARD_CONFIG = {
+  ECE: {
+    common: {
+      icon: "📡", label: "ECE Fundamentals",
+      color: "#0891B2", colorBg: "rgba(8,145,178,0.1)", colorBorder: "rgba(8,145,178,0.2)",
+      desc: "Circuit analysis, analog & digital electronics, signals, communication systems. Short challenges that build your engineering foundation.",
+      tags: ["⚡ Circuit Analysis", "📟 Digital Systems", "📡 Communication", "🔧 Microcontrollers", "📊 Signals & Systems"],
+      cta: "Start Practising", count: "400+ problems",
+      categories: ["ECE", "Aptitude", "Logical"],
+    },
+    role: {
+      icon: "🔌", label: "ECE Domain Practice",
+      color: "#0891B2", colorBg: "rgba(8,145,178,0.1)", colorBorder: "rgba(8,145,178,0.2)",
+      desc: "RC filters, op-amp circuits, Shannon capacity, antenna sizing, PCB design. Problems your employer will actually test you on.",
+      tags: ["🔌 Circuit Design", "📡 RF & Comm", "🔧 Embedded", "💻 VLSI", "📊 Signal Processing"],
+      cta: "Open ECE Challenges →", count: null,
+      categories: ["ECE"],
+    },
+  },
+  EEE: {
+    common: {
+      icon: "⚡", label: "EEE Fundamentals",
+      color: "#D97706", colorBg: "rgba(217,119,6,0.1)", colorBorder: "rgba(217,119,6,0.2)",
+      desc: "AC/DC circuits, power factor, transformer theory, motor speed & slip, voltage regulation. Build your electrical engineering foundation.",
+      tags: ["⚡ Power Systems", "🔌 Transformers", "🏭 Induction Motors", "🔧 Protection", "📊 AC/DC"],
+      cta: "Start Practising", count: "200+ problems",
+      categories: ["EEE", "Aptitude", "Logical"],
+    },
+    role: {
+      icon: "⚡", label: "EEE Domain Practice",
+      color: "#D97706", colorBg: "rgba(217,119,6,0.1)", colorBorder: "rgba(217,119,6,0.2)",
+      desc: "Transformer turns ratio, synchronous speed, 3-phase power factor, cable voltage drop. Real-world power systems problems.",
+      tags: ["⚡ Power Engineering", "🏭 Electrical Machines", "🔧 Control Systems", "📊 Load Flow", "🛡️ Protection"],
+      cta: "Open EEE Challenges →", count: null,
+      categories: ["EEE"],
+    },
+  },
+  Mechanical: {
+    common: {
+      icon: "⚙️", label: "Mechanical Fundamentals",
+      color: "#374151", colorBg: "rgba(55,65,81,0.1)", colorBorder: "rgba(55,65,81,0.2)",
+      desc: "Stress analysis, Young's modulus, thermodynamics, fluid mechanics, gear trains. Build your mechanical engineering foundation.",
+      tags: ["⚙️ Stress & Strain", "🔥 Thermodynamics", "💧 Fluid Mechanics", "🔩 Machine Design", "🏭 Manufacturing"],
+      cta: "Start Practising", count: "200+ problems",
+      categories: ["Mechanical", "Aptitude", "Logical"],
+    },
+    role: {
+      icon: "⚙️", label: "Mechanical Domain Practice",
+      color: "#374151", colorBg: "rgba(55,65,81,0.1)", colorBorder: "rgba(55,65,81,0.2)",
+      desc: "FoS calculations, Carnot efficiency, welding heat input, beam bending, shaft power. Engineering workshop–level problems.",
+      tags: ["⚙️ CAD / FEA", "🔩 Design for Mfg.", "🔥 Heat Transfer", "💧 Fluid Power", "🏭 CNC & Welding"],
+      cta: "Open Mechanical Challenges →", count: null,
+      categories: ["Mechanical"],
+    },
+  },
+  Civil: {
+    common: {
+      icon: "🏗️", label: "Civil Engineering Fundamentals",
+      color: "#92400E", colorBg: "rgba(146,64,14,0.1)", colorBorder: "rgba(146,64,14,0.2)",
+      desc: "Structural analysis, Manning's equation, population projection, bearing capacity, water design. Build your civil engineering foundation.",
+      tags: ["🏗️ Structural", "💧 Hydraulics", "🛣️ Transportation", "🏔️ Geotechnical", "🏢 RCC Design"],
+      cta: "Start Practising", count: "200+ problems",
+      categories: ["Civil", "Aptitude", "Logical"],
+    },
+    role: {
+      icon: "🏗️", label: "Civil Domain Practice",
+      color: "#92400E", colorBg: "rgba(146,64,14,0.1)", colorBorder: "rgba(146,64,14,0.2)",
+      desc: "Bending moments, Euler buckling, pile capacity, stopping sight distance, Manning's discharge. Site-office engineering problems.",
+      tags: ["🏗️ Structural Design", "💧 Hydraulic Systems", "🛣️ Highway Design", "🏔️ Foundation Eng.", "📐 Survey"],
+      cta: "Open Civil Challenges →", count: null,
+      categories: ["Civil"],
+    },
+  },
+  Pharmacy: {
+    common: {
+      icon: "💊", label: "Pharmacy Fundamentals",
+      color: "#059669", colorBg: "rgba(5,150,105,0.1)", colorBorder: "rgba(5,150,105,0.2)",
+      desc: "Drug calculations, pharmacokinetics, bioavailability, clinical formulations. Build your pharmaceutical sciences foundation.",
+      tags: ["💊 Drug Calculations", "⚗️ Pharmacokinetics", "🧪 Formulation", "🏥 Clinical Pharmacy", "📊 Bioavailability"],
+      cta: "Start Practising", count: "100+ problems",
+      categories: ["Pharmacy", "Aptitude", "Logical"],
+    },
+    role: {
+      icon: "💊", label: "Pharmacy Domain Practice",
+      color: "#059669", colorBg: "rgba(5,150,105,0.1)", colorBorder: "rgba(5,150,105,0.2)",
+      desc: "Dose calculations, CrCl estimation, infusion rate design, TI analysis. Clinical scenarios from real pharmacy practice.",
+      tags: ["💊 Clinical Pharmacy", "⚗️ PK/PD Modeling", "🏥 Drug Dosing", "🧬 Pharmacotherapy"],
+      cta: "Open Pharmacy Challenges →", count: null,
+      categories: ["Pharmacy"],
+    },
+  },
+  MBA: {
+    common: {
+      icon: "📊", label: "Business Fundamentals",
+      color: "#7C3AED", colorBg: "rgba(124,58,237,0.1)", colorBorder: "rgba(124,58,237,0.2)",
+      desc: "NPV, ROI, break-even analysis, CAGR, EOQ. Build your business and management foundation.",
+      tags: ["📊 Finance & Accounting", "📈 Marketing", "🏭 Operations", "🎯 Strategy", "💰 Business Analytics"],
+      cta: "Start Practising", count: "100+ problems",
+      categories: ["MBA", "Aptitude", "Logical"],
+    },
+    role: {
+      icon: "📊", label: "Business Domain Practice",
+      color: "#7C3AED", colorBg: "rgba(124,58,237,0.1)", colorBorder: "rgba(124,58,237,0.2)",
+      desc: "Financial modelling, market research, EOQ decisions, NPV analysis. Corporate-level business scenarios.",
+      tags: ["📊 Financial Analysis", "📈 Business Dev", "🏭 Supply Chain", "🎯 Strategic Planning", "💹 Valuation"],
+      cta: "Open Business Challenges →", count: null,
+      categories: ["MBA"],
+    },
+  },
+  IoT: {
+    common: {
+      icon: "🌐", label: "IoT & Embedded Fundamentals",
+      color: "#0F766E", colorBg: "rgba(15,118,110,0.1)", colorBorder: "rgba(15,118,110,0.2)",
+      desc: "ADC resolution, PWM duty cycle, RSSI-to-distance, sensor interfacing, Nyquist sampling. Build your IoT foundation.",
+      tags: ["🌐 IoT Protocols", "🔌 Embedded C", "📡 Wireless", "☁️ Cloud Integration", "🔧 Sensors"],
+      cta: "Start Practising", count: "100+ problems",
+      categories: ["IoT", "ECE", "Aptitude", "Logical"],
+    },
+    role: {
+      icon: "🌐", label: "IoT Domain Practice",
+      color: "#0F766E", colorBg: "rgba(15,118,110,0.1)", colorBorder: "rgba(15,118,110,0.2)",
+      desc: "MQTT messaging, I²C sensor integration, RTOS task design, edge ML deployment. Real IoT engineering challenges.",
+      tags: ["🌐 MQTT / CoAP", "🔌 Microcontrollers", "☁️ AWS IoT / Azure", "📡 LoRa / BLE", "🤖 Edge AI"],
+      cta: "Open IoT Challenges →", count: null,
+      categories: ["IoT", "ECE"],
+    },
+  },
+
+  // ── AI & Data Science ────────────────────────────────────────────────────
+  AI_DS: {
+    common: {
+      icon: "📊", label: "Data Science Fundamentals",
+      color: "#0369A1", colorBg: "rgba(3,105,161,0.1)", colorBorder: "rgba(3,105,161,0.2)",
+      desc: "MAE, RMSE, normalization, correlation, precision/recall, F1, Gini impurity, cosine similarity. Build your data science coding foundation.",
+      tags: ["📊 Statistics", "🐍 Pandas / NumPy", "🔍 EDA", "🤖 ML Metrics", "📈 Feature Engineering"],
+      cta: "Start Practising", count: "100+ problems",
+      categories: ["AI_DS", "Aptitude", "Logical"],
+    },
+    role: {
+      icon: "🤖", label: "Data Science Coding Practice",
+      color: "#0369A1", colorBg: "rgba(3,105,161,0.1)", colorBorder: "rgba(3,105,161,0.2)",
+      desc: "Implement ML metrics from scratch in Python — the exact problems asked in data science interviews at analytics-first companies.",
+      tags: ["📊 ML Metrics", "🐍 Python Coding", "🔍 Statistics", "📈 Model Evaluation", "🤖 Algorithms"],
+      cta: "Open DS Challenges →", count: null,
+      categories: ["AI_DS"],
+    },
+  },
+
+  // ── AI & Machine Learning ────────────────────────────────────────────────
+  AI_ML: {
+    common: {
+      icon: "🧠", label: "Machine Learning Fundamentals",
+      color: "#7C3AED", colorBg: "rgba(124,58,237,0.1)", colorBorder: "rgba(124,58,237,0.2)",
+      desc: "Sigmoid, ReLU, softmax, BCE loss, gradient descent, KNN, K-Means, logistic regression, batch normalization. Code the building blocks of ML.",
+      tags: ["🧠 Neural Networks", "⚡ Optimization", "📐 Linear Algebra", "🔗 Deep Learning", "🌲 Classical ML"],
+      cta: "Start Practising", count: "100+ problems",
+      categories: ["AI_ML", "Aptitude", "Logical"],
+    },
+    role: {
+      icon: "🧠", label: "ML Coding Practice",
+      color: "#7C3AED", colorBg: "rgba(124,58,237,0.1)", colorBorder: "rgba(124,58,237,0.2)",
+      desc: "Implement activation functions, loss functions, and training algorithms from scratch — the coding round ML companies actually test.",
+      tags: ["🧠 Deep Learning", "⚡ Gradient Descent", "📐 Linear Models", "🌲 Tree Methods", "🔗 Backprop"],
+      cta: "Open ML Challenges →", count: null,
+      categories: ["AI_ML"],
+    },
+  },
+
+  // ── DevOps / Cloud / SRE ─────────────────────────────────────────────────
+  DevOps: {
+    common: {
+      icon: "🚀", label: "DevOps & Cloud Fundamentals",
+      color: "#0F766E", colorBg: "rgba(15,118,110,0.1)", colorBorder: "rgba(15,118,110,0.2)",
+      desc: "DSA, SQL, scripting, and system design questions — the actual coding rounds DevOps and SRE interviews test you on. Build the foundation that gets you hired.",
+      tags: ["🐍 Python Scripting", "🗄️ SQL & Databases", "⚙️ Algorithms", "🌐 Networking", "🏗️ System Design"],
+      cta: "Start Practising", count: "200+ problems",
+      // DevOps students see DSA + SQL — fully relevant for scripting, automation,
+      // data pipelines. ECE/EEE/Mechanical are excluded (handled in ArenaCommonChallenges).
+      categories: null,   // null → IT/CSE path in ArenaCommonChallenges (DSA + SQL)
+    },
+    role: {
+      icon: "🛠️", label: "DevOps Domain Practice",
+      color: "#0F766E", colorBg: "rgba(15,118,110,0.1)", colorBorder: "rgba(15,118,110,0.2)",
+      desc: "CI/CD pipeline design, Kubernetes YAML, Terraform IaC, incident response, log analysis. Real-world scenarios your SRE interviews will test.",
+      tags: ["🚀 CI/CD Pipelines", "☸️ Kubernetes", "🏗️ Terraform", "📊 Observability", "🛡️ SRE Practices"],
+      cta: "Open DevOps Challenges →", count: null,
+      categories: null,   // routes to domain view (ArenaDomain) — no DB category needed
+    },
+  },
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // DOMAIN SLOTS VIEW
 // 3-slot challenge board with 24hr cooldown + smart rotation
@@ -2427,6 +2675,11 @@ function ArenaLanding({ userData, onSelect }) {
   const [hovWs, setHovWs]     = useState(null)
   const [hovCard, setHovCard] = useState(null)
   const [tick, setTick]       = useState(0)
+
+  // ── Stream detection: non-IT students get stream-aware cards ──
+  const stream       = detectStudentStream(userData)
+  const streamCfg    = stream ? STREAM_CARD_CONFIG[stream] : null
+  const isEngineering = !!streamCfg
 
   const domainChallenges = getDomainChallenges(domainKey)
   const domainCategories = getDomainCategories(domainKey)
@@ -2731,98 +2984,139 @@ function ArenaLanding({ userData, onSelect }) {
         <div style={{ marginTop: 32, animation: "fadeUp 0.5s ease 0.22s both" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 20 }}>
 
-            {/* ── Your Role card ── */}
-            <div
-              onClick={() => onSelect("domain")}
-              onMouseEnter={() => setHovMode("domain")}
-              onMouseLeave={() => setHovMode(null)}
-              style={{
-                background: hovMode === "domain"
-                  ? `linear-gradient(135deg, rgba(99,102,241,0.08), rgba(99,102,241,0.04))`
-                  : "#FFFFFF",
-                border: `1.5px solid ${hovMode === "domain" ? "rgba(99,102,241,0.45)" : "#E8E3DA"}`,
-                borderRadius: 20, padding: "28px 28px 24px", cursor: "pointer",
-                transition: "all 0.2s",
-                transform: hovMode === "domain" ? "translateY(-4px)" : "none",
-                boxShadow: hovMode === "domain"
-                  ? "0 12px 40px rgba(99,102,241,0.18)"
-                  : "0 2px 8px rgba(0,0,0,0.05)",
-                position: "relative", overflow: "hidden",
-              }}
-            >
-              {/* Background accent */}
-              <div style={{ position:"absolute", top:-40, right:-40, width:160, height:160, borderRadius:"50%", background:`radial-gradient(circle, ${domain.color||D.indigo}12, transparent 70%)`, pointerEvents:"none" }} />
-              {/* Header */}
-              <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
-                <div style={{ width: 52, height: 52, borderRadius: 14, background: domain.colorBg || "rgba(99,102,241,0.1)", border: `2px solid ${domain.colorBorder || "rgba(99,102,241,0.2)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink:0 }}>{domain.icon}</div>
-                <div>
-                  <div style={{ fontSize: 10, fontWeight: 800, color: D.indigo, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 3 }}>YOUR ROLE</div>
-                  <div style={{ fontSize: 18, fontWeight: 900, color: D.text1, lineHeight: 1.2 }}>{domain.label}</div>
-                </div>
-              </div>
-              {/* Description */}
-              <p style={{ fontSize: 13, color: D.muted, lineHeight: 1.7, margin: "0 0 16px" }}>
-                Real-world {domain.label} scenarios — practice the exact skills recruiters hire for. ELO-scored, timestamped, recruiter-visible.
-              </p>
-              {/* Skill tags */}
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
-                {domainCategories.slice(0,4).map(cat => (
-                  <span key={cat.category} style={{ fontSize: 10, fontWeight: 700, color: D.indigo, background: "rgba(99,102,241,0.1)", padding: "4px 10px", borderRadius: 99, border: "1px solid rgba(99,102,241,0.2)" }}>{cat.icon} {cat.category}</span>
-                ))}
-              </div>
-              {/* Footer CTA */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 13, fontWeight: 800, color: D.indigo, display:"flex", alignItems:"center", gap:4 }}>
-                  Open {domain.label} Challenges
-                  <span style={{ fontSize:16, transition:"transform 0.2s", display:"inline-block", transform: hovMode==="domain" ? "translateX(4px)" : "none" }}>→</span>
-                </span>
-                <span style={{ fontSize: 11, fontWeight: 700, color: D.muted, background: "#F3F4F6", padding: "3px 10px", borderRadius: 99 }}>{domainChallenges.length} challenges</span>
-              </div>
-            </div>
+            {/* ── YOUR ROLE card ── */}
+            {(() => {
+              // Non-IT: use stream domain practice config
+              const cfg    = isEngineering ? streamCfg.role : null
+              const col    = cfg ? cfg.color    : D.indigo
+              const bg     = cfg ? cfg.colorBg  : "rgba(99,102,241,0.1)"
+              const border = cfg ? cfg.colorBorder : "rgba(99,102,241,0.2)"
+              const icon   = cfg ? cfg.icon     : domain.icon
+              const label  = cfg ? cfg.label    : domain.label
+              const desc   = cfg
+                ? cfg.desc
+                : `Real-world ${domain.label} scenarios — practice the exact skills recruiters hire for. ELO-scored, timestamped, recruiter-visible.`
+              const tags   = cfg ? cfg.tags : domainCategories.slice(0,4).map(c => `${c.icon} ${c.category}`)
+              const cta    = cfg ? cfg.cta : `Open ${domain.label} Challenges`
+              const count  = cfg ? null : `${domainChallenges.length} challenges`
+              // Routing: non-IT engineering streams → common challenges filtered by domain categories
+              // DevOps (categories:null) and IT → domain workstation
+              const handleClick = () => isEngineering
+                ? (streamCfg.role.categories
+                    ? onSelect("common", { categories: streamCfg.role.categories })
+                    : onSelect("domain"))
+                : onSelect("domain")
 
-            {/* ── Common Missions card ── */}
-            <div
-              onClick={() => onSelect("common")}
-              onMouseEnter={() => setHovMode("common")}
-              onMouseLeave={() => setHovMode(null)}
-              style={{
-                background: hovMode === "common"
-                  ? "linear-gradient(135deg, rgba(139,92,246,0.08), rgba(139,92,246,0.04))"
-                  : "#FFFFFF",
-                border: `1.5px solid ${hovMode === "common" ? "rgba(139,92,246,0.45)" : "#E8E3DA"}`,
-                borderRadius: 20, padding: "28px 28px 24px", cursor: "pointer",
-                transition: "all 0.2s",
-                transform: hovMode === "common" ? "translateY(-4px)" : "none",
-                boxShadow: hovMode === "common"
-                  ? "0 12px 40px rgba(139,92,246,0.18)"
-                  : "0 2px 8px rgba(0,0,0,0.05)",
-                position: "relative", overflow: "hidden",
-              }}
-            >
-              <div style={{ position:"absolute", top:-40, right:-40, width:160, height:160, borderRadius:"50%", background:"radial-gradient(circle, rgba(139,92,246,0.1), transparent 70%)", pointerEvents:"none" }} />
-              <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
-                <div style={{ width: 52, height: 52, borderRadius: 14, background: "rgba(139,92,246,0.1)", border: "2px solid rgba(139,92,246,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink:0 }}>🧩</div>
-                <div>
-                  <div style={{ fontSize: 10, fontWeight: 800, color: D.violet, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 3 }}>COMMON MISSIONS</div>
-                  <div style={{ fontSize: 18, fontWeight: 900, color: D.text1, lineHeight: 1.2 }}>Algorithm Challenges</div>
+              return (
+                <div
+                  onClick={handleClick}
+                  onMouseEnter={() => setHovMode("domain")}
+                  onMouseLeave={() => setHovMode(null)}
+                  style={{
+                    background: hovMode === "domain"
+                      ? `linear-gradient(135deg, ${bg.replace("0.1","0.12")}, ${bg.replace("0.1","0.05")})`
+                      : "#FFFFFF",
+                    border: `1.5px solid ${hovMode === "domain" ? col + "70" : "#E8E3DA"}`,
+                    borderRadius: 20, padding: "28px 28px 24px", cursor: "pointer",
+                    transition: "all 0.2s",
+                    transform: hovMode === "domain" ? "translateY(-4px)" : "none",
+                    boxShadow: hovMode === "domain"
+                      ? `0 12px 40px ${col}28`
+                      : "0 2px 8px rgba(0,0,0,0.05)",
+                    position: "relative", overflow: "hidden",
+                  }}
+                >
+                  <div style={{ position:"absolute", top:-40, right:-40, width:160, height:160, borderRadius:"50%", background:`radial-gradient(circle, ${col}15, transparent 70%)`, pointerEvents:"none" }} />
+                  <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+                    <div style={{ width: 52, height: 52, borderRadius: 14, background: bg, border: `2px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink:0 }}>{icon}</div>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 800, color: col, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 3 }}>YOUR ROLE</div>
+                      <div style={{ fontSize: 18, fontWeight: 900, color: D.text1, lineHeight: 1.2 }}>{label}</div>
+                    </div>
+                  </div>
+                  <p style={{ fontSize: 13, color: D.muted, lineHeight: 1.7, margin: "0 0 16px" }}>{desc}</p>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
+                    {tags.slice(0,4).map(tag => (
+                      <span key={tag} style={{ fontSize: 10, fontWeight: 700, color: col, background: bg, padding: "4px 10px", borderRadius: 99, border: `1px solid ${border}` }}>{tag}</span>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: col, display:"flex", alignItems:"center", gap:4 }}>
+                      {cta}
+                      {!cfg && <span style={{ fontSize:16, transition:"transform 0.2s", display:"inline-block", transform: hovMode==="domain" ? "translateX(4px)" : "none" }}>→</span>}
+                    </span>
+                    {count && <span style={{ fontSize: 11, fontWeight: 700, color: D.muted, background: "#F3F4F6", padding: "3px 10px", borderRadius: 99 }}>{count}</span>}
+                  </div>
                 </div>
-              </div>
-              <p style={{ fontSize: 13, color: D.muted, lineHeight: 1.7, margin: "0 0 16px" }}>
-                LeetCode-style problems with a real code editor, automated test runner, and AI review. Build algorithmic muscle across any role.
-              </p>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
-                {["🧩 DSA", "🔍 Binary Search", "🌲 Trees", "📊 DP", "⚡ Greedy"].map(s => (
-                  <span key={s} style={{ fontSize: 10, fontWeight: 700, color: D.violet, background: "rgba(139,92,246,0.1)", padding: "4px 10px", borderRadius: 99, border: "1px solid rgba(139,92,246,0.2)" }}>{s}</span>
-                ))}
-              </div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 13, fontWeight: 800, color: D.violet, display:"flex", alignItems:"center", gap:4 }}>
-                  Start Coding
-                  <span style={{ fontSize:16, transition:"transform 0.2s", display:"inline-block", transform: hovMode==="common" ? "translateX(4px)" : "none" }}>→</span>
-                </span>
-                <span style={{ fontSize: 11, fontWeight: 700, color: D.muted, background: "#F3F4F6", padding: "3px 10px", borderRadius: 99 }}>200+ problems</span>
-              </div>
-            </div>
+              )
+            })()}
+
+            {/* ── COMMON CHALLENGES card ── */}
+            {(() => {
+              const cfg    = isEngineering ? streamCfg.common : null
+              const col    = cfg ? cfg.color    : D.violet
+              const bg     = cfg ? cfg.colorBg  : "rgba(139,92,246,0.1)"
+              const border = cfg ? cfg.colorBorder : "rgba(139,92,246,0.2)"
+              const icon   = cfg ? cfg.icon     : "🧩"
+              const label  = cfg ? cfg.label    : "Algorithm Challenges"
+              const desc   = cfg
+                ? cfg.desc
+                : "LeetCode-style problems with a real code editor, automated test runner, and AI review. Build algorithmic muscle across any role."
+              const tags   = cfg
+                ? cfg.tags
+                : ["🧩 DSA", "🔍 Binary Search", "🌲 Trees", "📊 DP", "⚡ Greedy"]
+              const cta    = cfg ? cfg.cta : "Start Coding"
+              const count  = cfg ? cfg.count : "200+ problems"
+              // DevOps common.categories is null → same IT/CSE path (DSA+SQL, no ECE/EEE)
+              const handleClick = () => isEngineering
+                ? (streamCfg.common.categories
+                    ? onSelect("common", { categories: streamCfg.common.categories })
+                    : onSelect("common"))
+                : onSelect("common")
+
+              return (
+                <div
+                  onClick={handleClick}
+                  onMouseEnter={() => setHovMode("common")}
+                  onMouseLeave={() => setHovMode(null)}
+                  style={{
+                    background: hovMode === "common"
+                      ? `linear-gradient(135deg, ${bg.replace("0.1","0.12")}, ${bg.replace("0.1","0.05")})`
+                      : "#FFFFFF",
+                    border: `1.5px solid ${hovMode === "common" ? col + "70" : "#E8E3DA"}`,
+                    borderRadius: 20, padding: "28px 28px 24px", cursor: "pointer",
+                    transition: "all 0.2s",
+                    transform: hovMode === "common" ? "translateY(-4px)" : "none",
+                    boxShadow: hovMode === "common"
+                      ? `0 12px 40px ${col}28`
+                      : "0 2px 8px rgba(0,0,0,0.05)",
+                    position: "relative", overflow: "hidden",
+                  }}
+                >
+                  <div style={{ position:"absolute", top:-40, right:-40, width:160, height:160, borderRadius:"50%", background:`radial-gradient(circle, ${col}15, transparent 70%)`, pointerEvents:"none" }} />
+                  <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+                    <div style={{ width: 52, height: 52, borderRadius: 14, background: bg, border: `2px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink:0 }}>{icon}</div>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 800, color: col, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 3 }}>COMMON CHALLENGES</div>
+                      <div style={{ fontSize: 18, fontWeight: 900, color: D.text1, lineHeight: 1.2 }}>{label}</div>
+                    </div>
+                  </div>
+                  <p style={{ fontSize: 13, color: D.muted, lineHeight: 1.7, margin: "0 0 16px" }}>{desc}</p>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
+                    {tags.slice(0,5).map(s => (
+                      <span key={s} style={{ fontSize: 10, fontWeight: 700, color: col, background: bg, padding: "4px 10px", borderRadius: 99, border: `1px solid ${border}` }}>{s}</span>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: col, display:"flex", alignItems:"center", gap:4 }}>
+                      {cta}
+                      <span style={{ fontSize:16, transition:"transform 0.2s", display:"inline-block", transform: hovMode==="common" ? "translateX(4px)" : "none" }}>→</span>
+                    </span>
+                    {count && <span style={{ fontSize: 11, fontWeight: 700, color: D.muted, background: "#F3F4F6", padding: "3px 10px", borderRadius: 99 }}>{count}</span>}
+                  </div>
+                </div>
+              )
+            })()}
 
           </div>
         </div>
@@ -2858,22 +3152,34 @@ function ArenaLanding({ userData, onSelect }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN ARENA COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
-export default function Arena({ user, userData }) {
+export default function Arena({ user, userData, setUserData }) {
   // arenaView: "landing" | "common" | "domain"
-  const [arenaView, setArenaView] = useState("landing")
+  const [arenaView, setArenaView]             = useState("landing")
+  // streamCategories: array of DB category strings to filter problems, or null for all
+  const [streamCategories, setStreamCategories] = useState(null)
 
   useEffect(() => {
     const saved = sessionStorage.getItem("capabilio_arena_view")
-    if (saved === "common" || saved === "domain") setArenaView(saved)
+    // Only restore domain view from session — for "common" we need to re-derive
+    // streamCategories from userData (they are never persisted to sessionStorage).
+    // Restoring "common" without its categories causes the unfiltered 1000-challenge dump.
+    if (saved === "domain") setArenaView(saved)
+    // "common" is intentionally NOT restored here — user goes through landing to
+    // re-derive their stream categories correctly on every hard reload.
   }, [])
 
-  const handleSelectView = (view) => {
+  // onSelect(view) for IT students  |  onSelect(view, { categories }) for non-IT
+  const handleSelectView = (view, opts) => {
     setArenaView(view)
     sessionStorage.setItem("capabilio_arena_view", view)
+    if (opts?.categories) {
+      setStreamCategories(opts.categories)
+    }
   }
 
   const handleBack = () => {
     setArenaView("landing")
+    setStreamCategories(null)
     sessionStorage.removeItem("capabilio_arena_view")
     sessionStorage.removeItem("capabilio_arena_domain")
   }
@@ -2883,10 +3189,17 @@ export default function Arena({ user, userData }) {
   }
 
   if (arenaView === "common") {
-    return <ArenaCommonChallenges user={user} userData={userData} onBack={handleBack} />
+    return (
+      <ArenaCommonChallenges
+        user={user}
+        userData={userData}
+        onBack={handleBack}
+        streamCategories={streamCategories}
+      />
+    )
   }
 
-  return <ArenaDomain user={user} userData={userData} onBack={handleBack} />
+  return <ArenaDomain user={user} userData={userData} setUserData={setUserData} onBack={handleBack} />
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2894,7 +3207,7 @@ export default function Arena({ user, userData }) {
 // Keeps all existing workstation / mission / history / leaderboard logic.
 // Only change: removed the DSA/Domain/Missions sub-tabs — domain challenges only.
 // ─────────────────────────────────────────────────────────────────────────────
-function ArenaDomain({ user, userData, onBack }) {
+function ArenaDomain({ user, userData, setUserData, onBack }) {
   // Domain is locked to the user's profile — no switching allowed
   // honour domain override set by ArenaLanding domain quick-switch
   const domainOverride = sessionStorage.getItem("capabilio_arena_domain")
@@ -2919,14 +3232,18 @@ function ArenaDomain({ user, userData, onBack }) {
   const timerRef                              = useRef(null)
   const [decayBanner, setDecayBanner]         = useState(null) // { penalty, daysOwed, newElo }
 
-  // ── ELO inactivity decay — -5 ELO/day after 14 consecutive inactive days ──
+  // ── ELO inactivity decay ─ -5 ELO/day after 14-day grace period ─────────
+  // Single authoritative decay engine. Writes via userDoc.update() so that:
+  //   • toSnake() maps arenaDecayAppliedAt → arena_decay_applied_at correctly
+  //   • Supabase Realtime fires and propagates the new ELO to App.jsx → all pages
+  // setUserData is called immediately for zero-latency UI update everywhere.
   useEffect(() => {
     const uid = user?.id || user?.uid
     if (!uid) return
 
     async function checkEloDecay() {
       try {
-        // 1. Last mission submission
+        // 1. Last mission submission (freshest activity signal)
         const { data: lastRow } = await supabase
           .from("arena_history")
           .select("completed_at")
@@ -2935,48 +3252,60 @@ function ArenaDomain({ user, userData, onBack }) {
           .limit(1)
           .maybeSingle()
 
-        // 2. Profile for decay cursor + created_at fallback
+        // 2. Profile — read arena_decay_applied_at (decay cursor) + elo_rating
         const { data: profile } = await supabase
           .from("profiles")
           .select("arena_decay_applied_at, created_at, elo_rating")
           .eq("id", uid)
           .maybeSingle()
 
-        // Baseline: use last submission date, or account creation if no submissions yet
+        // Baseline: last submission date, or account creation if brand-new
         const baseIso = lastRow?.completed_at || profile?.created_at || new Date().toISOString()
         const baseDay = new Date(baseIso)
         baseDay.setHours(0, 0, 0, 0)
 
         const today = new Date()
         today.setHours(0, 0, 0, 0)
+        const todayStr = today.toISOString().slice(0, 10)
 
         const daysSinceActivity = Math.floor((today - baseDay) / 86_400_000)
-        if (daysSinceActivity <= 14) return   // inside grace period — no penalty
+        if (daysSinceActivity <= 14) return   // within 14-day grace — no penalty
 
-        // Decay starts at day 15 from last activity
+        // Where did decay last stop? Default to the moment grace ended.
         const graceEnd = new Date(baseDay)
         graceEnd.setDate(graceEnd.getDate() + 14)
 
-        // Where did we last stop applying decay?
-        const lastDecayCursor = profile?.arena_decay_applied_at
-          ? new Date(profile.arena_decay_applied_at)
-          : new Date(graceEnd)
-        lastDecayCursor.setHours(0, 0, 0, 0)
+        const lastCursorRaw = profile?.arena_decay_applied_at
+        const lastCursor = lastCursorRaw ? new Date(lastCursorRaw) : new Date(graceEnd)
+        lastCursor.setHours(0, 0, 0, 0)
 
-        const daysOwed = Math.floor((today - lastDecayCursor) / 86_400_000)
-        if (daysOwed <= 0) return   // already up-to-date
+        // Guard: already applied today
+        if (lastCursor.toISOString().slice(0, 10) === todayStr) return
+
+        const daysOwed = Math.floor((today - lastCursor) / 86_400_000)
+        if (daysOwed <= 0) return
 
         const penalty    = daysOwed * 5
         const currentElo = profile?.elo_rating ?? elo
         const newElo     = Math.max(0, currentElo - penalty)
 
-        // Apply: update ELO + advance cursor to today
-        await Promise.all([
-          supabase.from("profiles").update({
-            elo_rating:               newElo,
-            arena_decay_applied_at:   today.toISOString(),
-          }).eq("id", uid),
-        ])
+        // ── Write via userDoc so toSnake() maps camelCase and Realtime fires ──
+        await userDoc.update(uid, {
+          eloRating:            newElo,
+          arenaDecayAppliedAt:  today.toISOString(),
+        })
+
+        // ── Immediately sync app-level userData so Aura/Header update without
+        //    waiting for the Realtime round-trip (~200 ms latency) ──────────
+        if (setUserData) {
+          setUserData(d => ({
+            ...d,
+            eloRating:           newElo,
+            elo_rating:          newElo,
+            arenaDecayAppliedAt: today.toISOString(),
+            eloDecayDate:        todayStr,   // prevents Aura double-applying
+          }))
+        }
 
         setElo(newElo)
         setDecayBanner({ penalty, daysOwed, newElo })

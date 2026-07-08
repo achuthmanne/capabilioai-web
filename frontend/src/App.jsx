@@ -34,6 +34,8 @@ import InstitutionOS       from "./pages/InstitutionOS"
 import RecruiterDashboard  from "./pages/RecruiterDashboard"
 import HiringPipeline      from "./pages/HiringPipeline"
 import JobPostings         from "./pages/JobPostings"
+import JoinPage            from "./pages/JoinPage"
+import CareerPicker        from "./pages/CareerPicker"
 import { PageLoader } from "./components/CapUI"
 import CopilotWidget   from "./components/CopilotWidget"
 
@@ -618,6 +620,31 @@ function App() {
     return <Portfolio username={username} />
   }
 
+  // ── Career track picker route: /career ───────────────────────
+  if (window.location.pathname === "/career") {
+    return (
+      <CareerPicker user={user} />
+    )
+  }
+
+  // ── College invite link route: /join/:code ────────────────────
+  if (window.location.pathname.startsWith("/join/")) {
+    const inviteCode = window.location.pathname.replace("/join/", "").split("/")[0]
+    return (
+      <JoinPage
+        code={inviteCode}
+        onDone={() => {
+          // Push state so the browser URL changes to / without a full reload,
+          // then let the normal app render take over (shows landing / onboarding).
+          window.history.replaceState({}, "", "/")
+          // Force a re-render by setting a dummy state (the route check above
+          // will now fail and the app falls through to the normal flow).
+          setAppStage("landing")
+        }}
+      />
+    )
+  }
+
   if (loading) return <PageLoader />
 
   // ── Not logged in ─────────────────────────────────────────────
@@ -914,7 +941,7 @@ function App() {
             userData={userData} setUserData={setUserData} />
         )}
         {currentPage === "nexus"     && <Nexus user={user} userData={userData} setUserData={setUserData} />}
-        {currentPage === "arena"     && <Arena user={user} userData={userData} onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }} onNavigatePricing={() => setCurrentPage("pricing")} />}
+        {currentPage === "arena"     && <Arena user={user} userData={userData} setUserData={setUserData} onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }} onNavigatePricing={() => setCurrentPage("pricing")} />}
         {currentPage === "pulse"     && <Pulse user={user} userData={userData} />}
         {currentPage === "authority" && <AuthorityProfile user={user} userData={{ ...userData, uid: user?.id }} setUserData={setUserData} onNavigate={setCurrentPage} />}
         {currentPage === "skillstudio" && <SkillStudio user={user} userData={userData} />}

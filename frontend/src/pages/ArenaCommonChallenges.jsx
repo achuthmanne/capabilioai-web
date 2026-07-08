@@ -975,10 +975,323 @@ function buildDetail(challenge) {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// WORKSTATION TYPE RESOLVER
+// Determines which right-panel interface to render for a given problem.
+//   "code"            → Python / JS / TS / Java code editor (default)
+//   "calculator"      → Formula-based numeric answer input (aptitude, engineering formula)
+//   "multiple_choice" → A/B/C/D selection workstation (Common Challenge Engine)
+//   "sequence"        → Drag-and-drop ordering workstation (coming soon)
+//   "sql"             → SQL editor
+// ─────────────────────────────────────────────────────────────────────────────
+function resolveWorkstationType(problem) {
+  if (!problem) return "code"
+  // Prefer explicit interaction_type column (new Universal Challenge Engine schema)
+  const it = problem.interaction_type
+  if (it === "multiple_choice") return "multiple_choice"
+  if (it === "calculator")      return "calculator"
+  if (it === "sequence")        return "sequence"
+  if (it === "diagram_click")   return "diagram_click"
+  // Legacy fallback: derive from languages array
+  const langs = (problem.languages || []).map(l => l.toLowerCase())
+  if (langs.includes("calculator")) return "calculator"
+  if (langs.includes("sql"))        return "sql"
+  return "code"
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CALCULATOR WORKSTATION
+// Shown for aptitude / engineering formula problems (languages: ["calculator"]).
+// Students enter a numeric answer; tolerance is checked client-side from test_cases.
+// ─────────────────────────────────────────────────────────────────────────────
+function CalculatorWorkstation({ challenge, isSolved, onSubmitAnswer, submitting, submitResult, testResults }) {
+  const [answer, setAnswer] = useState("")
+  const [localResult, setLocalResult] = useState(null) // {pass: bool, expected, got}
+
+  const tc = challenge?.test_cases?.[0]
+  const expected    = tc?.expected ?? tc?.expectedOutput ?? null
+  const tolerance   = tc?.tolerance ?? 0.01
+
+  const handleCheck = () => {
+    const val = parseFloat(answer)
+    if (isNaN(val)) { setLocalResult({ pass: false, msg: "Enter a valid number." }); return }
+    if (expected === null) { setLocalResult({ pass: false, msg: "No reference answer available." }); return }
+    const diff = Math.abs(val - parseFloat(expected))
+    const pass = diff <= tolerance
+    setLocalResult({ pass, expected: parseFloat(expected), got: val, diff: diff.toFixed(6) })
+  }
+
+  const handleSubmit = () => {
+    const val = parseFloat(answer)
+    if (isNaN(val)) return
+    onSubmitAnswer(answer)
+  }
+
+  const eloReward = challenge?.eloReward ?? 5
+
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "#FAF7F2", overflow: "hidden" }}>
+      {/* Formula hint banner */}
+      {challenge?.editorial && (
+        <div style={{ padding: "10px 20px", background: "#FFFBEB", borderBottom: "1px solid #FDE68A", fontSize: 12, color: "#92400E", lineHeight: 1.6 }}>
+          <span style={{ fontWeight: 700, marginRight: 6 }}>💡 Formula Hint:</span>
+          {challenge.editorial.split("```")[0]?.replace(/^##\s*Editorial\s*/i, "").trim().slice(0, 200)}
+        </div>
+      )}
+
+      {/* Answer area */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 32px", gap: 24 }}>
+        <div style={{ width: "100%", maxWidth: 480 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: T.ink2, marginBottom: 10 }}>
+            Your Answer
+          </div>
+          <input
+            type="number"
+            step="any"
+            value={answer}
+            onChange={e => { setAnswer(e.target.value); setLocalResult(null) }}
+            placeholder="Enter numeric answer (e.g. 12.5)"
+            disabled={isSolved}
+            style={{
+              width: "100%", boxSizing: "border-box",
+              padding: "14px 18px", fontSize: 22, fontFamily: "'DM Mono', monospace",
+              fontWeight: 700, border: `2px solid ${localResult ? (localResult.pass ? T.green : T.red) : T.border}`,
+              borderRadius: 10, outline: "none", background: isSolved ? "#F5F5F0" : "#fff",
+              color: T.ink, transition: "border-color 0.15s",
+            }}
+          />
+          {/* Tolerance note */}
+          <div style={{ fontSize: 11, color: T.ink4, marginTop: 6 }}>
+            Accepted within ±{tolerance} of the correct answer
+          </div>
+        </div>
+
+        {/* Result feedback */}
+        {localResult && (
+          <div style={{
+            width: "100%", maxWidth: 480, padding: "14px 18px", borderRadius: 10,
+            background: localResult.pass ? T.green2 : T.red2,
+            border: `1px solid ${localResult.pass ? "#86EFAC" : "#FCA5A5"}`,
+            fontSize: 13, lineHeight: 1.6,
+          }}>
+            {localResult.msg ? (
+              <span style={{ color: T.red, fontWeight: 600 }}>{localResult.msg}</span>
+            ) : localResult.pass ? (
+              <>
+                <div style={{ color: T.green, fontWeight: 700, marginBottom: 4 }}>✓ Correct!</div>
+                <div style={{ color: "#166534" }}>Your answer <strong>{localResult.got}</strong> matches expected <strong>{localResult.expected}</strong></div>
+              </>
+            ) : (
+              <>
+                <div style={{ color: T.red, fontWeight: 700, marginBottom: 4 }}>✗ Not quite</div>
+                <div style={{ color: "#991B1B" }}>Expected ≈ <strong>{localResult.expected}</strong> | Your answer: <strong>{localResult.got}</strong> | Difference: {localResult.diff}</div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Submit result */}
+        {submitResult && (
+          <div style={{ width: "100%", maxWidth: 480, padding: "14px 18px", borderRadius: 10, background: submitResult.correct ? T.green2 : T.red2, border: `1px solid ${submitResult.correct ? "#86EFAC" : "#FCA5A5"}`, fontSize: 13 }}>
+            {submitResult.correct
+              ? <span style={{ color: T.green, fontWeight: 700 }}>🎉 Submitted & accepted! +{eloReward} ELO awarded</span>
+              : <span style={{ color: T.red, fontWeight: 700 }}>Submission rejected. Check your calculation and try again.</span>}
+          </div>
+        )}
+      </div>
+
+      {/* Action bar */}
+      <div style={{ padding: "12px 20px", borderTop: `1px solid ${T.border}`, background: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+        <div style={{ fontSize: 11, color: T.ink3, display: "flex", alignItems: "center", gap: 10 }}>
+          {challenge.difficulty} · Numeric Answer
+          {!isSolved && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#9CDCFE", background: "rgba(156,220,254,0.1)", padding: "2px 8px", borderRadius: 99, border: "1px solid rgba(156,220,254,0.2)" }}>
+              +{eloReward} ELO ⚡
+            </span>
+          )}
+          {isSolved && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: T.green, background: T.green2, padding: "2px 8px", borderRadius: 99 }}>🔒 Solved</span>
+          )}
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={handleCheck} disabled={!answer || isSolved}
+            style={{ padding: "9px 18px", background: "#F3F4F6", border: `1px solid ${T.border}`, borderRadius: 8, color: T.ink2, fontSize: 13, fontWeight: 600, cursor: !answer || isSolved ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
+            ▷ Check Answer
+          </button>
+          {isSolved ? (
+            <button disabled style={{ padding: "9px 22px", background: "rgba(22,163,74,0.15)", border: "1px solid rgba(22,163,74,0.3)", borderRadius: 8, color: T.green, fontSize: 13, fontWeight: 700, cursor: "not-allowed", fontFamily: "inherit" }}>
+              🔒 Already Solved
+            </button>
+          ) : (
+            <button onClick={handleSubmit} disabled={submitting || !answer}
+              style={{ padding: "9px 22px", background: submitting ? "rgba(61,78,172,0.5)" : T.indigo, border: "none", borderRadius: 8, color: "#fff", fontSize: 13, fontWeight: 700, cursor: submitting || !answer ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 7, fontFamily: "inherit" }}>
+              {submitting ? "Submitting…" : "✓ Submit Answer"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MULTIPLE CHOICE WORKSTATION
+// Shown for select / predict / diagnose / compare / inspect / troubleshoot
+// challenges (interaction_type = 'multiple_choice').
+// All answer logic is client-side: correct index lives in options.correct.
+// On "Check Answer" → reveal correct/wrong highlighting + explanation.
+// On "Submit Answer" → parent persists ELO + arena_history.
+// ─────────────────────────────────────────────────────────────────────────────
+const MECHANIC_META = {
+  calculate:    { label: "🔢 Calculate",    desc: "Work out the numeric value" },
+  predict:      { label: "🔮 Predict",      desc: "Forecast the outcome" },
+  diagnose:     { label: "🩺 Diagnose",     desc: "Identify the fault or cause" },
+  interpret:    { label: "📊 Interpret",    desc: "Read and explain the data" },
+  select:       { label: "☑ Select",       desc: "Choose the best answer" },
+  complete:     { label: "✏ Complete",     desc: "Fill in the missing part" },
+  sequence:     { label: "🔢 Sequence",     desc: "Order the steps correctly" },
+  compare:      { label: "⚖ Compare",      desc: "Identify the key difference" },
+  optimise:     { label: "⚡ Optimise",     desc: "Find the most efficient approach" },
+  inspect:      { label: "🔍 Inspect",      desc: "Spot what is wrong or different" },
+  design_lite:  { label: "🎨 Design",       desc: "Choose the right design decision" },
+  troubleshoot: { label: "🔧 Troubleshoot", desc: "Fix the problem" },
+}
+
+const CHOICE_LABELS = ["A", "B", "C", "D"]
+
+function MultipleChoiceWorkstation({ challenge, isSolved, onSubmitMC, submitting, submitResult }) {
+  const [selected, setSelected]     = useState(null)    // 0–3
+  const [localResult, setLocalResult] = useState(null)  // {correct, correctIdx}
+
+  // Reset when challenge changes
+  useEffect(() => {
+    setSelected(null)
+    setLocalResult(null)
+  }, [challenge?.id])
+
+  const opts         = challenge?.options
+  const choices      = opts?.choices || []
+  const correctIdx   = opts?.correct ?? -1
+  const explanation  = challenge?.editorial || opts?.explanation || ""
+  const mechanic     = challenge?.mechanic  || "select"
+  const eloReward    = challenge?.eloReward ?? 5
+  const mechanicMeta = MECHANIC_META[mechanic] || MECHANIC_META.select
+  const alreadyChecked = localResult !== null
+
+  const choiceStyle = (idx) => {
+    const isSelected = selected === idx
+    const isCorrect  = alreadyChecked && idx === correctIdx
+    const isWrong    = alreadyChecked && isSelected && idx !== correctIdx
+    if (isCorrect)  return { bg: T.green2,  border: `2px solid ${T.green}`,  labelBg: T.green,  labelColor: "#fff", textColor: "#166534" }
+    if (isWrong)    return { bg: T.red2,    border: `2px solid ${T.red}`,    labelBg: T.red,    labelColor: "#fff", textColor: T.red    }
+    if (isSelected) return { bg: T.indigo3, border: `2px solid ${T.indigo}`, labelBg: T.indigo, labelColor: "#fff", textColor: T.ink    }
+    return           { bg: "#fff",          border: `1.5px solid ${T.border}`,labelBg: T.bg,    labelColor: T.ink3, textColor: T.ink    }
+  }
+
+  const handleSelect  = (idx) => { if (isSolved || alreadyChecked) return; setSelected(idx) }
+  const handleCheck   = () => {
+    if (selected === null) return
+    setLocalResult({ correct: selected === correctIdx, correctIdx })
+  }
+
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "#FAF7F2", overflow: "hidden" }}>
+      {/* Mechanic banner */}
+      <div style={{ padding: "10px 20px", background: "#EEF0FB", borderBottom: `1px solid ${T.indigo}22`, display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: T.indigo }}>{mechanicMeta.label}</span>
+        <span style={{ fontSize: 11, color: T.ink3 }}>{mechanicMeta.desc}</span>
+        {challenge?.track && (
+          <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 700, color: T.indigo, background: T.indigo3, padding: "2px 8px", borderRadius: 99, border: `1px solid ${T.indigo}22` }}>{challenge.track}</span>
+        )}
+      </div>
+
+      {/* Choices */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "24px 32px", display: "flex", flexDirection: "column", gap: 10 }}>
+        {choices.map((choice, idx) => {
+          const s = choiceStyle(idx)
+          const isCorrect = alreadyChecked && idx === correctIdx
+          const isWrong   = alreadyChecked && selected === idx && idx !== correctIdx
+          return (
+            <div key={idx} onClick={() => handleSelect(idx)}
+              style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "14px 18px", borderRadius: 12, background: s.bg, border: s.border, cursor: (isSolved || alreadyChecked) ? "default" : "pointer", transition: "all 0.15s", boxShadow: "0 1px 4px rgba(0,0,0,0.04)", userSelect: "none" }}>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: s.labelBg, color: s.labelColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, flexShrink: 0, fontFamily: "'DM Mono',monospace" }}>
+                {CHOICE_LABELS[idx]}
+              </div>
+              <div style={{ flex: 1, fontSize: 13, lineHeight: 1.7, paddingTop: 3, color: s.textColor }}>{choice}</div>
+              {isCorrect && <div style={{ fontSize: 18, flexShrink: 0, color: T.green }}>✓</div>}
+              {isWrong   && <div style={{ fontSize: 18, flexShrink: 0, color: T.red   }}>✗</div>}
+            </div>
+          )
+        })}
+
+        {choices.length === 0 && (
+          <div style={{ padding: "32px", textAlign: "center", color: T.ink3, fontSize: 13 }}>
+            No answer choices loaded — check the problem definition.
+          </div>
+        )}
+
+        {/* Explanation reveal (after Check) */}
+        {localResult && explanation && (
+          <div style={{ marginTop: 8, padding: "16px 18px", borderRadius: 12, background: localResult.correct ? T.green2 : T.amber2, border: `1px solid ${localResult.correct ? "#86EFAC" : "#FDE68A"}`, fontSize: 13, lineHeight: 1.7 }}>
+            <div style={{ fontWeight: 700, color: localResult.correct ? T.green : T.amber, marginBottom: 6 }}>
+              {localResult.correct ? "✓ Correct!" : `✗ The correct answer is ${CHOICE_LABELS[correctIdx]}.`}
+            </div>
+            <div style={{ color: T.ink2 }}>{explanation}</div>
+          </div>
+        )}
+
+        {/* Post-submit confirmation */}
+        {submitResult && (
+          <div style={{ padding: "14px 18px", borderRadius: 12, background: submitResult.correct ? T.green2 : T.red2, border: `1px solid ${submitResult.correct ? "#86EFAC" : "#FCA5A5"}`, fontSize: 13 }}>
+            {submitResult.correct
+              ? <span style={{ color: T.green, fontWeight: 700 }}>🎉 Submitted & accepted! +{eloReward} ELO awarded.</span>
+              : <span style={{ color: T.red,   fontWeight: 700 }}>Recorded — study the explanation and revisit later.</span>}
+          </div>
+        )}
+      </div>
+
+      {/* Action bar */}
+      <div style={{ padding: "12px 20px", borderTop: `1px solid ${T.border}`, background: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+        <div style={{ fontSize: 11, color: T.ink3, display: "flex", alignItems: "center", gap: 10 }}>
+          {challenge.difficulty} · Multiple Choice
+          {!isSolved && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#9CDCFE", background: "rgba(156,220,254,0.1)", padding: "2px 8px", borderRadius: 99, border: "1px solid rgba(156,220,254,0.2)" }}>
+              +{eloReward} ELO ⚡
+            </span>
+          )}
+          {isSolved && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: T.green, background: T.green2, padding: "2px 8px", borderRadius: 99 }}>🔒 Solved</span>
+          )}
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          {/* Step 1: Check Answer (client-side) */}
+          {!alreadyChecked && (
+            <button onClick={handleCheck} disabled={selected === null || isSolved}
+              style={{ padding: "9px 18px", background: "#F3F4F6", border: `1px solid ${T.border}`, borderRadius: 8, color: T.ink2, fontSize: 13, fontWeight: 600, cursor: (selected === null || isSolved) ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
+              ▷ Check Answer
+            </button>
+          )}
+          {/* Step 2: Submit (lock in + persist ELO) */}
+          {isSolved ? (
+            <button disabled style={{ padding: "9px 22px", background: "rgba(22,163,74,0.15)", border: "1px solid rgba(22,163,74,0.3)", borderRadius: 8, color: T.green, fontSize: 13, fontWeight: 700, cursor: "not-allowed", fontFamily: "inherit" }}>
+              🔒 Already Solved
+            </button>
+          ) : alreadyChecked && !submitResult ? (
+            <button onClick={() => onSubmitMC(selected, localResult.correct)} disabled={submitting}
+              style={{ padding: "9px 22px", background: submitting ? "rgba(61,78,172,0.5)" : T.indigo, border: "none", borderRadius: 8, color: "#fff", fontSize: 13, fontWeight: 700, cursor: submitting ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 7, fontFamily: "inherit" }}>
+              {submitting ? "Submitting…" : "✓ Submit Answer"}
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═════════════════════════════════════════════════════════════════════════════
-export default function ArenaCommonChallenges({ user, userData, onBack }) {
+export default function ArenaCommonChallenges({ user, userData, onBack, streamCategories }) {
   const uid = user?.id || user?.uid
 
   // ── View state ──────────────────────────────────────────────────────────────
@@ -1009,20 +1322,43 @@ export default function ArenaCommonChallenges({ user, userData, onBack }) {
   const [sortField, setSortField]             = useState("id")
   const [sortDir, setSortDir]                 = useState("asc")
 
+  // Stream-specific categories that belong to engineering/non-IT streams.
+  // These are NEVER shown to IT / CSE / MCA / DevOps students.
+  const NON_IT_STREAM_CATS = new Set([
+    "ECE", "EEE", "Mechanical", "Civil", "Pharmacy", "MBA", "IoT", "AI_DS", "AI_ML",
+  ])
+
   // ── Load challenges from problemsDb ─────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
       try {
-        const { data } = await problemsDb
+        let q = problemsDb
           .from("problems")
-          .select("id,slug,title,difficulty,category,tags,statement,constraints,examples,test_cases,editorial,languages,acceptance_rate,created_at")
-          .order("created_at", { ascending: true })
+          .select("id,slug,title,difficulty,category,source,tags,statement,constraints,examples,test_cases,editorial,languages,acceptance_rate,interaction_type,options,assets,mechanic,track,created_at")
+          // ── CRITICAL: only load arena-sourced problems (not domain workstation problems) ──
+          .eq("source", "arena")
+
+        if (streamCategories && streamCategories.length > 0) {
+          // Non-IT student (ECE/EEE/etc.): server-side filter — only their stream categories
+          q = q.in("category", streamCategories)
+        }
+        // For IT / CSE / MCA / DevOps: fetch ALL arena problems, filter client-side below.
+        // Doing this client-side avoids PostgREST NOT IN string-escaping bugs.
+
+        q = q.order("created_at", { ascending: true })
+        const { data } = await q
         if (data?.length) {
-          const mapped = data.map((c) => ({
+          // ── Client-side exclusion for IT/CSE/DevOps path ─────────────────────
+          // Only applies when streamCategories is null (no server-side filter was used).
+          const filtered = (streamCategories && streamCategories.length > 0)
+            ? data
+            : data.filter(c => !NON_IT_STREAM_CATS.has(c.category))
+
+          const mapped = filtered.map((c) => ({
             ...c,
             type:        (c.category || "dsa").toLowerCase(),
             skills:      c.tags || [],
-            topic_group: c.category || "DSA",
+            topic_group: c.track || c.category || "DSA",  // track is the finer-grained group
             description: c.statement,
             eloReward:   eloForDiff(c.difficulty),
             acceptance:  c.acceptance_rate != null
@@ -1035,7 +1371,7 @@ export default function ArenaCommonChallenges({ user, userData, onBack }) {
       setLoadingChallenges(false)
     }
     load()
-  }, [])
+  }, [streamCategories])
 
   // ── Load user's completions from arena_history (with real-time updates) ──────
   useEffect(() => {
@@ -1341,14 +1677,7 @@ export default function ArenaCommonChallenges({ user, userData, onBack }) {
     setSubmitting(false)
   }, [code, selectedChallenge, language, submitting, elo, uid, userData, attemptCounts])
 
-  // ── Challenge selection ───────────────────────────────────────────────────
-  const openChallenge = useCallback((ch) => {
-    setSelectedChallenge(ch)
-    setTestResults(null)
-    setTestError(null)
-    setSubmitResult(null)
-    setActiveDescTab("description")
-  }, [])
+  // ── Challenge selection (defined below as openChallenge; aliased in JSX) ──
 
   // ── Filtered / sorted list ────────────────────────────────────────────────
   const filteredChallenges = challenges
@@ -1376,10 +1705,114 @@ export default function ArenaCommonChallenges({ user, userData, onBack }) {
   }
   const sortIcon = (field) => sortField !== field ? " ↕" : sortDir === "asc" ? " ↑" : " ↓"
 
+  // ── Challenge selection handler (also resets code starter) ──────────────────
+  const openChallenge = useCallback((ch) => {
+    setSelectedChallenge(ch)
+    setTestResults(null)
+    setTestError(null)
+    setSubmitResult(null)
+    setActiveDescTab("description")
+    // Pre-fill starter code for code workstation
+    const wsT = resolveWorkstationType(ch)
+    if (wsT === "code") {
+      const starter = `# ${ch.title}\n\ndef ${(ch.slug || "solution").replace(/-/g, "_")}(*args):\n    # TODO: implement\n    pass\n`
+      setCode(starter)
+    }
+  }, [])
+
+  // ── Calculator submit ─────────────────────────────────────────────────────
+  const handleSubmitAnswer = useCallback(async (answerStr) => {
+    if (!selectedChallenge || submitting) return
+    setSubmitting(true)
+    const val    = parseFloat(answerStr)
+    const tc     = selectedChallenge.test_cases?.[0]
+    const exp    = parseFloat(tc?.expected ?? tc?.expectedOutput ?? NaN)
+    const tol    = tc?.tolerance ?? 0.01
+    const passed = !isNaN(exp) && Math.abs(val - exp) <= tol
+
+    const result = { correct: passed, message: passed ? "Correct!" : "Incorrect" }
+
+    if (passed && uid) {
+      try {
+        const prev     = attemptCounts[selectedChallenge.id] || 0
+        const isRetry  = completedIds.has(String(selectedChallenge.id))
+        const eloGain  = isRetry ? 0 : Math.max(1, (selectedChallenge.eloReward || 5) - prev * 2)
+        const newElo   = elo + eloGain
+        await userDoc(uid).update({ eloRating: newElo, elo_rating: newElo })
+        await arenaDb.addHistory(uid, {
+          challengeId: selectedChallenge.id,
+          challengeTitle: selectedChallenge.title,
+          domain: "common_challenge",
+          status: "accepted",
+          answer: answerStr,
+          eloChange: eloGain,
+        })
+        setAttemptCounts(prev => ({ ...prev, [selectedChallenge.id]: (prev[selectedChallenge.id] || 0) + 1 }))
+        setCompletedIds(prev => new Set([...prev, String(selectedChallenge.id)]))
+        setElo(newElo)
+      } catch (e) {
+        console.error("Persist error:", e)
+      }
+    }
+    setSubmitResult(result)
+    setSubmitting(false)
+  }, [selectedChallenge, submitting, uid, elo, attemptCounts, completedIds, userData])
+
+  // ── Multiple Choice submit ────────────────────────────────────────────────
+  const handleSubmitMC = useCallback(async (selectedIdx, isCorrect) => {
+    if (!selectedChallenge || submitting) return
+    setSubmitting(true)
+    const alreadySolved = completedIds.has(String(selectedChallenge.id))
+    const eloGain = (isCorrect && !alreadySolved)
+      ? (selectedChallenge.eloReward ?? eloForDiff(selectedChallenge.difficulty))
+      : 0
+    const newEloVal = elo + eloGain
+
+    if (uid) {
+      try {
+        await userDoc.update(uid, {
+          eloRating:       newEloVal,
+          arenaCompleted:  (userData?.arena_completed || userData?.arenaCompleted || 0) + 1,
+          arenaLastActive: new Date().toISOString(),
+        })
+        if (eloGain > 0) {
+          supabase.from("elo_events").insert({
+            user_id:    uid,
+            source:     "common_challenge",
+            domain:     selectedChallenge.category || "arena",
+            delta:      eloGain,
+            elo_before: elo,
+            elo_after:  newEloVal,
+            note:       `${selectedChallenge.title} — Multiple Choice`,
+          }).then(() => {})
+        }
+        await arenaDb.addSubmission(uid, {
+          task_id:          selectedChallenge.id || selectedChallenge.slug,
+          title:            selectedChallenge.title,
+          difficulty:       selectedChallenge.difficulty || "Medium",
+          domain:           selectedChallenge.category || "arena",
+          challenge_type:   "multiple_choice",
+          score:            isCorrect ? 100 : 0,
+          elo_delta:        eloGain,
+          summary:          isCorrect ? "Correct answer selected." : "Incorrect answer selected.",
+          scenario:         selectedChallenge.statement || "",
+          submitted_answer: CHOICE_LABELS[selectedIdx] || String(selectedIdx),
+          feedback:         selectedChallenge.editorial || selectedChallenge.options?.explanation || "",
+        })
+        setCompletedIds(prev => new Set([...prev, String(selectedChallenge.id)]))
+        setElo(newEloVal)
+      } catch (e) { console.error("Persist error:", e) }
+    }
+    setSubmitResult({ correct: isCorrect })
+    setSubmitting(false)
+  }, [selectedChallenge, submitting, uid, elo, completedIds, userData])
+
   const detail     = buildDetail(selectedChallenge)
   const languages  = ["Python","JavaScript","TypeScript","Java"]
   const isSolved   = selectedChallenge && completedIds.has(String(selectedChallenge.id))
   const attempts   = selectedChallenge ? (attemptCounts[selectedChallenge.id] || 0) : 0
+  // Determine which workstation to render for the selected challenge
+  const wsType     = resolveWorkstationType(selectedChallenge)
 
   // ══ RENDER ════════════════════════════════════════════════════════════════
   return (
@@ -1459,6 +1892,17 @@ export default function ArenaCommonChallenges({ user, userData, onBack }) {
               <div style={{ flex:1, overflowY:"auto", padding:"18px 20px" }}>
                 {activeDescTab === "description" && (
                   <>
+                    {/* SVG asset (waveform / circuit / diagram from DB) */}
+                    {selectedChallenge.assets?.svg && (
+                      <div style={{ marginBottom: 16, borderRadius: 10, overflow: "hidden", border: `1px solid ${T.border}`, background: "#1a1a1a" }}
+                        dangerouslySetInnerHTML={{ __html: selectedChallenge.assets.svg }}
+                      />
+                    )}
+                    {selectedChallenge.assets?.caption && (
+                      <div style={{ fontSize: 11, color: T.ink4, textAlign: "center", marginBottom: 16, fontStyle: "italic" }}>
+                        {selectedChallenge.assets.caption}
+                      </div>
+                    )}
                     <div style={{ fontSize:13, color:T.ink2, lineHeight:1.8, marginBottom:20, whiteSpace:"pre-wrap" }}>
                       {detail.description || selectedChallenge.description || "Solve the problem as described."}
                     </div>
@@ -1502,68 +1946,88 @@ export default function ArenaCommonChallenges({ user, userData, onBack }) {
               </div>
             </div>
 
-            {/* RIGHT — Editor + Run/Submit */}
+            {/* RIGHT — Workstation (code editor OR calculator based on problem type) */}
             <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden", minWidth:0 }}>
-              {/* Editor toolbar */}
-              <div style={{ padding:"8px 14px", borderBottom:`1px solid rgba(0,0,0,0.05)`, background:"#1E1E1E", display:"flex", alignItems:"center", gap:10, flexShrink:0 }}>
-                <select
-                  value={language}
-                  onChange={e => setLanguage(e.target.value)}
-                  style={{ background:"rgba(0,0,0,0.05)", border:"1px solid rgba(0,0,0,0.07)", borderRadius:6, color:"#D4D4D4", fontSize:12, padding:"4px 10px", cursor:"pointer", fontFamily:"'DM Mono',monospace" }}>
-                  {languages.map(l => <option key={l} value={l}>{l}</option>)}
-                </select>
-                <div style={{ flex:1 }} />
-                {isSolved && (
-                  <span style={{ fontSize:11, color:"#4EC994", fontWeight:600, padding:"3px 10px", background:"rgba(78,201,148,0.12)", borderRadius:99 }}>✓ Solved</span>
-                )}
-              </div>
 
-              {/* Code editor — takes remaining height */}
-              <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden", minHeight:0 }}>
-                <CodeEditor value={code} onChange={setCode} language={language} />
-                <TestResults results={testResults} loading={testLoading} error={testError} />
-              </div>
+              {/* ── Multiple Choice workstation (Common Challenge Engine — 70% of new challenges) ── */}
+              {wsType === "multiple_choice" && (
+                <MultipleChoiceWorkstation
+                  challenge={selectedChallenge}
+                  isSolved={isSolved}
+                  onSubmitMC={handleSubmitMC}
+                  submitting={submitting}
+                  submitResult={submitResult}
+                />
+              )}
 
-              {/* Bottom action bar */}
-              <div style={{ padding:"10px 14px", borderTop:"1px solid #E8E3DA", background:"#FAF7F2", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
-                <div style={{ fontSize:11, color:"#6B6560", display:"flex", alignItems:"center", gap:10 }}>
-                  {selectedChallenge.difficulty} · {selectedChallenge.estimated_mins || 30} min
-                  {/* ELO reward badge */}
-                  {!isSolved && (
-                    <span style={{ fontSize:11, fontWeight:700, color:"#9CDCFE", background:"rgba(156,220,254,0.1)", padding:"2px 8px", borderRadius:99, border:"1px solid rgba(156,220,254,0.2)" }}>
-                      +{selectedChallenge.eloReward ?? eloForDiff(selectedChallenge.difficulty)} ELO ⚡
-                    </span>
-                  )}
+              {/* ── Calculator workstation (aptitude / formula problems) ── */}
+              {wsType === "calculator" && (
+                <CalculatorWorkstation
+                  challenge={selectedChallenge}
+                  isSolved={isSolved}
+                  onSubmitAnswer={handleSubmitAnswer}
+                  submitting={submitting}
+                  submitResult={submitResult}
+                  testResults={testResults}
+                />
+              )}
+
+              {/* ── Code editor workstation (Python / JS / TS / Java problems) ── */}
+              {wsType === "code" && (<>
+                {/* Editor toolbar */}
+                <div style={{ padding:"8px 14px", borderBottom:`1px solid rgba(0,0,0,0.05)`, background:"#1E1E1E", display:"flex", alignItems:"center", gap:10, flexShrink:0 }}>
+                  <select
+                    value={language}
+                    onChange={e => setLanguage(e.target.value)}
+                    style={{ background:"rgba(0,0,0,0.05)", border:"1px solid rgba(0,0,0,0.07)", borderRadius:6, color:"#D4D4D4", fontSize:12, padding:"4px 10px", cursor:"pointer", fontFamily:"'DM Mono',monospace" }}>
+                    {languages.map(l => <option key={l} value={l}>{l}</option>)}
+                  </select>
+                  <div style={{ flex:1 }} />
                   {isSolved && (
-                    <span style={{ fontSize:11, fontWeight:700, color:"#4EC994", background:"rgba(78,201,148,0.1)", padding:"2px 8px", borderRadius:99 }}>
-                      🔒 Solved — no more ELO
-                    </span>
+                    <span style={{ fontSize:11, color:"#4EC994", fontWeight:600, padding:"3px 10px", background:"rgba(78,201,148,0.12)", borderRadius:99 }}>✓ Solved</span>
                   )}
                 </div>
-                <div style={{ display:"flex", gap:10 }}>
-                  <button
-                    onClick={handleRunTests}
-                    disabled={testLoading}
-                    style={{ padding:"9px 18px", background:"#F3F4F6", border:"1px solid #E8E3DA", borderRadius:8, color:"#3D3935", fontSize:13, fontWeight:600, cursor: testLoading ? "not-allowed" : "pointer", display:"flex", alignItems:"center", gap:7, fontFamily:"inherit" }}>
-                    {testLoading ? <Spinner size={13} color="#9CDCFE" /> : "▷"} Run Tests
-                  </button>
-                  {isSolved ? (
-                    /* Locked — challenge already solved, no re-submit for ELO */
-                    <button
-                      disabled
-                      style={{ padding:"9px 22px", background:"rgba(78,201,148,0.15)", border:"1px solid rgba(78,201,148,0.3)", borderRadius:8, color:"#4EC994", fontSize:13, fontWeight:700, cursor:"not-allowed", fontFamily:"inherit" }}>
-                      🔒 Already Solved
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleSubmit}
-                      disabled={submitting}
-                      style={{ padding:"9px 22px", background: submitting ? "rgba(61,78,172,0.5)" : T.indigo, border:"none", borderRadius:8, color:"#fff", fontSize:13, fontWeight:700, cursor: submitting ? "not-allowed" : "pointer", display:"flex", alignItems:"center", gap:7, fontFamily:"inherit" }}>
-                      {submitting ? <><Spinner size={13} color="#fff" /> Evaluating…</> : "✓ Submit Solution"}
-                    </button>
-                  )}
+
+                {/* Code editor */}
+                <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden", minHeight:0 }}>
+                  <CodeEditor value={code} onChange={setCode} language={language} />
+                  <TestResults results={testResults} loading={testLoading} error={testError} />
                 </div>
-              </div>
+
+                {/* Bottom action bar */}
+                <div style={{ padding:"10px 14px", borderTop:"1px solid #E8E3DA", background:"#FAF7F2", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
+                  <div style={{ fontSize:11, color:"#6B6560", display:"flex", alignItems:"center", gap:10 }}>
+                    {selectedChallenge.difficulty} · {selectedChallenge.estimated_mins || 30} min
+                    {!isSolved && (
+                      <span style={{ fontSize:11, fontWeight:700, color:"#9CDCFE", background:"rgba(156,220,254,0.1)", padding:"2px 8px", borderRadius:99, border:"1px solid rgba(156,220,254,0.2)" }}>
+                        +{selectedChallenge.eloReward ?? eloForDiff(selectedChallenge.difficulty)} ELO ⚡
+                      </span>
+                    )}
+                    {isSolved && (
+                      <span style={{ fontSize:11, fontWeight:700, color:"#4EC994", background:"rgba(78,201,148,0.1)", padding:"2px 8px", borderRadius:99 }}>
+                        🔒 Solved — no more ELO
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display:"flex", gap:10 }}>
+                    <button onClick={handleRunTests} disabled={testLoading}
+                      style={{ padding:"9px 18px", background:"#F3F4F6", border:"1px solid #E8E3DA", borderRadius:8, color:"#3D3935", fontSize:13, fontWeight:600, cursor: testLoading ? "not-allowed" : "pointer", display:"flex", alignItems:"center", gap:7, fontFamily:"inherit" }}>
+                      {testLoading ? <Spinner size={13} color="#9CDCFE" /> : "▷"} Run Tests
+                    </button>
+                    {isSolved ? (
+                      <button disabled style={{ padding:"9px 22px", background:"rgba(78,201,148,0.15)", border:"1px solid rgba(78,201,148,0.3)", borderRadius:8, color:"#4EC994", fontSize:13, fontWeight:700, cursor:"not-allowed", fontFamily:"inherit" }}>
+                        🔒 Already Solved
+                      </button>
+                    ) : (
+                      <button onClick={handleSubmit} disabled={submitting}
+                        style={{ padding:"9px 22px", background: submitting ? "rgba(61,78,172,0.5)" : T.indigo, border:"none", borderRadius:8, color:"#fff", fontSize:13, fontWeight:700, cursor: submitting ? "not-allowed" : "pointer", display:"flex", alignItems:"center", gap:7, fontFamily:"inherit" }}>
+                        {submitting ? <><Spinner size={13} color="#fff" /> Evaluating…</> : "✓ Submit Solution"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </>)}
+
             </div>
           </div>
         ) : (
@@ -1671,8 +2135,8 @@ export default function ArenaCommonChallenges({ user, userData, onBack }) {
         )
       )}
 
-      {/* ── Submit result overlay ── */}
-      {submitResult && (
+      {/* ── Submit result overlay (code workstation only — MC/calculator show inline feedback) ── */}
+      {submitResult && typeof submitResult.score === "number" && (
         <SubmitResultOverlay
           result={submitResult}
           onClose={() => { setSubmitResult(null); setTab("history"); setSelectedChallenge(null) }}
