@@ -255,9 +255,52 @@ Return JSON: {"score":${passRate !== null ? passRate : "<0-100>"},"grade":"<A+|A
   } catch (e) { console.error("[arena/review]", e.message); res.status(500).json({ error: e.message }) }
 })
 
+// ─── SQL evaluation via AI (Groq) ────────────────────────────────────────────
+// SQL test cases in Common Challenges use descriptive inputs ("Trips/Users tables
+// as described"), not actual data rows — so we can't execute them in a process.
+// Instead, ask Groq to evaluate the query's correctness against the schema.
+async function evaluateSQLWithAI(sqlQuery, testCases, challenge) {
+  const schema    = challenge.statement || challenge.description || challenge.title || ""
+  const results   = []
+
+  for (const tc of testCases) {
+    const start    = Date.now()
+    const expected = String(tc.expected_output ?? tc.expectedOutput ?? "")
+    try {
+      const raw = await groq([
+        { role: "system", content: "You are a senior SQL expert and interviewer. Evaluate SQL queries accurately. Return ONLY valid JSON, no markdown." },
+        { role: "user",   content:
+`Problem schema:\n${schema}\n\nExpected output: ${expected}\n\nSQL query submitted:\n${sqlQuery}\n\nEvaluate: Is this SQL syntactically valid and logically correct for the expected output? Check table names, join conditions, WHERE clauses, GROUP BY, ROUND/CAST, and date filters.\n\nReturn exactly: {"passed":true_or_false,"actual":"one sentence describing what this query computes","error":null_or_"specific SQL issue found"}` },
+      ], { max_tokens: 400, json: false })
+
+      const cleaned = raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)
+      const obj     = JSON.parse(cleaned)
+      results.push({
+        input:    tc.input ?? "Schema as described",
+        expected,
+        actual:   obj.actual || (obj.passed ? "Query appears correct" : "Query may be incorrect — see error"),
+        passed:   obj.passed === true,
+        runtime:  `${Date.now() - start}ms`,
+        error:    obj.error || null,
+      })
+    } catch {
+      results.push({
+        input:    tc.input ?? "Schema as described",
+        expected,
+        actual:   "AI evaluation unavailable — click Submit Solution for full review",
+        passed:   false,
+        runtime:  `${Date.now() - start}ms`,
+        error:    null,
+      })
+    }
+  }
+  return results
+}
+
 // ─── 9. Run Tests — ACTUAL code execution, zero AI tokens ────────────────────
 // Executes user code in a sandboxed child_process for each test case.
 // Compares stdout to expectedOutput. Fast, deterministic, no rate limits.
+// SQL challenges: evaluated via AI (Groq) — not Python/JS execution.
 router.post("/run-tests", async (req, res) => {
   const { code = "", language = "python", challenge = {}, testCases = [] } = req.body
 
@@ -266,6 +309,14 @@ router.post("/run-tests", async (req, res) => {
   }
   if (testCases.length === 0) {
     return res.status(400).json({ error: "No test cases provided." })
+  }
+
+  // ── SQL: route to AI evaluation instead of Python/JS execution ───────────
+  if (language.toLowerCase() === "sql") {
+    const results = await evaluateSQLWithAI(code, testCases, challenge)
+    const passed  = results.filter(r => r.passed).length
+    console.log(`[arena/run-tests] SQL "${challenge.title}" — AI eval: ${passed}/${results.length} passed`)
+    return res.json({ results })
   }
 
   const results = []
