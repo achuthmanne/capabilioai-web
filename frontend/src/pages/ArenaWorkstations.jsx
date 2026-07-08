@@ -40,8 +40,19 @@ const T = {
 // ─────────────────────────────────────────────────────────────────────────────
 // RESOLVE WORKSTATION TYPE FROM MISSION
 // ─────────────────────────────────────────────────────────────────────────────
+// Category → workstation type mapping for non-IT streams
+const ENGINEERING_CATEGORIES = new Set(["ECE","EEE","Mechanical","Civil","Pharmacy","MBA","IoT"])
+const CALCULATOR_CATEGORIES  = new Set(["Aptitude","Logical"])
+
 export function resolveWorkstationType(mission) {
   if (!mission) return "code"
+
+  // Domain-specific engineering lab workstation
+  if (ENGINEERING_CATEGORIES.has(mission.category)) return "engineering_lab"
+  // Calculator (formula answer input) for Aptitude / Logical Reasoning
+  const langs = mission.languages || mission.language_tags || []
+  if (langs.includes("calculator")) return "calculator"
+  if (CALCULATOR_CATEGORIES.has(mission.category)) return "calculator"
 
   // Explicit field wins
   const mt = (mission.missionType || "").toLowerCase()
@@ -3979,12 +3990,662 @@ function MedicalCodingWorkstation({ mission, code, onCodeChange }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ENGINEERING LAB WORKSTATION
+// A professional, domain-aware workspace for ECE, EEE, Mechanical, Civil,
+// Pharmacy, and MBA students. Each domain gets:
+//   • Themed header with domain identity
+//   • Domain-specific formula reference sheet
+//   • Professional tools panel (MATLAB, ANSYS, ETAP, STAAD, etc.)
+//   • Scratchpad for rough calculations
+//   • Answer input with domain-relevant units
+//   • Step-by-step solution reveal
+// ─────────────────────────────────────────────────────────────────────────────
+const ENGINEERING_DOMAIN_CONFIG = {
+  ECE: {
+    label: "Electronics & Communication Lab", emoji: "📡", color: "#0891B2", bgColor: "#ECFEFF",
+    tabs: ["Circuit Analysis", "Signal Processing", "Digital Systems", "Communication"],
+    units: ["Ω", "V", "A", "Hz", "kHz", "MHz", "dB", "W", "mW", "F", "H", "s", "ms", "bps"],
+    refs: [
+      { label: "Ohm's Law",           formula: "V = I × R" },
+      { label: "Power",               formula: "P = VI = I²R = V²/R" },
+      { label: "Capacitive Reactance",formula: "Xc = 1 / (2πfC)" },
+      { label: "Inductive Reactance", formula: "XL = 2πfL" },
+      { label: "RC Time Constant",    formula: "τ = R × C" },
+      { label: "Op-Amp Voltage Gain", formula: "Av = −Rf / Rin  (inverting)" },
+      { label: "Op-Amp Non-inv Gain", formula: "Av = 1 + Rf / Rin" },
+      { label: "Shannon Capacity",    formula: "C = B × log₂(1 + S/N)" },
+      { label: "Friis Path Loss",     formula: "PL(dB) = 20log(4πd/λ)" },
+      { label: "Nyquist Rate",        formula: "fs ≥ 2 × fmax" },
+      { label: "AM Bandwidth",        formula: "BW = 2 × fm" },
+      { label: "Q-Factor (Resonance)",formula: "Q = f₀ / BW = (1/R)√(L/C)" },
+    ],
+    tools: ["MATLAB / Simulink", "Multisim / LTSpice", "OrCAD / KiCad", "Proteus", "Verilog / VHDL", "MATLAB Signal Toolbox"],
+    workEnv: "PCB Design · Circuit Simulation · Signal Processing · Embedded Systems · Satellite Communication · Antenna Design",
+  },
+  EEE: {
+    label: "Electrical Power Systems Lab", emoji: "⚡", color: "#D97706", bgColor: "#FFFBEB",
+    tabs: ["AC / DC Circuits", "Power Systems", "Motors & Transformers", "Protection & Safety"],
+    units: ["V", "kV", "A", "kA", "Ω", "W", "kW", "MW", "kVA", "kVAR", "Hz", "rpm", "%", "PF"],
+    refs: [
+      { label: "Ohm's Law (AC)",      formula: "V = I × Z,  Z = R + jX" },
+      { label: "Real Power (1-ph)",   formula: "P = V × I × cos φ" },
+      { label: "Reactive Power",      formula: "Q = V × I × sin φ  (VAR)" },
+      { label: "Apparent Power",      formula: "S = V × I = √(P² + Q²)  (VA)" },
+      { label: "Power Factor",        formula: "PF = cos φ = P / S" },
+      { label: "3-Phase Power",       formula: "P = √3 × VL × IL × cos φ" },
+      { label: "Transformer Ratio",   formula: "V1/V2 = N1/N2 = I2/I1" },
+      { label: "Transformer η",       formula: "η = Output / Input × 100%" },
+      { label: "Synchronous Speed",   formula: "Ns = 120f / P  (rpm)" },
+      { label: "Motor Slip",          formula: "s = (Ns − N) / Ns × 100%" },
+      { label: "Voltage Regulation",  formula: "VR% = (VNL − VFL)/VFL × 100" },
+      { label: "Cable Voltage Drop",  formula: "VD = I(R cosφ + X sinφ)L" },
+    ],
+    tools: ["ETAP", "MATLAB / Simulink", "AutoCAD Electrical", "PSCAD", "PSSE", "DIgSILENT PowerFactory", "SCADA / PLC (Ladder Logic)"],
+    workEnv: "Power Station Design · HV Transmission Lines · Transformer Sizing · Motor Control · PLC Programming · Smart Grid",
+  },
+  Mechanical: {
+    label: "Mechanical Engineering Workshop", emoji: "⚙️", color: "#374151", bgColor: "#F9FAFB",
+    tabs: ["Stress & Design", "Manufacturing & Welding", "Thermodynamics", "Fluid Mechanics"],
+    units: ["MPa", "GPa", "kN", "N", "mm", "m", "m/s", "kg", "kJ", "kW", "°C", "K", "rpm", "N·m", "Pa"],
+    refs: [
+      { label: "Direct Stress",       formula: "σ = F / A  (Pa or MPa)" },
+      { label: "Shear Stress",        formula: "τ = F / A  (on shear plane)" },
+      { label: "Young's Modulus",     formula: "E = σ / ε  (Steel ≈ 200 GPa)" },
+      { label: "Factor of Safety",    formula: "FoS = Ultimate Strength / Working Stress" },
+      { label: "Bending Stress",      formula: "σ = M × y / I  (beam)" },
+      { label: "Shaft Power",         formula: "P = T × ω = 2πNT / 60" },
+      { label: "Gear Ratio",          formula: "GR = N_driven / N_driver = T2 / T1" },
+      { label: "Welding Heat Input",  formula: "H = (V × I × 60) / (travel speed × 1000)  kJ/mm" },
+      { label: "Carnot Efficiency",   formula: "η_Carnot = 1 − TL / TH  (use K)" },
+      { label: "Fourier Heat Cond.", formula: "Q = k × A × ΔT / L  (W)" },
+      { label: "Reynolds Number",     formula: "Re = ρVD / μ  (<2300 laminar)" },
+      { label: "Bernoulli",           formula: "P + ½ρV² + ρgh = const" },
+    ],
+    tools: ["SolidWorks / CATIA", "AutoCAD", "ANSYS / ABAQUS", "Fusion 360", "MasterCAM (CNC)", "MATLAB", "Pro/Engineer"],
+    workEnv: "CAD/CAM Design · Stress Analysis · CNC Machining · Welding · Thermodynamic Systems · Fluid Power · GD&T",
+  },
+  Civil: {
+    label: "Civil Engineering Design Studio", emoji: "🏗️", color: "#92400E", bgColor: "#FFF7ED",
+    tabs: ["Structural Analysis", "Geotechnical", "Transportation", "Hydraulics & Water"],
+    units: ["kN", "kN/m", "kN/m²", "MPa", "N/mm²", "mm", "m", "%", "m³/s", "litres/day", "t", "kPa"],
+    refs: [
+      { label: "BM — UDL Simply Supported", formula: "M_max = w L² / 8  (at mid-span)" },
+      { label: "SF — UDL",                  formula: "V_max = w L / 2  (at supports)" },
+      { label: "Deflection — UDL",          formula: "δ = 5wL⁴ / 384EI" },
+      { label: "Slenderness Ratio",         formula: "λ = L_eff / r_min" },
+      { label: "Column Euler Load",         formula: "P_cr = π²EI / L_eff²" },
+      { label: "w/c Ratio (concrete)",      formula: "w/c = Water wt / Cement wt  (lower → stronger)" },
+      { label: "Darcy's Law",              formula: "q = k × i × A  (seepage)" },
+      { label: "Manning's Equation",       formula: "V = (1/n) R^(2/3) S^(1/2)" },
+      { label: "Terzaghi Bearing Cap.",    formula: "qu = cNc + γDNq + 0.5γBNγ" },
+      { label: "SSD (Stopping Sight Dist)",formula: "SSD = vt + v²/(254f)" },
+      { label: "Population Projection",   formula: "Pt = P0(1 + r/100)^n" },
+      { label: "BOD Removal Efficiency", formula: "E% = (L0 − Lt)/L0 × 100" },
+    ],
+    tools: ["STAAD.Pro / ETABS", "AutoCAD Civil 3D", "SAP2000 / SAFE", "HEC-RAS", "PLAXIS / GeoSlope", "PTV VISSIM", "REVIT"],
+    workEnv: "RCC Structure Design · Bridge Analysis · Road & Highway Design · Water Supply · Sewage Treatment · Foundation Engineering",
+  },
+  Pharmacy: {
+    label: "Pharmaceutical Sciences Lab", emoji: "💊", color: "#059669", bgColor: "#F0FDF4",
+    tabs: ["Drug Calculations", "Pharmacokinetics", "Formulation & Compounding", "Clinical Pharmacy"],
+    units: ["mg", "mcg", "g", "mL", "L", "mg/kg", "mg/L", "mcg/mL", "units/mL", "h", "days", "%"],
+    refs: [
+      { label: "Weight-Based Dose",    formula: "Dose = patient_wt (kg) × dose/kg" },
+      { label: "Concentration",        formula: "C = mass / volume  (mg/mL)" },
+      { label: "Half-Life",            formula: "t½ = 0.693 / Ke" },
+      { label: "Volume of Distrib.",   formula: "Vd = Dose / C₀  (L/kg)" },
+      { label: "Clearance",            formula: "CL = Ke × Vd = Dose / AUC" },
+      { label: "Infusion Rate",        formula: "Rate = dose/kg/min × wt / concentration" },
+      { label: "Creatinine Clearance", formula: "CrCl = (140−age)×wt / (72×SCr)  [×0.85 for female]" },
+      { label: "Dilution (C1V1=C2V2)", formula: "C1V1 = C2V2" },
+      { label: "% w/v Strength",       formula: "% w/v = (g/100 mL) × 100" },
+      { label: "Bioavailability (F)",  formula: "F = (AUC_oral / AUC_IV) × (D_IV / D_oral)" },
+      { label: "Therapeutic Index",    formula: "TI = TD50 / ED50" },
+      { label: "Shelf-Life (t90%)",    formula: "t90% = 0.105 / k  (first-order)" },
+    ],
+    tools: ["Excel / StatPlus", "GraphPad Prism", "Phoenix WinNonlin", "NONMEM", "Monolix", "SPSS / SAS", "R"],
+    workEnv: "Drug Dosage Calculation · Clinical Trials · Pharmacovigilance · Quality Control · Regulatory Affairs (CDSCO / FDA)",
+  },
+  MBA: {
+    label: "Business Analytics Studio", emoji: "📊", color: "#7C3AED", bgColor: "#F5F3FF",
+    tabs: ["Finance & Accounting", "Marketing & Sales", "Operations Management", "Strategy & HR"],
+    units: ["₹", "Lakhs", "Crores", "%", "days", "units", "ratio", "score", "months"],
+    refs: [
+      { label: "NPV",                  formula: "NPV = Σ[CFt/(1+r)^t] − C0" },
+      { label: "IRR",                  formula: "Rate that makes NPV = 0" },
+      { label: "Payback Period",       formula: "PP = Initial Investment / Annual CF" },
+      { label: "ROI",                  formula: "ROI% = (Net Profit / Cost) × 100" },
+      { label: "Gross Margin",         formula: "GM% = (Revenue − COGS) / Revenue × 100" },
+      { label: "Break-Even (units)",   formula: "BEP = Fixed Cost / (Price − Variable Cost)" },
+      { label: "Market Share",         formula: "MS% = Co. Sales / Total Market × 100" },
+      { label: "Inventory Turnover",   formula: "IT = COGS / Avg Inventory" },
+      { label: "Current Ratio",        formula: "CR = Current Assets / Current Liabilities" },
+      { label: "EOQ",                  formula: "EOQ = √(2DS/H)  D=demand, S=order cost, H=holding" },
+      { label: "CAGR",                 formula: "CAGR = (End/Start)^(1/n) − 1" },
+      { label: "Debt-to-Equity",       formula: "D/E = Total Debt / Shareholders' Equity" },
+    ],
+    tools: ["Excel / PowerBI", "Tableau", "SAP ERP", "Salesforce CRM", "Tally / QuickBooks", "R / Python (Pandas)", "SPSS"],
+    workEnv: "Financial Analysis · Market Research · Supply Chain · Strategic Planning · Business Development · HR Analytics",
+  },
+  IoT: {
+    label: "IoT & Embedded Systems Lab", emoji: "🌐", color: "#0F766E", bgColor: "#F0FDFA",
+    tabs: ["Embedded Systems", "Wireless Protocols", "Sensor & Actuator", "Cloud & Data"],
+    units: ["V", "mA", "μA", "Ω", "Hz", "kHz", "MHz", "ms", "μs", "dBm", "bps", "kbps"],
+    refs: [
+      { label: "ADC Resolution",       formula: "Vout = (Vin / Vref) × 2^n  (n=bits)" },
+      { label: "PWM Duty Cycle",       formula: "D% = (t_on / T_period) × 100" },
+      { label: "Timer Frequency",      formula: "f = Clock / (Prescaler × (ARR+1))" },
+      { label: "UART Baud Rate",       formula: "Baud = bits_per_second" },
+      { label: "I²C Clock Stretch",    formula: "t_SCL = 1 / f_SCL" },
+      { label: "RSSI → Distance",      formula: "d = 10^[(TxPower − RSSI)/(10×n)]" },
+      { label: "LoRa Air Time",        formula: "ToA = (payload_symbols / BW) × SF" },
+      { label: "Power Consumption",    formula: "E = I × V × t  (joules or mAh)" },
+      { label: "NTC Thermistor",       formula: "R(T) = R0 × exp[B(1/T − 1/T0)]" },
+      { label: "Sampling Theorem",     formula: "fs ≥ 2 × fmax  (Nyquist)" },
+    ],
+    tools: ["Arduino IDE", "STM32CubeIDE", "Raspberry Pi", "Node-RED", "MQTT Broker", "AWS IoT / Azure IoT", "Proteus / Fritzing"],
+    workEnv: "Microcontroller Programming · PCB Design · MQTT/CoAP Protocols · Cloud Integration · Edge Computing · Smart Sensors",
+  },
+}
+
+function EngineeringLabWorkstation({ mission, code, onCodeChange }) {
+  const config = ENGINEERING_DOMAIN_CONFIG[mission.category] || ENGINEERING_DOMAIN_CONFIG.ECE
+  const [tab,          setTab]          = useState(config.tabs[0])
+  const [answer,       setAnswer]       = useState(code || "")
+  const [unit,         setUnit]         = useState(config.units[0])
+  const [checked,      setChecked]      = useState(null)   // null | "correct" | "wrong"
+  const [scratchpad,   setScratchpad]   = useState("")
+  const [showSolution, setShowSolution] = useState(false)
+  const [showRef,      setShowRef]      = useState(true)
+  const [attempts,     setAttempts]     = useState(0)
+  const [activePanel,  setActivePanel]  = useState("solve") // "solve" | "ref" | "tools"
+
+  // Parse expected answer from test_cases
+  const expected = (() => {
+    try {
+      const tc = mission.test_cases || mission.testCases || []
+      const arr = typeof tc === "string" ? JSON.parse(tc) : tc
+      if (arr?.[0]) return String(arr[0].expected_output ?? arr[0].expected ?? "")
+    } catch { /* noop */ }
+    try {
+      const ex = mission.examples || []
+      const arr = typeof ex === "string" ? JSON.parse(ex) : ex
+      if (arr?.[0]) return String(arr[0].output ?? arr[0].expected ?? "")
+    } catch { /* noop */ }
+    return null
+  })()
+
+  const solutionText = mission.editorial || ""
+
+  const handleCheck = () => {
+    if (!answer.trim()) return
+    setAttempts(n => n + 1)
+    const userRaw = answer.trim().replace(/,/g, "").toLowerCase()
+    const expRaw  = (expected || "").trim().replace(/,/g, "").toLowerCase()
+    const uNum = parseFloat(userRaw), eNum = parseFloat(expRaw)
+    const isNum = !isNaN(uNum) && !isNaN(eNum)
+    const ok = isNum ? Math.abs(uNum - eNum) <= Math.abs(eNum) * 0.01 + 0.01 : userRaw === expRaw
+    setChecked(ok ? "correct" : "wrong")
+    onCodeChange(`Answer: ${answer.trim()} ${unit}`)
+    try {
+      registerValidator(() => [{
+        passed: ok,
+        input: "Answer check",
+        expected: expected ? `${expected} ${unit}` : "—",
+        actual: `${answer.trim()} ${unit}`,
+      }])
+    } catch { /* noop */ }
+  }
+
+  const borderCol = checked === "correct" ? "#22C55E" : checked === "wrong" ? "#EF4444" : config.color
+  const answerBg  = checked === "correct" ? "#F0FDF4"  : checked === "wrong" ? "#FFF5F5"  : "#fff"
+
+  // ── Shared input group ─────────────────────────────────────────
+  function AnswerInput() {
+    return (
+      <div style={{ background: "#fff", border: `1px solid ${T.border}`, borderRadius: 14, padding: 20 }}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: T.ink, marginBottom: 10 }}>Your Answer</div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <input
+            type="text" value={answer} placeholder="Enter computed value…"
+            onChange={e => { setAnswer(e.target.value); setChecked(null) }}
+            onKeyDown={e => e.key === "Enter" && handleCheck()}
+            style={{ flex: 1, minWidth: 140, padding: "11px 14px", fontSize: 22, fontWeight: 700,
+              fontFamily: "'DM Mono', monospace", color: T.ink, border: `2px solid ${borderCol}`,
+              borderRadius: 9, outline: "none", background: answerBg }}
+          />
+          {/* Unit picker */}
+          <select value={unit} onChange={e => setUnit(e.target.value)}
+            style={{ padding: "11px 10px", borderRadius: 9, border: `1px solid ${T.border}`,
+              fontSize: 13, fontWeight: 700, color: config.color, background: "#fff",
+              cursor: "pointer", fontFamily: "inherit" }}>
+            {config.units.map(u => <option key={u} value={u}>{u}</option>)}
+          </select>
+          <button onClick={handleCheck} disabled={!answer.trim()}
+            style={{ padding: "11px 20px", background: config.color, color: "#fff", border: "none",
+              borderRadius: 9, fontSize: 13, fontWeight: 800, cursor: answer.trim() ? "pointer" : "not-allowed",
+              opacity: answer.trim() ? 1 : 0.45, fontFamily: "inherit", whiteSpace: "nowrap" }}>
+            ✓ Check
+          </button>
+        </div>
+        {checked === "correct" && (
+          <div style={{ marginTop: 12, padding: "10px 14px", background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 9, display: "flex", gap: 10, alignItems: "center" }}>
+            <span style={{ fontSize: 18 }}>✅</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#15803D" }}>Correct!</div>
+              <div style={{ fontSize: 11, color: "#166534" }}>Click "Submit Solution" to lock in your proof record.</div>
+            </div>
+          </div>
+        )}
+        {checked === "wrong" && (
+          <div style={{ marginTop: 12, padding: "10px 14px", background: "#FFF5F5", border: "1px solid #FECACA", borderRadius: 9, display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <span style={{ fontSize: 18 }}>❌</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#DC2626" }}>Not quite — attempt #{attempts}</div>
+              <div style={{ fontSize: 11, color: "#991B1B", marginTop: 2 }}>
+                Check your formula and units. Use the scratchpad below for step-by-step working.
+                {attempts >= 2 && <> ·{" "}<button onClick={() => setShowSolution(true)} style={{ background: "none", border: "none", color: "#991B1B", fontWeight: 800, cursor: "pointer", textDecoration: "underline", fontSize: 11, padding: 0 }}>Show solution</button></>}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: T.bg }}>
+
+      {/* ── Domain header strip ───────────────────────────────── */}
+      <div style={{ background: "#fff", borderBottom: `1px solid ${T.border}`, padding: "0 14px", display: "flex", alignItems: "center", gap: 0, flexShrink: 0 }}>
+        {/* Domain identity */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 0", marginRight: 20, flexShrink: 0 }}>
+          <span style={{ fontSize: 18 }}>{config.emoji}</span>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: config.color, letterSpacing: 0.6, textTransform: "uppercase" }}>{config.label}</div>
+            <div style={{ fontSize: 10, color: T.ink4 }}>{config.workEnv.split(" · ").slice(0, 3).join(" · ")}</div>
+          </div>
+        </div>
+        {/* Domain-area sub-tabs */}
+        <div style={{ display: "flex", overflowX: "auto", gap: 0, flex: 1 }}>
+          {config.tabs.map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              style={{ padding: "0 14px", height: 48, border: "none", background: "none", fontFamily: "inherit",
+                fontSize: 11, fontWeight: tab === t ? 800 : 500, color: tab === t ? config.color : T.ink4,
+                borderBottom: tab === t ? `2.5px solid ${config.color}` : "2.5px solid transparent",
+                cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
+              {t}
+            </button>
+          ))}
+        </div>
+        {/* Panel toggle pills */}
+        <div style={{ display: "flex", gap: 5, flexShrink: 0, marginLeft: 10 }}>
+          {[["solve","✏️ Solve"],["ref","📐 Ref"],["tools","🔧 Tools"]].map(([p, label]) => (
+            <button key={p} onClick={() => setActivePanel(activePanel === p && p !== "solve" ? "solve" : p)}
+              style={{ padding: "4px 10px", borderRadius: 6, border: `1px solid ${activePanel === p ? config.color : T.border}`,
+                background: activePanel === p ? `${config.color}12` : "#fff",
+                color: activePanel === p ? config.color : T.ink4,
+                fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Body: panels ─────────────────────────────────────── */}
+      <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
+
+        {/* CENTER: Solve panel (always visible) */}
+        <div style={{ flex: 1, overflowY: "auto", padding: 18, display: "flex", flexDirection: "column", gap: 14 }}>
+
+          {/* Area context badge */}
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: config.color, letterSpacing: 0.7, textTransform: "uppercase",
+              background: `${config.color}12`, padding: "3px 10px", borderRadius: 99, border: `1px solid ${config.color}25` }}>
+              {tab}
+            </span>
+            {mission.difficulty && (
+              <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 9px", borderRadius: 99,
+                color: mission.difficulty === "Easy" ? "#16A34A" : mission.difficulty === "Medium" ? "#D97706" : "#DC2626",
+                background: mission.difficulty === "Easy" ? "#F0FDF4" : mission.difficulty === "Medium" ? "#FFFBEB" : "#FEF2F2" }}>
+                {mission.difficulty}
+              </span>
+            )}
+          </div>
+
+          {/* Answer input */}
+          <AnswerInput />
+
+          {/* Scratchpad — working area */}
+          <div style={{ background: "#fff", border: `1px solid ${T.border}`, borderRadius: 14, overflow: "hidden" }}>
+            <div style={{ padding: "9px 16px", background: "#F8F7F4", borderBottom: `1px solid ${T.border}`, display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 11 }}>📝</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: T.ink3 }}>Scratchpad — Working Area</span>
+              <span style={{ fontSize: 10, color: T.ink4, marginLeft: 4 }}>not submitted · use for rough calculations</span>
+            </div>
+            <textarea
+              value={scratchpad} onChange={e => setScratchpad(e.target.value)}
+              placeholder={`Work out your calculation step-by-step here...\n\nExample:\nStep 1: Identify given values\nStep 2: Choose formula\nStep 3: Substitute and solve\nAnswer: ___`}
+              style={{ width: "100%", minHeight: 140, border: "none", resize: "vertical", outline: "none",
+                fontFamily: "'DM Mono', monospace", fontSize: 12, color: T.ink2, lineHeight: 1.7,
+                padding: "12px 16px", boxSizing: "border-box", background: "#FAFAFA" }}
+            />
+          </div>
+
+          {/* Solution panel */}
+          <div style={{ background: "#fff", border: `1px solid ${T.border}`, borderRadius: 14, overflow: "hidden" }}>
+            <button onClick={() => setShowSolution(s => !s)}
+              style={{ width: "100%", padding: "13px 16px", display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+              <span style={{ fontSize: 13 }}>📖</span>
+              <span style={{ fontSize: 12, fontWeight: 800, color: T.ink2 }}>Step-by-Step Solution {showSolution ? "▲" : "▼"}</span>
+              {!showSolution && <span style={{ fontSize: 10, color: T.ink4, marginLeft: "auto" }}>Reveal formula walkthrough</span>}
+            </button>
+            {showSolution && (
+              <div style={{ padding: "4px 18px 18px", borderTop: `1px solid ${T.border}` }}>
+                {solutionText
+                  ? solutionText.split("\n").map((line, i) => {
+                      if (!line.trim()) return <div key={i} style={{ height: 6 }} />
+                      const clean = line.replace(/\*\*/g, "")
+                      const isHeader = line.startsWith("**Step") || line.startsWith("**Formula")
+                      const isMono   = /=|→|×|÷|√/.test(clean)
+                      return (
+                        <div key={i} style={{
+                          fontSize: isHeader ? 12 : 12.5, fontWeight: isHeader ? 800 : 400,
+                          color: isHeader ? config.color : T.ink2, lineHeight: 1.75, marginBottom: 3,
+                          fontFamily: isMono && !isHeader ? "'DM Mono', monospace" : "inherit",
+                        }}>{clean}</div>
+                      )
+                    })
+                  : <div style={{ fontSize: 12, color: T.ink4, padding: "8px 0" }}>Solution walkthrough not available for this problem.</div>}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* RIGHT: Reference / Tools panel */}
+        {activePanel !== "solve" && (
+          <div style={{ width: 290, flexShrink: 0, borderLeft: `1px solid ${T.border}`, background: "#fff", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+
+            {activePanel === "ref" && (
+              <>
+                <div style={{ padding: "12px 14px 8px", borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: config.color, letterSpacing: 0.8, textTransform: "uppercase" }}>📐 Formula Reference — {mission.category}</div>
+                </div>
+                <div style={{ padding: "10px 14px", flex: 1 }}>
+                  {config.refs.map((r, i) => (
+                    <div key={i} style={{ marginBottom: 10, padding: "8px 10px", background: `${config.color}06`, borderRadius: 8, border: `1px solid ${config.color}18` }}>
+                      <div style={{ fontSize: 10, fontWeight: 800, color: config.color, marginBottom: 3 }}>{r.label}</div>
+                      <div style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", color: T.ink2, lineHeight: 1.5 }}>{r.formula}</div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {activePanel === "tools" && (
+              <>
+                <div style={{ padding: "12px 14px 8px", borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: config.color, letterSpacing: 0.8, textTransform: "uppercase" }}>🔧 Industry Tools & Software</div>
+                </div>
+                <div style={{ padding: "12px 14px", flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+                  {config.tools.map((tool, i) => (
+                    <div key={i} style={{ padding: "9px 11px", borderRadius: 9, border: `1px solid ${T.border}`, background: "#FAFAFA", display: "flex", alignItems: "center", gap: 9 }}>
+                      <div style={{ width: 7, height: 7, borderRadius: "50%", background: config.color, flexShrink: 0 }} />
+                      <span style={{ fontSize: 12, fontWeight: 600, color: T.ink2 }}>{tool}</span>
+                    </div>
+                  ))}
+                  <div style={{ marginTop: 12, padding: "12px 12px", background: `${config.color}08`, borderRadius: 10, border: `1px solid ${config.color}20` }}>
+                    <div style={{ fontSize: 10, fontWeight: 800, color: config.color, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.6 }}>Career Work Areas</div>
+                    <div style={{ fontSize: 11, color: T.ink2, lineHeight: 1.8 }}>
+                      {config.workEnv.split(" · ").map((w, i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ color: config.color }}>▸</span> {w}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CALCULATOR WORKSTATION — for Aptitude, Logical, ECE, EEE, Mechanical,
+// Civil, Pharmacy, MBA and any domain whose primary tool is NOT a code editor.
+// Students type a numerical/text answer and get immediate formula feedback.
+// ─────────────────────────────────────────────────────────────────────────────
+function CalculatorWorkstation({ mission, code, onCodeChange }) {
+  const [answer, setAnswer]       = useState(code || "")
+  const [checked, setChecked]     = useState(null)   // null | "correct" | "wrong"
+  const [showSolution, setShowSolution] = useState(false)
+  const [attempts, setAttempts]   = useState(0)
+
+  // Derive expected answer from test_cases
+  const expected = (() => {
+    try {
+      const tc = mission.test_cases || mission.testCases || []
+      const arr = typeof tc === "string" ? JSON.parse(tc) : tc
+      if (arr && arr[0]) return String(arr[0].expected_output ?? arr[0].expected ?? "")
+    } catch { /* noop */ }
+    try {
+      const ex = mission.examples || []
+      const arr = typeof ex === "string" ? JSON.parse(ex) : ex
+      if (arr && arr[0]) return String(arr[0].output ?? arr[0].expected ?? "")
+    } catch { /* noop */ }
+    return null
+  })()
+
+  // Parse editorial into steps
+  const solutionText = mission.editorial || ""
+
+  // Category → domain label and color
+  const domainInfo = {
+    "Aptitude":   { label: "Aptitude & QA", color: "#0369A1", emoji: "🧮" },
+    "Logical":    { label: "Logical Reasoning", color: "#7C3AED", emoji: "🧩" },
+    "ECE":        { label: "Electronics & Comm", color: "#0891B2", emoji: "📡" },
+    "EEE":        { label: "Electrical Engg", color: "#D97706", emoji: "⚡" },
+    "Mechanical": { label: "Mechanical Engg", color: "#4B5563", emoji: "⚙️" },
+    "Civil":      { label: "Civil Engg", color: "#92400E", emoji: "🏗️" },
+    "Pharmacy":   { label: "Pharmaceutical", color: "#059669", emoji: "💊" },
+    "MBA":        { label: "Business / Mgmt", color: "#7C3AED", emoji: "📊" },
+  }
+  const di = domainInfo[mission.category] || { label: mission.category, color: "#475569", emoji: "🔬" }
+
+  // Extract formula hints from statement (lines containing "Formula" or "=")
+  const formulaHints = (() => {
+    const text = mission.statement || mission.description || ""
+    return text.split("\n")
+      .filter(l => /formula|=|→|step/i.test(l) && l.trim().length > 4)
+      .slice(0, 4)
+      .map(l => l.replace(/^#+\s*/, "").replace(/\*\*/g, "").trim())
+      .filter(Boolean)
+  })()
+
+  const handleCheck = () => {
+    if (!answer.trim() || !expected) return
+    setAttempts(n => n + 1)
+    const userAns = answer.trim().replace(/,/g, "").toLowerCase()
+    const exp     = expected.trim().replace(/,/g, "").toLowerCase()
+    // Numeric tolerance: ±0.05 for rounding differences
+    const uNum = parseFloat(userAns)
+    const eNum = parseFloat(exp)
+    const isNumeric = !isNaN(uNum) && !isNaN(eNum)
+    const correct = isNumeric ? Math.abs(uNum - eNum) < 0.05 : userAns === exp
+    setChecked(correct ? "correct" : "wrong")
+    // Propagate to ChallengeShell via code string (used for proof)
+    onCodeChange(`Answer: ${answer.trim()}`)
+    // Register validator result so ChallengeShell knows
+    if (typeof window !== "undefined") {
+      window.__calculatorValidation = [{ passed: correct, input: "Answer check", expected, actual: answer.trim() }]
+    }
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") { e.preventDefault(); handleCheck() }
+  }
+
+  // Register validator so ChallengeShell "Validate" button works
+  useEffect(() => {
+    try {
+      registerValidator(() => {
+        const userAns = answer.trim().replace(/,/g, "").toLowerCase()
+        const exp = (expected || "").trim().replace(/,/g, "").toLowerCase()
+        const uNum = parseFloat(userAns), eNum = parseFloat(exp)
+        const isNum = !isNaN(uNum) && !isNaN(eNum)
+        const ok = isNum ? Math.abs(uNum - eNum) < 0.05 : userAns === exp
+        return [{ passed: ok, input: "Answer matches expected", expected, actual: answer.trim() }]
+      })
+    } catch { /* workstationEngine may not expose registerValidator */ }
+    return () => {
+      try { registerValidator(null) } catch { /* noop */ }
+    }
+  }, [answer, expected]) // eslint-disable-line
+
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: T.bg }}>
+
+      {/* Domain badge strip */}
+      <div style={{ padding: "8px 16px", borderBottom: `1px solid ${T.border}`, background: "#fff", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+        <span style={{ fontSize: 16 }}>{di.emoji}</span>
+        <span style={{ fontSize: 10, fontWeight: 800, color: di.color, letterSpacing: 0.8, textTransform: "uppercase" }}>{di.label}</span>
+        {mission.difficulty && (
+          <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99,
+            color: mission.difficulty === "Easy" ? "#16A34A" : mission.difficulty === "Medium" ? "#D97706" : "#DC2626",
+            background: mission.difficulty === "Easy" ? "#F0FDF4" : mission.difficulty === "Medium" ? "#FFFBEB" : "#FEF2F2"
+          }}>{mission.difficulty}</span>
+        )}
+        <span style={{ fontSize: 11, color: T.ink4, marginLeft: "auto" }}>
+          {expected ? `Expected: numeric answer` : "Open-ended problem"}
+        </span>
+      </div>
+
+      <div style={{ flex: 1, overflowY: "auto", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+
+        {/* Formula reference card */}
+        {formulaHints.length > 0 && (
+          <div style={{ background: `${di.color}08`, border: `1px solid ${di.color}22`, borderRadius: 12, padding: "12px 16px" }}>
+            <div style={{ fontSize: 10, fontWeight: 800, color: di.color, letterSpacing: 0.7, textTransform: "uppercase", marginBottom: 8 }}>📐 Formula Reference</div>
+            {formulaHints.map((h, i) => (
+              <div key={i} style={{ fontSize: 12.5, color: T.ink2, marginBottom: 4, lineHeight: 1.5, fontFamily: "'DM Mono', monospace" }}>{h}</div>
+            ))}
+          </div>
+        )}
+
+        {/* Answer input */}
+        <div style={{ background: "#fff", border: `1px solid ${T.border}`, borderRadius: 14, padding: "20px 20px" }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: T.ink, marginBottom: 4 }}>Your Answer</div>
+          <div style={{ fontSize: 11, color: T.ink4, marginBottom: 14, lineHeight: 1.5 }}>
+            Compute the answer using the formula from the problem statement. Enter the numeric result (decimals allowed).
+          </div>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <input
+              type="text"
+              value={answer}
+              onChange={e => { setAnswer(e.target.value); setChecked(null) }}
+              onKeyDown={handleKeyDown}
+              placeholder="Enter your answer here…"
+              style={{
+                flex: 1, padding: "12px 16px", fontSize: 20, fontWeight: 700,
+                fontFamily: "'DM Mono', monospace", color: T.ink,
+                border: `2px solid ${checked === "correct" ? "#22C55E" : checked === "wrong" ? "#EF4444" : di.color}`,
+                borderRadius: 10, outline: "none", background: checked === "correct" ? "#F0FDF4" : checked === "wrong" ? "#FFF5F5" : "#fff",
+              }}
+            />
+            <button onClick={handleCheck} disabled={!answer.trim()}
+              style={{ padding: "12px 22px", background: di.color, color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: answer.trim() ? "pointer" : "not-allowed", opacity: answer.trim() ? 1 : 0.5, fontFamily: "inherit", whiteSpace: "nowrap" }}>
+              ✓ Check
+            </button>
+          </div>
+
+          {/* Immediate feedback */}
+          {checked === "correct" && (
+            <div style={{ marginTop: 12, padding: "10px 14px", background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 9, display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 18 }}>🎉</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#15803D" }}>Correct! Great work.</div>
+                <div style={{ fontSize: 11, color: "#166534", marginTop: 2 }}>Your answer matches the expected result. Click "Submit Answer" to lock in your proof.</div>
+              </div>
+            </div>
+          )}
+          {checked === "wrong" && (
+            <div style={{ marginTop: 12, padding: "10px 14px", background: "#FFF5F5", border: "1px solid #FECACA", borderRadius: 9, display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 18 }}>❌</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#DC2626" }}>Not quite. Try again.</div>
+                <div style={{ fontSize: 11, color: "#991B1B", marginTop: 2 }}>
+                  Attempt #{attempts} · Check the formula reference above and rework your calculation.
+                  {attempts >= 2 && <> · <button onClick={() => setShowSolution(true)} style={{ background: "none", border: "none", color: "#991B1B", fontWeight: 800, cursor: "pointer", textDecoration: "underline", fontSize: 11, padding: 0 }}>See step-by-step solution</button></>}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Step-by-step solution panel */}
+        <div style={{ background: "#fff", border: `1px solid ${T.border}`, borderRadius: 14, overflow: "hidden" }}>
+          <button onClick={() => setShowSolution(s => !s)}
+            style={{ width: "100%", padding: "13px 18px", display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+            <span style={{ fontSize: 14 }}>📖</span>
+            <span style={{ fontSize: 12, fontWeight: 800, color: T.ink2 }}>Step-by-Step Solution {showSolution ? "▲" : "▼"}</span>
+            {!showSolution && <span style={{ fontSize: 11, color: T.ink4, marginLeft: "auto" }}>Tap to reveal formula walkthrough</span>}
+          </button>
+          {showSolution && solutionText && (
+            <div style={{ padding: "4px 18px 18px", borderTop: `1px solid ${T.border}` }}>
+              {solutionText.split("\n").map((line, i) => {
+                if (!line.trim()) return <div key={i} style={{ height: 6 }} />
+                const isBold = line.startsWith("**")
+                const clean = line.replace(/\*\*/g, "")
+                const isExample = /example/i.test(clean)
+                return (
+                  <div key={i} style={{
+                    fontSize: isBold ? 12 : 12.5, fontWeight: isBold ? 800 : 400,
+                    color: isExample ? di.color : isBold ? T.ink : T.ink2,
+                    lineHeight: 1.7, marginBottom: 3,
+                    fontFamily: /formula|=|→|Step [0-9]/i.test(clean) ? "'DM Mono', monospace" : "inherit",
+                  }}>{clean}</div>
+                )
+              })}
+            </div>
+          )}
+          {showSolution && !solutionText && (
+            <div style={{ padding: "14px 18px", color: T.ink4, fontSize: 12 }}>
+              Solution walkthrough not available for this problem.
+            </div>
+          )}
+        </div>
+
+        {/* Tools reference for domain-specific streams */}
+        {["ECE","EEE","Mechanical","Civil"].includes(mission.category) && (
+          <div style={{ background: "#fff", border: `1px solid ${T.border}`, borderRadius: 12, padding: "14px 16px" }}>
+            <div style={{ fontSize: 10, fontWeight: 800, color: T.ink4, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>🔧 Industry Tools Used in Practice</div>
+            <div style={{ fontSize: 12, color: T.ink2, lineHeight: 1.7 }}>
+              {mission.category === "ECE"        && "📡 MATLAB / Simulink — Signal processing, filter design, system modelling\n🔌 Multisim / LTSpice — Circuit simulation\n💻 Verilog / VHDL — Digital design and FPGA programming"}
+              {mission.category === "EEE"        && "⚡ MATLAB / ETAP — Power systems analysis, load flow studies\n🔌 PLC Programming (Ladder Logic) — Industrial automation\n🔭 PSCAD — Power system transient simulation"}
+              {mission.category === "Mechanical" && "⚙️ ANSYS / ABAQUS — Finite Element Analysis (FEA), stress/thermal simulation\n🔩 SolidWorks / AutoCAD — 3D modeling and drafting\n📊 MATLAB — Dynamics, vibrations, control systems"}
+              {mission.category === "Civil"      && "🏗️ STAAD.Pro / ETABS — Structural analysis and design\n📐 AutoCAD Civil 3D — Site planning and road design\n🌊 HEC-RAS — Hydraulics and flood modeling"}
+            </div>
+          </div>
+        )}
+
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // UPDATED WORKSTATION ROUTER
 // ─────────────────────────────────────────────────────────────────────────────
 export function WorkstationRouter({ mission, domain, domainKey, moduleSandbox, code, onCodeChange, CodeEditor }) {
   const type = resolveWorkstationType(mission) || moduleSandbox || "code"
 
   switch (type) {
+    case "engineering_lab":  return <EngineeringLabWorkstation mission={mission} code={code} onCodeChange={onCodeChange} />
+    case "calculator":       return <CalculatorWorkstation   mission={mission} code={code} onCodeChange={onCodeChange} />
     case "sql":              return <SqlWorkstation          mission={mission} code={code} onCodeChange={onCodeChange} />
     case "api":              return <ApiWorkstation          mission={mission} code={code} onCodeChange={onCodeChange} />
     case "frontend":

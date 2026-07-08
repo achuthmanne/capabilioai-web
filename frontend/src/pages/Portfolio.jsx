@@ -133,7 +133,7 @@ const SKILL_SLUG = {
   "flutter":"flutter","react native":"react","android":"android","ios":"swift",
   // Other
   "regex":"regex","latex":"latex","processing":"processing","processing.js":"processing",
-  "replit":"replit","codepen":"codepen","devto":"devto","netlify":"netlify",
+  "replit":"replit","codepen":"codepen","devto":"devto",
 }
 
 // Color palettes for generated logos — 10 vibrant options

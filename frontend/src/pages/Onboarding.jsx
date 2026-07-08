@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { userDoc } from "../lib/db";
-import { PLANS, getPlansByPath, getDefaultPlanForPath } from "../config/plans"
+import { PLANS, getPlansByPath, getPlansByPathWithDiscount, getDefaultPlanForPath, getInviteContext, applyDiscount } from "../config/plans"
 import { useRazorpay } from "../hooks/useRazorpay"
 
 const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
@@ -1399,10 +1399,27 @@ export default function Onboarding({ user, onComplete, onBack }) {
     // Paid plan — go through Razorpay
     setSavingPlan(true)
     try {
+      // Check for college invite discount
+      const inviteCtx       = getInviteContext()
+      const basePlanPrice   = PLANS[planChoice]?.price ?? 0
+      const effectiveAmount = inviteCtx?.discount_pct
+        ? applyDiscount(basePlanPrice, inviteCtx.discount_pct) * 100  // Razorpay expects paise
+        : null  // null = let server compute from plan (default behaviour)
+
       const orderRes = await fetch(`${SERVER}/api/create-order`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId: planChoice, uid: user?.id }),
+        body: JSON.stringify({
+          planId:         planChoice,
+          uid:            user?.id,
+          // Pass discount context so server can verify & apply it
+          ...(inviteCtx ? {
+            invite_code_id:    inviteCtx.invite_code_id,
+            institution_id:    inviteCtx.institution_id,
+            discount_pct:      inviteCtx.discount_pct,
+            discounted_amount: effectiveAmount,
+          } : {}),
+        }),
       })
       const order = await orderRes.json()
       if (!orderRes.ok || !order.order_id) throw new Error(order.error || "Order creation failed")
@@ -1410,7 +1427,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
       setSavingPlan(false)
       openCheckout({
         planId:    planChoice,
-        amount:    order.amount,
+        amount:    order.amount,   // server is source of truth for amount
         orderId:   order.order_id,
         currency:  order.currency,
         userEmail: user?.email || "",
@@ -1420,6 +1437,8 @@ export default function Onboarding({ user, onComplete, onBack }) {
           if (user?.id && path) {
             await userDoc.update(user.id, { path }).catch(() => {})
           }
+          // Clear invite context after successful payment — one-time use
+          sessionStorage.removeItem("capabilio_invite")
           onComplete?.(path || "student")
         },
         onError:   (msg) => {
@@ -1448,13 +1467,18 @@ export default function Onboarding({ user, onComplete, onBack }) {
 
   // ══ SCREEN: PLAN SELECTION ════════════════════════════════════════
   if (step === "plan") {
-    const pathPlans  = getPlansByPath(path)
+    // Read invite context — set by JoinPage when student arrived via /join/:code
+    const inviteCtx  = getInviteContext()
+    const pathPlans  = getPlansByPathWithDiscount(path, inviteCtx)
     const defaultId  = getDefaultPlanForPath(path)
     const activePlan = planChoice ?? defaultId
     if (!planChoice) setPlanChoice(defaultId)
 
     const pathHeadings = {
-      student:      { title: "Start your career journey", sub: "Free forever — upgrade anytime as you grow." },
+      student:      {
+        title: inviteCtx ? `Welcome, ${inviteCtx.institution_label} student!` : "Start your career journey",
+        sub:   inviteCtx ? `Exclusive college pricing active — ${inviteCtx.discount_pct}% off all paid plans.` : "Free forever — upgrade anytime as you grow.",
+      },
       professional: { title: "Unlock your market value", sub: "Full Orbit intelligence. Cancel whenever you like." },
       authority:    { title: "Build your thought leadership", sub: "Signal Room, ghostwriter AI, and deep analytics." },
       institution:  { title: "You're all set.", sub: "Full access — free during the trial. No credit card required." },
@@ -1469,11 +1493,23 @@ export default function Onboarding({ user, onComplete, onBack }) {
           <div style={{ fontFamily:T.display, fontSize:22, fontWeight:800, color:T.text, letterSpacing:"-0.03em" }}>Capabilio</div>
           <div style={{ fontSize:12, color:T.hint, fontFamily:T.mono }}>Choose your plan</div>
         </nav>
+
+        {/* College discount announcement banner */}
+        {inviteCtx && path === "student" && (
+          <div style={{ background:"#ECFDF5", borderBottom:"1px solid #A7F3D0", padding:"10px 24px", textAlign:"center" }}>
+            <span style={{ fontSize:13, color:"#065F46", fontWeight:600 }}>
+              🎓 <strong>{inviteCtx.institution_label}</strong> — College pricing active &nbsp;·&nbsp; {inviteCtx.discount_pct}% off all paid plans
+            </span>
+          </div>
+        )}
+
         <div style={{ maxWidth:1080, margin:"0 auto", padding:"56px 28px 88px" }}>
           <div className="ob-fade-up" style={{ textAlign:"center", marginBottom:48 }}>
             <div style={{ display:"inline-flex", alignItems:"center", gap:10, background:T.surface, border:`1px solid ${T.border}`, borderRadius:999, padding:"8px 16px", marginBottom:20 }}>
-              <div style={{ width:7, height:7, borderRadius:"50%", background:T.primary }} />
-              <span style={{ fontSize:11, color:T.hint, fontWeight:700, letterSpacing:"0.14em", fontFamily:T.mono, textTransform:"uppercase" }}>Almost done · Pick your plan</span>
+              <div style={{ width:7, height:7, borderRadius:"50%", background:inviteCtx ? "#16A34A" : T.primary }} />
+              <span style={{ fontSize:11, color:T.hint, fontWeight:700, letterSpacing:"0.14em", fontFamily:T.mono, textTransform:"uppercase" }}>
+                {inviteCtx ? "College Invite · Pick your plan" : "Almost done · Pick your plan"}
+              </span>
             </div>
             <h1 style={{ fontFamily:T.display, fontSize:"clamp(28px,4vw,46px)", fontWeight:900, color:T.text, letterSpacing:"-0.04em", marginBottom:12, lineHeight:1.15 }}>
               {heading.title}
@@ -1483,26 +1519,49 @@ export default function Onboarding({ user, onComplete, onBack }) {
 
           <div style={{ display:"grid", gridTemplateColumns: pathPlans.length === 1 ? "minmax(280px,480px)" : `repeat(${pathPlans.length}, minmax(260px,1fr))`, gap:20, marginBottom:40, justifyContent:"center" }}>
             {pathPlans.map(p => {
-              const selected = activePlan === p.id
-              const ac = p.color
+              const selected    = activePlan === p.id
+              const ac          = p.color
+              const hasDiscount = p.college_price !== undefined && p.college_price !== p.original_price
+              const displayPrice = hasDiscount ? p.college_price : p.price
+
               return (
                 <div key={p.id} className="ob-card" onClick={() => setPlanChoice(p.id)}
                   style={{ borderRadius:20, border:`2px solid ${selected ? ac : T.border}`, background:selected?"rgba(0,0,0,0.05)":"rgba(0,0,0,0.02)", padding:"26px 22px", boxShadow:selected?`0 0 0 4px ${ac}18, 0 8px 32px rgba(17,24,39,0.09)`:"0 2px 8px rgba(17,24,39,0.05)", cursor:"pointer", position:"relative", transition:"all 0.18s" }}>
+
                   {p.badge && <div style={{ position:"absolute", top:14, right:14, background:ac, color:"#fff", fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:99, letterSpacing:0.5, textTransform:"uppercase" }}>{p.badge}</div>}
                   {selected && <div style={{ position:"absolute", top:14, left:14, width:18, height:18, borderRadius:"50%", background:ac, display:"flex", alignItems:"center", justifyContent:"center" }}><span style={{ color:"#fff", fontSize:11, fontWeight:900 }}>✓</span></div>}
+
+                  {/* College discount badge — shown per card when invite context active */}
+                  {hasDiscount && (
+                    <div style={{ display:"inline-flex", alignItems:"center", gap:5, background:"#ECFDF5", color:"#065F46", borderRadius:999, padding:"4px 10px", fontSize:11, fontWeight:700, marginBottom:10 }}>
+                      🎓 {p.discount_pct}% college discount
+                    </div>
+                  )}
+
                   <div style={{ marginBottom:16 }}>
                     <div style={{ fontSize:11, fontWeight:800, color:ac, letterSpacing:2, textTransform:"uppercase", marginBottom:6, fontFamily:T.mono }}>{p.label}</div>
+
                     {p.price === 0
                       ? <div style={{ fontSize:34, fontWeight:900, color:T.text }}>Free</div>
                       : <>
                           <div style={{ display:"flex", alignItems:"flex-end", gap:3 }}>
                             <span style={{ fontSize:13, fontWeight:700, color:T.muted, alignSelf:"flex-start", marginTop:8 }}>₹</span>
-                            <span style={{ fontSize:36, fontWeight:900, color:T.text, letterSpacing:-1 }}>{p.price.toLocaleString()}</span>
+                            <span style={{ fontSize:36, fontWeight:900, color:T.text, letterSpacing:-1 }}>{displayPrice.toLocaleString()}</span>
                             <span style={{ fontSize:12, color:T.muted, marginBottom:6 }}>/mo</span>
                           </div>
-                          {p.yearlyPrice && <div style={{ fontSize:11, color:T.muted, marginTop:2 }}>₹{p.yearlyPrice.toLocaleString()}/yr — <span style={{ color:"#16A34A", fontWeight:600 }}>{p.yearlySaving}</span></div>}
+                          {/* Strikethrough original price when discounted */}
+                          {hasDiscount && (
+                            <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:2 }}>
+                              <span style={{ fontSize:13, color:T.hint, textDecoration:"line-through" }}>₹{p.original_price.toLocaleString()}</span>
+                              <span style={{ fontSize:11, color:"#16A34A", fontWeight:700, background:"#ECFDF5", padding:"1px 7px", borderRadius:99 }}>Save ₹{(p.original_price - displayPrice).toLocaleString()}</span>
+                            </div>
+                          )}
+                          {!hasDiscount && p.yearlyPrice && (
+                            <div style={{ fontSize:11, color:T.muted, marginTop:2 }}>₹{p.yearlyPrice.toLocaleString()}/yr — <span style={{ color:"#16A34A", fontWeight:600 }}>{p.yearlySaving}</span></div>
+                          )}
                         </>}
                   </div>
+
                   <div style={{ display:"grid", gap:7 }}>
                     {p.features.map((f,i) => (
                       <div key={i} style={{ display:"flex", gap:7, alignItems:"flex-start" }}>

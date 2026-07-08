@@ -11,6 +11,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { supabase } from "../lib/supabase"
 import { createClient } from "@supabase/supabase-js"
+import { useCareerTrack } from "../hooks/useCareerTrack"
 
 // Separate read-only client for the problems database (different project)
 const problemsDb = createClient(
@@ -399,16 +400,22 @@ export default function ArenaCatalog({ user, userData, onOpenChallenge, filterCa
   const [solveStatus,    setSolveStatus]    = useState({})
   const [dataSource,     setDataSource]     = useState("loading") // "supabase" | "inline"
 
+  // Career track: filters problems to the user's stream
+  const { track: careerTrack, categories: careerCategories, loading: careerLoading } = useCareerTrack()
+
   // ── Load challenge data from `problems` table ────────────────────────────
   useEffect(() => {
+    if (careerLoading) return  // wait until we know the user's career track
     let cancelled = false
     async function load() {
       setLoading(true)
       try {
-        const { data, error } = await problemsDb
-          .from("problems")
-          .select("*")
-          .order("created_at", { ascending: false })
+        // Build query — filter by career categories if a track is selected
+        let q = problemsDb.from("problems").select("*").order("difficulty", { ascending: true })
+        if (careerCategories && careerCategories.length > 0) {
+          q = q.in("category", careerCategories)
+        }
+        const { data, error } = await q
 
         if (cancelled) return
         if (!error && data && data.length > 0) {
@@ -458,7 +465,8 @@ export default function ArenaCatalog({ user, userData, onOpenChallenge, filterCa
     }
     load()
     return () => { cancelled = true }
-  }, [])
+  // Re-fetch when the user's career track changes
+  }, [careerCategories, careerLoading])
 
   // ── Load saves ───────────────────────────────────────────────────────────
   useEffect(() => {
@@ -569,7 +577,19 @@ export default function ArenaCatalog({ user, userData, onOpenChallenge, filterCa
         )}
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 14, fontWeight: 800, color: T.ink }}>Challenge Library</div>
-          <div style={{ fontSize: 11, color: T.ink3 }}>{filtered.length} challenges · browse, filter, save</div>
+          <div style={{ fontSize: 11, color: T.ink3 }}>
+            {careerTrack ? (
+              <span>
+                {careerTrack.icon} <strong>{careerTrack.name}</strong> · {filtered.length} challenges ·{" "}
+                <a href="/career" style={{ color: T.indigo, textDecoration: "none", fontWeight: 600 }}>change track</a>
+              </span>
+            ) : (
+              <span>
+                {filtered.length} challenges ·{" "}
+                <a href="/career" style={{ color: T.indigo, textDecoration: "none", fontWeight: 600 }}>pick your career track</a>
+              </span>
+            )}
+          </div>
         </div>
         {userData?.eloRating && (
           <div style={{ padding: "4px 12px", background: T.indigo3, borderRadius: 99, fontSize: 12, fontWeight: 800, color: T.indigo, fontFamily: "'DM Mono',monospace" }}>

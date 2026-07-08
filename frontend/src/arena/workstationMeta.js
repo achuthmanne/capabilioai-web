@@ -83,6 +83,16 @@ export const WORKSTATION_META = {
     actions: { run: "▶ Recalculate", validate: "✓ Validate Cells", preview: "👁 Preview Sheet Proof", submit: "Submit Sheet" },
   },
   react: { aliasOf: "frontend" },
+  // ── Non-IT stream workstation — formula / numerical answer input ──────────
+  calculator: {
+    label: "Problem Solver", icon: "🧮", hue: "#0369A1", hideRun: true,
+    actions: { validate: "✓ Check Answer", preview: "👁 Preview Proof", submit: "Submit Answer" },
+  },
+  // ── Domain-specific engineering workstations ──────────────────────────────
+  engineering_lab: {
+    label: "Engineering Lab", icon: "🔬", hue: "#0891B2", hideRun: true,
+    actions: { validate: "✓ Check Answer", preview: "👁 Preview Proof", submit: "Submit Solution" },
+  },
 }
 
 const DEFAULT_META = {

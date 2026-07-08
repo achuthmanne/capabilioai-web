@@ -332,6 +332,38 @@ export const getDefaultPlanForPath = (path) => {
   return "free"
 }
 
+// ─── Invite-code discount helpers ─────────────────────────────────────────────
+// Rounds discounted price to clean Indian price anchors (…49, …99, …149, …199 …)
+// Formula: Math.ceil(raw / 50) * 50 - 1
+// Examples: 299 @ 50% → 149 | 599 @ 50% → 299 | 299 @ 33% → 199
+export const applyDiscount = (originalPrice, discountPct = 50) => {
+  if (!originalPrice || originalPrice === 0) return 0
+  const raw = originalPrice * (1 - discountPct / 100)
+  return Math.ceil(raw / 50) * 50 - 1
+}
+
+// Returns plan list with college_price injected when an invite context exists.
+// Use instead of getPlansByPath() on the plan selection screen for students.
+export const getPlansByPathWithDiscount = (path, inviteContext = null) => {
+  const plans = getPlansByPath(path)
+  if (!inviteContext?.discount_pct) return plans
+  return plans.map(plan => ({
+    ...plan,
+    college_price:    plan.price === 0 ? 0 : applyDiscount(plan.price, inviteContext.discount_pct),
+    original_price:   plan.price,
+    discount_pct:     inviteContext.discount_pct,
+    discount_label:   inviteContext.institution_label ?? "College Discount",
+  }))
+}
+
+// Read invite context stored by JoinPage — returns null when not from an invite link.
+export const getInviteContext = () => {
+  try {
+    const raw = sessionStorage.getItem("capabilio_invite")
+    return raw ? JSON.parse(raw) : null
+  } catch { return null }
+}
+
 // ─── Usage helpers ────────────────────────────────────────────────────────────
 export const interviewsUsedThisMonth = (userData) => {
   const cycleStart = userData?.subscriptionCycleStart ? new Date(userData.subscriptionCycleStart) : null
