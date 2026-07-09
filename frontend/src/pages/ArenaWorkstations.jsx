@@ -47,44 +47,63 @@ const CALCULATOR_CATEGORIES  = new Set(["Aptitude","Logical"])
 export function resolveWorkstationType(mission) {
   if (!mission) return "code"
 
-  // Domain-specific engineering lab workstation
+  // ── Explicit missionType/workstation field wins FIRST ──────────────────────
+  const mt = (mission.missionType || mission.mission_type || mission.workstation || "").toLowerCase()
+  if (mt) {
+    if (mt === "circuit_lab"   || mt === "circuit_sim")                       return "circuit_lab"
+    if (mt === "interactive_circuit")                                         return "interactive_circuit"
+    if (mt === "embedded_lab"  || mt === "embedded_c"  || mt === "embedded") return "embedded_lab"
+    if (mt === "diagram_workspace" || mt === "diagram" || mt === "circuit")  return "diagram_workspace"
+    if (mt === "visual_inspection" || mt === "inspection")                   return "visual_inspection"
+    if (mt === "diagnostic_console"|| mt === "diagnostic")                   return "diagnostic_console"
+    if (mt === "document_viewer"   || mt === "document" || mt === "datasheet") return "document_viewer"
+    if (mt === "sequence_builder"  || mt === "sequence" || mt === "procedure") return "sequence_builder"
+    if (mt === "engineering_lab"   || mt === "engineering")                  return "engineering_lab"
+    if (mt === "sql"         || mt === "data")                               return "sql"
+    if (mt === "api"         || mt === "http")                               return "api"
+    if (mt === "frontend"    || mt === "react"     || mt === "ui")           return "frontend"
+    if (mt === "terminal"    || mt === "bash"      || mt === "devops")       return "terminal"
+    if (mt === "notebook"    || mt === "python"    || mt === "jupyter")      return "notebook"
+    if (mt === "markdown"    || mt === "docs")                               return "markdown"
+    if (mt === "excel"       || mt === "spreadsheet")                        return "excel"
+    if (mt === "dashboard"   || mt === "powerbi"   || mt === "bi")          return "dashboard"
+    if (mt === "report"      || mt === "analysis")                           return "report"
+    if (mt === "code"        || mt === "swe")                                return "code"
+    if (mt === "system_design"|| mt === "architecture")                      return "system_design"
+    if (mt === "calculator")                                                 return "calculator"
+    if (mt === "security_console")                                           return "security_console"
+    if (mt === "soc_console")                                                return "soc_console"
+    if (mt === "sre_console")                                                return "sre_console"
+    if (mt === "qa_lab")                                                     return "qa_lab"
+    if (mt === "business_analysis")                                          return "business_analysis"
+    if (mt === "medical_coding")                                             return "medical_coding"
+  }
+
+  // ── Category-based routing ──────────────────────────────────────────────────
+  // Engineering lab workstations for non-IT streams
   if (ENGINEERING_CATEGORIES.has(mission.category)) return "engineering_lab"
-  // Calculator (formula answer input) for Aptitude / Logical Reasoning
+  // Calculator for Aptitude / Logical Reasoning
   const langs = mission.languages || mission.language_tags || []
   if (langs.includes("calculator")) return "calculator"
   if (CALCULATOR_CATEGORIES.has(mission.category)) return "calculator"
 
-  // Explicit field wins
-  const mt = (mission.missionType || "").toLowerCase()
-  if (mt) {
-    if (mt === "sql"      || mt === "data")     return "sql"
-    if (mt === "api"      || mt === "http")     return "api"
-    if (mt === "frontend" || mt === "react"
-                          || mt === "ui")       return "frontend"
-    if (mt === "terminal" || mt === "bash"
-                          || mt === "devops")   return "terminal"
-    if (mt === "notebook" || mt === "python"
-                          || mt === "jupyter")  return "notebook"
-    if (mt === "markdown" || mt === "docs")                    return "markdown"
-    if (mt === "excel"    || mt === "spreadsheet")             return "excel"
-    if (mt === "dashboard"|| mt === "powerbi" || mt === "bi") return "dashboard"
-    if (mt === "report"   || mt === "analysis")                return "report"
-    if (mt === "code"     || mt === "swe")                     return "code"
-    if (mt === "system_design" || mt === "architecture" || mt === "design") return "system_design"
-  }
-
-  // Derive from sandbox
+  // ── Derive from sandbox field ───────────────────────────────────────────────
   const sb = (mission.sandbox || "").toLowerCase()
+  if (sb === "embedded_lab"       || sb === "embedded_c") return "embedded_lab"
+  if (sb === "diagram_workspace"  || sb === "diagram")    return "diagram_workspace"
+  if (sb === "visual_inspection"  || sb === "inspection") return "visual_inspection"
+  if (sb === "diagnostic_console" || sb === "diagnostic") return "diagnostic_console"
+  if (sb === "document_viewer"    || sb === "datasheet")  return "document_viewer"
+  if (sb === "sequence_builder"   || sb === "sequence")   return "sequence_builder"
   if (sb === "sql"  || sb === "data")                return "sql"
   if (sb === "react"|| sb === "frontend")            return "frontend"
   if (sb === "terminal")                             return "terminal"
   if (sb === "notebook")                             return "notebook"
   if (sb === "markdown")                             return "markdown"
-  if (sb === "diagram" || sb === "system_design")    return "system_design"   // was wrongly "markdown"
+  if (sb === "diagram" || sb === "system_design")    return "system_design"
   if (sb === "excel"    || sb === "spreadsheet")     return "excel"
   if (sb === "dashboard"|| sb === "powerbi")         return "dashboard"
   if (sb === "report")                               return "report"
-  // Specialized consoles — pass sandbox value through directly
   if (sb === "security_console")                     return "security_console"
   if (sb === "soc_console")                          return "soc_console"
   if (sb === "sre_console")                          return "sre_console"
@@ -4886,33 +4905,2217 @@ function CalculatorWorkstation({ mission, code, onCodeChange }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 1.  EMBEDDED C LAB  — firmware code viewer + register / value validation
+//     Used for: Embedded Engineer, Firmware Engineer, FPGA Engineer domains.
+//     The C code is shown as a read-along reference / starting template.
+//     Validation is register-value answer input (not live C compilation).
+// ─────────────────────────────────────────────────────────────────────────────
+function EmbeddedLabWorkstation({ mission, code, onCodeChange }) {
+  const [answer,   setAnswer]   = useState(code || "")
+  const [checked,  setChecked]  = useState(null)   // null | "correct" | "wrong"
+  const [notes,    setNotes]    = useState("")
+  const [attempts, setAttempts] = useState(0)
+  const [showSol,  setShowSol]  = useState(false)
+  const [activeTab, setTab]     = useState("brief")  // "brief" | "code"
+
+  // Parse expected answer from test_cases
+  const parsedTC = (() => { try { const tc = mission.test_cases||mission.testCases||[]; return typeof tc==="string"?JSON.parse(tc):(Array.isArray(tc)?tc:[]) } catch { return [] } })()
+  const expected = parsedTC?.[0] ? String(parsedTC[0].expected_output ?? parsedTC[0].expected ?? "") : null
+
+  // MCQ / diagnose options
+  const diagData = (() => {
+    const tc = parsedTC[0] || {}
+    if (tc.options) return { options: tc.options, correct: tc.correct ?? 0, explanation: tc.explanation || "" }
+    if (mission.options) { try { const opts=typeof mission.options==="string"?JSON.parse(mission.options):mission.options; return { options:Array.isArray(opts)?opts:Object.values(opts), correct:tc.correct??0, explanation:"" } } catch {} }
+    return null
+  })()
+  const [selOpt, setSelOpt] = useState(null)
+
+  const starterC = mission.starterCode || mission.starter_code || ""
+  const langHint = (mission.tools||[]).join(", ") || "C / Embedded C"
+  const color    = "#0F766E"
+
+  const handleCheck = () => {
+    if (diagData) {
+      if (selOpt === null) return
+      setAttempts(n=>n+1)
+      const ok = selOpt === diagData.correct
+      setChecked(ok?"correct":"wrong")
+      onCodeChange(`Selected: ${diagData.options[selOpt]}`)
+      try { registerValidator(()=>[{passed:ok,input:"Option",expected:diagData.options[diagData.correct],actual:diagData.options[selOpt]}]) } catch {}
+      return
+    }
+    if (!answer.trim()) return
+    setAttempts(n=>n+1)
+    const uR = answer.trim().toLowerCase(), eR = (expected||"").trim().toLowerCase()
+    const uN = parseFloat(uR), eN = parseFloat(eR)
+    const ok = !isNaN(uN)&&!isNaN(eN) ? Math.abs(uN-eN) <= Math.abs(eN)*0.02+0.5 : uR===eR
+    setChecked(ok?"correct":"wrong")
+    onCodeChange(`Answer: ${answer.trim()}`)
+    try { registerValidator(()=>[{passed:ok,input:"Answer",expected:expected||"—",actual:answer.trim()}]) } catch {}
+  }
+
+  const borderCol = checked==="correct"?"#22C55E":checked==="wrong"?"#EF4444":color
+  const answerBg  = checked==="correct"?"#F0FDF4":checked==="wrong"?"#FFF5F5":"#fff"
+
+  return (
+    <div style={{flex:1,display:"flex",flexDirection:"column",background:T.bg2,overflow:"hidden",minHeight:0}}>
+
+      {/* Tab bar */}
+      <div style={{display:"flex",gap:0,background:"#0F2027",flexShrink:0}}>
+        {[["brief","📋 Task"], starterC&&["code","💻 Reference Code"]].filter(Boolean).map(([key,label])=>(
+          <button key={key} onClick={()=>setTab(key)}
+            style={{padding:"8px 18px",background:"none",border:"none",borderBottom:`2px solid ${activeTab===key?"#0F766E":"transparent"}`,color:activeTab===key?"#5EEAD4":"#94A3B8",fontSize:11,fontWeight:activeTab===key?800:400,cursor:"pointer",letterSpacing:0.5}}>
+            {label}
+          </button>
+        ))}
+        <div style={{flex:1}}/>
+        <span style={{padding:"8px 14px",fontSize:10,color:"#475569",fontFamily:"monospace"}}>{langHint}</span>
+      </div>
+
+      <div style={{flex:1,display:"flex",gap:0,overflow:"hidden",minHeight:0}}>
+
+        {/* Left: code reference OR task brief */}
+        <div style={{flex:1,overflowY:"auto",background:"#0D1117"}}>
+          {activeTab==="brief" ? (
+            <div style={{padding:"20px 24px",color:"#C9D1D9",fontFamily:"monospace",fontSize:12,lineHeight:1.9}}>
+              {(mission.statement || mission.description || mission.scenario || "").split("\n").map((line,i)=>(
+                <p key={i} style={{margin:"0 0 6px",color:line.startsWith("###")?"#58A6FF":line.startsWith("##")?"#79C0FF":line.startsWith("#")?"#FFA657":"#C9D1D9",fontWeight:line.startsWith("#")&&800}}>{line.replace(/^#+\s*/,"")}</p>
+              ))}
+              {mission.steps?.length > 0 && (
+                <div style={{marginTop:14,borderTop:"1px solid #30363D",paddingTop:12}}>
+                  <div style={{color:"#58A6FF",fontWeight:800,marginBottom:8,fontSize:11}}>STEPS</div>
+                  {mission.steps.map((s,i)=><div key={i} style={{display:"flex",gap:10,marginBottom:6}}><span style={{color:"#0F766E",fontWeight:800,minWidth:18}}>{i+1}.</span><span>{s}</span></div>)}
+                </div>
+              )}
+            </div>
+          ) : (
+            <pre style={{margin:0,padding:"16px 20px",color:"#C9D1D9",fontFamily:"'Fira Code','Consolas',monospace",fontSize:12,lineHeight:1.7,whiteSpace:"pre-wrap",wordBreak:"break-word"}}>{starterC}</pre>
+          )}
+        </div>
+
+        {/* Right: answer panel */}
+        <div style={{width:340,flexShrink:0,background:"#fff",borderLeft:`1px solid ${T.border}`,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+
+          {/* Header */}
+          <div style={{padding:"12px 16px",background:"#F0FDF9",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:16}}>🤖</span>
+            <div>
+              <div style={{fontSize:11,fontWeight:800,color:color,letterSpacing:0.5}}>EMBEDDED ANSWER</div>
+              <div style={{fontSize:10,color:T.ink3}}>{mission.category||"Embedded Systems"}</div>
+            </div>
+          </div>
+
+          <div style={{flex:1,overflowY:"auto",padding:"14px 14px"}}>
+
+            {/* MCQ options or text answer */}
+            {diagData ? (
+              <div style={{display:"flex",flexDirection:"column",gap:9,marginBottom:14}}>
+                <div style={{fontSize:11,fontWeight:800,color:T.ink,marginBottom:4}}>Select the correct answer:</div>
+                {diagData.options.map((opt,i)=>{
+                  const isSel=selOpt===i, isCorrect=checked&&i===diagData.correct, isWrong=checked==="wrong"&&isSel
+                  return (
+                    <div key={i} onClick={()=>{if(!checked)setSelOpt(i)}}
+                      style={{display:"flex",gap:10,padding:"10px 12px",borderRadius:9,cursor:checked?"default":"pointer",border:`2px solid ${isCorrect&&checked==="correct"?"#22C55E":isWrong?"#EF4444":isSel?color:T.border}`,background:isCorrect&&checked?"#F0FDF4":isWrong?"#FFF5F5":isSel&&!checked?`${color}10`:"#fff",transition:"all 0.15s"}}>
+                      <div style={{width:18,height:18,borderRadius:"50%",border:`2px solid ${isSel?color:T.border}`,background:isSel?color:"transparent",flexShrink:0,marginTop:1,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                        {isSel&&<div style={{width:7,height:7,borderRadius:"50%",background:"#fff"}}/>}
+                      </div>
+                      <span style={{fontSize:12,color:T.ink}}><span style={{color:color,fontWeight:700,marginRight:6}}>{String.fromCharCode(65+i)}.</span>{opt}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div style={{marginBottom:14}}>
+                <div style={{fontSize:11,fontWeight:800,color:T.ink,marginBottom:8}}>Your Answer</div>
+                <input type="text" value={answer} placeholder="e.g. 3599 (ARR value), 0x40021000, 50%…"
+                  onChange={e=>{setAnswer(e.target.value);setChecked(null)}} onKeyDown={e=>e.key==="Enter"&&handleCheck()}
+                  style={{width:"100%",padding:"11px 13px",fontSize:14,fontWeight:700,fontFamily:"'Fira Code',monospace",border:`2px solid ${borderCol}`,borderRadius:9,outline:"none",background:answerBg,boxSizing:"border-box",color:T.ink}}/>
+              </div>
+            )}
+
+            <button onClick={handleCheck} disabled={diagData?selOpt===null||!!checked:!answer.trim()||!!checked}
+              style={{width:"100%",padding:"11px",background:color,color:"#fff",border:"none",borderRadius:9,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit",marginBottom:12,opacity:(diagData?selOpt===null||!!checked:!answer.trim()||!!checked)?0.45:1}}>
+              ✓ Check Answer
+            </button>
+
+            {/* Feedback */}
+            {checked==="correct" && (
+              <div style={{padding:"10px 12px",background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:9,marginBottom:12}}>
+                <div style={{fontSize:12,fontWeight:800,color:"#15803D"}}>✅ Correct!</div>
+                {diagData?.explanation && <div style={{fontSize:11,color:"#166534",marginTop:4}}>{diagData.explanation}</div>}
+                <div style={{fontSize:10,color:"#166534",marginTop:4}}>Click Submit to lock this into your proof.</div>
+              </div>
+            )}
+            {checked==="wrong" && (
+              <div style={{padding:"10px 12px",background:"#FFF5F5",border:"1px solid #FECACA",borderRadius:9,marginBottom:12}}>
+                <div style={{fontSize:12,fontWeight:800,color:"#DC2626"}}>❌ Incorrect — attempt #{attempts}</div>
+                <div style={{fontSize:10,color:"#991B1B",marginTop:4}}>Review the task and try again.
+                  {attempts>=2&&<button onClick={()=>setShowSol(true)} style={{background:"none",border:"none",color:"#991B1B",fontWeight:800,cursor:"pointer",textDecoration:"underline",fontSize:10,padding:"0 0 0 6px"}}>Show answer</button>}
+                </div>
+              </div>
+            )}
+            {showSol && (expected||diagData) && (
+              <div style={{padding:"10px 12px",background:"#F0F9FF",border:"1px solid #BAE6FD",borderRadius:9,marginBottom:12}}>
+                <div style={{fontSize:10,fontWeight:800,color:"#0369A1",marginBottom:4}}>ANSWER</div>
+                <div style={{fontSize:12,fontFamily:"monospace",color:"#0C4A6E",fontWeight:700}}>{diagData?diagData.options[diagData.correct]:expected}</div>
+              </div>
+            )}
+
+            {/* Scratchpad */}
+            <div style={{borderTop:`1px solid ${T.border}`,paddingTop:12,marginTop:4}}>
+              <div style={{fontSize:10,fontWeight:700,color:T.ink3,marginBottom:6}}>📝 WORKING NOTES (not submitted)</div>
+              <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Calculations, observations, register values…"
+                style={{width:"100%",minHeight:100,border:`1px solid ${T.border}`,borderRadius:8,outline:"none",fontFamily:"'Fira Code',monospace",fontSize:11,color:T.ink2,lineHeight:1.6,padding:"8px 10px",boxSizing:"border-box",resize:"vertical",background:"#FAFAFA"}}/>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2.  DIAGRAM WORKSPACE  — interactive circuit / system diagram viewer
+//     Renders structured diagram data (nodes + connections) as SVG.
+//     Students can click components, trace paths, identify faults.
+// ─────────────────────────────────────────────────────────────────────────────
+function DiagramWorkspace({ mission, code, onCodeChange }) {
+  const [selectedId, setSelected] = useState(null)
+  const [findings,   setFindings] = useState([])
+  const [answer,     setAnswer]   = useState(code || "")
+  const [checked,    setChecked]  = useState(null)
+  const [notes,      setNotes]    = useState("")
+  const [viewBox,    setViewBox]  = useState({x:0,y:0,w:800,h:440})
+  const [dragging,   setDragging] = useState(false)
+  const [dragStart,  setDragStart]= useState(null)
+  const svgRef = useRef(null)
+  const color = "#7C3AED"
+
+  // Parse diagram data from mission.assets or mission.diagram_data or fallback
+  const diagramData = (() => {
+    try {
+      const src = mission.diagram_data || mission.assets?.diagram || mission.diagramData
+      if (!src) return null
+      return typeof src==="string" ? JSON.parse(src) : src
+    } catch { return null }
+  })()
+
+  // Parse expected answer
+  const parsedTC = (() => { try { const tc=mission.test_cases||mission.testCases||[]; return typeof tc==="string"?JSON.parse(tc):(Array.isArray(tc)?tc:[]) } catch { return [] } })()
+  const expected = parsedTC?.[0] ? String(parsedTC[0].expected_output ?? parsedTC[0].expected ?? "") : null
+  const diagData = (() => {
+    const tc = parsedTC[0] || {}
+    if (tc.options) return { options:tc.options, correct:tc.correct??0, explanation:tc.explanation||"" }
+    if (mission.options) { try { const opts=typeof mission.options==="string"?JSON.parse(mission.options):mission.options; return { options:Array.isArray(opts)?opts:Object.values(opts), correct:tc.correct??0, explanation:"" } } catch {} }
+    return null
+  })()
+  const [selOpt, setSelOpt] = useState(null)
+
+  const selectedNode = diagramData?.nodes?.find(n=>n.id===selectedId) || null
+
+  // Component type → shape + color
+  const NODE_STYLE = {
+    resistor:    { fill:"#FEF3C7", stroke:"#D97706", shape:"rect", label:"R" },
+    capacitor:   { fill:"#DBEAFE", stroke:"#2563EB", shape:"rect", label:"C" },
+    inductor:    { fill:"#EDE9FE", stroke:"#7C3AED", shape:"rect", label:"L" },
+    opamp:       { fill:"#D1FAE5", stroke:"#059669", shape:"triangle", label:"A" },
+    transistor:  { fill:"#FCE7F3", stroke:"#DB2777", shape:"rect", label:"Q" },
+    battery:     { fill:"#FFF7ED", stroke:"#EA580C", shape:"rect", label:"V" },
+    diode:       { fill:"#FEF3C7", stroke:"#D97706", shape:"diamond", label:"D" },
+    led:         { fill:"#FEF3C7", stroke:"#F59E0B", shape:"diamond", label:"LED" },
+    gnd:         { fill:"#F3F4F6", stroke:"#6B7280", shape:"tri-gnd", label:"GND" },
+    vcc:         { fill:"#FEF3C7", stroke:"#D97706", shape:"rect", label:"VCC" },
+    logic_gate:  { fill:"#EDE9FE", stroke:"#7C3AED", shape:"rect", label:"G" },
+    mcu:         { fill:"#DBEAFE", stroke:"#1D4ED8", shape:"rect-wide", label:"MCU" },
+    sensor:      { fill:"#D1FAE5", stroke:"#059669", shape:"rect", label:"S" },
+    motor:       { fill:"#FCE7F3", stroke:"#9D174D", shape:"rect", label:"M" },
+    switch:      { fill:"#F3F4F6", stroke:"#374151", shape:"rect", label:"SW" },
+    default:     { fill:"#F9FAFB", stroke:"#9CA3AF", shape:"rect", label:"?" },
+  }
+
+  function renderNode(node) {
+    const style = NODE_STYLE[node.type] || NODE_STYLE.default
+    const isSelected = node.id === selectedId
+    const isFaulty   = node.faulty === true
+    const strokeCol  = isFaulty?"#DC2626":isSelected?color:style.stroke
+    const strokeW    = isSelected?3:isFaulty?2.5:1.5
+    const w = node.width  || (node.type==="mcu"?100:60)
+    const h = node.height || 38
+
+    return (
+      <g key={node.id} onClick={()=>setSelected(node.id===selectedId?null:node.id)}
+        style={{cursor:"pointer",transition:"all 0.15s"}} transform={`translate(${node.x},${node.y})`}>
+        <rect x={0} y={0} width={w} height={h} rx={7}
+          fill={isSelected?color+"18":style.fill} stroke={strokeCol} strokeWidth={strokeW}/>
+        {isFaulty && <text x={w-8} y={10} fontSize={10} fill="#DC2626" textAnchor="middle">⚠</text>}
+        <text x={w/2} y={h/2-5} textAnchor="middle" fontSize={10} fontWeight={700} fill={isSelected?color:"#374151"}>{style.label}</text>
+        <text x={w/2} y={h/2+7} textAnchor="middle" fontSize={9} fill="#6B7280">{node.label||node.id}</text>
+        {node.properties?.resistance && <text x={w/2} y={h-6} textAnchor="middle" fontSize={8} fill="#9CA3AF">{node.properties.resistance}</text>}
+      </g>
+    )
+  }
+
+  function renderConnections(nodes, connections) {
+    if (!connections?.length || !nodes?.length) return null
+    const nodeMap = Object.fromEntries(nodes.map(n=>[n.id,n]))
+    return connections.map((conn,i)=>{
+      const from = nodeMap[conn.from], to = nodeMap[conn.to]
+      if (!from||!to) return null
+      const fw = from.width||60, fh = from.height||38
+      const tw = to.width||60,   th = to.height||38
+      const x1 = from.x+fw/2, y1 = from.y+fh
+      const x2 = to.x+tw/2,   y2 = to.y
+      const isFaulty = conn.faulty === true
+      return <path key={i} d={`M${x1},${y1} C${x1},${(y1+y2)/2} ${x2},${(y1+y2)/2} ${x2},${y2}`}
+        fill="none" stroke={isFaulty?"#DC2626":"#9CA3AF"} strokeWidth={isFaulty?2.5:1.5}
+        strokeDasharray={isFaulty?"6 3":"none"} markerEnd="url(#arrow)"/>
+    })
+  }
+
+  const addFinding = (label) => {
+    const f = { id: Date.now(), label, timestamp: new Date().toLocaleTimeString() }
+    const next = [...findings, f]
+    setFindings(next)
+    onCodeChange(`Findings:\n${next.map(x=>x.label).join("\n")}`)
+  }
+
+  const handleCheckAnswer = () => {
+    if (diagData) {
+      if (selOpt===null) return
+      const ok = selOpt===diagData.correct
+      setChecked(ok?"correct":"wrong")
+      onCodeChange(`Selected: ${diagData.options[selOpt]}`)
+      try { registerValidator(()=>[{passed:ok,input:"Option",expected:diagData.options[diagData.correct],actual:diagData.options[selOpt]}]) } catch {}
+    } else {
+      if (!answer.trim()) return
+      const ok = answer.trim().toLowerCase() === (expected||"").trim().toLowerCase()
+      setChecked(ok?"correct":"wrong")
+      onCodeChange(`Answer: ${answer.trim()}`)
+      try { registerValidator(()=>[{passed:ok,input:"Answer",expected:expected||"—",actual:answer.trim()}]) } catch {}
+    }
+  }
+
+  // Pan handlers
+  const onMouseDown = (e) => { if (e.button!==0) return; setDragging(true); setDragStart({mx:e.clientX,my:e.clientY,vx:viewBox.x,vy:viewBox.y}) }
+  const onMouseMove = (e) => {
+    if (!dragging||!dragStart) return
+    const dx = (dragStart.mx-e.clientX)*(viewBox.w/800), dy = (dragStart.my-e.clientY)*(viewBox.h/440)
+    setViewBox(v=>({...v,x:dragStart.vx+dx,y:dragStart.vy+dy}))
+  }
+  const onMouseUp = () => { setDragging(false); setDragStart(null) }
+  const onWheel   = (e) => {
+    e.preventDefault()
+    const factor = e.deltaY > 0 ? 1.15 : 0.87
+    setViewBox(v=>({x:v.x+(v.w-v.w*factor)/2,y:v.y+(v.h-v.h*factor)/2,w:v.w*factor,h:v.h*factor}))
+  }
+
+  return (
+    <div style={{flex:1,display:"flex",overflow:"hidden",minHeight:0}}>
+
+      {/* Diagram canvas */}
+      <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:"#FAFAF8"}}>
+        {/* Toolbar */}
+        <div style={{display:"flex",alignItems:"center",gap:8,padding:"7px 14px",borderBottom:`1px solid ${T.border}`,background:T.bg,flexShrink:0}}>
+          <span style={{fontSize:11,fontWeight:800,color:color}}>📐 Diagram</span>
+          <div style={{flex:1}}/>
+          <button onClick={()=>setViewBox({x:0,y:0,w:800,h:440})} style={{padding:"4px 10px",borderRadius:6,border:`1px solid ${T.border}`,background:"#fff",fontSize:10,cursor:"pointer",color:T.ink3}}>Reset View</button>
+          <span style={{fontSize:10,color:T.ink4}}>Scroll to zoom · Drag to pan · Click to inspect</span>
+        </div>
+
+        {/* SVG */}
+        <div style={{flex:1,overflow:"hidden",cursor:dragging?"grabbing":"grab"}}
+          onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}
+          onWheel={onWheel}>
+          <svg ref={svgRef} width="100%" height="100%"
+            viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`}
+            style={{display:"block"}}>
+            <defs>
+              <marker id="arrow" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+                <polygon points="0 0, 7 3.5, 0 7" fill="#9CA3AF"/>
+              </marker>
+            </defs>
+            {/* Background grid */}
+            <defs><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 L 0 0 0 20" fill="none" stroke="#E5E7EB" strokeWidth="0.5"/></pattern></defs>
+            <rect width="2000" height="1200" fill="url(#grid)" x="-100" y="-100"/>
+
+            {diagramData ? (
+              <>
+                {renderConnections(diagramData.nodes, diagramData.connections)}
+                {diagramData.nodes?.map(renderNode)}
+                {diagramData.labels?.map((l,i)=>(
+                  <text key={i} x={l.x} y={l.y} fontSize={l.size||11} fill={l.color||"#6B7280"} fontWeight={l.bold?700:400}>{l.text}</text>
+                ))}
+              </>
+            ) : (
+              <foreignObject x="200" y="150" width="400" height="140">
+                <div style={{textAlign:"center",padding:20,background:"#fff",borderRadius:12,border:`1px solid ${T.border}`}}>
+                  <div style={{fontSize:28,marginBottom:8}}>📐</div>
+                  <div style={{fontSize:13,fontWeight:700,color:T.ink}}>Diagram Workspace</div>
+                  <div style={{fontSize:11,color:T.ink3,marginTop:6}}>Use the panel below to analyse and answer the challenge.</div>
+                </div>
+              </foreignObject>
+            )}
+          </svg>
+        </div>
+      </div>
+
+      {/* Right panel: component inspector + answer */}
+      <div style={{width:310,flexShrink:0,background:"#fff",borderLeft:`1px solid ${T.border}`,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+
+        {/* Inspector */}
+        {selectedNode && (
+          <div style={{padding:"12px 14px",borderBottom:`1px solid ${T.border}`,background:"#F5F3FF",flexShrink:0}}>
+            <div style={{fontSize:10,fontWeight:800,color:color,marginBottom:6}}>COMPONENT INSPECTOR</div>
+            <div style={{fontSize:13,fontWeight:700,color:T.ink}}>{selectedNode.label||selectedNode.id}</div>
+            <div style={{fontSize:11,color:T.ink3}}>{selectedNode.type}</div>
+            {selectedNode.properties && (
+              <div style={{marginTop:6,fontSize:11,fontFamily:"monospace",background:"#EDE9FE",padding:"6px 8px",borderRadius:6}}>
+                {Object.entries(selectedNode.properties).map(([k,v])=><div key={k}><span style={{color:"#7C3AED",fontWeight:700}}>{k}:</span> {v}</div>)}
+              </div>
+            )}
+            {selectedNode.faulty && <div style={{marginTop:6,fontSize:10,fontWeight:700,color:"#DC2626"}}>⚠ Fault indicator set</div>}
+            <div style={{display:"flex",gap:6,marginTop:8}}>
+              <button onClick={()=>addFinding(`${selectedNode.label||selectedNode.id} — inspected`)}
+                style={{padding:"5px 10px",borderRadius:6,border:`1px solid ${color}`,background:"#F5F3FF",color:color,fontSize:10,fontWeight:700,cursor:"pointer"}}>
+                + Add Finding
+              </button>
+              <button onClick={()=>addFinding(`${selectedNode.label||selectedNode.id} — possible fault`)}
+                style={{padding:"5px 10px",borderRadius:6,border:"1px solid #DC2626",background:"#FFF5F5",color:"#DC2626",fontSize:10,fontWeight:700,cursor:"pointer"}}>
+                ⚠ Flag Fault
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Findings log */}
+        {findings.length > 0 && (
+          <div style={{padding:"10px 14px",borderBottom:`1px solid ${T.border}`,maxHeight:120,overflowY:"auto",flexShrink:0}}>
+            <div style={{fontSize:10,fontWeight:800,color:T.ink3,marginBottom:6}}>FINDINGS ({findings.length})</div>
+            {findings.map(f=>(
+              <div key={f.id} style={{fontSize:11,color:T.ink2,padding:"3px 0",borderBottom:`1px dashed ${T.border}`}}>
+                <span style={{color:T.ink4,marginRight:6,fontFamily:"monospace"}}>{f.timestamp}</span>{f.label}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Answer section */}
+        <div style={{flex:1,overflowY:"auto",padding:"14px 14px"}}>
+          <div style={{fontSize:11,fontWeight:800,color:T.ink,marginBottom:10}}>Your Analysis</div>
+
+          {diagData ? (
+            <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:14}}>
+              {diagData.options.map((opt,i)=>{
+                const isSel=selOpt===i, isCorrect=checked&&i===diagData.correct, isWrong=checked==="wrong"&&isSel
+                return (
+                  <div key={i} onClick={()=>{if(!checked)setSelOpt(i)}}
+                    style={{display:"flex",gap:10,padding:"9px 12px",borderRadius:9,cursor:checked?"default":"pointer",border:`2px solid ${isCorrect&&checked==="correct"?"#22C55E":isWrong?"#EF4444":isSel?color:T.border}`,background:isCorrect&&checked?"#F0FDF4":isWrong?"#FFF5F5":isSel&&!checked?`${color}10`:"#fff",transition:"all 0.15s"}}>
+                    <div style={{width:18,height:18,borderRadius:"50%",border:`2px solid ${isSel?color:T.border}`,background:isSel?color:"transparent",flexShrink:0,marginTop:1,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      {isSel&&<div style={{width:7,height:7,borderRadius:"50%",background:"#fff"}}/>}
+                    </div>
+                    <span style={{fontSize:12,color:T.ink}}><span style={{color:color,fontWeight:700,marginRight:6}}>{String.fromCharCode(65+i)}.</span>{opt}</span>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div style={{marginBottom:12}}>
+              <textarea value={answer} onChange={e=>{setAnswer(e.target.value);setChecked(null)}} placeholder="Describe your findings, identify the fault, or give your calculated answer…"
+                style={{width:"100%",minHeight:90,border:`2px solid ${checked==="correct"?"#22C55E":checked==="wrong"?"#EF4444":T.border}`,borderRadius:9,outline:"none",fontFamily:"inherit",fontSize:12,color:T.ink2,lineHeight:1.7,background:checked==="correct"?"#F0FDF4":checked==="wrong"?"#FFF5F5":"#fff",padding:"10px 12px",boxSizing:"border-box",resize:"vertical"}}/>
+            </div>
+          )}
+
+          <button onClick={handleCheckAnswer} disabled={diagData?selOpt===null||!!checked:!answer.trim()||!!checked}
+            style={{width:"100%",padding:"11px",background:color,color:"#fff",border:"none",borderRadius:9,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit",marginBottom:12,opacity:(diagData?selOpt===null||!!checked:!answer.trim()||!!checked)?0.45:1}}>
+            ✓ Check Analysis
+          </button>
+
+          {checked==="correct" && (
+            <div style={{padding:"10px 12px",background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:9,marginBottom:10}}>
+              <div style={{fontSize:12,fontWeight:800,color:"#15803D"}}>✅ Correct Analysis!</div>
+              {diagData?.explanation&&<div style={{fontSize:10,color:"#166534",marginTop:4}}>{diagData.explanation}</div>}
+            </div>
+          )}
+          {checked==="wrong" && (
+            <div style={{padding:"10px 12px",background:"#FFF5F5",border:"1px solid #FECACA",borderRadius:9,marginBottom:10}}>
+              <div style={{fontSize:12,fontWeight:800,color:"#DC2626"}}>❌ Not quite — try again</div>
+            </div>
+          )}
+
+          {/* Notes */}
+          <div style={{borderTop:`1px solid ${T.border}`,paddingTop:12,marginTop:4}}>
+            <div style={{fontSize:10,fontWeight:700,color:T.ink3,marginBottom:5}}>📝 TRACE NOTES</div>
+            <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Signal paths, voltages, trace observations…"
+              style={{width:"100%",minHeight:80,border:`1px solid ${T.border}`,borderRadius:8,outline:"none",fontFamily:"monospace",fontSize:11,color:T.ink2,lineHeight:1.6,padding:"8px 10px",boxSizing:"border-box",resize:"vertical",background:"#FAFAFA"}}/>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 3.  VISUAL INSPECTION LAB — image-based defect marking and classification
+//     Used for: PCB inspection, construction site audit, waveform analysis
+// ─────────────────────────────────────────────────────────────────────────────
+function VisualInspectionLab({ mission, code, onCodeChange }) {
+  const [findings,    setFindings]    = useState([])
+  const [activeTool,  setActiveTool]  = useState("mark")   // "mark" | "select"
+  const [severity,    setSeverity]    = useState("medium")
+  const [category,    setCategory]    = useState("")
+  const [description, setDescription] = useState("")
+  const [submitted,   setSubmitted]   = useState(false)
+  const [answer,      setAnswer]      = useState(code || "")
+  const [checked,     setChecked]     = useState(null)
+  const canvasRef  = useRef(null)
+  const imgRef     = useRef(null)
+  const [marks,    setMarks]    = useState([])
+  const [imgSize,  setImgSize]  = useState({w:640,h:420})
+  const color = "#DC2626"
+
+  // Image URL from mission
+  const imageUrl = mission.assets?.image || mission.image_url || mission.imageUrl || null
+
+  // Parse expected answer
+  const parsedTC = (() => { try { const tc=mission.test_cases||mission.testCases||[]; return typeof tc==="string"?JSON.parse(tc):(Array.isArray(tc)?tc:[]) } catch { return [] } })()
+  const diagData = (() => {
+    const tc = parsedTC[0] || {}
+    if (tc.options) return { options:tc.options, correct:tc.correct??0, explanation:tc.explanation||"" }
+    if (mission.options) { try { const opts=typeof mission.options==="string"?JSON.parse(mission.options):mission.options; return { options:Array.isArray(opts)?opts:Object.values(opts), correct:tc.correct??0, explanation:"" } } catch {} }
+    return null
+  })()
+  const [selOpt, setSelOpt] = useState(null)
+
+  const defectCategories = mission.defect_categories || mission.defectCategories ||
+    ["Physical Damage", "Missing Component", "Incorrect Placement", "Solder Issue", "Corrosion", "Contamination", "Design Defect", "Quality Issue", "Safety Hazard"]
+  const severityColors = { critical:"#DC2626", high:"#EA580C", medium:"#D97706", low:"#059669" }
+
+  const handleImgClick = (e) => {
+    if (activeTool !== "mark" || submitted) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const xPct = Math.round(((e.clientX - rect.left) / rect.width) * 100)
+    const yPct = Math.round(((e.clientY - rect.top)  / rect.height) * 100)
+    const mark = { id: Date.now(), x: xPct, y: yPct, severity, category: category||defectCategories[0], description }
+    const next = [...marks, mark]
+    setMarks(next)
+    const finding = { id: mark.id, label:`[${severity.toUpperCase()}] ${mark.category} at (${xPct}%,${yPct}%) — ${description||"no description"}` }
+    const nextF = [...findings, finding]
+    setFindings(nextF)
+    onCodeChange(nextF.map(f=>f.label).join("\n"))
+    setDescription("")
+  }
+
+  const removeMark = (id) => {
+    setMarks(m=>m.filter(x=>x.id!==id))
+    setFindings(f=>f.filter(x=>x.id!==id))
+  }
+
+  const handleSubmitInspection = () => {
+    setSubmitted(true)
+    const summary = `INSPECTION REPORT\n\nFindings (${findings.length}):\n${findings.map(f=>f.label).join("\n")}\n\nConclusion: ${answer}`
+    onCodeChange(summary)
+    try { registerValidator(()=>[{passed:findings.length>0||!!answer,input:"Inspection",expected:"At least one finding",actual:`${findings.length} findings`}]) } catch {}
+  }
+
+  const handleCheckMCQ = () => {
+    if (selOpt===null||!diagData) return
+    const ok = selOpt===diagData.correct
+    setChecked(ok?"correct":"wrong")
+    onCodeChange(`Selected: ${diagData.options[selOpt]}`)
+    try { registerValidator(()=>[{passed:ok,input:"Option",expected:diagData.options[diagData.correct],actual:diagData.options[selOpt]}]) } catch {}
+  }
+
+  return (
+    <div style={{flex:1,display:"flex",overflow:"hidden",minHeight:0}}>
+
+      {/* Left: image canvas */}
+      <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:"#1A1A1A"}}>
+        {/* Toolbar */}
+        <div style={{display:"flex",alignItems:"center",gap:8,padding:"7px 14px",background:"#111",flexShrink:0}}>
+          <span style={{fontSize:11,fontWeight:800,color:"#EF4444"}}>🔍 Inspection Mode</span>
+          <div style={{flex:1}}/>
+          <button onClick={()=>setActiveTool(t=>t==="mark"?"select":"mark")}
+            style={{padding:"4px 10px",borderRadius:6,border:`1px solid ${activeTool==="mark"?"#EF4444":"#4B5563"}`,background:activeTool==="mark"?"#7F1D1D":"#1F2937",color:activeTool==="mark"?"#FCA5A5":"#9CA3AF",fontSize:10,cursor:"pointer"}}>
+            {activeTool==="mark"?"🎯 Marking":"👆 Select"}
+          </button>
+          <select value={severity} onChange={e=>setSeverity(e.target.value)}
+            style={{padding:"4px 8px",borderRadius:6,border:"1px solid #4B5563",background:"#1F2937",color:severityColors[severity]||"#9CA3AF",fontSize:10,cursor:"pointer"}}>
+            {["critical","high","medium","low"].map(s=><option key={s} value={s}>{s.toUpperCase()}</option>)}
+          </select>
+          <span style={{fontSize:10,color:"#6B7280"}}>{marks.length} mark{marks.length!==1?"s":""}</span>
+        </div>
+
+        {/* Image + overlaid marks */}
+        <div style={{flex:1,overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",padding:12}}>
+          <div style={{position:"relative",cursor:activeTool==="mark"?"crosshair":"default",maxWidth:"100%",maxHeight:"100%"}}
+            onClick={handleImgClick}>
+            {imageUrl ? (
+              <img ref={imgRef} src={imageUrl} alt="Inspection target"
+                style={{maxWidth:"100%",maxHeight:"calc(100vh - 200px)",display:"block",borderRadius:8,border:"1px solid #374151",userSelect:"none"}}
+                onLoad={e=>setImgSize({w:e.target.naturalWidth,h:e.target.naturalHeight})}/>
+            ) : (
+              <div style={{width:600,height:380,background:"#1F2937",borderRadius:8,border:"2px dashed #374151",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+                <div style={{fontSize:32,marginBottom:8}}>🔍</div>
+                <div style={{fontSize:13,fontWeight:700,color:"#9CA3AF"}}>Inspection Canvas</div>
+                <div style={{fontSize:11,color:"#6B7280",marginTop:6,maxWidth:300,textAlign:"center"}}>No image provided for this challenge. Use the answer panel to describe your findings.</div>
+              </div>
+            )}
+            {/* Overlay marks */}
+            {marks.map(m=>(
+              <div key={m.id} style={{position:"absolute",left:`${m.x}%`,top:`${m.y}%`,transform:"translate(-50%,-50%)",zIndex:10}}>
+                <div style={{width:20,height:20,borderRadius:"50%",background:severityColors[m.severity]+"DD",border:`2px solid ${severityColors[m.severity]}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#fff",fontWeight:800,boxShadow:"0 2px 8px rgba(0,0,0,0.5)",cursor:"pointer"}}
+                  title={`${m.category}: ${m.description}`}
+                  onClick={e=>{e.stopPropagation();removeMark(m.id)}}>
+                  ✕
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Right panel */}
+      <div style={{width:310,flexShrink:0,background:"#fff",borderLeft:`1px solid ${T.border}`,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+
+        {/* Header */}
+        <div style={{padding:"10px 14px",background:"#FFF5F5",borderBottom:`1px solid ${T.border}`,flexShrink:0}}>
+          <div style={{fontSize:10,fontWeight:800,color:"#DC2626"}}>INSPECTION FINDINGS</div>
+          <div style={{fontSize:11,color:T.ink3,marginTop:2}}>{imageUrl?"Click image to mark defects":"Describe your findings below"}</div>
+        </div>
+
+        <div style={{flex:1,overflowY:"auto",padding:"12px 12px"}}>
+
+          {/* Category + description inputs */}
+          {!submitted && (
+            <div style={{marginBottom:12}}>
+              <select value={category} onChange={e=>setCategory(e.target.value)}
+                style={{width:"100%",padding:"8px 10px",borderRadius:7,border:`1px solid ${T.border}`,fontSize:11,color:T.ink,marginBottom:6,fontFamily:"inherit",outline:"none"}}>
+                <option value="">Select defect category…</option>
+                {defectCategories.map(c=><option key={c} value={c}>{c}</option>)}
+              </select>
+              <input type="text" value={description} onChange={e=>setDescription(e.target.value)} placeholder="Describe what you see…"
+                style={{width:"100%",padding:"8px 10px",borderRadius:7,border:`1px solid ${T.border}`,fontSize:11,color:T.ink,boxSizing:"border-box",outline:"none"}}/>
+            </div>
+          )}
+
+          {/* Findings list */}
+          {findings.length > 0 && (
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:10,fontWeight:800,color:T.ink3,marginBottom:6}}>FINDINGS ({findings.length})</div>
+              {findings.map(f=>(
+                <div key={f.id} style={{padding:"6px 8px",background:"#FFF5F5",border:"1px solid #FECACA",borderRadius:7,marginBottom:5,fontSize:11,color:T.ink}}>
+                  {f.label}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* MCQ or open conclusion */}
+          {diagData ? (
+            <>
+              <div style={{fontSize:11,fontWeight:800,color:T.ink,marginBottom:8}}>What is your conclusion?</div>
+              <div style={{display:"flex",flexDirection:"column",gap:7,marginBottom:12}}>
+                {diagData.options.map((opt,i)=>{
+                  const isSel=selOpt===i, isCorrect=checked&&i===diagData.correct, isWrong=checked==="wrong"&&isSel
+                  return (
+                    <div key={i} onClick={()=>{if(!checked)setSelOpt(i)}}
+                      style={{display:"flex",gap:9,padding:"9px 11px",borderRadius:8,cursor:checked?"default":"pointer",border:`2px solid ${isCorrect&&checked==="correct"?"#22C55E":isWrong?"#EF4444":isSel?"#DC2626":T.border}`,background:isCorrect&&checked?"#F0FDF4":isWrong?"#FFF5F5":isSel&&!checked?"#FFF5F5":"#fff"}}>
+                      <div style={{width:17,height:17,borderRadius:"50%",border:`2px solid ${isSel?"#DC2626":T.border}`,background:isSel?"#DC2626":"transparent",flexShrink:0,marginTop:1,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                        {isSel&&<div style={{width:6,height:6,borderRadius:"50%",background:"#fff"}}/>}
+                      </div>
+                      <span style={{fontSize:11,color:T.ink}}>{opt}</span>
+                    </div>
+                  )
+                })}
+              </div>
+              <button onClick={handleCheckMCQ} disabled={selOpt===null||!!checked}
+                style={{width:"100%",padding:"10px",background:"#DC2626",color:"#fff",border:"none",borderRadius:9,fontSize:12,fontWeight:800,cursor:"pointer",opacity:(selOpt===null||!!checked)?0.45:1,marginBottom:10}}>
+                ✓ Submit Conclusion
+              </button>
+            </>
+          ) : (
+            <>
+              <textarea value={answer} onChange={e=>setAnswer(e.target.value)} placeholder="Overall conclusion and recommendation…"
+                style={{width:"100%",minHeight:80,border:`1px solid ${T.border}`,borderRadius:8,outline:"none",fontFamily:"inherit",fontSize:11,color:T.ink2,lineHeight:1.6,padding:"8px 10px",boxSizing:"border-box",resize:"vertical",marginBottom:10}}/>
+              <button onClick={handleSubmitInspection} disabled={submitted||(findings.length===0&&!answer.trim())}
+                style={{width:"100%",padding:"10px",background:"#DC2626",color:"#fff",border:"none",borderRadius:9,fontSize:12,fontWeight:800,cursor:"pointer",opacity:(submitted||(findings.length===0&&!answer.trim()))?0.45:1,marginBottom:10}}>
+                {submitted?"✓ Inspection Submitted":"✓ Submit Inspection Report"}
+              </button>
+            </>
+          )}
+
+          {(checked==="correct"||submitted) && (
+            <div style={{padding:"10px 12px",background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:9}}>
+              <div style={{fontSize:12,fontWeight:800,color:"#15803D"}}>✅ Inspection complete!</div>
+              {diagData?.explanation&&<div style={{fontSize:10,color:"#166534",marginTop:4}}>{diagData.explanation}</div>}
+            </div>
+          )}
+          {checked==="wrong" && (
+            <div style={{padding:"10px 12px",background:"#FFF5F5",border:"1px solid #FECACA",borderRadius:9}}>
+              <div style={{fontSize:12,fontWeight:800,color:"#DC2626"}}>❌ Incorrect — review your findings</div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 4.  DIAGNOSTIC CONSOLE — state-machine troubleshooter
+//     Student starts with symptoms, performs diagnostic actions that reveal
+//     evidence progressively, then submits root-cause identification.
+// ─────────────────────────────────────────────────────────────────────────────
+function DiagnosticConsole({ mission, code, onCodeChange }) {
+  const [evidence,    setEvidence]    = useState([])
+  const [usedActions, setUsedActions] = useState(new Set())
+  const [hypothesis,  setHypothesis]  = useState("")
+  const [checked,     setChecked]     = useState(null)
+  const [selOpt,      setSelOpt]      = useState(null)
+  const color = "#6B3FA0"
+
+  // Parse diagnostic scenario from mission
+  const scenario = (() => {
+    try {
+      const src = mission.diagnostic_scenario || mission.assets?.diagnostic || mission.diagnosticScenario
+      return typeof src === "string" ? JSON.parse(src) : src
+    } catch { return null }
+  })()
+
+  // Fallback scenario built from mission data
+  const initialState = scenario?.initialState || { status: "Fault active", source: mission.title || "System" }
+  const actions      = scenario?.actions      || []
+  const rootCauses   = scenario?.rootCauses   || null
+
+  // Parse MCQ options (root cause selection)
+  const parsedTC = (() => { try { const tc=mission.test_cases||mission.testCases||[]; return typeof tc==="string"?JSON.parse(tc):(Array.isArray(tc)?tc:[]) } catch { return [] } })()
+  const diagData = (() => {
+    const tc = parsedTC[0] || {}
+    if (tc.options) return { options:tc.options, correct:tc.correct??0, explanation:tc.explanation||"" }
+    if (mission.options) { try { const opts=typeof mission.options==="string"?JSON.parse(mission.options):mission.options; return { options:Array.isArray(opts)?opts:Object.values(opts), correct:tc.correct??0, explanation:"" } } catch {} }
+    if (rootCauses) return { options:rootCauses.map(r=>r.label||r), correct:scenario?.correctRootCause??0, explanation:scenario?.explanation||"" }
+    return null
+  })()
+
+  const performAction = (action) => {
+    if (usedActions.has(action.id)) return
+    const newEvidence = Array.isArray(action.reveals) ? action.reveals : [action.reveals].filter(Boolean)
+    const next = [...evidence, ...newEvidence.map(e=>({
+      id: Date.now() + Math.random(),
+      text: typeof e === "string" ? e : e.text || String(e),
+      type: e.type || "observation",
+      timestamp: new Date().toLocaleTimeString(),
+    }))]
+    setEvidence(next)
+    setUsedActions(s=>new Set([...s, action.id]))
+    onCodeChange(`Evidence:\n${next.map(e=>e.text).join("\n")}`)
+  }
+
+  const handleSubmit = () => {
+    if (diagData) {
+      if (selOpt===null) return
+      const ok = selOpt===diagData.correct
+      setChecked(ok?"correct":"wrong")
+      onCodeChange(`Root cause: ${diagData.options[selOpt]}\nEvidence collected:\n${evidence.map(e=>e.text).join("\n")}`)
+      try { registerValidator(()=>[{passed:ok,input:"Root cause",expected:diagData.options[diagData.correct],actual:diagData.options[selOpt]}]) } catch {}
+    } else {
+      if (!hypothesis.trim()) return
+      setChecked("correct")
+      onCodeChange(`Root cause hypothesis: ${hypothesis}\nEvidence:\n${evidence.map(e=>e.text).join("\n")}`)
+      try { registerValidator(()=>[{passed:true,input:"Root cause",expected:"Open-ended",actual:hypothesis}]) } catch {}
+    }
+  }
+
+  const SEV_STYLE = { critical:{bg:"#FFF1F2",border:"#FECDD3",text:"#DC2626"}, warning:{bg:"#FFFBEB",border:"#FDE68A",text:"#D97706"}, info:{bg:"#EFF6FF",border:"#BFDBFE",text:"#1D4ED8"}, success:{bg:"#F0FDF4",border:"#BBF7D0",text:"#15803D"}, observation:{bg:"#F5F3FF",border:"#DDD6FE",text:"#6B3FA0"} }
+
+  return (
+    <div style={{flex:1,display:"flex",overflow:"hidden",minHeight:0,background:T.bg2}}>
+
+      {/* Left: system state + action console */}
+      <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+
+        {/* System status */}
+        <div style={{padding:"12px 16px",background:"#1E1B4B",borderBottom:`1px solid #312E81`,flexShrink:0}}>
+          <div style={{fontSize:10,fontWeight:800,color:"#A5B4FC",letterSpacing:1,marginBottom:8}}>SYSTEM STATUS</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
+            {Object.entries(initialState).map(([k,v])=>(
+              <div key={k} style={{padding:"6px 12px",background:"#312E81",borderRadius:8,border:"1px solid #4338CA"}}>
+                <div style={{fontSize:9,color:"#A5B4FC",marginBottom:2,textTransform:"uppercase"}}>{k}</div>
+                <div style={{fontSize:12,fontWeight:700,color:typeof v==="number"&&v>80?"#F87171":"#E0E7FF",fontFamily:"monospace"}}>{v}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Symptoms */}
+        {(mission.symptoms||mission.initialSymptoms||[]).length > 0 && (
+          <div style={{padding:"10px 16px",background:"#2D1B69",borderBottom:"1px solid #3730A3",flexShrink:0}}>
+            <div style={{fontSize:10,fontWeight:800,color:"#C4B5FD",marginBottom:6}}>INITIAL SYMPTOMS</div>
+            {(mission.symptoms||mission.initialSymptoms||[]).map((s,i)=>(
+              <div key={i} style={{fontSize:11,color:"#FCA5A5",padding:"3px 0",display:"flex",gap:8}}><span>⚠</span><span>{s}</span></div>
+            ))}
+          </div>
+        )}
+
+        {/* Available actions */}
+        <div style={{flex:1,overflowY:"auto",padding:"14px 16px"}}>
+          <div style={{fontSize:10,fontWeight:800,color:T.ink3,marginBottom:10,letterSpacing:0.5}}>DIAGNOSTIC ACTIONS {actions.length>0&&`(${actions.length-usedActions.size} remaining)`}</div>
+
+          {actions.length === 0 ? (
+            <div style={{padding:16,background:"#fff",borderRadius:10,border:`1px solid ${T.border}`,textAlign:"center"}}>
+              <div style={{fontSize:12,color:T.ink3}}>Analyse the initial state and symptoms above, then submit your root-cause hypothesis in the panel on the right.</div>
+            </div>
+          ) : (
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {actions.map(action=>{
+                const used = usedActions.has(action.id)
+                return (
+                  <button key={action.id} onClick={()=>performAction(action)} disabled={used}
+                    style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:10,border:`1px solid ${used?"#E5E7EB":color}`,background:used?"#F9FAFB":"#fff",cursor:used?"not-allowed":"pointer",textAlign:"left",fontFamily:"inherit",opacity:used?0.55:1,transition:"all 0.15s"}}>
+                    <span style={{fontSize:16}}>{action.icon||"🔧"}</span>
+                    <div>
+                      <div style={{fontSize:12,fontWeight:700,color:used?T.ink3:T.ink}}>{action.label}</div>
+                      {action.description&&<div style={{fontSize:10,color:T.ink3,marginTop:2}}>{action.description}</div>}
+                      {action.cost&&<div style={{fontSize:10,color:T.amber,marginTop:1}}>Cost: {action.cost}</div>}
+                    </div>
+                    {used && <span style={{marginLeft:"auto",fontSize:10,color:T.ink4}}>✓ Done</span>}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Right: evidence + root cause */}
+      <div style={{width:330,flexShrink:0,background:"#fff",borderLeft:`1px solid ${T.border}`,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+
+        {/* Evidence log */}
+        <div style={{flex:1,overflowY:"auto",padding:"12px 12px",display:"flex",flexDirection:"column",gap:0}}>
+          <div style={{fontSize:10,fontWeight:800,color:T.ink3,marginBottom:8,letterSpacing:0.5}}>EVIDENCE COLLECTED ({evidence.length})</div>
+
+          {evidence.length === 0 ? (
+            <div style={{padding:"16px 12px",background:"#F5F3FF",borderRadius:9,border:`1px solid #DDD6FE`,textAlign:"center",fontSize:11,color:"#7C3AED"}}>
+              Perform diagnostic actions to reveal evidence
+            </div>
+          ) : (
+            evidence.map(e=>{
+              const sty = SEV_STYLE[e.type] || SEV_STYLE.observation
+              return (
+                <div key={e.id} style={{padding:"8px 10px",background:sty.bg,border:`1px solid ${sty.border}`,borderRadius:7,marginBottom:6}}>
+                  <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:3}}>
+                    <span style={{fontSize:9,fontWeight:800,color:sty.text,textTransform:"uppercase"}}>{e.type}</span>
+                    <span style={{fontSize:9,color:T.ink4,marginLeft:"auto",fontFamily:"monospace"}}>{e.timestamp}</span>
+                  </div>
+                  <div style={{fontSize:11,color:T.ink,lineHeight:1.5}}>{e.text}</div>
+                </div>
+              )
+            })
+          )}
+        </div>
+
+        {/* Root cause section */}
+        <div style={{borderTop:`1px solid ${T.border}`,padding:"12px 12px",flexShrink:0}}>
+          <div style={{fontSize:10,fontWeight:800,color:T.ink,marginBottom:10}}>ROOT CAUSE IDENTIFICATION</div>
+
+          {diagData ? (
+            <div style={{display:"flex",flexDirection:"column",gap:7,marginBottom:10}}>
+              {diagData.options.map((opt,i)=>{
+                const isSel=selOpt===i, isCorrect=checked&&i===diagData.correct, isWrong=checked==="wrong"&&isSel
+                return (
+                  <div key={i} onClick={()=>{if(!checked)setSelOpt(i)}}
+                    style={{display:"flex",gap:9,padding:"9px 11px",borderRadius:8,cursor:checked?"default":"pointer",border:`2px solid ${isCorrect&&checked==="correct"?"#22C55E":isWrong?"#EF4444":isSel?color:T.border}`,background:isCorrect&&checked?"#F0FDF4":isWrong?"#FFF5F5":isSel&&!checked?`${color}10`:"#fff"}}>
+                    <div style={{width:17,height:17,borderRadius:"50%",border:`2px solid ${isSel?color:T.border}`,background:isSel?color:"transparent",flexShrink:0,marginTop:1,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      {isSel&&<div style={{width:6,height:6,borderRadius:"50%",background:"#fff"}}/>}
+                    </div>
+                    <span style={{fontSize:11,color:T.ink}}>{opt}</span>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <textarea value={hypothesis} onChange={e=>setHypothesis(e.target.value)} placeholder="State the root cause based on your diagnostic evidence…"
+              style={{width:"100%",minHeight:80,border:`1px solid ${T.border}`,borderRadius:8,outline:"none",fontFamily:"inherit",fontSize:12,color:T.ink,lineHeight:1.6,padding:"9px 10px",boxSizing:"border-box",resize:"vertical",marginBottom:10}}/>
+          )}
+
+          <button onClick={handleSubmit} disabled={diagData?selOpt===null||!!checked:!hypothesis.trim()||!!checked}
+            style={{width:"100%",padding:"10px",background:color,color:"#fff",border:"none",borderRadius:9,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit",opacity:(diagData?selOpt===null||!!checked:!hypothesis.trim()||!!checked)?0.45:1}}>
+            🩺 Submit Root Cause
+          </button>
+
+          {checked==="correct" && (
+            <div style={{marginTop:8,padding:"9px 11px",background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:8}}>
+              <div style={{fontSize:11,fontWeight:800,color:"#15803D"}}>✅ Correctly diagnosed!</div>
+              {diagData?.explanation&&<div style={{fontSize:10,color:"#166534",marginTop:3}}>{diagData.explanation}</div>}
+            </div>
+          )}
+          {checked==="wrong" && (
+            <div style={{marginTop:8,padding:"9px 11px",background:"#FFF5F5",border:"1px solid #FECACA",borderRadius:8}}>
+              <div style={{fontSize:11,fontWeight:800,color:"#DC2626"}}>❌ Incorrect — gather more evidence</div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 5.  DOCUMENT VIEWER — datasheet / specification viewer with evidence citation
+//     Used for: embedded firmware challenges, civil inspection, EEE datasheets
+// ─────────────────────────────────────────────────────────────────────────────
+function DocumentViewerWorkstation({ mission, code, onCodeChange }) {
+  const [citations, setCitations] = useState([])
+  const [answer,    setAnswer]    = useState(code || "")
+  const [checked,   setChecked]   = useState(null)
+  const [selOpt,    setSelOpt]    = useState(null)
+  const [selText,   setSelText]   = useState("")
+  const [tab,       setTab]       = useState("document")  // "document" | "answer"
+  const color = "#2563EB"
+
+  const docs = (() => {
+    try {
+      const src = mission.documents || mission.assets?.documents || mission.document
+      if (!src) return null
+      return Array.isArray(src) ? src : typeof src==="string" ? JSON.parse(src) : [src]
+    } catch { return null }
+  })()
+  const [docIdx, setDocIdx] = useState(0)
+  const activeDoc = docs?.[docIdx]
+
+  const parsedTC = (() => { try { const tc=mission.test_cases||mission.testCases||[]; return typeof tc==="string"?JSON.parse(tc):(Array.isArray(tc)?tc:[]) } catch { return [] } })()
+  const diagData = (() => {
+    const tc = parsedTC[0] || {}
+    if (tc.options) return { options:tc.options, correct:tc.correct??0, explanation:tc.explanation||"" }
+    if (mission.options) { try { const opts=typeof mission.options==="string"?JSON.parse(mission.options):mission.options; return { options:Array.isArray(opts)?opts:Object.values(opts), correct:tc.correct??0, explanation:"" } } catch {} }
+    return null
+  })()
+  const expected = parsedTC?.[0] ? String(parsedTC[0].expected_output ?? parsedTC[0].expected ?? "") : null
+
+  const addCitation = () => {
+    const sel = window.getSelection?.()?.toString?.() || selText
+    if (!sel.trim()) return
+    const c = { id: Date.now(), text: sel.trim().slice(0, 200), doc: activeDoc?.title || `Document ${docIdx+1}`, timestamp: new Date().toLocaleTimeString() }
+    const next = [...citations, c]
+    setCitations(next)
+    onCodeChange(`Citations:\n${next.map(c=>`[${c.doc}] "${c.text}"`).join("\n")}\n\nAnswer: ${answer}`)
+  }
+
+  const handleCheck = () => {
+    if (diagData) {
+      if (selOpt===null) return
+      const ok = selOpt===diagData.correct
+      setChecked(ok?"correct":"wrong")
+      try { registerValidator(()=>[{passed:ok,input:"Option",expected:diagData.options[diagData.correct],actual:diagData.options[selOpt]}]) } catch {}
+    } else {
+      if (!answer.trim()) return
+      const uR = answer.trim().toLowerCase(), eR = (expected||"").trim().toLowerCase()
+      const uN = parseFloat(uR), eN = parseFloat(eR)
+      const ok = !isNaN(uN)&&!isNaN(eN) ? Math.abs(uN-eN)<=Math.abs(eN)*0.02+0.5 : uR===eR
+      setChecked(ok?"correct":"wrong")
+      try { registerValidator(()=>[{passed:ok,input:"Answer",expected:expected||"—",actual:answer}]) } catch {}
+    }
+    onCodeChange(`Citations:\n${citations.map(c=>`[${c.doc}] "${c.text}"`).join("\n")}\n\nAnswer: ${answer}`)
+  }
+
+  return (
+    <div style={{flex:1,display:"flex",overflow:"hidden",minHeight:0}}>
+
+      {/* Left: document */}
+      <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:"#fff"}}>
+        {/* Doc tabs */}
+        {docs && docs.length > 1 && (
+          <div style={{display:"flex",gap:0,borderBottom:`1px solid ${T.border}`,background:T.bg,flexShrink:0}}>
+            {docs.map((d,i)=>(
+              <button key={i} onClick={()=>setDocIdx(i)}
+                style={{padding:"8px 14px",background:"none",border:"none",borderBottom:`2px solid ${docIdx===i?color:"transparent"}`,color:docIdx===i?color:T.ink3,fontSize:11,fontWeight:docIdx===i?800:400,cursor:"pointer"}}>
+                {d.title||`Doc ${i+1}`}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Toolbar */}
+        <div style={{display:"flex",alignItems:"center",gap:8,padding:"7px 14px",borderBottom:`1px solid ${T.border}`,background:T.bg,flexShrink:0}}>
+          <span style={{fontSize:11,fontWeight:800,color:color}}>📋 {activeDoc?.title||"Reference Document"}</span>
+          <div style={{flex:1}}/>
+          <button onClick={addCitation} style={{padding:"4px 10px",borderRadius:6,border:`1px solid ${color}`,background:`${color}10`,color:color,fontSize:10,fontWeight:700,cursor:"pointer"}}>
+            + Cite Selection
+          </button>
+          <span style={{fontSize:10,color:T.ink4}}>Select text then click Cite</span>
+        </div>
+
+        {/* Document content */}
+        <div style={{flex:1,overflowY:"auto",padding:"20px 28px",fontFamily:"Georgia,serif",fontSize:13,lineHeight:1.9,color:T.ink,userSelect:"text"}}>
+          {activeDoc ? (
+            <>
+              <h2 style={{fontSize:18,fontWeight:700,color:T.ink,borderBottom:`2px solid ${color}`,paddingBottom:8,marginBottom:16}}>{activeDoc.title}</h2>
+              {activeDoc.sections?.map((section,i)=>(
+                <div key={i} style={{marginBottom:20}}>
+                  {section.heading && <h3 style={{fontSize:14,fontWeight:700,color:color,marginBottom:8}}>{section.heading}</h3>}
+                  {section.content && <p style={{margin:"0 0 10px",color:T.ink2}}>{section.content}</p>}
+                  {section.table && (
+                    <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,marginBottom:12}}>
+                      <thead>
+                        <tr style={{background:T.bg2}}>
+                          {section.table.headers.map(h=><th key={h} style={{padding:"6px 10px",textAlign:"left",fontWeight:700,color:T.ink2,borderBottom:`2px solid ${T.border}`}}>{h}</th>)}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {section.table.rows.map((row,ri)=>(
+                          <tr key={ri} style={{borderBottom:`1px solid ${T.border}`,background:ri%2?T.bg:"#fff"}}>
+                            {row.map((cell,ci)=><td key={ci} style={{padding:"5px 10px",color:T.ink}}>{cell}</td>)}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                  {section.note && <div style={{padding:"8px 12px",background:"#FFF7ED",border:"1px solid #FED7AA",borderRadius:6,fontSize:12,color:"#92400E",marginBottom:10}}><strong>Note:</strong> {section.note}</div>}
+                  {section.warning && <div style={{padding:"8px 12px",background:"#FFF1F2",border:"1px solid #FECDD3",borderRadius:6,fontSize:12,color:"#9F1239",marginBottom:10}}><strong>Warning:</strong> {section.warning}</div>}
+                </div>
+              ))}
+              {activeDoc.text && <div style={{whiteSpace:"pre-wrap",color:T.ink2,lineHeight:1.8}}>{activeDoc.text}</div>}
+            </>
+          ) : (
+            <div style={{textAlign:"center",padding:"40px 20px",color:T.ink3}}>
+              <div style={{fontSize:36,marginBottom:12}}>📋</div>
+              <div style={{fontSize:14,fontWeight:700}}>Document Viewer</div>
+              <div style={{fontSize:12,marginTop:8}}>Use the answer panel to respond to the challenge.</div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Right panel: citations + answer */}
+      <div style={{width:310,flexShrink:0,background:"#fff",borderLeft:`1px solid ${T.border}`,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+
+        {/* Citations */}
+        {citations.length > 0 && (
+          <div style={{maxHeight:180,overflowY:"auto",padding:"10px 12px",borderBottom:`1px solid ${T.border}`,flexShrink:0}}>
+            <div style={{fontSize:10,fontWeight:800,color:T.ink3,marginBottom:6}}>CITED EVIDENCE ({citations.length})</div>
+            {citations.map(c=>(
+              <div key={c.id} style={{padding:"7px 9px",background:"#EFF6FF",border:"1px solid #BFDBFE",borderRadius:7,marginBottom:5}}>
+                <div style={{fontSize:9,color:color,fontWeight:700,marginBottom:3}}>[{c.doc}]</div>
+                <div style={{fontSize:11,color:T.ink,fontStyle:"italic"}}>"{c.text.slice(0,120)}{c.text.length>120?"…":""}"</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Answer */}
+        <div style={{flex:1,overflowY:"auto",padding:"14px 12px"}}>
+          <div style={{fontSize:11,fontWeight:800,color:T.ink,marginBottom:10}}>Your Answer</div>
+
+          {diagData ? (
+            <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
+              {diagData.options.map((opt,i)=>{
+                const isSel=selOpt===i, isCorrect=checked&&i===diagData.correct, isWrong=checked==="wrong"&&isSel
+                return (
+                  <div key={i} onClick={()=>{if(!checked)setSelOpt(i)}}
+                    style={{display:"flex",gap:9,padding:"9px 11px",borderRadius:8,cursor:checked?"default":"pointer",border:`2px solid ${isCorrect&&checked==="correct"?"#22C55E":isWrong?"#EF4444":isSel?color:T.border}`,background:isCorrect&&checked?"#F0FDF4":isWrong?"#FFF5F5":isSel&&!checked?`${color}10`:"#fff"}}>
+                    <div style={{width:17,height:17,borderRadius:"50%",border:`2px solid ${isSel?color:T.border}`,background:isSel?color:"transparent",flexShrink:0,marginTop:1,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      {isSel&&<div style={{width:6,height:6,borderRadius:"50%",background:"#fff"}}/>}
+                    </div>
+                    <span style={{fontSize:11,color:T.ink}}>{opt}</span>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div style={{marginBottom:12}}>
+              <textarea value={answer} onChange={e=>setAnswer(e.target.value)} placeholder="Your answer based on the document…"
+                style={{width:"100%",minHeight:100,border:`1px solid ${T.border}`,borderRadius:8,outline:"none",fontFamily:"inherit",fontSize:12,color:T.ink2,lineHeight:1.6,padding:"9px 10px",boxSizing:"border-box",resize:"vertical"}}/>
+            </div>
+          )}
+
+          <button onClick={handleCheck} disabled={diagData?selOpt===null||!!checked:!answer.trim()||!!checked}
+            style={{width:"100%",padding:"10px",background:color,color:"#fff",border:"none",borderRadius:9,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit",marginBottom:10,opacity:(diagData?selOpt===null||!!checked:!answer.trim()||!!checked)?0.45:1}}>
+            ✓ Check Answer
+          </button>
+
+          {checked==="correct" && (
+            <div style={{padding:"9px 11px",background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:8}}>
+              <div style={{fontSize:11,fontWeight:800,color:"#15803D"}}>✅ Correct!</div>
+              {diagData?.explanation&&<div style={{fontSize:10,color:"#166534",marginTop:3}}>{diagData.explanation}</div>}
+            </div>
+          )}
+          {checked==="wrong" && (
+            <div style={{padding:"9px 11px",background:"#FFF5F5",border:"1px solid #FECACA",borderRadius:8}}>
+              <div style={{fontSize:11,fontWeight:800,color:"#DC2626"}}>❌ Check the document again</div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CIRCUIT LAB WORKSTATION  (Task #26)
+// Micro-simulation: DC Modified Nodal Analysis + interactive schematic
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Gaussian elimination with partial pivoting — solves A·x = b in-place
+function _solveLinear(A, b) {
+  const n = b.length
+  const M = A.map((row, i) => [...row, b[i]])
+  for (let col = 0; col < n; col++) {
+    let maxRow = col
+    for (let row = col + 1; row < n; row++) {
+      if (Math.abs(M[row][col]) > Math.abs(M[maxRow][col])) maxRow = row
+    }
+    ;[M[col], M[maxRow]] = [M[maxRow], M[col]]
+    if (Math.abs(M[col][col]) < 1e-15) continue
+    for (let row = 0; row < n; row++) {
+      if (row === col) continue
+      const f = M[row][col] / M[col][col]
+      for (let c = col; c <= n; c++) M[row][c] -= f * M[col][c]
+    }
+  }
+  return M.map((row, i) => Math.abs(row[i]) < 1e-15 ? 0 : row[n] / row[i])
+}
+
+// Modified Nodal Analysis — returns { nodeVoltages, branchCurrents, error }
+function _solveDcCircuit(components, paramsOverride) {
+  const result = { nodeVoltages: { GND: 0 }, branchCurrents: {}, error: null }
+  const nodeSet = new Set()
+  components.forEach(c => {
+    const na = c.node_a || c.node_plus, nb = c.node_b || c.node_minus
+    if (na && na !== "GND") nodeSet.add(na)
+    if (nb && nb !== "GND") nodeSet.add(nb)
+  })
+  const nodes = [...nodeSet]
+  const N = nodes.length
+  const nodeIdx = {}
+  nodes.forEach((n, i) => { nodeIdx[n] = i })
+
+  const resistors = components.filter(c => c.type === "resistor" || c.type === "R")
+  const vSources  = components.filter(c => c.type === "voltage_source" || c.type === "VS")
+  const iSources  = components.filter(c => c.type === "current_source" || c.type === "IS")
+  const B = vSources.length
+  const size = N + B
+  if (size === 0) return result
+
+  const G   = Array.from({ length: size }, () => new Array(size).fill(0))
+  const rhs = new Array(size).fill(0)
+
+  resistors.forEach(c => {
+    const R = paramsOverride[c.id] !== undefined ? paramsOverride[c.id] : c.value
+    if (!R || R <= 0) return
+    const g = 1 / R
+    const na = c.node_a || c.node_plus, nb = c.node_b || c.node_minus
+    const i = nodeIdx[na] !== undefined ? nodeIdx[na] : -1
+    const j = nodeIdx[nb] !== undefined ? nodeIdx[nb] : -1
+    if (i >= 0) G[i][i] += g
+    if (j >= 0) G[j][j] += g
+    if (i >= 0 && j >= 0) { G[i][j] -= g; G[j][i] -= g }
+  })
+
+  vSources.forEach((c, k) => {
+    const V  = paramsOverride[c.id] !== undefined ? paramsOverride[c.id] : c.value
+    const np = c.node_plus  || c.node_a
+    const nm = c.node_minus || c.node_b
+    const pi = nodeIdx[np] !== undefined ? nodeIdx[np] : -1
+    const mi = nodeIdx[nm] !== undefined ? nodeIdx[nm] : -1
+    if (pi >= 0) { G[pi][N+k] += 1; G[N+k][pi] += 1 }
+    if (mi >= 0) { G[mi][N+k] -= 1; G[N+k][mi] -= 1 }
+    rhs[N + k] = V
+  })
+
+  iSources.forEach(c => {
+    const I  = paramsOverride[c.id] !== undefined ? paramsOverride[c.id] : c.value
+    const np = c.node_plus  || c.node_a
+    const nm = c.node_minus || c.node_b
+    const pi = nodeIdx[np] !== undefined ? nodeIdx[np] : -1
+    const mi = nodeIdx[nm] !== undefined ? nodeIdx[nm] : -1
+    if (pi >= 0) rhs[pi] -= I
+    if (mi >= 0) rhs[mi] += I
+  })
+
+  try {
+    const sol = _solveLinear(G, rhs)
+    nodes.forEach((n, i) => { result.nodeVoltages[n] = sol[i] })
+    vSources.forEach((c, k) => { result.branchCurrents[c.id] = sol[N + k] })
+    resistors.forEach(c => {
+      const R  = paramsOverride[c.id] !== undefined ? paramsOverride[c.id] : c.value
+      if (!R || R <= 0) return
+      const na = c.node_a || c.node_plus, nb = c.node_b || c.node_minus
+      const Va = result.nodeVoltages[na] ?? 0, Vb = result.nodeVoltages[nb] ?? 0
+      result.branchCurrents[c.id] = (Va - Vb) / R
+    })
+  } catch (e) {
+    result.error = "Solver error — check circuit topology"
+  }
+  return result
+}
+
+// SI-prefix formatter
+function _fmtSI(v, unit) {
+  if (v === undefined || v === null || isNaN(v)) return `—`
+  if (Math.abs(v) === 0) return `0 ${unit}`
+  const a = Math.abs(v)
+  if (a >= 1e6)  return `${(v/1e6).toFixed(3)} M${unit}`
+  if (a >= 1e3)  return `${(v/1e3).toFixed(3)} k${unit}`
+  if (a >= 1)    return `${v.toFixed(4)} ${unit}`
+  if (a >= 1e-3) return `${(v*1e3).toFixed(3)} m${unit}`
+  if (a >= 1e-6) return `${(v*1e6).toFixed(3)} µ${unit}`
+  return `${(v*1e9).toFixed(3)} n${unit}`
+}
+
+function _compUnit(c) {
+  if (c.unit) return c.unit
+  if (c.type === "resistor"       || c.type === "R")  return "Ω"
+  if (c.type === "voltage_source" || c.type === "VS") return "V"
+  if (c.type === "current_source" || c.type === "IS") return "A"
+  if (c.type === "capacitor")                         return "F"
+  if (c.type === "inductor")                          return "H"
+  return ""
+}
+
+// ── SVG Schematic Primitives ───────────────────────────────────────────────
+
+function _ResistorSVG({ x1, y1, x2, y2, label, highlighted, T: Th }) {
+  const dx = x2 - x1, dy = y2 - y1
+  const len = Math.sqrt(dx * dx + dy * dy)
+  if (len < 2) return null
+  const angle = Math.atan2(dy, dx) * 180 / Math.PI
+  const cx = (x1 + x2) / 2, cy = (y1 + y2) / 2
+  const bLen = Math.min(len * 0.55, 36)
+  const bH = 7
+  const cosA = dx / len, sinA = dy / len
+  // Wire endpoints
+  const w1x = cx - (bLen / 2) * cosA, w1y = cy - (bLen / 2) * sinA
+  const w2x = cx + (bLen / 2) * cosA, w2y = cy + (bLen / 2) * sinA
+  // Zigzag path (US resistor symbol) in local coords, then rotate
+  const z = bLen / 8
+  const zPath = `M 0 0 l ${z} ${-bH} l ${z} ${bH*2} l ${z} ${-bH*2} l ${z} ${bH*2} l ${z} ${-bH} l ${z} 0`
+  const stroke = highlighted ? "#f59e0b" : (Th?.ink2 || "#888")
+  return (
+    <g>
+      <line x1={x1} y1={y1} x2={w1x} y2={w1y} stroke={stroke} strokeWidth="1.5"/>
+      <line x1={w2x} y1={w2y} x2={x2} y2={y2} stroke={stroke} strokeWidth="1.5"/>
+      <g transform={`translate(${w1x},${w1y}) rotate(${angle})`}>
+        <path d={zPath} fill="none" stroke={stroke} strokeWidth="1.5"/>
+      </g>
+      {label && <text x={cx} y={cy - 14} textAnchor="middle" fontSize="10" fill={stroke}>{label}</text>}
+    </g>
+  )
+}
+
+function _VSourceSVG({ x1, y1, x2, y2, label, T: Th }) {
+  const dx = x2 - x1, dy = y2 - y1
+  const len = Math.sqrt(dx * dx + dy * dy)
+  if (len < 2) return null
+  const cx = (x1 + x2) / 2, cy = (y1 + y2) / 2
+  const ux = dx / len, uy = dy / len
+  const r = 14
+  const panel = Th?.panel || "#1e293b"
+  return (
+    <g>
+      <line x1={x1} y1={y1} x2={cx - r * ux} y2={cy - r * uy} stroke="#22c55e" strokeWidth="1.5"/>
+      <line x1={cx + r * ux} y1={cy + r * uy} x2={x2} y2={y2} stroke="#22c55e" strokeWidth="1.5"/>
+      <circle cx={cx} cy={cy} r={r} fill={panel} stroke="#22c55e" strokeWidth="1.5"/>
+      <text x={cx - r * 0.45 * ux - 4 * uy} y={cy - r * 0.45 * uy + 4 * ux + 4} textAnchor="middle" fontSize="11" fill="#22c55e">+</text>
+      <text x={cx + r * 0.45 * ux + 4 * uy} y={cy + r * 0.45 * uy - 4 * ux + 4} textAnchor="middle" fontSize="10" fill="#22c55e">−</text>
+      {label && <text x={cx + 20 * (-uy)} y={cy + 20 * ux + 4} textAnchor="middle" fontSize="10" fill="#22c55e">{label}</text>}
+    </g>
+  )
+}
+
+function _GroundSVG({ x, y, T: Th }) {
+  const c = Th?.ink2 || "#888"
+  return (
+    <g>
+      <line x1={x} y1={y} x2={x} y2={y + 8} stroke={c} strokeWidth="1.5"/>
+      <line x1={x - 11} y1={y + 8}  x2={x + 11} y2={y + 8}  stroke={c} strokeWidth="2"/>
+      <line x1={x - 7}  y1={y + 12} x2={x + 7}  y2={y + 12} stroke={c} strokeWidth="2"/>
+      <line x1={x - 3}  y1={y + 16} x2={x + 3}  y2={y + 16} stroke={c} strokeWidth="2"/>
+    </g>
+  )
+}
+
+function _NodeDotSVG({ x, y, label, voltage, isProbe, T: Th }) {
+  const ink2 = Th?.ink2 || "#888"
+  const color = isProbe ? "#f59e0b" : ink2
+  return (
+    <g>
+      <circle cx={x} cy={y} r={isProbe ? 5 : 3} fill={color}/>
+      {label && label !== "GND" && (
+        <text x={x + 8} y={y - 7} fontSize="11" fill={color} fontWeight={isProbe ? "bold" : "normal"}>{label}</text>
+      )}
+      {isProbe && voltage !== undefined && voltage !== null && (
+        <text x={x + 8} y={y + 17} fontSize="10" fill="#f59e0b">{_fmtSI(voltage, "V")}</text>
+      )}
+    </g>
+  )
+}
+
+// ── Main Workstation ─────────────────────────────────────────────────────────
+
+function CircuitLabWorkstation({ mission, code, onCodeChange }) {
+  // Parse simulation config from mission
+  const simCfg = React.useMemo(() => {
+    try {
+      const s = mission?.simulation || mission?.simulationData
+      if (!s) return null
+      return typeof s === "string" ? JSON.parse(s) : s
+    } catch { return null }
+  }, [mission?.simulation, mission?.simulationData])
+
+  const circuit = simCfg?.circuit || null
+  const target  = simCfg?.target  || null
+  const hasCircuit = !!(circuit?.components && circuit?.nodes)
+
+  // Editable component parameter state
+  const [params, setParams] = useState(() => {
+    const init = {}
+    circuit?.components?.forEach(c => { if (c.editable) init[c.id] = c.value })
+    return init
+  })
+
+  // Solve circuit (fast pure-JS, no memo needed for small N)
+  const solveResult = hasCircuit ? _solveDcCircuit(circuit.components, params) : null
+
+  const probeNode = circuit?.probe || target?.node || null
+  const probeV    = probeNode && solveResult ? (solveResult.nodeVoltages[probeNode] ?? null) : null
+
+  // MCQ layer (same pattern as EmbeddedLabWorkstation)
+  const parsedTC = React.useMemo(() => {
+    try { const tc = mission?.test_cases || mission?.testCases || []; return typeof tc === "string" ? JSON.parse(tc) : Array.isArray(tc) ? tc : [] }
+    catch { return [] }
+  }, [mission?.test_cases, mission?.testCases])
+
+  const diagData = React.useMemo(() => {
+    const tc = parsedTC[0] || {}
+    if (tc.options) return { options: tc.options, correct: tc.correct ?? 0, explanation: tc.explanation || "" }
+    if (mission?.options) {
+      try {
+        const opts = typeof mission.options === "string" ? JSON.parse(mission.options) : mission.options
+        return { options: Array.isArray(opts) ? opts : Object.values(opts), correct: tc.correct ?? 0, explanation: "" }
+      } catch {}
+    }
+    return null
+  }, [parsedTC, mission?.options])
+
+  const expected = parsedTC?.[0] ? String(parsedTC[0].expected_output ?? parsedTC[0].expected ?? "") : null
+
+  const [selOpt,     setSelOpt]     = useState(null)
+  const [answer,     setAnswer]     = useState(code || "")
+  const [checked,    setChecked]    = useState(null)      // null | "correct" | "wrong"
+  const [simChecked, setSimChecked] = useState(null)      // null | "correct" | "wrong"
+
+  // Update a single param; reset simulation check
+  const updateParam = (id, raw) => {
+    const val = parseFloat(raw)
+    if (isNaN(val)) return
+    setParams(prev => ({ ...prev, [id]: val }))
+    setSimChecked(null)
+  }
+
+  // Display value for a component
+  const compDisplay = c => {
+    const v = params[c.id] !== undefined ? params[c.id] : c.value
+    return _fmtSI(v, _compUnit(c))
+  }
+
+  // Voltage color
+  const vColor = v => {
+    if (v === undefined || v === null || isNaN(v)) return T.ink3
+    return v > 0 ? "#22c55e" : v < 0 ? "#ef4444" : T.ink2
+  }
+
+  // Resolve layout: use circuit.layout or auto-place in an ellipse
+  const SVG_W = 380, SVG_H = 260
+  const layout = React.useMemo(() => {
+    if (!hasCircuit) return {}
+    const base = { ...(circuit.layout || {}) }
+    if (!base["GND"]) base["GND"] = { x: SVG_W / 2, y: SVG_H - 32 }
+    const unplaced = (circuit.nodes || []).filter(n => n !== "GND" && !base[n])
+    unplaced.forEach((n, i, arr) => {
+      const angle = (i / arr.length) * 2 * Math.PI - Math.PI / 2
+      base[n] = {
+        x: SVG_W / 2 + (SVG_W * 0.32) * Math.cos(angle),
+        y: (SVG_H - 60) / 2 + 20 + (SVG_H * 0.28) * Math.sin(angle),
+      }
+    })
+    return base
+  }, [hasCircuit, circuit?.layout, circuit?.nodes])
+
+  // ── Check simulation target ────────────────────────────────────────────
+  const checkSimTarget = () => {
+    if (!target || !solveResult) return
+    let ok = false
+    const tol = target.tolerance ?? 0.05
+
+    if (target.type === "voltage_at_probe" || target.type === "voltage") {
+      if (probeV !== null) {
+        const absTol = tol < 1 ? Math.abs(target.value) * tol + 0.005 : tol
+        ok = Math.abs(probeV - target.value) <= absTol
+      }
+    } else if (target.type === "current") {
+      const i = solveResult.branchCurrents?.[target.component] ?? null
+      if (i !== null) {
+        const absTol = tol < 1 ? Math.abs(target.value) * tol + 0.0001 : tol
+        ok = Math.abs(i - target.value) <= absTol
+      }
+    }
+
+    setSimChecked(ok ? "correct" : "wrong")
+    const summary = `Params: ${JSON.stringify(params)} | ${probeNode}: ${probeV?.toFixed(4)} V`
+    onCodeChange && onCodeChange(summary)
+    try {
+      registerValidator(() => [{
+        passed: ok,
+        input: `V(${probeNode}) = ${_fmtSI(probeV, "V")}`,
+        expected: _fmtSI(target.value, target.unit || "V"),
+        actual: _fmtSI(probeV, "V"),
+      }])
+    } catch {}
+  }
+
+  // ── Check MCQ / text answer ────────────────────────────────────────────
+  const handleCheck = () => {
+    if (diagData) {
+      if (selOpt === null) return
+      const ok = selOpt === diagData.correct
+      setChecked(ok ? "correct" : "wrong")
+      try { registerValidator(() => [{ passed: ok, input: "Option", expected: diagData.options[diagData.correct], actual: diagData.options[selOpt] }]) } catch {}
+    } else {
+      if (!answer.trim()) return
+      const uR = answer.trim().toLowerCase(), eR = (expected || "").trim().toLowerCase()
+      const uN = parseFloat(uR), eN = parseFloat(eR)
+      const ok = !isNaN(uN) && !isNaN(eN) ? Math.abs(uN - eN) <= Math.abs(eN) * 0.02 + 0.5 : uR === eR
+      setChecked(ok ? "correct" : "wrong")
+      try { registerValidator(() => [{ passed: ok, input: "Answer", expected: expected || "—", actual: answer }]) } catch {}
+    }
+  }
+
+  // ── Render SVG component shape ─────────────────────────────────────────
+  const renderComp = c => {
+    const na = c.node_a || c.node_plus || "", nb = c.node_b || c.node_minus || ""
+    const pa = layout[na], pb = layout[nb]
+    if (!pa || !pb) return null
+    const label = `${c.id}=${compDisplay(c)}`
+
+    if (c.type === "resistor" || c.type === "R") {
+      return <_ResistorSVG key={c.id} x1={pa.x} y1={pa.y} x2={pb.x} y2={pb.y} label={label} highlighted={!!c.editable} T={T}/>
+    }
+    if (c.type === "voltage_source" || c.type === "VS") {
+      // Draw from minus (nb/GND side) to plus (na/supply side)
+      return <_VSourceSVG key={c.id} x1={pb.x} y1={pb.y} x2={pa.x} y2={pa.y} label={label} T={T}/>
+    }
+    // Generic wire
+    return <line key={c.id} x1={pa.x} y1={pa.y} x2={pb.x} y2={pb.y} stroke={T.ink2} strokeWidth="1.5"/>
+  }
+
+  const editableComps = circuit?.components?.filter(c => c.editable) || []
+
+  // ── Render ─────────────────────────────────────────────────────────────
+  return (
+    <div style={{ display:"flex", height:"100%", gap:0, overflow:"hidden" }}>
+
+      {/* LEFT: SVG schematic + probe readings */}
+      <div style={{ flex:"0 0 56%", borderRight:`1px solid ${T.border}`, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+        <div style={{ padding:"8px 14px", borderBottom:`1px solid ${T.border}`, display:"flex", alignItems:"center", gap:10 }}>
+          <span style={{ fontSize:13, fontWeight:600, color:T.ink1 }}>⚡ Circuit Diagram</span>
+          {solveResult?.error && <span style={{ fontSize:11, color:"#ef4444" }}>{solveResult.error}</span>}
+          {!hasCircuit && <span style={{ fontSize:11, color:T.ink3 }}>No simulation data in this challenge</span>}
+        </div>
+
+        <div style={{ flex:1, overflow:"auto", padding:10 }}>
+          {hasCircuit ? (
+            <>
+              <svg width={SVG_W} height={SVG_H}
+                style={{ display:"block", background:T.code, borderRadius:8, border:`1px solid ${T.border}` }}>
+
+                {/* Layout wire segments (visual bus connectors, not MNA components) */}
+                {(circuit.layout?.wires || []).map((w, i) => (
+                  <line key={`wire-${i}`} x1={w.x1} y1={w.y1} x2={w.x2} y2={w.y2} stroke={T.ink2} strokeWidth="1.5"/>
+                ))}
+
+                {/* Component shapes */}
+                {circuit.components.map(renderComp)}
+
+                {/* Nodes */}
+                {circuit.nodes.map(n => {
+                  const pos = layout[n]
+                  if (!pos) return null
+                  if (n === "GND") return (
+                    <g key={n}>
+                      <_GroundSVG x={pos.x} y={pos.y} T={T}/>
+                      {(pos.extra || []).map((ep, ei) => <_GroundSVG key={ei} x={ep.x} y={ep.y} T={T}/>)}
+                    </g>
+                  )
+                  return <_NodeDotSVG key={n} x={pos.x} y={pos.y} label={n}
+                    voltage={solveResult?.nodeVoltages?.[n]} isProbe={n === probeNode} T={T}/>
+                })}
+              </svg>
+
+              {/* Live readings table */}
+              {solveResult && !solveResult.error && (
+                <div style={{ marginTop:10, padding:"8px 12px", background:T.panel, borderRadius:8, border:`1px solid ${T.border}` }}>
+                  <div style={{ display:"flex", gap:24 }}>
+                    <div>
+                      <div style={{ fontSize:11, color:T.ink3, marginBottom:4 }}>NODE VOLTAGES</div>
+                      {Object.entries(solveResult.nodeVoltages).map(([n, v]) => (
+                        <div key={n} style={{ fontSize:12, marginBottom:2 }}>
+                          <span style={{ color: n === probeNode ? "#f59e0b" : T.ink2 }}>V({n})&nbsp;</span>
+                          <span style={{ color: vColor(v), fontWeight: 600, fontFamily:"monospace" }}>{_fmtSI(v, "V")}</span>
+                          {n === probeNode && <span style={{ color:"#f59e0b", fontSize:10, marginLeft:4 }}>◀ probe</span>}
+                        </div>
+                      ))}
+                    </div>
+                    {Object.keys(solveResult.branchCurrents).length > 0 && (
+                      <div>
+                        <div style={{ fontSize:11, color:T.ink3, marginBottom:4 }}>BRANCH CURRENTS</div>
+                        {Object.entries(solveResult.branchCurrents).map(([id, i]) => (
+                          <div key={id} style={{ fontSize:12, marginBottom:2 }}>
+                            <span style={{ color:T.ink2 }}>I({id})&nbsp;</span>
+                            <span style={{ color: vColor(i), fontWeight:600, fontFamily:"monospace" }}>{_fmtSI(i, "A")}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:200, flexDirection:"column", gap:8, color:T.ink3 }}>
+              <span style={{ fontSize:28 }}>⚡</span>
+              <span style={{ fontSize:14 }}>Circuit Lab</span>
+              <span style={{ fontSize:12 }}>Challenge requires a <code>simulation</code> field with circuit data.</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* RIGHT: parameters + target + answer */}
+      <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+
+        {/* Parameters panel */}
+        {editableComps.length > 0 && (
+          <div style={{ padding:"10px 14px", borderBottom:`1px solid ${T.border}` }}>
+            <div style={{ fontSize:12, fontWeight:600, color:T.ink2, marginBottom:8 }}>Parameters</div>
+            {editableComps.map(c => {
+              const val   = params[c.id] !== undefined ? params[c.id] : c.value
+              const unit  = _compUnit(c)
+              const min   = c.min   !== undefined ? c.min   : 0
+              const max   = c.max   !== undefined ? c.max   : c.value * 10
+              const step  = c.step  !== undefined ? c.step  : (c.value >= 1000 ? 500 : 0.1)
+              return (
+                <div key={c.id} style={{ marginBottom:10 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
+                    <span style={{ fontSize:12, color:T.ink1, fontWeight:500 }}>{c.id}{c.description ? ` — ${c.description}` : ""}</span>
+                    <span style={{ fontSize:12, color:"#f59e0b", fontFamily:"monospace", fontWeight:600 }}>{compDisplay(c)}</span>
+                  </div>
+                  <input type="range" min={min} max={max} step={step} value={val}
+                    onChange={e => updateParam(c.id, e.target.value)}
+                    style={{ width:"100%", accentColor:"#f59e0b" }}/>
+                  <div style={{ display:"flex", justifyContent:"space-between" }}>
+                    <span style={{ fontSize:10, color:T.ink3 }}>{_fmtSI(min, unit)}</span>
+                    <span style={{ fontSize:10, color:T.ink3 }}>{_fmtSI(max, unit)}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Simulation target */}
+        {hasCircuit && target && (
+          <div style={{ padding:"8px 14px", borderBottom:`1px solid ${T.border}` }}>
+            <div style={{ fontSize:12, fontWeight:600, color:T.ink2, marginBottom:4 }}>Target</div>
+            <div style={{ fontSize:12, color:T.ink1, marginBottom:6 }}>
+              {target.type === "voltage_at_probe" || target.type === "voltage"
+                ? <>Achieve <strong>V({probeNode}) = {_fmtSI(target.value, target.unit || "V")}</strong>{target.tolerance ? ` ±${(target.tolerance*100).toFixed(0)}%` : " ±5%"}</>
+                : target.type === "current"
+                ? <>Achieve <strong>I({target.component}) = {_fmtSI(target.value, target.unit || "A")}</strong></>
+                : target.description || "Meet the simulation target"}
+            </div>
+            {probeV !== null && (
+              <div style={{ fontSize:12, marginBottom:6 }}>
+                Current reading: <span style={{ color:"#f59e0b", fontWeight:600, fontFamily:"monospace" }}>{_fmtSI(probeV, "V")}</span>
+                {simChecked === "correct" && <span style={{ color:"#22c55e", marginLeft:8 }}>✓ Target met!</span>}
+                {simChecked === "wrong"   && <span style={{ color:"#ef4444", marginLeft:8 }}>✗ Keep adjusting</span>}
+              </div>
+            )}
+            <button onClick={checkSimTarget} disabled={!hasCircuit || !solveResult}
+              style={{ padding:"5px 12px", background:T.accent, color:"#fff", border:"none", borderRadius:6, fontSize:12, fontWeight:600, cursor:"pointer" }}>
+              Check Circuit
+            </button>
+          </div>
+        )}
+
+        {/* MCQ / text answer */}
+        <div style={{ flex:1, overflow:"auto", padding:"10px 14px" }}>
+          {(diagData || expected || (!hasCircuit)) && (
+            <>
+              <div style={{ fontSize:12, fontWeight:600, color:T.ink2, marginBottom:6 }}>
+                {diagData ? "Conceptual Question" : "Answer"}
+              </div>
+              {mission?.question && (
+                <div style={{ fontSize:13, color:T.ink1, marginBottom:10 }}>{mission.question}</div>
+              )}
+              {diagData ? (
+                <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                  {diagData.options.map((opt, i) => {
+                    let bg = T.panel, border = T.border, col = T.ink1
+                    if (selOpt === i) { bg = T.accent + "22"; border = T.accent }
+                    if (checked && i === diagData.correct) { bg = "#22c55e22"; border = "#22c55e" }
+                    if (checked === "wrong" && selOpt === i) { bg = "#ef444422"; border = "#ef4444" }
+                    return (
+                      <div key={i} onClick={() => { if (!checked) setSelOpt(i) }}
+                        style={{ padding:"7px 12px", borderRadius:7, border:`1.5px solid ${border}`, background:bg, color:col, fontSize:12, cursor:checked?"default":"pointer", userSelect:"none" }}>
+                        <span style={{ color:T.ink3, marginRight:8 }}>{String.fromCharCode(65+i)}.</span>{opt}
+                      </div>
+                    )
+                  })}
+                  {checked && diagData.explanation && (
+                    <div style={{ padding:"8px 10px", background:checked==="correct"?"#22c55e15":"#ef444415", borderRadius:7, fontSize:12, color:checked==="correct"?"#22c55e":"#ef4444", marginTop:2 }}>
+                      {diagData.explanation}
+                    </div>
+                  )}
+                  <button onClick={handleCheck} disabled={selOpt===null||!!checked}
+                    style={{ marginTop:4, padding:"6px 14px", background:T.accent, color:"#fff", border:"none", borderRadius:7, fontSize:12, fontWeight:600, cursor:selOpt!==null&&!checked?"pointer":"not-allowed", opacity:selOpt===null||checked?0.5:1 }}>
+                    Submit Answer
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <textarea value={answer} onChange={e => { setAnswer(e.target.value); onCodeChange && onCodeChange(e.target.value) }}
+                    placeholder="Enter your answer…"
+                    style={{ width:"100%", minHeight:70, padding:"7px 10px", background:T.code, color:T.ink1, border:`1px solid ${T.border}`, borderRadius:7, fontSize:13, fontFamily:"inherit", resize:"vertical", boxSizing:"border-box" }}/>
+                  {checked && (
+                    <div style={{ padding:"5px 10px", background:checked==="correct"?"#22c55e22":"#ef444422", borderRadius:7, fontSize:12, color:checked==="correct"?"#22c55e":"#ef4444", margin:"4px 0" }}>
+                      {checked === "correct" ? "✓ Correct" : `✗ Expected: ${expected}`}
+                    </div>
+                  )}
+                  <button onClick={handleCheck} disabled={!answer.trim()||!!checked}
+                    style={{ marginTop:4, padding:"6px 14px", background:T.accent, color:"#fff", border:"none", borderRadius:7, fontSize:12, fontWeight:600, cursor:answer.trim()&&!checked?"pointer":"not-allowed", opacity:!answer.trim()||checked?0.5:1 }}>
+                    Submit Answer
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+          {!diagData && !expected && hasCircuit && !mission?.question && (
+            <div style={{ color:T.ink3, fontSize:12, padding:"8px 0" }}>
+              Use the parameters on this panel to meet the circuit target, then click <strong>Check Circuit</strong>.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INTERACTIVE CIRCUIT WORKSTATION
+// Students wire pre-placed components on a grid canvas. The MNA solver runs
+// live as they connect wires — no multiple choice, no screenshot-to-AI shortcut.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const _ICS  = 40   // grid cell size (px)
+const _IC_W = 720  // canvas width  (18 cells)
+const _IC_H = 440  // canvas height (11 cells)
+const _IC_PR = 6   // port circle radius
+
+// Grid ↔ pixel helpers
+function _icPx(col, row) { return { x: col * _ICS, y: row * _ICS } }
+function _icKey(col, row) { return `${col}|${row}` }
+
+// Port positions relative to component anchor (col, row), in grid units
+function _icPorts(comp) {
+  const c = comp.col, r = comp.row
+  if (comp.type === "resistor")       return { a: [c,   r  ], b: [c+2, r  ] }
+  if (comp.type === "voltage_source") return { p: [c,   r  ], n: [c,   r+2] }
+  if (comp.type === "ground")         return { g: [c,   r  ] }
+  if (comp.type === "probe")          return { x: [c,   r  ] }
+  return {}
+}
+
+// Build an L-shaped wire path (2–3 grid points)
+function _icRoute(c1, r1, c2, r2) {
+  if (c1 === c2 || r1 === r2) return [{ col: c1, row: r1 }, { col: c2, row: r2 }]
+  return [{ col: c1, row: r1 }, { col: c2, row: r1 }, { col: c2, row: r2 }]
+}
+
+// Union-Find helpers
+function _icMakeUF(keys) {
+  const p = {}; keys.forEach(k => { p[k] = k }); return p
+}
+function _icFind(p, k) {
+  if (!p[k]) p[k] = k; return p[k] === k ? k : (p[k] = _icFind(p, p[k]))
+}
+function _icUnion(p, a, b) { p[_icFind(p, a)] = _icFind(p, b) }
+
+// Assign electrical node names to all grid points touched by components + wires
+function _icDetectNodes(comps, wires) {
+  const uf = {}
+
+  // Register every component port
+  comps.forEach(comp => {
+    Object.values(_icPorts(comp)).forEach(([c, r]) => {
+      const k = _icKey(c, r); if (!uf[k]) uf[k] = k
+    })
+  })
+
+  // Connect all grid points along each wire segment
+  wires.forEach(wire => {
+    const pts = wire.points
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [c1, r1, c2, r2] = [pts[i].col, pts[i].row, pts[i+1].col, pts[i+1].row]
+      if (r1 === r2) {
+        const lo = Math.min(c1,c2), hi = Math.max(c1,c2)
+        for (let c = lo; c <= hi; c++) {
+          const k = _icKey(c, r1); if (!uf[k]) uf[k] = k
+          if (c > lo) _icUnion(uf, _icKey(c-1,r1), k)
+        }
+      } else {
+        const lo = Math.min(r1,r2), hi = Math.max(r1,r2)
+        for (let r = lo; r <= hi; r++) {
+          const k = _icKey(c1, r); if (!uf[k]) uf[k] = k
+          if (r > lo) _icUnion(uf, _icKey(c1,r-1), k)
+        }
+      }
+    }
+  })
+
+  // Find GND roots (all ground component ports)
+  let gndRoot = null
+  comps.filter(c => c.type === "ground").forEach(comp => {
+    const [[gc, gr]] = Object.values(_icPorts(comp))
+    const k = _icKey(gc, gr); if (!uf[k]) uf[k] = k
+    if (gndRoot === null) gndRoot = _icFind(uf, k)
+    else _icUnion(uf, gndRoot, _icFind(uf, k))
+    gndRoot = _icFind(uf, _icKey(gc, gr))
+  })
+  const gnd = gndRoot ? _icFind(uf, gndRoot) : null
+
+  // Assign human-readable node names
+  const rootName = {}; let idx = 0
+  const nodeMap = {}   // portKey → nodeName
+  Object.keys(uf).forEach(k => {
+    const root = _icFind(uf, k)
+    if (!rootName[root]) rootName[root] = root === gnd ? "GND" : `N${idx++}`
+    nodeMap[k] = rootName[root]
+  })
+  return nodeMap
+}
+
+// Build MNA component list from canvas state
+function _icMNA(comps, nodeMap) {
+  return comps.flatMap(comp => {
+    if (comp.type === "ground" || comp.type === "probe") return []
+    const ports = _icPorts(comp)
+    const node = ([c,r]) => nodeMap[_icKey(c,r)] || "FLOAT"
+    if (comp.type === "resistor")
+      return [{ id: comp.id, type: "resistor", value: comp.value, node_a: node(ports.a), node_b: node(ports.b) }]
+    if (comp.type === "voltage_source")
+      return [{ id: comp.id, type: "voltage_source", value: comp.value, node_plus: node(ports.p), node_minus: node(ports.n) }]
+    return []
+  })
+}
+
+// ── SVG Component Renderers ───────────────────────────────────────────────────
+
+function _ICResistorSVG({ comp, T, onCompClick, isEditing }) {
+  const { x: x1, y: yy } = _icPx(comp.col, comp.row)
+  const x2 = x1 + 2 * _ICS
+  const bL = x1 + 22, bR = x2 - 22, mid = yy
+  return (
+    <g onClick={() => onCompClick(comp)} style={{ cursor: comp.editable ? "pointer" : "default" }}>
+      {isEditing && <rect x={x1-6} y={mid-22} width={x2-x1+12} height={44} rx={8}
+        fill={T.indigo+"18"} stroke={T.indigo} strokeWidth={1.5} strokeDasharray="5,3"/>}
+      <line x1={x1} y1={mid} x2={bL} y2={mid} stroke={T.ink2} strokeWidth={2} strokeLinecap="round"/>
+      <rect x={bL} y={mid-10} width={bR-bL} height={20} rx={4}
+        fill={T.bg} stroke={T.ink2} strokeWidth={1.5}/>
+      <line x1={bL+6} y1={mid} x2={bL+11} y2={mid-7} stroke={T.ink2} strokeWidth={1.5}/>
+      <line x1={bL+11} y1={mid-7} x2={bL+21} y2={mid+7} stroke={T.ink2} strokeWidth={1.5}/>
+      <line x1={bL+21} y1={mid+7} x2={bL+31} y2={mid-7} stroke={T.ink2} strokeWidth={1.5}/>
+      <line x1={bL+31} y1={mid-7} x2={bR-6}  y2={mid} stroke={T.ink2} strokeWidth={1.5}/>
+      <line x1={bR} y1={mid} x2={x2} y2={mid} stroke={T.ink2} strokeWidth={2} strokeLinecap="round"/>
+      <text x={(x1+x2)/2} y={mid+28} textAnchor="middle" fontSize={11} fill={T.ink3} fontFamily="monospace">
+        {comp.id}={_fmtSI(comp.value,"Ω")}{comp.editable?" ✎":""}
+      </text>
+    </g>
+  )
+}
+
+function _ICVSourceSVG({ comp, T, onCompClick, isEditing }) {
+  const { x: cx, y: y1 } = _icPx(comp.col, comp.row)
+  const y2 = y1 + 2 * _ICS, cyCtr = (y1+y2)/2, R = 18
+  return (
+    <g onClick={() => onCompClick(comp)} style={{ cursor: comp.editable ? "pointer" : "default" }}>
+      {isEditing && <rect x={cx-28} y={y1-6} width={56} height={y2-y1+12} rx={8}
+        fill={T.amber+"18"} stroke={T.amber} strokeWidth={1.5} strokeDasharray="5,3"/>}
+      <line x1={cx} y1={y1} x2={cx} y2={cyCtr-R} stroke={T.ink2} strokeWidth={2} strokeLinecap="round"/>
+      <circle cx={cx} cy={cyCtr} r={R} fill={T.bg} stroke={T.ink2} strokeWidth={1.5}/>
+      <text x={cx} y={cyCtr-5}  textAnchor="middle" fontSize={13} fill="#16A34A" fontWeight={800}>+</text>
+      <text x={cx} y={cyCtr+11} textAnchor="middle" fontSize={13} fill="#DC2626" fontWeight={800}>−</text>
+      <line x1={cx} y1={cyCtr+R} x2={cx} y2={y2} stroke={T.ink2} strokeWidth={2} strokeLinecap="round"/>
+      <text x={cx+26} y={cyCtr+5} textAnchor="start" fontSize={11} fill={T.ink3} fontFamily="monospace">
+        {comp.id}={_fmtSI(comp.value,"V")}{comp.editable?" ✎":""}
+      </text>
+    </g>
+  )
+}
+
+function _ICGroundSVG({ comp, T }) {
+  const { x: cx, y: cy } = _icPx(comp.col, comp.row)
+  return (
+    <g>
+      <line x1={cx} y1={cy}   x2={cx} y2={cy+10} stroke={T.ink2} strokeWidth={2}/>
+      <line x1={cx-16} y1={cy+10} x2={cx+16} y2={cy+10} stroke={T.ink2} strokeWidth={2.5}/>
+      <line x1={cx-10} y1={cy+16} x2={cx+10} y2={cy+16} stroke={T.ink2} strokeWidth={2}/>
+      <line x1={cx-5}  y1={cy+22} x2={cx+5}  y2={cy+22} stroke={T.ink2} strokeWidth={1.5}/>
+    </g>
+  )
+}
+
+function _ICProbeSVG({ comp, T, voltage }) {
+  const { x: cx, y: cy } = _icPx(comp.col, comp.row)
+  const hasV = voltage !== undefined && voltage !== null
+  return (
+    <g>
+      <circle cx={cx} cy={cy} r={10} fill={T.amber+"30"} stroke={T.amber} strokeWidth={1.5}/>
+      <text x={cx} y={cy+4} textAnchor="middle" fontSize={9} fill={T.amber} fontWeight={800}>V</text>
+      {hasV && (
+        <text x={cx+18} y={cy-14} textAnchor="start" fontSize={10} fill={T.amber}
+          fontFamily="monospace" fontWeight={700}>{_fmtSI(voltage,"V")}</text>
+      )}
+    </g>
+  )
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
+
+function InteractiveCircuitWorkstation({ mission, code, onCodeChange }) {
+  const T = useTheme()
+  const circ = mission?.simulation?.circuit || {}
+
+  const [comps, setComps]           = React.useState(() => (circ.components || []).map(c => ({...c})))
+  const [wires, setWires]           = React.useState(() => (circ.wires || []).map((w,i) => ({...w, id: w.id || `lw${i}`})))
+  const [pendingPort, setPending]   = React.useState(null)   // {compId,portId,col,row}
+  const [mouseGrid, setMouseGrid]   = React.useState(null)   // {col,row}
+  const [selWireId, setSelWireId]   = React.useState(null)
+  const [editingId, setEditingId]   = React.useState(null)
+  const [editVal, setEditVal]       = React.useState("")
+  const [simResult, setSimResult]   = React.useState(null)
+  const [feedback, setFeedback]     = React.useState(null)
+  const svgRef                      = React.useRef(null)
+  const target                      = circ.target
+
+  // ── Re-run MNA whenever circuit topology changes ──────────────────────────
+  React.useEffect(() => {
+    try {
+      const nodeMap  = _icDetectNodes(comps, wires)
+      const mnaComps = _icMNA(comps, nodeMap)
+      if (mnaComps.some(mc =>
+        mc.node_a === "FLOAT" || mc.node_b === "FLOAT" ||
+        mc.node_plus === "FLOAT" || mc.node_minus === "FLOAT"
+      )) {
+        setSimResult({ error: "Floating node — complete the circuit wiring.", nodeVoltages: {}, branchCurrents: {} })
+        return
+      }
+      setSimResult(_solveDcCircuit(mnaComps, {}))
+    } catch(e) {
+      setSimResult({ error: e.message, nodeVoltages: {}, branchCurrents: {} })
+    }
+  }, [comps, wires])
+
+  // ── Derived: all port positions ───────────────────────────────────────────
+  const allPorts = React.useMemo(() => {
+    const out = []
+    comps.forEach(comp => {
+      if (comp.type === "ground") return
+      Object.entries(_icPorts(comp)).forEach(([pid, [col, row]]) => {
+        out.push({ compId: comp.id, portId: pid, col, row })
+      })
+    })
+    return out
+  }, [comps])
+
+  // ── Connected port keys (for styling open vs. wired ports) ───────────────
+  const connectedKeys = React.useMemo(() => {
+    const keys = new Set()
+    wires.forEach(w => {
+      if (w.points.length >= 2) {
+        const s = w.points[0], e = w.points[w.points.length-1]
+        keys.add(_icKey(s.col, s.row)); keys.add(_icKey(e.col, e.row))
+      }
+    })
+    return keys
+  }, [wires])
+
+  // ── Ghost wire preview while drawing ─────────────────────────────────────
+  const ghostPts = React.useMemo(() => {
+    if (!pendingPort || !mouseGrid) return null
+    return _icRoute(pendingPort.col, pendingPort.row, mouseGrid.col, mouseGrid.row)
+  }, [pendingPort, mouseGrid])
+
+  // ── Probe readings table ──────────────────────────────────────────────────
+  const probeRows = React.useMemo(() => {
+    if (!simResult || simResult.error) return []
+    const rows = []
+    Object.entries(simResult.nodeVoltages  || {}).forEach(([n,v])  => rows.push({ label: `V(${n})`, val: _fmtSI(v,"V") }))
+    Object.entries(simResult.branchCurrents|| {}).forEach(([id,i]) => rows.push({ label: `I(${id})`, val: _fmtSI(i,"A") }))
+    return rows
+  }, [simResult])
+
+  // ── Check target ──────────────────────────────────────────────────────────
+  const checkCircuit = () => {
+    if (!simResult || simResult.error || !target) return
+    const nodeMap = _icDetectNodes(comps, wires)
+    let measured = null
+
+    if (target.type === "voltage_at_port") {
+      const comp = comps.find(c => c.id === target.compId)
+      if (comp) {
+        const coords = _icPorts(comp)[target.portId]
+        if (coords) {
+          const nodeName = nodeMap[_icKey(coords[0], coords[1])]
+          measured = simResult.nodeVoltages[nodeName]
+        }
+      }
+    } else if (target.type === "current") {
+      measured = simResult.branchCurrents[target.component]
+    } else if (target.type === "voltage_at_node") {
+      measured = simResult.nodeVoltages[target.node]
+    }
+
+    if (measured == null) {
+      setFeedback({ pass: false, msg: "Cannot measure — check circuit is fully wired." }); return
+    }
+    const tol = (target.tolerance < 1 ? Math.abs(target.value) * target.tolerance : target.tolerance) + 1e-6
+    const pass = Math.abs(measured - target.value) <= tol
+    setFeedback({
+      pass,
+      msg: pass
+        ? `✓ Circuit works! Measured ${_fmtSI(measured, target.unit||"V")} — target ${_fmtSI(target.value, target.unit||"V")} ±${Math.round((target.tolerance||0.05)*100)}%`
+        : `✗ Measured ${_fmtSI(measured, target.unit||"V")}, need ${_fmtSI(target.value, target.unit||"V")} ±${Math.round((target.tolerance||0.05)*100)}%`,
+    })
+  }
+
+  // ── SVG interaction helpers ───────────────────────────────────────────────
+  const svgCoords = (e) => {
+    const rect = svgRef.current?.getBoundingClientRect() || {}
+    return { px: e.clientX - (rect.left||0), py: e.clientY - (rect.top||0) }
+  }
+  const onSVGMouseMove = (e) => {
+    const { px, py } = svgCoords(e)
+    setMouseGrid({ col: Math.max(0,Math.min(17,Math.round(px/_ICS))), row: Math.max(0,Math.min(10,Math.round(py/_ICS))) })
+  }
+  const onPortClick = (port) => {
+    setEditingId(null)
+    if (!pendingPort) { setPending(port); return }
+    if (pendingPort.compId===port.compId && pendingPort.portId===port.portId) { setPending(null); return }
+    const pts = _icRoute(pendingPort.col, pendingPort.row, port.col, port.row)
+    setWires(prev => [...prev, { id: `w${Date.now()}`, points: pts, locked: false }])
+    setPending(null); setFeedback(null)
+  }
+  const onWireClick = (wireId) => {
+    const w = wires.find(w => w.id === wireId)
+    if (w?.locked) return
+    setSelWireId(prev => prev === wireId ? null : wireId)
+    setPending(null)
+  }
+  const deleteWire = () => {
+    if (!selWireId) return
+    setWires(prev => prev.filter(w => w.id !== selWireId))
+    setSelWireId(null); setFeedback(null)
+  }
+  const resetAll = () => {
+    setComps((circ.components||[]).map(c=>({...c})))
+    setWires((circ.wires||[]).map((w,i)=>({...w,id:w.id||`lw${i}`})))
+    setPending(null); setSelWireId(null); setFeedback(null); setEditingId(null)
+  }
+  const onCompClick = (comp) => {
+    if (!comp.editable) return
+    setPending(null); setSelWireId(null)
+    setEditingId(comp.id); setEditVal(String(comp.value))
+  }
+  const applyEdit = () => {
+    const v = parseFloat(editVal)
+    if (!isNaN(v) && v > 0) setComps(prev => prev.map(c => c.id===editingId ? {...c,value:v} : c))
+    setEditingId(null); setFeedback(null)
+  }
+
+  // ── Probe voltage lookup ──────────────────────────────────────────────────
+  const probeVoltage = (comp) => {
+    if (!simResult || simResult.error) return undefined
+    const nodeMap = _icDetectNodes(comps, wires)
+    const [[c,r]] = Object.values(_icPorts(comp))
+    const nodeName = nodeMap[_icKey(c,r)]
+    return nodeName ? simResult.nodeVoltages[nodeName] : undefined
+  }
+
+  const hasError = simResult?.error
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  return (
+    <div style={{ display:"flex", gap:16, height:"100%", minHeight:560, fontFamily:T.font }}>
+
+      {/* ── LEFT: Canvas ─────────────────────────────────────────────────── */}
+      <div style={{ flex:"0 0 738px", display:"flex", flexDirection:"column", gap:8 }}>
+
+        {/* Toolbar */}
+        <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+          <span style={{ fontSize:11, fontWeight:700, color:T.ink3, textTransform:"uppercase", letterSpacing:1 }}>Tool</span>
+
+          <button onClick={()=>{setPending(null);setSelWireId(null);setEditingId(null)}}
+            style={{ padding:"4px 11px", borderRadius:6, border:`1px solid ${!pendingPort&&!selWireId ? T.indigo : T.border}`,
+              background:!pendingPort&&!selWireId ? T.indigo+"18" : T.bg2,
+              color:!pendingPort&&!selWireId ? T.indigo : T.ink2, fontSize:12, cursor:"pointer" }}>
+            🖱 Select
+          </button>
+
+          <button onClick={()=>{setSelWireId(null);setEditingId(null)}}
+            style={{ padding:"4px 11px", borderRadius:6, border:`1px solid ${pendingPort ? T.green : T.border}`,
+              background:pendingPort ? T.green+"18" : T.bg2,
+              color:pendingPort ? T.green : T.ink2, fontSize:12, cursor:"pointer" }}>
+            🔌 Wire{pendingPort ? " — click port to complete" : ""}
+          </button>
+
+          {selWireId && (
+            <button onClick={deleteWire}
+              style={{ padding:"4px 11px", borderRadius:6, border:`1px solid ${T.red}`,
+                background:T.red+"15", color:T.red, fontSize:12, cursor:"pointer" }}>
+              🗑 Delete Wire
+            </button>
+          )}
+
+          <div style={{ marginLeft:"auto" }}>
+            <button onClick={resetAll}
+              style={{ padding:"4px 11px", borderRadius:6, border:`1px solid ${T.border}`,
+                background:T.bg2, color:T.ink2, fontSize:12, cursor:"pointer" }}>
+              ↺ Reset
+            </button>
+          </div>
+        </div>
+
+        {/* Value editor bar */}
+        {editingId && (
+          <div style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 12px",
+            background:T.indigo+"10", borderRadius:8, border:`1px solid ${T.indigo}40` }}>
+            <span style={{ fontSize:12, color:T.ink2 }}>Edit {editingId} value:</span>
+            <input type="number" value={editVal} onChange={e=>setEditVal(e.target.value)}
+              onKeyDown={e=>e.key==="Enter"&&applyEdit()} autoFocus
+              style={{ width:90, padding:"3px 8px", borderRadius:6, border:`1.5px solid ${T.indigo}`,
+                fontSize:13, fontFamily:"monospace" }}/>
+            <button onClick={applyEdit}
+              style={{ padding:"3px 12px", borderRadius:6, background:T.indigo, color:"#fff", border:"none", fontSize:12, cursor:"pointer" }}>
+              Apply
+            </button>
+            <button onClick={()=>setEditingId(null)}
+              style={{ padding:"3px 10px", borderRadius:6, background:T.bg2, color:T.ink2,
+                border:`1px solid ${T.border}`, fontSize:12, cursor:"pointer" }}>
+              Cancel
+            </button>
+          </div>
+        )}
+
+        {/* Circuit canvas */}
+        <div style={{ background:T.bg, border:`1.5px solid ${T.border}`, borderRadius:12, overflow:"hidden", boxShadow:"0 2px 8px rgba(0,0,0,0.06)" }}>
+          <svg ref={svgRef} width={_IC_W} height={_IC_H}
+            style={{ display:"block", cursor:pendingPort?"crosshair":"default" }}
+            onMouseMove={onSVGMouseMove}
+            onMouseLeave={()=>setMouseGrid(null)}>
+
+            {/* Grid dots */}
+            {Array.from({length:11},(_,r)=>Array.from({length:19},(_,c)=>{
+              const {x,y}=_icPx(c,r)
+              return <circle key={`gd-${c}-${r}`} cx={x} cy={y} r={1.5} fill={T.ink4+"55"}/>
+            }))}
+
+            {/* Pre-drawn + student wires */}
+            {wires.map(wire=>{
+              const pts = wire.points.map(p=>_icPx(p.col,p.row))
+              const d   = pts.map((p,i)=>`${i===0?"M":"L"}${p.x},${p.y}`).join(" ")
+              const sel = wire.id===selWireId
+              return (
+                <path key={wire.id} d={d} fill="none" strokeLinecap="round" strokeLinejoin="round"
+                  stroke={wire.locked ? T.ink2 : sel ? "#EF4444" : T.indigo}
+                  strokeWidth={sel?3:2}
+                  style={{ cursor:wire.locked?"default":"pointer" }}
+                  onClick={()=>!wire.locked&&onWireClick(wire.id)}/>
+              )
+            })}
+
+            {/* Ghost wire while drawing */}
+            {ghostPts && pendingPort && (() => {
+              const pts=ghostPts.map(p=>_icPx(p.col,p.row))
+              const d=pts.map((p,i)=>`${i===0?"M":"L"}${p.x},${p.y}`).join(" ")
+              return <path d={d} fill="none" stroke="#22C55E" strokeWidth={2}
+                strokeDasharray="7,4" strokeLinecap="round" style={{pointerEvents:"none"}}/>
+            })()}
+
+            {/* Components */}
+            {comps.map(comp=>{
+              if(comp.type==="resistor")       return <_ICResistorSVG key={comp.id} comp={comp} T={T} onCompClick={onCompClick} isEditing={editingId===comp.id}/>
+              if(comp.type==="voltage_source") return <_ICVSourceSVG  key={comp.id} comp={comp} T={T} onCompClick={onCompClick} isEditing={editingId===comp.id}/>
+              if(comp.type==="ground")         return <_ICGroundSVG   key={comp.id} comp={comp} T={T}/>
+              if(comp.type==="probe")          return <_ICProbeSVG    key={comp.id} comp={comp} T={T} voltage={probeVoltage(comp)}/>
+              return null
+            })}
+
+            {/* Port circles */}
+            {allPorts.map(port=>{
+              const {x,y}=_icPx(port.col,port.row)
+              const pk=_icKey(port.col,port.row)
+              const wired=connectedKeys.has(pk)
+              const isPending=pendingPort?.compId===port.compId&&pendingPort?.portId===port.portId
+              return (
+                <circle key={`p-${port.compId}-${port.portId}`}
+                  cx={x} cy={y} r={_IC_PR}
+                  fill={isPending?"#22C55E":wired?T.indigo+"40":T.bg}
+                  stroke={isPending?"#16A34A":wired?T.indigo:"#EF4444"}
+                  strokeWidth={isPending?2.5:1.5}
+                  style={{ cursor:"pointer" }}
+                  onClick={e=>{e.stopPropagation();onPortClick(port)}}/>
+              )
+            })}
+
+            {/* Pending port pulse ring */}
+            {pendingPort && (()=>{
+              const {x,y}=_icPx(pendingPort.col,pendingPort.row)
+              return <circle cx={x} cy={y} r={11} fill="none" stroke="#22C55E" strokeWidth={2} strokeDasharray="4,3"/>
+            })()}
+          </svg>
+        </div>
+
+        {/* Legend */}
+        <div style={{ display:"flex", gap:16, fontSize:11, color:T.ink3, padding:"0 2px", flexWrap:"wrap" }}>
+          <span><span style={{color:"#EF4444"}}>●</span> Open port — click to start/end wire</span>
+          <span><span style={{color:T.indigo}}>●</span> Connected</span>
+          <span><span style={{color:T.indigo}}>─</span> Your wire (click to select &amp; delete)</span>
+          <span><span style={{color:T.ink2}}>─</span> Given wire</span>
+          {comps.some(c=>c.editable) && <span>✎ Click highlighted component to edit value</span>}
+        </div>
+      </div>
+
+      {/* ── RIGHT: Problem + Live Readings ───────────────────────────────── */}
+      <div style={{ flex:1, display:"flex", flexDirection:"column", gap:12, overflowY:"auto", minWidth:0 }}>
+
+        {/* Problem */}
+        <div style={{ background:T.bg, border:`1.5px solid ${T.border}`, borderRadius:12, padding:16 }}>
+          <div style={{ fontSize:11, fontWeight:700, color:T.indigo, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Problem</div>
+          <div style={{ fontSize:14, lineHeight:1.7, color:T.ink1 }}>{mission?.description}</div>
+        </div>
+
+        {/* Target */}
+        {target && (
+          <div style={{ background:T.amber+"10", border:`1px solid ${T.amber}40`, borderRadius:10, padding:14 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:T.amber, marginBottom:6 }}>🎯 TARGET</div>
+            <div style={{ fontSize:13, color:T.ink1, fontFamily:"monospace" }}>
+              {target.type==="voltage_at_port"
+                ? `V at ${target.compId}.${target.portId} = ${_fmtSI(target.value,"V")} ±${Math.round((target.tolerance||0.05)*100)}%`
+                : target.type==="current"
+                  ? `I(${target.component}) = ${_fmtSI(target.value,"A")} ±${Math.round((target.tolerance||0.1)*100)}%`
+                  : `${target.type}: ${target.value} ${target.unit||""}`
+              }
+            </div>
+          </div>
+        )}
+
+        {/* Live simulation readings */}
+        <div style={{ background:T.bg, border:`1.5px solid ${T.border}`, borderRadius:12, padding:16 }}>
+          <div style={{ fontSize:11, fontWeight:700, color:T.ink2, textTransform:"uppercase", letterSpacing:1, marginBottom:10 }}>
+            ⚡ Live Simulation
+          </div>
+          {hasError ? (
+            <div style={{ fontSize:12, color:T.amber, background:T.amber+"12", padding:"9px 12px", borderRadius:8, lineHeight:1.5 }}>
+              ⚠ {simResult.error}
+            </div>
+          ) : probeRows.length===0 ? (
+            <div style={{ fontSize:13, color:T.ink3, fontStyle:"italic" }}>Wire components to see live readings…</div>
+          ) : (
+            <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+              <tbody>
+                {probeRows.map(({label,val})=>(
+                  <tr key={label} style={{ borderBottom:`1px solid ${T.border}` }}>
+                    <td style={{ padding:"5px 0", color:T.ink2, fontFamily:"monospace" }}>{label}</td>
+                    <td style={{ padding:"5px 0", color:T.indigo, fontFamily:"monospace", fontWeight:700, textAlign:"right" }}>{val}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Feedback */}
+        {feedback && (
+          <div style={{
+            background: feedback.pass ? "#16A34A18" : "#EF444418",
+            border:`1.5px solid ${feedback.pass?"#16A34A40":"#EF444440"}`,
+            borderRadius:10, padding:14,
+            fontSize:13, color:feedback.pass?"#16A34A":"#EF4444", fontWeight:600, lineHeight:1.5,
+          }}>{feedback.msg}</div>
+        )}
+
+        {/* Actions */}
+        <div style={{ display:"flex", flexDirection:"column", gap:8, marginTop:"auto", paddingTop:8 }}>
+          <button onClick={checkCircuit} disabled={!!hasError||!simResult}
+            style={{ padding:"11px 0", borderRadius:10, border:"none",
+              background: hasError||!simResult ? T.border : T.indigo,
+              color:"#fff", fontSize:14, fontWeight:700,
+              cursor:hasError||!simResult?"not-allowed":"pointer" }}>
+            ✓ Check Circuit
+          </button>
+          {feedback?.pass && (
+            <button onClick={()=>onCodeChange&&onCodeChange("__submit__")}
+              style={{ padding:"11px 0", borderRadius:10, border:"none",
+                background:"#16A34A", color:"#fff", fontSize:14, fontWeight:700, cursor:"pointer" }}>
+              Submit Solution →
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
 // UPDATED WORKSTATION ROUTER
 // ─────────────────────────────────────────────────────────────────────────────
 export function WorkstationRouter({ mission, domain, domainKey, moduleSandbox, code, onCodeChange, CodeEditor }) {
   const type = resolveWorkstationType(mission) || moduleSandbox || "code"
 
   switch (type) {
+    case "circuit_lab":         return <CircuitLabWorkstation         mission={mission} code={code} onCodeChange={onCodeChange} />
+    case "interactive_circuit": return <InteractiveCircuitWorkstation mission={mission} code={code} onCodeChange={onCodeChange} />
     case "engineering_lab":  return <EngineeringLabWorkstation mission={mission} code={code} onCodeChange={onCodeChange} />
-    case "calculator":       return <CalculatorWorkstation   mission={mission} code={code} onCodeChange={onCodeChange} />
-    case "sql":              return <SqlWorkstation          mission={mission} code={code} onCodeChange={onCodeChange} />
-    case "api":              return <ApiWorkstation          mission={mission} code={code} onCodeChange={onCodeChange} />
+    case "embedded_lab":     return <EmbeddedLabWorkstation    mission={mission} code={code} onCodeChange={onCodeChange} />
+    case "diagram_workspace":return <DiagramWorkspace          mission={mission} code={code} onCodeChange={onCodeChange} />
+    case "visual_inspection":return <VisualInspectionLab       mission={mission} code={code} onCodeChange={onCodeChange} />
+    case "diagnostic_console":return <DiagnosticConsole        mission={mission} code={code} onCodeChange={onCodeChange} />
+    case "document_viewer":  return <DocumentViewerWorkstation  mission={mission} code={code} onCodeChange={onCodeChange} />
+    case "calculator":       return <CalculatorWorkstation      mission={mission} code={code} onCodeChange={onCodeChange} />
+    case "sql":              return <SqlWorkstation             mission={mission} code={code} onCodeChange={onCodeChange} />
+    case "api":              return <ApiWorkstation             mission={mission} code={code} onCodeChange={onCodeChange} />
     case "frontend":
-    case "react":            return <FrontendWorkstation     mission={mission} code={code} onCodeChange={onCodeChange} />
-    case "terminal":         return <TerminalWorkstation     mission={mission} code={code} onCodeChange={onCodeChange} />
-    case "notebook":         return <NotebookWorkstation     mission={mission} code={code} onCodeChange={onCodeChange} />
-    case "markdown":         return <MarkdownWorkstation     mission={mission} code={code} onCodeChange={onCodeChange} />
-    case "excel":            return <ExcelWorkstation        mission={mission} code={code} onCodeChange={onCodeChange} />
-    case "dashboard":        return <DashboardWorkstation    mission={mission} code={code} onCodeChange={onCodeChange} />
-    case "report":           return <ReportWorkstation       mission={mission} code={code} onCodeChange={onCodeChange} />
-    // ── New workstations ──
-    case "security_console": return <SecurityConsole        mission={mission} code={code} onCodeChange={onCodeChange} />
-    case "soc_console":      return <SOCConsole             mission={mission} code={code} onCodeChange={onCodeChange} />
-    case "qa_lab":           return <QATestLab              mission={mission} code={code} onCodeChange={onCodeChange} />
-    case "business_analysis":return <BusinessAnalysisBoard  mission={mission} code={code} onCodeChange={onCodeChange} />
-    case "sre_console":      return <SREConsole             mission={mission} code={code} onCodeChange={onCodeChange} />
-    case "data_pipeline":    return <DataPipelineStudio     mission={mission} code={code} onCodeChange={onCodeChange} />
-    case "system_design":    return <SystemDesignWorkstation mission={mission} code={code} onCodeChange={onCodeChange} />
-    case "medical_coding":   return <MedicalCodingWorkstation mission={mission} code={code} onCodeChange={onCodeChange} />
+    case "react":            return <FrontendWorkstation        mission={mission} code={code} onCodeChange={onCodeChange} />
+    case "terminal":         return <TerminalWorkstation        mission={mission} code={code} onCodeChange={onCodeChange} />
+    case "notebook":         return <NotebookWorkstation        mission={mission} code={code} onCodeChange={onCodeChange} />
+    case "markdown":         return <MarkdownWorkstation        mission={mission} code={code} onCodeChange={onCodeChange} />
+    case "excel":            return <ExcelWorkstation           mission={mission} code={code} onCodeChange={onCodeChange} />
+    case "dashboard":        return <DashboardWorkstation       mission={mission} code={code} onCodeChange={onCodeChange} />
+    case "report":           return <ReportWorkstation          mission={mission} code={code} onCodeChange={onCodeChange} />
+    case "security_console": return <SecurityConsole            mission={mission} code={code} onCodeChange={onCodeChange} />
+    case "soc_console":      return <SOCConsole                 mission={mission} code={code} onCodeChange={onCodeChange} />
+    case "qa_lab":           return <QATestLab                  mission={mission} code={code} onCodeChange={onCodeChange} />
+    case "business_analysis":return <BusinessAnalysisBoard      mission={mission} code={code} onCodeChange={onCodeChange} />
+    case "sre_console":      return <SREConsole                 mission={mission} code={code} onCodeChange={onCodeChange} />
+    case "data_pipeline":    return <DataPipelineStudio         mission={mission} code={code} onCodeChange={onCodeChange} />
+    case "system_design":    return <SystemDesignWorkstation    mission={mission} code={code} onCodeChange={onCodeChange} />
+    case "medical_coding":   return <MedicalCodingWorkstation   mission={mission} code={code} onCodeChange={onCodeChange} />
     default:
       return CodeEditor
         ? <CodeWorkstation code={code} onCodeChange={onCodeChange} sandbox={moduleSandbox} domainKey={domainKey} CodeEditor={CodeEditor} />

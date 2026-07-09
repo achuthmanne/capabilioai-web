@@ -1685,21 +1685,9 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
   const [sortDir, setSortDir]                 = useState("asc")
 
   // Categories that should NEVER appear in Common Challenges for IT / CSE / MCA / DevOps students.
-  // Covers: engineering streams + aptitude/placement test categories (eLitmus, AMCAT, etc.)
+  // Engineering stream problems are only shown when the student's own stream is active.
   const NON_IT_STREAM_CATS = new Set([
-    // Core engineering streams
     "ECE", "EEE", "Mechanical", "Civil", "Pharmacy", "MBA", "IoT", "AI_DS", "AI_ML",
-    // Aptitude / quantitative / placement categories (not IT-specific DSA/CS content)
-    "Aptitude", "aptitude", "APTITUDE",
-    "Quantitative", "quantitative", "Quant", "quant", "QUANTITATIVE",
-    "Verbal", "verbal", "VERBAL",
-    "Reasoning", "reasoning", "REASONING",
-    "LogicalReasoning", "logical_reasoning", "Logical",
-    "Placement", "placement", "PLACEMENT",
-    "eLitmus", "elitmus", "ELITMUS",
-    "AMCAT", "amcat", "Amcat",
-    "GRE", "gre", "GMAT", "gmat",
-    "HCF_LCM", "hcf_lcm", "Number_Theory", "number_theory",
   ])
 
   // ── Load challenges from problemsDb ─────────────────────────────────────────

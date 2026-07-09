@@ -89,9 +89,48 @@ export const WORKSTATION_META = {
     actions: { validate: "✓ Check Answer", preview: "👁 Preview Proof", submit: "Submit Answer" },
   },
   // ── Domain-specific engineering workstations ──────────────────────────────
+  // Interactive DC circuit simulation with live nodal analysis
+  circuit_lab: {
+    label: "Circuit Lab", icon: "⚡", hue: "#F59E0B", hideRun: true,
+    actions: { validate: "✓ Check Circuit", preview: "👁 Preview Simulation", submit: "Submit Solution" },
+  },
+  interactive_circuit: {
+    label: "Circuit Builder", icon: "🔌", hue: "#F59E0B", hideRun: true,
+    actions: { validate: "✓ Check Circuit", preview: "👁 Preview Simulation", submit: "Submit Solution" },
+  },
   engineering_lab: {
     label: "Engineering Lab", icon: "🔬", hue: "#0891B2", hideRun: true,
     actions: { validate: "✓ Check Answer", preview: "👁 Preview Proof", submit: "Submit Solution" },
+  },
+  // Embedded / Firmware IDE — C code display + register / value validation
+  embedded_lab: {
+    label: "Embedded C Lab", icon: "🤖", hue: "#0F766E", hideRun: true,
+    actions: { validate: "✓ Check Registers", preview: "👁 Preview Proof", submit: "Submit Solution" },
+  },
+  // Circuit / schematic diagram viewer with clickable components
+  diagram_workspace: {
+    label: "Diagram Workspace", icon: "📐", hue: "#7C3AED", hideRun: true,
+    actions: { validate: "✓ Check Analysis", preview: "👁 Preview Proof", submit: "Submit Analysis" },
+  },
+  // PCB / waveform / site photo inspection with hotspot annotation
+  visual_inspection: {
+    label: "Inspection Lab", icon: "🔍", hue: "#DC2626", hideRun: true,
+    actions: { validate: "✓ Submit Findings", preview: "👁 Preview Report", submit: "Submit Inspection" },
+  },
+  // State-driven symptom → diagnostic action → root cause identification
+  diagnostic_console: {
+    label: "Diagnostic Console", icon: "🩺", hue: "#6B3FA0", hideRun: true,
+    actions: { validate: "✓ Submit Root Cause", preview: "👁 Preview Diagnosis", submit: "Submit Diagnosis" },
+  },
+  // Datasheet / manual / specification viewer with evidence citation
+  document_viewer: {
+    label: "Document Viewer", icon: "📋", hue: "#2563EB", hideRun: true,
+    actions: { validate: "✓ Cite Evidence", preview: "👁 Preview Citations", submit: "Submit Analysis" },
+  },
+  // Step-card reordering for procedures, sequences, workflows
+  sequence_builder: {
+    label: "Process Sequencer", icon: "🔗", hue: "#D97706", hideRun: true,
+    actions: { validate: "✓ Check Sequence", preview: "👁 Preview Sequence", submit: "Submit Sequence" },
   },
 }
 

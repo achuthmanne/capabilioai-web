@@ -2489,8 +2489,8 @@ const STREAM_CARD_CONFIG = {
       color: "#0891B2", colorBg: "rgba(8,145,178,0.1)", colorBorder: "rgba(8,145,178,0.2)",
       desc: "Circuit analysis, analog & digital electronics, signals, communication systems. Short challenges that build your engineering foundation.",
       tags: ["⚡ Circuit Analysis", "📟 Digital Systems", "📡 Communication", "🔧 Microcontrollers", "📊 Signals & Systems"],
-      cta: "Start Practising", count: "400+ problems",
-      categories: ["ECE", "Aptitude", "Logical"],
+      cta: "Start Practising", count: "265 problems",
+      categories: ["ECE"],
     },
     role: {
       icon: "🔌", label: "ECE Domain Practice",
@@ -2507,8 +2507,8 @@ const STREAM_CARD_CONFIG = {
       color: "#D97706", colorBg: "rgba(217,119,6,0.1)", colorBorder: "rgba(217,119,6,0.2)",
       desc: "AC/DC circuits, power factor, transformer theory, motor speed & slip, voltage regulation. Build your electrical engineering foundation.",
       tags: ["⚡ Power Systems", "🔌 Transformers", "🏭 Induction Motors", "🔧 Protection", "📊 AC/DC"],
-      cta: "Start Practising", count: "200+ problems",
-      categories: ["EEE", "Aptitude", "Logical"],
+      cta: "Start Practising", count: "112 problems",
+      categories: ["EEE"],
     },
     role: {
       icon: "⚡", label: "EEE Domain Practice",
@@ -2525,8 +2525,8 @@ const STREAM_CARD_CONFIG = {
       color: "#374151", colorBg: "rgba(55,65,81,0.1)", colorBorder: "rgba(55,65,81,0.2)",
       desc: "Stress analysis, Young's modulus, thermodynamics, fluid mechanics, gear trains. Build your mechanical engineering foundation.",
       tags: ["⚙️ Stress & Strain", "🔥 Thermodynamics", "💧 Fluid Mechanics", "🔩 Machine Design", "🏭 Manufacturing"],
-      cta: "Start Practising", count: "200+ problems",
-      categories: ["Mechanical", "Aptitude", "Logical"],
+      cta: "Start Practising", count: "12 problems",
+      categories: ["Mechanical"],
     },
     role: {
       icon: "⚙️", label: "Mechanical Domain Practice",
@@ -2543,8 +2543,8 @@ const STREAM_CARD_CONFIG = {
       color: "#92400E", colorBg: "rgba(146,64,14,0.1)", colorBorder: "rgba(146,64,14,0.2)",
       desc: "Structural analysis, Manning's equation, population projection, bearing capacity, water design. Build your civil engineering foundation.",
       tags: ["🏗️ Structural", "💧 Hydraulics", "🛣️ Transportation", "🏔️ Geotechnical", "🏢 RCC Design"],
-      cta: "Start Practising", count: "200+ problems",
-      categories: ["Civil", "Aptitude", "Logical"],
+      cta: "Start Practising", count: "12 problems",
+      categories: ["Civil"],
     },
     role: {
       icon: "🏗️", label: "Civil Domain Practice",
@@ -2561,8 +2561,8 @@ const STREAM_CARD_CONFIG = {
       color: "#059669", colorBg: "rgba(5,150,105,0.1)", colorBorder: "rgba(5,150,105,0.2)",
       desc: "Drug calculations, pharmacokinetics, bioavailability, clinical formulations. Build your pharmaceutical sciences foundation.",
       tags: ["💊 Drug Calculations", "⚗️ Pharmacokinetics", "🧪 Formulation", "🏥 Clinical Pharmacy", "📊 Bioavailability"],
-      cta: "Start Practising", count: "100+ problems",
-      categories: ["Pharmacy", "Aptitude", "Logical"],
+      cta: "Start Practising", count: "12 problems",
+      categories: ["Pharmacy"],
     },
     role: {
       icon: "💊", label: "Pharmacy Domain Practice",
@@ -2579,8 +2579,8 @@ const STREAM_CARD_CONFIG = {
       color: "#7C3AED", colorBg: "rgba(124,58,237,0.1)", colorBorder: "rgba(124,58,237,0.2)",
       desc: "NPV, ROI, break-even analysis, CAGR, EOQ. Build your business and management foundation.",
       tags: ["📊 Finance & Accounting", "📈 Marketing", "🏭 Operations", "🎯 Strategy", "💰 Business Analytics"],
-      cta: "Start Practising", count: "100+ problems",
-      categories: ["MBA", "Aptitude", "Logical"],
+      cta: "Start Practising", count: "12 problems",
+      categories: ["MBA"],
     },
     role: {
       icon: "📊", label: "Business Domain Practice",
@@ -2597,8 +2597,8 @@ const STREAM_CARD_CONFIG = {
       color: "#0F766E", colorBg: "rgba(15,118,110,0.1)", colorBorder: "rgba(15,118,110,0.2)",
       desc: "ADC resolution, PWM duty cycle, RSSI-to-distance, sensor interfacing, Nyquist sampling. Build your IoT foundation.",
       tags: ["🌐 IoT Protocols", "🔌 Embedded C", "📡 Wireless", "☁️ Cloud Integration", "🔧 Sensors"],
-      cta: "Start Practising", count: "100+ problems",
-      categories: ["IoT", "ECE", "Aptitude", "Logical"],
+      cta: "Start Practising", count: "12 problems",
+      categories: ["IoT", "ECE"],
     },
     role: {
       icon: "🌐", label: "IoT Domain Practice",
@@ -2617,8 +2617,8 @@ const STREAM_CARD_CONFIG = {
       color: "#0369A1", colorBg: "rgba(3,105,161,0.1)", colorBorder: "rgba(3,105,161,0.2)",
       desc: "MAE, RMSE, normalization, correlation, precision/recall, F1, Gini impurity, cosine similarity. Build your data science coding foundation.",
       tags: ["📊 Statistics", "🐍 Pandas / NumPy", "🔍 EDA", "🤖 ML Metrics", "📈 Feature Engineering"],
-      cta: "Start Practising", count: "100+ problems",
-      categories: ["AI_DS", "Aptitude", "Logical"],
+      cta: "Start Practising", count: "15 problems",
+      categories: ["AI_DS"],
     },
     role: {
       icon: "🤖", label: "Data Science Coding Practice",
@@ -2637,8 +2637,8 @@ const STREAM_CARD_CONFIG = {
       color: "#7C3AED", colorBg: "rgba(124,58,237,0.1)", colorBorder: "rgba(124,58,237,0.2)",
       desc: "Sigmoid, ReLU, softmax, BCE loss, gradient descent, KNN, K-Means, logistic regression, batch normalization. Code the building blocks of ML.",
       tags: ["🧠 Neural Networks", "⚡ Optimization", "📐 Linear Algebra", "🔗 Deep Learning", "🌲 Classical ML"],
-      cta: "Start Practising", count: "100+ problems",
-      categories: ["AI_ML", "Aptitude", "Logical"],
+      cta: "Start Practising", count: "15 problems",
+      categories: ["AI_ML"],
     },
     role: {
       icon: "🧠", label: "ML Coding Practice",
@@ -3500,13 +3500,17 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
       // Build a clean scaffold from mission steps/objective so students aren't given the answer.
       // Only use starterCode from DB if it's short (< 250 chars) — a genuine hint/skeleton.
       // Long starterCodes are almost always full solutions accidentally set during challenge generation.
+      // EXCEPTION: reference-style workstations (embedded_lab, diagram_workspace, document_viewer)
+      // display the starter code as read-only reference material — always pass it through.
       const sc = mission?.starterCode || ""
-      const starterIsSafe = sc.length > 0 && sc.length < 250
+      const missionTypeRaw = (mission?.missionType || mission?.mission_type || mission?.workstation || "").toLowerCase()
+      const isReferenceWs = ["embedded_lab","diagram_workspace","document_viewer","embedded_c","embedded","circuit_lab","circuit_sim","visual_inspection","diagnostic_console","interactive_circuit"].includes(missionTypeRaw)
+      const starterIsSafe = sc.length > 0 && (isReferenceWs || sc.length < 250)
       const starter = starterIsSafe ? sc : buildSkeleton(mission, domainKey)
       setCode(starter)
       setActiveWsTab(null)
-      // Respect the challenge's sandbox type (sql, notebook, react, markdown, code, etc.)
-      const missionSandbox = mission?.workstation || mission?.sandbox_type
+      // Respect the challenge's missionType or sandbox type (embedded_lab, sql, notebook, react, etc.)
+      const missionSandbox = mission?.missionType || mission?.mission_type || mission?.workstation || mission?.sandbox_type
       const sandbox = missionSandbox || resolveSandboxType(mission, domainKey)
       const matchingMod = modules.find(m => m.sandbox === sandbox) || modules[0]
       if (matchingMod) setActiveModuleId(matchingMod.id)
