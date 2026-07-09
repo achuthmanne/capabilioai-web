@@ -1511,131 +1511,416 @@ const MECHANIC_META = {
   troubleshoot: { label: "🔧 Troubleshoot", desc: "Fix the problem" },
 }
 
-const CHOICE_LABELS = ["A", "B", "C", "D"]
+// ─────────────────────────────────────────────────────────────────────────────
+// STEM Engineering Reference tables — one per domain
+// ─────────────────────────────────────────────────────────────────────────────
+const STEM_REF_MAP = {
+  "Communication Systems": [
+    { l: "Shannon Capacity",       f: "C = B · log₂(1 + S/N)" },
+    { l: "Friis Link Budget",      f: "P_r = P_t + G_t + G_r − PL  (dB)" },
+    { l: "Path Loss (free space)", f: "PL = 20 log(4πd/λ)" },
+    { l: "BPSK BER",               f: "BER = Q(√(2·Eb/N₀))" },
+    { l: "Nyquist Rate",           f: "f_s ≥ 2·f_max" },
+  ],
+  "Digital Electronics": [
+    { l: "BRR (UART baud)",    f: "BRR = f_APB / baud_rate" },
+    { l: "Fan-out",            f: "N = I_source / I_sink" },
+    { l: "Propagation Delay",  f: "t_pd = (t_pHL + t_pLH) / 2" },
+    { l: "De Morgan",          f: "¬(A·B) = ¬A + ¬B" },
+  ],
+  "Power Systems": [
+    { l: "Power Triangle",     f: "S = P + jQ,  |S| = V·I" },
+    { l: "Power Factor",       f: "PF = cos φ = P / S" },
+    { l: "Transformer Ratio",  f: "V₁/V₂ = N₁/N₂ = I₂/I₁" },
+    { l: "3-Phase Power",      f: "P = √3·V_L·I_L·cos φ" },
+    { l: "Slip (induction)",   f: "s = (N_s − N_r) / N_s" },
+    { l: "Efficiency",         f: "η = P_out / P_in × 100 %" },
+  ],
+  "Electrical Machines": [
+    { l: "Synchronous Speed",  f: "N_s = 120f / P" },
+    { l: "Back EMF (DC)",      f: "E = V − I_a·R_a" },
+    { l: "Torque",             f: "T = (P × 60) / (2πN)" },
+    { l: "Transformer EMF",    f: "E = 4.44·f·N·Φ_m" },
+  ],
+  "Thermodynamics": [
+    { l: "1st Law",            f: "Q − W = ΔU" },
+    { l: "Carnot Efficiency",  f: "η = 1 − T_L / T_H" },
+    { l: "Fourier Heat",       f: "Q = kA(T₁−T₂)/L" },
+    { l: "Ideal Gas",          f: "PV = nRT" },
+  ],
+  "Fluid Mechanics": [
+    { l: "Continuity",         f: "A₁V₁ = A₂V₂" },
+    { l: "Bernoulli",          f: "P + ½ρv² + ρgh = const" },
+    { l: "Reynolds Number",    f: "Re = ρVD / μ" },
+    { l: "Manning's Eq",       f: "Q = (1/n)·A·R^{2/3}·S^{1/2}" },
+  ],
+  "Structural Engineering": [
+    { l: "Bending Stress",     f: "σ = M·y / I" },
+    { l: "Shear Stress",       f: "τ = VQ / (I·b)" },
+    { l: "Euler Buckling",     f: "P_cr = π²EI / (KL)²" },
+    { l: "Deflection (UDL)",   f: "δ = 5wL⁴ / (384EI)" },
+  ],
+  "Geotechnical Engineering": [
+    { l: "Effective Stress",   f: "σ' = σ − u" },
+    { l: "Darcy's Law",        f: "Q = k·i·A" },
+    { l: "Terzaghi Bearing",   f: "q_u = cNc + qNq + 0.5γBNγ" },
+  ],
+  "Mechanical Design": [
+    { l: "Von Mises Stress",   f: "σ_VM = √(σ² + 3τ²)" },
+    { l: "Shaft Shear Stress", f: "τ = 16T / (πd³)" },
+    { l: "Spring Deflection",  f: "δ = 8FD³n / (Gd⁴)" },
+    { l: "Factor of Safety",   f: "FoS = S_y / σ_VM" },
+  ],
+  "IoT": [
+    { l: "Friis Link",         f: "P_r = P_t · G_t · G_r · (λ/4πd)²" },
+    { l: "Battery Life",       f: "t = C_batt / I_avg" },
+    { l: "LoRa Time on Air",   f: "ToA ∝ SF · 2^SF / BW" },
+    { l: "BRR (UART baud)",    f: "BRR = f_APB / baud_rate" },
+  ],
+  "ECE": [
+    { l: "Ohm's Law",          f: "V = IR" },
+    { l: "Voltage Divider",    f: "V_out = V_in · R₂/(R₁+R₂)" },
+    { l: "Resonant Freq",      f: "f₀ = 1 / (2π√LC)" },
+    { l: "RC Time Constant",   f: "τ = RC" },
+    { l: "Op-Amp Gain (inv.)", f: "A_v = −R_f / R_in" },
+  ],
+}
+const STEM_REF_FALLBACK = [
+  { l: "Ohm's Law",  f: "V = IR" },
+  { l: "Power",      f: "P = VI = I²R = V²/R" },
+  { l: "Efficiency", f: "η = P_out / P_in × 100 %" },
+  { l: "Error %",    f: "err = |calc−exact| / exact × 100" },
+]
 
-function MultipleChoiceWorkstation({ challenge, isSolved, onSubmitMC, submitting, submitResult }) {
-  const [selected, setSelected]     = useState(null)    // 0–3
-  const [localResult, setLocalResult] = useState(null)  // {correct, correctIdx}
+function _stemRef(challenge) {
+  const cat = challenge?.track || challenge?.category || ""
+  for (const [key, refs] of Object.entries(STEM_REF_MAP)) {
+    if (cat.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(cat.toLowerCase()))
+      return { title: key, refs }
+  }
+  return { title: "Engineering Fundamentals", refs: STEM_REF_FALLBACK }
+}
 
-  // Reset when challenge changes
+// Detect numerical answer: correct option starts with a digit / sign+digit
+function _isNumerical(choices, correctIdx) {
+  if (!choices || choices.length === 0) return false
+  const c = String(choices[correctIdx] ?? choices[0]).trim()
+  return /^[+-]?\d/.test(c)
+}
+function _parseOptionNum(text) {
+  const m = String(text).match(/^([+-]?\d+\.?\d*(?:[eE][+-]?\d+)?)/)
+  return m ? parseFloat(m[1]) : NaN
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STEMWorkstation  (replaces MultipleChoiceWorkstation for all non-IT streams)
+//
+// Anti-cheat 2-step flow:
+//   Step 1 – "Analyse"  : student must write ≥15-char reasoning before proceeding
+//   Step 2 – "Answer"   : numerical typed input  OR  styled analysis cards
+//
+// Formula reference panel always visible on the right.
+// ─────────────────────────────────────────────────────────────────────────────
+function STEMWorkstation({ challenge, isSolved, onSubmitMC, submitting, submitResult }) {
+  const [step,        setStep]       = useState("analyse") // "analyse" | "answer"
+  const [reasoning,   setReasoning]  = useState("")
+  const [typedAnswer, setTyped]      = useState("")
+  const [selected,    setSelected]   = useState(null)
+  const [localResult, setLocalResult]= useState(null)
+  const [attempts,    setAttempts]   = useState(0)
+  const [showSolution,setShowSolution]=useState(false)
+
   useEffect(() => {
-    setSelected(null)
-    setLocalResult(null)
+    setStep("analyse"); setReasoning(""); setTyped(""); setSelected(null)
+    setLocalResult(null); setAttempts(0); setShowSolution(false)
   }, [challenge?.id])
 
-  const opts         = challenge?.options
-  const choices      = opts?.choices || []
-  const correctIdx   = opts?.correct ?? -1
-  const explanation  = challenge?.editorial || opts?.explanation || ""
-  const mechanic     = challenge?.mechanic  || "select"
-  const eloReward    = challenge?.eloReward ?? 5
-  const mechanicMeta = MECHANIC_META[mechanic] || MECHANIC_META.select
-  const alreadyChecked = localResult !== null
+  const opts        = challenge?.options || {}
+  const choices     = opts?.choices || []
+  const correctIdx  = opts?.correct ?? -1
+  const explanation = challenge?.editorial || opts?.explanation || ""
+  const eloReward   = challenge?.eloReward ?? 5
+  const ref         = _stemRef(challenge)
+  const isNum       = _isNumerical(choices, correctIdx)
+  const correctNum  = isNum ? _parseOptionNum(choices[correctIdx] || "") : NaN
+  const correctText = choices[correctIdx] || ""
+  const unitMatch   = correctText.match(/[a-zA-Z·/°Ωμ%]+/)
+  const unitHint    = unitMatch ? unitMatch[0] : ""
+  const reasoningOk = reasoning.trim().length >= 15
 
-  const choiceStyle = (idx) => {
-    const isSelected = selected === idx
-    const isCorrect  = alreadyChecked && idx === correctIdx
-    const isWrong    = alreadyChecked && isSelected && idx !== correctIdx
-    if (isCorrect)  return { bg: T.green2,  border: `2px solid ${T.green}`,  labelBg: T.green,  labelColor: "#fff", textColor: "#166534" }
-    if (isWrong)    return { bg: T.red2,    border: `2px solid ${T.red}`,    labelBg: T.red,    labelColor: "#fff", textColor: T.red    }
-    if (isSelected) return { bg: T.indigo3, border: `2px solid ${T.indigo}`, labelBg: T.indigo, labelColor: "#fff", textColor: T.ink    }
-    return           { bg: "#fff",          border: `1.5px solid ${T.border}`,labelBg: T.bg,    labelColor: T.ink3, textColor: T.ink    }
+  const handleCheckTyped = () => {
+    const v = parseFloat(typedAnswer.replace(/,/g, ""))
+    const tol = Math.abs(correctNum) * 0.03 + 0.5
+    const ok = !isNaN(v) && !isNaN(correctNum) && Math.abs(v - correctNum) <= tol
+    setAttempts(a => a + 1)
+    setLocalResult({ correct: ok })
   }
-
-  const handleSelect  = (idx) => { if (isSolved || alreadyChecked) return; setSelected(idx) }
-  const handleCheck   = () => {
+  const handleCheckMCQ = () => {
     if (selected === null) return
-    setLocalResult({ correct: selected === correctIdx, correctIdx })
+    setAttempts(a => a + 1)
+    setLocalResult({ correct: selected === correctIdx })
   }
+  const handleSubmit = () => {
+    const isCorrect = localResult?.correct || false
+    onSubmitMC(selected ?? (isCorrect ? correctIdx : -1), isCorrect)
+  }
+
+  const diffColor = challenge?.difficulty === "Hard" ? T.red
+    : challenge?.difficulty === "Medium" ? T.amber : T.green
+  const diffBg = challenge?.difficulty === "Hard" ? T.red2
+    : challenge?.difficulty === "Medium" ? T.amber2 : T.green2
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "#FAF7F2", overflow: "hidden" }}>
-      {/* Mechanic banner */}
-      <div style={{ padding: "10px 20px", background: "#EEF0FB", borderBottom: `1px solid ${T.indigo}22`, display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: T.indigo }}>{mechanicMeta.label}</span>
-        <span style={{ fontSize: 11, color: T.ink3 }}>{mechanicMeta.desc}</span>
-        {challenge?.track && (
-          <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 700, color: T.indigo, background: T.indigo3, padding: "2px 8px", borderRadius: 99, border: `1px solid ${T.indigo}22` }}>{challenge.track}</span>
-        )}
-      </div>
+    <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0, background: T.bg, fontFamily: "inherit" }}>
 
-      {/* Choices */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "24px 32px", display: "flex", flexDirection: "column", gap: 10 }}>
-        {choices.map((choice, idx) => {
-          const s = choiceStyle(idx)
-          const isCorrect = alreadyChecked && idx === correctIdx
-          const isWrong   = alreadyChecked && selected === idx && idx !== correctIdx
-          return (
-            <div key={idx} onClick={() => handleSelect(idx)}
-              style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "14px 18px", borderRadius: 12, background: s.bg, border: s.border, cursor: (isSolved || alreadyChecked) ? "default" : "pointer", transition: "all 0.15s", boxShadow: "0 1px 4px rgba(0,0,0,0.04)", userSelect: "none" }}>
-              <div style={{ width: 28, height: 28, borderRadius: 8, background: s.labelBg, color: s.labelColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, flexShrink: 0, fontFamily: "'DM Mono',monospace" }}>
-                {CHOICE_LABELS[idx]}
-              </div>
-              <div style={{ flex: 1, fontSize: 13, lineHeight: 1.7, paddingTop: 3, color: s.textColor }}>{choice}</div>
-              {isCorrect && <div style={{ fontSize: 18, flexShrink: 0, color: T.green }}>✓</div>}
-              {isWrong   && <div style={{ fontSize: 18, flexShrink: 0, color: T.red   }}>✗</div>}
-            </div>
-          )
-        })}
+      {/* ── LEFT: 2-step flow ─────────────────────────────────────────────── */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
 
-        {choices.length === 0 && (
-          <div style={{ padding: "32px", textAlign: "center", color: T.ink3, fontSize: 13 }}>
-            No answer choices loaded — check the problem definition.
-          </div>
-        )}
-
-        {/* Explanation reveal (after Check) */}
-        {localResult && explanation && (
-          <div style={{ marginTop: 8, padding: "16px 18px", borderRadius: 12, background: localResult.correct ? T.green2 : T.amber2, border: `1px solid ${localResult.correct ? "#86EFAC" : "#FDE68A"}`, fontSize: 13, lineHeight: 1.7 }}>
-            <div style={{ fontWeight: 700, color: localResult.correct ? T.green : T.amber, marginBottom: 6 }}>
-              {localResult.correct ? "✓ Correct!" : `✗ The correct answer is ${CHOICE_LABELS[correctIdx]}.`}
-            </div>
-            <div style={{ color: T.ink2 }}>{explanation}</div>
-          </div>
-        )}
-
-        {/* Post-submit confirmation */}
-        {submitResult && (
-          <div style={{ padding: "14px 18px", borderRadius: 12, background: submitResult.correct ? T.green2 : T.red2, border: `1px solid ${submitResult.correct ? "#86EFAC" : "#FCA5A5"}`, fontSize: 13 }}>
-            {submitResult.correct
-              ? <span style={{ color: T.green, fontWeight: 700 }}>🎉 Submitted & accepted! +{eloReward} ELO awarded.</span>
-              : <span style={{ color: T.red,   fontWeight: 700 }}>Recorded — study the explanation and revisit later.</span>}
-          </div>
-        )}
-      </div>
-
-      {/* Action bar */}
-      <div style={{ padding: "12px 20px", borderTop: `1px solid ${T.border}`, background: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-        <div style={{ fontSize: 11, color: T.ink3, display: "flex", alignItems: "center", gap: 10 }}>
-          {challenge.difficulty} · Multiple Choice
-          {!isSolved && (
-            <span style={{ fontSize: 11, fontWeight: 700, color: "#9CDCFE", background: "rgba(156,220,254,0.1)", padding: "2px 8px", borderRadius: 99, border: "1px solid rgba(156,220,254,0.2)" }}>
-              +{eloReward} ELO ⚡
+        {/* Header strip */}
+        <div style={{ padding: "9px 18px", background: "#fff", borderBottom: `1px solid ${T.border}`, display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          {(challenge?.track || challenge?.category) && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: T.indigo, background: T.indigo3, padding: "3px 10px", borderRadius: 99, border: `1px solid ${T.indigo}22` }}>
+              {challenge.track || challenge.category}
             </span>
           )}
-          {isSolved && (
-            <span style={{ fontSize: 11, fontWeight: 700, color: T.green, background: T.green2, padding: "2px 8px", borderRadius: 99 }}>🔒 Solved</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: diffColor, background: diffBg, padding: "3px 9px", borderRadius: 99 }}>
+            {challenge?.difficulty || "Medium"}
+          </span>
+          <span style={{ marginLeft: "auto", fontSize: 11, color: T.ink3 }}>
+            {isSolved
+              ? <span style={{ fontWeight: 700, color: T.green }}>🔒 Solved</span>
+              : <span style={{ fontWeight: 700, color: T.indigo }}>+{eloReward} ELO ⚡</span>}
+          </span>
+        </div>
+
+        <div style={{ flex: 1, overflowY: "auto", padding: "18px 22px", display: "flex", flexDirection: "column", gap: 14 }}>
+
+          {/* ── STEP 1: Analyse ── */}
+          <div style={{ background: "#fff", border: `1.5px solid ${step === "analyse" ? T.indigo : (step === "answer" ? T.green : T.border)}`, borderRadius: 12, overflow: "hidden" }}>
+            <div style={{ padding: "11px 16px", borderBottom: `1px solid ${T.border}`, display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ width: 22, height: 22, borderRadius: "50%", background: step === "answer" ? T.green : T.indigo, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
+                {step === "answer" ? "✓" : "1"}
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>Analyse the Problem</span>
+              {step === "answer" && <span style={{ fontSize: 11, color: T.green, marginLeft: "auto" }}>Complete ✓</span>}
+            </div>
+            {step === "analyse" && (
+              <div style={{ padding: "14px 16px" }}>
+                <div style={{ fontSize: 12, color: T.ink3, marginBottom: 8 }}>
+                  {isNum
+                    ? "Identify the given values, choose the correct formula, then calculate your answer step-by-step."
+                    : "Explain the concept in your own words, then reason about which option is correct and why."}
+                </div>
+                <textarea value={reasoning} onChange={e => setReasoning(e.target.value)}
+                  placeholder={isNum
+                    ? "Step 1: Given values are...\nStep 2: The formula is...\nStep 3: Substituting gives..."
+                    : "The concept here is... The correct answer is... because..."}
+                  style={{ width: "100%", minHeight: 100, border: `1.5px solid ${reasoningOk ? T.green : T.border}`, borderRadius: 8, outline: "none",
+                    fontFamily: "inherit", fontSize: 12, color: T.ink2, lineHeight: 1.7, padding: "10px 12px",
+                    boxSizing: "border-box", resize: "vertical", background: T.bg }} />
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 10 }}>
+                  <span style={{ fontSize: 11, color: reasoningOk ? T.green : T.ink3 }}>
+                    {reasoning.trim().length}/15 characters minimum
+                  </span>
+                  <button onClick={() => reasoningOk && setStep("answer")} disabled={!reasoningOk}
+                    style={{ padding: "8px 20px", borderRadius: 8, border: "none",
+                      background: reasoningOk ? T.indigo : "#E5E7EB",
+                      color: reasoningOk ? "#fff" : T.ink3, fontSize: 13, fontWeight: 700,
+                      cursor: reasoningOk ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+                    Continue to Answer →
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── STEP 2: Answer ── */}
+          {step === "answer" && (
+            <div style={{ background: "#fff", border: `1.5px solid ${T.indigo}`, borderRadius: 12, overflow: "hidden" }}>
+              <div style={{ padding: "11px 16px", borderBottom: `1px solid ${T.border}`, display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ width: 22, height: 22, borderRadius: "50%", background: T.indigo, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, flexShrink: 0 }}>2</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>
+                  {isNum ? "Enter Your Calculated Value" : "Select the Correct Answer"}
+                </span>
+              </div>
+
+              <div style={{ padding: "16px" }}>
+                {isNum ? (
+                  /* ── Numerical typed-answer mode ── */
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {unitHint && (
+                      <div style={{ fontSize: 12, color: T.ink3 }}>
+                        Units: <strong style={{ color: T.ink2, fontFamily: "monospace" }}>{unitHint}</strong>
+                      </div>
+                    )}
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <input type="number" value={typedAnswer}
+                        onChange={e => { setTyped(e.target.value); setLocalResult(null) }}
+                        onKeyDown={e => e.key === "Enter" && !localResult && typedAnswer && handleCheckTyped()}
+                        placeholder="e.g. 45.2"
+                        disabled={!!localResult}
+                        style={{ flex: 1, padding: "12px 16px", borderRadius: 9,
+                          border: `2px solid ${localResult?.correct ? T.green : localResult?.correct === false ? T.red : T.indigo}`,
+                          fontSize: 20, fontWeight: 800, fontFamily: "'DM Mono','Consolas',monospace", outline: "none",
+                          background: localResult?.correct ? T.green2 : localResult?.correct === false ? T.red2 : "#fff" }} />
+                      {!localResult && (
+                        <button onClick={handleCheckTyped} disabled={!typedAnswer}
+                          style={{ padding: "12px 20px", borderRadius: 9, border: "none",
+                            background: typedAnswer ? T.indigo : "#E5E7EB",
+                            color: typedAnswer ? "#fff" : T.ink3,
+                            fontSize: 13, fontWeight: 800, cursor: typedAnswer ? "pointer" : "not-allowed",
+                            whiteSpace: "nowrap", fontFamily: "inherit" }}>
+                          ✓ Check
+                        </button>
+                      )}
+                    </div>
+
+                    {localResult?.correct && (
+                      <div style={{ padding: "12px 14px", borderRadius: 9, background: T.green2, border: "1px solid #86EFAC", fontSize: 13 }}>
+                        <div style={{ fontWeight: 700, color: T.green, marginBottom: 4 }}>✓ Correct! Answer: {correctText}</div>
+                        {explanation && <div style={{ color: T.ink2, lineHeight: 1.6, fontSize: 12 }}>{explanation}</div>}
+                      </div>
+                    )}
+
+                    {localResult?.correct === false && !showSolution && (
+                      <div style={{ padding: "12px 14px", borderRadius: 9, background: T.red2, border: "1px solid #FCA5A5", fontSize: 13 }}>
+                        <div style={{ fontWeight: 700, color: T.red, marginBottom: 8 }}>
+                          ✗ Not quite — attempt {attempts}
+                        </div>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button onClick={() => { setTyped(""); setLocalResult(null) }}
+                            style={{ padding: "6px 14px", borderRadius: 7, border: `1px solid ${T.red}`, background: "#fff", color: T.red, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                            Try Again
+                          </button>
+                          <button onClick={() => setShowSolution(true)}
+                            style={{ padding: "6px 14px", borderRadius: 7, border: `1px solid ${T.border}`, background: "#fff", color: T.ink2, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                            Show Solution
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {showSolution && (
+                      <div style={{ padding: "12px 14px", borderRadius: 9, background: T.amber2, border: "1px solid #FDE68A", fontSize: 12, color: T.ink2, lineHeight: 1.7 }}>
+                        <div style={{ fontWeight: 700, color: T.amber, marginBottom: 6 }}>📖 Solution</div>
+                        {explanation || "Review the formula in the reference panel and re-check your substitution."}
+                        <div style={{ marginTop: 8, fontWeight: 700, color: T.ink, fontFamily: "monospace" }}>Answer: {correctText}</div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* ── Conceptual: styled analysis cards (not plain radio buttons) ── */
+                  <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+                    {choices.map((choice, idx) => {
+                      const isSel      = selected === idx
+                      const isCorrect  = !!localResult && idx === correctIdx
+                      const isWrong    = !!localResult && isSel && idx !== correctIdx
+                      return (
+                        <div key={idx}
+                          onClick={() => { if (!localResult && !isSolved) setSelected(idx) }}
+                          style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "13px 16px", borderRadius: 10,
+                            cursor: localResult || isSolved ? "default" : "pointer",
+                            border: `2px solid ${isCorrect ? "#86EFAC" : isWrong ? "#FCA5A5" : isSel ? T.indigo : T.border}`,
+                            background: isCorrect ? T.green2 : isWrong ? T.red2 : isSel ? T.indigo3 : "#fff",
+                            transition: "all 0.12s", userSelect: "none" }}>
+                          <div style={{ width: 26, height: 26, borderRadius: 7, flexShrink: 0,
+                            background: isCorrect ? T.green : isWrong ? T.red : isSel ? T.indigo : "#F3F4F6",
+                            color: isSel || isCorrect || isWrong ? "#fff" : T.ink3,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            fontSize: 11, fontWeight: 800, fontFamily: "monospace" }}>
+                            {isCorrect ? "✓" : isWrong ? "✗" : "ABCD"[idx]}
+                          </div>
+                          <div style={{ flex: 1, fontSize: 13, lineHeight: 1.65, paddingTop: 2,
+                            color: isCorrect ? "#166534" : isWrong ? T.red : T.ink }}>
+                            {choice}
+                          </div>
+                        </div>
+                      )
+                    })}
+
+                    {choices.length === 0 && (
+                      <div style={{ padding: 24, textAlign: "center", color: T.ink3, fontSize: 13 }}>
+                        No options loaded for this question.
+                      </div>
+                    )}
+
+                    {!localResult && !isSolved && (
+                      <button onClick={handleCheckMCQ} disabled={selected === null}
+                        style={{ marginTop: 4, padding: "10px 0", borderRadius: 9, border: "none",
+                          background: selected !== null ? T.indigo : "#E5E7EB",
+                          color: selected !== null ? "#fff" : T.ink3,
+                          fontSize: 13, fontWeight: 700,
+                          cursor: selected !== null ? "pointer" : "not-allowed",
+                          fontFamily: "inherit" }}>
+                        ✓ Check Answer
+                      </button>
+                    )}
+
+                    {localResult && explanation && (
+                      <div style={{ padding: "12px 14px", borderRadius: 9,
+                        background: localResult.correct ? T.green2 : T.amber2,
+                        border: `1px solid ${localResult.correct ? "#86EFAC" : "#FDE68A"}`,
+                        fontSize: 12, color: T.ink2, lineHeight: 1.7, marginTop: 4 }}>
+                        <div style={{ fontWeight: 700, color: localResult.correct ? T.green : T.amber, marginBottom: 6 }}>
+                          {localResult.correct ? "✓ Correct!" : "✗ Not quite — here's why:"}
+                        </div>
+                        {explanation}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Submit bar */}
+                {(localResult?.correct || showSolution) && !submitResult && !isSolved && (
+                  <button onClick={handleSubmit} disabled={submitting}
+                    style={{ marginTop: 14, width: "100%", padding: "11px 0", borderRadius: 9, border: "none",
+                      background: submitting ? T.ink3 : T.green, color: "#fff",
+                      fontSize: 13, fontWeight: 800, cursor: submitting ? "not-allowed" : "pointer",
+                      fontFamily: "inherit" }}>
+                    {submitting ? "Submitting…" : "🚀 Submit & Record ELO →"}
+                  </button>
+                )}
+
+                {isSolved && (
+                  <div style={{ marginTop: 14, padding: "10px 14px", borderRadius: 9, background: T.green2, border: "1px solid #86EFAC", fontSize: 13, color: T.green, fontWeight: 700 }}>
+                    🔒 Already solved · ELO recorded
+                  </div>
+                )}
+
+                {submitResult && (
+                  <div style={{ marginTop: 14, padding: "10px 14px", borderRadius: 9,
+                    background: submitResult.correct ? T.green2 : T.red2,
+                    border: `1px solid ${submitResult.correct ? "#86EFAC" : "#FCA5A5"}`,
+                    fontSize: 13, fontWeight: 700,
+                    color: submitResult.correct ? T.green : T.red }}>
+                    {submitResult.correct ? `🎉 Submitted! +${eloReward} ELO awarded.` : "Recorded — study the solution and revisit later."}
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          {/* Step 1: Check Answer (client-side) */}
-          {!alreadyChecked && (
-            <button onClick={handleCheck} disabled={selected === null || isSolved}
-              style={{ padding: "9px 18px", background: "#F3F4F6", border: `1px solid ${T.border}`, borderRadius: 8, color: T.ink2, fontSize: 13, fontWeight: 600, cursor: (selected === null || isSolved) ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
-              ▷ Check Answer
-            </button>
-          )}
-          {/* Step 2: Submit (lock in + persist ELO) */}
-          {isSolved ? (
-            <button disabled style={{ padding: "9px 22px", background: "rgba(22,163,74,0.15)", border: "1px solid rgba(22,163,74,0.3)", borderRadius: 8, color: T.green, fontSize: 13, fontWeight: 700, cursor: "not-allowed", fontFamily: "inherit" }}>
-              🔒 Already Solved
-            </button>
-          ) : alreadyChecked && !submitResult ? (
-            <button onClick={() => onSubmitMC(selected, localResult.correct)} disabled={submitting}
-              style={{ padding: "9px 22px", background: submitting ? "rgba(61,78,172,0.5)" : T.indigo, border: "none", borderRadius: 8, color: "#fff", fontSize: 13, fontWeight: 700, cursor: submitting ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 7, fontFamily: "inherit" }}>
-              {submitting ? "Submitting…" : "✓ Submit Answer"}
-            </button>
-          ) : null}
+      </div>
+
+      {/* ── RIGHT: Formula / Concept Reference panel ──────────────────────── */}
+      <div style={{ width: 230, flexShrink: 0, borderLeft: `1px solid ${T.border}`, background: "#fff", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+        <div style={{ padding: "11px 14px", borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>
+          <div style={{ fontSize: 10, fontWeight: 800, color: T.indigo, textTransform: "uppercase", letterSpacing: 1 }}>📐 Reference</div>
+          <div style={{ fontSize: 11, color: T.ink3, marginTop: 2 }}>{ref.title}</div>
+        </div>
+        <div style={{ padding: "10px 12px", flex: 1 }}>
+          {ref.refs.map((r, i) => (
+            <div key={i} style={{ marginBottom: 10, padding: "8px 10px", background: `${T.indigo}07`, borderRadius: 8, border: `1px solid ${T.indigo}1A` }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: T.indigo, marginBottom: 3 }}>{r.l}</div>
+              <div style={{ fontSize: 11, fontFamily: "'DM Mono','Consolas',monospace", color: T.ink2, lineHeight: 1.5 }}>{r.f}</div>
+            </div>
+          ))}
+          <div style={{ marginTop: 10, padding: "10px 10px", background: T.bg, borderRadius: 8, border: `1px solid ${T.border}` }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: T.ink3, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.6 }}>💡 Strategy</div>
+            <div style={{ fontSize: 11, color: T.ink3, lineHeight: 1.6 }}>
+              Write your working first — identify the formula, substitute values, then {isNum ? "type your calculated answer." : "select the best option."}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -2398,9 +2683,9 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
             {/* RIGHT — Workstation (code editor OR calculator based on problem type) */}
             <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden", minWidth:0 }}>
 
-              {/* ── Multiple Choice workstation (Common Challenge Engine — 70% of new challenges) ── */}
+              {/* ── STEM Engineering Workstation (anti-cheat 2-step: reasoning → answer) ── */}
               {wsType === "multiple_choice" && (
-                <MultipleChoiceWorkstation
+                <STEMWorkstation
                   challenge={selectedChallenge}
                   isSolved={isSolved}
                   onSubmitMC={handleSubmitMC}

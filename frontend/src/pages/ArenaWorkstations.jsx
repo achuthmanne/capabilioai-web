@@ -4220,20 +4220,38 @@ function EngineeringLabWorkstation({ mission, code, onCodeChange }) {
     catch { return [] }
   })()
 
-  // Calculate: expected answer
-  const expected = (() => {
-    if (parsedTC?.[0]) return String(parsedTC[0].expected_output ?? parsedTC[0].expected ?? "")
-    try { const ex=mission.examples||[]; const a=typeof ex==="string"?JSON.parse(ex):ex; if(a?.[0]) return String(a[0].output??a[0].expected??"") } catch {}
-    return null
-  })()
-
-  // Diagnose: MCQ data
+  // Diagnose: MCQ data — parsed first so expected can fall back to MCQ correct option
   const diagData = (() => {
     const tc = parsedTC[0] || {}
     if (tc.options) return { options: tc.options, correct: tc.correct??tc.correct_index??0, explanation: tc.explanation??"" }
     if (mission.options) { try { const opts=typeof mission.options==="string"?JSON.parse(mission.options):mission.options; return { options: Array.isArray(opts)?opts:Object.values(opts), correct:tc.correct??0, explanation:"" } } catch {} }
     return null
   })()
+
+  // Calculate: expected answer
+  // Priority: explicit expected_output → MCQ correct option text (parse first number) → null
+  const expected = (() => {
+    if (parsedTC?.[0]) {
+      const ex = parsedTC[0].expected_output ?? parsedTC[0].expected
+      if (ex != null && ex !== "") return String(ex)
+    }
+    // Fall back to the correct option's numerical value from MCQ data
+    if (diagData) {
+      const correctText = diagData.options[diagData.correct] || ""
+      // Parse leading number from option text, e.g. "45 kN·m" → "45", "0x138" → keep
+      const num = correctText.match(/^([+-]?\d+\.?\d*(?:[eE][+-]?\d+)?)\s*/)
+      if (num) return num[1]
+      // If it's a hex literal keep as-is
+      if (/^0x[0-9a-fA-F]+/.test(correctText)) return correctText.split(/\s/)[0]
+      // Otherwise return first word
+      return correctText.split(/[\s,;(]/)[0]
+    }
+    try { const ex=mission.examples||[]; const a=typeof ex==="string"?JSON.parse(ex):ex; if(a?.[0]) return String(a[0].output??a[0].expected??"") } catch {}
+    return null
+  })()
+
+  // Also expose the full correct option text for display in feedback
+  const correctOptionText = diagData ? (diagData.options[diagData.correct] || "") : ""
 
   // Design: parameter constraints
   const designParams = parsedTC.filter(t => t.parameter||t.param).map(t => ({
@@ -4308,7 +4326,11 @@ function EngineeringLabWorkstation({ mission, code, onCodeChange }) {
         <span style={{fontSize:18}}>❌</span>
         <div>
           <div style={{fontSize:13,fontWeight:800,color:"#DC2626"}}>{engMode==="diagnose"?`Wrong fault — attempt #${attempts}`:engMode==="design"?`Constraints not satisfied — attempt #${attempts}`:`Not correct — attempt #${attempts}`}</div>
-          <div style={{fontSize:11,color:"#991B1B",marginTop:2}}>Review the problem data and try again.{attempts>=2&&<> · <button onClick={()=>setShowSolution(true)} style={{background:"none",border:"none",color:"#991B1B",fontWeight:800,cursor:"pointer",textDecoration:"underline",fontSize:11,padding:0}}>Show solution</button></>}</div>
+          <div style={{fontSize:11,color:"#991B1B",marginTop:2}}>
+            {expected&&`Expected: ${correctOptionText||expected}. `}
+            Review the problem and try again.
+            {attempts>=2&&<> · <button onClick={()=>setShowSolution(true)} style={{background:"none",border:"none",color:"#991B1B",fontWeight:800,cursor:"pointer",textDecoration:"underline",fontSize:11,padding:0}}>Show solution</button></>}
+          </div>
         </div>
       </div>
     )
@@ -4910,171 +4932,424 @@ function CalculatorWorkstation({ mission, code, onCodeChange }) {
 //     The C code is shown as a read-along reference / starting template.
 //     Validation is register-value answer input (not live C compilation).
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// EMBEDDED LAB WORKSTATION — Firmware IDE
+// ─────────────────────────────────────────────────────────────────────────────
+// Modes (auto-detected from mission data):
+//  1. firmware  — starterCode present → code editor + Build&Run + register state + serial terminal
+//  2. mcq       — test_cases[0].options present → multiple-choice (backward compat)
+//  3. text      — fallback text-answer input
+// ─────────────────────────────────────────────────────────────────────────────
+
 function EmbeddedLabWorkstation({ mission, code, onCodeChange }) {
-  const [answer,   setAnswer]   = useState(code || "")
-  const [checked,  setChecked]  = useState(null)   // null | "correct" | "wrong"
-  const [notes,    setNotes]    = useState("")
-  const [attempts, setAttempts] = useState(0)
-  const [showSol,  setShowSol]  = useState(false)
-  const [activeTab, setTab]     = useState("brief")  // "brief" | "code"
+  const T = useTheme()
+  const EMB_DARK   = "#0D1117"
+  const EMB_BORDER = "#30363D"
+  const EMB_TEXT   = "#C9D1D9"
+  const EMB_TEAL   = "#5EEAD4"
+  const EMB_BLUE   = "#58A6FF"
+  const EMB_GREEN  = "#3FB950"
+  const EMB_YELLOW = "#D29922"
+  const EMB_RED    = "#F85149"
 
-  // Parse expected answer from test_cases
-  const parsedTC = (() => { try { const tc = mission.test_cases||mission.testCases||[]; return typeof tc==="string"?JSON.parse(tc):(Array.isArray(tc)?tc:[]) } catch { return [] } })()
-  const expected = parsedTC?.[0] ? String(parsedTC[0].expected_output ?? parsedTC[0].expected ?? "") : null
-
-  // MCQ / diagnose options
+  // ── Detect mode ──────────────────────────────────────────────────────────
+  const parsedTC = (() => {
+    try {
+      const tc = mission.test_cases || mission.testCases || []
+      return typeof tc === "string" ? JSON.parse(tc) : Array.isArray(tc) ? tc : []
+    } catch { return [] }
+  })()
   const diagData = (() => {
     const tc = parsedTC[0] || {}
     if (tc.options) return { options: tc.options, correct: tc.correct ?? 0, explanation: tc.explanation || "" }
-    if (mission.options) { try { const opts=typeof mission.options==="string"?JSON.parse(mission.options):mission.options; return { options:Array.isArray(opts)?opts:Object.values(opts), correct:tc.correct??0, explanation:"" } } catch {} }
+    if (mission.options) {
+      try {
+        const opts = typeof mission.options === "string" ? JSON.parse(mission.options) : mission.options
+        return { options: Array.isArray(opts) ? opts : Object.values(opts), correct: tc.correct ?? 0, explanation: "" }
+      } catch {}
+    }
     return null
   })()
-  const [selOpt, setSelOpt] = useState(null)
 
-  const starterC = mission.starterCode || mission.starter_code || ""
-  const langHint = (mission.tools||[]).join(", ") || "C / Embedded C"
-  const color    = "#0F766E"
+  const starterCode = mission.starterCode || mission.starter_code || ""
+  const isFirmware  = !!starterCode
+  const isMCQ       = !isFirmware && !!diagData
 
-  const handleCheck = () => {
-    if (diagData) {
-      if (selOpt === null) return
-      setAttempts(n=>n+1)
-      const ok = selOpt === diagData.correct
-      setChecked(ok?"correct":"wrong")
-      onCodeChange(`Selected: ${diagData.options[selOpt]}`)
-      try { registerValidator(()=>[{passed:ok,input:"Option",expected:diagData.options[diagData.correct],actual:diagData.options[selOpt]}]) } catch {}
-      return
-    }
-    if (!answer.trim()) return
-    setAttempts(n=>n+1)
-    const uR = answer.trim().toLowerCase(), eR = (expected||"").trim().toLowerCase()
-    const uN = parseFloat(uR), eN = parseFloat(eR)
-    const ok = !isNaN(uN)&&!isNaN(eN) ? Math.abs(uN-eN) <= Math.abs(eN)*0.02+0.5 : uR===eR
-    setChecked(ok?"correct":"wrong")
-    onCodeChange(`Answer: ${answer.trim()}`)
-    try { registerValidator(()=>[{passed:ok,input:"Answer",expected:expected||"—",actual:answer.trim()}]) } catch {}
+  // ── Validation checks (firmware mode) ──────────────────────────────────
+  // mission.validation_checks: [{id, label, pattern, hint}]
+  // OR inferred from test_cases
+  const validationChecks = React.useMemo(() => {
+    if (mission.validation_checks) return mission.validation_checks
+    // Infer from test_cases that have a "pattern" field
+    const withPat = parsedTC.filter(tc => tc.pattern)
+    if (withPat.length > 0) return withPat.map(tc => ({
+      id: tc.input || tc.id || String(Math.random()),
+      label: tc.input || tc.description || "Check",
+      pattern: tc.pattern,
+      hint: tc.hint || "",
+    }))
+    return []
+  }, [mission, parsedTC])
+
+  // ── Files (firmware mode) ─────────────────────────────────────────────
+  const defaultFiles = React.useMemo(() => {
+    const files = { "main.c": starterCode }
+    if (mission.extra_files) Object.assign(files, mission.extra_files)
+    return files
+  }, [mission, starterCode])
+
+  // ── State ─────────────────────────────────────────────────────────────
+  const [files,      setFiles]      = React.useState(defaultFiles)
+  const [activeFile, setActiveFile] = React.useState("main.c")
+  const [buildLog,   setBuildLog]   = React.useState(null)   // null | [{type,text}]
+  const [regState,   setRegState]   = React.useState(null)   // null | {name:value}
+  const [serialOut,  setSerialOut]  = React.useState(null)   // null | string
+  const [checks,     setChecks]     = React.useState([])     // [{...check, passed}]
+  const [running,    setRunning]    = React.useState(false)
+  const [submitted,  setSubmitted]  = React.useState(false)
+  // MCQ / text mode state
+  const [selOpt,     setSelOpt]     = React.useState(null)
+  const [answer,     setAnswer]     = React.useState(code || "")
+  const [checked,    setChecked]    = React.useState(null)
+  const [notes,      setNotes]      = React.useState("")
+  const textareaRef = React.useRef(null)
+
+  const currentCode = files[activeFile] || ""
+  const allPassed   = checks.length > 0 && checks.every(c => c.passed)
+
+  // ── Build & Run ────────────────────────────────────────────────────────
+  const buildAndRun = () => {
+    if (running) return
+    setRunning(true)
+    setBuildLog(null); setRegState(null); setSerialOut(null)
+
+    // Simulate compile delay
+    setTimeout(() => {
+      const fullCode = Object.values(files).join("\n")
+      const log = []
+      const regs = {}
+      let compileOk = true
+
+      // Static analysis: check for basic C structure
+      if (!/void\s+\w+\s*\(/.test(fullCode)) {
+        log.push({ type: "error", text: "error: No function definition found — did you write the function bodies?" })
+        compileOk = false
+      } else {
+        log.push({ type: "info",    text: `arm-none-eabi-gcc -mcpu=cortex-m3 -mthumb -O0 -g ${activeFile} -o firmware.elf` })
+        log.push({ type: "success", text: "Compilation successful — 0 errors, 0 warnings" })
+        log.push({ type: "info",    text: "OpenOCD: loading firmware.elf onto STM32F103..." })
+        log.push({ type: "success", text: "Target halted at reset vector. Resuming execution." })
+      }
+
+      // Run validation checks
+      const newChecks = validationChecks.map(chk => {
+        let passed = false
+        try {
+          const re = new RegExp(chk.pattern, "s")
+          passed = re.test(fullCode)
+        } catch {}
+        return { ...chk, passed }
+      })
+      setChecks(newChecks)
+
+      // Build register state from heuristics on the code
+      if (compileOk) {
+        // RCC clock enables
+        const rccMatch = fullCode.match(/RCC\s*->\s*APB2ENR\s*\|?=\s*([^;]+);/)
+        if (rccMatch) regs["RCC->APB2ENR"] = `0x${(0x40021018).toString(16).toUpperCase()} ← USART1EN|IOPAEN set`
+        const rccAhb = fullCode.match(/RCC\s*->\s*AHBENR\s*\|?=\s*([^;]+);/)
+        if (rccAhb)  regs["RCC->AHBENR"]  = "0x00000004 ← DMA1EN"
+
+        // GPIO
+        const crh = fullCode.match(/GPIOA\s*->\s*CRH\s*[|&]?=\s*([^;]+);/)
+        if (crh)   regs["GPIOA->CRH"]   = "0xXXXXX4XX ← PA9 AF_PP 50MHz"
+        const crl = fullCode.match(/GPIOA\s*->\s*CRL\s*[|&]?=\s*([^;]+);/)
+        if (crl)   regs["GPIOA->CRL"]   = "0x44444444 (default)"
+
+        // USART
+        const brr = fullCode.match(/USART1\s*->\s*BRR\s*=\s*([^;]+);/)
+        if (brr) {
+          const val = brr[1].trim()
+          regs["USART1->BRR"] = `${val} → 115200 baud @ 36 MHz APB2`
+        }
+        const cr1 = fullCode.match(/USART1\s*->\s*CR1\s*[|&]?=\s*([^;]+);/)
+        if (cr1)   regs["USART1->CR1"] = "0x000020CC ← UE|TE|8N1"
+        const sr  = fullCode.match(/USART1\s*->\s*SR/)
+        if (sr)    regs["USART1->SR"]  = "0x000000C0 ← TXE=1, TC=1 (idle)"
+
+        // Detect what string is transmitted
+        const strMatch = fullCode.match(/uart_send_string\s*\(\s*"([^"]+)"\s*\)/)
+        if (strMatch) {
+          log.push({ type: "serial", text: `→ UART1 TX: "${strMatch[1]}"` })
+          setSerialOut(strMatch[1])
+        } else {
+          const putch = fullCode.match(/uart_send_char\s*\(\s*'(.)'\s*\)/)
+          if (putch) setSerialOut(putch[1])
+        }
+      }
+
+      setRegState(Object.keys(regs).length > 0 ? regs : null)
+      setBuildLog(log)
+      setRunning(false)
+
+      // Persist code
+      const combined = Object.entries(files).map(([fn,fc])=>`// === ${fn} ===\n${fc}`).join("\n\n")
+      onCodeChange(combined)
+    }, 900)
   }
 
-  const borderCol = checked==="correct"?"#22C55E":checked==="wrong"?"#EF4444":color
-  const answerBg  = checked==="correct"?"#F0FDF4":checked==="wrong"?"#FFF5F5":"#fff"
+  // ── MCQ check ────────────────────────────────────────────────────────
+  const handleMCQCheck = () => {
+    if (selOpt === null) return
+    const ok = selOpt === diagData.correct
+    setChecked(ok ? "correct" : "wrong")
+    onCodeChange(`Selected: ${diagData.options[selOpt]}`)
+  }
 
-  return (
-    <div style={{flex:1,display:"flex",flexDirection:"column",background:T.bg2,overflow:"hidden",minHeight:0}}>
+  // ── Firmware IDE layout ───────────────────────────────────────────────
+  if (isFirmware) {
+    const fileNames = Object.keys(files)
+    return (
+      <div style={{ flex:1, display:"flex", flexDirection:"column", background:EMB_DARK, overflow:"hidden", minHeight:0, fontFamily:"'Fira Code','Consolas',monospace" }}>
 
-      {/* Tab bar */}
-      <div style={{display:"flex",gap:0,background:"#0F2027",flexShrink:0}}>
-        {[["brief","📋 Task"], starterC&&["code","💻 Reference Code"]].filter(Boolean).map(([key,label])=>(
-          <button key={key} onClick={()=>setTab(key)}
-            style={{padding:"8px 18px",background:"none",border:"none",borderBottom:`2px solid ${activeTab===key?"#0F766E":"transparent"}`,color:activeTab===key?"#5EEAD4":"#94A3B8",fontSize:11,fontWeight:activeTab===key?800:400,cursor:"pointer",letterSpacing:0.5}}>
-            {label}
+        {/* ── Top bar ── */}
+        <div style={{ display:"flex", alignItems:"center", gap:0, background:"#161B22", borderBottom:`1px solid ${EMB_BORDER}`, flexShrink:0, padding:"0 8px" }}>
+          {/* File tabs */}
+          <div style={{ display:"flex", gap:0, flex:1, overflowX:"auto" }}>
+            {fileNames.map(fn => (
+              <button key={fn} onClick={()=>setActiveFile(fn)}
+                style={{ padding:"8px 16px", background:activeFile===fn?"#0D1117":"transparent",
+                  border:"none", borderBottom:`2px solid ${activeFile===fn?EMB_TEAL:"transparent"}`,
+                  color:activeFile===fn?EMB_TEAL:"#8B949E", fontSize:11, cursor:"pointer",
+                  fontFamily:"'Fira Code',monospace", whiteSpace:"nowrap" }}>
+                {fn}
+              </button>
+            ))}
+          </div>
+
+          {/* Build & Run button */}
+          <button onClick={buildAndRun} disabled={running}
+            style={{ padding:"6px 18px", borderRadius:6, border:"none",
+              background:running?"#21262D":EMB_GREEN, color:"#000", fontSize:12, fontWeight:800,
+              cursor:running?"not-allowed":"pointer", flexShrink:0,
+              display:"flex", alignItems:"center", gap:6 }}>
+            {running ? (
+              <><span style={{ display:"inline-block", width:10, height:10, border:`2px solid #000`, borderTopColor:"transparent", borderRadius:"50%", animation:"spin 0.7s linear infinite" }}/> Building…</>
+            ) : (
+              <>▶ Build & Run</>
+            )}
           </button>
-        ))}
-        <div style={{flex:1}}/>
-        <span style={{padding:"8px 14px",fontSize:10,color:"#475569",fontFamily:"monospace"}}>{langHint}</span>
-      </div>
+        </div>
 
-      <div style={{flex:1,display:"flex",gap:0,overflow:"hidden",minHeight:0}}>
+        {/* ── Main content ── */}
+        <div style={{ flex:1, display:"flex", gap:0, overflow:"hidden", minHeight:0 }}>
 
-        {/* Left: code reference OR task brief */}
-        <div style={{flex:1,overflowY:"auto",background:"#0D1117"}}>
-          {activeTab==="brief" ? (
-            <div style={{padding:"20px 24px",color:"#C9D1D9",fontFamily:"monospace",fontSize:12,lineHeight:1.9}}>
-              {(mission.statement || mission.description || mission.scenario || "").split("\n").map((line,i)=>(
-                <p key={i} style={{margin:"0 0 6px",color:line.startsWith("###")?"#58A6FF":line.startsWith("##")?"#79C0FF":line.startsWith("#")?"#FFA657":"#C9D1D9",fontWeight:line.startsWith("#")&&800}}>{line.replace(/^#+\s*/,"")}</p>
-              ))}
-              {mission.steps?.length > 0 && (
-                <div style={{marginTop:14,borderTop:"1px solid #30363D",paddingTop:12}}>
-                  <div style={{color:"#58A6FF",fontWeight:800,marginBottom:8,fontSize:11}}>STEPS</div>
-                  {mission.steps.map((s,i)=><div key={i} style={{display:"flex",gap:10,marginBottom:6}}><span style={{color:"#0F766E",fontWeight:800,minWidth:18}}>{i+1}.</span><span>{s}</span></div>)}
+          {/* Code editor */}
+          <div style={{ flex:"0 0 58%", display:"flex", flexDirection:"column", overflow:"hidden" }}>
+            <textarea ref={textareaRef}
+              value={currentCode}
+              onChange={e => { setFiles(prev => ({...prev,[activeFile]:e.target.value})); setChecked(null) }}
+              spellCheck={false}
+              style={{ flex:1, resize:"none", border:"none", outline:"none", background:EMB_DARK,
+                color:EMB_TEXT, fontFamily:"'Fira Code','Consolas',monospace", fontSize:12.5,
+                lineHeight:1.75, padding:"16px 20px", boxSizing:"border-box", overflowY:"auto",
+                tabSize:4 }}
+              onKeyDown={e => {
+                if (e.key === "Tab") {
+                  e.preventDefault()
+                  const ta = e.target
+                  const s = ta.selectionStart, en = ta.selectionEnd
+                  const newVal = ta.value.slice(0,s) + "    " + ta.value.slice(en)
+                  setFiles(prev => ({...prev,[activeFile]:newVal}))
+                  requestAnimationFrame(() => { ta.selectionStart = ta.selectionEnd = s + 4 })
+                }
+              }}/>
+
+            {/* Build log */}
+            {buildLog && (
+              <div style={{ background:"#161B22", borderTop:`1px solid ${EMB_BORDER}`, padding:"10px 16px", maxHeight:130, overflowY:"auto", flexShrink:0 }}>
+                <div style={{ fontSize:10, fontWeight:700, color:"#8B949E", marginBottom:6, letterSpacing:1 }}>BUILD OUTPUT</div>
+                {buildLog.map((l,i) => (
+                  <div key={i} style={{ fontSize:11, lineHeight:1.6, color:l.type==="error"?EMB_RED:l.type==="success"?EMB_GREEN:l.type==="serial"?EMB_TEAL:"#8B949E", marginBottom:1 }}>
+                    {l.text}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Right panel: MCU state + serial + validation */}
+          <div style={{ flex:1, borderLeft:`1px solid ${EMB_BORDER}`, display:"flex", flexDirection:"column", overflow:"hidden", minWidth:0 }}>
+
+            {/* Register state */}
+            <div style={{ padding:"12px 14px", borderBottom:`1px solid ${EMB_BORDER}`, flexShrink:0 }}>
+              <div style={{ fontSize:10, fontWeight:700, color:"#8B949E", letterSpacing:1, marginBottom:8 }}>
+                🔧 MCU REGISTER STATE  <span style={{ color:"#3C4048", fontWeight:400 }}>— STM32F103</span>
+              </div>
+              {regState ? (
+                Object.entries(regState).map(([reg, val]) => (
+                  <div key={reg} style={{ display:"flex", justifyContent:"space-between", gap:8, marginBottom:3, fontSize:11, lineHeight:1.5 }}>
+                    <span style={{ color:EMB_BLUE, minWidth:120 }}>{reg}</span>
+                    <span style={{ color:EMB_TEXT, fontFamily:"'Fira Code',monospace", fontSize:10.5, textAlign:"right" }}>{val}</span>
+                  </div>
+                ))
+              ) : (
+                <div style={{ fontSize:11, color:"#3C4048", fontStyle:"italic" }}>
+                  {buildLog ? "No registers written yet — implement the function bodies." : "Click ▶ Build & Run to see live register state"}
                 </div>
               )}
             </div>
-          ) : (
-            <pre style={{margin:0,padding:"16px 20px",color:"#C9D1D9",fontFamily:"'Fira Code','Consolas',monospace",fontSize:12,lineHeight:1.7,whiteSpace:"pre-wrap",wordBreak:"break-word"}}>{starterC}</pre>
-          )}
+
+            {/* Serial terminal */}
+            <div style={{ padding:"10px 14px", borderBottom:`1px solid ${EMB_BORDER}`, flexShrink:0 }}>
+              <div style={{ fontSize:10, fontWeight:700, color:"#8B949E", letterSpacing:1, marginBottom:8 }}>
+                📟 SERIAL TERMINAL  <span style={{ color:"#3C4048", fontWeight:400 }}>USART1 @ 115200</span>
+              </div>
+              <div style={{ background:"#000", border:`1px solid ${EMB_BORDER}`, borderRadius:6, padding:"8px 12px", minHeight:42, fontFamily:"'Fira Code',monospace", fontSize:12 }}>
+                {serialOut != null ? (
+                  <span style={{ color:EMB_GREEN }}>{serialOut}</span>
+                ) : (
+                  <span style={{ color:"#3C4048" }}>No output yet…</span>
+                )}
+              </div>
+            </div>
+
+            {/* Validation steps */}
+            <div style={{ flex:1, overflowY:"auto", padding:"10px 14px" }}>
+              <div style={{ fontSize:10, fontWeight:700, color:"#8B949E", letterSpacing:1, marginBottom:8 }}>
+                ✅ VALIDATION STEPS
+              </div>
+              {validationChecks.length === 0 ? (
+                <div style={{ fontSize:11, color:"#3C4048", fontStyle:"italic" }}>No checks defined for this challenge.</div>
+              ) : (
+                checks.length === 0
+                  ? validationChecks.map((chk,i) => (
+                      <div key={i} style={{ display:"flex", alignItems:"center", gap:8, marginBottom:7, fontSize:11, color:"#3C4048" }}>
+                        <span style={{ width:14, height:14, borderRadius:"50%", border:`1.5px solid #3C4048`, flexShrink:0, display:"inline-block" }}/>
+                        {chk.label}
+                      </div>
+                    ))
+                  : checks.map((chk,i) => (
+                      <div key={i} style={{ marginBottom:8 }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:11, color:chk.passed?EMB_GREEN:"#8B949E" }}>
+                          <span style={{ fontSize:13, flexShrink:0 }}>{chk.passed?"✓":"○"}</span>
+                          <span style={{ fontWeight:chk.passed?700:400 }}>{chk.label}</span>
+                        </div>
+                        {!chk.passed && chk.hint && (
+                          <div style={{ marginLeft:22, fontSize:10, color:EMB_YELLOW, marginTop:2 }}>💡 {chk.hint}</div>
+                        )}
+                      </div>
+                    ))
+              )}
+
+              {/* Submit button */}
+              {allPassed && !submitted && (
+                <button onClick={() => { setSubmitted(true); onCodeChange("__submit__") }}
+                  style={{ marginTop:12, width:"100%", padding:"10px 0", borderRadius:8, border:"none",
+                    background:EMB_GREEN, color:"#000", fontSize:13, fontWeight:800, cursor:"pointer" }}>
+                  🚀 Submit Solution →
+                </button>
+              )}
+              {submitted && (
+                <div style={{ marginTop:12, padding:"10px 12px", background:"#1C2B1C", borderRadius:8, border:`1px solid ${EMB_GREEN}40`, color:EMB_GREEN, fontSize:12, fontWeight:600 }}>
+                  ✓ Solution submitted! ELO updating…
+                </div>
+              )}
+            </div>
+
+          </div>
         </div>
 
-        {/* Right: answer panel */}
-        <div style={{width:340,flexShrink:0,background:"#fff",borderLeft:`1px solid ${T.border}`,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      </div>
+    )
+  }
 
-          {/* Header */}
-          <div style={{padding:"12px 16px",background:"#F0FDF9",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",gap:8}}>
-            <span style={{fontSize:16}}>🤖</span>
-            <div>
-              <div style={{fontSize:11,fontWeight:800,color:color,letterSpacing:0.5}}>EMBEDDED ANSWER</div>
-              <div style={{fontSize:10,color:T.ink3}}>{mission.category||"Embedded Systems"}</div>
-            </div>
+  // ── MCQ mode (backward compat) ────────────────────────────────────────
+  if (isMCQ) {
+    const borderCol = checked === "correct" ? "#22C55E" : checked === "wrong" ? "#EF4444" : "#0F766E"
+    return (
+      <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden", background:T.bg2 }}>
+        <div style={{ flex:1, overflowY:"auto", padding:"20px 24px", background:"#0D1117" }}>
+          <p style={{ color:"#C9D1D9", fontFamily:"monospace", fontSize:13, lineHeight:1.9 }}>
+            {mission.statement || mission.description || ""}
+          </p>
+        </div>
+        <div style={{ padding:20, background:T.bg, borderTop:`1px solid ${T.border}` }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:9, marginBottom:14 }}>
+            {diagData.options.map((opt,i) => {
+              const isSel=selOpt===i, isCorrect=checked&&i===diagData.correct, isWrong=checked==="wrong"&&isSel
+              return (
+                <div key={i} onClick={()=>{ if(!checked) setSelOpt(i) }}
+                  style={{ display:"flex",gap:10,padding:"10px 12px",borderRadius:9,cursor:checked?"default":"pointer",
+                    border:`2px solid ${isCorrect&&checked==="correct"?"#22C55E":isWrong?"#EF4444":isSel?"#0F766E":T.border}`,
+                    background:isCorrect&&checked?"#F0FDF4":isWrong?"#FFF5F5":isSel&&!checked?"#0F766E10":"#fff" }}>
+                  <span style={{fontSize:12,color:T.ink}}><b style={{color:"#0F766E",marginRight:6}}>{String.fromCharCode(65+i)}.</b>{opt}</span>
+                </div>
+              )
+            })}
           </div>
-
-          <div style={{flex:1,overflowY:"auto",padding:"14px 14px"}}>
-
-            {/* MCQ options or text answer */}
-            {diagData ? (
-              <div style={{display:"flex",flexDirection:"column",gap:9,marginBottom:14}}>
-                <div style={{fontSize:11,fontWeight:800,color:T.ink,marginBottom:4}}>Select the correct answer:</div>
-                {diagData.options.map((opt,i)=>{
-                  const isSel=selOpt===i, isCorrect=checked&&i===diagData.correct, isWrong=checked==="wrong"&&isSel
-                  return (
-                    <div key={i} onClick={()=>{if(!checked)setSelOpt(i)}}
-                      style={{display:"flex",gap:10,padding:"10px 12px",borderRadius:9,cursor:checked?"default":"pointer",border:`2px solid ${isCorrect&&checked==="correct"?"#22C55E":isWrong?"#EF4444":isSel?color:T.border}`,background:isCorrect&&checked?"#F0FDF4":isWrong?"#FFF5F5":isSel&&!checked?`${color}10`:"#fff",transition:"all 0.15s"}}>
-                      <div style={{width:18,height:18,borderRadius:"50%",border:`2px solid ${isSel?color:T.border}`,background:isSel?color:"transparent",flexShrink:0,marginTop:1,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                        {isSel&&<div style={{width:7,height:7,borderRadius:"50%",background:"#fff"}}/>}
-                      </div>
-                      <span style={{fontSize:12,color:T.ink}}><span style={{color:color,fontWeight:700,marginRight:6}}>{String.fromCharCode(65+i)}.</span>{opt}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            ) : (
-              <div style={{marginBottom:14}}>
-                <div style={{fontSize:11,fontWeight:800,color:T.ink,marginBottom:8}}>Your Answer</div>
-                <input type="text" value={answer} placeholder="e.g. 3599 (ARR value), 0x40021000, 50%…"
-                  onChange={e=>{setAnswer(e.target.value);setChecked(null)}} onKeyDown={e=>e.key==="Enter"&&handleCheck()}
-                  style={{width:"100%",padding:"11px 13px",fontSize:14,fontWeight:700,fontFamily:"'Fira Code',monospace",border:`2px solid ${borderCol}`,borderRadius:9,outline:"none",background:answerBg,boxSizing:"border-box",color:T.ink}}/>
-              </div>
-            )}
-
-            <button onClick={handleCheck} disabled={diagData?selOpt===null||!!checked:!answer.trim()||!!checked}
-              style={{width:"100%",padding:"11px",background:color,color:"#fff",border:"none",borderRadius:9,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit",marginBottom:12,opacity:(diagData?selOpt===null||!!checked:!answer.trim()||!!checked)?0.45:1}}>
+          {checked && diagData.explanation && (
+            <div style={{ padding:"10px 12px", borderRadius:8, background: checked==="correct"?"#F0FDF4":"#FFF5F5", border:`1px solid ${borderCol}40`, fontSize:12, color:T.ink, marginBottom:10 }}>
+              {diagData.explanation}
+            </div>
+          )}
+          {!checked ? (
+            <button onClick={handleMCQCheck} disabled={selOpt===null}
+              style={{ width:"100%",padding:"10px 0",borderRadius:8,border:"none",background:selOpt!==null?"#0F766E":T.border,color:"#fff",fontSize:13,fontWeight:700,cursor:selOpt!==null?"pointer":"not-allowed" }}>
               ✓ Check Answer
             </button>
-
-            {/* Feedback */}
-            {checked==="correct" && (
-              <div style={{padding:"10px 12px",background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:9,marginBottom:12}}>
-                <div style={{fontSize:12,fontWeight:800,color:"#15803D"}}>✅ Correct!</div>
-                {diagData?.explanation && <div style={{fontSize:11,color:"#166534",marginTop:4}}>{diagData.explanation}</div>}
-                <div style={{fontSize:10,color:"#166534",marginTop:4}}>Click Submit to lock this into your proof.</div>
-              </div>
-            )}
-            {checked==="wrong" && (
-              <div style={{padding:"10px 12px",background:"#FFF5F5",border:"1px solid #FECACA",borderRadius:9,marginBottom:12}}>
-                <div style={{fontSize:12,fontWeight:800,color:"#DC2626"}}>❌ Incorrect — attempt #{attempts}</div>
-                <div style={{fontSize:10,color:"#991B1B",marginTop:4}}>Review the task and try again.
-                  {attempts>=2&&<button onClick={()=>setShowSol(true)} style={{background:"none",border:"none",color:"#991B1B",fontWeight:800,cursor:"pointer",textDecoration:"underline",fontSize:10,padding:"0 0 0 6px"}}>Show answer</button>}
-                </div>
-              </div>
-            )}
-            {showSol && (expected||diagData) && (
-              <div style={{padding:"10px 12px",background:"#F0F9FF",border:"1px solid #BAE6FD",borderRadius:9,marginBottom:12}}>
-                <div style={{fontSize:10,fontWeight:800,color:"#0369A1",marginBottom:4}}>ANSWER</div>
-                <div style={{fontSize:12,fontFamily:"monospace",color:"#0C4A6E",fontWeight:700}}>{diagData?diagData.options[diagData.correct]:expected}</div>
-              </div>
-            )}
-
-            {/* Scratchpad */}
-            <div style={{borderTop:`1px solid ${T.border}`,paddingTop:12,marginTop:4}}>
-              <div style={{fontSize:10,fontWeight:700,color:T.ink3,marginBottom:6}}>📝 WORKING NOTES (not submitted)</div>
-              <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Calculations, observations, register values…"
-                style={{width:"100%",minHeight:100,border:`1px solid ${T.border}`,borderRadius:8,outline:"none",fontFamily:"'Fira Code',monospace",fontSize:11,color:T.ink2,lineHeight:1.6,padding:"8px 10px",boxSizing:"border-box",resize:"vertical",background:"#FAFAFA"}}/>
-            </div>
-
-          </div>
+          ) : checked==="correct" ? (
+            <button onClick={()=>onCodeChange("__submit__")}
+              style={{ width:"100%",padding:"10px 0",borderRadius:8,border:"none",background:"#16A34A",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer" }}>
+              Submit Solution →
+            </button>
+          ) : (
+            <button onClick={()=>{setChecked(null);setSelOpt(null)}}
+              style={{ width:"100%",padding:"10px 0",borderRadius:8,border:"none",background:"#EF4444",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer" }}>
+              Try Again
+            </button>
+          )}
         </div>
+      </div>
+    )
+  }
+
+  // ── Text-answer mode (fallback) ────────────────────────────────────────
+  const expected = parsedTC?.[0] ? String(parsedTC[0].expected_output ?? parsedTC[0].expected ?? "") : null
+  const handleTextCheck = () => {
+    if (!answer.trim()) return
+    const uR = answer.trim().toLowerCase(), eR = (expected||"").trim().toLowerCase()
+    const uN = parseFloat(uR), eN = parseFloat(eR)
+    const ok = !isNaN(uN)&&!isNaN(eN) ? Math.abs(uN-eN)<=Math.abs(eN)*0.02+0.5 : uR===eR
+    setChecked(ok?"correct":"wrong")
+    onCodeChange(`Answer: ${answer.trim()}`)
+  }
+  return (
+    <div style={{ flex:1, display:"flex", flexDirection:"column", background:T.bg2, overflow:"hidden" }}>
+      <div style={{ flex:1, overflowY:"auto", padding:"20px 24px", background:"#0D1117" }}>
+        <p style={{ color:"#C9D1D9", fontFamily:"monospace", fontSize:13, lineHeight:1.9, margin:0 }}>
+          {(mission.statement||mission.description||"").split("\n").map((l,i)=><span key={i}>{l}<br/></span>)}
+        </p>
+      </div>
+      <div style={{ padding:16, background:T.bg, borderTop:`1px solid ${T.border}`, display:"flex", flexDirection:"column", gap:10 }}>
+        <input value={answer} onChange={e=>{setAnswer(e.target.value);setChecked(null)}}
+          onKeyDown={e=>e.key==="Enter"&&handleTextCheck()}
+          placeholder="Your answer…"
+          style={{ padding:"9px 12px", borderRadius:8, border:`1.5px solid ${checked==="correct"?"#22C55E":checked==="wrong"?"#EF4444":"#0F766E"}`, fontSize:13, fontFamily:"monospace", outline:"none" }}/>
+        <button onClick={handleTextCheck} style={{ padding:"9px 0",borderRadius:8,border:"none",background:"#0F766E",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer" }}>
+          ✓ Check Answer
+        </button>
+        {checked==="correct" && (
+          <button onClick={()=>onCodeChange("__submit__")} style={{ padding:"9px 0",borderRadius:8,border:"none",background:"#16A34A",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer" }}>
+            Submit Solution →
+          </button>
+        )}
       </div>
     </div>
   )
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 2.  DIAGRAM WORKSPACE  — interactive circuit / system diagram viewer

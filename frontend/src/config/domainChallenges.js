@@ -2518,6 +2518,38 @@ int main(void) {
 
   }
 }`,
+    validation_checks: [
+      {
+        id: "rcc_gpioa",
+        label: "Enable GPIOA clock via RCC_APB2ENR",
+        pattern: "RCC_APB2ENR\\s*\\|=.*4|APB2ENR.*IOPAEN|APB2ENR.*1<<2",
+        hint: "RCC_APB2ENR |= (1 << 2)  — bit 2 = IOPAEN (GPIOA clock enable)",
+      },
+      {
+        id: "gpio_crl",
+        label: "Configure PA5 as output push-pull 2 MHz via CRL",
+        pattern: "GPIOA_CRL\\s*[|&]?=|CRL.*0x[0-9a-fA-F]",
+        hint: "GPIOA_CRL — bits [23:20] for PA5. Set to 0b0010 (output push-pull 2 MHz)",
+      },
+      {
+        id: "toggle_high",
+        label: "Set PA5 HIGH using BSRR or ODR",
+        pattern: "GPIOA_BSRR\\s*=.*1<<5|GPIOA_BSRR\\s*=.*32|BSRR.*0x20|ODR.*|=.*0x20",
+        hint: "GPIOA_BSRR = (1 << 5)  — write bit 5 to BSRR to set PA5 HIGH",
+      },
+      {
+        id: "toggle_low",
+        label: "Set PA5 LOW using BRR or BSRR high half",
+        pattern: "GPIOA_BRR\\s*=.*1<<5|BRR.*0x20|BSRR.*1<<21",
+        hint: "GPIOA_BRR = (1 << 5)  — write bit 5 to BRR to set PA5 LOW",
+      },
+      {
+        id: "delay",
+        label: "Implement delay_ms() software loop",
+        pattern: "delay_ms\\s*\\(\\s*500\\s*\\)|for\\s*\\(.*ms.*8000|while.*--",
+        hint: "delay_ms(500) creates a 500 ms half-period — ~8000 iterations per ms at 8 MHz",
+      },
+    ],
     skillTags: ["GPIO", "RCC", "Bare-Metal", "ARM Cortex-M", "BSRR/BRR"],
     hints: [
       "RCC_APB2ENR bit 2 enables GPIOA clock",
@@ -2585,6 +2617,50 @@ int main(void) {
   uart_send_string("Hello ECE!\\r\\n");
   while (1) {}
 }`,
+    validation_checks: [
+      {
+        id: "rcc_clocks",
+        label: "Enable USART1 and GPIOA clocks via RCC",
+        pattern: "RCC_APB2ENR\\s*\\|=.*USART1|APB2ENR.*0x[0-9a-fA-F]*4",
+        hint: "RCC_APB2ENR |= (1<<14) | (1<<2)  — bit14=USART1EN, bit2=IOPAEN",
+      },
+      {
+        id: "gpio_pa9",
+        label: "Configure PA9 as alternate function push-pull (50 MHz)",
+        pattern: "GPIOA_CRH\\s*[|&]?=|CRH.*0xB",
+        hint: "GPIOA_CRH — bits [7:4] for PA9 → 0b1011 (AF PP 50MHz)",
+      },
+      {
+        id: "brr_set",
+        label: "Set BRR for 115200 baud at 36 MHz APB2 (≈ 312 / 0x138)",
+        pattern: "USART1_BRR\\s*=\\s*(312|0x138|0x139|313)",
+        hint: "USART1_BRR = 36000000 / 115200 → 312 (0x138)",
+      },
+      {
+        id: "usart_enable",
+        label: "Enable USART1 with UE + TE bits",
+        pattern: "USART1_CR1\\s*\\|=.*USART_CR1_UE|CR1.*UE.*TE|CR1.*TE.*UE",
+        hint: "USART1_CR1 |= USART_CR1_UE | USART_CR1_TE  (bits 13 and 3)",
+      },
+      {
+        id: "txe_poll",
+        label: "Poll TXE flag before writing to DR",
+        pattern: "USART1_SR\\s*&\\s*USART_SR_TXE|SR.*TXE|while.*TXE",
+        hint: "while (!(USART1_SR & USART_SR_TXE)) {}  — wait for transmit register empty",
+      },
+      {
+        id: "dr_write",
+        label: "Write character to USART1_DR",
+        pattern: "USART1_DR\\s*=",
+        hint: "USART1_DR = c;  — writing to the data register transmits the byte",
+      },
+      {
+        id: "hello_string",
+        label: "Transmit \"Hello ECE!\" over UART",
+        pattern: "uart_send_string\\s*\\(\\s*\"Hello ECE",
+        hint: "Call uart_send_string(\"Hello ECE!\\r\\n\") from main()",
+      },
+    ],
     skillTags: ["UART", "Polling", "Baud Rate", "STM32", "Serial Communication"],
     hints: [
       "BRR = f_PCLK / baud_rate. At 36 MHz: 36000000 / 115200 ≈ 312 (0x138)",
