@@ -4942,7 +4942,6 @@ function CalculatorWorkstation({ mission, code, onCodeChange }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function EmbeddedLabWorkstation({ mission, code, onCodeChange }) {
-  const T = useTheme()
   const EMB_DARK   = "#0D1117"
   const EMB_BORDER = "#30363D"
   const EMB_TEXT   = "#C9D1D9"
@@ -6972,7 +6971,6 @@ function _ICProbeSVG({ comp, T, voltage }) {
 // ── Main Component ────────────────────────────────────────────────────────────
 
 function InteractiveCircuitWorkstation({ mission, code, onCodeChange }) {
-  const T = useTheme()
   const circ = mission?.simulation?.circuit || {}
 
   const [comps, setComps]           = React.useState(() => (circ.components || []).map(c => ({...c})))
