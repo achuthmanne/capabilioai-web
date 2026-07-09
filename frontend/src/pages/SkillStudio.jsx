@@ -597,39 +597,108 @@ function ModulesTab({ recs, completedSet, domainColor, onStart, onComplete }) {
                 </div>
               </div>
 
-              {isOpen && (
-                <div style={{ padding: "0 20px 16px", borderTop: `1px solid ${D.border}` }}>
-                  <div style={{ marginTop: 14, marginBottom: 14 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                      <span style={{ fontSize: 9, fontWeight: 800, color: D.muted, textTransform: "uppercase", letterSpacing: 1, fontFamily: "'DM Mono',monospace" }}>Confidence Forecast</span>
-                      <span style={{ fontSize: 10, color: D.muted }}>{r.preScore}% → <strong style={{ color: D.emerald }}>{r.postScore}%</strong></span>
-                    </div>
-                    <div style={{ position: "relative", height: 5, background: "rgba(0,0,0,0.05)", borderRadius: 99 }}>
-                      <div style={{ width: `${prePct}%`, height: "100%", background: D.gold, borderRadius: 99 }} />
-                      <div style={{ position: "absolute", top: 0, left: `${prePct}%`, width: `${postPct - prePct}%`, height: "100%", background: D.emerald + "50", borderRadius: "0 99px 99px 0", borderLeft: `2px dashed ${D.emerald}` }} />
-                    </div>
-                    <div style={{ fontSize: 9, color: D.muted, marginTop: 4 }}>Expected +{r.postScore - r.preScore}pt improvement</div>
-                  </div>
+              {isOpen && (() => {
+                const mod = getSkillModule(r.skill)
+                const RES_ICON = { video: "▶️", docs: "📄", article: "📰", interactive: "🎮" }
+                const RES_COLOR = { video: "#F43F5E", docs: D.indigo, article: D.emerald, interactive: D.violet }
+                return (
+                  <div style={{ padding: "0 20px 18px", borderTop: `1px solid ${D.border}` }}>
 
-                  <div style={{ background: accent + "10", border: `1px solid ${accent}25`, borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
-                    <div style={{ fontSize: 9, fontWeight: 800, color: accent, textTransform: "uppercase", letterSpacing: 1, marginBottom: 5, fontFamily: "'DM Mono',monospace" }}>What you'll prove</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 14 }}>⚡</span>
-                      <div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: D.text1 }}>{r.proof}</div>
-                        <div style={{ fontSize: 10, color: D.muted, marginTop: 1 }}>Added to recruiter profile on completion</div>
+                    {/* ── W3Schools-style content panel ── */}
+                    {mod ? (
+                      <div style={{ marginTop: 14 }}>
+                        {/* Concept */}
+                        <div style={{ background: accent + "08", border: `1px solid ${accent}20`, borderRadius: 12, padding: "13px 16px", marginBottom: 10 }}>
+                          <div style={{ fontSize: 9, fontWeight: 800, color: accent, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 6, fontFamily: "'DM Mono',monospace" }}>📖 What is {r.skill}?</div>
+                          <div style={{ fontSize: 12, color: D.text2, lineHeight: 1.75 }}>{mod.concept}</div>
+                        </div>
+
+                        {/* Key points */}
+                        <div style={{ background: D.glass, border: `1px solid ${D.border}`, borderRadius: 12, padding: "12px 16px", marginBottom: 10 }}>
+                          <div style={{ fontSize: 9, fontWeight: 800, color: D.indigo, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 8, fontFamily: "'DM Mono',monospace" }}>🔑 Key points</div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                            {(mod.keyPoints || []).map((pt, ki) => (
+                              <div key={ki} style={{ display: "flex", gap: 9, alignItems: "flex-start" }}>
+                                <div style={{ width: 18, height: 18, borderRadius: "50%", background: D.indigo + "18", color: D.indigo, fontSize: 8, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1, fontFamily: "'DM Mono',monospace" }}>{ki + 1}</div>
+                                <div style={{ fontSize: 11, color: D.text2, lineHeight: 1.6, fontFamily: "'DM Mono',monospace" }}>{pt}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Try this */}
+                        {mod.tryThis && (
+                          <div style={{ background: D.gold + "10", border: `1px solid ${D.gold}25`, borderRadius: 12, padding: "11px 15px", marginBottom: 10 }}>
+                            <div style={{ fontSize: 9, fontWeight: 800, color: D.gold, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 5, fontFamily: "'DM Mono',monospace" }}>✋ Try this right now</div>
+                            <div style={{ fontSize: 11, color: D.text2, lineHeight: 1.65 }}>{mod.tryThis}</div>
+                          </div>
+                        )}
+
+                        {/* Resources */}
+                        {(mod.resources || []).length > 0 && (
+                          <div style={{ background: D.raised, border: `1px solid ${D.border}`, borderRadius: 12, padding: "11px 15px", marginBottom: 14 }}>
+                            <div style={{ fontSize: 9, fontWeight: 800, color: D.muted, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 8, fontFamily: "'DM Mono',monospace" }}>🔗 Free resources</div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                              {(mod.resources || []).map((res, ri) => {
+                                const ic = RES_ICON[res.type] || "🔗"
+                                const tc = RES_COLOR[res.type] || D.indigo
+                                return (
+                                  <a key={ri} href={res.url} target="_blank" rel="noreferrer"
+                                    style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 11px", background: tc + "10", border: `1px solid ${tc}22`, borderRadius: 9, textDecoration: "none" }}>
+                                    <span style={{ fontSize: 13 }}>{ic}</span>
+                                    <span style={{ fontSize: 11, fontWeight: 700, color: tc, flex: 1 }}>{res.title}</span>
+                                    <span style={{ fontSize: 10, color: D.muted }}>↗</span>
+                                  </a>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
+                    ) : (
+                      /* No static content: show resource links pointing to YouTube/freeCodeCamp */
+                      <div style={{ marginTop: 14, background: D.glass, border: `1px solid ${D.border}`, borderRadius: 12, padding: "12px 15px", marginBottom: 10 }}>
+                        <div style={{ fontSize: 9, fontWeight: 800, color: D.muted, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 8, fontFamily: "'DM Mono',monospace" }}>📖 Before you start — study the basics</div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          {[
+                            { i: "▶️", l: `YouTube: ${r.skill} basics`, c: "#F43F5E", url: `https://youtube.com/results?search_query=${encodeURIComponent(r.skill + " explained beginner")}` },
+                            { i: "📄", l: `W3Schools: ${r.skill}`, c: D.indigo, url: `https://www.w3schools.com/` },
+                            { i: "💻", l: `freeCodeCamp: ${r.skill}`, c: D.emerald, url: `https://freecodecamp.org/news/search/?query=${encodeURIComponent(r.skill)}` },
+                          ].map((res, ri) => (
+                            <a key={ri} href={res.url} target="_blank" rel="noreferrer"
+                              style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 11px", background: res.c + "10", border: `1px solid ${res.c}22`, borderRadius: 9, textDecoration: "none" }}>
+                              <span style={{ fontSize: 13 }}>{res.i}</span>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: res.c, flex: 1 }}>{res.l}</span>
+                              <span style={{ fontSize: 10, color: D.muted }}>↗</span>
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ── Confidence forecast ── */}
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+                        <span style={{ fontSize: 9, fontWeight: 800, color: D.muted, textTransform: "uppercase", letterSpacing: 1, fontFamily: "'DM Mono',monospace" }}>Confidence Forecast</span>
+                        <span style={{ fontSize: 10, color: D.muted }}>{r.preScore}% → <strong style={{ color: D.emerald }}>{r.postScore}%</strong></span>
+                      </div>
+                      <div style={{ position: "relative", height: 5, background: "rgba(0,0,0,0.05)", borderRadius: 99 }}>
+                        <div style={{ width: `${prePct}%`, height: "100%", background: D.gold, borderRadius: 99 }} />
+                        <div style={{ position: "absolute", top: 0, left: `${prePct}%`, width: `${postPct - prePct}%`, height: "100%", background: D.emerald + "50", borderRadius: "0 99px 99px 0", borderLeft: `2px dashed ${D.emerald}` }} />
+                      </div>
+                      <div style={{ fontSize: 9, color: D.muted, marginTop: 3 }}>Expected +{r.postScore - r.preScore}pt improvement after completing</div>
+                    </div>
+
+                    {/* ── CTA buttons ── */}
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {!done && <button onClick={() => onStart(r)} style={{ flex: 1, padding: "10px 14px", background: `linear-gradient(135deg, ${accent}, ${accent}cc)`, border: "none", borderRadius: 11, color: "#fff", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", boxShadow: `0 4px 14px ${accent}40` }}>
+                        {r.type === "learn" ? "Take practice quiz →" : r.type === "practice" ? "Start Practice →" : "Start Drill →"}
+                      </button>}
+                      {!done && <button onClick={() => onComplete(r)} style={{ padding: "10px 14px", background: D.glass, border: `1px solid ${D.border}`, borderRadius: 11, color: D.muted, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Mark done</button>}
                     </div>
                   </div>
-
-                  <div style={{ display: "flex", gap: 8 }}>
-                    {!done && <button onClick={() => onStart(r)} style={{ flex: 1, padding: "10px 14px", background: `linear-gradient(135deg, ${accent}, ${accent}cc)`, border: "none", borderRadius: 11, color: "#fff", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", boxShadow: `0 4px 14px ${accent}40` }}>
-                      {r.type === "learn" ? "Start Module →" : r.type === "practice" ? "Start Practice →" : "Start Drill →"}
-                    </button>}
-                    {!done && <button onClick={() => onComplete(r)} style={{ padding: "10px 14px", background: D.glass, border: `1px solid ${D.border}`, borderRadius: 11, color: D.muted, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Mark done</button>}
-                  </div>
-                </div>
-              )}
+                )
+              })()}
             </div>
           )
         })}
