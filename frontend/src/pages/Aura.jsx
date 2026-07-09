@@ -86,96 +86,171 @@ function Spinner({ color = T.indigo, size = 14 }) {
 }
 
 // ─── DOMAIN → SKILLS MAP ──────────────────────────────────────────────────────
-// Skills are ONLY those core to that specific field.
+// Entry-level / fresh-graduate skills per role.
+// Goal: students gain 20–30% domain knowledge before starting corporate life.
+// Skills are practical, observable, and appropriate for a first-year employee.
 const domainSkillsMap = {
   // ── IT / CS DOMAINS ───────────────────────────────────────────────────────
-  "Data Analyst":     ["SQL","Python","Data Cleaning","Exploratory Data Analysis","Data Visualization","Statistical Analysis","A/B Testing","Business Intelligence","Funnel Analysis","KPI Reporting","Dashboard Design","Storytelling with Data"],
-  "Full-Stack":       ["React","Node.js","TypeScript","SQL","REST APIs","Authentication","State Management","Testing","System Design","Performance","Deployment","CSS"],
-  "Software Developer":["Data Structures","Algorithms","OOP Concepts","System Design","Database Basics","REST APIs","Version Control (Git)","Testing","Problem Solving","Design Patterns","Time Complexity","Debugging"],
-  "Frontend":         ["React","TypeScript","JavaScript","CSS / Tailwind","HTML","State Management","Web Performance","Accessibility (WCAG)","Testing (Jest/RTL)","Design Systems","API Integration","Responsive Design"],
-  "Backend":          ["Node.js / Express","REST API Design","Authentication (JWT/OAuth)","Caching (Redis)","Message Queues","Database Queries","Rate Limiting","Pagination","Microservices","Testing (Supertest)","Performance","Error Handling"],
-  "DevOps":           ["Docker","Kubernetes","CI/CD Pipelines","Terraform / IaC","Linux & Bash","Monitoring (Prometheus/Grafana)","Helm Charts","SRE Practices","Incident Management","Cloud Platforms","Networking","Security & Secrets"],
-  "DBA":              ["Query Optimisation","Index Strategy","Schema Design","Stored Procedures","Performance Tuning","Backup & Recovery","Replication","Schema Migration","EXPLAIN / Query Plans","PL/SQL / T-SQL","Data Integrity","High Availability"],
-  "Machine Learning": ["Python","NumPy / Pandas","Scikit-learn","Model Evaluation","Feature Engineering","Neural Networks","Data Preprocessing","Statistics","Regression / Classification","Deep Learning Basics","Model Deployment","Experiment Tracking"],
-  "Cyber Security":   ["Network Security","Penetration Testing","SIEM & Log Analysis","Vulnerability Assessment","Incident Response","Threat Intelligence","Endpoint Security","Firewall & IDS/IPS","Cloud Security","Cryptography","Risk & Compliance","Identity & Access Management"],
+  "Data Analyst":      ["SQL Basics","Python (pandas)","Data Cleaning","Charts & Graphs","Descriptive Statistics","Excel / Sheets","Data Filtering & Sorting","Basic Dashboard (Power BI/Tableau)","Reading Business Requirements","KPI Definitions","Data Storytelling","Problem Framing"],
+  "Full-Stack":        ["HTML & CSS","JavaScript Basics","React Fundamentals","REST API Calls","SQL Queries","Git & GitHub","Form Handling","Basic Authentication","Responsive Design","Debugging in Browser","Deploying to Vercel/Netlify","Reading API Docs"],
+  "Software Developer":["Data Structures Basics","Sorting & Searching","OOP Concepts","Problem Solving","Version Control (Git)","Basic Database Queries","Reading Code","Writing Functions","Testing Basics","Time & Space Complexity","Debugging","Writing Clean Code"],
+  "Frontend":          ["HTML5 & CSS3","JavaScript (ES6)","React Basics","Flexbox & Grid","Component Thinking","Props & State","Event Handling","Fetching APIs","Responsive Layouts","Browser Dev Tools","Basic Accessibility","Git Workflow"],
+  "Backend":           ["REST API Basics","HTTP Methods (GET/POST/PUT/DELETE)","Node.js / Express Basics","Database CRUD","Environment Variables","Basic Authentication","Error Handling","Postman / API Testing","JSON Data Handling","Git Workflow","Basic SQL","Reading Documentation"],
+  "DevOps":            ["Linux Command Line","Bash Scripting Basics","Git & Version Control","Docker Basics","CI/CD Concepts","Cloud Basics (AWS/GCP/Azure)","SSH & Remote Access","Environment Setup","Log Reading","YAML Configuration","Basic Networking","Process Monitoring"],
+  "DBA":               ["SQL Basics (SELECT, JOIN, WHERE)","Database Design Basics","Primary & Foreign Keys","Index Concepts","CRUD Operations","Stored Procedure Basics","Query Writing","ER Diagrams","Data Integrity Rules","Backup Basics","Performance Basics","Reading Query Plans"],
+  "Machine Learning":  ["Python Basics","NumPy & Pandas","Data Cleaning","Train/Test Split","Linear Regression","Logistic Regression","Confusion Matrix","Feature Selection","Scikit-learn Basics","Plotting Results (Matplotlib)","Overfitting Concepts","Reading ML Papers"],
+  "Cyber Security":    ["Networking Fundamentals (TCP/IP)","Basic Linux Commands","HTTP & HTTPS Concepts","Password & Auth Security","Common Vulnerabilities (OWASP Top 10)","Firewall Basics","Log Reading","Phishing Awareness","Encryption Concepts","Basic Penetration Testing","Incident Reporting","Security Best Practices"],
 
-  // ── CORE ENGINEERING DOMAINS ───────────────────────────────────────────────
-  "ECE":        ["Digital Electronics","Analog Circuits","Microcontrollers (ARM/AVR)","Embedded C","Signals & Systems","Communication Systems","RTOS Basics","PCB Design Fundamentals","FPGA & VHDL Basics","Sensors & Interfacing","Wireless Communication","IoT Protocols"],
-  "EEE":        ["Circuit Analysis","Electrical Machines","Power Systems","Control Systems","Power Electronics","Transformers & Transmission","Protection Systems","Renewable Energy Systems","PLC & SCADA Basics","Instrumentation & Measurement","Three-Phase Systems","High Voltage Engineering"],
-  "Mechanical": ["Thermodynamics","Fluid Mechanics","Strength of Materials","Manufacturing Processes","Machine Design","Heat Transfer","CAD & Engineering Drawing","Kinematics & Dynamics","Industrial Engineering","Material Science","Quality Control & Metrology","Refrigeration & HVAC"],
-  "Civil":      ["Structural Analysis","Concrete Technology","Soil Mechanics & Foundation","Surveying","Fluid Mechanics (Civil)","Transportation Engineering","Environmental Engineering","Construction Management","Steel Structures","Hydrology & Irrigation","Building Materials","Estimation & Costing"],
-  "IoT":        ["Embedded C / C++","Arduino & Raspberry Pi","MQTT & CoAP Protocols","Sensor Integration","IoT Cloud Platforms","Network Protocols (BLE, Zigbee, LoRa)","Edge Computing","PCB & Circuit Design","Python for IoT","Data Acquisition & Processing","Security in IoT","Real-Time Operating Systems"],
-  "Pharmacy":   ["Pharmaceutics","Pharmacology","Medicinal Chemistry","Drug Design & Discovery","Clinical Pharmacy","Pharmacokinetics & Pharmacodynamics","Drug Regulatory Affairs","Quality Assurance & GMP","Biopharmaceutics","Hospital & Community Pharmacy","Industrial Pharmacy","Pharmaceutical Analysis"],
-  "MBA":        ["Management Principles","Financial Accounting","Marketing Management","Business Strategy","Operations Management","Human Resource Management","Business Analytics","Financial Management","Entrepreneurship","Business Law & Ethics","Supply Chain Management","Organisational Behaviour"],
+  // ── ECE ROLES — split by first job title ──────────────────────────────────
+  // Embedded / Firmware engineer — most common ECE first job
+  "Embedded Engineer":  ["Embedded C Programming","GPIO & Register Control","UART / SPI / I2C Protocols","Microcontroller Basics (ARM/AVR)","Interrupt Handling","Digital Logic (Gates, Flip-Flops)","Bit Manipulation","Basic Sensor Interfacing","Reading Datasheets","Serial Debugging","Memory Layout Basics","RTOS Fundamentals"],
+  // VLSI / IC design engineer
+  "VLSI Engineer":      ["Digital Logic Design","Verilog Basics","Combinational Circuits","Sequential Circuits (FSM)","FPGA Flow Basics","RTL Design Concepts","Simulation & Testbench","Boolean Algebra","CMOS Basics","Timing Concepts","Logic Synthesis Overview","EDA Tools Basics"],
+  // Hardware / PCB design engineer
+  "Hardware Engineer":  ["Circuit Reading (Schematics)","Ohm's Law & KVL/KCL","Basic Op-Amp Circuits","Voltage Dividers","PCB Layout Concepts","Multimeter & Oscilloscope Use","Power Supply Basics","Signal Integrity Basics","Component Selection","Connector & Interface Types","Soldering Basics","Design-for-Manufacture"],
+  // RF / Antenna engineer
+  "RF Engineer":        ["Transmission Line Basics","Antenna Concepts (Gain, Radiation)","Frequency Bands (2.4GHz, 5GHz, Sub-GHz)","Signal Propagation Basics","dB & dBm Units","S-Parameters Basics","Link Budget Calculation","RF Interference Concepts","Modulation Basics (AM/FM/BPSK)","Spectrum Analyzer Basics","Filter Types (LPF/BPF)","Impedance Matching Basics"],
+  // IoT engineer
+  "IoT Engineer":       ["Embedded C Basics","Arduino / Raspberry Pi","MQTT Protocol","Wi-Fi & Bluetooth Basics","Sensor Reading (Temp, Humidity, Gas)","Serial Communication (UART)","Cloud Publish Basics","JSON Data Formatting","Basic Circuit Connections","Power Management Basics","Microcontroller GPIO","Reading Component Datasheets"],
+  // Broad ECE fallback (if role is just "ECE")
+  "ECE":                ["Digital Electronics","Embedded C Basics","Microcontroller Overview","Serial Protocols (UART/SPI/I2C)","Basic Analog Circuits","Signals & Systems","Sensor Interfacing","Circuit Analysis (KVL/KCL)","Interrupts & Timers","Communication Basics","Reading Datasheets","Problem Solving with Electronics"],
+
+  // ── EEE ROLES — entry-level power / electrical ────────────────────────────
+  "Power Engineer":     ["AC Circuit Analysis","3-Phase System Basics","Transformer Working Principle","Electrical Machines (DC/AC Motors)","Power Factor & Efficiency","Protection Devices (Fuses, Relays, MCBs)","Single-Line Diagram Reading","Power Electronics Basics (Rectifiers)","Earthing & Safety Standards","Switchgear Basics","Load Calculation","Energy Meter Reading"],
+  "Electrical Engineer":["Ohm's Law & Kirchhoff's Laws","AC/DC Circuits","Transformers Basics","Electrical Machines Overview","Control Systems Introduction","Reading Electrical Drawings","Basic PLC Concepts","Wiring & Cable Standards","Power Distribution Basics","Instrumentation Basics","Safety & Lockout-Tagout","Motor Starter Types"],
+  "EEE":                ["Circuit Analysis","Electrical Machines Basics","Power Systems Overview","AC/DC Circuits","Transformer Principles","3-Phase Power","Control Systems Basics","Protection Devices","PLC Introduction","Instrumentation Basics","Safety Standards","Single-Line Diagrams"],
+
+  // ── MECHANICAL ROLES — entry-level ────────────────────────────────────────
+  "Mechanical Engineer":["Engineering Drawing Basics","AutoCAD / SolidWorks Basics","Statics (Forces & Moments)","Strength of Materials","Thermodynamics Fundamentals","Manufacturing Processes Overview","Material Properties (Steel, Aluminium)","Fasteners & Joints","GD&T Basics","Fluid Mechanics Intro","Quality Inspection Tools","Workshop Safety"],
+  "Design Engineer":    ["CAD Modeling (SolidWorks/CATIA)","Engineering Drawing","Tolerancing & GD&T","Material Selection Basics","Static & Dynamic Loading","Mechanical Fasteners","Stress & Strain Basics","Design for Manufacturing","Bill of Materials","Failure Mode Basics","Prototyping Concepts","Technical Documentation"],
+  "Manufacturing Engineer":["Manufacturing Processes (Casting, Machining, Welding)","Quality Control Basics","Measurement Tools (Vernier, Micrometer)","Production Planning Basics","Lean Manufacturing Intro","5S Methodology","GD&T & Tolerances","CNC Basics","Process Flow Documentation","Safety (PPE, SOP)","Material Handling","Defect Detection"],
+  "Mechanical":         ["Engineering Drawing","Strength of Materials","Thermodynamics Basics","Manufacturing Processes","Material Science","Fluid Mechanics Intro","CAD Basics","Machine Elements","Quality Control","Statics & Dynamics","Workshop Practice","Problem Solving"],
+
+  // ── CIVIL ROLES — entry-level ─────────────────────────────────────────────
+  "Civil Engineer":     ["AutoCAD Basics (2D Drawings)","Reading Structural Drawings","Concrete Mix Basics","Rebar & Reinforcement Concepts","Load Types (Dead/Live/Wind)","Basic Structural Analysis","Soil Types & Testing Basics","Surveying Basics (Leveling, Theodolite)","Construction Materials (Cement, Steel, Bricks)","Site Safety & PPE","Quantity Estimation Basics","Construction Sequence"],
+  "Structural Engineer":["Statics (Free Body Diagrams)","Bending Moment & Shear Force","RCC Design Basics","Steel Connection Basics","Load Path Concepts","Structural Drawing Reading","Basic Beam & Column Design","Deflection Concepts","IS Code Basics","Foundation Types","Software Tools (STAAD/ETABS basics)","Report Writing"],
+  "Site Engineer":      ["Site Layout & Setting Out","Construction Drawing Reading","Concrete Mixing & Curing","Rebar Placement Basics","Quality Checks on Site","Daily Progress Reporting","Labour Coordination Basics","Site Safety Protocols","Equipment Operation Basics","Material Consumption Tracking","Measurement for Payment","Surveying Basics"],
+  "Civil":              ["Structural Analysis Basics","Concrete Technology","Soil Testing","Surveying Fundamentals","Construction Materials","AutoCAD Basics","Load Calculations","Site Safety","Reading Drawings","Water Supply Basics","Estimation Basics","Report Writing"],
+
+  // ── OTHER DOMAINS ─────────────────────────────────────────────────────────
+  "IoT":        ["Embedded C Basics","Arduino & Raspberry Pi","MQTT Protocol","Sensor Integration","Wi-Fi & BLE Basics","Microcontroller GPIO","Serial Communication","Cloud Data Basics","JSON & REST Basics","Power Management","Circuit Connections","Reading Datasheets"],
+  "Pharmacy":   ["Dosage Forms & Routes of Administration","Drug Names (Generic vs Brand)","Basic Pharmacology","Drug Storage & Handling","Prescription Reading","Patient Counselling Basics","Pharmaceutical Calculations","Over-the-Counter Medicines","Drug Interactions Basics","Hospital Pharmacy Workflow","Inventory Management","Regulatory Basics (FDA/CDSCO)"],
+  "MBA":        ["Business Communication","Financial Statements (P&L, Balance Sheet)","Marketing Basics (4Ps)","Operations Concepts","Management Styles","Business Problem Framing","Data for Business Decisions","Team Dynamics","Customer & Market Basics","Business Ethics","Project Planning Basics","Excel for Business"],
 }
 
 // Normalize keyword → canonical domain name
+// Rules: most-specific role checked FIRST, broad domain fallback last.
 function normalizeDomain(keyword) {
-  if (!keyword) return "Full-Stack"
+  if (!keyword) return "Software Developer"
   const k = keyword.toLowerCase().trim()
 
   // ── IT / CS roles ──────────────────────────────────────────────────────────
-  // DBA — check FIRST (before generic "data" catches them)
   if (k.includes("dba") || k.includes("database admin") || k.includes("database administrator") ||
       k.includes("sql dba") || k.includes("oracle dba") || k.includes("db admin")) return "DBA"
-  // Data Analyst
+
   if (k.includes("data analyst") || k.includes("business analyst") || k.includes("bi analyst") ||
       k.includes("data analysis") || k.includes("analytics")) return "Data Analyst"
-  // Machine Learning
+
   if (k.includes("machine learning") || k.includes("ml engineer") || k.includes("ai engineer") ||
       k.includes("deep learning") || k.includes("data scientist")) return "Machine Learning"
-  // Frontend
+
   if (k.includes("frontend") || k.includes("front-end") || k.includes("front end") ||
       k.includes("ui developer") || k.includes("react developer")) return "Frontend"
-  // Backend
+
   if (k.includes("backend") || k.includes("back-end") || k.includes("back end") ||
       k.includes("api developer") || k.includes("server-side")) return "Backend"
-  // DevOps
+
   if (k.includes("devops") || k.includes("sre") || k.includes("platform engineer") ||
       k.includes("infrastructure") || k.includes("cloud engineer")) return "DevOps"
-  // Full-Stack / SWE
+
   if ((k.includes("full") && k.includes("stack")) || k.includes("software engineer") ||
       k.includes("software developer") || k.includes("swe")) return "Full-Stack"
-  // Cyber Security
+
   if (k.includes("cyber") || k.includes("security") || k.includes("infosec") ||
       k.includes("penetration") || k.includes("pentest") || k.includes("soc analyst") ||
       k.includes("appsec") || k.includes("netsec") || k.includes("siem") ||
       k.includes("threat intel") || k.includes("vulnerability") || k.includes("ethical hack"))
     return "Cyber Security"
 
-  // ── Core Engineering roles — MUST come BEFORE the Full-Stack fallback ──────
-  // ECE — embedded, VLSI, electronics, firmware, hardware, RF, PCB
-  if (k.includes("embedded") || k.includes("vlsi") || k.includes("electronics engineer") ||
-      k.includes("firmware") || k.includes("hardware engineer") || k.includes("rf engineer") ||
-      k.includes("signal processing") || k.includes("pcb") || k.includes("fpga"))
+  // ── ECE sub-roles — MOST specific first ────────────────────────────────────
+  // VLSI / IC Design / Digital Design
+  if (k.includes("vlsi") || k.includes("ic design") || k.includes("digital design") ||
+      k.includes("rtl") || k.includes("verilog") || k.includes("vhdl") || k.includes("fpga"))
+    return "VLSI Engineer"
+
+  // RF / Antenna
+  if (k.includes("rf engineer") || k.includes("radio frequency") || k.includes("antenna") ||
+      k.includes("wireless engineer") || k.includes("microwave"))
+    return "RF Engineer"
+
+  // Hardware / PCB
+  if (k.includes("hardware engineer") || k.includes("pcb") || k.includes("circuit design") ||
+      k.includes("hardware design") || k.includes("schematic"))
+    return "Hardware Engineer"
+
+  // Embedded / Firmware — most common ECE first job
+  if (k.includes("embedded") || k.includes("firmware") || k.includes("embedded systems") ||
+      k.includes("embedded engineer") || k.includes("firmware engineer") ||
+      k.includes("microcontroller") || k.includes("stm32") || k.includes("arm developer"))
+    return "Embedded Engineer"
+
+  // IoT — more specific than generic ECE
+  if (k.includes("iot") || k.includes("internet of things") || k.includes("iot engineer"))
+    return "IoT Engineer"
+
+  // Broad ECE fallback
+  if (k.includes("electronics engineer") || k.includes("ece") || k.includes("electronics") ||
+      k.includes("signal processing") || k.includes("communication engineer"))
     return "ECE"
-  // EEE — power, electrical
-  if (k.includes("power engineer") || k.includes("power systems") ||
-      k.includes("electrical engineer") || k.includes("control systems engineer") ||
-      k.includes("eee"))
-    return "EEE"
-  // Mechanical
-  if (k.includes("mechanical engineer") || k.includes("manufacturing engineer") ||
-      k.includes("automobile engineer") || k.includes("automotive engineer") ||
-      k.includes("thermal engineer") || k.includes("production engineer"))
-    return "Mechanical"
-  // Civil
-  if (k.includes("civil engineer") || k.includes("structural engineer") ||
-      k.includes("construction engineer") || k.includes("site engineer"))
-    return "Civil"
-  // IoT
-  if (k.includes("iot") || k.includes("internet of things"))
-    return "IoT"
-  // Pharmacy
-  if (k.includes("pharmacist") || k.includes("pharmacy"))
+
+  // ── EEE sub-roles ──────────────────────────────────────────────────────────
+  if (k.includes("power engineer") || k.includes("power systems") || k.includes("substation") ||
+      k.includes("transmission") || k.includes("power grid"))
+    return "Power Engineer"
+
+  if (k.includes("electrical engineer") || k.includes("eee") ||
+      k.includes("control systems engineer") || k.includes("instrumentation") ||
+      k.includes("plc") || k.includes("scada") || k.includes("automation engineer"))
+    return "Electrical Engineer"
+
+  // ── Mechanical sub-roles ───────────────────────────────────────────────────
+  if (k.includes("design engineer") || k.includes("product design") ||
+      k.includes("cad engineer") || k.includes("solidworks") || k.includes("catia"))
+    return "Design Engineer"
+
+  if (k.includes("manufacturing engineer") || k.includes("production engineer") ||
+      k.includes("process engineer") || k.includes("quality engineer") ||
+      k.includes("cnc") || k.includes("lean") || k.includes("industrial engineer"))
+    return "Manufacturing Engineer"
+
+  if (k.includes("mechanical engineer") || k.includes("automobile engineer") ||
+      k.includes("automotive engineer") || k.includes("thermal engineer") ||
+      k.includes("mechanical") || k.includes("mech"))
+    return "Mechanical Engineer"
+
+  // ── Civil sub-roles ────────────────────────────────────────────────────────
+  if (k.includes("structural engineer") || k.includes("rcc") || k.includes("steel structure") ||
+      k.includes("staad") || k.includes("etabs"))
+    return "Structural Engineer"
+
+  if (k.includes("site engineer") || k.includes("site supervisor") || k.includes("site manager") ||
+      k.includes("construction supervisor"))
+    return "Site Engineer"
+
+  if (k.includes("civil engineer") || k.includes("construction engineer") ||
+      k.includes("civil") || k.includes("infrastructure engineer"))
+    return "Civil Engineer"
+
+  // ── Other domains ──────────────────────────────────────────────────────────
+  if (k.includes("pharmacist") || k.includes("pharmacy") || k.includes("pharma"))
     return "Pharmacy"
-  // MBA
+
   if (k.includes("mba") || k.includes("business manager") || k.includes("operations manager") ||
-      k.includes("hr manager") || k.includes("marketing manager"))
+      k.includes("hr manager") || k.includes("marketing manager") || k.includes("management trainee"))
     return "MBA"
 
-  // Exact key match then Full-Stack as last resort
-  return Object.keys(domainSkillsMap).find(d => d.toLowerCase() === k) || "Full-Stack"
+  // Exact key match in map, then safe default
+  return Object.keys(domainSkillsMap).find(d => d.toLowerCase() === k) || "Software Developer"
 }
 
 function getSkillsForDomain(keyword) {

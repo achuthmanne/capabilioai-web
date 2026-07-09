@@ -4327,9 +4327,8 @@ function EngineeringLabWorkstation({ mission, code, onCodeChange }) {
         <div>
           <div style={{fontSize:13,fontWeight:800,color:"#DC2626"}}>{engMode==="diagnose"?`Wrong fault — attempt #${attempts}`:engMode==="design"?`Constraints not satisfied — attempt #${attempts}`:`Not correct — attempt #${attempts}`}</div>
           <div style={{fontSize:11,color:"#991B1B",marginTop:2}}>
-            {expected&&`Expected: ${correctOptionText||expected}. `}
             Review the problem and try again.
-            {attempts>=2&&<> · <button onClick={()=>setShowSolution(true)} style={{background:"none",border:"none",color:"#991B1B",fontWeight:800,cursor:"pointer",textDecoration:"underline",fontSize:11,padding:0}}>Show solution</button></>}
+            {attempts>=3&&<> · <button onClick={()=>setShowSolution(true)} style={{background:"none",border:"none",color:"#991B1B",fontWeight:800,cursor:"pointer",textDecoration:"underline",fontSize:11,padding:0}}>Show solution</button></>}
           </div>
         </div>
       </div>
