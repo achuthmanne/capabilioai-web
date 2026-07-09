@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { supabase } from "../lib/supabase"
+import { getSkillModule } from "../config/skillModules"
 
 const API = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
 
@@ -32,15 +33,40 @@ const D = {
 }
 
 const DOMAIN_COLOR = {
+  // IT
   cyber:"#F43F5E", frontend:"#6366F1", backend:"#8B5CF6",
   fullstack:"#06B6D4", data:"#10B981", dba:"#06B6D4",
   devops:"#F59E0B", aws:"#F59E0B", azure:"#06B6D4",
-  medical:"#10B981", ece:"#8B5CF6", swe:"#6366F1", default:"#6366F1",
+  swe:"#6366F1",
+  // ECE
+  embedded:"#8B5CF6", vlsi:"#7C3AED", hardware:"#6D28D9", rf:"#A78BFA", iot:"#06B6D4", ece:"#8B5CF6",
+  // EEE
+  power:"#F59E0B", electrical:"#D97706", eee:"#F59E0B",
+  // Mechanical
+  mechanical:"#10B981", design:"#059669", manufacturing:"#047857",
+  // Civil
+  civil:"#6366F1", structural:"#4F46E5", site:"#4338CA",
+  // Others
+  pharmacy:"#EC4899", mba:"#0EA5E9",
+  medical:"#10B981",
+  default:"#6366F1",
 }
 const DOMAIN_ICON = {
+  // IT
   cyber:"🔐", frontend:"🎨", backend:"⚙️", fullstack:"🧩",
-  data:"📊", dba:"🗄️", devops:"🚀", aws:"☁️",
-  azure:"💠", medical:"🏥", ece:"🔌", swe:"💻", default:"⚡",
+  data:"📊", dba:"🗄️", devops:"🚀", aws:"☁️", azure:"💠", swe:"💻",
+  // ECE
+  embedded:"🔧", vlsi:"🔲", hardware:"🖥️", rf:"📡", iot:"🌐", ece:"🔌",
+  // EEE
+  power:"⚡", electrical:"🔌", eee:"⚡",
+  // Mechanical
+  mechanical:"⚙️", design:"📐", manufacturing:"🏭",
+  // Civil
+  civil:"🏗️", structural:"🏛️", site:"🦺",
+  // Others
+  pharmacy:"💊", mba:"📈",
+  medical:"🏥",
+  default:"⚡",
 }
 
 const apiPost = async (path, body) => {
@@ -56,15 +82,37 @@ const apiPost = async (path, body) => {
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function resolveDomainKey(keyword = "") {
   const k = keyword.toLowerCase()
+  // IT streams
   if (k.includes("cyber") || k.includes("security") || k.includes("soc")) return "cyber"
-  if (k.includes("frontend") || k.includes("react") || k.includes("ui")) return "frontend"
-  if (k.includes("backend") || k.includes("node") || k.includes("django")) return "backend"
-  if (k.includes("fullstack") || k.includes("full stack")) return "fullstack"
-  if (k.includes("data analyst") || k.includes("analytics")) return "data"
-  if (k.includes("dba") || k.includes("database")) return "dba"
-  if (k.includes("devops") || k.includes("kubernetes")) return "devops"
+  if (k.includes("frontend") || k.includes("react") || k.includes("ui developer")) return "frontend"
+  if (k.includes("backend") || k.includes("node") || k.includes("django") || k.includes("spring")) return "backend"
+  if (k.includes("fullstack") || k.includes("full stack") || k.includes("full-stack")) return "fullstack"
+  if (k.includes("data analyst") || k.includes("analytics") || k.includes("data scientist")) return "data"
+  if (k.includes("dba") || k.includes("database admin")) return "dba"
+  if (k.includes("devops") || k.includes("kubernetes") || k.includes("ci/cd") || k.includes("site reliability")) return "devops"
   if (k.includes("aws") || k.includes("cloud")) return "aws"
   if (k.includes("azure")) return "azure"
+  // ECE sub-roles — specific first
+  if (k.includes("vlsi") || k.includes("ic design") || k.includes("rtl") || k.includes("verilog") || k.includes("vhdl") || k.includes("fpga")) return "vlsi"
+  if (k.includes("rf engineer") || k.includes("radio frequency") || k.includes("antenna") || k.includes("wireless engineer")) return "rf"
+  if (k.includes("hardware engineer") || k.includes("pcb") || k.includes("circuit design") || k.includes("schematic")) return "hardware"
+  if (k.includes("embedded") || k.includes("firmware") || k.includes("microcontroller") || k.includes("stm32") || k.includes("arm developer")) return "embedded"
+  if (k.includes("iot") || k.includes("internet of things")) return "iot"
+  if (k.includes("electronics") || k.includes("ece")) return "ece"
+  // EEE sub-roles
+  if (k.includes("power engineer") || k.includes("power systems") || k.includes("substation")) return "power"
+  if (k.includes("electrical") || k.includes("eee") || k.includes("plc") || k.includes("scada")) return "electrical"
+  // Mechanical sub-roles
+  if (k.includes("design engineer") || k.includes("solidworks") || k.includes("catia") || k.includes("cad")) return "design"
+  if (k.includes("manufacturing") || k.includes("production") || k.includes("cnc") || k.includes("lean")) return "manufacturing"
+  if (k.includes("mechanical")) return "mechanical"
+  // Civil sub-roles
+  if (k.includes("structural") || k.includes("rcc") || k.includes("staad") || k.includes("etabs")) return "structural"
+  if (k.includes("site engineer") || k.includes("site supervisor")) return "site"
+  if (k.includes("civil") || k.includes("construction engineer")) return "civil"
+  // Others
+  if (k.includes("pharmacy") || k.includes("pharma") || k.includes("drug")) return "pharmacy"
+  if (k.includes("mba") || k.includes("business") || k.includes("management")) return "mba"
   return "swe"
 }
 
@@ -747,9 +795,82 @@ function ProofTab({ completedActions, recs, arenaHistory, gaps, domainColor }) {
   )
 }
 
+// ─── LEARN PANEL (W3Schools-style static content from skillModules.js) ─────────
+function LearnPanel({ module: mod, skillName, accent, onProceed }) {
+  const TYPE_ICON = { video: "▶️", docs: "📄", article: "📰", interactive: "🎮" }
+  const TYPE_COLOR = { video: "#F43F5E", docs: D.indigo, article: D.emerald, interactive: D.violet }
+
+  return (
+    <div style={{ animation: "ss-fade 0.2s ease" }}>
+      {/* Concept card */}
+      <div style={{ background: accent + "10", border: `1px solid ${accent}25`, borderRadius: 14, padding: "16px 20px", marginBottom: 14 }}>
+        <div style={{ fontSize: 9, fontWeight: 800, color: accent, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 7, fontFamily: "'DM Mono',monospace" }}>What is {skillName}?</div>
+        <div style={{ fontSize: 13, color: D.text2, lineHeight: 1.75 }}>{mod.concept}</div>
+      </div>
+
+      {/* Key points */}
+      <div style={{ background: D.raised, border: `1px solid ${D.border}`, borderRadius: 14, padding: "16px 20px", marginBottom: 14 }}>
+        <div style={{ fontSize: 9, fontWeight: 800, color: D.indigo, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 10, fontFamily: "'DM Mono',monospace" }}>Key points</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+          {(mod.keyPoints || []).map((pt, i) => (
+            <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <div style={{ width: 20, height: 20, borderRadius: "50%", background: D.indigo + "20", border: `1px solid ${D.indigo}30`, color: D.indigo, fontSize: 9, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1, fontFamily: "'DM Mono',monospace" }}>{i + 1}</div>
+              <div style={{ fontSize: 12, color: D.text2, lineHeight: 1.6, fontFamily: "'DM Mono',monospace" }}>{pt}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Try this */}
+      {mod.tryThis && (
+        <div style={{ background: D.gold + "10", border: `1px solid ${D.gold}25`, borderRadius: 14, padding: "14px 18px", marginBottom: 14 }}>
+          <div style={{ fontSize: 9, fontWeight: 800, color: D.gold, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 6, fontFamily: "'DM Mono',monospace" }}>✋ Try this right now</div>
+          <div style={{ fontSize: 12, color: D.text2, lineHeight: 1.7 }}>{mod.tryThis}</div>
+        </div>
+      )}
+
+      {/* Free resources */}
+      {(mod.resources || []).length > 0 && (
+        <div style={{ background: D.raised, border: `1px solid ${D.border}`, borderRadius: 14, padding: "14px 18px", marginBottom: 18 }}>
+          <div style={{ fontSize: 9, fontWeight: 800, color: D.muted, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 10, fontFamily: "'DM Mono',monospace" }}>Free resources</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {(mod.resources || []).map((res, i) => {
+              const ic = TYPE_ICON[res.type] || "🔗"
+              const tc = TYPE_COLOR[res.type] || D.indigo
+              return (
+                <a key={i} href={res.url} target="_blank" rel="noreferrer"
+                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 13px", background: tc + "10", border: `1px solid ${tc}25`, borderRadius: 10, textDecoration: "none" }}>
+                  <span style={{ fontSize: 16 }}>{ic}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: tc }}>{res.title}</div>
+                    <div style={{ fontSize: 9, color: D.muted, marginTop: 1, textTransform: "uppercase", letterSpacing: 0.5 }}>{res.type}</div>
+                  </div>
+                  <span style={{ fontSize: 11, color: D.muted }}>↗</span>
+                </a>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Proceed button */}
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <button onClick={onProceed}
+          style={{ padding: "11px 22px", background: `linear-gradient(135deg, ${accent}, ${accent}cc)`, border: "none", borderRadius: 12, color: "#fff", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", boxShadow: `0 4px 16px ${accent}40` }}>
+          Start Practice Quiz →
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ─── ACTION MODAL ─────────────────────────────────────────────────────────────
 function ActionModal({ action, jobTitle, eloRating, onClose, onComplete }) {
-  const [phase, setPhase]       = useState("loading")
+  const staticMod = action ? getSkillModule(action.skill) : null
+  // If we have static content and it's a learn module, show static first
+  const initialPhase = (staticMod && action?.type === "learn") ? "static_learn" : "loading"
+
+  const [phase, setPhase]       = useState(initialPhase)
   const [lesson, setLesson]     = useState(null)
   const [selected, setSelected] = useState(null)
   const [quizIdx, setQuizIdx]   = useState(0)
@@ -759,23 +880,32 @@ function ActionModal({ action, jobTitle, eloRating, onClose, onComplete }) {
   const [submitting, setSubmitting] = useState(false)
   const accent = { learn: D.indigo, practice: D.gold, interview: D.violet, prove: D.rose }[action?.type] || D.indigo
 
-  useEffect(() => {
-    let cancelled = false
-    const load = async () => {
-      try {
-        const data = await apiPost("/api/skill-studio/lesson", {
-          topic: action.skill, jobTitle,
-          skillLevel: action.difficulty || "Intermediate",
-          duration: action.type === "practice" || action.type === "interview" ? 12 : 18,
-        })
-        if (!cancelled) { setLesson(data); setPhase(action.type === "learn" ? "learn" : "quiz") }
-      } catch {
-        if (!cancelled) setPhase("fallback")
-      }
+  // loadLesson is called either immediately (non-static) or when user clicks "Start Practice →"
+  const [lessonLoading, setLessonLoading] = useState(false)
+  const loadLesson = useCallback(async () => {
+    if (lesson || lessonLoading) return
+    setLessonLoading(true)
+    setPhase("loading")
+    try {
+      const data = await apiPost("/api/skill-studio/lesson", {
+        topic: action.skill, jobTitle,
+        skillLevel: action.difficulty || "Intermediate",
+        duration: action.type === "practice" || action.type === "interview" ? 12 : 18,
+      })
+      setLesson(data)
+      setPhase(action.type === "learn" ? "learn" : "quiz")
+    } catch {
+      setPhase("fallback")
     }
-    if (action) load()
-    return () => { cancelled = true }
-  }, [action, jobTitle])
+    setLessonLoading(false)
+  }, [action, jobTitle, lesson, lessonLoading])
+
+  useEffect(() => {
+    // Only auto-load if we didn't start in static_learn mode
+    if (!action) return
+    if (initialPhase === "static_learn") return // wait for user to click "Start Practice Quiz →"
+    loadLesson()
+  }, []) // eslint-disable-line
 
   if (!action) return null
   const curQ = lesson?.quiz?.[quizIdx]
@@ -815,6 +945,11 @@ function ActionModal({ action, jobTitle, eloRating, onClose, onComplete }) {
         </div>
 
         <div style={{ padding: 24, overflowY: "auto", flex: 1 }}>
+          {phase === "static_learn" && staticMod && (
+            <LearnPanel module={staticMod} skillName={action.skill} accent={accent}
+              onProceed={() => loadLesson()} />
+          )}
+
           {phase === "loading" && (
             <div style={{ textAlign: "center", padding: "48px 16px" }}>
               <Spinner size={40} color={accent} />
