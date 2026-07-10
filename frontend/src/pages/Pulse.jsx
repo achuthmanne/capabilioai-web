@@ -3,7 +3,7 @@
  * 3-column layout: Profile sidebar | Feed | Trending/Suggestions sidebar
  */
 import { useState, useEffect, useCallback, useRef } from "react"
-import { pulseApi } from "../lib/api"
+import { pulseApi, nexusApi } from "../lib/api"
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const T = {
@@ -745,6 +745,17 @@ function StudentPulse({ user, userData }) {
   // ── Domain selector ─────────────────────────────────────────────────────────
   const [showDomainPicker, setShowDomainPicker] = useState(false)
 
+  // ── Sparks (connections) state ────────────────────────────────────────────
+  const [sparksTab,        setSparksTab]        = useState("discover")  // discover | inbox | sent
+  const [userSearch,       setUserSearch]       = useState("")
+  const [searchResults,    setSearchResults]    = useState([])
+  const [searchLoading,    setSearchLoading]    = useState(false)
+  const [pendingSparks,    setPendingSparks]    = useState([])
+  const [sentSparks,       setSentSparks]       = useState([])
+  const [sparksLoading,    setSparksLoading]    = useState(false)
+  const [sparkActions,     setSparkActions]     = useState({})  // uid → "sending"|"sent"|"following"|"followed"
+  const [sparkMsg,         setSparkMsg]         = useState("")
+
   // ── Load feed ────────────────────────────────────────────────────────────────
   const loadFeed = useCallback(async (pg = 1, append = false) => {
     setFeedLoading(true)
@@ -757,8 +768,6 @@ function StudentPulse({ user, userData }) {
                         : sortTab === "signal"    ? "signal"
                         : "created_at"
         result = await pulseApi.feed({ page: pg, limit: 15, sort: sortParam })
-      } else if (feedTab === "following") {
-        result = await pulseApi.followingFeed(pg, sortTab === "foryou" ? "created_at" : sortTab)
       } else if (feedTab === "capsules") {
         result = await pulseApi.saved(pg)
       }
@@ -804,6 +813,57 @@ function StudentPulse({ user, userData }) {
       .then(data => { setMarketInsights(data); setInsightsLoading(false) })
       .catch(() => { setMarketInsights(null); setInsightsLoading(false) })
   }, [domain, elo]) // eslint-disable-line
+
+  // ── Sparks: load pending/sent when tab is active ─────────────────────────────
+  const loadSparks = async () => {
+    setSparksLoading(true)
+    try {
+      const data = await nexusApi.connections()
+      const all = Array.isArray(data) ? data : (data?.connections || [])
+      setPendingSparks(all.filter(c => c.status === "pending" && c.addressee_id === user?.id))
+      setSentSparks(all.filter(c => c.status === "pending" && c.requester_id === user?.id))
+    } catch {}
+    setSparksLoading(false)
+  }
+
+  useEffect(() => {
+    if (feedTab === "following") loadSparks()
+  }, [feedTab]) // eslint-disable-line
+
+  // ── User search ───────────────────────────────────────────────────────────────
+  const searchUsers = async (q) => {
+    setUserSearch(q)
+    if (!q.trim() || q.trim().length < 2) { setSearchResults([]); return }
+    setSearchLoading(true)
+    try {
+      const data = await nexusApi.search({ q: q.trim(), limit: 12 })
+      setSearchResults(Array.isArray(data) ? data : (data?.users || []))
+    } catch { setSearchResults([]) }
+    setSearchLoading(false)
+  }
+
+  const sendSpark = async (uid, name) => {
+    setSparkActions(a => ({ ...a, [uid]: "sending" }))
+    try {
+      await nexusApi.connect(uid, sparkMsg || `Hi ${name}, let's connect on Capabilio!`)
+      setSparkActions(a => ({ ...a, [uid]: "sent" }))
+    } catch { setSparkActions(a => ({ ...a, [uid]: null })) }
+  }
+
+  const handleSpark = async (spark, accept) => {
+    try {
+      await nexusApi.respond(spark.id, accept ? "accepted" : "rejected")
+      setPendingSparks(ps => ps.filter(s => s.id !== spark.id))
+    } catch {}
+  }
+
+  const handleFollow = async (uid) => {
+    setSparkActions(a => ({ ...a, [uid]: "following" }))
+    try {
+      await nexusApi.follow(uid)
+      setSparkActions(a => ({ ...a, [uid]: "followed" }))
+    } catch { setSparkActions(a => ({ ...a, [uid]: null })) }
+  }
 
   // ── Post creation ────────────────────────────────────────────────────────────
   const submitPost = async () => {
@@ -1065,7 +1125,7 @@ function StudentPulse({ user, userData }) {
 
               {/* Tab bar */}
               <div style={{display:"flex",borderBottom:`1px solid ${P.border}`}}>
-                {[{id:"community",label:"🌐 Community"},{id:"following",label:"🔔 Following"},{id:"mentors",label:"🎓 Mentors"},{id:"capsules",label:"⚡ Capsules"}].map(t=>(
+                {[{id:"community",label:"🌐 Community"},{id:"following",label:"✦ Sparks"},{id:"mentors",label:"🎓 Mentors"},{id:"capsules",label:"⚡ Capsules"}].map(t=>(
                   <button key={t.id} className="pt" onClick={()=>setFeedTab(t.id)}
                     style={{flex:1,padding:"12px 6px",fontSize:12,fontWeight:feedTab===t.id?700:500,color:feedTab===t.id?P.accent:P.ink3,borderBottom:feedTab===t.id?`2px solid ${P.accent}`:"2px solid transparent",whiteSpace:"nowrap"}}>
                     {t.label}
@@ -1074,7 +1134,7 @@ function StudentPulse({ user, userData }) {
               </div>
 
               {/* Composer (shown when composerOpen OR inline) */}
-              {feedTab !== "mentors" && (
+              {feedTab !== "mentors" && feedTab !== "following" && (
                 <div style={{padding:"14px 16px",borderBottom:`1px solid ${P.border}`}}>
                   {composerOpen ? (
                     <div>
@@ -1122,8 +1182,8 @@ function StudentPulse({ user, userData }) {
                 </div>
               )}
 
-              {/* Sort bar — not shown on Mentors tab */}
-              {feedTab !== "mentors" && (
+              {/* Sort bar — not shown on Mentors/Sparks tab */}
+              {feedTab !== "mentors" && feedTab !== "following" && (
                 <div style={{padding:"8px 16px",display:"flex",alignItems:"center",gap:6,borderBottom:`1px solid ${P.border}`,overflowX:"auto"}}>
                   <span style={{fontSize:11,fontWeight:600,color:P.ink4,marginRight:4,flexShrink:0}}>SORT</span>
                   {[{id:"foryou",label:"For You"},{id:"latest",label:"Latest"},{id:"discussed",label:"Most Discussed"},{id:"signal",label:"High Signal"}].map(s=>(
@@ -1135,10 +1195,164 @@ function StudentPulse({ user, userData }) {
                 </div>
               )}
 
+              {/* ── Sparks tab (was "Following") ── */}
+              {feedTab === "following" && (
+                <div style={{padding:16}}>
+                  {/* Sub-tab bar */}
+                  <div style={{display:"flex",gap:6,marginBottom:16,background:"#F9F7F4",borderRadius:10,padding:4}}>
+                    {[{id:"discover",label:"🔍 Discover"},{id:"inbox",label:`✦ Inbox${pendingSparks.length>0?" ("+pendingSparks.length+")":""}`},{id:"sent",label:"📤 Sent"}].map(st=>(
+                      <button key={st.id} onClick={()=>setSparksTab(st.id)}
+                        style={{flex:1,padding:"7px 6px",borderRadius:8,border:"none",cursor:"pointer",
+                          background:sparksTab===st.id?"#fff":"transparent",
+                          color:sparksTab===st.id?P.accent:P.ink3,
+                          fontSize:11,fontWeight:sparksTab===st.id?700:500,
+                          boxShadow:sparksTab===st.id?"0 1px 4px rgba(0,0,0,0.08)":"none",
+                          transition:"all 0.15s"}}>
+                        {st.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* ── Discover: search + follow ── */}
+                  {sparksTab === "discover" && (
+                    <div>
+                      <div style={{position:"relative",marginBottom:14}}>
+                        <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:14,color:P.ink4}}>🔍</span>
+                        <input value={userSearch} onChange={e=>searchUsers(e.target.value)}
+                          placeholder="Search people by name, domain, college…"
+                          style={{width:"100%",padding:"10px 12px 10px 36px",border:`1.5px solid ${P.border}`,borderRadius:10,fontSize:13,fontFamily:"inherit",outline:"none",background:"#FAFAF9",boxSizing:"border-box"}}
+                          onFocus={e=>e.target.style.borderColor=P.accent}
+                          onBlur={e=>e.target.style.borderColor=P.border}/>
+                      </div>
+                      {searchLoading && <div style={{textAlign:"center",padding:"20px 0",color:P.ink4,fontSize:13}}>Searching…</div>}
+                      {!searchLoading && userSearch && searchResults.length === 0 && (
+                        <div style={{textAlign:"center",padding:"24px 0",color:P.ink4}}>
+                          <div style={{fontSize:28,marginBottom:6}}>🔭</div>
+                          <div style={{fontSize:13,fontWeight:600,color:P.ink3}}>No users found for "{userSearch}"</div>
+                        </div>
+                      )}
+                      {!searchLoading && searchResults.length > 0 && (
+                        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                          {searchResults.map((u,i) => {
+                            const uName = u.display_name || u.name || u.username || "User"
+                            const uColor = colorForId(u.id || u.user_id || String(i))
+                            const action = sparkActions[u.id]
+                            return (
+                              <div key={u.id||i} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",background:"#FFFFFF",border:`1px solid ${P.border}`,borderRadius:10,boxShadow:P.shadow}}>
+                                <div style={{width:40,height:40,borderRadius:"50%",background:uColor,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:800,color:"#fff",flexShrink:0}}>{uName[0]?.toUpperCase()}</div>
+                                <div style={{flex:1,minWidth:0}}>
+                                  <div style={{fontSize:13,fontWeight:700,color:P.ink,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{uName}</div>
+                                  <div style={{fontSize:11,color:P.ink4,marginTop:1}}>{u.keyword||u.domain||"Capabilio member"}{u.college?` · ${u.college}`:""}</div>
+                                  {u.elo_rating&&<div style={{fontSize:10,fontFamily:"monospace",color:P.accent,fontWeight:700,marginTop:2}}>ELO {u.elo_rating}</div>}
+                                </div>
+                                <div style={{display:"flex",flexDirection:"column",gap:5,flexShrink:0}}>
+                                  <button onClick={()=>action==="sent"||action==="sending"?null:sendSpark(u.id, uName)}
+                                    style={{padding:"5px 12px",background:action==="sent"?"#F0FDF4":action==="sending"?"#FAF7F2":P.accent,border:`1.5px solid ${action==="sent"?"#BBF7D0":action==="sending"?P.border:P.accent}`,borderRadius:8,color:action==="sent"?"#15803D":action==="sending"?P.ink4:"#fff",fontSize:11,fontWeight:700,cursor:action?"default":"pointer",whiteSpace:"nowrap"}}>
+                                    {action==="sending"?"Sparking…":action==="sent"?"✓ Sparked":"✦ Spark"}
+                                  </button>
+                                  <button onClick={()=>action==="followed"||action==="following"?null:handleFollow(u.id)}
+                                    style={{padding:"5px 12px",background:action==="followed"?"#EEF2FF":"transparent",border:`1.5px solid ${action==="followed"?"#818CF8":P.accent}`,borderRadius:8,color:action==="followed"?"#6366F1":P.accent,fontSize:11,fontWeight:700,cursor:action==="followed"||action==="following"?"default":"pointer",whiteSpace:"nowrap"}}>
+                                    {action==="following"?"Following…":action==="followed"?"✓ Following":"+ Follow"}
+                                  </button>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                      {!userSearch && (
+                        <div style={{textAlign:"center",padding:"32px 0",color:P.ink4}}>
+                          <div style={{fontSize:36,marginBottom:8}}>✦</div>
+                          <div style={{fontSize:14,fontWeight:700,color:P.ink3,marginBottom:4}}>Sparks — your connection requests</div>
+                          <div style={{fontSize:12,color:P.ink4,lineHeight:1.6,maxWidth:280,margin:"0 auto"}}>Search for students and professionals. Send a Spark to connect, or Follow to see their posts.</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ── Inbox: pending incoming Sparks ── */}
+                  {sparksTab === "inbox" && (
+                    <div>
+                      {sparksLoading ? (
+                        <div style={{textAlign:"center",padding:"32px 0",color:P.ink4,fontSize:13}}>Loading Sparks…</div>
+                      ) : pendingSparks.length === 0 ? (
+                        <div style={{textAlign:"center",padding:"40px 0",color:P.ink4}}>
+                          <div style={{fontSize:36,marginBottom:8}}>✦</div>
+                          <div style={{fontSize:14,fontWeight:600,color:P.ink3}}>No pending Sparks</div>
+                          <div style={{fontSize:12,marginTop:4,color:P.ink4}}>When someone Sparks you, it shows up here</div>
+                        </div>
+                      ) : (
+                        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                          {pendingSparks.map((spark,i) => {
+                            const sName = spark.requester?.display_name || spark.requester?.name || "Someone"
+                            const sColor = colorForId(spark.requester_id || String(i))
+                            return (
+                              <div key={spark.id} style={{padding:"14px 16px",background:"#FFFFFF",border:`1px solid ${P.border}`,borderRadius:10,boxShadow:P.shadow}}>
+                                <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}>
+                                  <div style={{width:40,height:40,borderRadius:"50%",background:sColor,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:800,color:"#fff",flexShrink:0}}>{sName[0]?.toUpperCase()}</div>
+                                  <div style={{flex:1}}>
+                                    <div style={{fontSize:13,fontWeight:700,color:P.ink}}>{sName}</div>
+                                    <div style={{fontSize:11,color:P.ink4}}>{spark.requester?.keyword||"Capabilio member"}</div>
+                                  </div>
+                                  <div style={{fontSize:10,color:P.ink4}}>{spark.created_at ? new Date(spark.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short"}) : ""}</div>
+                                </div>
+                                {spark.message&&<div style={{fontSize:12,color:P.ink3,marginBottom:10,padding:"8px 10px",background:"#F9F7F4",borderRadius:8,fontStyle:"italic"}}>"{spark.message}"</div>}
+                                <div style={{display:"flex",gap:8}}>
+                                  <button onClick={()=>handleSpark(spark,true)}
+                                    style={{flex:1,padding:"8px",background:P.accent,border:"none",borderRadius:8,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                                    ✓ Accept Spark
+                                  </button>
+                                  <button onClick={()=>handleSpark(spark,false)}
+                                    style={{flex:1,padding:"8px",background:"transparent",border:`1.5px solid ${P.border}`,borderRadius:8,color:P.ink3,fontSize:12,fontWeight:600,cursor:"pointer"}}>
+                                    Decline
+                                  </button>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ── Sent Sparks ── */}
+                  {sparksTab === "sent" && (
+                    <div>
+                      {sparksLoading ? (
+                        <div style={{textAlign:"center",padding:"32px 0",color:P.ink4,fontSize:13}}>Loading…</div>
+                      ) : sentSparks.length === 0 ? (
+                        <div style={{textAlign:"center",padding:"40px 0",color:P.ink4}}>
+                          <div style={{fontSize:36,marginBottom:8}}>📤</div>
+                          <div style={{fontSize:14,fontWeight:600,color:P.ink3}}>No sent Sparks yet</div>
+                          <div style={{fontSize:12,marginTop:4,color:P.ink4}}>Go to Discover and Spark someone to connect</div>
+                        </div>
+                      ) : (
+                        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                          {sentSparks.map((spark,i) => {
+                            const aName = spark.addressee?.display_name || spark.addressee?.name || "Someone"
+                            const aColor = colorForId(spark.addressee_id || String(i))
+                            return (
+                              <div key={spark.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",background:"#FFFFFF",border:`1px solid ${P.border}`,borderRadius:10,boxShadow:P.shadow}}>
+                                <div style={{width:40,height:40,borderRadius:"50%",background:aColor,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:800,color:"#fff",flexShrink:0}}>{aName[0]?.toUpperCase()}</div>
+                                <div style={{flex:1}}>
+                                  <div style={{fontSize:13,fontWeight:700,color:P.ink}}>{aName}</div>
+                                  <div style={{fontSize:11,color:P.ink4}}>{spark.addressee?.keyword||"Capabilio member"}</div>
+                                </div>
+                                <span style={{fontSize:11,fontWeight:600,color:"#F59E0B",background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.25)",borderRadius:99,padding:"3px 10px"}}>Pending</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* ── Mentors tab ── */}
               {feedTab === "mentors" && (
                 <div style={{padding:16}}>
-                  {mentors.length === 0 ? (
+                  {!Array.isArray(mentors) || mentors.length === 0 ? (
                     <div style={{textAlign:"center",padding:"40px 0",color:P.ink4}}>
                       <div style={{fontSize:32,marginBottom:8}}>🎓</div>
                       <div style={{fontSize:14,fontWeight:600,color:P.ink3}}>No mentors in your domain yet</div>
@@ -1146,7 +1360,7 @@ function StudentPulse({ user, userData }) {
                     </div>
                   ) : (
                     <div style={{display:"flex",flexDirection:"column",gap:12}}>
-                      {mentors.map((m,i)=>{
+                      {(Array.isArray(mentors) ? mentors : []).map((m,i)=>{
                         const mName = m.display_name || m.profile?.display_name || m.profile?.name || "Mentor"
                         const mColor = colorForId(m.user_id)
                         return (
@@ -1172,8 +1386,8 @@ function StudentPulse({ user, userData }) {
                 </div>
               )}
 
-              {/* ── Post feed (community / following / capsules) ── */}
-              {feedTab !== "mentors" && (
+              {/* ── Post feed (community / capsules) ── */}
+              {feedTab !== "mentors" && feedTab !== "following" && (
                 <>
                   {feedLoading && (
                     <div style={{padding:40,textAlign:"center"}}>
