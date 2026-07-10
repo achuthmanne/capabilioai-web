@@ -1096,13 +1096,24 @@ export default function Onboarding({ user, onComplete, onBack }) {
         if (alreadyDone) { onCompleteRef.current?.(); return }
       } catch {}
 
-      // Clear any pre-selected path from localStorage.
-      // We do NOT auto-skip the path selection screen — every new user must
-      // explicitly choose their path on the cards page.
+      // Check if the user already has a path from signup (stored in user_metadata).
+      // If so, skip the path-selection screen and jump directly to that path's first step.
+      const signupPath = user?.user_metadata?.path || null
+      const PATH_FIRST_STEP = {
+        student:      "search",
+        professional: "professional",
+        authority:    "authority",
+        institution:  "org-type",
+      }
+      if (signupPath && PATH_FIRST_STEP[signupPath]) {
+        setPath(signupPath)
+        setStep(PATH_FIRST_STEP[signupPath])
+      } else {
+        setStep("path")
+      }
+      // Clear localStorage path flags — path is now in user_metadata
       localStorage.removeItem("capabilio_selected_path")
       localStorage.removeItem("preSelectedPath")
-      // Always start at the path selection step.
-      setStep("path")
       setCheckingUser(false)
     }
     init()
