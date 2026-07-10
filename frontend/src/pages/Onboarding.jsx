@@ -1855,7 +1855,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
         <style>{ONBOARDING_STYLES}</style>
         <div style={{ ...screen, width:"100%", maxWidth:680 }}>
           <Card accent={pt.accentBd}>
-            <BackBtn onClick={()=>transition("path")} />
+            <BackBtn onClick={()=>{ setPath(null); transition("path") }} />
             <PathBanner pathKey="student" stepIndex={0} />
             <H2>Pick your domain</H2>
             <Sub>You'll get 25 beginner-level assessment questions focused on fundamentals and early-stage practical reasoning. Your ELO starts at 400 from here.</Sub>
@@ -2032,7 +2032,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
         <style>{ONBOARDING_STYLES}</style>
         <div style={{ ...screen, width:"100%", maxWidth:740 }}>
           <Card accent={pt.accentBd}>
-            {!path && <BackBtn onClick={()=>transition("path")} />}
+            <BackBtn onClick={()=>{ setPath(null); transition("path") }} />
             <PathBanner pathKey="professional" stepIndex={0} />
             {/* Hero */}
             <div style={{ background:pt.accentBg, border:`1px solid ${pt.accentBd}`, borderRadius:16, padding:"16px 20px", marginBottom:20 }}>
@@ -2152,7 +2152,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
         <style>{ONBOARDING_STYLES}</style>
         <div style={{ ...screen, width:"100%", maxWidth:680 }}>
           <Card accent={pt.accentBd}>
-            {!path && <BackBtn onClick={()=>transition("path")} />}
+            <BackBtn onClick={()=>{ setPath(null); transition("path") }} />
             <PathBanner pathKey={isInst ? "institution" : "authority"} stepIndex={0} />
             {/* Path hero */}
             <div style={{ background:pt.accentBg, border:`1px solid ${pt.accentBd}`, borderRadius:14, padding:"14px 18px", marginBottom:20 }}>
@@ -2399,7 +2399,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
         <style>{ONBOARDING_STYLES}</style>
         <div style={{ width:"100%", maxWidth:720 }}>
           <Card accent={pt.accentBd} style={{ padding:"28px 28px 32px" }}>
-            <BackBtn onClick={()=>transition("path")} />
+            <BackBtn onClick={()=>{ setPath(null); transition("path") }} />
             <PathBanner pathKey="institution" stepIndex={0} />
 
             <div style={{ background:pt.accentBg, border:`1px solid ${pt.accentBd}`, borderRadius:14, padding:"14px 18px", marginBottom:24 }}>
