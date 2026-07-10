@@ -9,8 +9,8 @@ const D = {
   border:     "rgba(255,255,255,0.08)",
   borderBright:"rgba(255,255,255,0.14)",
   text1:      "#F0EDE8",
-  text2:      "rgba(240,237,232,0.55)",
-  text3:      "rgba(240,237,232,0.32)",
+  text2:      "rgba(240,237,232,0.72)",
+  text3:      "rgba(240,237,232,0.48)",
   orange:     "#FF5701",
   orangeDim:  "rgba(255,87,1,0.12)",
   orangeMid:  "rgba(255,87,1,0.22)",
@@ -444,12 +444,45 @@ export default function LandingPage({ onGetStarted, onLogin }) {
   const [pricingFlow, setPricingFlow] = useState("student")
   const [pricingKey,  setPricingKey]  = useState(0)
 
+  // ── Live user counter ────────────────────────────────────────────
+  const BASE_COUNT = 3000
+  const getStoredCount = () => {
+    try {
+      const stored = localStorage.getItem("cap_user_count")
+      const ts     = localStorage.getItem("cap_user_count_ts")
+      if (!stored) return BASE_COUNT
+      // Simulate growth even when away: +1 per 30s offline (max +200)
+      const elapsed = ts ? Math.floor((Date.now() - Number(ts)) / 30000) : 0
+      return Math.min(Number(stored) + Math.min(elapsed, 200), 99999)
+    } catch { return BASE_COUNT }
+  }
+  const [liveCount, setLiveCount] = useState(getStoredCount)
+
   const switchPricingFlow = (path) => { setPricingFlow(path); setPricingKey(k => k+1) }
 
   useEffect(() => {
     const target=1847; let cur=800
     const t = setInterval(() => { cur=Math.min(cur+18,target); setEloAnim(cur); if(cur>=target) clearInterval(t) }, 22)
     return () => clearInterval(t)
+  }, [])
+
+  // Auto-increment live count while on page
+  useEffect(() => {
+    const tick = () => {
+      setLiveCount(prev => {
+        const next = prev + 1
+        try {
+          localStorage.setItem("cap_user_count", String(next))
+          localStorage.setItem("cap_user_count_ts", String(Date.now()))
+        } catch {}
+        return next
+      })
+    }
+    // Random interval 8–18s between each increment
+    let timer
+    const schedule = () => { timer = setTimeout(() => { tick(); schedule() }, 8000 + Math.random() * 10000) }
+    schedule()
+    return () => clearTimeout(timer)
   }, [])
 
   const openPath = (path, source="landing") => {
@@ -679,6 +712,10 @@ export default function LandingPage({ onGetStarted, onLogin }) {
         ::-webkit-scrollbar { width:6px; }
         ::-webkit-scrollbar-track { background:rgba(255,255,255,0.02); }
         ::-webkit-scrollbar-thumb { background:rgba(255,87,1,0.3); border-radius:999px; }
+        @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+        .live-dot { animation: pulse-dot 1.8s ease-in-out infinite; }
+        @keyframes count-bump { 0%{transform:translateY(0)} 50%{transform:translateY(-3px)} 100%{transform:translateY(0)} }
+        .count-bump { animation: count-bump 0.3s cubic-bezier(0.16,1,0.3,1); }
       `}</style>
 
       {/* ── NAV ─────────────────────────────────────────────────────── */}
@@ -687,6 +724,16 @@ export default function LandingPage({ onGetStarted, onLogin }) {
           <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:22, fontWeight:800, color:D.text1, letterSpacing:"-0.03em" }}>
             Capabilio <span style={{ color:D.orange }}>AI</span>
           </div>
+
+          {/* ── Live user count pill ────────────── */}
+          <div style={{ display:"flex", alignItems:"center", gap:8, background:"rgba(22,163,74,0.08)", border:"1px solid rgba(22,163,74,0.22)", borderRadius:999, padding:"7px 14px", backdropFilter:"blur(12px)" }}>
+            <span className="live-dot" style={{ width:7, height:7, borderRadius:"50%", background:"#22C55E", display:"inline-block", flexShrink:0, boxShadow:"0 0 8px #22C55E" }} />
+            <span style={{ fontFamily:"'DM Mono',monospace", fontSize:12, fontWeight:800, color:"#22C55E", letterSpacing:"0.02em" }}>
+              {liveCount.toLocaleString("en-IN")}
+            </span>
+            <span style={{ fontSize:11, color:"rgba(240,237,232,0.55)", fontFamily:"'DM Mono',monospace", fontWeight:600 }}>users online</span>
+          </div>
+
           <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
             <GhostButton onClick={onLogin}>SIGN IN</GhostButton>
             <PrimaryButton onClick={() => openPath(activeFlow,"nav")}>GET STARTED</PrimaryButton>
