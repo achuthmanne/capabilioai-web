@@ -350,14 +350,15 @@ router.get("/nexus/search", optionalAuth, async (req, res) => {
     const offset = (parseInt(page) - 1) * parseInt(limit)
 
     let query = supabaseAdmin.from("profiles")
-      .select("id,name,headline,profile_photo_url,current_company,current_role_title,skill_graph,verification_state,is_mentor,path,years_of_experience", { count: "exact" })
+      .select("id,name,display_name,username,headline,keyword,elo_rating,profile_photo_url,current_company,current_role_title,verification_state,is_mentor,path,years_of_experience", { count: "exact" })
       .neq("path", "institution")
       .range(offset, offset + parseInt(limit) - 1)
 
-    if (q) query = query.or(`name.ilike.%${q}%,headline.ilike.%${q}%,current_company.ilike.%${q}%`)
+    if (q) query = query.or(`name.ilike.%${q}%,display_name.ilike.%${q}%,username.ilike.%${q}%,headline.ilike.%${q}%,current_company.ilike.%${q}%,keyword.ilike.%${q}%`)
     if (role) query = query.ilike("current_role_title", `%${role}%`)
+    if (domain) query = query.ilike("keyword", `%${domain}%`)
 
-    const { data, error, count } = await query.order("aura_score", { ascending: false })
+    const { data, error, count } = await query.order("elo_rating", { ascending: false })
     if (error) throw error
     res.json({ profiles: data || [], total: count || 0 })
   } catch (e) { res.status(500).json({ error: e.message }) }

@@ -830,16 +830,22 @@ function StudentPulse({ user, userData }) {
     if (feedTab === "following") loadSparks()
   }, [feedTab]) // eslint-disable-line
 
-  // ── User search ───────────────────────────────────────────────────────────────
-  const searchUsers = async (q) => {
+  // ── User search (debounced 400ms) ────────────────────────────────────────────
+  const searchDebounceRef = useRef(null)
+  const searchUsers = (q) => {
     setUserSearch(q)
-    if (!q.trim() || q.trim().length < 2) { setSearchResults([]); return }
+    if (!q.trim() || q.trim().length < 2) { setSearchResults([]); setSearchLoading(false); return }
     setSearchLoading(true)
-    try {
-      const data = await nexusApi.search({ q: q.trim(), limit: 12 })
-      setSearchResults(Array.isArray(data) ? data : (data?.users || []))
-    } catch { setSearchResults([]) }
-    setSearchLoading(false)
+    clearTimeout(searchDebounceRef.current)
+    searchDebounceRef.current = setTimeout(async () => {
+      try {
+        const data = await nexusApi.search({ q: q.trim(), limit: 12 })
+        // backend returns { profiles: [...], total: N }
+        const users = Array.isArray(data) ? data : (data?.profiles || data?.users || [])
+        setSearchResults(users)
+      } catch { setSearchResults([]) }
+      setSearchLoading(false)
+    }, 400)
   }
 
   const sendSpark = async (uid, name) => {
