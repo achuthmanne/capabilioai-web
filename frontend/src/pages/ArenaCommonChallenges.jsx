@@ -2891,7 +2891,7 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
                 </table>
               )
             ) : (
-              {loadingChallenges ? (
+              loadingChallenges ? (
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))", gap:16 }}>
                   {[...Array(12)].map((_,i) => (
                     <div key={i} style={{ background:"#fff", border:`1px solid ${T.border}`, borderRadius:12, overflow:"hidden" }}>
@@ -3008,7 +3008,7 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
                     )
                   })}
                 </div>
-              )}
+              )
             )}</div>
 
             {/* Footer stats */}
