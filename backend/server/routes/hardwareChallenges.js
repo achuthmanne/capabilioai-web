@@ -29,69 +29,82 @@ function optionalAuth(req, res, next) {
 }
 
 // ── Seed challenges (used if table is empty) ──────────────────────────────────
+// Pre-compressed CircuitJS1 circuit strings (lz-string compressToBase64)
+const CIRCUIT_CTZ = {
+  "ece-001": "CQAgjCAMB0l3AmcDYBYCcAOAzANkqrgKxHYIDsRIRk11tRApgLRhgBQAbiOriNgR59eUEEjDw6tadARF2AJzEJUQ/kSQjaEuOwDG6zX2wb+gmfEgRp7AO5qRCFWsh21A1SaQeo7AA7g+GpgQT7WvgHYmKoiUZ6C4a72Xu7RLm4pPnFmqq4AHiC4qkX0tLjkIKpgVAAKAOoAsgBcIADKAI4ArgCGCowgdd2c/QAUYADWABIAXgA0YkQApCAAJp0ALgCeAJQggEmEIABKAMIgAILDCt0A5owK7AUl2HhiodjolcgggAmEIPUNIAAlgA7PwbEAjAD2AGc9ICADbwmF6SF+RjbB78TCYfgvIjkWjPD5VJC/C53G6MFYgAAip0hGzB63YQA==",
+  "ece-002": "CQAgjCAMB0l3EwHZoGYyQBxkwFjAGxICcSuuqIArJNdbVQKYC0YYAUAG4jEEiqRcPPryjhw8OrWnQq7AE4gATFmH8qStbQzx2AY3WbRqDf0Fiws4mCq5iFSNczEqJlpjGR2AdzWiVHqJevsbmJpoCQl4ADuAEtKKEtJHi0uyxqHhqmUIpEGm+4dlZQT6GZrlZKV4AHiCYtARCDiBEIEI2IABKAMIgADIA9t7MAAoAhgDOkyAAYgCWADYALozyAFzdALwYANaAlcAANCA9O1TQxAB2syAAFABmeju7ABIAXgCU7HVN/Kh8Sgaf2I7XAmkACYQgACSl2iAFdliBovJBgAjRh3ADm8kYjEuXzqqGIyX+1CQJJBHQhIAA8gj4YjkWiMbcAJ6MRaLYZfIA===",
+  "ece-003": "CQAgjCAMB0l3BWcMBMcUHYMGZIA4UA2ATmIxAUgoqoQFMBaMMAKADcRjCQU89PuYQlSoRh4KJJgIWAJ3DEU4cb35CRyeHJ58BIACx4qXSWHhwWAQwNGFS4WsUg1SJkjPmNozywDue9TtlET8dNRVdE0hQ1T1DY25o/3i9Bz0kkDSTNLAnDNjAlMCMk1i02Izy3Ry80KKnFJQUfSg62yaW0ubW/y7OwXFogAdg0cCCqRYRrO5CDCUTCBD/Kv45pQqWAA9nKkIWyj3yFrAkAEkAOzY6WQAXAEsLgHMQAHkhhgBBAFshgC4QAAlR4AXjMAGtAJXAABogQAzMFwKEgQBJhCAAOKWR4gEEgJjRHb7EDUNA8cQk7AGcBKQAJhCBLkMAK63EBDWQAewARnQQAAKMAANVhwgAEgAvACU20yGH4tjwuGclJOtLezKZLLZXLoLCAA=",
+}
+
 const SEED_CHALLENGES = [
-  // ── ECE / EEE ──────────────────────────────────────────────────────────────
+  // ── ECE ────────────────────────────────────────────────────────────────────
   {
     id: "ece-001",
-    title: "LED Brightness Control with PWM",
+    title: "PWM: Square Wave → RC Averager",
     stream: "ECE",
     category: "Circuits",
     difficulty: "Beginner",
     elo_reward: 25,
+    sim_enabled: true,
+    sim_ctz: CIRCUIT_CTZ["ece-001"],
     thumbnail: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&q=80",
-    description: "Design a PWM circuit to control LED brightness using a 555 timer IC. Understand duty cycle and frequency relationships.",
-    context: "PWM (Pulse Width Modulation) is fundamental in motor control, LED dimming, and power supplies. The 555 timer in astable mode generates a square wave whose duty cycle controls average voltage.",
-    steps: [
-      { step: 1, title: "Calculate frequency", instruction: "Given R1=1kΩ, R2=10kΩ, C=0.1µF — calculate the frequency of oscillation using f = 1.44/((R1+2R2)×C)" },
-      { step: 2, title: "Duty cycle", instruction: "Calculate the duty cycle D = (R1+R2)/(R1+2R2). What % of time is the output HIGH?" },
-      { step: 3, title: "LED current", instruction: "With Vcc=5V and LED forward voltage 2V, what resistor limits current to 20mA?" },
-      { step: 4, title: "Design the circuit", instruction: "Draw the complete schematic: 555 timer astable → current-limiting resistor → LED. Label all component values." },
-      { step: 5, title: "Describe your design", instruction: "Explain your complete circuit: component values chosen, expected LED brightness behaviour, and how you would vary the duty cycle." }
+    description: "Observe a PWM square wave (1kHz, 25% duty cycle) being smoothed by an RC averager circuit. Measure input vs output voltage.",
+    context: "PWM (Pulse Width Modulation) controls average power without wasting energy as heat — used in motor drivers, LED dimmers, and switching power supplies. The RC averager converts the pulsing waveform into a steady DC level proportional to duty cycle.",
+    observations: [
+      { id: 1, task: "Press ▶ (Play) to run the simulation. What does the green probe show on the oscilloscope?" },
+      { id: 2, task: "The square wave has 25% duty cycle at 5V peak. What average voltage do you expect at the output? Calculate: V_avg = Vpeak × duty_cycle" },
+      { id: 3, task: "Look at the yellow probe output. How does it compare to the green input? Is the output flat (DC) or still pulsing?" },
+      { id: 4, task: "Double-click the capacitor and change its value from 10µF to 1µF. What happens to the ripple on the output? Why?" },
+      { id: 5, task: "Change the square wave duty cycle: double-click the voltage source, change phase offset from 0.25 to 0.5 (50% duty). What new average voltage do you expect? Does the simulation confirm it?" },
     ],
-    rubric: "Award marks for: correct frequency calculation (20%), correct duty cycle (20%), correct current-limiting resistor (20%), clear circuit description with all components named (30%), explanation of PWM behaviour (10%)",
-    tags: ["555 timer", "PWM", "LED", "Circuits"],
+    rubric: "Award marks for: correct V_avg calculation (25%), correct observation of RC smoothing effect (25%), correct explanation of capacitor size vs ripple (20%), correct duty cycle change prediction (20%), clear explanation of PWM principle (10%)",
+    tags: ["PWM", "RC Circuit", "Duty Cycle", "Oscilloscope"],
     attempts: 142, views: 891, likes: 34
   },
   {
     id: "ece-002",
-    title: "Low-Pass RC Filter Design",
+    title: "RC Low-Pass Filter: Frequency Response",
     stream: "ECE",
     category: "Signal Processing",
     difficulty: "Intermediate",
     elo_reward: 40,
+    sim_enabled: true,
+    sim_ctz: CIRCUIT_CTZ["ece-002"],
     thumbnail: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600&q=80",
-    description: "Design and analyse a first-order RC low-pass filter with cutoff frequency of 1kHz. Analyse frequency response.",
-    context: "RC filters are the building blocks of audio equalizers, noise filters, and anti-aliasing circuits. Understanding the -3dB cutoff frequency and roll-off rate is essential for any signal processing role.",
-    steps: [
-      { step: 1, title: "Calculate R and C", instruction: "Using fc = 1/(2π×R×C), choose R and C values to give a cutoff of exactly 1kHz. Show your working." },
-      { step: 2, title: "Phase shift", instruction: "At f = fc, what is the phase shift of the output signal relative to the input?" },
-      { step: 3, title: "Attenuation at 10kHz", instruction: "Calculate the attenuation (in dB) at 10kHz — 10× above cutoff." },
-      { step: 4, title: "Bode plot", instruction: "Describe the Bode magnitude plot: what is the slope in dB/decade above cutoff?" },
-      { step: 5, title: "Full analysis", instruction: "Write your complete filter design: R and C values, cutoff frequency verification, phase response at cutoff, attenuation at 10kHz, and practical application of this filter." }
+    description: "Explore a 1kHz RC low-pass filter. Observe how amplitude drops and phase shifts as frequency increases past the cutoff.",
+    context: "RC filters separate low-frequency signals from high-frequency noise — used in audio equalizers, anti-aliasing before ADCs, and power supply decoupling. The cutoff frequency fc = 1/(2πRC) defines where the filter begins attenuating.",
+    observations: [
+      { id: 1, task: "Press ▶ to run. The circuit has R=10kΩ and C=15.9nF giving fc=1kHz. Observe both probes. At 1kHz input, what is the approximate output amplitude compared to input? (Should be ~0.707× input = -3dB)" },
+      { id: 2, task: "Double-click the AC voltage source. Change frequency from 1000 to 100 Hz (10× below cutoff). Compare input and output amplitudes now. What do you observe?" },
+      { id: 3, task: "Now change frequency to 10000 Hz (10× above cutoff). What happens to the output amplitude? This is -20dB/decade roll-off — calculate the expected attenuation." },
+      { id: 4, task: "At f=1kHz (cutoff), the output phase lags the input by -45°. Can you observe the phase difference on the oscilloscope? Describe what you see." },
+      { id: 5, task: "Double-click the resistor, change R from 10kΩ to 1kΩ. What new cutoff frequency does this create? Verify by finding the frequency where output is ~0.707× input." },
     ],
-    rubric: "Award marks for: correct R and C values (25%), correct phase shift at cutoff (15%), correct attenuation at 10kHz (20%), correct Bode slope (15%), practical application and clear explanation (25%)",
-    tags: ["RC filter", "Frequency response", "Signal processing", "Bode plot"],
+    rubric: "Award marks for: observation of -3dB at cutoff (25%), correct behaviour below cutoff (15%), correct attenuation above cutoff (20%), phase observation (15%), correct new fc after R change (25%)",
+    tags: ["RC Filter", "Cutoff Frequency", "Bode Plot", "Signal Processing"],
     attempts: 98, views: 542, likes: 21
   },
   {
     id: "ece-003",
-    title: "Op-Amp Inverting Amplifier",
+    title: "Op-Amp Inverting Amplifier: Gain = -10",
     stream: "ECE",
     category: "Analog",
     difficulty: "Intermediate",
     elo_reward: 40,
-    thumbnail: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&q=80",
-    description: "Design an inverting amplifier with gain of -10 using an ideal op-amp. Understand virtual ground and feedback.",
-    context: "Op-amp inverting amplifiers are ubiquitous in sensor conditioning, audio amplification, and instrumentation. The virtual ground concept and negative feedback are foundational.",
-    steps: [
-      { step: 1, title: "Virtual ground concept", instruction: "Explain why the inverting input of an ideal op-amp is at 0V (virtual ground) when the non-inverting input is grounded." },
-      { step: 2, title: "Gain formula", instruction: "Derive the voltage gain Av = -Rf/Rin. With gain = -10, if Rin = 1kΩ, what is Rf?" },
-      { step: 3, title: "Input impedance", instruction: "What is the input impedance of this inverting amplifier? Why is this important?" },
-      { step: 4, title: "Output voltage", instruction: "If input Vin = 0.5V sinusoidal, what is Vout? Describe amplitude and phase." },
-      { step: 5, title: "Complete design", instruction: "Describe your full amplifier design: component values, gain derivation, output for a 0.5V input, input impedance, and one real-world application of this circuit." }
+    sim_enabled: true,
+    sim_ctz: CIRCUIT_CTZ["ece-003"],
+    thumbnail: "https://images.unsplash.com/photo-1597476428990-7ee50f2a8e3d?w=600&q=80",
+    description: "Explore an inverting op-amp amplifier with Rin=10kΩ and Rf=100kΩ (gain=-10). Observe phase inversion and gain.",
+    context: "Op-amp inverting amplifiers are in every piece of audio equipment, measurement instrument, and sensor interface. Negative gain means phase inversion — critical to understand for stability in feedback systems.",
+    observations: [
+      { id: 1, task: "Press ▶ to run. The input is 1V peak, 60Hz sine wave. Read both oscilloscope probes. What is the output peak voltage? Is it inverted (flipped) compared to input?" },
+      { id: 2, task: "Calculate expected gain: Av = -Rf/Rin = -100kΩ/10kΩ = -10. If Vin=1V peak, Vout should be -10V peak. Does the simulation match? (Note: op-amp supply is ±15V so it should not clip)" },
+      { id: 3, task: "Double-click the input voltage source and increase peak voltage to 2V. What does the output show? Is the gain still -10, or does it clip? At what input voltage does clipping start (supply is ±15V)?" },
+      { id: 4, task: "Change Rin (the 10kΩ resistor near input) to 20kΩ. What new gain do you expect? Av = -Rf/Rin = -100k/20k = ? Verify with the simulation." },
+      { id: 5, task: "Explain the virtual ground principle: why is the inverting input (−) of the op-amp at approximately 0V even though it is not connected to ground? Use the simulation observations to support your explanation." },
     ],
-    rubric: "Award marks for: correct explanation of virtual ground (20%), correct Rf value (20%), correct input impedance (15%), correct output description (20%), real-world application (25%)",
-    tags: ["Op-amp", "Amplifier", "Analog", "Feedback"],
+    rubric: "Award marks for: correct output voltage reading (20%), gain formula application (20%), clipping analysis (15%), correct new gain after Rin change (20%), virtual ground explanation (25%)",
+    tags: ["Op-Amp", "Inverting Amplifier", "Gain", "Virtual Ground", "Analog"],
     attempts: 75, views: 421, likes: 18
   },
   // ── IoT ────────────────────────────────────────────────────────────────────
