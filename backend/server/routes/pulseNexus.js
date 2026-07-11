@@ -130,15 +130,18 @@ Format as JSON:
 
     // Groq fallback — no live search but still generates plausible structured data
     if (!text) {
-      const completion = await groq.chat.completions.create({
-        model:       GROQ_FAST,
-        max_tokens:  1500,
-        temperature: 0.4,
-        messages: [
-          { role: "system", content: "You are a tech career market analyst. Respond ONLY with valid JSON, no markdown." },
-          { role: "user",   content: prompt },
-        ],
-      })
+      const completion = await Promise.race([
+        groq.chat.completions.create({
+          model:       GROQ_FAST,
+          max_tokens:  1500,
+          temperature: 0.4,
+          messages: [
+            { role: "system", content: "You are a tech career market analyst for India. Respond ONLY with valid JSON, no markdown." },
+            { role: "user",   content: prompt },
+          ],
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Groq timeout")), 12000))
+      ])
       text = completion.choices[0]?.message?.content || "{}"
     }
 
@@ -481,7 +484,7 @@ router.get("/nexus/connections", requireAuth, async (req, res) => {
   try {
     const uid = req.user.id
     const { data, error } = await supabaseAdmin.from("connections")
-      .select("*, requester:requester_id(id,name,profile_photo_url,headline,current_role_title), addressee:addressee_id(id,name,profile_photo_url,headline,current_role_title)")
+      .select("*, requester:requester_id(id,name,display_name,username,keyword,elo_rating,profile_photo_url,headline,current_role_title,path), addressee:addressee_id(id,name,display_name,username,keyword,elo_rating,profile_photo_url,headline,current_role_title,path)")
       .or(`requester_id.eq.${uid},addressee_id.eq.${uid}`)
       .order("updated_at", { ascending: false })
     if (error) throw error
