@@ -347,8 +347,12 @@ const getProfessionalInitialElo = ({ suggestedElo, auraScore }) => {
   }
   return 800
 }
-const slugifyUsername = (s = "") =>
-  String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").replace(/--+/g, "-")
+const slugifyUsername = (s = "") => {
+  const base = String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").replace(/--+/g, "-") || "user"
+  // Append 4-char random suffix to guarantee uniqueness across same-name users
+  const suffix = Math.random().toString(36).slice(2, 6)
+  return `${base}-${suffix}`
+}
 const normalizeSkills = (skills) =>
   Array.from(new Set((skills || []).filter(Boolean).map(s => String(s).trim()).filter(Boolean)))
 const safeNumber = (v, fb = 0) => (typeof v === "number" && !Number.isNaN(v) ? v : fb)

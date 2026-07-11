@@ -853,7 +853,14 @@ function StudentPulse({ user, userData }) {
     try {
       await nexusApi.connect(uid, sparkMsg || `Hi ${name}, let's connect on Capabilio!`)
       setSparkActions(a => ({ ...a, [uid]: "sent" }))
-    } catch { setSparkActions(a => ({ ...a, [uid]: null })) }
+    } catch (err) {
+      // 409 = already sent — treat as success
+      if (err?.message?.includes("409") || err?.message?.toLowerCase().includes("already")) {
+        setSparkActions(a => ({ ...a, [uid]: "sent" }))
+      } else {
+        setSparkActions(a => ({ ...a, [uid]: null }))
+      }
+    }
   }
 
   const handleSpark = async (spark, accept) => {
@@ -868,7 +875,14 @@ function StudentPulse({ user, userData }) {
     try {
       await nexusApi.follow(uid)
       setSparkActions(a => ({ ...a, [uid]: "followed" }))
-    } catch { setSparkActions(a => ({ ...a, [uid]: null })) }
+    } catch (err) {
+      // 409/duplicate = already following — treat as success
+      if (err?.message?.includes("409") || err?.message?.toLowerCase().includes("already") || err?.message?.toLowerCase().includes("duplicate")) {
+        setSparkActions(a => ({ ...a, [uid]: "followed" }))
+      } else {
+        setSparkActions(a => ({ ...a, [uid]: null }))
+      }
+    }
   }
 
   // ── Post creation ────────────────────────────────────────────────────────────
@@ -965,9 +979,21 @@ function StudentPulse({ user, userData }) {
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
-  const authorName = (post) => post.author?.display_name || post.author?.name || "Community Member"
-  const authorInitials = (post) => (authorName(post)[0] || "C").toUpperCase()
+  const authorName = (post) => post.author?.display_name || post.author?.name || post.author?.username || userData?.displayName || "Member"
+  const authorInitials = (post) => (authorName(post)[0] || "M").toUpperCase()
   const authorElo = (post) => post.author?.elo_rating || 400
+
+  // ── Delete post ──────────────────────────────────────────────────────────────
+  const [deletingPost, setDeletingPost] = useState(null)
+  const deletePost = async (postId) => {
+    if (!window.confirm("Delete this post? This cannot be undone.")) return
+    setDeletingPost(postId)
+    try {
+      await pulseApi.deletePost(postId)
+      setPosts(ps => ps.filter(p => p.id !== postId))
+    } catch {}
+    setDeletingPost(null)
+  }
   const timeAgo = (iso) => {
     if (!iso) return ""
     const diff = Date.now() - new Date(iso).getTime()
@@ -1435,7 +1461,19 @@ function StudentPulse({ user, userData }) {
                                 <div style={{fontSize:11,color:P.ink4}}>{post.author?.keyword||""} · {timeAgo(post.created_at)}</div>
                               </div>
                             </div>
-                            <span style={{padding:"2px 9px",background:pt.bg,borderRadius:99,fontSize:10,fontWeight:800,color:pt.color,letterSpacing:"0.06em",flexShrink:0}}>{pt.label}</span>
+                            <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                              <span style={{padding:"2px 9px",background:pt.bg,borderRadius:99,fontSize:10,fontWeight:800,color:pt.color,letterSpacing:"0.06em"}}>{pt.label}</span>
+                              {post.author_id === user?.id && (
+                                <button
+                                  onClick={() => deletePost(post.id)}
+                                  disabled={deletingPost === post.id}
+                                  title="Delete post"
+                                  style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:P.ink4,padding:"2px 4px",borderRadius:6,lineHeight:1,opacity:deletingPost===post.id?0.4:1}}
+                                >
+                                  {deletingPost === post.id ? "…" : "🗑"}
+                                </button>
+                              )}
+                            </div>
                           </div>
 
                           {/* Content */}

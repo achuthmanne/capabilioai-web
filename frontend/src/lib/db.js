@@ -193,19 +193,17 @@ export const userDoc = {
   /** Create or fully replace a user profile. Normalises all keys to snake_case first. */
   set: async (uid, payload) => {
     const normalised = toSnake({ id: uid, ...payload, updated_at: new Date().toISOString() })
-    const { error } = await supabase.from('profiles').upsert(normalised)
+    // onConflict:"id" ensures we merge on the PK, never hitting the username unique constraint
+    const { error } = await supabase.from('profiles').upsert(normalised, { onConflict: 'id' })
     if (!error) return true
     // If upsert still fails, try with only the guaranteed core columns
     console.warn('Profile upsert failed:', error.message)
-    // Only include columns guaranteed to exist in all environments.
-    // Columns like github_username, skill_graph, aura_score_breakdown etc.
-    // may be missing in older schema versions and would cause the fallback to fail too.
     const CORE_COLS = ['id','email','display_name','username','path','keyword',
       'elo_rating','arena_completed','arena_streak','onboarding_complete',
       'subscription','updated_at']
     const core = {}
     for (const k of CORE_COLS) { if (normalised[k] !== undefined) core[k] = normalised[k] }
-    const { error: err2 } = await supabase.from('profiles').upsert(core)
+    const { error: err2 } = await supabase.from('profiles').upsert(core, { onConflict: 'id' })
     if (err2) console.error('Core save also failed:', err2.message)
     return !err2
   },
