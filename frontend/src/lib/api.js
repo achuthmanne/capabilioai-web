@@ -257,6 +257,20 @@ export const intelApi = {
 }
 
 // ══════════════════════════════════════════
+// HARDWARE CHALLENGES (ECE / IoT / Mech / Civil)
+// ══════════════════════════════════════════
+export const hardwareApi = {
+  list:       (params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return request("GET", `/hardware/challenges${qs ? `?${qs}` : ""}`)
+  },
+  get:        (id) => request("GET", `/hardware/challenges/${id}`),
+  attempt:    (id, answer) => request("POST", `/hardware/challenges/${id}/attempt`, { answer }),
+  myAttempts: () => request("GET", "/hardware/my-attempts"),
+  like:       (id) => request("POST", `/hardware/challenges/${id}/like`),
+}
+
+// ══════════════════════════════════════════
 // RESUME PARSING (existing)
 // ══════════════════════════════════════════
 export const resumeApi = {

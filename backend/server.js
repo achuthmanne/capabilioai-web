@@ -72,6 +72,7 @@ import recruiterCommsRoutes      from "./server/routes/recruiterComms.js"
 import mentorHubRoutes           from "./server/routes/mentorHub.js"
 import pulseNexusRoutes          from "./server/routes/pulseNexus.js"
 import orbitPlansRoutes          from "./server/routes/orbitPlans.js"
+import hardwareChallengesRoutes  from "./server/routes/hardwareChallenges.js"
 
 // ─── App setup ────────────────────────────────────────────────────────────────
 const app  = express()
@@ -132,6 +133,7 @@ app.use("/api",              recruiterCommsRoutes)      // jobs, recruiter/messa
 app.use("/api",              mentorHubRoutes)           // mentors, mentors/bookings
 app.use("/api",              pulseNexusRoutes)          // pulse/feed, pulse/market-insights (Gemini Search), nexus/*
 app.use("/api",              orbitPlansRoutes)          // orbit/plans, intel/report
+app.use("/api",              hardwareChallengesRoutes)  // hardware/challenges, hardware/my-attempts
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {

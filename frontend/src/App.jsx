@@ -12,6 +12,7 @@ import Onboarding          from "./pages/Onboarding"
 import Aura                from "./pages/Aura"
 import Arena               from "./pages/Arena"
 import Pulse               from "./pages/Pulse"
+import HardwareChallenges  from "./pages/HardwareChallenges"
 import SkillStudio         from "./pages/SkillStudio"
 import Launchpad           from "./pages/Launchpad"
 import Portfolio           from "./pages/Portfolio"
@@ -815,8 +816,9 @@ function App() {
     { id: "aura",        label: "Aura",         page: "aura",        prefix: "+" },
     { id: "arena",       label: "Arena",        page: "arena",       prefix: "×" },
     { id: "pulse",       label: "Pulse",        page: "pulse",       prefix: "⚡" },
-    { id: "skillstudio", label: "Skill Studio", page: "skillstudio", prefix: "🎓" },
-    { id: "launchpad",   label: "Launchpad",    page: "launchpad",   prefix: "🚀" },
+    { id: "skillstudio", label: "Skill Studio", page: "skillstudio",   prefix: "🎓" },
+    { id: "launchpad",   label: "Launchpad",    page: "launchpad",     prefix: "🚀" },
+    { id: "challenges",  label: "Challenges",   page: "challenges",    prefix: "🔬" },
   ]
 
   return (
@@ -993,6 +995,7 @@ function App() {
         {currentPage === "pricing"     && <Pricing     user={user} userData={userData} setUserData={setUserData} onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }} />}
 
         {currentPage === "forge"       && <Forge          user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
+        {currentPage === "challenges"  && <HardwareChallenges user={user} userData={userData} />}
 
         {currentPage === "timemarket"  && <Launchpad      user={user} userData={userData} />}
         {currentPage === "signalrooms" && <SignalRooms     user={user} userData={userData} />}
