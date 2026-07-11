@@ -1968,6 +1968,7 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
   const [search, setSearch]                   = useState("")
   const [sortField, setSortField]             = useState("id")
   const [sortDir, setSortDir]                 = useState("asc")
+  const [cardView, setCardView]               = useState(true)   // true = pcbx card grid, false = table
 
   // Categories that should NEVER appear in Common Challenges for IT / CSE / MCA / DevOps students.
   // Engineering stream problems are only shown when the student's own stream is active.
@@ -2827,11 +2828,23 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
                 placeholder="Search challenges…"
                 style={{ padding:"7px 14px", borderRadius:8, border:`1px solid ${T.border}`, background:T.bg, fontSize:12, color:T.ink, outline:"none", width:200, fontFamily:"inherit" }}
               />
+              {/* View toggle */}
+              <div style={{ display:"flex", border:`1px solid ${T.border}`, borderRadius:8, overflow:"hidden" }}>
+                {[{ v:true, icon:"⊞", title:"Card view" }, { v:false, icon:"☰", title:"Table view" }].map(({v,icon,title}) => (
+                  <button key={title}
+                    onClick={() => setCardView(v)}
+                    title={title}
+                    style={{ padding:"5px 10px", border:"none", background: cardView === v ? T.indigo3 : "transparent", color: cardView === v ? T.indigo : T.ink4, fontSize:14, cursor:"pointer", fontFamily:"inherit" }}>
+                    {icon}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Table */}
-            <div style={{ flex:1, overflowY:"auto" }}>
-              {loadingChallenges ? (
+            {/* Card Grid / Table */}
+            <div style={{ flex:1, overflowY:"auto", padding: cardView ? "20px 20px 28px" : "0" }}>{!cardView ? (
+              /* ── Compact table fallback ── */
+              loadingChallenges ? (
                 <div style={{ padding:40, display:"flex", justifyContent:"center" }}><Spinner size={24} /></div>
               ) : (
                 <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
@@ -2846,8 +2859,7 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
                         { label:"Acceptance", field:"acceptance",  w:"110px" },
                         { label:"Topic",      field:"topic_group", w:"140px" },
                       ].map(col => (
-                        <th key={col.label}
-                          onClick={col.field ? () => toggleSort(col.field) : undefined}
+                        <th key={col.label} onClick={col.field ? () => toggleSort(col.field) : undefined}
                           style={{ padding:"10px 16px", textAlign:"left", fontSize:11, fontWeight:700, color: col.label.startsWith("ELO") ? T.indigo : T.ink3, letterSpacing:0.8, textTransform:"uppercase", width:col.w, cursor:col.field ? "pointer" : "default", whiteSpace:"nowrap", userSelect:"none" }}>
                           {col.label}{col.field && sortIcon(col.field)}
                         </th>
@@ -2856,46 +2868,148 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
                   </thead>
                   <tbody>
                     {filteredChallenges.map((ch, i) => {
-                      const solved  = completedIds.has(String(ch.id))
+                      const solved = completedIds.has(String(ch.id))
                       const eloReward = ch.eloReward ?? eloForDiff(ch.difficulty)
                       return (
-                        <tr key={ch.id} className="cc-row"
-                          onClick={() => openChallenge(ch)}
-                          style={{ borderBottom:`1px solid ${T.border}`, background: solved ? "#F8FFF8" : i % 2 === 0 ? "#fff" : "#FAFAF8", transition:"background 0.1s", opacity: solved ? 0.85 : 1 }}>
-                          {/* Status — 🔒 locked once solved */}
-                          <td style={{ padding:"12px 16px", textAlign:"center" }}>
-                            {solved
-                              ? <span title="Solved — locked for ELO farming prevention" style={{ fontSize:15 }}>🔒</span>
-                              : <span style={{ color:T.ink4, fontSize:12 }}>—</span>}
-                          </td>
-                          <td style={{ padding:"12px 16px", color:T.ink4, fontFamily:"monospace", fontSize:12 }}>{i + 1}</td>
+                        <tr key={ch.id} onClick={() => openChallenge(ch)}
+                          style={{ borderBottom:`1px solid ${T.border}`, background: solved ? "#F8FFF8" : i%2===0 ? "#fff" : "#FAFAF8", cursor:"pointer" }}>
+                          <td style={{ padding:"12px 16px", textAlign:"center" }}>{solved ? <span style={{ fontSize:15 }}>🔒</span> : <span style={{ color:T.ink4, fontSize:12 }}>—</span>}</td>
+                          <td style={{ padding:"12px 16px", color:T.ink4, fontFamily:"monospace", fontSize:12 }}>{i+1}</td>
                           <td style={{ padding:"12px 16px" }}>
-                            <span style={{ fontWeight:600, color: solved ? T.ink3 : T.ink, textDecoration: solved ? "line-through" : "none" }}>{ch.title}</span>
-                            {ch.skills && ch.skills.slice(0, 2).map(s => (
-                              <span key={s} style={{ marginLeft:8, fontSize:10, color:T.ink4, background:T.bg, padding:"1px 6px", borderRadius:4, border:`1px solid ${T.border}` }}>{s}</span>
-                            ))}
+                            <span style={{ fontWeight:600, color:solved?T.ink3:T.ink, textDecoration:solved?"line-through":"none" }}>{ch.title}</span>
+                            {(ch.skills||[]).slice(0,2).map(s => <span key={s} style={{ marginLeft:8, fontSize:10, color:T.ink4, background:T.bg, padding:"1px 6px", borderRadius:4, border:`1px solid ${T.border}` }}>{s}</span>)}
                           </td>
                           <td style={{ padding:"12px 16px" }}><DiffBadge diff={ch.difficulty} /></td>
-                          {/* ELO reward column */}
-                          <td style={{ padding:"12px 16px" }}>
-                            {solved
-                              ? <span style={{ fontSize:11, color:T.green, fontWeight:700 }}>✓ Done</span>
-                              : <span style={{ fontSize:12, fontWeight:800, color:T.indigo, fontFamily:"'DM Mono',monospace" }}>+{eloReward}</span>}
-                          </td>
-                          <td style={{ padding:"12px 16px", color:T.ink3, fontFamily:"monospace", fontSize:12 }}>
-                            {ch.acceptance != null ? `${ch.acceptance}%` : "—"}
-                          </td>
-                          <td style={{ padding:"12px 16px", color:T.ink3, fontSize:12 }}>{ch.topic_group || "—"}</td>
+                          <td style={{ padding:"12px 16px" }}>{solved ? <span style={{ fontSize:11, color:T.green, fontWeight:700 }}>✓ Done</span> : <span style={{ fontSize:12, fontWeight:800, color:T.indigo, fontFamily:"'DM Mono',monospace" }}>+{eloReward}</span>}</td>
+                          <td style={{ padding:"12px 16px", color:T.ink3, fontFamily:"monospace", fontSize:12 }}>{ch.acceptance!=null?`${ch.acceptance}%`:"—"}</td>
+                          <td style={{ padding:"12px 16px", color:T.ink3, fontSize:12 }}>{ch.topic_group||"—"}</td>
                         </tr>
                       )
                     })}
-                    {!filteredChallenges.length && (
-                      <tr><td colSpan={7} style={{ padding:"40px 20px", textAlign:"center", color:T.ink3, fontSize:13 }}>No challenges match the current filters.</td></tr>
-                    )}
+                    {!filteredChallenges.length && <tr><td colSpan={7} style={{ padding:"40px 20px", textAlign:"center", color:T.ink3, fontSize:13 }}>No challenges match the current filters.</td></tr>}
                   </tbody>
                 </table>
+              )
+            ) : (
+              {loadingChallenges ? (
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))", gap:16 }}>
+                  {[...Array(12)].map((_,i) => (
+                    <div key={i} style={{ background:"#fff", border:`1px solid ${T.border}`, borderRadius:12, overflow:"hidden" }}>
+                      <div style={{ height:150, background:"linear-gradient(90deg,#F3F4F6,#E5E7EB,#F3F4F6)", backgroundSize:"200% 100%" }} />
+                      <div style={{ padding:14 }}>
+                        <div style={{ height:8, background:"#E5E7EB", borderRadius:4, marginBottom:8, width:"55%" }} />
+                        <div style={{ height:13, background:"#E5E7EB", borderRadius:4, marginBottom:6 }} />
+                        <div style={{ height:10, background:"#F3F4F6", borderRadius:4, width:"70%" }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : filteredChallenges.length === 0 ? (
+                <div style={{ textAlign:"center", padding:"60px 0", color:T.ink3 }}>
+                  <div style={{ fontSize:40, marginBottom:12 }}>🔍</div>
+                  <div style={{ fontSize:15, fontWeight:600 }}>No challenges match the current filters.</div>
+                </div>
+              ) : (
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))", gap:16 }}>
+                  {filteredChallenges.map((ch, i) => {
+                    const solved     = completedIds.has(String(ch.id))
+                    const eloReward  = ch.eloReward ?? eloForDiff(ch.difficulty)
+                    const topic      = ch.topic_group || "DSA"
+                    // Visual theme per topic
+                    const TOPIC_THEME = {
+                      "Arrays":               { bg:"#0f172a", accent:"#38BDF8", emoji:"📊", grad:"linear-gradient(135deg,#0f172a,#1e3a5f)" },
+                      "Sliding Window":       { bg:"#1a1a2e", accent:"#818CF8", emoji:"🪟", grad:"linear-gradient(135deg,#1a1a2e,#2d2b55)" },
+                      "Binary Search":        { bg:"#0f2027", accent:"#34D399", emoji:"🔎", grad:"linear-gradient(135deg,#0f2027,#203a43)" },
+                      "Stack":                { bg:"#1a0a2e", accent:"#C084FC", emoji:"🗂️", grad:"linear-gradient(135deg,#1a0a2e,#2d1b4e)" },
+                      "Two Pointers":         { bg:"#0a1628", accent:"#60A5FA", emoji:"👆", grad:"linear-gradient(135deg,#0a1628,#162a4a)" },
+                      "Design":               { bg:"#1c1917", accent:"#FB923C", emoji:"🏗️", grad:"linear-gradient(135deg,#1c1917,#3d2b1f)" },
+                      "Backtracking":         { bg:"#0f1923", accent:"#F472B6", emoji:"↩️", grad:"linear-gradient(135deg,#0f1923,#2d1f3d)" },
+                      "Dynamic Programming":  { bg:"#0d1a12", accent:"#4ADE80", emoji:"🧠", grad:"linear-gradient(135deg,#0d1a12,#1a3326)" },
+                      "Trees":                { bg:"#0f1c0f", accent:"#86EFAC", emoji:"🌳", grad:"linear-gradient(135deg,#0f1c0f,#1a3a1a)" },
+                      "Graphs":               { bg:"#1a1208", accent:"#FCD34D", emoji:"🕸️", grad:"linear-gradient(135deg,#1a1208,#3d2c10)" },
+                      "Linked List":          { bg:"#1a0f0f", accent:"#FCA5A5", emoji:"🔗", grad:"linear-gradient(135deg,#1a0f0f,#3d1f1f)" },
+                      "Heap":                 { bg:"#100f1a", accent:"#A78BFA", emoji:"⛰️", grad:"linear-gradient(135deg,#100f1a,#27244a)" },
+                      "Sorting":              { bg:"#0f1a1a", accent:"#2DD4BF", emoji:"↕️", grad:"linear-gradient(135deg,#0f1a1a,#1a3a3a)" },
+                      "Strings":              { bg:"#1a1208", accent:"#FDE68A", emoji:"🔤", grad:"linear-gradient(135deg,#1a1208,#3d300f)" },
+                      "Math":                 { bg:"#0a1a0a", accent:"#A3E635", emoji:"📐", grad:"linear-gradient(135deg,#0a1a0a,#1a3a10)" },
+                      "Bit Manipulation":     { bg:"#0f0f1a", accent:"#F9A8D4", emoji:"⚙️", grad:"linear-gradient(135deg,#0f0f1a,#26203d)" },
+                      // ECE/Domain topics
+                      "Communication Systems":{ bg:"#0f172a", accent:"#38BDF8", emoji:"📡", grad:"linear-gradient(135deg,#0f172a,#1e3a5f)" },
+                      "Signals & Systems":    { bg:"#1a0f1a", accent:"#C084FC", emoji:"〰️", grad:"linear-gradient(135deg,#1a0f1a,#361a36)" },
+                      "Analog Electronics":   { bg:"#1a1208", accent:"#FCD34D", emoji:"⚡", grad:"linear-gradient(135deg,#1a1208,#3d2c10)" },
+                      "Circuit Analysis":     { bg:"#0d1a12", accent:"#34D399", emoji:"🔌", grad:"linear-gradient(135deg,#0d1a12,#1a3326)" },
+                      "Datasheet Intelligence":{ bg:"#1c1917", accent:"#FB923C", emoji:"📋", grad:"linear-gradient(135deg,#1c1917,#3d2b1f)" },
+                      "ECE Troubleshooting":  { bg:"#1a0a0a", accent:"#FCA5A5", emoji:"🛠️", grad:"linear-gradient(135deg,#1a0a0a,#3d1515)" },
+                      "Electronic Components":{ bg:"#0f2027", accent:"#86EFAC", emoji:"🔧", grad:"linear-gradient(135deg,#0f2027,#1a3a26)" },
+                      "Microprocessors & Controllers":{ bg:"#0a0f1a", accent:"#818CF8", emoji:"💾", grad:"linear-gradient(135deg,#0a0f1a,#1a2040)" },
+                    }
+                    const theme = TOPIC_THEME[topic] || { bg:"#111827", accent:"#9CA3AF", emoji:"💡", grad:"linear-gradient(135deg,#111827,#1f2937)" }
+                    const diffStyle = DIFF_STYLE[ch.difficulty] || {}
+
+                    return (
+                      <div key={ch.id}
+                        onClick={() => openChallenge(ch)}
+                        style={{
+                          background:"#fff", border:`1px solid ${T.border}`, borderRadius:12,
+                          overflow:"hidden", cursor:"pointer",
+                          boxShadow:"0 1px 4px rgba(0,0,0,0.06)",
+                          transition:"transform 0.16s, box-shadow 0.16s",
+                          opacity: solved ? 0.88 : 1,
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.transform="translateY(-3px)"; e.currentTarget.style.boxShadow="0 6px 20px rgba(0,0,0,0.12)" }}
+                        onMouseLeave={e => { e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="0 1px 4px rgba(0,0,0,0.06)" }}
+                      >
+                        {/* Visual thumbnail */}
+                        <div style={{ position:"relative", height:150, background:theme.grad, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden" }}>
+                          {/* Circuit board grid overlay */}
+                          <div style={{ position:"absolute", inset:0, opacity:0.08, backgroundImage:"radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize:"18px 18px" }} />
+                          {/* Glow blob */}
+                          <div style={{ position:"absolute", width:100, height:100, borderRadius:"50%", background:theme.accent, opacity:0.15, filter:"blur(30px)", top:"50%", left:"50%", transform:"translate(-50%,-50%)" }} />
+                          {/* Center emoji + topic */}
+                          <div style={{ textAlign:"center", position:"relative", zIndex:1 }}>
+                            <div style={{ fontSize:40, marginBottom:6, filter:"drop-shadow(0 2px 8px rgba(0,0,0,0.4))" }}>{theme.emoji}</div>
+                            <div style={{ fontSize:10, fontWeight:800, color:theme.accent, letterSpacing:"0.12em", textTransform:"uppercase" }}>{topic}</div>
+                          </div>
+                          {/* Top badges */}
+                          <div style={{ position:"absolute", top:8, left:8, display:"flex", gap:5 }}>
+                            <span style={{ padding:"2px 8px", borderRadius:99, fontSize:10, fontWeight:800, background:diffStyle.bg || "#f3f4f6", color:diffStyle.color || T.ink3 }}>
+                              {ch.difficulty}
+                            </span>
+                          </div>
+                          {/* ELO or solved badge */}
+                          <div style={{ position:"absolute", top:8, right:8 }}>
+                            {solved
+                              ? <span style={{ padding:"2px 8px", borderRadius:99, fontSize:10, fontWeight:800, background:"#16A34A", color:"#fff" }}>✓ Solved</span>
+                              : <span style={{ padding:"2px 8px", borderRadius:99, fontSize:10, fontWeight:800, background:"rgba(61,78,172,0.9)", color:"#fff" }}>+{eloReward} ELO</span>}
+                          </div>
+                          {/* Problem number */}
+                          <div style={{ position:"absolute", bottom:8, left:8, fontSize:10, color:"rgba(255,255,255,0.35)", fontFamily:"monospace" }}>#{i + 1}</div>
+                        </div>
+
+                        {/* Card body */}
+                        <div style={{ padding:"12px 14px" }}>
+                          <div style={{ fontSize:13, fontWeight:700, color: solved ? T.ink3 : T.ink, lineHeight:1.35, marginBottom:6, minHeight:36, textDecoration: solved ? "line-through" : "none" }}>
+                            {ch.title}
+                          </div>
+                          {/* Skills */}
+                          <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginBottom:10 }}>
+                            {(ch.skills || []).slice(0, 3).map(s => (
+                              <span key={s} style={{ fontSize:10, color:T.ink4, background:T.bg, border:`1px solid ${T.border}`, borderRadius:99, padding:"1px 7px" }}>{s}</span>
+                            ))}
+                          </div>
+                          {/* Footer stats */}
+                          <div style={{ display:"flex", alignItems:"center", gap:12, borderTop:`1px solid ${T.border}`, paddingTop:9 }}>
+                            <span style={{ fontSize:11, color:T.ink4 }}>✅ {ch.acceptance != null ? `${ch.acceptance}%` : "—"}</span>
+                            <span style={{ fontSize:11, color:T.ink4 }}>⏱ {ch.estimated_mins || 30}m</span>
+                            {solved && <span style={{ marginLeft:"auto", fontSize:10, color:T.green, fontWeight:700 }}>🔒 Done</span>}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
               )}
-            </div>
+            )}</div>
 
             {/* Footer stats */}
             <div style={{ padding:"8px 20px", borderTop:`1px solid ${T.border}`, display:"flex", gap:16, fontSize:11, color:T.ink4, background:T.bg, flexShrink:0 }}>
