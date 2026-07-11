@@ -208,14 +208,22 @@ export const userDoc = {
     return !err2
   },
 
-  /** Partial update — normalises camelCase keys to snake_case before writing. */
+  /** Partial update — normalises camelCase keys to snake_case before writing.
+   *  username is intentionally excluded here: it must only be set via userDoc.set()
+   *  during onboarding, or via the explicit setUsername helper below.
+   *  Including it in routine updates risks 409 conflicts on the unique index. */
   update: async (uid, updates) => {
-    const normalised = toSnake({ ...updates, updated_at: new Date().toISOString() })
+    // Allow username through only if it's the sole field being set (intentional username fix)
+    const isUsernameOnlyUpdate = Object.keys(updates).filter(k => k !== 'username' && k !== 'updated_at').length === 0
+    const safeUpdates = isUsernameOnlyUpdate ? updates : Object.fromEntries(Object.entries(updates).filter(([k]) => k !== 'username'))
+    const normalised = toSnake({ ...safeUpdates, updated_at: new Date().toISOString() })
     const { error } = await supabase
       .from('profiles')
       .update(normalised)
       .eq('id', uid)
-    if (error) console.error('userDoc.update error:', error.message, '| keys:', Object.keys(normalised).join(', '))
+    if (error && process.env.NODE_ENV !== 'production') {
+      console.warn('userDoc.update error:', error.message)
+    }
     return !error
   },
 

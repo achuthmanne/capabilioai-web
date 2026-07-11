@@ -614,13 +614,20 @@ function App() {
         profileUnsub = userDoc.subscribe(u.id, async (data) => {
           if (data) {
             if (!data.username) {
-              const autoUsername = (u.user_metadata?.full_name || u.email || u.id)
-                .toLowerCase().trim()
-                .replace(/[^a-z0-9]/g, "-")
-                .replace(/-+/g, "-")
-                .replace(/^-|-$/g, "")
-              await userDoc.update(u.id, { username: autoUsername })
-              data.username = autoUsername
+              // Add 6-char random suffix so same-name users never collide on the unique index.
+              // Guard with a flag so we only attempt once per session, not on every subscribe fire.
+              if (!window.__usernameSetAttempted) {
+                window.__usernameSetAttempted = true
+                const base = (u.user_metadata?.full_name || u.email?.split("@")[0] || u.id)
+                  .toLowerCase().trim()
+                  .replace(/[^a-z0-9]/g, "-")
+                  .replace(/-+/g, "-")
+                  .replace(/^-|-$/g, "")
+                const suffix = Math.random().toString(36).slice(2, 8)
+                const autoUsername = `${base}-${suffix}`
+                await userDoc.update(u.id, { username: autoUsername }).catch(() => {})
+                data.username = autoUsername
+              }
             }
             const isDone =
               data.onboarding_complete === true ||

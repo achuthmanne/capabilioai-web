@@ -2841,15 +2841,15 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
       // Only auto-fix if username is missing entirely (never set) — don't overwrite valid slugs
       // Wrap in try/catch: a duplicate username unique-constraint error is non-fatal
       if (correctSlug && !storedSlug && (user?.id||user?.uid)) {
-        userDoc.update(user.id||user.uid, { username: correctSlug })
+        // Add suffix to guarantee uniqueness — same-name users must never share a slug
+        const suffix = Math.random().toString(36).slice(2, 6)
+        const uniqueSlug = `${correctSlug}-${suffix}`
+        userDoc.update(user.id||user.uid, { username: uniqueSlug })
           .then(() => {
-            if(setUserData) setUserData(d => ({...d, username: correctSlug}))
-            setLocalUserData(d => ({...d, username: correctSlug}))
+            if(setUserData) setUserData(d => ({...d, username: uniqueSlug}))
+            setLocalUserData(d => ({...d, username: uniqueSlug}))
           })
-          .catch(e => {
-            // Silently ignore unique constraint violations (another profile already has this slug)
-            if(!e.message?.includes("unique")) console.warn("username auto-fix:", e.message)
-          })
+          .catch(() => {}) // silent — username is cosmetic, not blocking
       }
     }
   }, [propUserData])
