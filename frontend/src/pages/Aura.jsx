@@ -1014,7 +1014,7 @@ function SkillVoucherPanel({ user, userData }) {
   const [copied, setCopied]           = useState(false)
   const [leaderboard, setLeaderboard] = useState([])
   useEffect(() => {
-    if (!user?.uid) return
+    if (!user?.id && !user?.uid) return
     const _uid = user.id || user.uid
     const eloFloor = userData?.path==='professional'||userData?.path==='authority' ? 800 : 400
     // Step 1: show UI immediately with locally-derived data (no spinner wait)
@@ -1049,7 +1049,7 @@ function SkillVoucherPanel({ user, userData }) {
     setCopied(true); setTimeout(()=>setCopied(false),2500)
   }
   if (loading) return <div style={{padding:60,color:T.ink4,display:"flex",alignItems:"center",gap:10}}><div style={{width:14,height:14,border:`2px solid ${T.indigo}`,borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.7s linear infinite"}}/>Loading...</div>
-  const myRank = leaderboard.findIndex(l=>l.uid===user?.uid)
+  const myRank = leaderboard.findIndex(l=>l.uid===(user?.id||user?.uid))
   return (
     <div>
       <div style={{marginBottom:24}}>
