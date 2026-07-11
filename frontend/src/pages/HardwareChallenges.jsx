@@ -3,8 +3,13 @@
  * PCB-community-style challenge page for ECE / IoT / Mechanical / Civil / EEE students.
  * Card grid → detail view → AI-graded submission → ELO reward.
  */
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { hardwareApi } from "../lib/api"
+
+// CircuitJS1 embed helper — builds the iframe URL from a pre-compressed ctz string
+function circuitUrl(ctz) {
+  return `https://www.falstad.com/circuit/circuitjs.html?ctz=${encodeURIComponent(ctz)}&hideMenu=false`
+}
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 const T = {
@@ -143,6 +148,70 @@ function SkeletonCard() {
   )
 }
 
+// ── Circuit Simulator Panel (CircuitJS1 embed) ────────────────────────────────
+function CircuitSimPanel({ ctz, title }) {
+  const [simReady, setSimReady] = useState(false)
+  const [fullscreen, setFullscreen] = useState(false)
+  const url = circuitUrl(ctz)
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+      {/* Toolbar */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "#0f172a", borderRadius: "10px 10px 0 0" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#EF4444" }} />
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B" }} />
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#10B981" }} />
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginLeft: 8, fontFamily: "monospace" }}>CircuitJS1 Simulator</span>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <a href={url} target="_blank" rel="noopener noreferrer"
+            style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", textDecoration: "none", padding: "3px 8px", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 5, cursor: "pointer" }}>
+            ↗ Open full tab
+          </a>
+          <button onClick={() => setFullscreen(f => !f)}
+            style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", background: "none", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 5, padding: "3px 8px", cursor: "pointer" }}>
+            {fullscreen ? "⊡ Shrink" : "⊞ Expand"}
+          </button>
+        </div>
+      </div>
+
+      {/* Sim iframe */}
+      <div style={{ position: "relative", background: "#1a1a2e", borderRadius: "0 0 10px 10px", overflow: "hidden", height: fullscreen ? 620 : 420 }}>
+        {!simReady && (
+          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, background: "#0f172a", zIndex: 2 }}>
+            <div style={{ width: 32, height: 32, border: "3px solid rgba(255,255,255,0.1)", borderTopColor: "#38BDF8", borderRadius: "50%", animation: "spin 0.9s linear infinite" }} />
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>Loading circuit simulator…</div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>Powered by CircuitJS1 (Paul Falstad)</div>
+          </div>
+        )}
+        <iframe
+          src={url}
+          title={title}
+          onLoad={() => setSimReady(true)}
+          style={{ width: "100%", height: "100%", border: "none", display: "block" }}
+          allow="fullscreen"
+        />
+      </div>
+
+      {/* Sim hints bar */}
+      <div style={{ display: "flex", gap: 16, padding: "8px 12px", background: "#1e293b", borderRadius: "0 0 10px 10px", flexWrap: "wrap" }}>
+        {[
+          { key: "▶ Play",       tip: "Run simulation" },
+          { key: "⏸ Pause",      tip: "Pause" },
+          { key: "Scroll",       tip: "Zoom in/out" },
+          { key: "Dbl-click",    tip: "Edit component value" },
+          { key: "Right-click",  tip: "More options" },
+        ].map(h => (
+          <span key={h.key} style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>
+            <strong style={{ color: "rgba(255,255,255,0.65)" }}>{h.key}</strong> {h.tip}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── Challenge Detail ──────────────────────────────────────────────────────────
 function ChallengeDetail({ id, onBack }) {
   const [data,       setData]       = useState(null)
@@ -200,6 +269,8 @@ function ChallengeDetail({ id, onBack }) {
   const sc = STREAM_COLORS[challenge.stream] || { bg: T.accent2, color: T.accent, border: T.border }
   const dc = DIFF_COLORS[challenge.difficulty] || DIFF_COLORS.Beginner
   const steps = challenge.steps || []
+  const observations = challenge.observations || []
+  const isSim = !!challenge.sim_enabled
 
   const gradeEmoji = (score) => {
     if (score >= 80) return "🏆"
@@ -250,7 +321,188 @@ function ChallengeDetail({ id, onBack }) {
         </div>
       </div>
 
-      {/* Two-column layout */}
+      {/* ── SIMULATOR LAYOUT (ECE/EEE) ──────────────────────────────────── */}
+      {isSim && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 20, marginBottom: 0 }}>
+          {/* Sim + Observation checklist side by side */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: 20, alignItems: "start" }}>
+            {/* Left: CircuitJS1 iframe */}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: T.ink4, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>
+                ⚡ Interactive Circuit Simulator
+              </div>
+              <CircuitSimPanel ctz={challenge.sim_ctz} title={challenge.title} />
+            </div>
+
+            {/* Right: Observation checklist */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.r, padding: "18px 20px", boxShadow: T.shadow }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: T.ink4, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 14 }}>
+                  🔬 Observation Tasks ({observations.length})
+                </div>
+                <div style={{ fontSize: 12, color: T.ink3, marginBottom: 14, lineHeight: 1.6, padding: "8px 12px", background: "#FFFBF5", border: "1px solid #FED7AA", borderRadius: 7 }}>
+                  Run the simulator on the left, then answer each observation below. Submit your combined findings for AI grading.
+                </div>
+                {observations.map((obs, i) => (
+                  <div key={obs.id || i} style={{ display: "flex", gap: 10, padding: "10px 0", borderBottom: i < observations.length - 1 ? `1px solid ${T.border}` : "none" }}>
+                    <div style={{
+                      width: 22, height: 22, borderRadius: "50%", flexShrink: 0, marginTop: 1,
+                      background: T.accent2, border: `2px solid ${T.accent}`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 10, fontWeight: 800, color: T.accent,
+                    }}>
+                      {i + 1}
+                    </div>
+                    <div style={{ fontSize: 13, color: T.ink2, lineHeight: 1.6 }}>{obs.task}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Challenge info card (compact) */}
+              <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.r, padding: "14px 16px", boxShadow: T.shadow }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: T.ink4, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>Challenge Info</div>
+                {[
+                  { label: "Stream",     value: `${STREAM_EMOJI[challenge.stream] || "🔧"} ${challenge.stream}` },
+                  { label: "Category",   value: challenge.category },
+                  { label: "Difficulty", value: challenge.difficulty },
+                  { label: "ELO Reward", value: `Up to +${challenge.elo_reward}` },
+                ].map((item, i, arr) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none" }}>
+                    <span style={{ fontSize: 12, color: T.ink4 }}>{item.label}</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.ink }}>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Submission form / result — full width below sim */}
+          {result ? (
+            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.r, padding: "20px 24px", boxShadow: T.shadow }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                <div style={{ fontSize: 36 }}>{gradeEmoji(result.score)}</div>
+                <div>
+                  <div style={{ fontSize: 17, fontWeight: 800, color: T.ink }}>{result.grade}</div>
+                  <div style={{ fontSize: 12, color: T.ink3 }}>
+                    Score: {result.score}/100 · {result.elo_awarded > 0 ? `+${result.elo_awarded} ELO awarded 🎉` : "No ELO this time — keep practising!"}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ fontSize: 13, color: T.ink2, lineHeight: 1.65, padding: "12px 14px", background: T.bg, borderRadius: 8, marginBottom: 14, borderLeft: `3px solid ${result.score >= 80 ? "#15803D" : result.score >= 60 ? T.accent : "#D97706"}` }}>
+                {result.verdict}
+              </div>
+
+              {result.strengths?.length > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: "#15803D", letterSpacing: "0.06em", marginBottom: 6 }}>✓ STRENGTHS</div>
+                  {result.strengths.map((s, i) => <div key={i} style={{ fontSize: 12, color: T.ink2, marginBottom: 4, paddingLeft: 12 }}>• {s}</div>)}
+                </div>
+              )}
+
+              {result.improvements?.length > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: "#C2410C", letterSpacing: "0.06em", marginBottom: 6 }}>→ TO IMPROVE</div>
+                  {result.improvements.map((s, i) => <div key={i} style={{ fontSize: 12, color: T.ink2, marginBottom: 4, paddingLeft: 12 }}>• {s}</div>)}
+                </div>
+              )}
+
+              {result.model_insight && (
+                <div style={{ background: "#FFFBF5", border: "1px solid #FED7AA", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#92400E", lineHeight: 1.6, marginBottom: 14 }}>
+                  💡 <strong>Key insight:</strong> {result.model_insight}
+                </div>
+              )}
+
+              <button onClick={() => { setResult(null); setAnswer("") }}
+                style={{ padding: "8px 18px", background: T.accent2, border: "1px solid rgba(255,87,1,0.2)", borderRadius: 8, fontSize: 12, fontWeight: 700, color: T.accent, cursor: "pointer" }}>
+                Try again with a better answer ↺
+              </button>
+            </div>
+          ) : (
+            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.r, padding: "20px 24px", boxShadow: T.shadow }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: T.ink4, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>
+                ✍️ Your Observations
+              </div>
+              <p style={{ fontSize: 12, color: T.ink3, marginBottom: 12, lineHeight: 1.6 }}>
+                {isSim
+                  ? `Use the simulator above to complete all ${observations.length} observation tasks, then describe your findings here. Include measured values, what changed, and your explanations.`
+                  : `Work through all ${steps.length} steps above, then write your complete solution here. Show your calculations, explain your reasoning, and address every step. The AI will grade your answer.`
+                }
+              </p>
+              <textarea
+                value={answer}
+                onChange={e => setAnswer(e.target.value)}
+                disabled={submitting}
+                placeholder={isSim
+                  ? `Describe your simulator observations here — e.g. "Task 1: I measured 3.3V peak. Task 2: Average output was 1.65V (50% duty cycle × 3.3V). Task 3: Changing C from 10µF to 1µF made the ripple much larger..."`
+                  : `Write your complete solution here — show calculations with units, explain the reasoning behind each step, name the components you'd use, and describe real-world application of your design...`
+                }
+                style={{
+                  width: "100%", minHeight: isSim ? 160 : 200, padding: "12px 14px",
+                  border: `1.5px solid ${error ? "#FCA5A5" : T.border}`,
+                  borderRadius: 10, fontSize: 13, color: T.ink, resize: "vertical",
+                  fontFamily: "inherit", outline: "none", boxSizing: "border-box", lineHeight: 1.65,
+                }}
+                onFocus={e => { e.target.style.borderColor = T.accent }}
+                onBlur={e => { e.target.style.borderColor = error ? "#FCA5A5" : T.border }}
+              />
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 10 }}>
+                <span style={{ fontSize: 11, color: answer.length < 50 ? "#F87171" : "#15803D" }}>
+                  {answer.length} chars {answer.length < 50 ? `· need ${50 - answer.length} more` : "· ready to submit ✓"}
+                </span>
+                <button
+                  onClick={submit}
+                  disabled={submitting || answer.trim().length < 50}
+                  style={{
+                    padding: "10px 24px", border: "none", borderRadius: 9, color: "#fff", fontSize: 13, fontWeight: 700,
+                    background: (answer.trim().length >= 50 && !submitting) ? T.accent : "#D1D5DB",
+                    cursor: (answer.trim().length >= 50 && !submitting) ? "pointer" : "default",
+                  }}
+                >
+                  {submitting ? "AI Grading…" : "Submit for AI Grading →"}
+                </button>
+              </div>
+              {error && <div style={{ marginTop: 8, fontSize: 12, color: "#B91C1C", background: "#FEF2F2", padding: "8px 12px", borderRadius: 6 }}>{error}</div>}
+            </div>
+          )}
+
+          {/* ELO scoring + tips (sim layout, below submission) */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.r, padding: 16, boxShadow: T.shadow }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: T.ink4, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12 }}>ELO Scoring</div>
+              {[
+                { range: "80–100", label: "Excellent", elo: `+${challenge.elo_reward}`,                         color: "#15803D", bg: "#F0FDF4" },
+                { range: "60–79",  label: "Good",      elo: `+${Math.round(challenge.elo_reward * 0.75)}`,       color: T.accent,  bg: T.accent2 },
+                { range: "40–59",  label: "Fair",      elo: `+${Math.round(challenge.elo_reward * 0.5)}`,        color: "#D97706", bg: "#FFFBEB" },
+                { range: "0–39",   label: "Try again", elo: "+0",                                                color: "#6B7280", bg: T.bg },
+              ].map((s, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: 6, marginBottom: 4, background: s.bg }}>
+                  <span style={{ fontSize: 11, color: s.color, fontWeight: 600 }}>{s.range} — {s.label}</span>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: s.color }}>{s.elo}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ background: "#FFFBF5", border: "1px solid #FED7AA", borderRadius: T.r, padding: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#C2410C", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>💡 Score Higher</div>
+              {[
+                "State exact measured values",
+                "Explain why values changed",
+                "Note units in every answer",
+                "Address every observation task",
+                "Link findings to theory",
+              ].map((tip, i) => (
+                <div key={i} style={{ fontSize: 12, color: "#92400E", marginBottom: 5, display: "flex", gap: 8 }}>
+                  <span style={{ flexShrink: 0, color: "#D97706" }}>✓</span>
+                  <span>{tip}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── NON-SIM LAYOUT (Mechanical / Civil / IoT etc.) ─────────────── */}
+      {!isSim && (
       <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 20, alignItems: "start" }}>
         {/* Left: Steps + Submission */}
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -301,31 +553,26 @@ function ChallengeDetail({ id, onBack }) {
                   </div>
                 </div>
               </div>
-
               <div style={{ fontSize: 13, color: T.ink2, lineHeight: 1.65, padding: "12px 14px", background: T.bg, borderRadius: 8, marginBottom: 14, borderLeft: `3px solid ${result.score >= 80 ? "#15803D" : result.score >= 60 ? T.accent : "#D97706"}` }}>
                 {result.verdict}
               </div>
-
               {result.strengths?.length > 0 && (
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ fontSize: 11, fontWeight: 800, color: "#15803D", letterSpacing: "0.06em", marginBottom: 6 }}>✓ STRENGTHS</div>
                   {result.strengths.map((s, i) => <div key={i} style={{ fontSize: 12, color: T.ink2, marginBottom: 4, paddingLeft: 12 }}>• {s}</div>)}
                 </div>
               )}
-
               {result.improvements?.length > 0 && (
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ fontSize: 11, fontWeight: 800, color: "#C2410C", letterSpacing: "0.06em", marginBottom: 6 }}>→ TO IMPROVE</div>
                   {result.improvements.map((s, i) => <div key={i} style={{ fontSize: 12, color: T.ink2, marginBottom: 4, paddingLeft: 12 }}>• {s}</div>)}
                 </div>
               )}
-
               {result.model_insight && (
                 <div style={{ background: "#FFFBF5", border: "1px solid #FED7AA", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#92400E", lineHeight: 1.6, marginBottom: 14 }}>
                   💡 <strong>Key insight:</strong> {result.model_insight}
                 </div>
               )}
-
               <button onClick={() => { setResult(null); setAnswer("") }}
                 style={{ padding: "8px 18px", background: T.accent2, border: "1px solid rgba(255,87,1,0.2)", borderRadius: 8, fontSize: 12, fontWeight: 700, color: T.accent, cursor: "pointer" }}>
                 Try again with a better answer ↺
@@ -343,7 +590,7 @@ function ChallengeDetail({ id, onBack }) {
                 value={answer}
                 onChange={e => setAnswer(e.target.value)}
                 disabled={submitting}
-                placeholder={`Write your complete solution here — show calculations with units, explain the reasoning behind each step, name the components you'd use, and describe real-world application of your design...`}
+                placeholder="Write your complete solution here — show calculations with units, explain the reasoning behind each step, name the components you'd use, and describe real-world application of your design..."
                 style={{
                   width: "100%", minHeight: 200, padding: "12px 14px",
                   border: `1.5px solid ${error ? "#FCA5A5" : T.border}`,
@@ -398,10 +645,10 @@ function ChallengeDetail({ id, onBack }) {
           <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.r, padding: 16, boxShadow: T.shadow }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: T.ink4, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12 }}>ELO Scoring</div>
             {[
-              { range: "80–100", label: "Excellent", elo: `+${challenge.elo_reward}`,                           color: "#15803D", bg: "#F0FDF4" },
-              { range: "60–79",  label: "Good",      elo: `+${Math.round(challenge.elo_reward * 0.75)}`,         color: T.accent,  bg: T.accent2 },
-              { range: "40–59",  label: "Fair",      elo: `+${Math.round(challenge.elo_reward * 0.5)}`,          color: "#D97706", bg: "#FFFBEB" },
-              { range: "0–39",   label: "Try again", elo: "+0",                                                  color: "#6B7280", bg: T.bg },
+              { range: "80–100", label: "Excellent", elo: `+${challenge.elo_reward}`,                         color: "#15803D", bg: "#F0FDF4" },
+              { range: "60–79",  label: "Good",      elo: `+${Math.round(challenge.elo_reward * 0.75)}`,       color: T.accent,  bg: T.accent2 },
+              { range: "40–59",  label: "Fair",      elo: `+${Math.round(challenge.elo_reward * 0.5)}`,        color: "#D97706", bg: "#FFFBEB" },
+              { range: "0–39",   label: "Try again", elo: "+0",                                                color: "#6B7280", bg: T.bg },
             ].map((s, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: 6, marginBottom: 4, background: s.bg }}>
                 <span style={{ fontSize: 11, color: s.color, fontWeight: 600 }}>{s.range} — {s.label}</span>
@@ -440,6 +687,7 @@ function ChallengeDetail({ id, onBack }) {
           )}
         </div>
       </div>
+      )}
     </div>
   )
 }
