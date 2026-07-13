@@ -6,31 +6,95 @@
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SANDBOX TYPES
+// RENDERER TYPES  (formerly called "sandbox types")
 // ─────────────────────────────────────────────────────────────────────────────
 // "sql"       → SQL editor + result grid
-// "notebook"  → Python notebook (pandas/matplotlib)
+// "notebook"  → Python notebook (Pyodide/pandas/matplotlib)
 // "terminal"  → bash terminal
 // "react"     → live React/HTML preview
-// "code"      → general code editor (language-aware)
+// "code"      → general code editor (language-aware Monaco)
 // "markdown"  → rich markdown editor
 // "diagram"   → system design canvas
+//
+// Future custom renderers (added here as they ship):
+// "firmware"      → STM32/ARM IDE (Monaco + register sidebar + peripheral viewer)
+// "logic"         → Waveform viewer + UART/SPI/I²C decoder
+// "schematic"     → Python SPICE schematic + sim runner
+// "layout"        → IC layout canvas + layer palette + DRC overlay
+// "structural"    → Beam/frame canvas + load diagram + code checks
+// "hdl"           → Verilog-aware editor + synthesis report + waveform
+// ─────────────────────────────────────────────────────────────────────────────
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WIDGET REGISTRY
+// ─────────────────────────────────────────────────────────────────────────────
+// Widgets are composable panels inside a workbench.
+// Each workbench declares which widgets it includes.
+// Future: WidgetRegistry[id] → React component via lazy import.
+// ─────────────────────────────────────────────────────────────────────────────
+export const WIDGET_REGISTRY = {
+  // Universal
+  mission_control:   { id: "mission_control",   label: "Mission",          icon: "🎯", group: "core" },
+  hints:             { id: "hints",              label: "Hints",            icon: "💡", group: "core" },
+  test_output:       { id: "test_output",        label: "Test Output",      icon: "✅", group: "core" },
+  // Editors
+  code_editor:       { id: "code_editor",        label: "Code Editor",      icon: "💻", group: "editor" },
+  markdown_editor:   { id: "markdown_editor",    label: "Markdown Editor",  icon: "📝", group: "editor" },
+  notebook:          { id: "notebook",           label: "Notebook",         icon: "📓", group: "editor" },
+  react_preview:     { id: "react_preview",      label: "Live Preview",     icon: "🎨", group: "editor" },
+  terminal:          { id: "terminal",           label: "Terminal",         icon: "🖥️", group: "editor" },
+  sql_editor:        { id: "sql_editor",         label: "SQL Editor",       icon: "🗄️", group: "editor" },
+  // Embedded / Hardware
+  register_viewer:   { id: "register_viewer",    label: "Register Map",     icon: "📋", group: "hardware" },
+  serial_terminal:   { id: "serial_terminal",    label: "Serial Monitor",   icon: "📡", group: "hardware" },
+  build_output:      { id: "build_output",       label: "Build Output",     icon: "🔨", group: "hardware" },
+  waveform_viewer:   { id: "waveform_viewer",    label: "Waveform Viewer",  icon: "〰️", group: "hardware" },
+  decode_panel:      { id: "decode_panel",       label: "Protocol Decoder", icon: "🔍", group: "hardware" },
+  task_viewer:       { id: "task_viewer",        label: "Task Viewer",      icon: "⏱️", group: "hardware" },
+  stack_inspector:   { id: "stack_inspector",    label: "Stack Inspector",  icon: "📚", group: "hardware" },
+  // VLSI / Analog
+  synthesis_report:  { id: "synthesis_report",   label: "Synthesis Report", icon: "📊", group: "vlsi" },
+  schematic_canvas:  { id: "schematic_canvas",   label: "Schematic",        icon: "⚡", group: "vlsi" },
+  simulation_output: { id: "simulation_output",  label: "Sim Output",       icon: "📈", group: "vlsi" },
+  layer_palette:     { id: "layer_palette",      label: "Layer Palette",    icon: "🎨", group: "vlsi" },
+  drc_panel:         { id: "drc_panel",          label: "DRC Panel",        icon: "🔎", group: "vlsi" },
+  lvs_panel:         { id: "lvs_panel",          label: "LVS Panel",        icon: "⚖️", group: "vlsi" },
+  // Engineering
+  formula_reference: { id: "formula_reference",  label: "Formula Ref",      icon: "📐", group: "eng" },
+  unit_converter:    { id: "unit_converter",     label: "Unit Converter",   icon: "🔄", group: "eng" },
+  beam_canvas:       { id: "beam_canvas",        label: "Beam Canvas",      icon: "🏗️", group: "eng" },
+  load_diagram:      { id: "load_diagram",       label: "Load Diagram",     icon: "📉", group: "eng" },
+  analysis_results:  { id: "analysis_results",   label: "Analysis Results", icon: "📊", group: "eng" },
+  property_panel:    { id: "property_panel",     label: "Properties",       icon: "🔧", group: "eng" },
+  // ML / Business / Clinical
+  metrics_dashboard: { id: "metrics_dashboard",  label: "Metrics",          icon: "📊", group: "ml" },
+  model_compare:     { id: "model_compare",      label: "Model Compare",    icon: "🤖", group: "ml" },
+  experiment_log:    { id: "experiment_log",     label: "Experiment Log",   icon: "📋", group: "ml" },
+  framework_canvas:  { id: "framework_canvas",   label: "Framework Canvas", icon: "🗂️", group: "biz" },
+  data_table:        { id: "data_table",         label: "Data Table",       icon: "📋", group: "biz" },
+  drug_reference:    { id: "drug_reference",     label: "Drug Reference",   icon: "💊", group: "clinical" },
+  patient_record:    { id: "patient_record",     label: "Patient Record",   icon: "🏥", group: "clinical" },
+  component_tree:    { id: "component_tree",     label: "Component Tree",   icon: "🌳", group: "ui" },
+}
 
 
 // ─────────────────────────────────────────────────────────────────────────────
 // WORKBENCH REGISTRY
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Architecture: Role → Mission → Workbench (not Role → one Sandbox forever)
+// Architecture: Role → Skill → Mission → Workbench → Renderer
 //
 // Every mission declares the workbench it needs via { workbench: "firmware_ide" }.
-// resolveSandboxType() resolves: task.workbench → registry.sandbox → fallback.
+// Every workbench declares:
+//   renderer — the React component name that renders this environment.
+//              Today these map to existing shared renderers ("code", "notebook" etc).
+//              When a custom renderer is built, update only this field — no
+//              mission files, role files, or skill files need to change.
+//   widgets  — ordered list of panel IDs that compose this workbench.
+//              Today widgets are decorative metadata; future: drives composable UI.
 //
-// Adding a new workstation type in the future = add one entry here.
-// No changes needed to role configs or mission configs.
-//
-// "sandbox" is the CURRENT renderer. When a custom React component is built
-// (e.g. a real oscilloscope UI), update only this registry entry.
+// Adding a new workstation type = add one entry here. Done.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const WORKBENCH_REGISTRY = {
@@ -40,28 +104,31 @@ export const WORKBENCH_REGISTRY = {
   code_ide: {
     id: "code_ide",
     label: "Code IDE",
-    sandbox: "code",
+    renderer: "code",
     icon: "💻",
     desc: "General-purpose code editor — JS, Python, Go, Java, etc.",
     usedBy: ["frontend","backend","fullstack","swe","devops","android","ios","eee","mechanical"],
+    widgets: ["code_editor","test_output","mission_control","hints"],
   },
 
   documentation_studio: {
     id: "documentation_studio",
     label: "Documentation Studio",
-    sandbox: "markdown",
+    renderer: "markdown",
     icon: "📝",
     desc: "Rich markdown editor for specs, reports, design docs, and architecture notes",
     usedBy: ["all"],
+    widgets: ["markdown_editor","preview_pane","mission_control","hints"],
   },
 
   terminal_console: {
     id: "terminal_console",
     label: "Terminal Console",
-    sandbox: "terminal",
+    renderer: "terminal",
     icon: "🖥️",
     desc: "Shell/bash console for scripts, debugging, log inspection, and CLI tools",
     usedBy: ["devops","sre","embedded","backend"],
+    widgets: ["terminal","build_output","mission_control","hints"],
   },
 
   // ── Embedded / Hardware ───────────────────────────────────────────────────
@@ -69,31 +136,34 @@ export const WORKBENCH_REGISTRY = {
   firmware_ide: {
     id: "firmware_ide",
     label: "Firmware IDE",
-    sandbox: "code",           // future: "firmware_ide" (custom Monaco + register sidebar)
+    renderer: "code",           // → "firmware" when custom renderer ships
     icon: "🔌",
     desc: "Embedded C/C++ editor with register map sidebar and compiler feedback",
     lang: "C",
     usedBy: ["embedded"],
+    widgets: ["code_editor","register_viewer","serial_terminal","build_output","mission_control","hints"],
   },
 
   logic_analyzer: {
     id: "logic_analyzer",
     label: "Logic Analyzer",
-    sandbox: "notebook",       // future: "logic_analyzer" (waveform viewer component)
+    renderer: "notebook",       // → "logic" when waveform viewer ships
     icon: "📊",
     desc: "Digital signal timeline: decode UART/SPI/I²C frames and spot glitches",
     lang: "Python",
     usedBy: ["embedded","vlsi"],
+    widgets: ["notebook","waveform_viewer","decode_panel","mission_control","hints"],
   },
 
   rtos_debugger: {
     id: "rtos_debugger",
     label: "RTOS Debugger",
-    sandbox: "code",           // future: "rtos_debugger" (task/state viewer)
+    renderer: "code",           // → "rtos" when task-state viewer ships
     icon: "⏱️",
     desc: "Visualise FreeRTOS/Zephyr task states, stack usage, priority inversion",
     lang: "C",
     usedBy: ["embedded"],
+    widgets: ["code_editor","task_viewer","stack_inspector","mission_control","hints"],
   },
 
   // ── VLSI / Digital IC ─────────────────────────────────────────────────────
@@ -101,11 +171,12 @@ export const WORKBENCH_REGISTRY = {
   hdl_ide: {
     id: "hdl_ide",
     label: "HDL IDE",
-    sandbox: "code",           // future: "hdl_ide" (Verilog-aware editor + sim runner)
+    renderer: "code",           // → "hdl" when Verilog-aware sim runner ships
     icon: "🔬",
     desc: "Verilog / SystemVerilog / VHDL editor with lint and synthesis checks",
     lang: "Verilog",
     usedBy: ["vlsi","ece"],
+    widgets: ["code_editor","waveform_viewer","synthesis_report","mission_control","hints"],
   },
 
   // ── Analog / Circuit ──────────────────────────────────────────────────────
@@ -113,20 +184,22 @@ export const WORKBENCH_REGISTRY = {
   circuit_workbench: {
     id: "circuit_workbench",
     label: "Circuit Workbench",
-    sandbox: "notebook",       // future: "circuit_workbench" (schematic + SPICE runner)
+    renderer: "notebook",       // → "schematic" when SPICE runner ships
     icon: "⚡",
     desc: "Python SPICE simulation: op-amps, filters, converters, small-signal models",
     lang: "Python",
     usedBy: ["analog_ic","eee","ece"],
+    widgets: ["notebook","schematic_canvas","simulation_output","mission_control","hints"],
   },
 
   layout_studio: {
     id: "layout_studio",
     label: "Layout Studio",
-    sandbox: "markdown",       // future: "layout_studio" (canvas with layers/DRC overlay)
+    renderer: "markdown",       // → "layout" when IC layout canvas ships
     icon: "🔧",
     desc: "IC layout strategy docs, DRC/LVS checklist, matching and shielding notes",
     usedBy: ["analog_ic"],
+    widgets: ["markdown_editor","layer_palette","drc_panel","lvs_panel","mission_control","hints"],
   },
 
   // ── Engineering Calculation ───────────────────────────────────────────────
@@ -134,31 +207,34 @@ export const WORKBENCH_REGISTRY = {
   engineering_calculator: {
     id: "engineering_calculator",
     label: "Engineering Calculator",
-    sandbox: "notebook",       // Pyodide notebook with numpy/scipy/matplotlib
+    renderer: "notebook",       // Pyodide with numpy/scipy/matplotlib
     icon: "🧮",
     desc: "Python notebook for numerical engineering: load flow, stress, thermo, fluid, PK",
     lang: "Python",
     usedBy: ["mechanical","civil","eee","pharmacy"],
+    widgets: ["notebook","formula_reference","unit_converter","mission_control","hints"],
   },
 
   structural_workbench: {
     id: "structural_workbench",
     label: "Structural Workbench",
-    sandbox: "notebook",       // future: "structural_workbench" (beam diagram + load canvas)
+    renderer: "notebook",       // → "structural" when beam/frame canvas ships
     icon: "🏗️",
     desc: "Beam, column, slab, frame analysis with IS/ACI code checks",
     lang: "Python",
     usedBy: ["civil"],
+    widgets: ["notebook","beam_canvas","load_diagram","analysis_results","mission_control","hints"],
   },
 
   mechanical_studio: {
     id: "mechanical_studio",
     label: "Mechanical Studio",
-    sandbox: "notebook",       // future: custom thermo/CFD/FEA widget
+    renderer: "notebook",       // → custom thermo/CFD/FEA widget
     icon: "⚙️",
     desc: "Thermodynamics, fluid mechanics, and stress analysis workspace",
     lang: "Python",
     usedBy: ["mechanical"],
+    widgets: ["notebook","property_panel","analysis_results","mission_control","hints"],
   },
 
   // ── ML / AI ───────────────────────────────────────────────────────────────
@@ -166,11 +242,12 @@ export const WORKBENCH_REGISTRY = {
   ml_workbench: {
     id: "ml_workbench",
     label: "ML Workbench",
-    sandbox: "notebook",       // Pyodide with sklearn/numpy; future: GPU-backed runner
+    renderer: "notebook",       // Pyodide with sklearn/numpy; → GPU runner later
     icon: "🤖",
     desc: "Model training, evaluation, experiment tracking, and feature engineering",
     lang: "Python",
     usedBy: ["ml"],
+    widgets: ["notebook","metrics_dashboard","model_compare","experiment_log","mission_control","hints"],
   },
 
   // ── Business / Clinical ───────────────────────────────────────────────────
@@ -178,19 +255,21 @@ export const WORKBENCH_REGISTRY = {
   business_studio: {
     id: "business_studio",
     label: "Business Studio",
-    sandbox: "markdown",       // future: "business_studio" (canvas with frameworks)
+    renderer: "markdown",       // → "business" canvas with framework templates
     icon: "💼",
     desc: "Case study, strategy frameworks (SWOT, Porter, BCG), and business writing",
     usedBy: ["mba","ba_product"],
+    widgets: ["markdown_editor","framework_canvas","data_table","mission_control","hints"],
   },
 
   clinical_lab: {
     id: "clinical_lab",
     label: "Clinical Lab",
-    sandbox: "markdown",       // future: "clinical_lab" (patient record + drug DB lookup)
+    renderer: "markdown",       // → "clinical" with patient record + drug DB lookup
     icon: "💊",
     desc: "Clinical case analysis, drug interaction check, and regulatory documentation",
     usedBy: ["pharmacy","medical"],
+    widgets: ["markdown_editor","drug_reference","patient_record","mission_control","hints"],
   },
 
   // ── Design / UI ───────────────────────────────────────────────────────────
@@ -198,10 +277,11 @@ export const WORKBENCH_REGISTRY = {
   design_canvas: {
     id: "design_canvas",
     label: "Design Canvas",
-    sandbox: "react",
+    renderer: "react",
     icon: "🎨",
     desc: "Live React/HTML component preview with hot reload",
     usedBy: ["frontend","fullstack"],
+    widgets: ["react_preview","code_editor","component_tree","mission_control","hints"],
   },
 
 }
@@ -212,11 +292,14 @@ export const WORKBENCH_REGISTRY = {
 export const getWorkbench = (id) => WORKBENCH_REGISTRY[id] || null
 
 /**
- * Resolve the sandbox type from a workbench id.
- * workbenchId → WORKBENCH_REGISTRY[id].sandbox
+ * Resolve the renderer type from a workbench id.
+ * workbenchId → WORKBENCH_REGISTRY[id].renderer
  */
-export const resolveWorkbenchSandbox = (workbenchId) =>
-  WORKBENCH_REGISTRY[workbenchId]?.sandbox || "code"
+export const resolveWorkbenchRenderer = (workbenchId) =>
+  WORKBENCH_REGISTRY[workbenchId]?.renderer || "code"
+
+/** @deprecated Use resolveWorkbenchRenderer */
+export const resolveWorkbenchSandbox = resolveWorkbenchRenderer
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ARENA DOMAINS
@@ -1147,11 +1230,11 @@ export const ARENA_DOMAINS = {
       "Debugging (JTAG/SWD)","Device Drivers","Real-Time Constraints","Hardware Abstraction Layer",
     ],
     missionCategories: [
-      { id: "driver_write",   label: "Write Driver",       workbench: "firmware_ide",     lang: "C",        icon: "🔌" },
-      { id: "rtos_task",      label: "RTOS Task Design",   workbench: "rtos_debugger",     lang: "C",        icon: "⏱️" },
-      { id: "protocol_impl",  label: "Protocol Impl",      workbench: "firmware_ide",     lang: "C",        icon: "📡" },
-      { id: "power_budget",   label: "Power Budget",       workbench: "engineering_calculator", lang: "Python",   icon: "🔋" },
-      { id: "debug_trace",    label: "Debug & Trace",      workbench: "terminal_console", lang: "Shell",    icon: "🐛" },
+      { id: "driver_write",   label: "Write Driver",       workbench: "firmware_ide",           lang: "C",        icon: "🔌", skill: "gpio_peripherals" },
+      { id: "rtos_task",      label: "RTOS Task Design",   workbench: "rtos_debugger",          lang: "C",        icon: "⏱️", skill: "rtos_design" },
+      { id: "protocol_impl",  label: "Protocol Impl",      workbench: "firmware_ide",           lang: "C",        icon: "📡", skill: "serial_protocols" },
+      { id: "power_budget",   label: "Power Budget",       workbench: "engineering_calculator", lang: "Python",   icon: "🔋", skill: "power_management" },
+      { id: "debug_trace",    label: "Debug & Trace",      workbench: "terminal_console",       lang: "Shell",    icon: "🐛", skill: "debug_techniques" },
     ],
     rubric: [
       { criterion: "Correctness",        weight: 35, desc: "Code compiles and logic matches peripheral spec" },
@@ -1195,11 +1278,11 @@ export const ARENA_DOMAINS = {
       "Formal Verification","Assertions (SVA)","Low-Power Design","FPGA Prototyping",
     ],
     missionCategories: [
-      { id: "rtl_design",      label: "RTL Design",         workbench: "hdl_ide",     lang: "Verilog",       icon: "🔬" },
-      { id: "testbench",       label: "Testbench",          workbench: "hdl_ide",     lang: "SystemVerilog", icon: "🧪" },
-      { id: "timing_calc",     label: "Timing Calc",        workbench: "engineering_calculator", lang: "Python",        icon: "⏱️" },
-      { id: "uvm_sequence",    label: "UVM Sequence",       workbench: "hdl_ide",     lang: "SystemVerilog", icon: "✅" },
-      { id: "synthesis_doc",   label: "Synthesis Doc",      workbench: "documentation_studio", lang: "Markdown",      icon: "⚙️" },
+      { id: "rtl_design",      label: "RTL Design",         workbench: "hdl_ide",                lang: "Verilog",       icon: "🔬", skill: "hdl_design" },
+      { id: "testbench",       label: "Testbench",          workbench: "hdl_ide",                lang: "SystemVerilog", icon: "🧪", skill: "functional_verify" },
+      { id: "timing_calc",     label: "Timing Calc",        workbench: "engineering_calculator", lang: "Python",        icon: "⏱️", skill: "timing_analysis" },
+      { id: "uvm_sequence",    label: "UVM Sequence",       workbench: "hdl_ide",                lang: "SystemVerilog", icon: "✅", skill: "functional_verify" },
+      { id: "synthesis_doc",   label: "Synthesis Doc",      workbench: "documentation_studio",   lang: "Markdown",      icon: "⚙️", skill: "synthesis_flow" },
     ],
     rubric: [
       { criterion: "Functional Correctness",  weight: 35, desc: "Module passes all testbench vectors" },
@@ -1243,10 +1326,10 @@ export const ARENA_DOMAINS = {
       "Analog Block Floorplanning","Electromigration Rules","ESD Protection","Low-Noise Layout","Mixed-Signal Integration",
     ],
     missionCategories: [
-      { id: "circuit_analysis", label: "Circuit Analysis",  workbench: "circuit_workbench", lang: "Python",   icon: "📈" },
-      { id: "layout_strategy",  label: "Layout Strategy",   workbench: "layout_studio", lang: "Markdown", icon: "🔧" },
-      { id: "drc_fix",          label: "DRC Fix",           workbench: "layout_studio", lang: "Markdown", icon: "✅" },
-      { id: "parasitic_calc",   label: "Parasitic Calc",    workbench: "circuit_workbench", lang: "Python",   icon: "🔍" },
+      { id: "circuit_analysis", label: "Circuit Analysis",  workbench: "circuit_workbench",    lang: "Python",   icon: "📈", skill: "spice_simulation" },
+      { id: "layout_strategy",  label: "Layout Strategy",   workbench: "layout_studio",        lang: "Markdown", icon: "🔧", skill: "layout_skills" },
+      { id: "drc_fix",          label: "DRC Fix",           workbench: "layout_studio",        lang: "Markdown", icon: "✅", skill: "layout_skills" },
+      { id: "parasitic_calc",   label: "Parasitic Calc",    workbench: "circuit_workbench",    lang: "Python",   icon: "🔍", skill: "noise_matching" },
     ],
     rubric: [
       { criterion: "Layout Correctness",    weight: 30, desc: "DRC/LVS clean per PDK rules" },
@@ -1291,11 +1374,11 @@ export const ARENA_DOMAINS = {
       "SCADA / PLC Programming","Transformer Design","Switchgear","Grounding & Earthing","IEC / IEEE Standards",
     ],
     missionCategories: [
-      { id: "load_flow",       label: "Load Flow",          workbench: "engineering_calculator", lang: "Python",   icon: "⚡" },
-      { id: "motor_analysis",  label: "Motor Analysis",     workbench: "engineering_calculator", lang: "Python",   icon: "🔄" },
-      { id: "control_loop",    label: "Control Loop",       workbench: "engineering_calculator", lang: "Python",   icon: "🎛️" },
-      { id: "pe_design",       label: "PE Converter",       workbench: "engineering_calculator", lang: "Python",   icon: "🔋" },
-      { id: "plc_program",     label: "PLC Programming",    workbench: "code_ide",     lang: "IEC61131", icon: "🏭" },
+      { id: "load_flow",       label: "Load Flow",          workbench: "engineering_calculator", lang: "Python",   icon: "⚡", skill: "power_systems" },
+      { id: "motor_analysis",  label: "Motor Analysis",     workbench: "engineering_calculator", lang: "Python",   icon: "🔄", skill: "electrical_machines" },
+      { id: "control_loop",    label: "Control Loop",       workbench: "engineering_calculator", lang: "Python",   icon: "🎛️", skill: "control_systems" },
+      { id: "pe_design",       label: "PE Converter",       workbench: "engineering_calculator", lang: "Python",   icon: "🔋", skill: "power_electronics" },
+      { id: "plc_program",     label: "PLC Programming",    workbench: "code_ide",               lang: "IEC61131", icon: "🏭", skill: "plc_programming" },
     ],
     rubric: [
       { criterion: "Calculation Accuracy",  weight: 35, desc: "Numerical results match expected values within tolerance" },
@@ -1339,11 +1422,11 @@ export const ARENA_DOMAINS = {
       "Manufacturing Processes","GD&T","Material Selection","Vibration Analysis","CAD (SolidWorks/CATIA)","DFM / DFA",
     ],
     missionCategories: [
-      { id: "thermo_problem",  label: "Thermo Problem",     workbench: "mechanical_studio", lang: "Python",   icon: "🌡️" },
-      { id: "fluid_problem",   label: "Fluid Problem",      workbench: "mechanical_studio", lang: "Python",   icon: "💧" },
-      { id: "stress_problem",  label: "Stress Analysis",    workbench: "mechanical_studio", lang: "Python",   icon: "⚙️" },
-      { id: "mfg_plan",        label: "Mfg Planning",       workbench: "code_ide",     lang: "Python",   icon: "🏭" },
-      { id: "design_review",   label: "Design Review",      workbench: "documentation_studio", lang: "Markdown", icon: "📐" },
+      { id: "thermo_problem",  label: "Thermo Problem",     workbench: "mechanical_studio",    lang: "Python",   icon: "🌡️", skill: "thermodynamics" },
+      { id: "fluid_problem",   label: "Fluid Problem",      workbench: "mechanical_studio",    lang: "Python",   icon: "💧", skill: "fluid_mechanics" },
+      { id: "stress_problem",  label: "Stress Analysis",    workbench: "mechanical_studio",    lang: "Python",   icon: "⚙️", skill: "solid_mechanics" },
+      { id: "mfg_plan",        label: "Mfg Planning",       workbench: "code_ide",             lang: "Python",   icon: "🏭", skill: "manufacturing" },
+      { id: "design_review",   label: "Design Review",      workbench: "documentation_studio", lang: "Markdown", icon: "📐", skill: "cad_modeling" },
     ],
     rubric: [
       { criterion: "Calculation Accuracy",  weight: 35, desc: "Results within ±5% of analytical solution" },
@@ -1388,11 +1471,11 @@ export const ARENA_DOMAINS = {
       "Traffic Engineering","Surveying","Construction Management","AutoCAD Civil 3D",
     ],
     missionCategories: [
-      { id: "structural_problem", label: "Structural Analysis", workbench: "structural_workbench", lang: "Python",   icon: "🏗️" },
-      { id: "geotech_problem",    label: "Geotechnical Calc",   workbench: "engineering_calculator", lang: "Python",   icon: "🌍" },
-      { id: "hydro_problem",      label: "Hydrology Problem",   workbench: "engineering_calculator", lang: "Python",   icon: "💧" },
-      { id: "transport_problem",  label: "Transport Analysis",  workbench: "engineering_calculator", lang: "Python",   icon: "🛣️" },
-      { id: "design_review",      label: "Design Review",       workbench: "documentation_studio", lang: "Markdown", icon: "📐" },
+      { id: "structural_problem", label: "Structural Analysis", workbench: "structural_workbench",   lang: "Python",   icon: "🏗️", skill: "structural_analysis" },
+      { id: "geotech_problem",    label: "Geotechnical Calc",   workbench: "engineering_calculator", lang: "Python",   icon: "🌍", skill: "geotechnical" },
+      { id: "hydro_problem",      label: "Hydrology Problem",   workbench: "engineering_calculator", lang: "Python",   icon: "💧", skill: "hydraulics" },
+      { id: "transport_problem",  label: "Transport Analysis",  workbench: "engineering_calculator", lang: "Python",   icon: "🛣️", skill: "transportation" },
+      { id: "design_review",      label: "Design Review",       workbench: "documentation_studio",   lang: "Markdown", icon: "📐", skill: "bim" },
     ],
     rubric: [
       { criterion: "Calculation Accuracy",  weight: 35, desc: "Results within IS/ACI code tolerances" },
@@ -1436,11 +1519,11 @@ export const ARENA_DOMAINS = {
       "MLOps (MLflow/W&B)","Model Deployment (FastAPI)","LLM Fine-Tuning / RAG","Data Pipelines",
     ],
     missionCategories: [
-      { id: "classification",    label: "Classification",     workbench: "ml_workbench", lang: "Python", icon: "🤖" },
-      { id: "regression",        label: "Regression",         workbench: "ml_workbench", lang: "Python", icon: "📈" },
-      { id: "nlp_task",          label: "NLP Task",           workbench: "ml_workbench", lang: "Python", icon: "💬" },
-      { id: "cv_task",           label: "Computer Vision",    workbench: "ml_workbench", lang: "Python", icon: "👁️" },
-      { id: "deploy_api",        label: "Deploy Model API",   workbench: "code_ide",     lang: "Python", icon: "🚀" },
+      { id: "classification",    label: "Classification",     workbench: "ml_workbench", lang: "Python", icon: "🤖", skill: "ml_fundamentals" },
+      { id: "regression",        label: "Regression",         workbench: "ml_workbench", lang: "Python", icon: "📈", skill: "feature_engineering" },
+      { id: "nlp_task",          label: "NLP Task",           workbench: "ml_workbench", lang: "Python", icon: "💬", skill: "deep_learning" },
+      { id: "cv_task",           label: "Computer Vision",    workbench: "ml_workbench", lang: "Python", icon: "👁️", skill: "deep_learning" },
+      { id: "deploy_api",        label: "Deploy Model API",   workbench: "code_ide",     lang: "Python", icon: "🚀", skill: "mlops" },
     ],
     rubric: [
       { criterion: "Model Performance",   weight: 35, desc: "Metric targets met (AUC, F1, RMSE as specified)" },
@@ -1484,11 +1567,11 @@ export const ARENA_DOMAINS = {
       "Work Manager","Play Store Deployment",
     ],
     missionCategories: [
-      { id: "compose_build",   label: "Build Compose UI",   workbench: "code_ide",     lang: "Kotlin",   icon: "🎨" },
-      { id: "viewmodel",       label: "ViewModel / Flow",   workbench: "code_ide",     lang: "Kotlin",   icon: "🏗️" },
-      { id: "retrofit_api",    label: "Retrofit API",       workbench: "code_ide",     lang: "Kotlin",   icon: "🔌" },
-      { id: "room_db",         label: "Room Database",      workbench: "code_ide",     lang: "Kotlin",   icon: "🗃️" },
-      { id: "arch_design",     label: "Architecture Design",sandbox: "markdown", lang: "Markdown", icon: "📐" },
+      { id: "compose_build",   label: "Build Compose UI",    workbench: "code_ide",             lang: "Kotlin",   icon: "🎨", skill: "compose_ui" },
+      { id: "viewmodel",       label: "ViewModel / Flow",    workbench: "code_ide",             lang: "Kotlin",   icon: "🏗️", skill: "android_arch" },
+      { id: "retrofit_api",    label: "Retrofit API",        workbench: "code_ide",             lang: "Kotlin",   icon: "🔌", skill: "api_design" },
+      { id: "room_db",         label: "Room Database",       workbench: "code_ide",             lang: "Kotlin",   icon: "🗃️", skill: "database_design" },
+      { id: "arch_design",     label: "Architecture Design", workbench: "documentation_studio", lang: "Markdown", icon: "📐", skill: "android_arch" },
     ],
     rubric: [
       { criterion: "Functionality",       weight: 35, desc: "Feature works correctly on target API levels" },
@@ -1532,11 +1615,11 @@ export const ARENA_DOMAINS = {
       "WidgetKit","Swift Package Manager",
     ],
     missionCategories: [
-      { id: "swiftui_build",  label: "SwiftUI View",              workbench: "code_ide",     lang: "Swift",    icon: "🎨" },
-      { id: "viewmodel",      label: "ViewModel / ObservableObject",sandbox: "code",   lang: "Swift",    icon: "🏗️" },
-      { id: "network_call",   label: "Network Call",              workbench: "code_ide",     lang: "Swift",    icon: "🔌" },
-      { id: "coredata_model", label: "Core Data Schema",          workbench: "code_ide",     lang: "Swift",    icon: "🗃️" },
-      { id: "arch_design",    label: "Architecture Design",       workbench: "documentation_studio", lang: "Markdown", icon: "📐" },
+      { id: "swiftui_build",  label: "SwiftUI View",                workbench: "code_ide",             lang: "Swift",    icon: "🎨", skill: "swiftui" },
+      { id: "viewmodel",      label: "ViewModel / ObservableObject",workbench: "code_ide",             lang: "Swift",    icon: "🏗️", skill: "ios_arch" },
+      { id: "network_call",   label: "Network Call",                workbench: "code_ide",             lang: "Swift",    icon: "🔌", skill: "api_design" },
+      { id: "coredata_model", label: "Core Data Schema",            workbench: "code_ide",             lang: "Swift",    icon: "🗃️", skill: "database_design" },
+      { id: "arch_design",    label: "Architecture Design",         workbench: "documentation_studio", lang: "Markdown", icon: "📐", skill: "ios_arch" },
     ],
     rubric: [
       { criterion: "Functionality",       weight: 35, desc: "Feature works correctly on target iOS version" },
@@ -1581,11 +1664,11 @@ export const ARENA_DOMAINS = {
       "CDSCO / FDA Regulations","Evidence-Based Pharmacy Practice",
     ],
     missionCategories: [
-      { id: "clinical_case",     label: "Clinical Case",      workbench: "clinical_lab", lang: "Markdown", icon: "🏥" },
-      { id: "drug_calc",         label: "Drug Calculation",   workbench: "engineering_calculator", lang: "Python",   icon: "🧮" },
-      { id: "interaction_check", label: "Interaction Check",  workbench: "clinical_lab", lang: "Markdown", icon: "⚠️" },
-      { id: "formulation_task",  label: "Formulation",        workbench: "clinical_lab", lang: "Markdown", icon: "⚗️" },
-      { id: "regulatory_task",   label: "Regulatory Doc",     workbench: "documentation_studio", lang: "Markdown", icon: "📋" },
+      { id: "clinical_case",     label: "Clinical Case",      workbench: "clinical_lab",           lang: "Markdown", icon: "🏥", skill: "pharmacology" },
+      { id: "drug_calc",         label: "Drug Calculation",   workbench: "engineering_calculator", lang: "Python",   icon: "🧮", skill: "drug_calculations" },
+      { id: "interaction_check", label: "Interaction Check",  workbench: "clinical_lab",           lang: "Markdown", icon: "⚠️", skill: "pharmacology" },
+      { id: "formulation_task",  label: "Formulation",        workbench: "clinical_lab",           lang: "Markdown", icon: "⚗️", skill: "pharmacovigilance" },
+      { id: "regulatory_task",   label: "Regulatory Doc",     workbench: "documentation_studio",   lang: "Markdown", icon: "📋", skill: "regulatory_affairs" },
     ],
     rubric: [
       { criterion: "Clinical Accuracy",     weight: 35, desc: "Drug therapy plan is clinically appropriate and evidence-based" },
@@ -1630,11 +1713,11 @@ export const ARENA_DOMAINS = {
       "Project Management","Change Management",
     ],
     missionCategories: [
-      { id: "case_analysis",    label: "Case Analysis",      workbench: "business_studio", lang: "Markdown", icon: "📋" },
-      { id: "financial_model",  label: "Financial Model",    workbench: "engineering_calculator", lang: "Python",   icon: "📊" },
-      { id: "strategy_problem", label: "Strategy Problem",   workbench: "business_studio", lang: "Markdown", icon: "🗺️" },
-      { id: "ops_problem",      label: "Operations Problem", workbench: "business_studio", lang: "Markdown", icon: "⚙️" },
-      { id: "market_sizing",    label: "Market Sizing",      workbench: "engineering_calculator", lang: "Python",   icon: "📈" },
+      { id: "case_analysis",    label: "Case Analysis",      workbench: "business_studio",        lang: "Markdown", icon: "📋", skill: "business_strategy" },
+      { id: "financial_model",  label: "Financial Model",    workbench: "engineering_calculator", lang: "Python",   icon: "📊", skill: "financial_modelling" },
+      { id: "strategy_problem", label: "Strategy Problem",   workbench: "business_studio",        lang: "Markdown", icon: "🗺️", skill: "business_strategy" },
+      { id: "ops_problem",      label: "Operations Problem", workbench: "business_studio",        lang: "Markdown", icon: "⚙️", skill: "operations_mgmt" },
+      { id: "market_sizing",    label: "Market Sizing",      workbench: "engineering_calculator", lang: "Python",   icon: "📈", skill: "marketing" },
     ],
     rubric: [
       { criterion: "Problem Structuring",  weight: 30, desc: "Issue tree / MECE breakdown, correct framework applied" },
@@ -1739,7 +1822,7 @@ export const resolveSandboxType = (task, domainKey) => {
   // This is the preferred path for all new missions.
   if (task?.workbench) {
     const wb = WORKBENCH_REGISTRY[task.workbench]
-    if (wb) return wb.sandbox
+    if (wb) return wb.renderer
   }
   // Legacy: task declares sandbox directly (old missions and modules)
   if (task?.sandbox && task.sandbox !== "code" && task.sandbox !== "notebook") {

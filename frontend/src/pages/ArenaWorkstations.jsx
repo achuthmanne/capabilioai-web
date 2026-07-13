@@ -13,6 +13,7 @@ import {
   runQuery, getSchema, getDataQuality, validateMetrics, registerValidator,
   registerRunner, registerProofProvider, runPython, formatCell, formatMetric,
 } from "../services/workstationEngine"
+import { WORKBENCH_REGISTRY } from "../config/arenaDomains"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // THEME (matches Arena.jsx T)
@@ -46,6 +47,19 @@ const CALCULATOR_CATEGORIES  = new Set(["Aptitude","Logical"])
 
 export function resolveWorkstationType(mission) {
   if (!mission) return "code"
+
+  // ── WORKBENCH_REGISTRY: mission.workbench → registry → sandbox type ────────
+  // This is the preferred path for all new missions.
+  // Missions declare { workbench: "firmware_ide" } instead of raw { sandbox: "code" }.
+  if (mission.workbench) {
+    const wb = WORKBENCH_REGISTRY?.[mission.workbench]
+    if (wb?.renderer) {
+      // Recursively resolve the renderer string through the existing type map below
+      // by temporarily treating it as a sandbox field (backward-compat shim)
+      const resolved = resolveWorkstationType({ ...mission, workbench: null, sandbox: wb.renderer })
+      if (resolved) return resolved
+    }
+  }
 
   // ── Explicit missionType/workstation field wins FIRST ──────────────────────
   const mt = (mission.missionType || mission.mission_type || mission.workstation || "").toLowerCase()
