@@ -212,7 +212,7 @@ export const pulseApi = {
     return request("GET", `/pulse/saved?${qs}`)
   },
   // AI market insights + tech news via Gemini Search (server-cached 2hr per domain)
-  marketInsights: (domain = "software engineering", role = "Software Engineer") => {
+  marketInsights: (domain = "Tech", role = "Professional") => {
     const qs = new URLSearchParams({ domain, role }).toString()
     return request("GET", `/pulse/market-insights?${qs}`)
   },

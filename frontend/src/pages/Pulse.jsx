@@ -171,7 +171,7 @@ function ProfileSidebar({ user, userData }) {
 }
 
 // ─── Right sidebar ────────────────────────────────────────────────────────────
-function RightSidebar({ user, domain = "software engineering", role = "Software Engineer" }) {
+function RightSidebar({ user, domain = "Tech", role = "Professional" }) {
   const [newsExpanded, setNewsExpanded] = useState(false)
   const [liveNews,     setLiveNews]     = useState(null)   // null = not yet loaded
   const [newsLoading,  setNewsLoading]  = useState(true)
