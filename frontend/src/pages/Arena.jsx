@@ -3418,7 +3418,8 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
   }, [domainKey])   // eslint-disable-line
 
   // ── Domain challenge slots (smart rotation, 24hr cooldown) ───────────────
-  const domainSlots = useDomainChallengeSlots(effectiveUserData)
+  // Pass plan-gated slot count so free-tier users only ever get 1 slot initialized
+  const domainSlots = useDomainChallengeSlots(effectiveUserData, getPlan(effectiveUserData).arenaTasks)
 
   // ── Convert local challenge bank object → Arena mission format ────────────
   // _isDomainChallenge = true prevents DSA mis-detection for code-sandbox domain challenges
@@ -3952,9 +3953,14 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
       if (markCompleted && activeMissionSlot !== null) {
         await markCompleted(activeMissionSlot, activeMission, reviewResult)
       }
-      // Lock the domain slot for 24hrs and schedule rotation to a new skill area
-      if (activeMissionSlot !== null && domainSlots?.markCompleted && activeMission?.id) {
-        await domainSlots.markCompleted(activeMissionSlot, activeMission.id)
+      // Lock the domain slot for 24hrs and schedule rotation to a new skill area.
+      // If mission was started from the library (slotIndex = null), mark slot 0 as
+      // completed so free-tier users don't immediately see another active mission.
+      if (domainSlots?.markCompleted && activeMission?.id) {
+        const targetSlot = activeMissionSlot !== null
+          ? activeMissionSlot
+          : 0  // library completion → always locks the primary (only) slot
+        await domainSlots.markCompleted(targetSlot, activeMission.id)
       }
     } catch (e) { console.error("Arena persist error:", e) }
 

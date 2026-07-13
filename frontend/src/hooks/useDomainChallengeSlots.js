@@ -20,7 +20,7 @@ import { getDomainChallenges } from "../config/domainChallenges"
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const COOLDOWN_MS     = 24 * 60 * 60 * 1000   // 24 hours
-const SLOT_COUNT      = 3
+const MAX_SLOTS       = 3                       // hard upper bound (Elite plan cap)
 const RECENT_MEMORY   = 3                       // avoid repeating last N challenge IDs
 const CATEGORY_MEMORY = 4                       // avoid repeating last N categories
 
@@ -286,14 +286,15 @@ function slotRowId(uid, domainKey, slotIdx) {
   return `${uid}_dcslot_${domainKey}_${slotIdx}`
 }
 
-async function loadSlotRows(uid, domainKey) {
+async function loadSlotRows(uid, domainKey, slotCount = MAX_SLOTS) {
+  const ids = Array.from({ length: slotCount }, (_, i) => slotRowId(uid, domainKey, i))
   const { data } = await supabase
     .from("arena_missions")
     .select("*")
-    .in("id", [0, 1, 2].map(i => slotRowId(uid, domainKey, i)))
+    .in("id", ids)
   const map = {}
   ;(data || []).forEach(row => { map[row.slot_index] = row.slot_data })
-  return map   // { 0: slotData, 1: slotData, 2: slotData }
+  return map
 }
 
 async function saveSlot(uid, domainKey, slotIdx, slotData) {
@@ -329,13 +330,16 @@ async function saveProgress(uid, domainKey, progress) {
 }
 
 // ── Main hook ─────────────────────────────────────────────────────────────────
-export function useDomainChallengeSlots(userData) {
+// maxSlots: plan-gated slot count (1 = free, 3 = pro, 6 = elite capped at MAX_SLOTS)
+export function useDomainChallengeSlots(userData, maxSlots = 1) {
   const domainKey      = resolveDomainKey(userData)
   const allChallenges  = getDomainChallenges(domainKey)
+  // Clamp to hard ceiling so we never create more than MAX_SLOTS DB rows
+  const slotCount      = Math.min(Math.max(1, maxSlots), MAX_SLOTS)
 
   const [user, setUser]           = useState(null)
   const [slots, setSlots]         = useState(() =>
-    Array.from({ length: SLOT_COUNT }, (_, i) => ({ index: i, status: "loading", challenge: null, cooldownUntil: null }))
+    Array.from({ length: slotCount }, (_, i) => ({ index: i, status: "loading", challenge: null, cooldownUntil: null }))
   )
   const [progress, setProgress]   = useState({ completed_ids: [], recent_ids: [], recent_categories: [] })
   const [loadingSlots, setLoading] = useState(true)
@@ -362,7 +366,7 @@ export function useDomainChallengeSlots(userData) {
     setLoading(true)
     try {
       const [savedSlots, prog] = await Promise.all([
-        loadSlotRows(u.id, domainKey),
+        loadSlotRows(u.id, domainKey, slotCount),
         loadProgress(u.id, domainKey),
       ])
       setProgress(prog)
@@ -377,7 +381,8 @@ export function useDomainChallengeSlots(userData) {
       // ── SEQUENTIAL (not concurrent) — so activeIds accumulates correctly ──
       // Promise.all caused all empty slots to see activeIds=[] and pick the same challenge.
       const resolved = []
-      for (let idx = 0; idx < SLOT_COUNT; idx++) {
+      // Only loop up to slotCount — free-tier users only get slot 0 ever initialized
+      for (let idx = 0; idx < slotCount; idx++) {
         const saved = savedSlots[idx]
 
         // Cooldown expired → assign fresh challenge
