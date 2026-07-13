@@ -148,11 +148,100 @@ function SkeletonCard() {
   )
 }
 
+// ── Scroll Shield — prevents iframe from stealing page scroll events ──────────
+// Sits as a transparent overlay over the iframe.
+// • Wheel events → forwarded to window (page scrolls normally)
+// • Click        → shield hides so user can interact with the simulator
+// • Mouse-leave  → shield reappears so next scroll isn't trapped
+function ScrollShield() {
+  const [active, setActive] = useState(true)
+
+  const onWheel = useCallback((e) => {
+    // Forward the scroll delta to the page
+    window.scrollBy({ top: e.deltaY, left: e.deltaX, behavior: "auto" })
+  }, [])
+
+  if (!active) return null
+
+  return (
+    <div
+      onWheel={onWheel}
+      onClick={() => setActive(false)}          // let user click into simulator
+      onMouseLeave={() => setActive(true)}      // re-arm when cursor leaves
+      title="Click to interact with simulator • Scroll to move the page"
+      style={{
+        position: "absolute",
+        inset: 0,
+        zIndex: 3,                              // above iframe, below loading overlay
+        cursor: "default",
+        // Visible hint strip at the bottom so users know they can click in
+        background: "transparent",
+      }}
+    >
+      {/* Thin "click to interact" hint bar at the bottom */}
+      <div style={{
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        padding: "5px 12px",
+        background: "rgba(15,23,42,0.75)",
+        backdropFilter: "blur(4px)",
+        fontSize: 11,
+        color: "rgba(255,255,255,0.45)",
+        textAlign: "center",
+        pointerEvents: "none",
+        letterSpacing: "0.02em",
+      }}>
+        👆 Click to interact with simulator &nbsp;·&nbsp; scroll works above & below
+      </div>
+    </div>
+  )
+}
+
 // ── Circuit Simulator Panel (CircuitJS1 embed) ────────────────────────────────
 function CircuitSimPanel({ ctz, title }) {
-  const [simReady, setSimReady] = useState(false)
+  const [simState, setSimState] = useState("loading") // "loading" | "ready" | "slow" | "failed"
   const [fullscreen, setFullscreen] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
+  const iframeRef = useRef(null)
   const url = circuitUrl(ctz)
+
+  // CircuitJS fires its own postMessage when fully initialised.
+  // As a fallback, we wait up to 12 s then show a "slow" warning with a reload button.
+  useEffect(() => {
+    setSimState("loading")
+    let slowTimer, failTimer
+
+    const onMessage = (e) => {
+      // CircuitJS1 sends various messages; any message from falstad.com means JS is running
+      if (typeof e.data === "string" && e.data.includes("circuitjs")) {
+        setSimState("ready")
+      }
+    }
+    window.addEventListener("message", onMessage)
+
+    // Fallback: iframe onLoad fires when HTML is received (canvas still blank).
+    // Give CircuitJS 8 s to render before showing the slow-loading banner.
+    slowTimer = setTimeout(() => setSimState(s => s === "loading" ? "slow" : s), 8000)
+    // After 20 s total assume it won't load (network issue / blocked by browser).
+    failTimer = setTimeout(() => setSimState(s => s !== "ready" ? "failed" : s), 20000)
+
+    return () => {
+      window.removeEventListener("message", onMessage)
+      clearTimeout(slowTimer)
+      clearTimeout(failTimer)
+    }
+  }, [reloadKey])
+
+  const handleIframeLoad = () => {
+    // The iframe HTML has loaded — start the 8 s countdown for canvas render
+    // (state stays "loading" until postMessage or timeout)
+  }
+
+  const reload = () => {
+    setReloadKey(k => k + 1)
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
@@ -161,8 +250,11 @@ function CircuitSimPanel({ ctz, title }) {
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#EF4444" }} />
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B" }} />
-          <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#10B981" }} />
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: simState === "ready" ? "#10B981" : "#6B7280" }} />
           <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginLeft: 8, fontFamily: "monospace" }}>CircuitJS1 Simulator</span>
+          {simState === "ready" && (
+            <span style={{ fontSize: 10, color: "#10B981", marginLeft: 4 }}>● Live</span>
+          )}
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <a href={url} target="_blank" rel="noopener noreferrer"
@@ -178,20 +270,60 @@ function CircuitSimPanel({ ctz, title }) {
 
       {/* Sim iframe */}
       <div style={{ position: "relative", background: "#1a1a2e", borderRadius: "0 0 10px 10px", overflow: "hidden", height: fullscreen ? 620 : 420 }}>
-        {!simReady && (
-          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, background: "#0f172a", zIndex: 2 }}>
-            <div style={{ width: 32, height: 32, border: "3px solid rgba(255,255,255,0.1)", borderTopColor: "#38BDF8", borderRadius: "50%", animation: "spin 0.9s linear infinite" }} />
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>Loading circuit simulator…</div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>Powered by CircuitJS1 (Paul Falstad)</div>
+
+        {/* Loading overlay — shown while simulator JS is initialising */}
+        {(simState === "loading" || simState === "slow" || simState === "failed") && (
+          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, background: "#0f172a", zIndex: 2 }}>
+            {simState !== "failed" && (
+              <div style={{ width: 36, height: 36, border: "3px solid rgba(255,255,255,0.1)", borderTopColor: "#38BDF8", borderRadius: "50%", animation: "spin 0.9s linear infinite" }} />
+            )}
+            {simState === "failed" && (
+              <div style={{ fontSize: 28 }}>⚡</div>
+            )}
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", textAlign: "center" }}>
+              {simState === "loading" && "Loading circuit simulator…"}
+              {simState === "slow"    && "Still initialising — circuit is rendering…"}
+              {simState === "failed"  && "Simulator took too long to load"}
+            </div>
+            {simState === "slow" && (
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", textAlign: "center", maxWidth: 280 }}>
+                CircuitJS is rendering the canvas. If it stays black, try reloading or open in a full tab.
+              </div>
+            )}
+            {(simState === "slow" || simState === "failed") && (
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={reload}
+                  style={{ fontSize: 12, color: "#38BDF8", background: "none", border: "1px solid #38BDF8", borderRadius: 6, padding: "6px 16px", cursor: "pointer" }}>
+                  ↺ Reload simulator
+                </button>
+                <a href={url} target="_blank" rel="noopener noreferrer"
+                  style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", background: "none", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 6, padding: "6px 16px", cursor: "pointer", textDecoration: "none" }}>
+                  ↗ Open in new tab
+                </a>
+              </div>
+            )}
+            {simState === "loading" && (
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>Powered by CircuitJS1 (Paul Falstad)</div>
+            )}
           </div>
         )}
+
         <iframe
+          key={reloadKey}
+          ref={iframeRef}
           src={url}
           title={title}
-          onLoad={() => setSimReady(true)}
+          onLoad={handleIframeLoad}
           style={{ width: "100%", height: "100%", border: "none", display: "block" }}
           allow="fullscreen"
         />
+
+        {/* ── Scroll-trap shield ───────────────────────────────────────────────
+            The iframe steals all wheel/touch events, making the page unscrollable.
+            This transparent overlay sits on top and forwards wheel deltas to the
+            page. On click it removes itself so the user can interact with the
+            simulator; it reappears when the mouse leaves the sim area.         */}
+        <ScrollShield />
       </div>
 
       {/* Sim hints bar */}

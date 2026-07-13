@@ -23,6 +23,50 @@ import { supabase } from "../lib/supabase"
 import { arenaDb, userDoc } from "../lib/db"
 import { createClient } from "@supabase/supabase-js"
 
+// ── Local engineering challenge banks (stream-filtered) ───────────────────────
+import {
+  ECE_CHALLENGES, ECE_VLSI_CHALLENGES, ECE_RF_CHALLENGES, ECE_IOT_CHALLENGES,
+  ECE_TELECOM_CHALLENGES, ECE_CIRCUIT_CHALLENGES,
+  EEE_CHALLENGES, EEE_POWER_CHALLENGES, EEE_MACHINES_CHALLENGES,
+  EEE_CONTROL_CHALLENGES, EEE_PE_CHALLENGES, EEE_INST_CHALLENGES,
+  CIVIL_CHALLENGES, CIVIL_STRUCTURAL_CHALLENGES, CIVIL_GEO_CHALLENGES,
+  CIVIL_TRANS_CHALLENGES, CIVIL_WATER_CHALLENGES, CIVIL_CONST_CHALLENGES,
+  MECH_CHALLENGES, MECH_THERMAL_CHALLENGES,
+} from "../config/domainChallenges"
+
+// Map stream category → local challenge arrays
+const LOCAL_ENG_BANK = {
+  ECE:        [...ECE_CHALLENGES, ...ECE_VLSI_CHALLENGES, ...ECE_RF_CHALLENGES,
+                ...ECE_IOT_CHALLENGES, ...ECE_TELECOM_CHALLENGES, ...ECE_CIRCUIT_CHALLENGES],
+  EEE:        [...EEE_CHALLENGES, ...EEE_POWER_CHALLENGES, ...EEE_MACHINES_CHALLENGES,
+                ...EEE_CONTROL_CHALLENGES, ...EEE_PE_CHALLENGES, ...EEE_INST_CHALLENGES],
+  Civil:      [...CIVIL_CHALLENGES, ...CIVIL_STRUCTURAL_CHALLENGES, ...CIVIL_GEO_CHALLENGES,
+                ...CIVIL_TRANS_CHALLENGES, ...CIVIL_WATER_CHALLENGES, ...CIVIL_CONST_CHALLENGES],
+  Mechanical: [...MECH_CHALLENGES, ...MECH_THERMAL_CHALLENGES],
+  IoT:        [...ECE_IOT_CHALLENGES, ...ECE_CIRCUIT_CHALLENGES],
+}
+
+// Normalize a local domain challenge to ArenaCommonChallenges shape
+function adaptLocalChallenge(ch) {
+  const stepsText = (ch.steps || []).map((s, i) => `${i + 1}. ${s}`).join("\n")
+  return {
+    ...ch,
+    source:           "local",
+    statement:        [ch.scenario, ch.objective && `**Objective:** ${ch.objective}`, stepsText && `**Steps:**\n${stepsText}`].filter(Boolean).join("\n\n"),
+    description:      ch.scenario || "",
+    examples:         [],
+    test_cases:       [],          // student verifies own output — no auto-graded cases
+    interaction_type: "code",
+    languages:        ["Python"],
+    eloReward:        ch.eloGain  || 15,
+    acceptance:       Math.floor(40 + Math.random() * 30),
+    topic_group:      ch.category || "Engineering",
+    type:             (ch.category || "engineering").toLowerCase(),
+    skills:           ch.skillTags || ch.tools || [],
+    _localStarter:    ch.starterCode || "",
+  }
+}
+
 // ─── Separate read-only client for challenge content ──────────────────────────
 const problemsDb = createClient(
   "https://cbrjdfllxfmmvalijpej.supabase.co",
@@ -1103,7 +1147,8 @@ function buildDetail(challenge) {
       expectedOutput: tc.expected_output ?? tc.expectedOutput ?? "",
       is_hidden:      tc.is_hidden ?? false,
     })),
-    starterCode:  {},  // use genericStarter per language
+    // Local engineering challenges carry pre-written Python starter code
+    starterCode:  challenge._localStarter ? { Python: challenge._localStarter } : {},
   }
 }
 
@@ -2013,7 +2058,25 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
               ? Math.round(c.acceptance_rate * 100)
               : Math.floor(35 + Math.random() * 40),
           }))
-          setChallenges(mapped)
+          // ── Merge local engineering challenges for engineering streams ──────
+          const localChallenges = []
+          if (streamCategories && streamCategories.length > 0) {
+            for (const cat of streamCategories) {
+              const bank = LOCAL_ENG_BANK[cat]
+              if (bank) localChallenges.push(...bank.map(adaptLocalChallenge))
+            }
+          }
+          setChallenges([...mapped, ...localChallenges])
+        } else {
+          // No DB results — still load local engineering challenges if applicable
+          const localChallenges = []
+          if (streamCategories && streamCategories.length > 0) {
+            for (const cat of streamCategories) {
+              const bank = LOCAL_ENG_BANK[cat]
+              if (bank) localChallenges.push(...bank.map(adaptLocalChallenge))
+            }
+          }
+          if (localChallenges.length > 0) setChallenges(localChallenges)
         }
       } catch {}
       setLoadingChallenges(false)

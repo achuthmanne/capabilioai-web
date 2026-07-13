@@ -823,7 +823,7 @@ function App() {
     { id: "pulse",       label: "Pulse",        page: "pulse",       prefix: "⚡" },
     { id: "skillstudio", label: "Skill Studio", page: "skillstudio",   prefix: "🎓" },
     { id: "launchpad",   label: "Launchpad",    page: "launchpad",     prefix: "🚀" },
-    { id: "challenges",  label: "Challenges",   page: "challenges",    prefix: "🔬" },
+    // "Challenges" nav removed — engineering domain challenges now live inside Arena → Common Challenges (stream-filtered)
   ]
 
   return (
@@ -971,7 +971,7 @@ function App() {
         />
       )}
 
-      <div style={{ height: "calc(100vh - 56px)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      <div style={{ height: "calc(100vh - 56px)", overflowY: "auto", display: "flex", flexDirection: "column" }}>
         {/* Suspense: lazy page chunks load on first navigation — PageLoader shows briefly */}
         <Suspense fallback={<PageLoader />}>
           {currentPage === "studentHome"      && <StudentHome      user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
@@ -1002,7 +1002,8 @@ function App() {
           {currentPage === "pricing"     && <Pricing     user={user} userData={userData} setUserData={setUserData} onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }} />}
 
           {currentPage === "forge"       && <Forge          user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
-          {currentPage === "challenges"  && <HardwareChallenges user={user} userData={userData} />}
+          {/* "challenges" page removed — redirects to Arena which shows stream-filtered challenges */}
+          {currentPage === "challenges"  && <Arena user={user} userData={userData} setUserData={setUserData} onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }} onNavigatePricing={() => setCurrentPage("pricing")} />}
 
           {currentPage === "timemarket"  && <Launchpad      user={user} userData={userData} />}
           {currentPage === "signalrooms" && <SignalRooms     user={user} userData={userData} />}
