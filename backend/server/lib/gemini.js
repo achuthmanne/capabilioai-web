@@ -103,7 +103,7 @@ export async function geminiExtractImage(base64Image, mimeType, prompt) {
 // Free tier: 1,500 requests/day — more than sufficient for sticky missions.
 // Returns a parsed mission object or throws on failure.
 // ── Domain-specific context for realistic mission generation ──────────────────
-const DOMAIN_CONTEXT = {
+export const DOMAIN_CONTEXT = {
   // ── Data & Analytics ────────────────────────────────────────────────────────
   data: {
     type: "Data Analysis",
@@ -570,16 +570,14 @@ export async function geminiGenerateMission({ keyword, domainKey, eloRating, dif
   const parsed = JSON.parse(result.response.text())
   if (!parsed?.title) throw new Error("Gemini returned invalid mission structure")
 
-  // ── Sanitize starterCode — strip any descriptive TODO comments the AI added ──
-  // Rule: TODO comments must NEVER describe what to implement (that gives away
-  // the answer). Replace "// TODO: <anything>" or "/* TODO: <anything> */" with
-  // plain "// TODO" / "/* TODO */".
-  if (parsed.starterCode) {
-    parsed.starterCode = parsed.starterCode
-      // single-line: // TODO: do X  →  // TODO
-      .replace(/\/\/\s*TODO\s*:.+/g, "// TODO")
-      // block: /* TODO: do X */  →  /* TODO */
-      .replace(/\/\*\s*TODO\s*:.+?\*\//gs, "/* TODO */")
+  // ── Always replace starterCode with the domain template ───────────────────
+  // The AI consistently ignores instructions about TODO comments and adds
+  // solution hints (numbered steps, register values, pre-written function calls).
+  // The ONLY safe approach is to never use the AI-generated starterCode —
+  // always substitute our curated template which is guaranteed hint-free.
+  const ctx = DOMAIN_CONTEXT[domainKey] || DOMAIN_CONTEXT.swe
+  if (ctx?.starterCode) {
+    parsed.starterCode = ctx.starterCode.replace(/\{company\}/g, parsed.company || "Company")
   }
 
   return parsed

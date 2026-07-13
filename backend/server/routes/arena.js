@@ -7,7 +7,7 @@
 import { Router }                          from "express"
 import { groq, GROQ_FAST }                 from "../lib/groq.js"
 import { gradeSubmission }                 from "../lib/claude.js"
-import { geminiGenerateMission }           from "../lib/gemini.js"
+import { geminiGenerateMission, DOMAIN_CONTEXT } from "../lib/gemini.js"
 import { exec }                            from "child_process"
 import { writeFile, unlink, mkdtemp, rm }   from "fs/promises"
 import { tmpdir }                          from "os"
@@ -199,6 +199,12 @@ Return ONE JSON object (concise strings):
     const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim()
     const obj = JSON.parse(cleaned.slice(cleaned.indexOf("{"), cleaned.lastIndexOf("}") + 1))
     if (!obj?.title) throw new Error("Groq returned invalid mission structure")
+
+    // Always override AI-generated starterCode with our curated template
+    const ctx = DOMAIN_CONTEXT[domainKey] || DOMAIN_CONTEXT.swe
+    if (ctx?.starterCode) {
+      obj.starterCode = ctx.starterCode.replace(/\{company\}/g, obj.company || "Company")
+    }
 
     console.log(`[arena/daily] Groq fallback: generated mission for ${keyword} ELO:${eloRating}`)
     return res.json({ tasks: [obj] })
