@@ -16,8 +16,210 @@
 // "markdown"  → rich markdown editor
 // "diagram"   → system design canvas
 
+
 // ─────────────────────────────────────────────────────────────────────────────
-// 12-DOMAIN REGISTRY
+// WORKBENCH REGISTRY
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Architecture: Role → Mission → Workbench (not Role → one Sandbox forever)
+//
+// Every mission declares the workbench it needs via { workbench: "firmware_ide" }.
+// resolveSandboxType() resolves: task.workbench → registry.sandbox → fallback.
+//
+// Adding a new workstation type in the future = add one entry here.
+// No changes needed to role configs or mission configs.
+//
+// "sandbox" is the CURRENT renderer. When a custom React component is built
+// (e.g. a real oscilloscope UI), update only this registry entry.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const WORKBENCH_REGISTRY = {
+
+  // ── General-Purpose ───────────────────────────────────────────────────────
+
+  code_ide: {
+    id: "code_ide",
+    label: "Code IDE",
+    sandbox: "code",
+    icon: "💻",
+    desc: "General-purpose code editor — JS, Python, Go, Java, etc.",
+    usedBy: ["frontend","backend","fullstack","swe","devops","android","ios","eee","mechanical"],
+  },
+
+  documentation_studio: {
+    id: "documentation_studio",
+    label: "Documentation Studio",
+    sandbox: "markdown",
+    icon: "📝",
+    desc: "Rich markdown editor for specs, reports, design docs, and architecture notes",
+    usedBy: ["all"],
+  },
+
+  terminal_console: {
+    id: "terminal_console",
+    label: "Terminal Console",
+    sandbox: "terminal",
+    icon: "🖥️",
+    desc: "Shell/bash console for scripts, debugging, log inspection, and CLI tools",
+    usedBy: ["devops","sre","embedded","backend"],
+  },
+
+  // ── Embedded / Hardware ───────────────────────────────────────────────────
+
+  firmware_ide: {
+    id: "firmware_ide",
+    label: "Firmware IDE",
+    sandbox: "code",           // future: "firmware_ide" (custom Monaco + register sidebar)
+    icon: "🔌",
+    desc: "Embedded C/C++ editor with register map sidebar and compiler feedback",
+    lang: "C",
+    usedBy: ["embedded"],
+  },
+
+  logic_analyzer: {
+    id: "logic_analyzer",
+    label: "Logic Analyzer",
+    sandbox: "notebook",       // future: "logic_analyzer" (waveform viewer component)
+    icon: "📊",
+    desc: "Digital signal timeline: decode UART/SPI/I²C frames and spot glitches",
+    lang: "Python",
+    usedBy: ["embedded","vlsi"],
+  },
+
+  rtos_debugger: {
+    id: "rtos_debugger",
+    label: "RTOS Debugger",
+    sandbox: "code",           // future: "rtos_debugger" (task/state viewer)
+    icon: "⏱️",
+    desc: "Visualise FreeRTOS/Zephyr task states, stack usage, priority inversion",
+    lang: "C",
+    usedBy: ["embedded"],
+  },
+
+  // ── VLSI / Digital IC ─────────────────────────────────────────────────────
+
+  hdl_ide: {
+    id: "hdl_ide",
+    label: "HDL IDE",
+    sandbox: "code",           // future: "hdl_ide" (Verilog-aware editor + sim runner)
+    icon: "🔬",
+    desc: "Verilog / SystemVerilog / VHDL editor with lint and synthesis checks",
+    lang: "Verilog",
+    usedBy: ["vlsi","ece"],
+  },
+
+  // ── Analog / Circuit ──────────────────────────────────────────────────────
+
+  circuit_workbench: {
+    id: "circuit_workbench",
+    label: "Circuit Workbench",
+    sandbox: "notebook",       // future: "circuit_workbench" (schematic + SPICE runner)
+    icon: "⚡",
+    desc: "Python SPICE simulation: op-amps, filters, converters, small-signal models",
+    lang: "Python",
+    usedBy: ["analog_ic","eee","ece"],
+  },
+
+  layout_studio: {
+    id: "layout_studio",
+    label: "Layout Studio",
+    sandbox: "markdown",       // future: "layout_studio" (canvas with layers/DRC overlay)
+    icon: "🔧",
+    desc: "IC layout strategy docs, DRC/LVS checklist, matching and shielding notes",
+    usedBy: ["analog_ic"],
+  },
+
+  // ── Engineering Calculation ───────────────────────────────────────────────
+
+  engineering_calculator: {
+    id: "engineering_calculator",
+    label: "Engineering Calculator",
+    sandbox: "notebook",       // Pyodide notebook with numpy/scipy/matplotlib
+    icon: "🧮",
+    desc: "Python notebook for numerical engineering: load flow, stress, thermo, fluid, PK",
+    lang: "Python",
+    usedBy: ["mechanical","civil","eee","pharmacy"],
+  },
+
+  structural_workbench: {
+    id: "structural_workbench",
+    label: "Structural Workbench",
+    sandbox: "notebook",       // future: "structural_workbench" (beam diagram + load canvas)
+    icon: "🏗️",
+    desc: "Beam, column, slab, frame analysis with IS/ACI code checks",
+    lang: "Python",
+    usedBy: ["civil"],
+  },
+
+  mechanical_studio: {
+    id: "mechanical_studio",
+    label: "Mechanical Studio",
+    sandbox: "notebook",       // future: custom thermo/CFD/FEA widget
+    icon: "⚙️",
+    desc: "Thermodynamics, fluid mechanics, and stress analysis workspace",
+    lang: "Python",
+    usedBy: ["mechanical"],
+  },
+
+  // ── ML / AI ───────────────────────────────────────────────────────────────
+
+  ml_workbench: {
+    id: "ml_workbench",
+    label: "ML Workbench",
+    sandbox: "notebook",       // Pyodide with sklearn/numpy; future: GPU-backed runner
+    icon: "🤖",
+    desc: "Model training, evaluation, experiment tracking, and feature engineering",
+    lang: "Python",
+    usedBy: ["ml"],
+  },
+
+  // ── Business / Clinical ───────────────────────────────────────────────────
+
+  business_studio: {
+    id: "business_studio",
+    label: "Business Studio",
+    sandbox: "markdown",       // future: "business_studio" (canvas with frameworks)
+    icon: "💼",
+    desc: "Case study, strategy frameworks (SWOT, Porter, BCG), and business writing",
+    usedBy: ["mba","ba_product"],
+  },
+
+  clinical_lab: {
+    id: "clinical_lab",
+    label: "Clinical Lab",
+    sandbox: "markdown",       // future: "clinical_lab" (patient record + drug DB lookup)
+    icon: "💊",
+    desc: "Clinical case analysis, drug interaction check, and regulatory documentation",
+    usedBy: ["pharmacy","medical"],
+  },
+
+  // ── Design / UI ───────────────────────────────────────────────────────────
+
+  design_canvas: {
+    id: "design_canvas",
+    label: "Design Canvas",
+    sandbox: "react",
+    icon: "🎨",
+    desc: "Live React/HTML component preview with hot reload",
+    usedBy: ["frontend","fullstack"],
+  },
+
+}
+
+/**
+ * Get workbench config by id (safe — returns null if not found)
+ */
+export const getWorkbench = (id) => WORKBENCH_REGISTRY[id] || null
+
+/**
+ * Resolve the sandbox type from a workbench id.
+ * workbenchId → WORKBENCH_REGISTRY[id].sandbox
+ */
+export const resolveWorkbenchSandbox = (workbenchId) =>
+  WORKBENCH_REGISTRY[workbenchId]?.sandbox || "code"
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ARENA DOMAINS
 // ─────────────────────────────────────────────────────────────────────────────
 export const ARENA_DOMAINS = {
 
@@ -517,7 +719,7 @@ export const ARENA_DOMAINS = {
 
     missionCategories: [
       { id: "firmware",    label: "Firmware Task",       sandbox: "code",     lang: "C",        icon: "🤖" },
-      { id: "rtl_design",  label: "RTL Design",          sandbox: "code",     lang: "Verilog",  icon: "💾" },
+      { id: "rtl_design",  label: "RTL Design",          workbench: "hdl_ide",     lang: "Verilog",  icon: "💾" },
       { id: "circuit",     label: "Circuit Design",      sandbox: "markdown", lang: "Markdown", icon: "⚡" },
       { id: "protocol",    label: "Protocol Impl",       sandbox: "code",     lang: "C",        icon: "🔌" },
       { id: "debug",       label: "HW Debug",            sandbox: "terminal", lang: "Bash",     icon: "🔍" },
@@ -636,7 +838,7 @@ export const ARENA_DOMAINS = {
     ],
 
     missionCategories: [
-      { id: "arch_design",  label: "Architecture Design",  sandbox: "diagram",  lang: "Markdown", icon: "🏗️" },
+      { id: "arch_design",  label: "Architecture Design",  workbench: "documentation_studio",  lang: "Markdown", icon: "🏗️" },
       { id: "iac",          label: "IaC (CDK/CF)",         sandbox: "code",     lang: "TypeScript",icon: "⚙️" },
       { id: "iam_policy",   label: "IAM Policy",           sandbox: "code",     lang: "JSON",     icon: "🔐" },
       { id: "lambda",       label: "Lambda Function",      sandbox: "code",     lang: "JavaScript",icon:"⚡" },
@@ -695,7 +897,7 @@ export const ARENA_DOMAINS = {
     ],
 
     missionCategories: [
-      { id: "arch_design",  label: "Architecture Design",  sandbox: "diagram",  lang: "Markdown", icon: "🏗️" },
+      { id: "arch_design",  label: "Architecture Design",  workbench: "documentation_studio",  lang: "Markdown", icon: "🏗️" },
       { id: "bicep_iac",    label: "Bicep Template",       sandbox: "code",     lang: "Bicep",    icon: "⚙️" },
       { id: "rbac",         label: "RBAC / Policy",        sandbox: "code",     lang: "JSON",     icon: "🔐" },
       { id: "kql_query",    label: "KQL Query",            sandbox: "code",     lang: "KQL",      icon: "📊" },
@@ -916,6 +1118,539 @@ export const ARENA_DOMAINS = {
     ],
   },
 
+
+  // ── EMBEDDED SYSTEMS / FIRMWARE ────────────────────────────────────────────
+  embedded: {
+    key: "embedded",
+    label: "Embedded Engineer",
+    icon: "🔌",
+    color: "#84CC16",
+    colorBg: "#F7FEE7",
+    colorBorder: "rgba(132,204,22,0.20)",
+    ownership: "Firmware, RTOS, Bare-Metal & Peripheral Drivers",
+    description: "Write firmware, driver code, and real-time systems for microcontrollers and SoCs",
+    tracks: ["Bare-Metal C","RTOS (FreeRTOS/Zephyr)","ARM Cortex-M","Peripheral Drivers","IoT Firmware"],
+    modules: [
+      { id: "firmware_lab",   label: "Firmware Lab",        icon: "🔌", desc: "Write and simulate embedded C programs",      sandbox: "code"     },
+      { id: "protocol_sim",   label: "Protocol Simulator",  icon: "📡", desc: "Simulate UART, SPI, I²C, CAN transactions",   sandbox: "code"     },
+      { id: "rtos_bench",     label: "RTOS Bench",          icon: "⏱️", desc: "Design task scheduler, priority, semaphores", sandbox: "code"     },
+      { id: "power_calc",     label: "Power Calculator",    icon: "🔋", desc: "Compute power budgets and sleep currents",     sandbox: "notebook" },
+      { id: "debug_console",  label: "Debug Console",       icon: "🐛", desc: "Trace register states and interrupt vectors", sandbox: "terminal" },
+      { id: "hw_design",      label: "HW Interface Docs",   icon: "📋", desc: "Datasheet reading and register map notes",     sandbox: "markdown" },
+    ],
+    defaultModule: "firmware_lab",
+    defaultSandbox: "code",
+    deliverables: ["Firmware Modules","Driver Libraries","RTOS Task Designs","Power Budget Reports"],
+    skills: [
+      "Embedded C","ARM Cortex Architecture","RTOS (FreeRTOS/Zephyr)","UART / SPI / I²C / CAN",
+      "Interrupt Handling","Memory-Mapped Registers","Bootloader Design","Power Management",
+      "Debugging (JTAG/SWD)","Device Drivers","Real-Time Constraints","Hardware Abstraction Layer",
+    ],
+    missionCategories: [
+      { id: "driver_write",   label: "Write Driver",       workbench: "firmware_ide",     lang: "C",        icon: "🔌" },
+      { id: "rtos_task",      label: "RTOS Task Design",   workbench: "rtos_debugger",     lang: "C",        icon: "⏱️" },
+      { id: "protocol_impl",  label: "Protocol Impl",      workbench: "firmware_ide",     lang: "C",        icon: "📡" },
+      { id: "power_budget",   label: "Power Budget",       workbench: "engineering_calculator", lang: "Python",   icon: "🔋" },
+      { id: "debug_trace",    label: "Debug & Trace",      workbench: "terminal_console", lang: "Shell",    icon: "🐛" },
+    ],
+    rubric: [
+      { criterion: "Correctness",        weight: 35, desc: "Code compiles and logic matches peripheral spec" },
+      { criterion: "Real-Time Safety",   weight: 25, desc: "No race conditions; ISR is minimal and non-blocking" },
+      { criterion: "Code Quality",       weight: 20, desc: "Clean C, meaningful names, register macros used" },
+      { criterion: "Power Efficiency",   weight: 10, desc: "Sleep modes and wake-up strategy applied correctly" },
+      { criterion: "Documentation",      weight: 10, desc: "Register usage and design decisions commented" },
+    ],
+    contextPanelSections: [
+      { title: "Bare-Metal C Patterns", icon: "🔌", content: "volatile uint32_t *REG = (uint32_t*)0x40000000;\n*REG |= (1 << BIT);  // set\n*REG &= ~(1 << BIT); // clear\n\nISR: __attribute__((interrupt)) void IRQHandler(void)\nAlways declare ISR-shared variables volatile\nDisable interrupts before multi-step read-modify-write" },
+      { title: "RTOS Concepts",         icon: "⏱️", content: "Task states: Ready → Running → Blocked → Suspended\nSemaphore: binary (mutex) | counting (resource pool)\nQueue: xQueueSend / xQueueReceive (ISR: FromISR variants)\nPriority inversion → use priority inheritance mutex\nvTaskDelayUntil() for periodic tasks (not vTaskDelay)" },
+      { title: "Common Protocols",      icon: "📡", content: "UART: async, 1 start + 8 data + 1 stop, baud rate\nSPI: CPOL/CPHA modes, full-duplex, master-slave CS\nI²C: 7-bit addr, ACK/NACK, START/STOP, 400kHz fast\nCAN: CSMA/CD, arbitration by ID, DLC 0-8 bytes\nUSB HID: descriptor-based enumeration" },
+      { title: "ARM Cortex-M Quick Ref",icon: "⚙️", content: "NVIC: ISER/ICER/ISPR — enable/clear/set-pending\nSysTick: 24-bit downcounter, LOAD/VAL/CTRL regs\nMPU: 8 configurable regions (M3/M4/M7)\nDWT: cycle counter for profiling\nFPU: single-precision on M4/M7 (lazy stacking)" },
+    ],
+  },
+
+  // ── VLSI / CHIP DESIGN ────────────────────────────────────────────────────
+  vlsi: {
+    key: "vlsi",
+    label: "VLSI Engineer",
+    icon: "🔬",
+    color: "#6366F1",
+    colorBg: "#EEF2FF",
+    colorBorder: "rgba(99,102,241,0.20)",
+    ownership: "RTL Design, Verification, Timing & Physical Design",
+    description: "Design and verify digital ICs from RTL to GDSII using Verilog/SystemVerilog",
+    tracks: ["RTL Design (Verilog/SV)","Functional Verification","STA & Timing Closure","DFT","Physical Design"],
+    modules: [
+      { id: "rtl_editor",      label: "RTL Editor",         icon: "🔬", desc: "Write Verilog / SystemVerilog modules",       sandbox: "code"     },
+      { id: "sim_bench",       label: "Simulation Bench",   icon: "🧪", desc: "Build testbenches and run simulation",        sandbox: "code"     },
+      { id: "timing_analysis", label: "Timing Analysis",    icon: "⏱️", desc: "Compute setup/hold and path analysis",        sandbox: "notebook" },
+      { id: "verify_lab",      label: "Verify Lab",         icon: "✅", desc: "UVM sequences, assertions, coverage",         sandbox: "code"     },
+      { id: "synthesis_view",  label: "Synthesis Notes",    icon: "⚙️", desc: "Synthesis constraints and area reports",      sandbox: "markdown" },
+    ],
+    defaultModule: "rtl_editor",
+    defaultSandbox: "code",
+    deliverables: ["RTL Modules","Testbenches","Timing Reports","Verification Plans"],
+    skills: [
+      "Verilog / SystemVerilog","RTL Design","Functional Verification (UVM)","Static Timing Analysis",
+      "Clock Domain Crossing","DFT / Scan Insertion","Logic Synthesis","Floorplanning",
+      "Formal Verification","Assertions (SVA)","Low-Power Design","FPGA Prototyping",
+    ],
+    missionCategories: [
+      { id: "rtl_design",      label: "RTL Design",         workbench: "hdl_ide",     lang: "Verilog",       icon: "🔬" },
+      { id: "testbench",       label: "Testbench",          workbench: "hdl_ide",     lang: "SystemVerilog", icon: "🧪" },
+      { id: "timing_calc",     label: "Timing Calc",        workbench: "engineering_calculator", lang: "Python",        icon: "⏱️" },
+      { id: "uvm_sequence",    label: "UVM Sequence",       workbench: "hdl_ide",     lang: "SystemVerilog", icon: "✅" },
+      { id: "synthesis_doc",   label: "Synthesis Doc",      workbench: "documentation_studio", lang: "Markdown",      icon: "⚙️" },
+    ],
+    rubric: [
+      { criterion: "Functional Correctness",  weight: 35, desc: "Module passes all testbench vectors" },
+      { criterion: "Timing Clean",            weight: 25, desc: "No setup/hold violations at target frequency" },
+      { criterion: "Code Quality",            weight: 20, desc: "Synthesisable RTL, no latches, clean naming" },
+      { criterion: "Verification Coverage",   weight: 15, desc: "Code and functional coverage targets met" },
+      { criterion: "Documentation",           weight:  5, desc: "Module header, port descriptions, constraints noted" },
+    ],
+    contextPanelSections: [
+      { title: "RTL Golden Rules",       icon: "🔬", content: "Always register outputs of combinational blocks\nAvoid incomplete sensitivity lists (use always @*)\nOne clock per always block — no mixed-edge designs\nReset all flops (synchronous preferred)\nNo glue logic between clock domains — use sync FIFOs\nAvoid delays in synthesisable code (#, $time)" },
+      { title: "Setup/Hold Timing",      icon: "⏱️", content: "Setup slack = Data required time − Data arrival time\nHold slack  = Data arrival time − Data hold required time\nSetup fix: reduce combinational depth, upsize cells, retiming\nHold fix: add buffers/delay cells on short paths\nOCV: use on-chip variation derating (early/late)" },
+      { title: "UVM Phases",             icon: "✅", content: "build_phase → connect_phase → start_of_simulation\nrun_phase (objection-based) → extract/check/report\n\nAgent = Driver + Monitor + Sequencer\nScorecard: write() from monitor, predict in ref model\nCoverage: covergroup inside class, sample() in monitor" },
+      { title: "CDC Rules",              icon: "🔗", content: "Never sample asynchronous signals directly\n2-FF synchroniser: min 2 MTBF flip-flops\nMulti-bit: use gray code counters (async FIFO)\nHandshake: req/ack with pulse synchroniser\nTool: identify crossings, waive only when justified" },
+    ],
+  },
+
+  // ── ANALOG IC LAYOUT ────────────────────────────────────────────────────────
+  analog_ic: {
+    key: "analog_ic",
+    label: "Analog Layout Engineer",
+    icon: "🔧",
+    color: "#F97316",
+    colorBg: "#FFF7ED",
+    colorBorder: "rgba(249,115,22,0.20)",
+    ownership: "Full-Custom IC Layout, DRC/LVS & Parasitic Extraction",
+    description: "Create analog and mixed-signal IC layouts with Cadence Virtuoso, ensure DRC/LVS clean",
+    tracks: ["Full-Custom Layout","Analog Circuit Analysis","Parasitic Extraction","DRC/LVS","Mixed-Signal"],
+    modules: [
+      { id: "spice_sim",     label: "SPICE Simulator",    icon: "📈", desc: "Run op-amp, comparator, LDO simulations",    sandbox: "notebook" },
+      { id: "layout_review", label: "Layout Review",      icon: "🔧", desc: "Describe layout strategy and constraints",    sandbox: "markdown" },
+      { id: "drc_check",     label: "DRC / LVS Notes",   icon: "✅", desc: "Document DRC rules and LVS fixes",            sandbox: "markdown" },
+      { id: "pex_analysis",  label: "Parasitic Analysis", icon: "🔍", desc: "RC extraction and post-layout simulation",    sandbox: "notebook" },
+      { id: "circuit_calc",  label: "Circuit Calculator", icon: "🧮", desc: "Compute bias, bandwidth, noise floor",        sandbox: "notebook" },
+    ],
+    defaultModule: "spice_sim",
+    defaultSandbox: "notebook",
+    deliverables: ["Layout Strategy Docs","DRC/LVS Reports","Parasitic Extraction Reports","Circuit Analysis"],
+    skills: [
+      "Full-Custom IC Layout","Cadence Virtuoso","Analog Circuit Analysis","Device Matching",
+      "DRC / LVS / ERC","Guard Rings & Shielding","Parasitic Extraction (PEX/RC)",
+      "Analog Block Floorplanning","Electromigration Rules","ESD Protection","Low-Noise Layout","Mixed-Signal Integration",
+    ],
+    missionCategories: [
+      { id: "circuit_analysis", label: "Circuit Analysis",  workbench: "circuit_workbench", lang: "Python",   icon: "📈" },
+      { id: "layout_strategy",  label: "Layout Strategy",   workbench: "layout_studio", lang: "Markdown", icon: "🔧" },
+      { id: "drc_fix",          label: "DRC Fix",           workbench: "layout_studio", lang: "Markdown", icon: "✅" },
+      { id: "parasitic_calc",   label: "Parasitic Calc",    workbench: "circuit_workbench", lang: "Python",   icon: "🔍" },
+    ],
+    rubric: [
+      { criterion: "Layout Correctness",    weight: 30, desc: "DRC/LVS clean per PDK rules" },
+      { criterion: "Matching Strategy",     weight: 25, desc: "Common-centroid, dummy devices, proper guard rings" },
+      { criterion: "Parasitic Minimisation",weight: 20, desc: "Capacitance and resistance targets met post-PEX" },
+      { criterion: "ESD & Reliability",     weight: 15, desc: "ESD structures present, EM rules respected" },
+      { criterion: "Documentation",         weight: 10, desc: "Layout decisions and critical nodes annotated" },
+    ],
+    contextPanelSections: [
+      { title: "Matching Techniques",    icon: "🔧", content: "Common-centroid: ABBA or 2x2 array for diff pairs\nInterdigitation: alternating fingers for transistors\nDummy devices: edge / corner to equalise etch gradient\nShielding: guard rings around sensitive nodes\nOrientation: same for matched devices (stress, lit gradient)" },
+      { title: "DRC Essentials",        icon: "✅", content: "Min width & spacing: per metal / poly / diffusion layer\nEnclosure: active must enclose contact by min rule\nVia rules: single-via allowed only when specified\nAntenna rule: gate area ratio to metal area (via diode fix)\nDensity: metal fill required per layer density rule" },
+      { title: "Parasitic Extraction",  icon: "🔍", content: "R_metal = (rho/t) x (L/W) — sheet resistance model\nC_fringe >> C_plate for fine geometries\nPEX flow: extract → netlist → re-simulate vs schematic\nEM limit: J_max per metal layer (foundry provided)\nPost-layout Spice: include .pex file, check AC / DC / transient" },
+      { title: "ESD Protection",        icon: "⚡", content: "HBM: 1500V Human Body Model minimum\nCDM: Charged Device Model sensitive to fast paths\nESD diodes: clamp pads to VDD and VSS rails\nLatch-up prevention: well ties every 10-15um\nGate oxide: never exceed VGS_max even briefly" },
+    ],
+  },
+
+  // ── EEE / ELECTRICAL ENGINEERING ──────────────────────────────────────────
+  eee: {
+    key: "eee",
+    label: "Electrical Engineer",
+    icon: "⚡",
+    color: "#EAB308",
+    colorBg: "#FEFCE8",
+    colorBorder: "rgba(234,179,8,0.20)",
+    ownership: "Power Systems, Machines, Control & Power Electronics",
+    description: "Analyse and design power systems, electrical machines, control loops, and PE converters",
+    tracks: ["Power Systems","Electrical Machines","Control Systems","Power Electronics","Instrumentation"],
+    modules: [
+      { id: "power_calc",      label: "Power Calculator",   icon: "⚡", desc: "Load flow, short-circuit, power factor",      sandbox: "notebook" },
+      { id: "machine_sim",     label: "Machine Simulator",  icon: "🔄", desc: "Motor/generator torque-speed analysis",       sandbox: "notebook" },
+      { id: "control_design",  label: "Control Design",     icon: "🎛️", desc: "PID tuning, Bode plot, stability margins",    sandbox: "notebook" },
+      { id: "pe_converter",    label: "PE Converter",       icon: "🔋", desc: "Buck/Boost/Inverter waveform calculation",    sandbox: "notebook" },
+      { id: "plc_editor",      label: "PLC / IEC 61131",    icon: "🏭", desc: "Ladder logic and structured text exercises",  sandbox: "code"     },
+      { id: "standards_ref",   label: "Standards Ref",      icon: "📋", desc: "IEEE, IEC, IS standards quick reference",     sandbox: "markdown" },
+    ],
+    defaultModule: "power_calc",
+    defaultSandbox: "notebook",
+    deliverables: ["Load Flow Reports","Motor Drive Designs","Control System Designs","Converter Specifications"],
+    skills: [
+      "Power Systems Analysis","Load Flow (Newton-Raphson)","Electrical Machines (AC/DC)","Induction Motor Drives",
+      "Control Systems (PID/Root Locus)","Power Electronics (Buck/Boost/Inverter)","Protection Relaying",
+      "SCADA / PLC Programming","Transformer Design","Switchgear","Grounding & Earthing","IEC / IEEE Standards",
+    ],
+    missionCategories: [
+      { id: "load_flow",       label: "Load Flow",          workbench: "engineering_calculator", lang: "Python",   icon: "⚡" },
+      { id: "motor_analysis",  label: "Motor Analysis",     workbench: "engineering_calculator", lang: "Python",   icon: "🔄" },
+      { id: "control_loop",    label: "Control Loop",       workbench: "engineering_calculator", lang: "Python",   icon: "🎛️" },
+      { id: "pe_design",       label: "PE Converter",       workbench: "engineering_calculator", lang: "Python",   icon: "🔋" },
+      { id: "plc_program",     label: "PLC Programming",    workbench: "code_ide",     lang: "IEC61131", icon: "🏭" },
+    ],
+    rubric: [
+      { criterion: "Calculation Accuracy",  weight: 35, desc: "Numerical results match expected values within tolerance" },
+      { criterion: "Method Correctness",    weight: 30, desc: "Correct technique applied (Newton-Raphson, Park's transform…)" },
+      { criterion: "Standards Compliance",  weight: 15, desc: "Design respects relevant IEC / IEEE standards" },
+      { criterion: "Code Quality",          weight: 10, desc: "Clean Python / PLC code, units labelled" },
+      { criterion: "Interpretation",        weight: 10, desc: "Results interpreted and engineering conclusions drawn" },
+    ],
+    contextPanelSections: [
+      { title: "Power Systems Formulas",  icon: "⚡", content: "S = P + jQ = V × I*\nP = √3 × VL × IL × cos(φ) (3-phase)\nShort-circuit: Isc = V / Zth\nPower factor: PF = cos(φ) = P / |S|\nPer-unit: Vpu = Vactual / Vbase" },
+      { title: "Induction Motor",         icon: "🔄", content: "Slip: s = (Ns - N) / Ns\nTorque: T = (3/ωs) × I2² × R2/s\nEquivalent circuit: R1, jX1, Rc, jXm, R2/s, jX2\nStarting: DOL | Star-Delta | Soft Starter | VFD\nSpeed control: VSI (V/f = const) → vector control" },
+      { title: "Control Systems",         icon: "🎛️", content: "PID: u(t) = Kp·e + Ki·∫e dt + Kd·de/dt\nZiegler-Nichols: Ku, Tu → Kp=0.6Ku, Ti=0.5Tu, Td=0.125Tu\nRoot Locus: poles → LHP for stability\nBode: GM > 6dB, PM > 45° for robust loop\nLaplace: differentiation → s, integration → 1/s" },
+      { title: "PE Converter Basics",     icon: "🔋", content: "Buck: Vo = D × Vin  (D = duty cycle)\nBoost: Vo = Vin / (1-D)\nBuck-Boost: Vo = -D/(1-D) × Vin\nInverter: THD target < 5% (IEEE 519)\nSwitching loss: Psw = 0.5 × Vin × IL × (tr+tf) × fs" },
+    ],
+  },
+
+  // ── MECHANICAL ENGINEERING ─────────────────────────────────────────────────
+  mechanical: {
+    key: "mechanical",
+    label: "Mechanical Engineer",
+    icon: "⚙️",
+    color: "#64748B",
+    colorBg: "#F8FAFC",
+    colorBorder: "rgba(100,116,139,0.20)",
+    ownership: "Thermodynamics, Fluid Mechanics, Design & Manufacturing",
+    description: "Solve engineering problems in thermodynamics, CFD, machine design, and manufacturing",
+    tracks: ["Machine Design","Thermodynamics","Fluid Mechanics","Manufacturing","FEA / Simulation"],
+    modules: [
+      { id: "thermo_calc",   label: "Thermo Calculator",   icon: "🌡️", desc: "Heat transfer, cycles, efficiency calcs",     sandbox: "notebook" },
+      { id: "fluid_calc",    label: "Fluid Mechanics",     icon: "💧", desc: "Pipe flow, Bernoulli, Reynolds, pump curves",  sandbox: "notebook" },
+      { id: "stress_calc",   label: "Stress Analysis",     icon: "⚙️", desc: "Beam bending, torsion, FOS calculations",    sandbox: "notebook" },
+      { id: "mfg_planner",   label: "Mfg Process Planner", icon: "🏭", desc: "Machining, tolerances, GD&T process plans",   sandbox: "code"     },
+      { id: "cad_review",    label: "Design Review",       icon: "📐", desc: "Design criteria, material selection, DFM",    sandbox: "markdown" },
+    ],
+    defaultModule: "thermo_calc",
+    defaultSandbox: "notebook",
+    deliverables: ["Stress Analysis Reports","Heat Transfer Studies","Fluid System Designs","Manufacturing Process Plans"],
+    skills: [
+      "Thermodynamics (1st/2nd Law)","Heat Transfer (Conduction/Convection/Radiation)","Fluid Mechanics",
+      "Machine Design (Shafts/Gears/Bearings)","Strength of Materials","FEA (ANSYS/Abaqus)",
+      "Manufacturing Processes","GD&T","Material Selection","Vibration Analysis","CAD (SolidWorks/CATIA)","DFM / DFA",
+    ],
+    missionCategories: [
+      { id: "thermo_problem",  label: "Thermo Problem",     workbench: "mechanical_studio", lang: "Python",   icon: "🌡️" },
+      { id: "fluid_problem",   label: "Fluid Problem",      workbench: "mechanical_studio", lang: "Python",   icon: "💧" },
+      { id: "stress_problem",  label: "Stress Analysis",    workbench: "mechanical_studio", lang: "Python",   icon: "⚙️" },
+      { id: "mfg_plan",        label: "Mfg Planning",       workbench: "code_ide",     lang: "Python",   icon: "🏭" },
+      { id: "design_review",   label: "Design Review",      workbench: "documentation_studio", lang: "Markdown", icon: "📐" },
+    ],
+    rubric: [
+      { criterion: "Calculation Accuracy",  weight: 35, desc: "Results within ±5% of analytical solution" },
+      { criterion: "Methodology",           weight: 30, desc: "Correct equations and assumptions stated" },
+      { criterion: "Safety Factor",         weight: 15, desc: "Adequate FOS applied with material properties" },
+      { criterion: "Practical Feasibility", weight: 10, desc: "Design is manufacturable and cost-aware" },
+      { criterion: "Presentation",          weight: 10, desc: "Clearly labelled diagrams, units consistent (SI)" },
+    ],
+    contextPanelSections: [
+      { title: "Thermodynamics Laws",    icon: "🌡️", content: "1st Law: Q - W = ΔU (closed) | Q - W = Δh (open)\n2nd Law: η_Carnot = 1 - TL/TH\nSteam tables: use specific enthalpy h, entropy s\nRankine cycle: pump → boiler → turbine → condenser\nRefrigeration COP = QL / W = QL / (QH - QL)" },
+      { title: "Fluid Mechanics",        icon: "💧", content: "Bernoulli: P + 0.5ρv² + ρgh = const\nReynolds: Re = ρvD/μ (<2300 laminar, >4000 turbulent)\nDarcy-Weisbach: hf = f(L/D)(v²/2g)\nPump affinity: Q∝N, H∝N², P∝N³\nBoundary layer: δ = 5x/√Re_x (laminar flat plate)" },
+      { title: "Strength of Materials",  icon: "⚙️", content: "Bending: σ = My/I  |  Shear: τ = VQ/Ib\nTorsion: τ = Tr/J  |  Angle: φ = TL/GJ\nColumn buckling: Pcr = π²EI / (Le)²\nFatigue: S-N curve, endurance limit Se ≈ 0.5Su\nFOS = Syt / σmax (static) | Se / σa (fatigue)" },
+      { title: "Heat Transfer",          icon: "🔥", content: "Conduction: Q = kA(ΔT/L)\nConvection: Q = hA·ΔT  (h from Nu·k/L)\nRadiation: Q = εσA(T1⁴ - T2⁴)\nNusselt (forced): Nu = C·Re^m·Pr^n\nFourier number: Fo = αt/L²  (transient lumped)" },
+    ],
+  },
+
+  // ── CIVIL ENGINEERING ─────────────────────────────────────────────────────
+  civil: {
+    key: "civil",
+    label: "Civil Engineer",
+    icon: "🏗️",
+    color: "#B45309",
+    colorBg: "#FFFBEB",
+    colorBorder: "rgba(180,83,9,0.20)",
+    ownership: "Structural, Geotechnical, Transportation & Water Resources",
+    description: "Design and analyse structures, foundations, transport networks, and hydraulic systems",
+    tracks: ["Structural Engineering","Geotechnical Engineering","Transportation","Water Resources","Construction Management"],
+    modules: [
+      { id: "structural_calc", label: "Structural Calc",    icon: "🏗️", desc: "Beam, column, slab, frame analysis",          sandbox: "notebook" },
+      { id: "soil_lab",        label: "Soil Lab",           icon: "🌍", desc: "Bearing capacity, settlement, slope stability", sandbox: "notebook" },
+      { id: "hydro_calc",      label: "Hydrology Calc",     icon: "💧", desc: "Runoff, open channel, pipe network calcs",     sandbox: "notebook" },
+      { id: "transport_plan",  label: "Transport Planning", icon: "🛣️", desc: "HCM, pavement design, traffic analysis",       sandbox: "notebook" },
+      { id: "drawing_review",  label: "Drawing Review",     icon: "📐", desc: "Review and annotate engineering drawings",     sandbox: "markdown" },
+      { id: "quantity_est",    label: "Quantity Estimation",icon: "🧮", desc: "BOQ preparation and cost estimation",          sandbox: "notebook" },
+    ],
+    defaultModule: "structural_calc",
+    defaultSandbox: "notebook",
+    deliverables: ["Structural Analysis Reports","Geotechnical Reports","Hydraulic Design Reports","BOQ Sheets"],
+    skills: [
+      "Structural Analysis (Beams/Frames)","RCC Design (IS456)","Steel Design (IS800)","Soil Mechanics",
+      "Foundation Design","Highway Engineering","Hydrology & Hydraulics","Open Channel Flow",
+      "Traffic Engineering","Surveying","Construction Management","AutoCAD Civil 3D",
+    ],
+    missionCategories: [
+      { id: "structural_problem", label: "Structural Analysis", workbench: "structural_workbench", lang: "Python",   icon: "🏗️" },
+      { id: "geotech_problem",    label: "Geotechnical Calc",   workbench: "engineering_calculator", lang: "Python",   icon: "🌍" },
+      { id: "hydro_problem",      label: "Hydrology Problem",   workbench: "engineering_calculator", lang: "Python",   icon: "💧" },
+      { id: "transport_problem",  label: "Transport Analysis",  workbench: "engineering_calculator", lang: "Python",   icon: "🛣️" },
+      { id: "design_review",      label: "Design Review",       workbench: "documentation_studio", lang: "Markdown", icon: "📐" },
+    ],
+    rubric: [
+      { criterion: "Calculation Accuracy",  weight: 35, desc: "Results within IS/ACI code tolerances" },
+      { criterion: "Code Compliance",       weight: 30, desc: "Design follows IS456 / IS800 / IS1893 correctly" },
+      { criterion: "Load Combinations",     weight: 15, desc: "Correct DL, LL, Wind, Seismic combinations applied" },
+      { criterion: "Practical Design",      weight: 10, desc: "Economical, buildable, and safe design decisions" },
+      { criterion: "Presentation",          weight: 10, desc: "Labelled diagrams, SI units, clear assumptions" },
+    ],
+    contextPanelSections: [
+      { title: "Structural Formulas",    icon: "🏗️", content: "Simply supported beam: M_max = wL²/8 | δ_max = 5wL⁴/384EI\nCantilever: M_max = wL²/2 | δ_max = wL⁴/8EI\nColumn: Pcr = π²EI/Le² (Euler)\nRCC cover: 40mm (column), 25mm (slab), 50mm (footing)\nIS456: Mu_lim = 0.138 × fck × b × d²" },
+      { title: "Soil Mechanics",         icon: "🌍", content: "Bearing capacity: qu = cNc + qNq + 0.5γBNγ\nTerzaghi (strip): qu = 1.3cNc + qNq + 0.4γBNγ\nConsolidation: Tv = Cv·t/H²\nSlope stability: FS = c'L / (W·sin(α)) + tan(φ') / tan(α)\nSPT N → Dr → φ (Peck correlation)" },
+      { title: "Hydrology",              icon: "💧", content: "Rational method: Q = C·i·A/360 (m³/s)\nManning's: V = (1/n)·R^(2/3)·S^(1/2)\nCritical flow: Fr = V/√(gD) = 1\nDarcy's law: Q = kAi (groundwater)\nUnit hydrograph: linearity + time invariance" },
+      { title: "Load Combinations IS",   icon: "⚖️", content: "IS 875 DL+LL: 1.5(DL+LL)\nIS 875 DL+WL: 1.5(DL+WL) | 0.9DL+1.5WL\nIS 1893 Seismic: 1.2(DL+LL+EQ) | 1.5(DL+EQ)\nService load: 1.0DL + 1.0LL (for deflection check)\nBase shear: Vb = Ah × W (IS1893)" },
+    ],
+  },
+
+  // ── ML / AI ENGINEERING ───────────────────────────────────────────────────
+  ml: {
+    key: "ml",
+    label: "ML / AI Engineer",
+    icon: "🤖",
+    color: "#A855F7",
+    colorBg: "#FAF5FF",
+    colorBorder: "rgba(168,85,247,0.20)",
+    ownership: "Model Training, Evaluation, Deployment & MLOps",
+    description: "Build, evaluate, and deploy machine learning models and AI pipelines",
+    tracks: ["Classical ML","Deep Learning","NLP / LLMs","Computer Vision","MLOps & Deployment"],
+    modules: [
+      { id: "model_trainer",    label: "Model Trainer",      icon: "🤖", desc: "Train classifiers, regressors, neural nets",  sandbox: "notebook" },
+      { id: "data_explorer",    label: "Data Explorer",      icon: "📊", desc: "EDA, feature engineering, data cleaning",     sandbox: "notebook" },
+      { id: "experiment_track", label: "Experiment Tracker", icon: "📈", desc: "Compare runs, metrics, hyperparameter search", sandbox: "notebook" },
+      { id: "deploy_lab",       label: "Deploy Lab",         icon: "🚀", desc: "FastAPI serving, Docker, model packaging",     sandbox: "code"     },
+      { id: "eval_suite",       label: "Eval Suite",         icon: "✅", desc: "Confusion matrix, AUC-ROC, BLEU, ROUGE",      sandbox: "notebook" },
+    ],
+    defaultModule: "model_trainer",
+    defaultSandbox: "notebook",
+    deliverables: ["Trained Models","Evaluation Reports","ML Pipelines","Deployed APIs"],
+    skills: [
+      "Python (NumPy/Pandas)","Scikit-learn","PyTorch / TensorFlow","Feature Engineering",
+      "Model Evaluation (AUC/F1/RMSE)","Neural Network Design","NLP (Transformers/BERT)","Computer Vision (CNNs)",
+      "MLOps (MLflow/W&B)","Model Deployment (FastAPI)","LLM Fine-Tuning / RAG","Data Pipelines",
+    ],
+    missionCategories: [
+      { id: "classification",    label: "Classification",     workbench: "ml_workbench", lang: "Python", icon: "🤖" },
+      { id: "regression",        label: "Regression",         workbench: "ml_workbench", lang: "Python", icon: "📈" },
+      { id: "nlp_task",          label: "NLP Task",           workbench: "ml_workbench", lang: "Python", icon: "💬" },
+      { id: "cv_task",           label: "Computer Vision",    workbench: "ml_workbench", lang: "Python", icon: "👁️" },
+      { id: "deploy_api",        label: "Deploy Model API",   workbench: "code_ide",     lang: "Python", icon: "🚀" },
+    ],
+    rubric: [
+      { criterion: "Model Performance",   weight: 35, desc: "Metric targets met (AUC, F1, RMSE as specified)" },
+      { criterion: "Methodology",         weight: 25, desc: "Correct train/val/test split, no data leakage" },
+      { criterion: "Feature Engineering", weight: 20, desc: "Meaningful features, proper encoding, scaling" },
+      { criterion: "Code Quality",        weight: 10, desc: "Clean Python, reproducible with seed, documented" },
+      { criterion: "Interpretation",      weight: 10, desc: "Results explained, failure cases identified" },
+    ],
+    contextPanelSections: [
+      { title: "ML Workflow",             icon: "🤖", content: "1. Define metric (what does 'good' look like?)\n2. EDA → clean → feature engineer\n3. Baseline: dummy classifier / mean predictor\n4. Model selection → cross-validate (StratifiedKFold)\n5. Hyperparameter search (Optuna / GridSearchCV)\n6. Final eval on held-out test set\n7. Error analysis → next iteration" },
+      { title: "Evaluation Metrics",      icon: "✅", content: "Classification: Accuracy, Precision, Recall, F1, AUC-ROC\nImbalanced: F1-macro, PR-AUC, MCC\nRegression: MAE, RMSE, R², MAPE\nNLP: BLEU (translation), ROUGE (summarisation)\nRanking: NDCG, MAP\nAvoid: accuracy on imbalanced → misleading" },
+      { title: "Common Pitfalls",         icon: "⚠️", content: "Data leakage: scaling before split, future features\nOverfitting: val loss diverges from train loss\nClass imbalance: use class_weight, SMOTE, threshold tuning\nDimensionality curse: feature selection before fitting\nMultiple comparisons: p-hacking — hold out a true test set" },
+      { title: "Transformer Quick Ref",   icon: "💬", content: "Tokenisation → Embedding → Positional Encoding\nSelf-Attention: Q·K^T/√d_k → softmax → ×V\nBERT: encoder-only, masked LM pre-train\nGPT: decoder-only, causal LM\nFine-tune: freeze backbone, train head first\nRAG: retriever (FAISS) + generator (LLM) pipeline" },
+    ],
+  },
+
+  // ── ANDROID DEVELOPMENT ───────────────────────────────────────────────────
+  android: {
+    key: "android",
+    label: "Android Developer",
+    icon: "📱",
+    color: "#22C55E",
+    colorBg: "#F0FDF4",
+    colorBorder: "rgba(34,197,94,0.20)",
+    ownership: "Android UI, Architecture, Networking & Play Store",
+    description: "Build production-quality Android apps with Kotlin, Jetpack Compose, and MVVM architecture",
+    tracks: ["Kotlin / Jetpack Compose","MVVM / Clean Architecture","Networking & APIs","Room / DataStore","Play Store & CI-CD"],
+    modules: [
+      { id: "kotlin_editor",  label: "Kotlin Editor",       icon: "📱", desc: "Write and test Kotlin code snippets",         sandbox: "code"     },
+      { id: "compose_ui",     label: "Compose UI",          icon: "🎨", desc: "Build Jetpack Compose UI components",         sandbox: "code"     },
+      { id: "arch_planner",   label: "Architecture Planner",icon: "🏗️", desc: "Design MVVM layers and component diagram",    sandbox: "markdown" },
+      { id: "api_tester",     label: "API Tester",          icon: "🔌", desc: "Retrofit calls, JSON parsing, coroutines",    sandbox: "code"     },
+      { id: "db_explorer",    label: "Room DB Explorer",    icon: "🗃️", desc: "Define entities, DAOs, and migrations",       sandbox: "code"     },
+    ],
+    defaultModule: "kotlin_editor",
+    defaultSandbox: "code",
+    deliverables: ["Kotlin Modules","Compose Screens","MVVM Architecture Designs","Room Database Schemas"],
+    skills: [
+      "Kotlin","Jetpack Compose","MVVM Architecture","ViewModel & LiveData","Coroutines & Flow",
+      "Retrofit / OkHttp","Room Database","DataStore","Hilt (DI)","Navigation Component",
+      "Work Manager","Play Store Deployment",
+    ],
+    missionCategories: [
+      { id: "compose_build",   label: "Build Compose UI",   workbench: "code_ide",     lang: "Kotlin",   icon: "🎨" },
+      { id: "viewmodel",       label: "ViewModel / Flow",   workbench: "code_ide",     lang: "Kotlin",   icon: "🏗️" },
+      { id: "retrofit_api",    label: "Retrofit API",       workbench: "code_ide",     lang: "Kotlin",   icon: "🔌" },
+      { id: "room_db",         label: "Room Database",      workbench: "code_ide",     lang: "Kotlin",   icon: "🗃️" },
+      { id: "arch_design",     label: "Architecture Design",sandbox: "markdown", lang: "Markdown", icon: "📐" },
+    ],
+    rubric: [
+      { criterion: "Functionality",       weight: 35, desc: "Feature works correctly on target API levels" },
+      { criterion: "Architecture",        weight: 25, desc: "Proper MVVM separation, DI, single source of truth" },
+      { criterion: "Compose Quality",     weight: 20, desc: "Composables reusable, state hoisted, no side-effects" },
+      { criterion: "Performance",         weight: 10, desc: "No ANRs, minimal recompositions, async on IO dispatcher" },
+      { criterion: "Code Quality",        weight: 10, desc: "Idiomatic Kotlin, coroutines used correctly" },
+    ],
+    contextPanelSections: [
+      { title: "Kotlin Essentials",       icon: "📱", content: "Data class: auto equals/hashCode/toString/copy\nSealed class: exhaustive when expressions\nCoroutines: launch (fire-forget) | async/await (result)\nFlow: cold stream | StateFlow (hot, UI state)\nExtension funs: fun String.clean() = this.trim().lowercase()" },
+      { title: "Jetpack Compose",         icon: "🎨", content: "@State: private view-local value\n@ObservedObject / @StateObject: external ViewModel\n@EnvironmentObject: dependency injection down tree\n@Binding: two-way ref to parent state\nviewModifier: reusable styling extension" },
+      { title: "MVVM Clean Arch",         icon: "🏗️", content: "UI Layer: Composable → ViewModel (StateFlow)\nDomain Layer: UseCase → Repository interface\nData Layer: Repository impl → Remote (Retrofit) + Local (Room)\nDI: Hilt @HiltViewModel, @Inject constructor\nRule: no Android imports in domain/data layers" },
+      { title: "Coroutines & Flow",       icon: "⚡", content: "Dispatchers: Main (UI), IO (network/disk), Default (CPU)\nviewModelScope.launch { } → auto-cancelled on clear\nstateIn(scope, Eagerly, initial) → cold Flow → StateFlow\ncombine(): merge multiple Flows\ncatch: .catch { emit(Result.Error(it)) }" },
+    ],
+  },
+
+  // ── iOS DEVELOPMENT ───────────────────────────────────────────────────────
+  ios: {
+    key: "ios",
+    label: "iOS Developer",
+    icon: "🍎",
+    color: "#3B82F6",
+    colorBg: "#EFF6FF",
+    colorBorder: "rgba(59,130,246,0.20)",
+    ownership: "SwiftUI, UIKit, Swift Concurrency & App Store",
+    description: "Build polished iOS apps with Swift, SwiftUI, and Apple platform frameworks",
+    tracks: ["Swift / SwiftUI","UIKit","Combine & Swift Concurrency","Core Data / SwiftData","App Store & CI-CD"],
+    modules: [
+      { id: "swift_editor",   label: "Swift Editor",        icon: "🍎", desc: "Write and test Swift code snippets",          sandbox: "code"     },
+      { id: "swiftui_canvas", label: "SwiftUI Canvas",      icon: "🎨", desc: "Build and preview SwiftUI views",             sandbox: "code"     },
+      { id: "arch_planner",   label: "Architecture Planner",icon: "🏗️", desc: "Design MVVM/TCA layers and flows",            sandbox: "markdown" },
+      { id: "network_lab",    label: "Network Lab",         icon: "🔌", desc: "URLSession, async/await, Codable models",     sandbox: "code"     },
+      { id: "core_data",      label: "Core Data / SwiftData",icon:"🗃️", desc: "Entity model, fetch, migration",              sandbox: "code"     },
+    ],
+    defaultModule: "swift_editor",
+    defaultSandbox: "code",
+    deliverables: ["Swift Modules","SwiftUI Views","Architecture Designs","Core Data Schemas"],
+    skills: [
+      "Swift","SwiftUI","UIKit","MVVM / TCA Architecture","Combine / async-await","URLSession / Codable",
+      "Core Data / SwiftData","Xcode & Instruments","TestFlight / App Store","Push Notifications",
+      "WidgetKit","Swift Package Manager",
+    ],
+    missionCategories: [
+      { id: "swiftui_build",  label: "SwiftUI View",              workbench: "code_ide",     lang: "Swift",    icon: "🎨" },
+      { id: "viewmodel",      label: "ViewModel / ObservableObject",sandbox: "code",   lang: "Swift",    icon: "🏗️" },
+      { id: "network_call",   label: "Network Call",              workbench: "code_ide",     lang: "Swift",    icon: "🔌" },
+      { id: "coredata_model", label: "Core Data Schema",          workbench: "code_ide",     lang: "Swift",    icon: "🗃️" },
+      { id: "arch_design",    label: "Architecture Design",       workbench: "documentation_studio", lang: "Markdown", icon: "📐" },
+    ],
+    rubric: [
+      { criterion: "Functionality",       weight: 35, desc: "Feature works correctly on target iOS version" },
+      { criterion: "Architecture",        weight: 25, desc: "Clean MVVM/TCA separation, no business logic in View" },
+      { criterion: "SwiftUI Quality",     weight: 20, desc: "Declarative, reusable views, @State/@Binding correct" },
+      { criterion: "Concurrency Safety",  weight: 10, desc: "No data races, Main actor used for UI updates" },
+      { criterion: "Code Quality",        weight: 10, desc: "Idiomatic Swift, protocol-oriented, extensions used" },
+    ],
+    contextPanelSections: [
+      { title: "Swift Essentials",        icon: "🍎", content: "Optionals: guard let / if let / ?? / !  (avoid force-unwrap)\nProtocols: define behaviour, default impl via extension\nClosures: [weak self] in async closures to avoid cycles\nEnum with assoc values: Result<T, Error>\nActor: protects mutable state from concurrent access" },
+      { title: "SwiftUI Patterns",        icon: "🎨", content: "@State: private view-local value\n@ObservedObject / @StateObject: external ViewModel\n@EnvironmentObject: dependency injection down tree\n@Binding: two-way ref to parent state\nviewModifier: reusable styling extension\nPreference key: child → parent communication" },
+      { title: "Swift Concurrency",       icon: "⚡", content: "async/await: no completion handlers needed\nTask { }: unstructured concurrency (cancel manually)\nasync let: parallel child tasks, await together\n@MainActor: guarantee UI updates on main thread\nActor: data race-free class (serialised access)\nNever use DispatchQueue.main in async context" },
+      { title: "URLSession Codable",      icon: "🔌", content: "struct: Codable (Encodable + Decodable)\nCodingKeys enum: map JSON key → Swift property name\nJSONDecoder().dateDecodingStrategy = .iso8601\nURLSession.shared.data(from: url) → async throws\nError: DecodingError, URLError, custom AppError\nCache: URLCache + URLRequest.CachePolicy" },
+    ],
+  },
+
+  // ── PHARMACY / CLINICAL ───────────────────────────────────────────────────
+  pharmacy: {
+    key: "pharmacy",
+    label: "Pharmacist / Pharmacy Specialist",
+    icon: "💊",
+    color: "#EC4899",
+    colorBg: "#FDF2F8",
+    colorBorder: "rgba(236,72,153,0.20)",
+    ownership: "Clinical Pharmacy, Drug Formulation & Pharmacovigilance",
+    description: "Apply clinical pharmacology knowledge to drug therapy, patient counselling, and regulatory compliance",
+    tracks: ["Clinical Pharmacy","Drug Formulation","Pharmacovigilance","Regulatory Affairs","Hospital Pharmacy"],
+    modules: [
+      { id: "drug_calc",        label: "Drug Calculator",     icon: "🧮", desc: "Dosage, creatinine clearance, IV drip calcs",  sandbox: "notebook" },
+      { id: "clinical_case",    label: "Clinical Case",       icon: "🏥", desc: "Patient scenario: DRP identification & plan",   sandbox: "markdown" },
+      { id: "formulation",      label: "Formulation Design",  icon: "⚗️", desc: "Tablet / suspension formulation excipients",   sandbox: "markdown" },
+      { id: "regulatory_doc",   label: "Regulatory Dossier",  icon: "📋", desc: "CTD, WHO/CDSCO submission document drafting",  sandbox: "markdown" },
+      { id: "pharmacovigilance",label: "Pharmacovigilance",   icon: "⚠️", desc: "ADR reporting, signal detection, causality",   sandbox: "markdown" },
+    ],
+    defaultModule: "clinical_case",
+    defaultSandbox: "markdown",
+    deliverables: ["Clinical Therapy Plans","Drug Interaction Reports","Formulation Specs","Regulatory Documents"],
+    skills: [
+      "Clinical Pharmacokinetics","Drug Interaction Analysis","Pharmacovigilance (ADR Reporting)",
+      "Dosage Adjustment (Renal/Hepatic)","Drug Formulation (Solid/Liquid)","CTD Regulatory Dossier",
+      "Patient Counselling","Hospital Pharmacy Operations","Compounding","WHO Essential Medicines",
+      "CDSCO / FDA Regulations","Evidence-Based Pharmacy Practice",
+    ],
+    missionCategories: [
+      { id: "clinical_case",     label: "Clinical Case",      workbench: "clinical_lab", lang: "Markdown", icon: "🏥" },
+      { id: "drug_calc",         label: "Drug Calculation",   workbench: "engineering_calculator", lang: "Python",   icon: "🧮" },
+      { id: "interaction_check", label: "Interaction Check",  workbench: "clinical_lab", lang: "Markdown", icon: "⚠️" },
+      { id: "formulation_task",  label: "Formulation",        workbench: "clinical_lab", lang: "Markdown", icon: "⚗️" },
+      { id: "regulatory_task",   label: "Regulatory Doc",     workbench: "documentation_studio", lang: "Markdown", icon: "📋" },
+    ],
+    rubric: [
+      { criterion: "Clinical Accuracy",     weight: 35, desc: "Drug therapy plan is clinically appropriate and evidence-based" },
+      { criterion: "Patient Safety",        weight: 30, desc: "Drug interactions, contraindications, and ADRs identified" },
+      { criterion: "Regulatory Compliance", weight: 15, desc: "Correct standards applied (WHO/CDSCO/FDA)" },
+      { criterion: "Communication",         weight: 10, desc: "Plan is clear, structured, and patient-appropriate" },
+      { criterion: "Calculation Accuracy",  weight: 10, desc: "Dose calculations and PK parameters correct" },
+    ],
+    contextPanelSections: [
+      { title: "Dosage Adjustment",       icon: "🧮", content: "CrCl (Cockcroft-Gault): (140-age)×weight / (72×SCr) ×0.85♀\nRenal: reduce dose or extend interval (GFR guided)\nHepatic: Child-Pugh score → use with caution if C class\nPediatric: mg/kg; BSA = √(H×W/3600) for chemo\nIV drip: rate(mL/hr) = (dose×weight×60) / (conc_mg/mL)" },
+      { title: "Drug Interaction Classes", icon: "⚠️", content: "PK: absorption (antacids ↓ azithromycin), distribution,\n    metabolism (CYP3A4: statins + ketoconazole → toxicity),\n    excretion (probenecid + penicillin ↑ levels)\nPD: additive (two CNS depressants), antagonism,\n    synergy (co-trimoxazole: TMP + SMX)\nHigh-risk: warfarin, lithium, digoxin, MTX, aminoglycosides" },
+      { title: "PK Parameters",           icon: "📈", content: "t½ = 0.693 / Ke\nVd = Dose / Co\nCL = Ke × Vd\nAUC = Dose / CL (IV)\nCmax, Cmin, tmax from profile\nFirst-order: linear elimination\nZero-order: saturable (phenytoin, alcohol)\nBioavailability F: oral AUC / IV AUC × 100%" },
+      { title: "CTD Structure (ICH M4)",  icon: "📋", content: "Module 1: Regional admin & prescribing info\nModule 2: Summaries (QOS, COS, NCS, CPS)\nModule 3: Quality (Chemistry, Mfg, Controls)\nModule 4: Non-clinical (Pharm, Tox, Pk study reports)\nModule 5: Clinical (PK, PD, Efficacy, Safety reports)\nDossier format: eCTD XML backbone preferred" },
+    ],
+  },
+
+  // ── MBA / BUSINESS ────────────────────────────────────────────────────────
+  mba: {
+    key: "mba",
+    label: "MBA / Business Manager",
+    icon: "💼",
+    color: "#1D4ED8",
+    colorBg: "#EFF6FF",
+    colorBorder: "rgba(29,78,216,0.20)",
+    ownership: "Business Strategy, Operations, Finance & Marketing",
+    description: "Solve business problems through strategy frameworks, financial modelling, and data-driven decisions",
+    tracks: ["Business Strategy","Financial Analysis","Operations Management","Marketing","HR Management"],
+    modules: [
+      { id: "case_study",       label: "Case Study",          icon: "📋", desc: "Structured problem-solving with frameworks",  sandbox: "markdown" },
+      { id: "financial_model",  label: "Financial Model",     icon: "📊", desc: "P&L, DCF, unit economics, break-even",        sandbox: "notebook" },
+      { id: "strategy_canvas",  label: "Strategy Canvas",     icon: "🗺️", desc: "SWOT, Porter's Five Forces, Blue Ocean",      sandbox: "markdown" },
+      { id: "ops_design",       label: "Operations Design",   icon: "⚙️", desc: "Process maps, capacity, supply chain",         sandbox: "markdown" },
+      { id: "market_analysis",  label: "Market Analysis",     icon: "📈", desc: "TAM/SAM/SOM, competitive landscape, pricing", sandbox: "notebook" },
+    ],
+    defaultModule: "case_study",
+    defaultSandbox: "markdown",
+    deliverables: ["Business Case Reports","Financial Models","Strategy Presentations","Operations Plans"],
+    skills: [
+      "Business Strategy (Porter/BCG/SWOT)","Financial Modelling (DCF/LBO)","P&L Management",
+      "Operations Management","Supply Chain","Marketing Strategy","HR & Organisational Design",
+      "Data-Driven Decision Making","Excel / SQL for Business","Stakeholder Communication",
+      "Project Management","Change Management",
+    ],
+    missionCategories: [
+      { id: "case_analysis",    label: "Case Analysis",      workbench: "business_studio", lang: "Markdown", icon: "📋" },
+      { id: "financial_model",  label: "Financial Model",    workbench: "engineering_calculator", lang: "Python",   icon: "📊" },
+      { id: "strategy_problem", label: "Strategy Problem",   workbench: "business_studio", lang: "Markdown", icon: "🗺️" },
+      { id: "ops_problem",      label: "Operations Problem", workbench: "business_studio", lang: "Markdown", icon: "⚙️" },
+      { id: "market_sizing",    label: "Market Sizing",      workbench: "engineering_calculator", lang: "Python",   icon: "📈" },
+    ],
+    rubric: [
+      { criterion: "Problem Structuring",  weight: 30, desc: "Issue tree / MECE breakdown, correct framework applied" },
+      { criterion: "Financial Accuracy",   weight: 25, desc: "Numbers consistent, assumptions explicit, model buildable" },
+      { criterion: "Strategic Insight",    weight: 25, desc: "Recommendations are novel, specific, and actionable" },
+      { criterion: "Communication",        weight: 10, desc: "Pyramid principle, exec summary first, visual-ready" },
+      { criterion: "Data Use",             weight: 10, desc: "Evidence cited, benchmarks used, analysis not assertion" },
+    ],
+    contextPanelSections: [
+      { title: "Core Frameworks",         icon: "🗺️", content: "SWOT: Strengths, Weaknesses, Opportunities, Threats\nPorter 5 Forces: rivalry, entrants, substitutes, buyers, suppliers\nBCG Matrix: Stars, Cash Cows, Dogs, Question Marks\nAnsoff: Market Penetration | Dev | Product Dev | Diversification\nValue Chain: primary (ops/mktg/service) + support (HR/IT/infra)\nBlue Ocean: eliminate-reduce-raise-create (value innovation)" },
+      { title: "Financial Essentials",    icon: "📊", content: "DCF: NPV = Σ CF/(1+r)^t − Initial Inv\nIRR: discount rate where NPV = 0\nROI = (Gain − Cost) / Cost × 100%\nUnit Economics: LTV / CAC > 3 (SaaS)\nBreak-even: Fixed Costs / (Price − Variable Cost)\nGross margin = (Revenue − COGS) / Revenue × 100%" },
+      { title: "Case Interview Approach", icon: "📋", content: "1. Clarify: scope, metric, timeframe\n2. Structure: MECE issue tree (2-3 branches)\n3. Prioritise: biggest impact or most unknown first\n4. Analyse: math + qualitative insight\n5. Synthesise: so what? → recommendation\n6. Sanity check: back of envelope validation\n\nCommon: profitability, market entry, M&A, GTM" },
+      { title: "Operations Metrics",      icon: "⚙️", content: "OEE = Availability × Performance × Quality\nInventory Turnover = COGS / Avg Inventory\nCycle Time = (End Date − Start Date) / Units\nLittle's Law: L = λ × W (queue theory)\nCapacity Utilisation = Actual Output / Design Cap\nNPS = % Promoters − % Detractors (target > 50)" },
+    ],
+  },
+
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -943,6 +1678,10 @@ export const DOMAIN_ORDER = [
   "qa", "ba_product",
   // Specialised (legacy)
   "medical", "ece",
+  // Engineering streams
+  "embedded", "vlsi", "analog_ic", "eee", "mechanical", "civil",
+  // New tech & specialty
+  "ml", "android", "ios", "pharmacy", "mba",
 ]
 
 /**
@@ -996,6 +1735,17 @@ export const getDomainModules = (domainKey) => {
  * Resolve sandbox type from (task, domainKey) — domain is the primary signal.
  */
 export const resolveSandboxType = (task, domainKey) => {
+  // Mission-first: if the task declares a workbench, resolve through the registry.
+  // This is the preferred path for all new missions.
+  if (task?.workbench) {
+    const wb = WORKBENCH_REGISTRY[task.workbench]
+    if (wb) return wb.sandbox
+  }
+  // Legacy: task declares sandbox directly (old missions and modules)
+  if (task?.sandbox && task.sandbox !== "code" && task.sandbox !== "notebook") {
+    return task.sandbox
+  }
+
   const cat = ((task?.category || task?.id || task?.type || "")).toLowerCase().replace(/[\s_]/g, "")
 
   switch (domainKey) {
@@ -1064,6 +1814,17 @@ export const resolveSandboxType = (task, domainKey) => {
     }
     case "medical":       return "medical_coding"
     case "ece":           return "code"
+    case "embedded":      return "code"
+    case "vlsi":          return "code"
+    case "analog_ic":     return "notebook"
+    case "eee":           return "notebook"
+    case "mechanical":    return "notebook"
+    case "civil":         return "notebook"
+    case "ml":            return "notebook"
+    case "android":       return "code"
+    case "ios":           return "code"
+    case "pharmacy":      return "markdown"
+    case "mba":           return "markdown"
     default:              return "code"
   }
 }
