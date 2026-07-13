@@ -457,8 +457,17 @@ const DOMAIN_CONTEXT = {
       "Implement an UART transmitter module in Verilog for {company}'s IoT device — 9600 baud, 8N1, with FIFO buffer",
       "Debug a race condition in {company}'s embedded sensor driver — it intermittently returns corrupt ADC readings",
       "Optimise {company}'s interrupt service routine — currently takes 850μs, needs to be under 50μs",
+      "Write an I2C master driver for {company}'s temperature sensor — read a 16-bit register and convert to Celsius",
+      "Implement a ring buffer for {company}'s UART receive ISR — handle overflow gracefully without losing data",
     ],
-    starterCode: `/* Embedded Systems Challenge: {company} */\n#include <stdint.h>\n#include <stdbool.h>\n\n/* ─── HARDWARE ABSTRACTION ────────────────────────────────────────────────── */\n#define REG_BASE    0x40000000U\n#define GPIO_OUT    (*(volatile uint32_t*)(REG_BASE + 0x00))\n#define UART_DATA   (*(volatile uint32_t*)(REG_BASE + 0x04))\n#define UART_STATUS (*(volatile uint32_t*)(REG_BASE + 0x08))\n\n/* ─── YOUR SOLUTION ───────────────────────────────────────────────────────── */\nvoid init(void) {\n    /* TODO: initialise peripherals */\n}\n\nvoid solve(void) {\n    /* TODO: implement solution */\n}\n\nint main(void) {\n    init();\n    solve();\n    return 0;\n}\n`,
+    studentScenarioTypes: [
+      "Toggle an LED on {company}'s STM32 board using GPIO — configure the pin as output and blink at 1Hz using a delay loop",
+      "Read an ADC value from {company}'s sensor pin and store it in a variable — use polling mode, not interrupts",
+      "Configure a timer on {company}'s microcontroller to generate a 1kHz square wave on a GPIO pin",
+      "Write a function that checks a button input on {company}'s board with software debounce — return 1 only on a stable press",
+    ],
+    // Scaffold only — no register addresses, no bit names, no solution hints in TODOs
+    starterCode: `/* Embedded Systems Challenge: {company} */\n#include <stdint.h>\n#include <stdbool.h>\n\n/* ─── YOUR IMPLEMENTATION ─────────────────────────────────────────────────── */\n\nvoid setup(void) {\n    /* TODO */\n}\n\nvoid run(void) {\n    /* TODO */\n}\n\nint main(void) {\n    setup();\n    run();\n    return 0;\n}\n`,
   },
 }
 
@@ -511,13 +520,14 @@ PREFERRED LANGUAGE/STACK: ${ctx.lang}
 3. "hints": write ONLY guiding questions that help the user think (e.g. "What happens if the input list is empty?" / "What structure would let you look up values in constant time?"). NEVER name algorithms, reveal the approach, or show solution steps. Maximum 2 hints.
 4. NEVER include solution code, pseudocode, algorithm names, or step-by-step instructions anywhere in the mission.
 5. The whole point is that the student discovers the solution themselves.
+6. "starterCode": you MUST use the exact scaffold provided below — do NOT add register addresses, bit definitions, function names, or descriptive TODO comments. TODO comments must say only "/* TODO */" or "// TODO" — NEVER describe what to implement inside the comment (e.g. "// TODO: wait for TXE" is FORBIDDEN — it reveals the answer).
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 OTHER RULES:
-6. Challenge must be specific to ${keyword} ${isStudent ? "learner" : "professional"} work — not generic
-7. Workstation must be "${ctx.workstation}"
-8. Use company name: ${company}
-9. Starter code scaffolds the structure only — does NOT hint at the solution
+7. Challenge must be specific to ${keyword} ${isStudent ? "learner" : "professional"} work — not generic
+8. Workstation must be "${ctx.workstation}"
+9. Use company name: ${company}
+10. Starter code scaffolds the structure only — does NOT hint at the solution. Return the starterCode field exactly as provided.
 
 Return a single JSON object:
 {
@@ -559,6 +569,19 @@ export async function geminiGenerateMission({ keyword, domainKey, eloRating, dif
 
   const parsed = JSON.parse(result.response.text())
   if (!parsed?.title) throw new Error("Gemini returned invalid mission structure")
+
+  // ── Sanitize starterCode — strip any descriptive TODO comments the AI added ──
+  // Rule: TODO comments must NEVER describe what to implement (that gives away
+  // the answer). Replace "// TODO: <anything>" or "/* TODO: <anything> */" with
+  // plain "// TODO" / "/* TODO */".
+  if (parsed.starterCode) {
+    parsed.starterCode = parsed.starterCode
+      // single-line: // TODO: do X  →  // TODO
+      .replace(/\/\/\s*TODO\s*:.+/g, "// TODO")
+      // block: /* TODO: do X */  →  /* TODO */
+      .replace(/\/\*\s*TODO\s*:.+?\*\//gs, "/* TODO */")
+  }
+
   return parsed
 }
 
