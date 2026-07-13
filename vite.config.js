@@ -26,8 +26,10 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          // Core React runtime — kept in main bundle
-          if (id.includes("node_modules/react/") || id.includes("node_modules/react-dom/")) return "vendor-react"
+          // React MUST stay in the main bundle — splitting it causes
+          // "Cannot read properties of undefined (reading 'useState')"
+          // because vendor-misc can load before vendor-react in some browsers.
+          if (id.includes("node_modules/react/") || id.includes("node_modules/react-dom/")) return undefined
           // Chart library (~400kb)
           if (id.includes("node_modules/recharts"))      return "vendor-charts"
           // 3D library (~600kb) — only used in specific pages
