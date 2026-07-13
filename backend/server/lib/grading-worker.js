@@ -165,6 +165,7 @@ async function processJob(payload) {
 
   // ── Fire-and-forget: non-critical background writes ──────────────────────────
   Promise.all([
+    // 1. ELO event log
     supabaseAdmin.from("elo_events").insert({
       user_id:    userId,
       source:     "arena",
@@ -176,6 +177,7 @@ async function processJob(payload) {
       note:       `${challenge.title} (${challenge.difficulty}) — score ${finalScore}`,
     }).catch(() => {}),
 
+    // 2. Skill graph upsert (score ≥ 50 = credible signal)
     finalScore >= 50
       ? supabaseAdmin.from("skill_graph").upsert({
           user_id:            userId,
@@ -190,18 +192,60 @@ async function processJob(payload) {
           updated_at:         new Date().toISOString(),
         }, { onConflict: "user_id,skill_slug" }).catch(() => {})
       : Promise.resolve(),
+
+    // 3. Proof artifact — score ≥ 50 earns a recruiter-visible proof record.
+    //    is_portfolio_visible: score ≥ 70 (good enough to show on public profile)
+    //    is_recruiter_visible: score ≥ 60 (recruiters see anything credible)
+    finalScore >= 50
+      ? supabaseAdmin.from("proof_artifacts").insert({
+          user_id:              userId,
+          submission_id:        resolvedAttemptId,
+          challenge_id:         challengeId,
+          workspace_type:       challenge.sandbox_type || "code",
+          artifact_type:        "arena_submission",
+          title:                challenge.title || "Arena Challenge",
+          description:          feedbackPayload.summary || "",
+          domain:               challenge.domain || "swe",
+          difficulty:           challenge.difficulty || "Medium",
+          score:                finalScore,
+          hidden_score:         finalScore,
+          grade,
+          elo_delta:            delta,
+          badges:               grade === "A+" ? ["top_score"] : grade === "A" ? ["strong"] : [],
+          is_portfolio_visible: finalScore >= 70,
+          is_recruiter_visible: finalScore >= 60,
+          created_at:           new Date().toISOString(),
+        }).catch(() => {})
+      : Promise.resolve(),
+
+    // 4. Streak event — one row per active day, used by the streak heatmap.
+    //    Upsert so duplicate calls on the same day just extend the domain list.
+    supabaseAdmin.from("streak_events").upsert({
+      user_id:         userId,
+      event_date:      todayDate,
+      challenge_count: 1,                          // will be incremented by DB trigger if exists
+      domains:         [challenge.domain],
+      elo_gained:      Math.max(0, delta),
+      is_freeze_used:  false,
+      updated_at:      new Date().toISOString(),
+    }, {
+      onConflict:      "user_id,event_date",
+      ignoreDuplicates: false,                     // merge — DB should have a trigger to sum counts
+    }).catch(() => {}),
   ]).catch(() => {})
 
   // ── Write result to job record → frontend poll picks this up ─────────────────
   const result = {
-    score:         finalScore,
-    elo_delta:     delta,
-    new_elo:       newElo,
+    score:                finalScore,
+    elo_delta:            delta,
+    new_elo:              newElo,
     grade,
-    feedback:      feedbackPayload,
-    new_streak:    newStreak,
-    proof_created: finalScore >= 50,
-    attempt_id:    resolvedAttemptId,
+    feedback:             feedbackPayload,
+    new_streak:           newStreak,
+    proof_created:        finalScore >= 50,
+    proof_portfolio:      finalScore >= 70,   // shows on public portfolio
+    proof_recruiter:      finalScore >= 60,   // visible to recruiters
+    attempt_id:           resolvedAttemptId,
   }
 
   await supabaseAdmin.from("arena_grading_jobs").update({

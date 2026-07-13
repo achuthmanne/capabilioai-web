@@ -4113,6 +4113,28 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
           const rank = await arenaDb.getRankCount(domainKey, newElo)
           await arenaDb.upsertLeaderboard(uid, domainKey, { rank })
         } catch {}
+
+        // ── Proof artifact — mints a recruiter-visible career asset ──────────────
+        // score ≥ 50: proof created; ≥ 60: recruiter visible; ≥ 70: portfolio visible
+        if (finalScore >= 50 && !integrity.isCheat) {
+          try {
+            const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
+            await fetch(`${SERVER}/api/arena/proof-artifacts`, {
+              method:  "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${(await import("../lib/supabase")).supabase.auth.getSession().then(r => r.data.session?.access_token)}` },
+              body: JSON.stringify({
+                challenge_id:  activeMission?.id || activeMission?.slug,
+                workspace_type: activeMission?.sandbox_type || "code",
+                title:         activeMission?.title || "Arena Challenge",
+                description:   reviewResult.summary || "",
+                artifact_type: "arena_submission",
+                score:         finalScore,
+                hidden_score:  finalScore,
+                badges:        reviewResult.grade === "A+" ? ["top_score"] : reviewResult.grade === "A" ? ["strong"] : [],
+              }),
+            })
+          } catch { /* fire-and-forget — non-fatal */ }
+        }
       }
       if (markCompleted && activeMissionSlot !== null) {
         await markCompleted(activeMissionSlot, activeMission, reviewResult)
