@@ -6,7 +6,7 @@
  *   1. Marks job as 'processing'
  *   2. Runs AI grading (Claude / Groq)
  *   3. Computes ELO delta
- *   4. Writes result to challenge_attempts + profiles
+ *   4. Writes result to arena_history + profiles
  *   5. Fires background writes (elo_events, skill_graph, etc.)
  *   6. Marks job as 'done', acks the queue message
  *
@@ -47,7 +47,6 @@ async function processJob(payload) {
     job_id,
     userId,
     challengeId,
-    attemptId,
     code,
     test_results = [],
     time_taken_secs = 0,
@@ -124,22 +123,29 @@ async function processJob(payload) {
     is_timed_out,
   }
 
-  // ── Critical write: attempt record ──────────────────────────────────────────
-  let resolvedAttemptId = attemptId
-  if (attemptId) {
-    await supabaseAdmin
-      .from("challenge_attempts")
-      .update(updateData)
-      .eq("id", attemptId)
-      .eq("user_id", userId)
-  } else {
-    const { data: newAttempt } = await supabaseAdmin
-      .from("challenge_attempts")
-      .insert({ user_id: userId, challenge_id: challengeId, ...updateData })
-      .select("id")
-      .single()
-    resolvedAttemptId = newAttempt?.id
-  }
+  // ── Critical write: arena_history (production submission record) ─────────────
+  // Production table is arena_history, not challenge_attempts.
+  const { data: histRow } = await supabaseAdmin
+    .from("arena_history")
+    .insert({
+      user_id:          userId,
+      task_id:          challengeId,
+      title:            challenge.title       || "Arena Challenge",
+      difficulty:       challenge.difficulty  || "Medium",
+      domain:           challenge.domain      || "swe",
+      challenge_type:   challenge.type        || "domain",
+      score:            finalScore,
+      elo_delta:        delta,
+      summary:          feedbackPayload.summary,
+      scenario:         challenge.description || challenge.statement || "",
+      submitted_answer: String(code || "").slice(0, 3000),
+      feedback:         feedbackPayload.summary,
+      completed_at:     new Date().toISOString(),
+    })
+    .select("id")
+    .single()
+    .catch(() => ({ data: null }))
+  const resolvedAttemptId = histRow?.id || null
 
   // ── Critical write: profile ELO ─────────────────────────────────────────────
   const todayDate  = today()

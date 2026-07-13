@@ -244,7 +244,6 @@ router.post("/challenges/:id/submit", requireAuth, async (req, res) => {
     const { id }  = req.params
     const userId  = req.user.id
     const {
-      attempt_id,
       code,
       test_results = [],
       time_taken_secs = 0,
@@ -257,9 +256,10 @@ router.post("/challenges/:id/submit", requireAuth, async (req, res) => {
       supabase.from("profiles")
         .select("elo_rating, arena_completed, arena_streak, last_arena_date")
         .eq("id", userId).single(),
-      supabase.from("challenge_attempts")
+      // Count prior submissions from arena_history (production table)
+      supabase.from("arena_history")
         .select("id", { count: "exact", head: true })
-        .eq("user_id", userId).eq("challenge_id", id),
+        .eq("user_id", userId).eq("task_id", id),
     ])
 
     const challenge = challengeRes.data
@@ -267,41 +267,14 @@ router.post("/challenges/:id/submit", requireAuth, async (req, res) => {
 
     const profile  = profileRes.data
     const userElo  = profile?.elo_rating || 800
-    const attempts = attemptsRes.count || 1
-
-    // ── Create attempt record immediately (status: submitted) ──────────────────
-    let resolvedAttemptId = attempt_id
-    if (!attempt_id) {
-      const { data: newAttempt } = await supabase
-        .from("challenge_attempts")
-        .insert({
-          user_id:      userId,
-          challenge_id: id,
-          status:       "submitted",
-          submitted_at: new Date().toISOString(),
-          code_snapshot: String(code || "").slice(0, 20000),
-          test_results,
-          time_taken_secs,
-          is_timed_out,
-        })
-        .select("id").single()
-      resolvedAttemptId = newAttempt?.id
-    } else {
-      await supabase.from("challenge_attempts").update({
-        status:       "submitted",
-        submitted_at: new Date().toISOString(),
-        code_snapshot: String(code || "").slice(0, 20000),
-        test_results,
-        time_taken_secs,
-        is_timed_out,
-      }).eq("id", attempt_id).eq("user_id", userId)
-    }
+    const attempts = (attemptsRes.count || 0) + 1
 
     // ── Enqueue grading job — worker does AI grading in background ─────────────
+    // No pre-grading attempt record needed: arena_grading_jobs table tracks job
+    // status, and worker inserts into arena_history after grading completes.
     const jobId = await enqueueGrading({
       userId,
       challengeId:    id,
-      attemptId:      resolvedAttemptId,
       code,
       test_results,
       time_taken_secs,
@@ -318,10 +291,9 @@ router.post("/challenges/:id/submit", requireAuth, async (req, res) => {
 
     // ── Return instantly — ~50ms instead of 10–30s ────────────────────────────
     return res.json({
-      queued:     true,
-      job_id:     jobId,
-      attempt_id: resolvedAttemptId,
-      message:    "Your submission is being graded. Poll /jobs/:job_id for the result.",
+      queued:  true,
+      job_id:  jobId,
+      message: "Your submission is being graded. Poll /jobs/:job_id for the result.",
     })
   } catch (e) {
     console.error("[arenaV2/submit]", e.message)
