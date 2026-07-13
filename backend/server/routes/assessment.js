@@ -43,11 +43,38 @@ const DOMAIN_SKILLS = {
   "Cybersecurity":    ["Network Security","Linux","Ethical Hacking Basics","OWASP Top 10","Cryptography","Firewalls & IDS","Penetration Testing","Vulnerability Assessment","Security Auditing","Incident Response","Compliance (ISO 27001)","SIEM Tools"],
   "Cloud Engineer":   ["AWS / Azure / GCP","IAM & Security","Compute (EC2/VMs)","Storage (S3/Blob)","Networking (VPC)","Containers (ECS/AKS)","Serverless","Monitoring (CloudWatch)","Infrastructure as Code","Cost Optimisation","Databases","CI/CD"],
 
-  // ── Core Engineering domains ──────────────────────────────────────────────────
-  "ECE":        ["Digital Electronics","Analog Circuits","Microcontrollers (ARM/AVR)","Embedded C","Signals & Systems","Communication Systems","RTOS Basics","PCB Design Fundamentals","FPGA & VHDL Basics","Sensors & Interfacing","Wireless Communication","IoT Protocols"],
-  "EEE":        ["Circuit Analysis","Electrical Machines","Power Systems","Control Systems","Power Electronics","Transformers & Transmission","Protection Systems","Renewable Energy Systems","PLC & SCADA Basics","Instrumentation & Measurement","Three-Phase Systems","High Voltage Engineering"],
-  "Mechanical": ["Thermodynamics","Fluid Mechanics","Strength of Materials","Manufacturing Processes","Machine Design","Heat Transfer","CAD & Engineering Drawing","Kinematics & Dynamics","Industrial Engineering","Material Science","Quality Control & Metrology","Refrigeration & HVAC"],
-  "Civil":      ["Structural Analysis","Concrete Technology","Soil Mechanics & Foundation","Surveying","Fluid Mechanics (Civil)","Transportation Engineering","Environmental Engineering","Construction Management","Steel Structures","Hydrology & Irrigation","Building Materials","Estimation & Costing"],
+  // ── ECE role-specific domains ─────────────────────────────────────────────────
+  "ECE Embedded":    ["ARM Cortex Architecture","Embedded C / Bare-Metal","RTOS (FreeRTOS / Zephyr)","Device Drivers & HAL","Interrupt Handling","Memory Management (MMU / MPU)","Bootloader & Startup Code","SPI / I2C / UART Protocols","CAN & LIN Bus","Debugging (JTAG / OpenOCD)","Low-Power Design","Firmware Over-the-Air (FOTA)"],
+  "ECE VLSI":        ["Digital Logic Design","Verilog / SystemVerilog","VHDL","RTL Design & Synthesis","Static Timing Analysis","Floorplanning & Placement","Clock Tree Synthesis","DRC / LVS / ERC","UVM Verification","ASIC Design Flow","FPGA Implementation","Low-Power VLSI Techniques"],
+  "ECE RF":          ["RF Circuit Design","Transmission Line Theory","Antenna Design & Parameters","Microwave Amplifiers","Filter Design (RF)","S-Parameters & Smith Chart","Impedance Matching","Signal Propagation & Path Loss","Modulation Techniques (AM/FM/QAM)","RF System Link Budget","PCB Layout for RF","Spectrum Analyzer Usage"],
+  "ECE IoT":         ["MQTT & CoAP Protocols","Arduino & Raspberry Pi","Sensor Integration & Calibration","BLE / Zigbee / LoRa","IoT Cloud Platforms (AWS IoT / Azure IoT)","Edge Computing","Embedded C for IoT","Python for IoT","Security in IoT","OTA Firmware Updates","Data Acquisition & Processing","Real-Time Operating Systems"],
+  "ECE Telecom":     ["Digital Communication Systems","Modulation & Demodulation","5G NR Architecture","LTE / 4G Fundamentals","OFDM & Channel Coding","Network Protocols (TCP/IP)","Signal Processing (DSP)","Antenna Arrays & MIMO","RF Link Budget","Optical Fiber Communication","Error Detection & Correction","Wireless Network Planning"],
+  "ECE":             ["Digital Electronics","Analog Circuits","Microcontrollers (ARM/AVR)","Embedded C","Signals & Systems","Communication Systems","RTOS Basics","PCB Design Fundamentals","FPGA & VHDL Basics","Sensors & Interfacing","Wireless Communication","IoT Protocols"],
+
+  // ── EEE role-specific domains ─────────────────────────────────────────────────
+  "EEE Power":       ["Power System Analysis","Load Flow Studies","Fault Analysis & Short Circuit","Protection Relays (IDMT / Differential)","SCADA & EMS","Transmission Line Parameters","Transformer Design & Testing","Switchgear & Circuit Breakers","Earthing & Grounding","Power System Stability","Renewable Integration (Solar / Wind)","Smart Grid Concepts"],
+  "EEE Machines":    ["DC Machines (Motor & Generator)","Induction Motors (3-phase)","Synchronous Machines","Transformer Equivalent Circuit","Starting & Speed Control Methods","Losses & Efficiency","Insulation & Thermal Rating","Testing of Electrical Machines","Motor Drive Fundamentals","Generator Protection","Special Machines (BLDC / PMSM)","IE3 / IE4 Efficiency Standards"],
+  "EEE Control":     ["Transfer Functions & Block Diagrams","Stability Analysis (Routh-Hurwitz / Nyquist)","PID Controller Tuning","State Space Representation","Root Locus Technique","Bode & Nyquist Plots","PLC Programming (Ladder / FBD)","Industrial Automation (SCADA / DCS)","Servo & Stepper Motor Control","Feedback Control Systems","Digital Control Systems","Process Control Loops"],
+  "EEE PE":          ["Power Converters (AC-DC / DC-DC)","MOSFET & IGBT Switching","PWM Techniques","Buck / Boost / Buck-Boost Converters","Inverter Design","Motor Drives (VFD)","Battery Management Systems","Inductive Power Transfer","Power Factor Correction","Heat Sink & Thermal Design","EMI / EMC in Power Electronics","SiC / GaN Devices"],
+  "EEE Instrumentation": ["Sensors & Transducers","Signal Conditioning","Data Acquisition Systems (DAQ)","PLC & SCADA Programming","Industrial Protocols (Modbus / Profibus)","Calibration Techniques","Process Control Instruments","Flow / Pressure / Temperature Measurement","Electrical Safety & Hazardous Area","RTD & Thermocouple Selection","Industrial IoT (IIoT)","Control Valve Sizing"],
+  "EEE":             ["Circuit Analysis","Electrical Machines","Power Systems","Control Systems","Power Electronics","Transformers & Transmission","Protection Systems","Renewable Energy Systems","PLC & SCADA Basics","Instrumentation & Measurement","Three-Phase Systems","High Voltage Engineering"],
+
+  // ── Civil role-specific domains ───────────────────────────────────────────────
+  "Civil Structural": ["Structural Analysis (Indeterminate)","RC Design (IS 456)","Steel Design (IS 800)","Pre-stressed Concrete","Matrix Methods & Stiffness","Finite Element Basics","Load Calculations (IS 875)","Seismic Design (IS 1893)","Yield Line Theory","Plate Girder Design","Connection Design (Bolted / Welded)","Structural Audit & Retrofitting"],
+  "Civil Geo":        ["Soil Classification & Index Properties","Shear Strength (Mohr-Coulomb)","Consolidation & Settlement","Slope Stability Analysis","Earth Pressure Theories","Foundation Types & Design","Ground Improvement Techniques","Pile Foundation Analysis","Permeability & Seepage","Field & Laboratory Testing","Retaining Wall Design","Liquefaction Assessment"],
+  "Civil Transport":  ["Highway Geometric Design","Pavement Design (IRC)","Traffic Volume Studies","Traffic Signal Design","Intersection & Roundabout Design","Sight Distance Calculations","Pavement Materials & Testing","Transport Planning & Modelling","Road Safety Engineering","Railway Track Design","Urban Road Design","GIS in Transportation"],
+  "Civil Water":      ["Open Channel Flow (Manning's Equation)","Pipe Flow & Hazen-Williams","Hydrology & Rainfall Analysis","Reservoir & Dam Design","Irrigation Systems & Canal Design","Groundwater Hydrology","Wastewater Treatment Design","Water Supply System Design","Flood Routing Methods","Pump Selection & Design","Water Quality Standards","Hydropower Basics"],
+  "Civil Construction":["CPM & PERT Scheduling","Resource Levelling & Crashing","Construction Contracts (FIDIC / NEC)","Estimation & Bill of Quantities","Concrete Mix Design (IS 10262)","Formwork Design & Planning","Construction Equipment Selection","Quality Control on Site","Site Safety (IS 18001)","EHS Management","Building Information Modelling (BIM)","Construction Dispute Resolution"],
+  "Civil":            ["Structural Analysis","Concrete Technology","Soil Mechanics & Foundation","Surveying","Fluid Mechanics (Civil)","Transportation Engineering","Environmental Engineering","Construction Management","Steel Structures","Hydrology & Irrigation","Building Materials","Estimation & Costing"],
+
+  // ── Mechanical role-specific domains ─────────────────────────────────────────
+  "Mech Thermal":     ["Heat Transfer Modes (Conduction / Convection / Radiation)","Fins & Extended Surfaces","Heat Exchangers (LMTD / NTU)","Boilers & Steam Power Plants","Gas Turbine Cycles (Brayton)","Refrigeration Cycles (VCR)","HVAC System Design","Thermodynamic Property Tables","Combustion & Fuels","Numerical Methods in Heat Transfer","Thermal Insulation Design","Energy Audit & Conservation"],
+  "Mech Fluid":       ["Fluid Statics & Pressure","Continuity, Bernoulli & Momentum Equations","Viscous Flow & Boundary Layer","Pipe Flow & Head Losses","Pumps & Turbines (Selection & Curves)","Centrifugal & Axial Fans","Compressible Flow (Mach Number)","CFD Fundamentals (Pre/Post-Processing)","Flow Measurement Devices","Hydraulic Machines","Cavitation & Water Hammer","Piping System Design"],
+  "Mech Manufacturing":["Casting & Solidification","Forging, Rolling & Extrusion","Welding Processes (MIG / TIG / Friction)","Machining (Turning / Milling / Drilling)","CNC Programming (G-Code / M-Code)","Tolerances & Surface Finish (GD&T)","Jig & Fixture Design","Metrology & Quality Control","Lean Manufacturing & Kaizen","SPC & Six Sigma","Injection Moulding","Sheet Metal Processes (Bending / Stamping)"],
+  "Mech Design":      ["Stress & Strain Analysis","Fatigue & Fracture Mechanics","Shafts, Keys & Couplings","Bearings (Rolling & Sliding)","Gears (Spur / Helical / Bevel)","Springs & Clutches","Pressure Vessel Design (ASME)","CAD Modelling (SolidWorks / CATIA)","FEA Fundamentals","Tolerance Stack-Up Analysis","Product Design for Manufacturing (DFM)","Failure Mode & Effect Analysis (FMEA)"],
+  "Mechanical":       ["Thermodynamics","Fluid Mechanics","Strength of Materials","Manufacturing Processes","Machine Design","Heat Transfer","CAD & Engineering Drawing","Kinematics & Dynamics","Industrial Engineering","Material Science","Quality Control & Metrology","Refrigeration & HVAC"],
+
+  // ── Other domains ─────────────────────────────────────────────────────────────
   "IoT":        ["Embedded C / C++","Arduino & Raspberry Pi","MQTT & CoAP Protocols","Sensor Integration","IoT Cloud Platforms","Network Protocols (BLE, Zigbee, LoRa)","Edge Computing","PCB & Circuit Design","Python for IoT","Data Acquisition & Processing","Security in IoT","Real-Time Operating Systems"],
   "Pharmacy":   ["Pharmaceutics","Pharmacology","Medicinal Chemistry","Drug Design & Discovery","Clinical Pharmacy","Pharmacokinetics & Pharmacodynamics","Drug Regulatory Affairs","Quality Assurance & GMP","Biopharmaceutics","Hospital & Community Pharmacy","Industrial Pharmacy","Pharmaceutical Analysis"],
   "MBA":        ["Management Principles","Financial Accounting","Marketing Management","Business Strategy","Operations Management","Human Resource Management","Business Analytics","Financial Management","Entrepreneurship","Business Law & Ethics","Supply Chain Management","Organisational Behaviour"],
@@ -75,24 +102,42 @@ function getDomainSkills(jobTitle, branch = "") {
   if (k.includes("cloud")) return DOMAIN_SKILLS["Cloud Engineer"]
   if ((k.includes("full") && k.includes("stack")) || k.includes("software engineer") || k.includes("software developer") || k.includes("swe")) return DOMAIN_SKILLS["Full-Stack"]
 
-  // ── Non-IT / Core Engineering role detection ────────────────────────────────
-  // ECE — embedded, VLSI, electronics, firmware, hardware, RF, signal, PCB
-  if (k.includes("embedded") || k.includes("vlsi") || k.includes("electronics engineer") || k.includes("firmware") || k.includes("hardware engineer") || k.includes("rf engineer") || k.includes("signal processing") || k.includes("pcb designer")) return DOMAIN_SKILLS["ECE"]
-  // EEE — power, electrical, control systems
-  if (k.includes("power engineer") || k.includes("power systems") || k.includes("electrical engineer") || k.includes("control systems engineer")) return DOMAIN_SKILLS["EEE"]
-  // Mechanical
-  if (k.includes("mechanical engineer") || k.includes("manufacturing engineer") || k.includes("automobile engineer") || k.includes("automotive engineer") || k.includes("thermal engineer") || k.includes("production engineer")) return DOMAIN_SKILLS["Mechanical"]
-  // Civil
-  if (k.includes("civil engineer") || k.includes("structural engineer") || k.includes("construction engineer") || k.includes("site engineer") || k.includes("geotechnical")) return DOMAIN_SKILLS["Civil"]
-  // IoT
-  if (k.includes("iot") || k.includes("internet of things")) return DOMAIN_SKILLS["IoT"]
-  // Pharmacy
+  // ── ECE sub-roles (most specific first) ──────────────────────────────────────
+  if (k.includes("vlsi") || k.includes("asic") || k.includes("rtl") || k.includes("physical design") || k.includes("timing") || k.includes("verilog") || k.includes("vhdl") || k.includes("fpga designer")) return DOMAIN_SKILLS["ECE VLSI"]
+  if (k.includes("embedded") || k.includes("firmware") || k.includes("rtos") || k.includes("bare-metal") || k.includes("device driver") || k.includes("bootloader") || k.includes("microcontroller")) return DOMAIN_SKILLS["ECE Embedded"]
+  if (k.includes("rf engineer") || k.includes("rf design") || k.includes("antenna") || k.includes("microwave") || k.includes("radio frequency")) return DOMAIN_SKILLS["ECE RF"]
+  if (k.includes("telecom") || k.includes("wireless engineer") || k.includes("5g") || k.includes("4g") || k.includes("lte") || k.includes("signal processing engineer")) return DOMAIN_SKILLS["ECE Telecom"]
+  if (k.includes("iot") || k.includes("internet of things")) return DOMAIN_SKILLS["ECE IoT"]
+  if (k.includes("electronics engineer") || k.includes("hardware engineer") || k.includes("pcb") || k.includes("circuit design") || k.includes("ece")) return DOMAIN_SKILLS["ECE"]
+
+  // ── EEE sub-roles ────────────────────────────────────────────────────────────
+  if (k.includes("power system") || k.includes("transmission") || k.includes("distribution engineer") || k.includes("protection engineer") || k.includes("smart grid")) return DOMAIN_SKILLS["EEE Power"]
+  if (k.includes("electrical machine") || k.includes("motor design") || k.includes("transformer design")) return DOMAIN_SKILLS["EEE Machines"]
+  if (k.includes("control system") || k.includes("automation engineer") || k.includes("plc") || k.includes("scada engineer") || k.includes("control engineer")) return DOMAIN_SKILLS["EEE Control"]
+  if (k.includes("power electronics") || k.includes("drives engineer") || k.includes("inverter") || k.includes("vfd")) return DOMAIN_SKILLS["EEE PE"]
+  if (k.includes("instrumentation") || k.includes("measurement engineer") || k.includes("calibration")) return DOMAIN_SKILLS["EEE Instrumentation"]
+  if (k.includes("electrical engineer") || k.includes("eee")) return DOMAIN_SKILLS["EEE"]
+
+  // ── Civil sub-roles ──────────────────────────────────────────────────────────
+  if (k.includes("structural engineer") || k.includes("structural analyst") || k.includes("structural designer")) return DOMAIN_SKILLS["Civil Structural"]
+  if (k.includes("geotechnical") || k.includes("foundation engineer") || k.includes("soil engineer")) return DOMAIN_SKILLS["Civil Geo"]
+  if (k.includes("transport") || k.includes("highway") || k.includes("traffic engineer") || k.includes("pavement")) return DOMAIN_SKILLS["Civil Transport"]
+  if (k.includes("water resource") || k.includes("hydraulic engineer") || k.includes("hydrology") || k.includes("irrigation engineer")) return DOMAIN_SKILLS["Civil Water"]
+  if (k.includes("construction manager") || k.includes("site engineer") || k.includes("quantity surveyor") || k.includes("project engineer")) return DOMAIN_SKILLS["Civil Construction"]
+  if (k.includes("civil engineer") || k.includes("civil")) return DOMAIN_SKILLS["Civil"]
+
+  // ── Mechanical sub-roles ─────────────────────────────────────────────────────
+  if (k.includes("thermal engineer") || k.includes("heat transfer") || k.includes("hvac") || k.includes("refrigeration engineer")) return DOMAIN_SKILLS["Mech Thermal"]
+  if (k.includes("fluid") || k.includes("cfd") || k.includes("piping engineer") || k.includes("hydraulic engineer")) return DOMAIN_SKILLS["Mech Fluid"]
+  if (k.includes("manufacturing") || k.includes("production engineer") || k.includes("cnc") || k.includes("tooling")) return DOMAIN_SKILLS["Mech Manufacturing"]
+  if (k.includes("machine design") || k.includes("product design engineer") || k.includes("mechanical designer") || k.includes("cad engineer")) return DOMAIN_SKILLS["Mech Design"]
+  if (k.includes("mechanical engineer") || k.includes("mechanical")) return DOMAIN_SKILLS["Mechanical"]
+
+  // ── Other professional roles ──────────────────────────────────────────────────
   if (k.includes("pharmacist") || k.includes("pharmacy") || k.includes("drug formulation")) return DOMAIN_SKILLS["Pharmacy"]
-  // MBA
   if (k.includes("mba") || k.includes("business manager") || k.includes("operations manager") || k.includes("hr manager") || k.includes("marketing manager")) return DOMAIN_SKILLS["MBA"]
 
-  // ── Branch-based fallback — handles generic titles (e.g. just "Engineer") ───
-  // If jobTitle keyword matched nothing, use the student's actual branch.
+  // ── Branch-based fallback — only when keyword is too generic (e.g. just "Engineer") ──
   if (branch && BRANCH_DOMAIN_KEY[branch]) return DOMAIN_SKILLS[BRANCH_DOMAIN_KEY[branch]]
 
   // ── Default: generic software developer ─────────────────────────────────────
@@ -113,9 +158,21 @@ router.post("/generate-mcq", async (req, res) => {
 
   // For non-IT/engineering domains, swap code_output for numerical/diagram questions
   const isEngineeringBranch = branch && ["ECE","EEE","Mechanical","Civil","IoT","Pharmacy","MBA"].includes(branch)
-  const mix = isEngineeringBranch
-    ? { mcq: Math.round(count * 0.45), numerical: Math.round(count * 0.20), problem_solving: Math.round(count * 0.20), scenario: Math.round(count * 0.10), fill_blank: Math.round(count * 0.05) }
-    : { mcq: Math.round(count * 0.30), code_output: Math.round(count * 0.25), problem_solving: Math.round(count * 0.20), scenario: Math.round(count * 0.15), fill_blank: Math.round(count * 0.10) }
+  // Detect engineering domain by keyword match (not just branch) so sub-role maps work too
+  const isEngineeringRole = isEngineeringBranch ||
+    (domainSkills === DOMAIN_SKILLS["ECE Embedded"] || domainSkills === DOMAIN_SKILLS["ECE VLSI"] ||
+     domainSkills === DOMAIN_SKILLS["ECE RF"]       || domainSkills === DOMAIN_SKILLS["ECE IoT"]  ||
+     domainSkills === DOMAIN_SKILLS["ECE Telecom"]  || domainSkills === DOMAIN_SKILLS["EEE Power"] ||
+     domainSkills === DOMAIN_SKILLS["EEE Machines"] || domainSkills === DOMAIN_SKILLS["EEE Control"] ||
+     domainSkills === DOMAIN_SKILLS["EEE PE"]       || domainSkills === DOMAIN_SKILLS["EEE Instrumentation"] ||
+     domainSkills === DOMAIN_SKILLS["Civil Structural"] || domainSkills === DOMAIN_SKILLS["Civil Geo"] ||
+     domainSkills === DOMAIN_SKILLS["Civil Transport"]  || domainSkills === DOMAIN_SKILLS["Civil Water"] ||
+     domainSkills === DOMAIN_SKILLS["Civil Construction"] || domainSkills === DOMAIN_SKILLS["Mech Thermal"] ||
+     domainSkills === DOMAIN_SKILLS["Mech Fluid"]   || domainSkills === DOMAIN_SKILLS["Mech Manufacturing"] ||
+     domainSkills === DOMAIN_SKILLS["Mech Design"])
+  const mix = isEngineeringRole
+    ? { mcq: Math.round(count * 0.40), numerical: Math.round(count * 0.25), problem_solving: Math.round(count * 0.20), scenario: Math.round(count * 0.10), fill_blank: Math.round(count * 0.05), code_output: 0 }
+    : { mcq: Math.round(count * 0.30), code_output: Math.round(count * 0.25), problem_solving: Math.round(count * 0.20), scenario: Math.round(count * 0.15), fill_blank: Math.round(count * 0.10), numerical: 0 }
 
   const summaryLine = resumeSummary ? `Candidate background: ${resumeSummary.slice(0,250)}` : ""
   const contextLine = resumeContext ? `Extra context: ${resumeContext.slice(0,300)}` : ""
@@ -198,8 +255,9 @@ router.post("/generate-mcq", async (req, res) => {
     const raw = await groq([
       {
         role: "system",
-        content: `You are an MCQ generator for Indian fresher ${isEngineeringDomain ? "core engineering" : isNonItDomain ? "professional" : "tech"} assessments (campus placement level).
-${isNonItDomain ? `DOMAIN: ${nonItDomainKey} — questions must be about ${nonItDomainKey} subject matter. Do NOT generate software/programming/CS questions.` : ""}
+        content: `You are an MCQ generator for Indian fresher job-role assessments (campus placement / entry-level hiring level).
+TARGET ROLE: "${jobTitle}" — ALL questions must test knowledge and skills REQUIRED FOR THIS SPECIFIC ROLE.
+${isNonItDomain ? `This is an engineering/core domain role. Do NOT generate generic software/programming/CS questions unless the role explicitly requires them.` : ""}
 STRICT OUTPUT RULES:
 - Return ONLY a raw JSON object. No markdown, no code fences, no explanation text.
 - Top-level key must be "questions" with an array of exactly ${count} question objects.
@@ -211,19 +269,22 @@ STRICT OUTPUT RULES:
       },
       {
         role: "user",
-        content: `Generate ${count} fresher-level MCQs for a "${jobTitle}" assessment.${isNonItDomain ? `\nThis student is from ${nonItDomainKey} branch — all questions must cover ${nonItDomainKey} engineering fundamentals, NOT software/CS topics.` : ""}
+        content: `Generate ${count} fresher-level MCQs for a "${jobTitle}" role assessment.
+
+These questions must test ROLE-SPECIFIC knowledge — what a "${jobTitle}" actually does on the job, not generic academic theory.
 
 Skills to cover (use EXACTLY as category):
 ${domainSkills.map((s, i) => `${i + 1}. ${s}`).join("\n")}
 
 Each skill needs at least ${Math.max(1, Math.floor(count / domainSkills.length))} question(s).
-Type mix: mcq:${mix.mcq}, code_output:${mix.code_output}, problem_solving:${mix.problem_solving}, scenario:${mix.scenario}, fill_blank:${mix.fill_blank}
+Type mix: mcq:${mix.mcq}, ${isEngineeringBranch ? `numerical:${mix.numerical}` : `code_output:${mix.code_output}`}, problem_solving:${mix.problem_solving}, scenario:${mix.scenario}, fill_blank:${mix.fill_blank}
 ${summaryLine}
 ${contextLine}
 
 ${isEngineeringBranch
-  ? `For numerical questions: present a formula/circuit/equation problem; options are 4 numerical values with units.`
-  : `For code_output questions: show a short code snippet (≤6 lines) in "question" and ask "What is the output?" — options are 4 possible outputs.`}
+  ? `For numerical questions: present a real engineering problem (formula application, circuit calculation, design check); options are 4 numerical values with units.`
+  : `For code_output questions: show a short code snippet (≤6 lines) and ask "What is the output?" — options are 4 possible outputs.`}
+For scenario questions: describe a realistic on-the-job situation for a "${jobTitle}" and ask what action/approach is correct.
 For fill_blank: use "___" in question text, options are 4 completions.
 Never start a question with "Write a..." or "Create a..." — those are open-ended, not MCQ.
 
