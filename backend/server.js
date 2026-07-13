@@ -121,6 +121,7 @@ import mentorHubRoutes           from "./server/routes/mentorHub.js"
 import pulseNexusRoutes          from "./server/routes/pulseNexus.js"
 import orbitPlansRoutes          from "./server/routes/orbitPlans.js"
 import hardwareChallengesRoutes  from "./server/routes/hardwareChallenges.js"
+import { startGradingWorker }    from "./server/lib/grading-worker.js"
 
 // ─── App setup ────────────────────────────────────────────────────────────────
 const app  = express()
@@ -203,6 +204,10 @@ app.use("/api",              hardwareChallengesRoutes)  // hardware/challenges, 
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
+  // Start background grading worker — polls pgmq queue every 2s
+  // In cluster mode each worker runs its own poller; pgmq visibility timeout
+  // ensures only one worker processes each message.
+  startGradingWorker()
   const workerInfo = cluster.isWorker ? ` [worker ${process.pid}]` : ""
   console.log(`\n╔══════════════════════════════════════════════════╗`)
   console.log(`║   Capabilio Server v3.0  ·  port ${PORT}${workerInfo}`)
