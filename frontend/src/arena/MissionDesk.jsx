@@ -92,7 +92,7 @@ function MissionHero({ slot, domain, onStart }) {
   }
 
   const ch = slot.challenge
-  if (!ch) return <EmptyDirective icon="⚡" height={180} label="No mission assigned yet — one will be generated shortly. Meanwhile, the practice library below is open." />
+  if (!ch) return <EmptyDirective icon="⚡" height={180} label="No mission assigned yet — one will be generated shortly. Check back in a moment." />
 
   const wsType = resolveWorkstationType({ ...ch, workstation: ch.workstation, sandbox: ch.workstation })
   const meta = getWorkstationMeta(wsType)
@@ -253,9 +253,6 @@ export default function MissionDesk({
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                 <span style={{ fontSize: 12, fontWeight: 900, color: T.ink, textTransform: "uppercase", letterSpacing: 0.8 }}>Mission Queue</span>
                 {loadingSlots && <Spinner size={11} color={domain.color} />}
-                <button onClick={onBrowseAll} style={{ marginLeft: "auto", padding: "5px 13px", borderRadius: 7, border: `1px solid ${T.border}`, background: "#fff", fontSize: 11, fontWeight: 700, color: T.ink3, cursor: "pointer", fontFamily: "inherit" }}>
-                  Browse practice library →
-                </button>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {queueSlots.map((s, i) => (
@@ -267,7 +264,7 @@ export default function MissionDesk({
                     onUpgrade={() => onUpgrade(unlockedCount + i === 1 ? "pro" : "elite")} />
                 ))}
                 {queueSlots.length === 0 && lockedCount === 0 && (
-                  <EmptyDirective icon="🎯" label="Queue clear beyond today's mission. Add work from the practice library — every attempt mints proof." />
+                  <EmptyDirective icon="🎯" label="Queue clear. Complete today's mission to keep your streak alive — every submission mints proof." />
                 )}
               </div>
             </div>
