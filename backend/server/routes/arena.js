@@ -15,6 +15,29 @@ import { join }                            from "path"
 
 const router = Router()
 
+// ── Execution semaphore ───────────────────────────────────────────────────────
+// Caps concurrent child_process.exec calls at 40.
+// Without this, 50k users could spawn thousands of OS processes simultaneously,
+// exhausting file descriptors, RAM, and the OS process table → OOM crash.
+// Requests beyond the cap wait in queue rather than spawning more processes.
+const MAX_CONCURRENT_EXEC = 40
+let _activeExec = 0
+const _execQueue = []
+function acquireExecSlot() {
+  return new Promise(resolve => {
+    if (_activeExec < MAX_CONCURRENT_EXEC) { _activeExec++; resolve() }
+    else _execQueue.push(resolve)
+  })
+}
+function releaseExecSlot() {
+  if (_execQueue.length > 0) {
+    const next = _execQueue.shift()
+    next() // hand slot directly to next waiter
+  } else {
+    _activeExec--
+  }
+}
+
 // ── Sandboxed code executor (Python / JavaScript) ────────────────────────────
 // Runs user code in a temp file with a strict 8-second timeout.
 // Returns { stdout, stderr, error }
@@ -24,10 +47,11 @@ async function executeCode(code, language = "python", timeoutMs = 8000) {
   const dir   = await mkdtemp(join(tmpdir(), "arena-"))
   const file  = join(dir, `solution.${ext}`)
 
+  await acquireExecSlot()
   try {
     await writeFile(file, code, "utf8")
     return await new Promise((resolve) => {
-      const proc = exec(
+      exec(
         `${cmd} "${file}"`,
         { timeout: timeoutMs, maxBuffer: 1024 * 512 },
         async (error, stdout, stderr) => {
@@ -43,6 +67,8 @@ async function executeCode(code, language = "python", timeoutMs = 8000) {
     })
   } catch (e) {
     return { stdout: "", stderr: "", error: e.message }
+  } finally {
+    releaseExecSlot()
   }
 }
 
@@ -259,11 +285,13 @@ Return JSON: {"score":${passRate !== null ? passRate : "<0-100>"},"grade":"<A+|A
 // SQL test cases in Common Challenges use descriptive inputs ("Trips/Users tables
 // as described"), not actual data rows — so we can't execute them in a process.
 // Instead, ask Groq to evaluate the query's correctness against the schema.
+// SCALE FIX: all test cases evaluated in parallel via Promise.all
+// Previously: sequential for-loop → N × Groq latency (e.g. 5 cases = ~15s)
+// Now: all cases fire simultaneously → ~1× Groq latency regardless of case count
 async function evaluateSQLWithAI(sqlQuery, testCases, challenge) {
-  const schema  = challenge.statement || challenge.description || challenge.title || ""
-  const results = []
+  const schema = challenge.statement || challenge.description || challenge.title || ""
 
-  for (const tc of testCases) {
+  return Promise.all(testCases.map(async (tc) => {
     const start    = Date.now()
     const expected = String(tc.expected_output ?? tc.expectedOutput ?? "")
     try {
@@ -297,19 +325,18 @@ Return ONLY this JSON (no extra text):
 
       const cleaned = raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)
       const obj     = JSON.parse(cleaned)
-      results.push({
+      return {
         input:       tc.input ?? "Schema as described",
         expected,
         actual:      obj.actual || (obj.passed ? "Query appears correct" : "Query may be incorrect"),
         passed:      obj.passed === true,
         runtime:     `${Date.now() - start}ms`,
         error:       obj.error || null,
-        // Visual output — rendered as a table + chart in the frontend
         columns:     Array.isArray(obj.columns)     ? obj.columns     : [],
         sample_rows: Array.isArray(obj.sample_rows) ? obj.sample_rows : [],
-      })
+      }
     } catch {
-      results.push({
+      return {
         input:       tc.input ?? "Schema as described",
         expected,
         actual:      "AI evaluation unavailable — click Submit for full review",
@@ -318,10 +345,9 @@ Return ONLY this JSON (no extra text):
         error:       null,
         columns:     [],
         sample_rows: [],
-      })
+      }
     }
-  }
-  return results
+  }))
 }
 
 // ─── Config / manifest evaluation via AI (Groq) ──────────────────────────────
@@ -329,12 +355,12 @@ Return ONLY this JSON (no extra text):
 // etc. CANNOT be executed by python3/node — running them through executeCode
 // produces a syntax error and fails every test. Instead we AI-evaluate structure
 // and correctness against the challenge brief, mirroring evaluateSQLWithAI.
+// SCALE FIX: parallel evaluation same as evaluateSQLWithAI above
 async function evaluateConfigWithAI(config, testCases, challenge, language) {
-  const brief   = challenge.statement || challenge.description || challenge.title || ""
-  const results = []
-  const cases   = testCases.length ? testCases : [{ input: "spec compliance", expected_output: "" }]
+  const brief = challenge.statement || challenge.description || challenge.title || ""
+  const cases = testCases.length ? testCases : [{ input: "spec compliance", expected_output: "" }]
 
-  for (const tc of cases) {
+  return Promise.all(cases.map(async (tc) => {
     const start    = Date.now()
     const expected = String(tc.expected_output ?? tc.expectedOutput ?? "")
     try {
@@ -361,26 +387,25 @@ Return ONLY this JSON:
 
       const cleaned = raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)
       const obj     = JSON.parse(cleaned)
-      results.push({
-        input:    tc.input ?? "spec compliance",
+      return {
+        input:   tc.input ?? "spec compliance",
         expected,
-        actual:   obj.actual || (obj.passed ? "Config appears correct" : "Config may be incorrect"),
-        passed:   obj.passed === true,
-        runtime:  `${Date.now() - start}ms`,
-        error:    obj.error || null,
-      })
+        actual:  obj.actual || (obj.passed ? "Config appears correct" : "Config may be incorrect"),
+        passed:  obj.passed === true,
+        runtime: `${Date.now() - start}ms`,
+        error:   obj.error || null,
+      }
     } catch {
-      results.push({
-        input:    tc.input ?? "spec compliance",
+      return {
+        input:   tc.input ?? "spec compliance",
         expected,
-        actual:   "AI evaluation unavailable — click Submit for full review",
-        passed:   false,
-        runtime:  `${Date.now() - start}ms`,
-        error:    null,
-      })
+        actual:  "AI evaluation unavailable — click Submit for full review",
+        passed:  false,
+        runtime: `${Date.now() - start}ms`,
+        error:   null,
+      }
     }
-  }
-  return results
+  }))
 }
 
 // Languages that are declarative config, not executable programs.

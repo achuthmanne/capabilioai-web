@@ -10,18 +10,11 @@
 import { Router } from "express"
 import { supabaseAdmin } from "../lib/supabase.js"
 import { groq, GROQ_FAST } from "../lib/groq.js"
+import { requireAuth } from "../lib/auth.js"
 
 const router = Router()
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
-async function requireAuth(req, res, next) {
-  const token = req.headers.authorization?.replace("Bearer ", "")
-  if (!token) return res.status(401).json({ error: "Unauthorized" })
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
-  if (error || !user) return res.status(401).json({ error: "Unauthorized" })
-  req.user = user
-  next()
-}
 function optionalAuth(req, res, next) {
   const token = req.headers.authorization?.replace("Bearer ", "")
   if (!token) return next()

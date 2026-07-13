@@ -5,7 +5,7 @@
 //   3. Market data — skill gap / job trend queries with Google Search grounding
 
 import { GoogleGenerativeAI } from "@google/generative-ai"
-import fs from "fs"
+import { readFile } from "fs/promises"
 
 const key = () => {
   const k = process.env.GEMINI_API_KEY
@@ -61,7 +61,7 @@ export async function geminiSearch(prompt, { maxTokens = 2048 } = {}) {
 export async function geminiExtractPDF(filePath, prompt) {
   const genai    = client()
   const genModel = genai.getGenerativeModel({ model: GEMINI_PRO })
-  const fileData = fs.readFileSync(filePath)
+  const fileData = await readFile(filePath)   // async — does not block event loop
   const base64   = fileData.toString("base64")
 
   const result = await genModel.generateContent({

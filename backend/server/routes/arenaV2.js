@@ -21,6 +21,7 @@ import { Router }  from "express"
 import { supabase } from "../lib/supabase.js"
 import { groq, GROQ_FAST } from "../lib/groq.js"
 import { gradeSubmission } from "../lib/claude.js"
+import { requireAuth } from "../lib/auth.js"
 
 const router = Router()
 
@@ -46,14 +47,6 @@ function computeEloUpdate({ userElo, difficulty, score, attempts, timeTakenSecs,
 }
 
 // Auth guard — extract user_id from Supabase JWT
-async function requireAuth(req, res, next) {
-  const token = req.headers.authorization?.replace("Bearer ", "")
-  if (!token) return res.status(401).json({ error: "Authentication required" })
-  const { data: { user }, error } = await supabase.auth.getUser(token)
-  if (error || !user) return res.status(401).json({ error: "Invalid token" })
-  req.user = user
-  next()
-}
 
 // ─── GET /catalog ─────────────────────────────────────────────────────────────
 // Paginated challenge browser with full filter support.
@@ -101,13 +94,15 @@ router.get("/catalog", async (req, res) => {
 
     // If table is empty (fresh install), return static fallback set
     if (!data || data.length === 0) {
+      res.setHeader("Cache-Control", "public, max-age=300, s-maxage=300")
       return res.json({ challenges: FALLBACK_CHALLENGES, total: FALLBACK_CHALLENGES.length, page: 1, is_fallback: true })
     }
 
+    // Cache catalog for 5 minutes in CDN — reduces DB load significantly at scale
+    res.setHeader("Cache-Control", "public, max-age=60, s-maxage=300")
     return res.json({ challenges: data, total: count || data.length, page: pageNum })
   } catch (e) {
     console.error("[arenaV2/catalog]", e.message)
-    // Always return something — never 500 on catalog
     return res.json({ challenges: FALLBACK_CHALLENGES, total: FALLBACK_CHALLENGES.length, page: 1, is_fallback: true })
   }
 })
@@ -241,35 +236,33 @@ router.post("/challenges/:id/start", requireAuth, async (req, res) => {
 
 // ─── POST /challenges/:id/submit ─────────────────────────────────────────────
 // Submit solution, trigger AI evaluation, update ELO, record proof artifact.
+// SCALE FIX: parallel DB reads + fire-and-forget non-critical writes.
 router.post("/challenges/:id/submit", requireAuth, async (req, res) => {
   try {
-    const { id }   = req.params
-    const userId    = req.user.id
+    const { id }  = req.params
+    const userId  = req.user.id
     const {
       attempt_id,
       code,
-      test_results = [],   // [{passed, actual, expected}] from client-side run
+      test_results = [],
       time_taken_secs = 0,
       is_timed_out = false,
     } = req.body
 
-    // Fetch challenge
-    const { data: challenge } = await supabase
-      .from("challenges")
-      .select("*")
-      .eq("id", id)
-      .single()
+    // ── Step 1: Fetch challenge + profile IN PARALLEL (was sequential) ─────────
+    const [challengeRes, profileRes, attemptsRes] = await Promise.all([
+      supabase.from("challenges").select("*").eq("id", id).single(),
+      supabase.from("profiles").select("elo_rating, arena_completed, arena_streak, last_arena_date").eq("id", userId).single(),
+      supabase.from("challenge_attempts").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("challenge_id", id),
+    ])
+
+    const challenge = challengeRes.data
     if (!challenge) return res.status(404).json({ error: "Challenge not found" })
-
-    // Fetch user ELO
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("elo_rating, arena_completed, arena_streak, last_arena_date")
-      .eq("id", userId)
-      .single()
+    const profile = profileRes.data
     const userElo = profile?.elo_rating || 800
+    const attempts = attemptsRes.count || 1
 
-    // AI evaluation (non-blocking fallback if fails)
+    // ── Step 2: AI grading (runs while we already have both reads done) ────────
     let aiReview = null
     if (!is_timed_out && code?.trim().length > 10) {
       try {
@@ -281,41 +274,30 @@ router.post("/challenges/:id/submit", requireAuth, async (req, res) => {
           eloRating:       userElo,
         })
       } catch (e) {
-        // Fallback: rule-based score from test pass rate
         console.warn("[arenaV2/submit] AI grading failed:", e.message)
         const passed = test_results.filter(t => t.passed).length
         const total  = test_results.length || 1
         aiReview = {
-          score:    Math.round((passed / total) * 100),
-          summary:  `${passed}/${total} test cases passed.`,
-          strengths: [],
+          score:        Math.round((passed / total) * 100),
+          summary:      `${passed}/${total} test cases passed.`,
+          strengths:    [],
           improvements: ["Graded by test results — AI review unavailable."],
-          grade: passed === total ? "B" : "C",
+          grade:        passed === total ? "B" : "C",
         }
       }
     }
 
     const finalScore = is_timed_out ? Math.min(30, aiReview?.score || 0) : (aiReview?.score || 0)
-
-    // Attempt count for ELO penalty
-    const { count: attempts } = await supabase
-      .from("challenge_attempts")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .eq("challenge_id", id)
-
-    // ELO computation
     const { delta, newElo } = computeEloUpdate({
       userElo,
-      difficulty:     challenge.difficulty,
-      score:          finalScore,
-      attempts:       attempts || 1,
-      timeTakenSecs:  time_taken_secs,
-      estimatedSecs:  (challenge.estimated_mins || 30) * 60,
+      difficulty:    challenge.difficulty,
+      score:         finalScore,
+      attempts,
+      timeTakenSecs: time_taken_secs,
+      estimatedSecs: (challenge.estimated_mins || 30) * 60,
     })
 
     const grade = finalScore >= 90 ? "A+" : finalScore >= 80 ? "A" : finalScore >= 70 ? "B+" : finalScore >= 60 ? "B" : finalScore >= 50 ? "C" : "D"
-
     const feedbackPayload = {
       summary:      aiReview?.summary      || "Evaluation complete.",
       strengths:    aiReview?.strengths    || [],
@@ -323,110 +305,105 @@ router.post("/challenges/:id/submit", requireAuth, async (req, res) => {
       grade,
     }
 
-    // Update attempt record
     const updateData = {
-      status:          "evaluated",
-      submitted_at:    new Date().toISOString(),
-      evaluated_at:    new Date().toISOString(),
-      code_snapshot:   String(code || "").slice(0, 20000),
-      test_results:    test_results,
-      score:           finalScore,
-      elo_delta:       delta,
-      feedback:        feedbackPayload,
+      status:         "evaluated",
+      submitted_at:   new Date().toISOString(),
+      evaluated_at:   new Date().toISOString(),
+      code_snapshot:  String(code || "").slice(0, 20000),
+      test_results,
+      score:          finalScore,
+      elo_delta:      delta,
+      feedback:       feedbackPayload,
       grade,
       time_taken_secs,
       is_timed_out,
     }
 
+    // ── Step 3: Critical write — attempt record (must complete before response) ─
+    let resolvedAttemptId = attempt_id
     if (attempt_id) {
-      await supabase.from("challenge_attempts")
-        .update(updateData)
-        .eq("id", attempt_id)
-        .eq("user_id", userId)
+      await supabase.from("challenge_attempts").update(updateData).eq("id", attempt_id).eq("user_id", userId)
     } else {
-      const { data: newAttempt } = await supabase
-        .from("challenge_attempts")
+      const { data: newAttempt } = await supabase.from("challenge_attempts")
         .insert({ user_id: userId, challenge_id: id, ...updateData })
-        .select("id")
-        .single()
-      updateData.id = newAttempt?.id
+        .select("id").single()
+      resolvedAttemptId = newAttempt?.id
     }
 
-    // ELO history record
-    await supabase.from("elo_history").insert({
-      user_id:    userId,
-      attempt_id: attempt_id || updateData.id,
-      elo_before: userElo,
-      elo_after:  newElo,
-      delta,
-      dimension:  "overall",
-      reason:     `${challenge.title} (${challenge.difficulty}) — score ${finalScore}`,
-    }).catch(() => {})
-
-    // Proof artifact record
-    if (finalScore >= 50) {
-      await supabase.from("proof_artifacts").insert({
-        user_id:              userId,
-        attempt_id:           attempt_id || updateData.id,
-        challenge_id:         id,
-        artifact_type:        "code",
-        storage_url:          `arena://challenge/${id}/attempt/${attempt_id}`,
-        challenge_title:      challenge.title,
-        challenge_type:       challenge.type,
-        skills_demonstrated:  challenge.skills || [],
-        technologies_used:    challenge.technologies || [],
-        score:                finalScore,
-        elo_change:           delta,
-        time_taken_secs,
-        attempts_count:       attempts || 1,
-        trust_level:          test_results.length > 0 ? "verified" : "ai_graded",
-        is_recruiter_visible: challenge.is_recruiter_visible,
-      }).catch(() => {})
-    }
-
-    // Streak event
-    supabase.rpc("upsert_streak_event", {
-      p_user_id:    userId,
-      p_date:       today(),
-      p_domains:    [challenge.domain],
-      p_elo_gained: Math.max(0, delta),
-    }).catch(() => {})
-
-    // Update profile ELO + solve count + streak
-    const lastDate    = profile?.last_arena_date || ""
-    const yesterday   = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
-    const todayDate   = today()
-    const newStreak   = lastDate === todayDate
+    // ── Step 4: Profile ELO update (critical — user sees ELO immediately) ──────
+    const todayDate = today()
+    const lastDate  = profile?.last_arena_date || ""
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+    const newStreak = lastDate === todayDate
       ? (profile?.arena_streak || 1)
-      : lastDate === yesterday
-        ? (profile?.arena_streak || 0) + 1
-        : 1
+      : lastDate === yesterday ? (profile?.arena_streak || 0) + 1 : 1
 
     await supabase.from("profiles").update({
-      elo_rating:       newElo,
-      arena_completed:  (profile?.arena_completed || 0) + 1,
-      arena_streak:     newStreak,
-      last_arena_date:  todayDate,
+      elo_rating:        newElo,
+      arena_completed:   (profile?.arena_completed || 0) + 1,
+      arena_streak:      newStreak,
+      last_arena_date:   todayDate,
       arena_last_active: new Date().toISOString(),
     }).eq("id", userId).catch(() => {})
 
-    // Leaderboard upsert
-    await supabase.from("arena_leaderboard").upsert({
-      id:         `${userId}_overall`,
-      user_id:    userId,
-      domain_key: "overall",
-      elo:        newElo,
-      tasks_done: (profile?.arena_completed || 0) + 1,
-      updated_at: new Date().toISOString(),
-    }).catch(() => {})
+    // ── Step 5: Fire-and-forget non-critical writes IN PARALLEL ───────────────
+    // These don't affect the response — let them run in the background.
+    Promise.all([
+      supabase.from("elo_history").insert({
+        user_id:    userId,
+        attempt_id: resolvedAttemptId,
+        elo_before: userElo,
+        elo_after:  newElo,
+        delta,
+        dimension:  "overall",
+        reason:     `${challenge.title} (${challenge.difficulty}) — score ${finalScore}`,
+      }).catch(() => {}),
 
+      finalScore >= 50
+        ? supabase.from("proof_artifacts").insert({
+            user_id:              userId,
+            attempt_id:           resolvedAttemptId,
+            challenge_id:         id,
+            artifact_type:        "code",
+            storage_url:          `arena://challenge/${id}/attempt/${resolvedAttemptId}`,
+            challenge_title:      challenge.title,
+            challenge_type:       challenge.type,
+            skills_demonstrated:  challenge.skills || [],
+            technologies_used:    challenge.technologies || [],
+            score:                finalScore,
+            elo_change:           delta,
+            time_taken_secs,
+            attempts_count:       attempts,
+            trust_level:          test_results.length > 0 ? "verified" : "ai_graded",
+            is_recruiter_visible: challenge.is_recruiter_visible,
+          }).catch(() => {})
+        : Promise.resolve(),
+
+      supabase.from("arena_leaderboard").upsert({
+        id:         `${userId}_overall`,
+        user_id:    userId,
+        domain_key: "overall",
+        elo:        newElo,
+        tasks_done: (profile?.arena_completed || 0) + 1,
+        updated_at: new Date().toISOString(),
+      }).catch(() => {}),
+
+      supabase.rpc("upsert_streak_event", {
+        p_user_id:    userId,
+        p_date:       todayDate,
+        p_domains:    [challenge.domain],
+        p_elo_gained: Math.max(0, delta),
+      }).catch(() => {}),
+    ]).catch(() => {}) // silently ignore background write failures
+
+    // ── Respond immediately — don't wait for background writes ────────────────
     return res.json({
-      score:        finalScore,
-      elo_delta:    delta,
-      new_elo:      newElo,
+      score:         finalScore,
+      elo_delta:     delta,
+      new_elo:       newElo,
       grade,
-      feedback:     feedbackPayload,
-      new_streak:   newStreak,
+      feedback:      feedbackPayload,
+      new_streak:    newStreak,
       proof_created: finalScore >= 50,
     })
   } catch (e) {
@@ -607,6 +584,8 @@ router.get("/leaderboard", async (req, res) => {
       keyword:      row.profiles?.keyword,
     }))
 
+    // Cache leaderboard 5 minutes — avoids DB fan-out on every page load
+    res.setHeader("Cache-Control", "public, max-age=300, s-maxage=300")
     return res.json({ entries, scope_type, scope_id, from_snapshot: false })
   } catch (e) {
     console.error("[arenaV2/leaderboard]", e.message)
@@ -764,6 +743,8 @@ const ARENA_ROLES = [
 ]
 
 router.get("/roles", (req, res) => {
+  // Roles are hardcoded — cache for 24h in CDN, 1h in browser
+  res.setHeader("Cache-Control", "public, max-age=3600, s-maxage=86400")
   res.json({ roles: ARENA_ROLES })
 })
 

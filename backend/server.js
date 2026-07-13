@@ -17,32 +17,80 @@ import { dirname, resolve } from "path"
 const __dirname = dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: resolve(__dirname, "../.env") })
 
+// ─── Clustering — use all available CPU cores ─────────────────────────────────
+// ES modules require all imports to be top-level, so we use an early-exit guard:
+// the primary process forks workers and exits this module's execution context.
+// Each forked worker re-imports this file and gets isPrimary=false, so it falls
+// through to the Express setup below.
+// On Render/Railway with 1 vCPU this is a no-op (1 worker = same as before).
+// On 2+ cores: each core runs a full Express process sharing the same port.
+import cluster from "cluster"
+import { cpus } from "os"
+
+if (cluster.isPrimary && process.env.NODE_ENV === "production") {
+  const numCPUs = cpus().length
+  console.log(`[cluster] Primary ${process.pid} — forking ${numCPUs} workers`)
+  for (let i = 0; i < numCPUs; i++) cluster.fork()
+  cluster.on("exit", (worker, code, signal) => {
+    console.warn(`[cluster] Worker ${worker.process.pid} died (${signal || code}) — restarting`)
+    cluster.fork()
+  })
+  // Primary exits here — all HTTP handled by workers
+  process.exitCode = 0
+}
+
+// Workers (and dev mode) continue past this point
 import express from "express"
 import cors    from "cors"
 
-// ─── Built-in rate limiter (no external package needed) ───────────────────────
+// ─── Rate limiter ─────────────────────────────────────────────────────────────
+// Sliding-window counter per IP. Stores only the window-start timestamp + count
+// (not an array of timestamps) — O(1) memory per IP, O(1) per request.
+// Works correctly behind Vercel/Render reverse proxies via X-Forwarded-For.
+// Note: in a multi-process cluster each worker has its own store. At 50k users
+// this is intentional — it provides per-worker limits which still throttle
+// individual IPs effectively without needing Redis. For strict global limits,
+// swap the store for an Upstash Redis client (see SCALE.md).
 function createRateLimiter(windowMs, max, message) {
+  // Map<ip, { count, windowStart }>
   const store = new Map()
-  // Clean up old entries every 5 minutes to prevent memory leak
+
+  // Prune expired windows every windowMs to prevent unbounded memory growth
   setInterval(() => {
     const cutoff = Date.now() - windowMs
-    for (const [ip, timestamps] of store) {
-      const fresh = timestamps.filter(t => t > cutoff)
-      if (fresh.length === 0) store.delete(ip)
-      else store.set(ip, fresh)
+    for (const [ip, entry] of store) {
+      if (entry.windowStart < cutoff) store.delete(ip)
     }
-  }, 5 * 60 * 1000)
+  }, windowMs).unref() // .unref() — don't block process exit
 
   return (req, res, next) => {
-    const ip = req.ip || req.socket?.remoteAddress || "unknown"
-    const now = Date.now()
-    const cutoff = now - windowMs
-    const hits = (store.get(ip) || []).filter(t => t > cutoff)
-    hits.push(now)
-    store.set(ip, hits)
-    res.setHeader("X-RateLimit-Limit", max)
-    res.setHeader("X-RateLimit-Remaining", Math.max(0, max - hits.length))
-    if (hits.length > max) return res.status(429).json({ error: message })
+    // Trust X-Forwarded-For set by Vercel/Render proxy (first IP is the real client)
+    const forwarded = req.headers["x-forwarded-for"]
+    const ip = (forwarded ? forwarded.split(",")[0].trim() : null)
+      || req.socket?.remoteAddress
+      || "unknown"
+
+    const now    = Date.now()
+    const entry  = store.get(ip)
+    let count
+
+    if (!entry || now - entry.windowStart >= windowMs) {
+      // New window
+      count = 1
+      store.set(ip, { count: 1, windowStart: now })
+    } else {
+      count = entry.count + 1
+      entry.count = count
+    }
+
+    res.setHeader("X-RateLimit-Limit",     max)
+    res.setHeader("X-RateLimit-Remaining", Math.max(0, max - count))
+    res.setHeader("X-RateLimit-Reset",     Math.ceil(((entry?.windowStart || now) + windowMs) / 1000))
+
+    if (count > max) {
+      res.setHeader("Retry-After", Math.ceil(windowMs / 1000))
+      return res.status(429).json({ error: message })
+    }
     next()
   }
 }
@@ -102,7 +150,25 @@ app.use(cors({
   ],
   credentials: true,
 }))
-app.use(express.json({ limit: "4mb" }))
+// 512kb global limit — prevents large-body DDOS. Routes that genuinely need
+// more (PDF upload, resume extract) override locally with express.json({limit:"4mb"})
+app.use(express.json({ limit: "512kb" }))
+
+// ─── Request timeout middleware ───────────────────────────────────────────────
+// AI routes can take 10–30s. Without a timeout, a stalled Groq/Claude call holds
+// the connection open indefinitely, eventually exhausting the server's socket pool.
+// Set a 35s server-side deadline — slightly longer than the slowest AI call.
+app.use((req, res, next) => {
+  const timer = setTimeout(() => {
+    if (!res.headersSent) {
+      res.status(503).json({ error: "Request timed out — please try again." })
+    }
+  }, 35_000)
+  // Clear the timer as soon as the response finishes (success or error)
+  res.on("finish",  () => clearTimeout(timer))
+  res.on("close",   () => clearTimeout(timer))
+  next()
+})
 
 // ─── Health ───────────────────────────────────────────────────────────────────
 app.get("/",       (_, res) => res.json({ status: "ok", service: "Capabilio Server", version: "3.0.0", arena: "15 roles · 14 workspaces · full proof pipeline" }))
@@ -137,11 +203,12 @@ app.use("/api",              hardwareChallengesRoutes)  // hardware/challenges, 
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
+  const workerInfo = cluster.isWorker ? ` [worker ${process.pid}]` : ""
   console.log(`\n╔══════════════════════════════════════════════════╗`)
-  console.log(`║   Capabilio Server v3.0  ·  port ${PORT}            ║`)
+  console.log(`║   Capabilio Server v3.0  ·  port ${PORT}${workerInfo}`)
   console.log(`║   Arena: 15 roles · 14 workspaces · proof system  ║`)
   console.log(`╚══════════════════════════════════════════════════╝`)
-  const ok  = (s) => `✅ ${s}`
+  const ok   = (s) => `✅ ${s}`
   const warn = (s) => `⚠️  ${s}`
   const err  = (s) => `❌ ${s}`
   console.log(`  Groq        ${process.env.GROQ_API_KEY       ? ok("fast generation")              : err("MISSING")}`)

@@ -18,18 +18,11 @@
 import { Router } from "express"
 import multer      from "multer"
 import { supabaseAdmin } from "../lib/supabase.js"
+import { requireAuth } from "../lib/auth.js"
 
 const router = Router()
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } })
 
-async function requireAuth(req, res, next) {
-  const token = (req.headers.authorization || "").replace("Bearer ", "").trim()
-  if (!token) return res.status(401).json({ error: "Unauthorized" })
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
-  if (error || !user) return res.status(401).json({ error: "Invalid token" })
-  req.user = user
-  next()
-}
 
 // ══════════════════════════════════════════
 // CAREER TIMELINE

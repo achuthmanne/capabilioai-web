@@ -11,18 +11,11 @@ import { Router }   from "express"
 import Anthropic    from "@anthropic-ai/sdk"
 import { supabaseAdmin }   from "../lib/supabase.js"
 import { groq, GROQ_FAST } from "../lib/groq.js"
+import { requireAuth } from "../lib/auth.js"
 
 const router = Router()
 const claude = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-async function requireAuth(req, res, next) {
-  const token = (req.headers.authorization || "").replace("Bearer ", "").trim()
-  if (!token) return res.status(401).json({ error: "Unauthorized" })
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
-  if (error || !user) return res.status(401).json({ error: "Invalid token" })
-  req.user = user
-  next()
-}
 
 // ── Question bank per type ────────────────────────────────────────────────────
 async function generateQuestion(sessionData, questionIndex, previousQA) {

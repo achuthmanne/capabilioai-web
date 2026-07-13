@@ -26,6 +26,7 @@ import { Router }     from "express"
 import { supabaseAdmin } from "../lib/supabase.js"
 import { geminiSearch }  from "../lib/gemini.js"
 import { groq, GROQ_FAST } from "../lib/groq.js"
+import { requireAuth } from "../lib/auth.js"
 
 const router = Router()
 
@@ -34,14 +35,6 @@ const router = Router()
 const insightsCache = new Map()  // key: domain → { data, expiresAt }
 const CACHE_TTL_MS  = 2 * 60 * 60 * 1000  // 2 hours
 
-async function requireAuth(req, res, next) {
-  const token = (req.headers.authorization || "").replace("Bearer ", "").trim()
-  if (!token) return res.status(401).json({ error: "Unauthorized" })
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
-  if (error || !user) return res.status(401).json({ error: "Invalid token" })
-  req.user = user
-  next()
-}
 function optionalAuth(req, res, next) {
   const token = (req.headers.authorization || "").replace("Bearer ", "").trim()
   if (!token) return next()

@@ -12,19 +12,12 @@ import { Router } from "express"
 import multer      from "multer"
 import { supabaseAdmin } from "../lib/supabase.js"
 import { groq, GROQ_FAST } from "../lib/groq.js"
+import { requireAuth } from "../lib/auth.js"
 
 const router = Router()
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } })
 
 // ── Auth middleware ───────────────────────────────────────────────────────────
-async function requireAuth(req, res, next) {
-  const token = (req.headers.authorization || "").replace("Bearer ", "").trim()
-  if (!token) return res.status(401).json({ error: "Unauthorized" })
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
-  if (error || !user) return res.status(401).json({ error: "Invalid token" })
-  req.user = user
-  next()
-}
 
 // ── Recompute ELO signals ─────────────────────────────────────────────────────
 function computeEloSignals(profile) {
