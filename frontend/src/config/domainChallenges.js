@@ -2490,33 +2490,21 @@ export const ECE_CHALLENGES = [
     ],
     test_cases: [{ options: ["0b0010 (2 MHz output push-pull)", "0b0011 (50 MHz output push-pull)", "0b0111 (input floating)", "0b1000 (analog input)"], correct: 0, explanation: "CRL bits [23:20] control PA5. MODE=10 (2 MHz) + CNF=00 (push-pull) = 0b0010. HAL sets this via GPIO_SPEED_FREQ_LOW." }],
     workstation: "embedded_lab",
-    starterCode: `// GPIO LED Blink — STM32F103 (no HAL)
-// Clock: 8 MHz HSI, LED on PA5
-
+    starterCode: `/* GPIO LED Blink — STM32F103 (no HAL)
+ * Clock: 8 MHz HSI, LED on PA5
+ * Consult: STM32F103 Reference Manual (RM0008), Section 8 (GPIO) and 6 (RCC)
+ */
 #include <stdint.h>
 
-// Register base addresses
-#define RCC_BASE    0x40021000
-#define GPIOA_BASE  0x40010800
-
-#define RCC_APB2ENR  (*(volatile uint32_t *)(RCC_BASE   + 0x18))
-#define GPIOA_CRL    (*(volatile uint32_t *)(GPIOA_BASE + 0x00))
-#define GPIOA_BSRR   (*(volatile uint32_t *)(GPIOA_BASE + 0x10))
-#define GPIOA_BRR    (*(volatile uint32_t *)(GPIOA_BASE + 0x14))
+/* TODO: define register base addresses and peripheral macros */
 
 void delay_ms(uint32_t ms) {
-  // TODO: implement software delay (~8000 cycles per ms at 8 MHz)
+    /* TODO */
 }
 
 int main(void) {
-  // TODO: 1. Enable GPIOA clock
-
-  // TODO: 2. Configure PA5 as output push-pull, 2 MHz
-
-  // TODO: 3. Toggle PA5 every 500 ms
-  while (1) {
-
-  }
+    /* TODO: enable clock, configure pin, toggle in loop */
+    while (1) { }
 }`,
     validation_checks: [
       {
@@ -2581,41 +2569,25 @@ int main(void) {
     missionType: "embedded_lab",
     test_cases: [{ options: ["312 (0x138)", "156 (0x9C)", "624 (0x270)", "9600"], correct: 0, explanation: "BRR = f_PCLK / baud = 36,000,000 / 115,200 ≈ 312. Writing 0x138 to USART1_BRR gives 115200 baud at 36 MHz APB2." }],
     workstation: "embedded_lab",
-    starterCode: `// UART1 Polling — STM32F103 @ 36 MHz APB2
+    starterCode: `/* UART Transmit — Polling Mode
+ * MCU: STM32F103, USART1 @ 115200 baud, 8N1
+ * Consult: STM32F103 Reference Manual (RM0008), Section 27 (USART)
+ */
 #include <stdint.h>
 
-#define RCC_BASE    0x40021000
-#define GPIOA_BASE  0x40010800
-#define USART1_BASE 0x40013800
-
-#define RCC_APB2ENR  (*(volatile uint32_t *)(RCC_BASE   + 0x18))
-#define GPIOA_CRH    (*(volatile uint32_t *)(GPIOA_BASE + 0x04))
-#define USART1_SR    (*(volatile uint32_t *)(USART1_BASE + 0x00))
-#define USART1_DR    (*(volatile uint32_t *)(USART1_BASE + 0x04))
-#define USART1_BRR   (*(volatile uint32_t *)(USART1_BASE + 0x08))
-#define USART1_CR1   (*(volatile uint32_t *)(USART1_BASE + 0x0C))
-
-// TXE bit in SR
-#define USART_SR_TXE  (1 << 7)
-#define USART_CR1_TE  (1 << 3)
-#define USART_CR1_UE  (1 << 13)
+/* TODO: define register base addresses and peripheral macros */
 
 void uart_send_char(char c) {
-  // TODO: wait for TXE, then write c to DR
+    /* TODO */
 }
 
 void uart_send_string(const char *s) {
-  // TODO: iterate and call uart_send_char
+    /* TODO */
 }
 
 int main(void) {
-  // TODO: 1. Enable GPIOA + USART1 clocks
-  // TODO: 2. Configure PA9 as AF push-pull
-  // TODO: 3. Set BRR for 115200 baud (hint: 36000000/115200 ≈ 313)
-  // TODO: 4. Enable USART1 with TE + UE
-
-  uart_send_string("Hello ECE!\\r\\n");
-  while (1) {}
+    /* TODO: init clocks, GPIO (PA9 TX), USART1, then transmit */
+    while (1) { }
 }`,
     validation_checks: [
       {
@@ -2752,56 +2724,49 @@ print(f"\\nExpected -3dB frequency: {fc} Hz")
     missionType: "embedded_lab",
     test_cases: [{ options: ["180 (0xB4)", "360 (0x168)", "90 (0x5A)", "72 (0x48)"], correct: 0, explanation: "CCR = f_PCLK1 / (2 × f_I2C) = 36,000,000 / (2 × 100,000) = 180. TRISE = f_PCLK1_MHz + 1 = 37 for standard mode." }],
     workstation: "embedded_lab",
-    starterCode: `// I2C1 Bare-Metal Driver — STM32F103 PCLK1=36MHz
+    starterCode: `/* I2C1 Bare-Metal Driver — STM32F103
+ * Target: MPU-6050 @ I2C address 0x68, register WHO_AM_I = 0x75
+ * Consult: STM32F103 Reference Manual (RM0008), Section 26 (I2C)
+ *          MPU-6050 Product Specification Rev 3.4
+ */
 #include <stdint.h>
 
-#define I2C1_BASE  0x40005400
-#define I2C_CR1    (*(volatile uint32_t *)(I2C1_BASE + 0x00))
-#define I2C_CR2    (*(volatile uint32_t *)(I2C1_BASE + 0x04))
-#define I2C_CCR    (*(volatile uint32_t *)(I2C1_BASE + 0x1C))
-#define I2C_TRISE  (*(volatile uint32_t *)(I2C1_BASE + 0x20))
-#define I2C_SR1    (*(volatile uint32_t *)(I2C1_BASE + 0x14))
-#define I2C_SR2    (*(volatile uint32_t *)(I2C1_BASE + 0x18))
-#define I2C_DR     (*(volatile uint32_t *)(I2C1_BASE + 0x10))
-
-#define MPU6050_ADDR  0x68
-#define WHO_AM_I_REG  0x75
+/* TODO: define I2C1 register base addresses and macros */
 
 void i2c_init(void) {
-  // TODO: configure PCLK1=36, CCR for 100kHz, TRISE, enable I2C1
+    /* TODO */
 }
 
 void i2c_start(void) {
-  // TODO: set START bit, wait SB flag in SR1
+    /* TODO */
 }
 
 void i2c_write_addr(uint8_t addr, uint8_t rw) {
-  // TODO: write (addr<<1)|rw to DR, wait ADDR, clear by reading SR1+SR2
+    /* TODO */
 }
 
 uint8_t i2c_read_byte(int ack) {
-  // TODO: set/clear ACK bit, wait RXNE, return DR
-  return 0;
+    /* TODO */
+    return 0;
 }
 
 void i2c_write_byte(uint8_t data) {
-  // TODO: write to DR, wait BTF
+    /* TODO */
 }
 
 void i2c_stop(void) {
-  I2C_CR1 |= (1 << 9);  // STOP bit
+    /* TODO */
 }
 
 uint8_t i2c_read_reg(uint8_t dev, uint8_t reg) {
-  // TODO: start → write addr (W) → write reg → restart → read addr (R) → read byte → stop
-  return 0;
+    /* TODO */
+    return 0;
 }
 
 int main(void) {
-  i2c_init();
-  uint8_t who = i2c_read_reg(MPU6050_ADDR, WHO_AM_I_REG);
-  // Expected: who == 0x68
-  return (who == 0x68) ? 0 : 1;
+    i2c_init();
+    uint8_t who = i2c_read_reg(0x68, 0x75);
+    return (who == 0x68) ? 0 : 1;
 }`,
     skillTags: ["I2C", "Master Mode", "MPU-6050", "Bare-Metal", "Register Map"],
     hints: [
@@ -2834,15 +2799,13 @@ int main(void) {
     test_cases: [{ options: ["Sum = 1011₂, Cout = 0", "Sum = 1011₂, Cout = 1", "Sum = 1111₂, Cout = 0", "Sum = 0011₂, Cout = 1"], correct: 0, explanation: "0110 (6) + 0101 (5) = 1011 (11). No carry out since 11 < 16. Each full adder chains carry to the next stage." }],
     workstation: "embedded_lab",
     starterCode: `// 4-bit Ripple Carry Adder — Structural Verilog
-// DO NOT use + operator — structural gate-level only
+// Use gate primitives only (and, or, xor) — no + operator allowed
 
 module full_adder (
   input  a, b, cin,
   output sum, cout
 );
-  // TODO: implement using XOR, AND, OR gates
-  // sum  = a ^ b ^ cin
-  // cout = (a & b) | (b & cin) | (a & cin)
+  // TODO
 endmodule
 
 module rca_4bit (
@@ -2851,14 +2814,9 @@ module rca_4bit (
   output [3:0] sum,
   output       cout
 );
-  wire c1, c2, c3;
-  // TODO: instantiate four full_adder modules
-  // fa0: a[0], b[0], cin  → sum[0], c1
-  // fa1: a[1], b[1], c1   → sum[1], c2
-  // ...
+  // TODO: declare internal carry wires and instantiate four full_adder modules
 endmodule
 
-// Testbench
 module tb;
   reg  [3:0] a, b;
   reg        cin;
@@ -2870,12 +2828,7 @@ module tb;
   initial begin
     a = 4'b0110; b = 4'b0101; cin = 0;
     #10;
-    $display("a=%b b=%b cin=%b → sum=%b cout=%b", a, b, cin, sum, cout);
-    // Expected: sum = 4'b1011, cout = 0
-    if (sum === 4'b1011 && cout === 0)
-      $display("PASS");
-    else
-      $display("FAIL");
+    $display("sum=%b cout=%b", sum, cout);
     $finish;
   end
 endmodule`,
@@ -2909,42 +2862,32 @@ endmodule`,
     missionType: "embedded_lab",
     test_cases: [{ options: ["Bits [14:3] — shift right by 3 and mask 12 bits", "Bits [11:0] — no shift needed", "Bits [15:4] — shift right by 4", "Bits [13:2] — shift right by 2"], correct: 0, explanation: "MCP3201 sends: null bit at position 15, then B11..B0 at bits [14:3]. Extract: (raw >> 3) & 0x0FFF or equivalently raw & 0x7FF8 >> 3." }],
     workstation: "embedded_lab",
-    starterCode: `// Bit-Bang SPI — MCP3201 12-bit ADC on STM32
+    starterCode: `/* Bit-Bang SPI — MCP3201 12-bit ADC
+ * MCU: STM32F103, GPIO pins PA4/PA5/PA6/PA7
+ * Consult: MCP3201 datasheet (Figure 6-1 serial timing), STM32F103 RM0008
+ */
 #include <stdint.h>
 
-// GPIO bit-bang pins (assume configured as output/input already)
-#define CS_LOW()   // TODO: PA4 = 0
-#define CS_HIGH()  // TODO: PA4 = 1
-#define SCK_LOW()  // TODO: PA5 = 0
-#define SCK_HIGH() // TODO: PA5 = 1
-#define MOSI(v)    // TODO: PA7 = v
-#define MISO_READ() 0 // TODO: return PA6 state
+/* TODO: define GPIO macros for CS, SCK, MOSI, MISO */
 
 void spi_delay(void) {
-  for (volatile int i = 0; i < 10; i++);  // ~100 ns @ 72 MHz
+    /* TODO */
 }
 
 uint8_t spi_transfer_byte(uint8_t tx) {
-  uint8_t rx = 0;
-  // TODO: 8 clock cycles, MSB first, sample MISO on rising edge
-  return rx;
+    /* TODO */
+    return 0;
 }
 
 uint16_t mcp3201_read(void) {
-  CS_LOW();
-  // TODO: clock out 16 bits (two 0x00 bytes), reconstruct 12-bit result
-  // MCP3201 frame: 1 null bit + B11..B0 across 13 remaining clocks
-  uint16_t raw = 0;
-  CS_HIGH();
-  return raw & 0x0FFF;
+    /* TODO */
+    return 0;
 }
 
 int main(void) {
-  // gpio_init();  // assume already done
-  uint16_t adc = mcp3201_read();
-  float voltage = (adc / 4095.0f) * 3.3f;
-  // Expected: adc in [0, 4095], voltage in [0.0, 3.3]
-  return 0;
+    uint16_t adc = mcp3201_read();
+    float voltage = (adc / 4095.0f) * 3.3f;
+    return 0;
 }`,
     skillTags: ["SPI", "Bit-Bang", "ADC", "MCP3201", "Bit Manipulation"],
     hints: [
@@ -2977,11 +2920,12 @@ int main(void) {
     test_cases: [{ options: ["Setup time violation — FF may capture metastable value", "No violation — 1.5 ns is within the timing budget", "Hold time violation, not setup time", "The FF will reset automatically due to metastability"], correct: 0, explanation: "t_setup = 2 ns means d must be stable at least 2 ns before the clock edge. Here d changes only 1.5 ns before the edge (1.5 < 2), so this IS a setup time violation. The output q may be metastable." }],
     workstation: "embedded_lab",
     starterCode: `// D Flip-Flop with Synchronous Reset — Verilog
+
 module dff_sync_rst (
   input  clk, rst, d,
   output reg q
 );
-  // TODO: synchronous reset, positive edge triggered
+  // TODO: positive-edge triggered, synchronous active-high reset
 endmodule
 
 module tb;
@@ -2990,19 +2934,16 @@ module tb;
 
   dff_sync_rst uut (.clk(clk), .rst(rst), .d(d), .q(q));
 
-  // 10 ns clock period
   initial clk = 0;
   always #5 clk = ~clk;
 
   initial begin
     rst = 1; d = 0;
     #20 rst = 0;
-    #10 d = 1;  // d goes high 10ns before next edge
-    #10;        // posedge clk — should capture d=1
-    $display("q = %b (expected 1)", q);
-    // Timing question: t_setup = 2ns, d changes 1.5ns before clk rising edge
-    // Answer: VIOLATION — d must be stable at least 2ns before the edge
-    #10 $finish;
+    #10 d = 1;
+    #10;
+    $display("q = %b", q);
+    $finish;
   end
 endmodule`,
     skillTags: ["D Flip-Flop", "Synchronous Reset", "Setup Time", "Timing Analysis", "Verilog"],
@@ -3037,36 +2978,26 @@ endmodule`,
     missionType: "embedded_lab",
     test_cases: [{ options: ["1800 — using CCR2 = (percent × (ARR+1)) / 100", "1799 — using CCR2 = (percent × ARR) / 100", "3600 — full ARR value at 100%", "899 — quarter of ARR"], correct: 0, explanation: "At 50%: CCR2 = (50 × (3599+1)) / 100 = (50 × 3600) / 100 = 1800. PWM is HIGH for CCR2 counts out of ARR+1 total, so duty = 1800/3600 = 50.0% exactly." }],
     workstation: "embedded_lab",
-    starterCode: `// PWM Motor Speed — TIM2_CH2 (PA1), 20 kHz, 72 MHz system clock
+    starterCode: `/* PWM Motor Speed Control — TIM2_CH2 (PA1), 20 kHz
+ * MCU: STM32F103 @ 72 MHz system clock
+ * Consult: STM32F103 Reference Manual (RM0008), Section 15 (TIM2)
+ */
 #include <stdint.h>
 
-#define RCC_BASE  0x40021000
-#define GPIOA_BASE 0x40010800
-#define TIM2_BASE 0x40000000
-
-#define RCC_APB2ENR (*(volatile uint32_t *)(RCC_BASE + 0x18))
-#define RCC_APB1ENR (*(volatile uint32_t *)(RCC_BASE + 0x1C))
-#define GPIOA_CRL   (*(volatile uint32_t *)(GPIOA_BASE))
-#define TIM2_CR1    (*(volatile uint32_t *)(TIM2_BASE + 0x00))
-#define TIM2_CCMR1  (*(volatile uint32_t *)(TIM2_BASE + 0x18))
-#define TIM2_CCER   (*(volatile uint32_t *)(TIM2_BASE + 0x20))
-#define TIM2_PSC    (*(volatile uint32_t *)(TIM2_BASE + 0x28))
-#define TIM2_ARR    (*(volatile uint32_t *)(TIM2_BASE + 0x2C))
-#define TIM2_CCR2   (*(volatile uint32_t *)(TIM2_BASE + 0x38))
+/* TODO: define RCC, GPIOA, TIM2 register base addresses and macros */
 
 void pwm_init(void) {
-  // TODO: clocks, GPIO AF, timer config
+    /* TODO: enable clocks, configure PA1 as AF output, set up TIM2 */
 }
 
 void set_motor_speed(uint8_t percent) {
-  if (percent > 100) percent = 100;
-  // TODO: CCR2 = (percent * ARR) / 100
+    /* TODO: clamp to 100, update CCR2 for desired duty cycle */
 }
 
 int main(void) {
-  pwm_init();
-  set_motor_speed(50);   // 50% duty → half speed
-  while (1) {}
+    pwm_init();
+    set_motor_speed(50);
+    while (1) { }
 }`,
     skillTags: ["PWM", "TIM2", "Motor Control", "Duty Cycle", "ARR/CCR"],
     hints: [
@@ -3105,39 +3036,22 @@ export const ECE_VLSI_CHALLENGES = [
     ],
     test_cases: [{ options: ["4 states (IDLE → GOT1 → GOT10 → GOT101 → detect → IDLE)", "3 states (miss the '1' partial match recovery)", "2 states (too few to track the pattern)", "5 states (overspecified, redundant state)"], correct: 0, explanation: "A non-overlapping Moore FSM for 1011 needs exactly 4 states. After detecting the full pattern (S3 on last '1'), output fires and FSM returns to IDLE. One-hot encoding is preferred for synthesis." }],
     starterCode: `// Moore FSM — Sequence Detector (1011)
-// One-hot encoding, synchronous reset
+// One-hot encoding, synchronous active-low reset
+
 module seq_detect_1011 (
   input  clk, rst_n, in,
   output detect
 );
-  // State encoding (one-hot)
-  localparam S0 = 4'b0001;  // IDLE
-  localparam S1 = 4'b0010;  // GOT_1
-  localparam S2 = 4'b0100;  // GOT_10
-  localparam S3 = 4'b1000;  // GOT_101
+  // TODO: define state parameters (one-hot encoding)
 
-  reg [3:0] state, next;
+  // TODO: declare state registers
 
-  // State register
-  always @(posedge clk or negedge rst_n) begin
-    if (!rst_n) state <= S0;
-    else        state <= next;
-  end
+  // TODO: state register (sequential block)
 
-  // Next-state logic
-  always @(*) begin
-    case (state)
-      S0: next = in ? S1 : S0;
-      S1: next = in ? S1 : S2;   // GOT_1: on 0 → GOT_10
-      S2: next = in ? S3 : S0;   // GOT_10: on 1 → GOT_101
-      S3: next = in ? S1 : S0;   // GOT_101: on 1 → DETECT, reset to S0 (non-overlap)
-      default: next = S0;
-    endcase
-  end
+  // TODO: next-state logic (combinational block)
 
-  // Output (Moore — depends only on state)
-  // TODO: detect fires when we're in S3 AND next input completes 1011
-  assign detect = /* TODO */ 1'b0;
+  // TODO: output logic (Moore — output depends only on current state)
+  assign detect = 1'b0;  // replace with your logic
 
 endmodule`,
     skillTags: ["FSM", "Moore Machine", "Sequence Detector", "One-Hot Encoding", "RTL"],
@@ -3170,25 +3084,18 @@ endmodule`,
     ],
     test_cases: [{ options: ["0.7 ns — meets 500 MHz with 1.2 ns positive slack", "1.4 ns — violates 500 MHz (negative slack -0.5 ns)", "0.5 ns — meets with 1.4 ns slack", "2.1 ns — violates timing (exceeds full clock period)"], correct: 0, explanation: "CLA critical path = PG gen (0.2) + carry logic (0.3) + XOR sum (0.2) = 0.7 ns. Setup slack = 2.0 − 0.7 − 0.1 = 1.2 ns (positive) → timing MET at 500 MHz." }],
     starterCode: `// CLA Critical Path Timing Analysis
-// Gate delays:
-//   P/G generation (AND/OR)  : 0.2 ns each
-//   Carry: G + P.Cin (AND-OR): 0.3 ns
-//   Sum: Pi XOR Ci           : 0.2 ns
+// Given gate delays (from synthesis report):
+//   P/G generation (AND/OR gate) : 0.2 ns each
+//   Carry logic (G + P·Cin)      : 0.3 ns
+//   Sum (Pi XOR Ci)              : 0.2 ns
 //
-// For an 8-bit CLA with two 4-bit groups:
+// Clock frequency target: 500 MHz → period = 2.0 ns
+// Setup time requirement: 0.1 ns
 //
-//  ┌──────────┐    ┌──────────┐    ┌─────┐
-//  │  P,G gen │───▶│  Carry   │───▶│ Sum │
-//  │  (0.2ns) │    │  (0.3ns) │    │(0.2)│
-//  └──────────┘    └──────────┘    └─────┘
+// TODO: Draw the critical path through a 4-bit CLA block,
+//       calculate total delay, and determine timing slack.
 //
-// Critical path = 0.2 + 0.3 + 0.2 = 0.7 ns
-//
-// Setup slack = T_clk - T_crit - T_setup
-//             = 2.0   - 0.7   - 0.1
-//             = 1.2 ns  ← positive = TIMING MET
-//
-// Q: Does the design meet 500 MHz (2 ns period)?`,
+// Q: Does this design meet 500 MHz timing? Show your working.`,
     skillTags: ["STA", "Critical Path", "CLA Adder", "Setup Slack", "Timing Closure"],
     hints: [
       "CLA advantage: carry is computed in O(1) gate levels rather than O(n) for ripple-carry",
