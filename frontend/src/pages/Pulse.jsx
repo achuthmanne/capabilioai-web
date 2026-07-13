@@ -4,6 +4,7 @@
  */
 import { useState, useEffect, useCallback, useRef } from "react"
 import { pulseApi, nexusApi } from "../lib/api"
+import { getRoleConfig } from "../config/roleConfig"
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const T = {
@@ -713,7 +714,8 @@ const TRENDING_TOPICS = [
 ]
 
 function StudentPulse({ user, userData }) {
-  const domain      = userData?.keyword || "Tech"
+  const roleConf    = getRoleConfig(userData)
+  const domain      = roleConf.label || userData?.keyword || "Tech"
   const elo         = userData?.eloRating || userData?.elo_rating || 400
   const displayName = userData?.displayName || userData?.display_name || userData?.name || "Student"
   const initials    = displayName[0]?.toUpperCase() || "S"
@@ -1956,7 +1958,7 @@ export default function Pulse({ user, userData }) {
 
           {/* ── Right sidebar ── */}
           <div style={{ position:"sticky", top:72 }}>
-            <RightSidebar user={user} domain={userData?.keyword || "software engineering"} role={userData?.job_role || userData?.target_role || "Software Engineer"}/>
+            <RightSidebar user={user} domain={getRoleConfig(userData).label} role={getRoleConfig(userData).label}/>
           </div>
 
         </div>

@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { supabase } from "../lib/supabase"
 import { applySkillUpdates } from "../services/arenaSkillEngine"
 import { getPlan, daysSinceLastArenaTask } from "../config/plans"
+import { resolveArenaKey } from "../config/roleConfig"
 
 const SERVER_LOCAL = import.meta.env.VITE_API_URL || "http://localhost:4000"
 const SERVER_PROD  = "https://capabilio-server.onrender.com"
@@ -33,31 +34,10 @@ function isFreeTierLocked(userData) {
   return daysSinceLastArenaTask(userData) < plan.arenaIntervalDays
 }
 
-// ── Domain resolution (unchanged from original) ───────────────────────────────
-const ARENA_DOMAIN_KEYS = ["frontend","backend","fullstack","swe","data","dba","cyber","medical","ece","devops","aws","azure"]
-const DOMAIN_MAP = {
-  "frontend":"frontend","react developer":"frontend","ui developer":"frontend","angular":"frontend","vue":"frontend",
-  "backend":"backend","node.js":"backend","django":"backend","spring boot":"backend",
-  "full stack":"fullstack","fullstack":"fullstack","mern":"fullstack","mean":"fullstack",
-  "software engineer":"swe","software developer":"swe","sde":"swe",
-  "data analyst":"data","data analysis":"data","analytics":"data","business analyst":"data",
-  "database administrator":"dba","dba":"dba","sql developer":"dba",
-  "cybersecurity":"cyber","cyber security":"cyber","security analyst":"cyber","soc analyst":"cyber",
-  "medical coder":"medical","medical coding":"medical","medical billing":"medical",
-  "embedded":"ece","vhdl":"ece","fpga":"ece","electronics":"ece","firmware":"ece",
-  "devops":"devops","sre":"devops","kubernetes":"devops","docker":"devops",
-  "aws":"aws","cloud engineer":"aws","cloud architect":"aws",
-  "azure":"azure","azure engineer":"azure","azure developer":"azure",
-}
-
+// ── Domain resolution — delegates to centralized roleConfig ──────────────────
+// resolveArenaKey() returns the arenaDomains.js key ("ece","swe","frontend", etc.)
 function resolveDomain(userData) {
-  const explicit = userData?.domain || userData?.arenaKey || userData?.domain_key
-  if (explicit && ARENA_DOMAIN_KEYS.includes(explicit)) return explicit
-  const kw = (userData?.keyword || userData?.job_role || userData?.target_role || "software engineer").toLowerCase()
-  for (const [key, val] of Object.entries(DOMAIN_MAP)) {
-    if (kw.includes(key)) return val
-  }
-  return "swe"
+  return resolveArenaKey(userData)
 }
 
 // ── Supabase slot helpers (replaces Firestore subcollection) ───────────────────

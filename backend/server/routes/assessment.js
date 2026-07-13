@@ -46,6 +46,7 @@ const DOMAIN_SKILLS = {
   // ── ECE role-specific domains ─────────────────────────────────────────────────
   "ECE Embedded":    ["ARM Cortex Architecture","Embedded C / Bare-Metal","RTOS (FreeRTOS / Zephyr)","Device Drivers & HAL","Interrupt Handling","Memory Management (MMU / MPU)","Bootloader & Startup Code","SPI / I2C / UART Protocols","CAN & LIN Bus","Debugging (JTAG / OpenOCD)","Low-Power Design","Firmware Over-the-Air (FOTA)"],
   "ECE VLSI":        ["Digital Logic Design","Verilog / SystemVerilog","VHDL","RTL Design & Synthesis","Static Timing Analysis","Floorplanning & Placement","Clock Tree Synthesis","DRC / LVS / ERC","UVM Verification","ASIC Design Flow","FPGA Implementation","Low-Power VLSI Techniques"],
+  "ECE Analog Layout": ["Full-Custom IC Layout","Cadence Virtuoso Tools","Analog Circuit Analysis (Op-Amp / Comparator)","Device Matching & Interdigitation","DRC / LVS / ERC Rules","Guard Rings & Shielding","Parasitic Extraction (PEX / RC)","Analog Block Floorplanning","Electromigration Design Rules","ESD Protection Structures","Mixed-Signal Integration","Low-Noise Layout Techniques"],
   "ECE RF":          ["RF Circuit Design","Transmission Line Theory","Antenna Design & Parameters","Microwave Amplifiers","Filter Design (RF)","S-Parameters & Smith Chart","Impedance Matching","Signal Propagation & Path Loss","Modulation Techniques (AM/FM/QAM)","RF System Link Budget","PCB Layout for RF","Spectrum Analyzer Usage"],
   "ECE IoT":         ["MQTT & CoAP Protocols","Arduino & Raspberry Pi","Sensor Integration & Calibration","BLE / Zigbee / LoRa","IoT Cloud Platforms (AWS IoT / Azure IoT)","Edge Computing","Embedded C for IoT","Python for IoT","Security in IoT","OTA Firmware Updates","Data Acquisition & Processing","Real-Time Operating Systems"],
   "ECE Telecom":     ["Digital Communication Systems","Modulation & Demodulation","5G NR Architecture","LTE / 4G Fundamentals","OFDM & Channel Coding","Network Protocols (TCP/IP)","Signal Processing (DSP)","Antenna Arrays & MIMO","RF Link Budget","Optical Fiber Communication","Error Detection & Correction","Wireless Network Planning"],
@@ -103,6 +104,7 @@ function getDomainSkills(jobTitle, branch = "") {
   if ((k.includes("full") && k.includes("stack")) || k.includes("software engineer") || k.includes("software developer") || k.includes("swe")) return DOMAIN_SKILLS["Full-Stack"]
 
   // ── ECE sub-roles (most specific first) ──────────────────────────────────────
+  if (k.includes("analog layout") || k.includes("layout engineer") || k.includes("ic layout") || k.includes("full custom") || k.includes("cadence virtuoso") || k.includes("full-custom ic") || k.includes("analog design engineer")) return DOMAIN_SKILLS["ECE Analog Layout"]
   if (k.includes("vlsi") || k.includes("asic") || k.includes("rtl") || k.includes("physical design") || k.includes("timing") || k.includes("verilog") || k.includes("vhdl") || k.includes("fpga designer")) return DOMAIN_SKILLS["ECE VLSI"]
   if (k.includes("embedded") || k.includes("firmware") || k.includes("rtos") || k.includes("bare-metal") || k.includes("device driver") || k.includes("bootloader") || k.includes("microcontroller")) return DOMAIN_SKILLS["ECE Embedded"]
   if (k.includes("rf engineer") || k.includes("rf design") || k.includes("antenna") || k.includes("microwave") || k.includes("radio frequency")) return DOMAIN_SKILLS["ECE RF"]
@@ -159,17 +161,18 @@ router.post("/generate-mcq", async (req, res) => {
   // For non-IT/engineering domains, swap code_output for numerical/diagram questions
   const isEngineeringBranch = branch && ["ECE","EEE","Mechanical","Civil","IoT","Pharmacy","MBA"].includes(branch)
   // Detect engineering domain by keyword match (not just branch) so sub-role maps work too
-  const isEngineeringRole = isEngineeringBranch ||
-    (domainSkills === DOMAIN_SKILLS["ECE Embedded"] || domainSkills === DOMAIN_SKILLS["ECE VLSI"] ||
-     domainSkills === DOMAIN_SKILLS["ECE RF"]       || domainSkills === DOMAIN_SKILLS["ECE IoT"]  ||
-     domainSkills === DOMAIN_SKILLS["ECE Telecom"]  || domainSkills === DOMAIN_SKILLS["EEE Power"] ||
-     domainSkills === DOMAIN_SKILLS["EEE Machines"] || domainSkills === DOMAIN_SKILLS["EEE Control"] ||
-     domainSkills === DOMAIN_SKILLS["EEE PE"]       || domainSkills === DOMAIN_SKILLS["EEE Instrumentation"] ||
-     domainSkills === DOMAIN_SKILLS["Civil Structural"] || domainSkills === DOMAIN_SKILLS["Civil Geo"] ||
-     domainSkills === DOMAIN_SKILLS["Civil Transport"]  || domainSkills === DOMAIN_SKILLS["Civil Water"] ||
-     domainSkills === DOMAIN_SKILLS["Civil Construction"] || domainSkills === DOMAIN_SKILLS["Mech Thermal"] ||
-     domainSkills === DOMAIN_SKILLS["Mech Fluid"]   || domainSkills === DOMAIN_SKILLS["Mech Manufacturing"] ||
-     domainSkills === DOMAIN_SKILLS["Mech Design"])
+  const ENGINEERING_SKILL_SETS = new Set([
+    DOMAIN_SKILLS["ECE Embedded"], DOMAIN_SKILLS["ECE VLSI"], DOMAIN_SKILLS["ECE RF"],
+    DOMAIN_SKILLS["ECE IoT"], DOMAIN_SKILLS["ECE Telecom"], DOMAIN_SKILLS["ECE Analog Layout"],
+    DOMAIN_SKILLS["ECE"], DOMAIN_SKILLS["EEE Power"], DOMAIN_SKILLS["EEE Machines"],
+    DOMAIN_SKILLS["EEE Control"], DOMAIN_SKILLS["EEE PE"], DOMAIN_SKILLS["EEE Instrumentation"],
+    DOMAIN_SKILLS["EEE"], DOMAIN_SKILLS["Civil Structural"], DOMAIN_SKILLS["Civil Geo"],
+    DOMAIN_SKILLS["Civil Transport"], DOMAIN_SKILLS["Civil Water"], DOMAIN_SKILLS["Civil Construction"],
+    DOMAIN_SKILLS["Civil"], DOMAIN_SKILLS["Mech Thermal"], DOMAIN_SKILLS["Mech Fluid"],
+    DOMAIN_SKILLS["Mech Manufacturing"], DOMAIN_SKILLS["Mech Design"], DOMAIN_SKILLS["Mechanical"],
+    DOMAIN_SKILLS["IoT"], DOMAIN_SKILLS["Pharmacy"],
+  ])
+  const isEngineeringRole = isEngineeringBranch || ENGINEERING_SKILL_SETS.has(domainSkills)
   const mix = isEngineeringRole
     ? { mcq: Math.round(count * 0.40), numerical: Math.round(count * 0.25), problem_solving: Math.round(count * 0.20), scenario: Math.round(count * 0.10), fill_blank: Math.round(count * 0.05), code_output: 0 }
     : { mcq: Math.round(count * 0.30), code_output: Math.round(count * 0.25), problem_solving: Math.round(count * 0.20), scenario: Math.round(count * 0.15), fill_blank: Math.round(count * 0.10), numerical: 0 }

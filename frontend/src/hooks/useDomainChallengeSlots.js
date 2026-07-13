@@ -17,6 +17,7 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { supabase } from "../lib/supabase"
 import { getDomainChallenges } from "../config/domainChallenges"
+import { resolveChallengeKey } from "../config/roleConfig"
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const COOLDOWN_MS     = 24 * 60 * 60 * 1000   // 24 hours
@@ -24,10 +25,10 @@ const MAX_SLOTS       = 3                       // hard upper bound (Elite plan 
 const RECENT_MEMORY   = 3                       // avoid repeating last N challenge IDs
 const CATEGORY_MEMORY = 4                       // avoid repeating last N categories
 
-// ── Domain key resolution (mirrors useArenaMissions logic) ───────────────────
-// Order matters — more specific entries must come BEFORE generic ones so a
-// keyword like "vlsi verification engineer" matches "vlsi" before "engineer".
-const DOMAIN_MAP = {
+// ── Domain key resolution — delegates to centralized roleConfig ──────────────
+// resolveChallengeKey(userData) replaces the old DOMAIN_MAP + SLUG_MAP + resolveDomainKey()
+// All keyword/slug matching logic now lives in frontend/src/config/roleConfig.js
+const DOMAIN_MAP_LEGACY = {
   // ── ECE sub-roles (checked BEFORE generic "embedded"/"ece") ──────────────
   "circuit design engineer": "ece_interactive",
   "circuit designer":        "ece_interactive",
@@ -217,21 +218,9 @@ const SLUG_MAP = {
   "azure-engineer":             "azure",
 }
 
+// Thin wrapper: all resolution logic lives in roleConfig.js
 function resolveDomainKey(userData) {
-  // 1. Explicit override (highest priority)
-  const explicit = userData?.domain || userData?.domain_key || userData?.arenaKey
-  if (explicit) return explicit
-
-  // 2. career_track_slug from onboarding (reliable, onboarding-set value)
-  const slug = (userData?.career_track_slug || "").toLowerCase().trim()
-  if (slug && SLUG_MAP[slug]) return SLUG_MAP[slug]
-
-  // 3. Keyword matching against job_role / target_role / keyword
-  const kw = (userData?.keyword || userData?.job_role || userData?.target_role || "software engineer").toLowerCase()
-  for (const [key, val] of Object.entries(DOMAIN_MAP)) {
-    if (kw.includes(key)) return val
-  }
-  return "swe"
+  return resolveChallengeKey(userData)
 }
 
 // ── Rotation algorithm ───────────────────────────────────────────────────────

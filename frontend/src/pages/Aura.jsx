@@ -3,6 +3,7 @@ import { userDoc } from "../lib/db"
 import { supabase } from "../lib/supabase"
 import { getPlan, interviewsUsedThisMonth, reportsUsedThisMonth } from "../config/plans"
 import { getDomainChallenges } from "../config/domainChallenges"
+import { getRoleConfig, resolveRoleLabel, resolveAuraSkills } from "../config/roleConfig"
 import CareerVideoGenerator from "./CareerVideoGenerator"
 // Portfolio themes removed — single universal design
 // ── Professional Path: API-connected components ───────────────────────────────
@@ -86,9 +87,9 @@ function Spinner({ color = T.indigo, size = 14 }) {
 }
 
 // ─── DOMAIN → SKILLS MAP ──────────────────────────────────────────────────────
-// Entry-level / fresh-graduate skills per role.
-// Goal: students gain 20–30% domain knowledge before starting corporate life.
-// Skills are practical, observable, and appropriate for a first-year employee.
+// MIGRATED: Skills now live in roleConfig.js → role.auraSkills
+// Legacy map kept for backwards compat with any skill stored on profiles.skillGraph
+// that was written before roleConfig migration. New lookups use resolveAuraSkills().
 const domainSkillsMap = {
   // ── IT / CS DOMAINS ───────────────────────────────────────────────────────
   "Data Analyst":      ["SQL Basics","Python (pandas)","Data Cleaning","Charts & Graphs","Descriptive Statistics","Excel / Sheets","Data Filtering & Sorting","Basic Dashboard (Power BI/Tableau)","Reading Business Requirements","KPI Definitions","Data Storytelling","Problem Framing"],
@@ -138,123 +139,19 @@ const domainSkillsMap = {
   "MBA":        ["Business Communication","Financial Statements (P&L, Balance Sheet)","Marketing Basics (4Ps)","Operations Concepts","Management Styles","Business Problem Framing","Data for Business Decisions","Team Dynamics","Customer & Market Basics","Business Ethics","Project Planning Basics","Excel for Business"],
 }
 
-// Normalize keyword → canonical domain name
-// Rules: most-specific role checked FIRST, broad domain fallback last.
+// ── Unified role resolution — delegates to roleConfig.js ─────────────────────
+// normalizeDomain() is now a thin wrapper returning the role label.
+// All keyword matching logic lives in getRoleConfig().
 function normalizeDomain(keyword) {
-  if (!keyword) return "Software Developer"
-  const k = keyword.toLowerCase().trim()
-
-  // ── IT / CS roles ──────────────────────────────────────────────────────────
-  if (k.includes("dba") || k.includes("database admin") || k.includes("database administrator") ||
-      k.includes("sql dba") || k.includes("oracle dba") || k.includes("db admin")) return "DBA"
-
-  if (k.includes("data analyst") || k.includes("business analyst") || k.includes("bi analyst") ||
-      k.includes("data analysis") || k.includes("analytics")) return "Data Analyst"
-
-  if (k.includes("machine learning") || k.includes("ml engineer") || k.includes("ai engineer") ||
-      k.includes("deep learning") || k.includes("data scientist")) return "Machine Learning"
-
-  if (k.includes("frontend") || k.includes("front-end") || k.includes("front end") ||
-      k.includes("ui developer") || k.includes("react developer")) return "Frontend"
-
-  if (k.includes("backend") || k.includes("back-end") || k.includes("back end") ||
-      k.includes("api developer") || k.includes("server-side")) return "Backend"
-
-  if (k.includes("devops") || k.includes("sre") || k.includes("platform engineer") ||
-      k.includes("infrastructure") || k.includes("cloud engineer")) return "DevOps"
-
-  if ((k.includes("full") && k.includes("stack")) || k.includes("software engineer") ||
-      k.includes("software developer") || k.includes("swe")) return "Full-Stack"
-
-  if (k.includes("cyber") || k.includes("security") || k.includes("infosec") ||
-      k.includes("penetration") || k.includes("pentest") || k.includes("soc analyst") ||
-      k.includes("appsec") || k.includes("netsec") || k.includes("siem") ||
-      k.includes("threat intel") || k.includes("vulnerability") || k.includes("ethical hack"))
-    return "Cyber Security"
-
-  // ── ECE sub-roles — MOST specific first ────────────────────────────────────
-  // VLSI / IC Design / Digital Design
-  if (k.includes("vlsi") || k.includes("ic design") || k.includes("digital design") ||
-      k.includes("rtl") || k.includes("verilog") || k.includes("vhdl") || k.includes("fpga"))
-    return "VLSI Engineer"
-
-  // RF / Antenna
-  if (k.includes("rf engineer") || k.includes("radio frequency") || k.includes("antenna") ||
-      k.includes("wireless engineer") || k.includes("microwave"))
-    return "RF Engineer"
-
-  // Hardware / PCB
-  if (k.includes("hardware engineer") || k.includes("pcb") || k.includes("circuit design") ||
-      k.includes("hardware design") || k.includes("schematic"))
-    return "Hardware Engineer"
-
-  // Embedded / Firmware — most common ECE first job
-  if (k.includes("embedded") || k.includes("firmware") || k.includes("embedded systems") ||
-      k.includes("embedded engineer") || k.includes("firmware engineer") ||
-      k.includes("microcontroller") || k.includes("stm32") || k.includes("arm developer"))
-    return "Embedded Engineer"
-
-  // IoT — more specific than generic ECE
-  if (k.includes("iot") || k.includes("internet of things") || k.includes("iot engineer"))
-    return "IoT Engineer"
-
-  // Broad ECE fallback
-  if (k.includes("electronics engineer") || k.includes("ece") || k.includes("electronics") ||
-      k.includes("signal processing") || k.includes("communication engineer"))
-    return "ECE"
-
-  // ── EEE sub-roles ──────────────────────────────────────────────────────────
-  if (k.includes("power engineer") || k.includes("power systems") || k.includes("substation") ||
-      k.includes("transmission") || k.includes("power grid"))
-    return "Power Engineer"
-
-  if (k.includes("electrical engineer") || k.includes("eee") ||
-      k.includes("control systems engineer") || k.includes("instrumentation") ||
-      k.includes("plc") || k.includes("scada") || k.includes("automation engineer"))
-    return "Electrical Engineer"
-
-  // ── Mechanical sub-roles ───────────────────────────────────────────────────
-  if (k.includes("design engineer") || k.includes("product design") ||
-      k.includes("cad engineer") || k.includes("solidworks") || k.includes("catia"))
-    return "Design Engineer"
-
-  if (k.includes("manufacturing engineer") || k.includes("production engineer") ||
-      k.includes("process engineer") || k.includes("quality engineer") ||
-      k.includes("cnc") || k.includes("lean") || k.includes("industrial engineer"))
-    return "Manufacturing Engineer"
-
-  if (k.includes("mechanical engineer") || k.includes("automobile engineer") ||
-      k.includes("automotive engineer") || k.includes("thermal engineer") ||
-      k.includes("mechanical") || k.includes("mech"))
-    return "Mechanical Engineer"
-
-  // ── Civil sub-roles ────────────────────────────────────────────────────────
-  if (k.includes("structural engineer") || k.includes("rcc") || k.includes("steel structure") ||
-      k.includes("staad") || k.includes("etabs"))
-    return "Structural Engineer"
-
-  if (k.includes("site engineer") || k.includes("site supervisor") || k.includes("site manager") ||
-      k.includes("construction supervisor"))
-    return "Site Engineer"
-
-  if (k.includes("civil engineer") || k.includes("construction engineer") ||
-      k.includes("civil") || k.includes("infrastructure engineer"))
-    return "Civil Engineer"
-
-  // ── Other domains ──────────────────────────────────────────────────────────
-  if (k.includes("pharmacist") || k.includes("pharmacy") || k.includes("pharma"))
-    return "Pharmacy"
-
-  if (k.includes("mba") || k.includes("business manager") || k.includes("operations manager") ||
-      k.includes("hr manager") || k.includes("marketing manager") || k.includes("management trainee"))
-    return "MBA"
-
-  // Exact key match in map, then safe default
-  return Object.keys(domainSkillsMap).find(d => d.toLowerCase() === k) || "Software Developer"
+  return resolveRoleLabel(keyword)
 }
 
 function getSkillsForDomain(keyword) {
-  const domain = normalizeDomain(keyword)
+  // 1. Try roleConfig auraSkills (comprehensive, always up-to-date)
+  const rcSkills = resolveAuraSkills(keyword)
+  if (rcSkills && rcSkills.length > 0) return rcSkills
+  // 2. Fallback to legacy domainSkillsMap (only for old profile data)
+  const domain = resolveRoleLabel(keyword)
   return domainSkillsMap[domain] || domainSkillsMap["Software Developer"]
 }
 
@@ -3184,8 +3081,10 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
       }))
 
       // ── "You Have" = domain skills where user score > 40 ──
-      // Check against the domain skill list so we only show relevant strengths
-      const domainSkillsForGap = domainSkillsMap[canonicalDomain] || []
+      // Use roleConfig.resolveAuraSkills for accurate, role-specific skill list
+      const domainSkillsForGap = resolveAuraSkills(role).length > 0
+        ? resolveAuraSkills(role)
+        : (domainSkillsMap[canonicalDomain] || [])
       const youHave = domainSkillsForGap
         .map(skill => ({ skill, score: getUserScore(skill) }))
         .filter(s => s.score > 40)
@@ -3203,7 +3102,7 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
       }
 
       // ── Overall market readiness from domain skills only (not full skillGraph) ──
-      const domainScores = domainSkillsForGap.map(s => getUserScore(s))
+      const domainScores = domainSkillsForGap.map(s => getUserScore(typeof s === "string" ? s : s.skill || s))
       const avgScore = domainScores.length
         ? Math.round(domainScores.reduce((a, b) => a + b, 0) / domainScores.length)
         : (rawSG.length ? Math.round(rawSG.reduce((a, s) => a + (s.value || s.score || 0), 0) / rawSG.length) : 0)

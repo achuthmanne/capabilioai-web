@@ -7,6 +7,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { supabase } from "../lib/supabase"
 import { getSkillModule } from "../config/skillModules"
+import { resolveArenaKey } from "../config/roleConfig"
 
 const API = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
 
@@ -80,40 +81,9 @@ const apiPost = async (path, body) => {
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
+// resolveDomainKey now delegates to the centralized roleConfig
 function resolveDomainKey(keyword = "") {
-  const k = keyword.toLowerCase()
-  // IT streams
-  if (k.includes("cyber") || k.includes("security") || k.includes("soc")) return "cyber"
-  if (k.includes("frontend") || k.includes("react") || k.includes("ui developer")) return "frontend"
-  if (k.includes("backend") || k.includes("node") || k.includes("django") || k.includes("spring")) return "backend"
-  if (k.includes("fullstack") || k.includes("full stack") || k.includes("full-stack")) return "fullstack"
-  if (k.includes("data analyst") || k.includes("analytics") || k.includes("data scientist")) return "data"
-  if (k.includes("dba") || k.includes("database admin")) return "dba"
-  if (k.includes("devops") || k.includes("kubernetes") || k.includes("ci/cd") || k.includes("site reliability")) return "devops"
-  if (k.includes("aws") || k.includes("cloud")) return "aws"
-  if (k.includes("azure")) return "azure"
-  // ECE sub-roles — specific first
-  if (k.includes("vlsi") || k.includes("ic design") || k.includes("rtl") || k.includes("verilog") || k.includes("vhdl") || k.includes("fpga")) return "vlsi"
-  if (k.includes("rf engineer") || k.includes("radio frequency") || k.includes("antenna") || k.includes("wireless engineer")) return "rf"
-  if (k.includes("hardware engineer") || k.includes("pcb") || k.includes("circuit design") || k.includes("schematic")) return "hardware"
-  if (k.includes("embedded") || k.includes("firmware") || k.includes("microcontroller") || k.includes("stm32") || k.includes("arm developer")) return "embedded"
-  if (k.includes("iot") || k.includes("internet of things")) return "iot"
-  if (k.includes("electronics") || k.includes("ece")) return "ece"
-  // EEE sub-roles
-  if (k.includes("power engineer") || k.includes("power systems") || k.includes("substation")) return "power"
-  if (k.includes("electrical") || k.includes("eee") || k.includes("plc") || k.includes("scada")) return "electrical"
-  // Mechanical sub-roles
-  if (k.includes("design engineer") || k.includes("solidworks") || k.includes("catia") || k.includes("cad")) return "design"
-  if (k.includes("manufacturing") || k.includes("production") || k.includes("cnc") || k.includes("lean")) return "manufacturing"
-  if (k.includes("mechanical")) return "mechanical"
-  // Civil sub-roles
-  if (k.includes("structural") || k.includes("rcc") || k.includes("staad") || k.includes("etabs")) return "structural"
-  if (k.includes("site engineer") || k.includes("site supervisor")) return "site"
-  if (k.includes("civil") || k.includes("construction engineer")) return "civil"
-  // Others
-  if (k.includes("pharmacy") || k.includes("pharma") || k.includes("drug")) return "pharmacy"
-  if (k.includes("mba") || k.includes("business") || k.includes("management")) return "mba"
-  return "swe"
+  return resolveArenaKey(keyword)
 }
 
 function buildGaps(skillGraph, weakAreas) {
