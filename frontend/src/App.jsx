@@ -1,44 +1,49 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, lazy, Suspense } from "react"
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/react"
 import { supabase } from "./lib/supabase"
 import { userDoc } from "./lib/db"
 import { Analytics as PH, identifyUser, resetAnalytics } from "./lib/analytics"
 
-import PathNav             from "./components/PathNav"
-import LandingPage         from "./pages/LandingPage"
-import AccountType         from "./pages/AccountType"
-import Onboarding          from "./pages/Onboarding"
-import Aura                from "./pages/Aura"
-import Arena               from "./pages/Arena"
-import Pulse               from "./pages/Pulse"
-import HardwareChallenges  from "./pages/HardwareChallenges"
-import SkillStudio         from "./pages/SkillStudio"
-import Launchpad           from "./pages/Launchpad"
-import Portfolio           from "./pages/Portfolio"
-import AuthorityProfile    from "./pages/AuthorityProfile"
-import Nexus               from "./pages/Nexus"
-import Pricing             from "./pages/Pricing"
-// ── Path-specific home dashboards ────────────────────────────────────────────
-import StudentHome         from "./pages/StudentHome"
-import ProfessionalHome    from "./pages/ProfessionalHome"
-import ExecutiveHome       from "./pages/ExecutiveHome"
-// ── Professional pages ────────────────────────────────────────────────────────
-import Forge               from "./pages/Forge"
-import Orbit               from "./pages/Orbit"
-// ── Executive pages ───────────────────────────────────────────────────────────
-import SignalRooms         from "./pages/SignalRooms"
-import ExecutiveNetwork    from "./pages/ExecutiveNetwork"
-// ── Organisation pages ────────────────────────────────────────────────────────
-import InstitutionOS       from "./pages/InstitutionOS"
-// ── Recruiter pages ───────────────────────────────────────────────────────────
-import RecruiterDashboard  from "./pages/RecruiterDashboard"
-import HiringPipeline      from "./pages/HiringPipeline"
-import JobPostings         from "./pages/JobPostings"
-import JoinPage            from "./pages/JoinPage"
-import CareerPicker        from "./pages/CareerPicker"
+import PathNav     from "./components/PathNav"
 import { PageLoader } from "./components/CapUI"
-import CopilotWidget   from "./components/CopilotWidget"
+import CopilotWidget from "./components/CopilotWidget"
+
+// ── Always needed for auth flow — keep static ────────────────────────────────
+import LandingPage  from "./pages/LandingPage"
+import AccountType  from "./pages/AccountType"
+import Onboarding   from "./pages/Onboarding"
+import JoinPage     from "./pages/JoinPage"
+import CareerPicker from "./pages/CareerPicker"
+
+// ── Feature pages — lazy-loaded per navigation ───────────────────────────────
+// Each import() creates a separate chunk loaded only when the user visits that page.
+const Aura               = lazy(() => import("./pages/Aura"))
+const Arena              = lazy(() => import("./pages/Arena"))
+const Pulse              = lazy(() => import("./pages/Pulse"))
+const HardwareChallenges = lazy(() => import("./pages/HardwareChallenges"))
+const SkillStudio        = lazy(() => import("./pages/SkillStudio"))
+const Launchpad          = lazy(() => import("./pages/Launchpad"))
+const Portfolio          = lazy(() => import("./pages/Portfolio"))
+const AuthorityProfile   = lazy(() => import("./pages/AuthorityProfile"))
+const Nexus              = lazy(() => import("./pages/Nexus"))
+const Pricing            = lazy(() => import("./pages/Pricing"))
+// ── Path-specific home dashboards ────────────────────────────────────────────
+const StudentHome        = lazy(() => import("./pages/StudentHome"))
+const ProfessionalHome   = lazy(() => import("./pages/ProfessionalHome"))
+const ExecutiveHome      = lazy(() => import("./pages/ExecutiveHome"))
+// ── Professional pages ────────────────────────────────────────────────────────
+const Forge              = lazy(() => import("./pages/Forge"))
+const Orbit              = lazy(() => import("./pages/Orbit"))
+// ── Executive pages ───────────────────────────────────────────────────────────
+const SignalRooms        = lazy(() => import("./pages/SignalRooms"))
+const ExecutiveNetwork   = lazy(() => import("./pages/ExecutiveNetwork"))
+// ── Organisation pages ────────────────────────────────────────────────────────
+const InstitutionOS      = lazy(() => import("./pages/InstitutionOS"))
+// ── Recruiter pages ───────────────────────────────────────────────────────────
+const RecruiterDashboard = lazy(() => import("./pages/RecruiterDashboard"))
+const HiringPipeline     = lazy(() => import("./pages/HiringPipeline"))
+const JobPostings        = lazy(() => import("./pages/JobPostings"))
 
 const API = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
 
@@ -967,43 +972,46 @@ function App() {
       )}
 
       <div style={{ height: "calc(100vh - 56px)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-        {currentPage === "studentHome"      && <StudentHome      user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
-        {currentPage === "professionalHome" && <ProfessionalHome user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} onNavigatePricing={() => { setCurrentPage("pricing"); setActiveNavItem("") }} />}
-        {currentPage === "executiveHome"    && <ExecutiveHome    user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
-        {["orgHome","orgIntel","orgTasks","orgPeople","orgSettings","orgCommunity","orgGroups","orgCohorts","orgEvents","orgOpportunities","orgOutcomes"].includes(currentPage) && (
-          <InstitutionOS user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />
-        )}
+        {/* Suspense: lazy page chunks load on first navigation — PageLoader shows briefly */}
+        <Suspense fallback={<PageLoader />}>
+          {currentPage === "studentHome"      && <StudentHome      user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
+          {currentPage === "professionalHome" && <ProfessionalHome user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} onNavigatePricing={() => { setCurrentPage("pricing"); setActiveNavItem("") }} />}
+          {currentPage === "executiveHome"    && <ExecutiveHome    user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
+          {["orgHome","orgIntel","orgTasks","orgPeople","orgSettings","orgCommunity","orgGroups","orgCohorts","orgEvents","orgOpportunities","orgOutcomes"].includes(currentPage) && (
+            <InstitutionOS user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />
+          )}
 
-        {currentPage === "orbit" && (
-          <Orbit user={user} userData={userData} setUserData={setUserData}
-            activeTab={activeTab} setActiveTab={setActiveTab}
-            onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }}
-            onNavigatePricing={() => { setCurrentPage("pricing"); setActiveNavItem("") }} />
-        )}
+          {currentPage === "orbit" && (
+            <Orbit user={user} userData={userData} setUserData={setUserData}
+              activeTab={activeTab} setActiveTab={setActiveTab}
+              onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }}
+              onNavigatePricing={() => { setCurrentPage("pricing"); setActiveNavItem("") }} />
+          )}
 
-        {currentPage === "aura" && (
-          <Aura user={user} activeTab={activeTab} setActiveTab={setActiveTab}
-            onNavigate={setCurrentPage} onNavigatePricing={() => setCurrentPage("pricing")}
-            userData={userData} setUserData={setUserData} />
-        )}
-        {currentPage === "nexus"     && <Nexus user={user} userData={userData} setUserData={setUserData} />}
-        {currentPage === "arena"     && <Arena user={user} userData={userData} setUserData={setUserData} onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }} onNavigatePricing={() => setCurrentPage("pricing")} />}
-        {currentPage === "pulse"     && <Pulse user={user} userData={userData} />}
-        {currentPage === "authority" && <AuthorityProfile user={user} userData={{ ...userData, uid: user?.id }} setUserData={setUserData} onNavigate={setCurrentPage} />}
-        {currentPage === "skillstudio" && <SkillStudio user={user} userData={userData} />}
-        {currentPage === "launchpad"   && <Launchpad   user={user} userData={userData} />}
-        {currentPage === "pricing"     && <Pricing     user={user} userData={userData} setUserData={setUserData} onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }} />}
+          {currentPage === "aura" && (
+            <Aura user={user} activeTab={activeTab} setActiveTab={setActiveTab}
+              onNavigate={setCurrentPage} onNavigatePricing={() => setCurrentPage("pricing")}
+              userData={userData} setUserData={setUserData} />
+          )}
+          {currentPage === "nexus"     && <Nexus user={user} userData={userData} setUserData={setUserData} />}
+          {currentPage === "arena"     && <Arena user={user} userData={userData} setUserData={setUserData} onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }} onNavigatePricing={() => setCurrentPage("pricing")} />}
+          {currentPage === "pulse"     && <Pulse user={user} userData={userData} />}
+          {currentPage === "authority" && <AuthorityProfile user={user} userData={{ ...userData, uid: user?.id }} setUserData={setUserData} onNavigate={setCurrentPage} />}
+          {currentPage === "skillstudio" && <SkillStudio user={user} userData={userData} />}
+          {currentPage === "launchpad"   && <Launchpad   user={user} userData={userData} />}
+          {currentPage === "pricing"     && <Pricing     user={user} userData={userData} setUserData={setUserData} onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }} />}
 
-        {currentPage === "forge"       && <Forge          user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
-        {currentPage === "challenges"  && <HardwareChallenges user={user} userData={userData} />}
+          {currentPage === "forge"       && <Forge          user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
+          {currentPage === "challenges"  && <HardwareChallenges user={user} userData={userData} />}
 
-        {currentPage === "timemarket"  && <Launchpad      user={user} userData={userData} />}
-        {currentPage === "signalrooms" && <SignalRooms     user={user} userData={userData} />}
-        {currentPage === "execnetwork" && <ExecutiveNetwork user={user} userData={userData} />}
+          {currentPage === "timemarket"  && <Launchpad      user={user} userData={userData} />}
+          {currentPage === "signalrooms" && <SignalRooms     user={user} userData={userData} />}
+          {currentPage === "execnetwork" && <ExecutiveNetwork user={user} userData={userData} />}
 
-        {currentPage === "recruiterHome" && <RecruiterDashboard user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
-        {currentPage === "pipeline"      && <HiringPipeline     user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
-        {currentPage === "jobPostings"   && <JobPostings        user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
+          {currentPage === "recruiterHome" && <RecruiterDashboard user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
+          {currentPage === "pipeline"      && <HiringPipeline     user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
+          {currentPage === "jobPostings"   && <JobPostings        user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
+        </Suspense>
       </div>
 
       {user && navPath !== "institution" && <CopilotWidget user={user} userData={userData} />}
