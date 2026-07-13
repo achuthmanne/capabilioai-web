@@ -17,7 +17,7 @@ const router = Router()
 // STICKY — generated once per topic/module, persists until user completes it.
 // Gemini Flash: native JSON mode, free tier more than sufficient.
 router.post("/lesson", async (req, res) => {
-  const { topic="Python", jobTitle="Software Developer", skillLevel="Intermediate", duration=15 } = req.body
+  const { topic="Python", jobTitle="Professional", skillLevel="Intermediate", duration=15 } = req.body
   try {
     const lesson = await geminiGenerateLesson({ topic, jobTitle, skillLevel, duration })
     console.log(`[skill-studio/lesson] Gemini: "${topic}" for ${skillLevel} ${jobTitle}`)

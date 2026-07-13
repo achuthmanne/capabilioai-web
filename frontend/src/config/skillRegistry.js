@@ -152,6 +152,24 @@ export const ROLE_SKILL_MAP = {
   ios:        ["swift_basics","swiftui","ios_arch","mobile_performance","testing"],
   pharmacy:   ["pharmacology","drug_calculations","regulatory_affairs","pharmacovigilance"],
   mba:        ["business_strategy","financial_modelling","operations_mgmt","marketing","data_for_business"],
+
+  // ── Alias / sub-role keys (inherit from parent domain) ────────────────────
+  // Cloud specialisations → devops skill set + system design
+  aws:          ["containerization","kubernetes","ci_cd","infrastructure_code","observability","system_design","distributed_systems"],
+  azure:        ["containerization","kubernetes","ci_cd","infrastructure_code","observability","system_design","distributed_systems"],
+  sre:          ["observability","ci_cd","distributed_systems","containerization","infrastructure_code","caching"],
+  // Security sub-roles
+  cyber:        ["auth_security","distributed_systems","testing","observability"],
+  soc:          ["auth_security","observability","distributed_systems"],
+  // Data sub-roles
+  data_engineer:["sql_fundamentals","database_design","distributed_systems","ci_cd","infrastructure_code"],
+  bi_analyst:   ["sql_fundamentals","data_wrangling","data_visualization","statistics"],
+  ba_product:   ["sql_fundamentals","data_visualization","statistics","data_wrangling"],
+  // ECE general (combines embedded + vlsi core)
+  ece:          ["embedded_c","gpio_peripherals","serial_protocols","hdl_design","functional_verify"],
+  // Placeholder roles — use generic professional skills until dedicated skills are added
+  medical:      ["clean_code","testing","api_design"],
+  qa:           ["testing","clean_code","api_design","distributed_systems"],
 }
 
 

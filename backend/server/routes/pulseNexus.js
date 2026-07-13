@@ -79,8 +79,8 @@ router.get("/pulse/mentors", optionalAuth, async (req, res) => {
 })
 
 router.get("/pulse/market-insights", optionalAuth, async (req, res) => {
-  const domain = (req.query.domain || "software engineering").toLowerCase().trim()
-  const role   = req.query.role   || "Software Engineer"
+  const domain = (req.query.domain || "technology").toLowerCase().trim()
+  const role   = req.query.role   || "Professional"
 
   // Return cached result if still fresh
   const cached = insightsCache.get(domain)

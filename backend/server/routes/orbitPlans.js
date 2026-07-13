@@ -229,7 +229,7 @@ router.post("/intel/report", requireAuth, async (req, res) => {
 
     const context = {
       name:            profile?.name || "Professional",
-      role:            profile?.current_role_title || profile?.keyword || "Software Engineer",
+      role:            profile?.current_role_title || profile?.keyword || "Professional",
       company:         profile?.current_company || "Unknown",
       yoe:             profile?.years_of_experience || 0,
       skills:          (skills || []).slice(0, 15).map(s => s.skill_name),

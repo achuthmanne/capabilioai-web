@@ -7491,6 +7491,1747 @@ export const ECE_INTERACTIVE_CHALLENGES = [
   },
 ]
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ML ENGINEER
+// ─────────────────────────────────────────────────────────────────────────────
+export const ML_CHALLENGES = [
+  {
+    id: "ml-001",
+    title: "Train a Binary Classifier with scikit-learn",
+    category: "Machine Learning",
+    icon: "🤖",
+    difficulty: "Easy",
+    timeLimit: "25 min",
+    eloGain: 14,
+    tools: ["Python", "scikit-learn"],
+    scenario:
+      "A fintech startup has a dataset of loan applications and wants to predict whether a loan will default. You've been handed a preprocessed feature matrix and need to train, evaluate, and iterate on a classifier before the product demo tomorrow.",
+    objective:
+      "Train a Logistic Regression classifier, evaluate it with accuracy/precision/recall, and improve it with feature scaling.",
+    steps: [
+      "Load the dataset and inspect class distribution",
+      "Split into train/test sets (80/20, stratified)",
+      "Train a LogisticRegression model",
+      "Print accuracy, precision, recall, and F1 score",
+      "Add StandardScaler and retrain — compare scores",
+    ],
+    workstation: "notebook",
+    starterCode: `# Binary Classifier — Loan Default Prediction
+import numpy as np
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, classification_report
+
+# Generate synthetic loan dataset (replace with real CSV in production)
+X, y = make_classification(
+    n_samples=1000, n_features=10, n_informative=6,
+    n_redundant=2, weights=[0.7, 0.3], random_state=42
+)
+# y=0: no default, y=1: default
+print(f"Dataset shape: {X.shape}, Class distribution: {np.bincount(y)}")
+
+# STEP 1: Split data — stratified to preserve class ratio
+# TODO: Use train_test_split with test_size=0.2, stratify=y, random_state=42
+
+# STEP 2: Train baseline LogisticRegression (no scaling yet)
+# TODO: Fit on X_train, y_train
+
+# STEP 3: Evaluate — print accuracy, precision, recall, F1
+# TODO: Predict on X_test, then print metrics
+
+# STEP 4: Add StandardScaler and retrain
+# TODO: scaler.fit(X_train) then transform both splits
+# TODO: Retrain and compare — does scaling help?
+
+# STEP 5: Print full classification_report
+# TODO: classification_report(y_test, y_pred_scaled)
+`,
+    skillTags: ["Logistic Regression", "Classification", "scikit-learn", "Model Evaluation", "Feature Scaling"],
+    hints: [
+      "Use stratify=y in train_test_split to preserve the 70/30 class ratio in both splits",
+      "StandardScaler improves logistic regression significantly — always scale numeric features",
+      "precision_score(y_test, y_pred, zero_division=0) avoids warnings when a class has no predictions",
+    ],
+  },
+  {
+    id: "ml-002",
+    title: "Evaluate Model Drift with Cross-Validation",
+    category: "Model Evaluation",
+    icon: "📊",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 18,
+    tools: ["Python", "scikit-learn"],
+    scenario:
+      "Your team has three candidate models for a churn prediction system. Before deploying, the ML lead wants robust cross-validation scores — not just a single train/test split — to check for variance and overfitting.",
+    objective:
+      "Compare Logistic Regression, Random Forest, and Gradient Boosting using 5-fold stratified CV. Report mean ± std for F1 score.",
+    steps: [
+      "Define three models: LogisticRegression, RandomForestClassifier, GradientBoostingClassifier",
+      "Run StratifiedKFold(n_splits=5) cross-validation on each",
+      "Collect F1 scores for each fold",
+      "Print mean ± std for each model",
+      "Identify the best model by mean F1 and lowest variance",
+    ],
+    workstation: "notebook",
+    starterCode: `# Model Evaluation — Cross-Validation Comparison
+import numpy as np
+from sklearn.datasets import make_classification
+from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+
+X, y = make_classification(n_samples=2000, n_features=15, n_informative=8,
+                            weights=[0.65, 0.35], random_state=42)
+
+# STEP 1: Define 3 models
+# Wrap LogisticRegression in a Pipeline with StandardScaler
+# LogisticRegression: max_iter=1000
+# RandomForest: n_estimators=100, random_state=42
+# GradientBoosting: n_estimators=100, random_state=42
+models = {
+    # TODO: fill in model definitions
+}
+
+# STEP 2: Run 5-fold stratified CV for each
+skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+for name, model in models.items():
+    # TODO: cross_val_score with scoring='f1', cv=skf
+    # TODO: Print: "{name}: mean={:.3f} ± std={:.3f}"
+    pass
+
+# STEP 3: Which model has highest mean F1? Which has lowest variance?
+# TODO: Print your recommendation with justification
+`,
+    skillTags: ["Cross-Validation", "Model Selection", "Random Forest", "Gradient Boosting", "Bias-Variance"],
+    hints: [
+      "Use Pipeline([('scaler', StandardScaler()), ('clf', LogisticRegression())]) to prevent data leakage in CV",
+      "High std means the model is sensitive to which fold it sees — prefer lower variance for production",
+      "GradientBoosting is slower but usually beats RF on tabular data with the right n_estimators",
+    ],
+  },
+  {
+    id: "ml-003",
+    title: "Feature Engineering for Time-Series Churn",
+    category: "Feature Engineering",
+    icon: "🔧",
+    difficulty: "Medium",
+    timeLimit: "35 min",
+    eloGain: 20,
+    tools: ["Python", "pandas", "scikit-learn"],
+    scenario:
+      "You have 6 months of SaaS user activity logs. The product team wants a model to predict which users will churn next month. Raw data is timestamps and event counts — you need to engineer meaningful features before any ML can happen.",
+    objective:
+      "Create lag features, rolling aggregates, and ratio features from a user activity DataFrame, then train a classifier on your engineered features.",
+    steps: [
+      "Create a user-level DataFrame with monthly activity counts",
+      "Add lag features: activity 1 month ago, 2 months ago",
+      "Add rolling mean (3-month window) of activity",
+      "Add ratio: last_month / avg_3month (engagement trend)",
+      "Train a Random Forest and check feature importances",
+    ],
+    workstation: "notebook",
+    starterCode: `# Feature Engineering — SaaS Churn Prediction
+import numpy as np
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
+
+# Simulate 6 months of user activity (logins per month)
+np.random.seed(42)
+n_users = 500
+data = {
+    'user_id': range(n_users),
+    'm1': np.random.poisson(20, n_users),
+    'm2': np.random.poisson(18, n_users),
+    'm3': np.random.poisson(15, n_users),
+    'm4': np.random.poisson(12, n_users),
+    'm5': np.random.poisson(8, n_users),
+    'm6': np.random.poisson(5, n_users),
+}
+df = pd.DataFrame(data)
+# Target: churned if m6 logins < 3
+df['churned'] = (df['m6'] < 3).astype(int)
+print(f"Churn rate: {df.churned.mean():.1%}")
+
+# STEP 1: Lag features
+# TODO: df['lag_1'] = df['m5']  (activity 1 month before prediction month)
+# TODO: df['lag_2'] = df['m4']  (2 months before)
+
+# STEP 2: Rolling mean of m3, m4, m5
+# TODO: df['rolling_mean_3'] = df[['m3','m4','m5']].mean(axis=1)
+
+# STEP 3: Engagement trend ratio
+# TODO: df['trend_ratio'] = df['m5'] / (df['rolling_mean_3'] + 1e-9)
+
+# STEP 4: Prepare features and target
+# TODO: feature_cols = ['lag_1','lag_2','rolling_mean_3','trend_ratio','m1','m2','m3']
+# TODO: X = df[feature_cols], y = df['churned']
+
+# STEP 5: Train Random Forest and print feature importances
+# TODO: train/test split, fit RandomForestClassifier, print sorted importances
+`,
+    skillTags: ["Feature Engineering", "Pandas", "Lag Features", "Rolling Aggregates", "Random Forest"],
+    hints: [
+      "Always add a small epsilon (1e-9) to denominators in ratio features to avoid division by zero",
+      "Feature importances from RF tell you which engineered features actually matter — iterate based on them",
+      "Rolling means smooth noise; lag features capture recent momentum — both together beat either alone",
+    ],
+  },
+  {
+    id: "ml-004",
+    title: "Deploy a Model with a REST Prediction Endpoint",
+    category: "MLOps",
+    icon: "🚀",
+    difficulty: "Hard",
+    timeLimit: "40 min",
+    eloGain: 25,
+    tools: ["Python", "scikit-learn", "joblib"],
+    scenario:
+      "The ML team has approved your churn model. Now the backend team needs a prediction API. You'll serialize the trained model with joblib, write a prediction function that mimics what a Flask/FastAPI route would do, and validate it handles edge cases.",
+    objective:
+      "Train a pipeline, serialize it with joblib, reload it, and write a predict() function that validates inputs, handles missing values, and returns a prediction with confidence score.",
+    steps: [
+      "Train a Pipeline (scaler + classifier) and serialize with joblib.dump()",
+      "Reload the model with joblib.load()",
+      "Write predict(features: dict) → {label, confidence, risk_tier}",
+      "Handle missing feature keys gracefully (default to 0)",
+      "Test with valid input, missing keys, and edge cases",
+    ],
+    workstation: "notebook",
+    starterCode: `# MLOps — Model Serialization & Prediction API
+import numpy as np
+import joblib
+import os
+from sklearn.datasets import make_classification
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.model_selection import train_test_split
+
+FEATURE_NAMES = ['logins_last_30d', 'features_used', 'support_tickets',
+                 'days_since_last_login', 'plan_tier', 'team_size']
+
+# STEP 1: Train pipeline
+X, y = make_classification(n_samples=1000, n_features=6, n_informative=4,
+                            weights=[0.7, 0.3], random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+pipeline = Pipeline([
+    ('scaler', StandardScaler()),
+    ('clf', GradientBoostingClassifier(n_estimators=100, random_state=42))
+])
+# TODO: Fit the pipeline on training data
+
+# STEP 2: Save and reload
+MODEL_PATH = '/tmp/churn_model.joblib'
+# TODO: joblib.dump(pipeline, MODEL_PATH)
+# TODO: loaded_model = joblib.load(MODEL_PATH)
+# TODO: print(f"Model saved and reloaded: {os.path.getsize(MODEL_PATH)/1024:.1f}KB")
+
+# STEP 3: Write prediction function
+def predict(features: dict) -> dict:
+    """
+    features: dict with keys from FEATURE_NAMES
+    returns: {"label": "churn"|"retain", "confidence": float, "risk_tier": "low"|"medium"|"high"}
+    """
+    # TODO: Build feature vector — use features.get(name, 0) for each name in FEATURE_NAMES
+    # TODO: x = np.array([[...]])
+    # TODO: prob = loaded_model.predict_proba(x)[0][1]  # P(churn)
+    # TODO: label = "churn" if prob > 0.5 else "retain"
+    # TODO: risk_tier = "high" if prob > 0.7 else "medium" if prob > 0.4 else "low"
+    # TODO: return {"label": label, "confidence": round(float(prob), 4), "risk_tier": risk_tier}
+    pass
+
+# STEP 4: Test cases
+test_cases = [
+    {"logins_last_30d": 2, "features_used": 1, "support_tickets": 5, "days_since_last_login": 25, "plan_tier": 0, "team_size": 1},
+    {"logins_last_30d": 45, "features_used": 12, "days_since_last_login": 1, "plan_tier": 2, "team_size": 10},  # missing keys
+    {},  # all missing — should use defaults
+]
+for i, tc in enumerate(test_cases):
+    result = predict(tc)
+    print(f"Test {i+1}: {result}")
+`,
+    skillTags: ["MLOps", "Model Deployment", "joblib", "Prediction API", "Pipeline"],
+    hints: [
+      "joblib is preferred over pickle for scikit-learn models — it's faster for large numpy arrays",
+      "Always use features.get(name, 0) not features[name] — production requests will have missing keys",
+      "Wrap the whole predict() in try/except and return an error dict — APIs must never raise raw exceptions",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ANDROID DEVELOPER
+// ─────────────────────────────────────────────────────────────────────────────
+export const ANDROID_CHALLENGES = [
+  {
+    id: "android-001",
+    title: "Build a ViewModel with StateFlow",
+    category: "Android Architecture",
+    icon: "🤖",
+    difficulty: "Easy",
+    timeLimit: "25 min",
+    eloGain: 14,
+    tools: ["Kotlin"],
+    scenario:
+      "You're building a news app. The UI team handed you mockups that show a loading spinner, a list of articles, and an error state. You need to wire up a ViewModel that holds all three states and exposes them via StateFlow so the Composable can collect them.",
+    objective:
+      "Write a NewsViewModel with a sealed UiState, populate it from a fake repository, and expose state via StateFlow.",
+    steps: [
+      "Define a sealed class UiState with Loading, Success(List<Article>), and Error(String) variants",
+      "Create a NewsViewModel extending ViewModel",
+      "Add a private MutableStateFlow<UiState> initialized to Loading",
+      "Expose it as public StateFlow via asStateFlow()",
+      "Write fetchNews() using viewModelScope.launch to simulate a repository call",
+    ],
+    workstation: "code",
+    starterCode: `// NewsViewModel.kt — MVVM with StateFlow
+// Kotlin pseudo-code: write the logic, comments show expected structure
+
+// Data model
+data class Article(val id: Int, val title: String, val author: String)
+
+// STEP 1: Define sealed UiState
+// sealed class UiState {
+//     object Loading : UiState()
+//     data class Success(val articles: List<Article>) : UiState()
+//     data class Error(val message: String) : UiState()
+// }
+// TODO: Implement UiState sealed class
+
+// Fake repository — simulates network delay
+object NewsRepository {
+    suspend fun fetchArticles(): List<Article> {
+        // kotlinx.coroutines.delay(1000)  // simulate 1s network
+        return listOf(
+            Article(1, "Kotlin 2.0 Released", "JetBrains"),
+            Article(2, "Compose Multiplatform GA", "Google"),
+            Article(3, "Android 15 Features", "Android Team"),
+        )
+    }
+}
+
+// STEP 2: ViewModel
+// class NewsViewModel : ViewModel() {
+//
+//     STEP 3: private MutableStateFlow
+//     private val _uiState = MutableStateFlow<UiState>(UiState.Loading)
+//
+//     STEP 4: public StateFlow
+//     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
+//
+//     STEP 5: fetchNews()
+//     fun fetchNews() {
+//         viewModelScope.launch {
+//             _uiState.value = UiState.Loading
+//             try {
+//                 val articles = NewsRepository.fetchArticles()
+//                 _uiState.value = UiState.Success(articles)
+//             } catch (e: Exception) {
+//                 _uiState.value = UiState.Error(e.message ?: "Unknown error")
+//             }
+//         }
+//     }
+// }
+// TODO: Implement NewsViewModel
+
+// Verify: print state transitions (simulate in a test scenario)
+fun main() {
+    println("ViewModel defined — wire into Composable with collectAsState()")
+    println("State machine: Loading → Success(articles) or Error(msg)")
+    // In real app: val viewModel = viewModel<NewsViewModel>()
+    //              val state by viewModel.uiState.collectAsState()
+}
+`,
+    skillTags: ["ViewModel", "StateFlow", "Kotlin Coroutines", "MVVM", "Sealed Classes"],
+    hints: [
+      "StateFlow always has a value — initialize with Loading so the UI never sees an undefined state",
+      "asStateFlow() makes the flow read-only to the UI — only the ViewModel mutates _uiState",
+      "viewModelScope is automatically cancelled when the ViewModel is cleared — no manual cleanup needed",
+    ],
+  },
+  {
+    id: "android-002",
+    title: "Room Database: Insert, Query, and Flow",
+    category: "Data Persistence",
+    icon: "🗄️",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 18,
+    tools: ["Kotlin", "Room"],
+    scenario:
+      "Your app needs offline-first task management. Tasks created without internet must persist locally and sync later. You'll define the Room entity, DAO, and database, then wire a Flow so the UI reacts automatically when tasks are inserted.",
+    objective:
+      "Define a Task entity, TaskDao with insert/getAll (as Flow), and demonstrate that the Flow emits when data changes.",
+    steps: [
+      "Define @Entity data class Task with id, title, isCompleted, createdAt fields",
+      "Write @Dao interface TaskDao with @Insert and @Query(\"SELECT * FROM tasks\") returning Flow<List<Task>>",
+      "Build the @Database abstract class TaskDatabase",
+      "Write a test that inserts 3 tasks and collects the first Flow emission",
+      "Verify the emitted list matches what was inserted",
+    ],
+    workstation: "code",
+    starterCode: `// Room Database Setup
+// Kotlin pseudo-code — write the definitions, not the annotations (simulated environment)
+
+// STEP 1: Entity
+// @Entity(tableName = "tasks")
+// data class Task(
+//     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+//     val title: String,
+//     val isCompleted: Boolean = false,
+//     val createdAt: Long = System.currentTimeMillis()
+// )
+// TODO: Define Task entity
+
+// STEP 2: DAO
+// @Dao
+// interface TaskDao {
+//     @Insert(onConflict = OnConflictStrategy.REPLACE)
+//     suspend fun insert(task: Task): Long
+//
+//     @Query("SELECT * FROM tasks ORDER BY createdAt DESC")
+//     fun getAllTasks(): Flow<List<Task>>
+//
+//     @Query("SELECT * FROM tasks WHERE isCompleted = :done")
+//     fun getTasksByStatus(done: Boolean): Flow<List<Task>>
+//
+//     @Delete
+//     suspend fun delete(task: Task)
+// }
+// TODO: Define TaskDao
+
+// STEP 3: Database
+// @Database(entities = [Task::class], version = 1, exportSchema = false)
+// abstract class TaskDatabase : RoomDatabase() {
+//     abstract fun taskDao(): TaskDao
+//     companion object {
+//         @Volatile private var INSTANCE: TaskDatabase? = null
+//         fun getInstance(context: Context): TaskDatabase =
+//             INSTANCE ?: synchronized(this) {
+//                 Room.databaseBuilder(context, TaskDatabase::class.java, "task_db").build()
+//                     .also { INSTANCE = it }
+//             }
+//     }
+// }
+// TODO: Define TaskDatabase
+
+// Simulated verification
+fun main() {
+    println("Room setup complete:")
+    println("  Entity: Task(id, title, isCompleted, createdAt)")
+    println("  DAO: insert() [suspend], getAllTasks() [Flow], getTasksByStatus() [Flow], delete() [suspend]")
+    println("  DB: Singleton pattern with @Volatile INSTANCE")
+    println()
+    println("Usage in ViewModel:")
+    println("  viewModelScope.launch { dao.insert(Task(title='Buy milk')) }")
+    println("  dao.getAllTasks().collect { tasks -> _uiState.value = Success(tasks) }")
+}
+`,
+    skillTags: ["Room Database", "Entity", "DAO", "Flow", "Offline-First"],
+    hints: [
+      "Flow<List<Task>> from Room automatically emits a new list every time the table changes — no polling needed",
+      "Use @Volatile + synchronized(this) in the companion object for thread-safe singleton construction",
+      "OnConflictStrategy.REPLACE is safe for simple cases — use IGNORE if you want to skip duplicates instead",
+    ],
+  },
+  {
+    id: "android-003",
+    title: "Retrofit + Coroutines API Integration",
+    category: "Networking",
+    icon: "🌐",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 18,
+    tools: ["Kotlin", "Retrofit"],
+    scenario:
+      "The backend team just shipped a REST API for your social app. You need to integrate Retrofit with Gson, handle success/error responses cleanly using a Result wrapper, and expose the data through the ViewModel's StateFlow.",
+    objective:
+      "Define a Retrofit service interface, create a repository that wraps calls in Result<T>, and propagate results to a ViewModel StateFlow.",
+    steps: [
+      "Define ApiService interface with a suspend GET endpoint",
+      "Create UserRepository.getUser(id) wrapping the call in try/catch returning Result<User>",
+      "In ViewModel, call repository and map Result to UiState",
+      "Handle both success and failure cases",
+      "Print simulated success and failure outcomes",
+    ],
+    workstation: "code",
+    starterCode: `// Retrofit Integration with Result Wrapper
+// Kotlin pseudo-code
+
+// Data model
+data class User(val id: Int, val name: String, val email: String, val avatar: String)
+
+// STEP 1: Retrofit service interface
+// interface ApiService {
+//     @GET("users/{id}")
+//     suspend fun getUser(@Path("id") id: Int): User
+//
+//     @GET("users")
+//     suspend fun getUsers(@Query("page") page: Int = 1): List<User>
+// }
+// TODO: Define ApiService
+
+// Retrofit singleton
+// object RetrofitClient {
+//     private const val BASE_URL = "https://api.capabilio.com/"
+//     val service: ApiService by lazy {
+//         Retrofit.Builder()
+//             .baseUrl(BASE_URL)
+//             .addConverterFactory(GsonConverterFactory.create())
+//             .client(OkHttpClient.Builder()
+//                 .connectTimeout(30, TimeUnit.SECONDS)
+//                 .build())
+//             .build()
+//             .create(ApiService::class.java)
+//     }
+// }
+
+// STEP 2: Repository with Result wrapper
+// class UserRepository(private val api: ApiService = RetrofitClient.service) {
+//     suspend fun getUser(id: Int): Result<User> = try {
+//         Result.success(api.getUser(id))
+//     } catch (e: HttpException) {
+//         Result.failure(Exception("HTTP ${e.code()}: ${e.message()}"))
+//     } catch (e: IOException) {
+//         Result.failure(Exception("Network error: check your connection"))
+//     }
+// }
+// TODO: Define UserRepository
+
+// STEP 3: ViewModel
+// class UserViewModel(private val repo: UserRepository = UserRepository()) : ViewModel() {
+//     private val _state = MutableStateFlow<UiState>(UiState.Loading)
+//     val state: StateFlow<UiState> = _state.asStateFlow()
+//
+//     fun loadUser(id: Int) {
+//         viewModelScope.launch {
+//             _state.value = UiState.Loading
+//             repo.getUser(id)
+//                 .onSuccess { user -> _state.value = UiState.Success(user) }
+//                 .onFailure { e -> _state.value = UiState.Error(e.message ?: "Unknown") }
+//         }
+//     }
+// }
+// TODO: Define UserViewModel
+
+fun main() {
+    println("Retrofit + Coroutines pattern:")
+    println("  ApiService  → suspend fun getUser(id) : User")
+    println("  Repository  → runCatching { api.getUser(id) } → Result<User>")
+    println("  ViewModel   → result.onSuccess { } .onFailure { } → StateFlow<UiState>")
+    println("  Composable  → collectAsState() → when(state) { Loading, Success, Error }")
+}
+`,
+    skillTags: ["Retrofit", "Kotlin Coroutines", "Result", "Repository Pattern", "OkHttp"],
+    hints: [
+      "Use Result.success() and Result.failure() — Kotlin's built-in Result avoids custom sealed classes for simple cases",
+      "Catch HttpException for non-2xx responses and IOException for network failures — these are the two main error types",
+      "The Repository pattern decouples ViewModel from the API — makes unit testing trivial with a fake repository",
+    ],
+  },
+  {
+    id: "android-004",
+    title: "Jetpack Compose: Reusable Component with State Hoisting",
+    category: "Jetpack Compose UI",
+    icon: "🎨",
+    difficulty: "Hard",
+    timeLimit: "35 min",
+    eloGain: 22,
+    tools: ["Kotlin", "Jetpack Compose"],
+    scenario:
+      "The design system team needs a reusable SearchBar composable that works across 5 different screens. It must hoist its state upward (stateless composable), support a clear button, debounce input, and be testable in isolation.",
+    objective:
+      "Build a stateless SearchBar composable with state hoisting, a debounced onSearch callback, and a clear button.",
+    steps: [
+      "Define SearchBar(query, onQueryChange, onSearch, onClear, modifier) — fully stateless",
+      "Add a trailing IconButton that shows only when query is not empty",
+      "Write SearchScreen that owns the state and wires up SearchBar",
+      "Add debounce logic: only call onSearch after 300ms of no typing",
+      "Demonstrate the component is reusable by showing two instances with independent state",
+    ],
+    workstation: "code",
+    starterCode: `// Jetpack Compose — Stateless SearchBar with State Hoisting
+// Kotlin / Compose pseudo-code
+
+// STEP 1: Stateless SearchBar composable
+// @Composable
+// fun SearchBar(
+//     query: String,
+//     onQueryChange: (String) -> Unit,
+//     onSearch: (String) -> Unit,
+//     onClear: () -> Unit,
+//     modifier: Modifier = Modifier,
+//     placeholder: String = "Search..."
+// ) {
+//     OutlinedTextField(
+//         value = query,
+//         onValueChange = onQueryChange,
+//         modifier = modifier.fillMaxWidth(),
+//         placeholder = { Text(placeholder) },
+//         leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+//         trailingIcon = {
+//             // TODO: Show X button only when query is not empty
+//             // AnimatedVisibility(visible = query.isNotEmpty()) {
+//             //     IconButton(onClick = onClear) {
+//             //         Icon(Icons.Default.Clear, contentDescription = "Clear")
+//             //     }
+//             // }
+//         },
+//         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+//         keyboardActions = KeyboardActions(onSearch = { onSearch(query) }),
+//         singleLine = true
+//     )
+// }
+// TODO: Implement SearchBar
+
+// STEP 2: SearchScreen — owns state, passes down to SearchBar
+// @Composable
+// fun SearchScreen(viewModel: SearchViewModel = viewModel()) {
+//     var query by remember { mutableStateOf("") }
+//
+//     // STEP 3: Debounce — trigger search 300ms after typing stops
+//     LaunchedEffect(query) {
+//         if (query.isNotBlank()) {
+//             delay(300)
+//             viewModel.search(query)
+//         }
+//     }
+//
+//     Column {
+//         SearchBar(
+//             query = query,
+//             onQueryChange = { query = it },
+//             onSearch = { viewModel.search(it) },
+//             onClear = { query = "" }
+//         )
+//         // Results list below...
+//     }
+// }
+// TODO: Implement SearchScreen
+
+// STEP 4: Two independent instances (show reusability)
+// @Composable
+// fun TwoSearchBars() {
+//     var q1 by remember { mutableStateOf("") }
+//     var q2 by remember { mutableStateOf("") }
+//     Column {
+//         SearchBar(query=q1, onQueryChange={q1=it}, onSearch={}, onClear={q1=""})
+//         Spacer(Modifier.height(8.dp))
+//         SearchBar(query=q2, onQueryChange={q2=it}, onSearch={}, onClear={q2=""})
+//     }
+// }
+
+fun main() {
+    println("State hoisting principle:")
+    println("  SearchBar is STATELESS — receives state and emits events")
+    println("  SearchScreen OWNS state — var query by remember { mutableStateOf('') }")
+    println("  Debounce: LaunchedEffect(query) { delay(300); search(query) }")
+    println("  Result: SearchBar is fully testable, reusable, and previewable")
+}
+`,
+    skillTags: ["Jetpack Compose", "State Hoisting", "Stateless Composable", "LaunchedEffect", "Debounce"],
+    hints: [
+      "Stateless composables take state as params and emit events via lambdas — never use remember inside them",
+      "LaunchedEffect(query) cancels and restarts every time query changes — this is the debounce mechanism",
+      "AnimatedVisibility wrapping the clear button gives a smooth fade/slide — always use for conditional icons",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// iOS DEVELOPER
+// ─────────────────────────────────────────────────────────────────────────────
+export const IOS_CHALLENGES = [
+  {
+    id: "ios-001",
+    title: "SwiftUI View with @StateObject ViewModel",
+    category: "SwiftUI Architecture",
+    icon: "🍎",
+    difficulty: "Easy",
+    timeLimit: "25 min",
+    eloGain: 14,
+    tools: ["Swift", "SwiftUI"],
+    scenario:
+      "You're building a weather app. The design team has handed off a Figma with a loading state, a temperature display, and an error banner. You need to wire a ViewModel that fetches data and drives the SwiftUI view via @Published properties.",
+    objective:
+      "Build a WeatherViewModel with @Published state, connect it to a SwiftUI view using @StateObject, and handle loading/success/error states.",
+    steps: [
+      "Define WeatherViewModel: ObservableObject with @Published temperature, isLoading, errorMessage",
+      "Write fetchWeather() using async/await that sets state before and after the call",
+      "Create WeatherView with @StateObject var vm = WeatherViewModel()",
+      "Show a ProgressView when isLoading, temperature when available, errorMessage when set",
+      "Add an onAppear modifier to trigger fetchWeather on first load",
+    ],
+    workstation: "code",
+    starterCode: `// WeatherViewModel.swift — SwiftUI + ObservableObject
+// Swift pseudo-code: write the logic
+
+import Foundation
+
+// STEP 1: ViewModel
+// @MainActor
+// class WeatherViewModel: ObservableObject {
+//     @Published var temperature: Double? = nil
+//     @Published var cityName: String = "Mumbai"
+//     @Published var isLoading: Bool = false
+//     @Published var errorMessage: String? = nil
+//
+//     // STEP 2: Async fetch
+//     func fetchWeather() async {
+//         isLoading = true
+//         errorMessage = nil
+//         do {
+//             // Simulate network call
+//             try await Task.sleep(nanoseconds: 1_000_000_000)
+//             temperature = 28.5  // Replace with real URLSession call
+//         } catch {
+//             errorMessage = "Failed to load weather: \\(error.localizedDescription)"
+//         }
+//         isLoading = false
+//     }
+// }
+// TODO: Implement WeatherViewModel
+
+// STEP 3 & 4: SwiftUI View
+// struct WeatherView: View {
+//     @StateObject private var vm = WeatherViewModel()
+//
+//     var body: some View {
+//         VStack(spacing: 20) {
+//             Text(vm.cityName)
+//                 .font(.title)
+//
+//             if vm.isLoading {
+//                 ProgressView("Loading weather...")
+//             } else if let temp = vm.temperature {
+//                 Text("\\(temp, specifier: "%.1f")°C")
+//                     .font(.system(size: 60, weight: .thin))
+//             } else if let error = vm.errorMessage {
+//                 Text(error)
+//                     .foregroundColor(.red)
+//                     .multilineTextAlignment(.center)
+//             }
+//
+//             Button("Refresh") {
+//                 Task { await vm.fetchWeather() }
+//             }
+//         }
+//         .padding()
+//         // STEP 5: Trigger on appear
+//         .task { await vm.fetchWeather() }
+//     }
+// }
+// TODO: Implement WeatherView
+
+// Verification
+print("SwiftUI ViewModel pattern:")
+print("  @StateObject — creates and owns the VM for the view's lifetime")
+print("  @Published   — any change triggers SwiftUI re-render")
+print("  @MainActor   — ensures UI updates happen on main thread")
+print("  .task { }    — preferred over .onAppear for async work in iOS 15+")
+`,
+    skillTags: ["SwiftUI", "ObservableObject", "@Published", "@StateObject", "async/await"],
+    hints: [
+      "@StateObject creates the VM once — @ObservedObject would recreate it on every parent re-render",
+      "@MainActor on the class ensures @Published mutations always happen on the main thread",
+      "Use .task { } instead of .onAppear for async work — it automatically cancels on view disappearance",
+    ],
+  },
+  {
+    id: "ios-002",
+    title: "URLSession async/await Networking",
+    category: "Networking",
+    icon: "🌐",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 18,
+    tools: ["Swift"],
+    scenario:
+      "The backend shipped a JSON API for your fitness tracker. You need a type-safe network layer: a NetworkService that uses URLSession with async/await, decodes Codable models, and wraps errors in a custom NetworkError enum.",
+    objective:
+      "Write a generic NetworkService.fetch<T: Decodable> function, define a NetworkError enum, and decode a Workout model from a JSON response.",
+    steps: [
+      "Define NetworkError enum with cases: invalidURL, httpError(Int), decodingError, noData",
+      "Write NetworkService with static func fetch<T: Decodable>(_ url: String) async throws -> T",
+      "In fetch(): construct URLRequest, call URLSession.shared.data(for:), check HTTP status, decode",
+      "Define Workout: Codable with id, name, duration, caloriesBurned",
+      "Test by decoding a JSON string into a Workout",
+    ],
+    workstation: "code",
+    starterCode: `// NetworkService.swift — URLSession + async/await + Codable
+import Foundation
+
+// STEP 1: Custom error type
+// enum NetworkError: Error, LocalizedError {
+//     case invalidURL
+//     case httpError(statusCode: Int)
+//     case decodingError(Error)
+//     case noData
+//
+//     var errorDescription: String? {
+//         switch self {
+//         case .invalidURL:           return "Invalid URL"
+//         case .httpError(let code):  return "HTTP error: \\(code)"
+//         case .decodingError(let e): return "Decoding failed: \\(e.localizedDescription)"
+//         case .noData:               return "No data received"
+//         }
+//     }
+// }
+// TODO: Implement NetworkError
+
+// STEP 2 & 3: Generic NetworkService
+// struct NetworkService {
+//     static func fetch<T: Decodable>(_ urlString: String) async throws -> T {
+//         guard let url = URL(string: urlString) else {
+//             throw NetworkError.invalidURL
+//         }
+//         let (data, response) = try await URLSession.shared.data(from: url)
+//         guard let http = response as? HTTPURLResponse else { throw NetworkError.noData }
+//         guard (200..<300).contains(http.statusCode) else {
+//             throw NetworkError.httpError(statusCode: http.statusCode)
+//         }
+//         do {
+//             return try JSONDecoder().decode(T.self, from: data)
+//         } catch {
+//             throw NetworkError.decodingError(error)
+//         }
+//     }
+// }
+// TODO: Implement NetworkService
+
+// STEP 4: Codable model
+// struct Workout: Codable {
+//     let id: Int
+//     let name: String
+//     let duration: Int          // minutes
+//     let caloriesBurned: Int
+//     let completedAt: Date?
+//
+//     enum CodingKeys: String, CodingKey {
+//         case id, name, duration
+//         case caloriesBurned = "calories_burned"
+//         case completedAt    = "completed_at"
+//     }
+// }
+// TODO: Implement Workout
+
+// STEP 5: Test with local JSON
+let sampleJSON = """
+{"id":1,"name":"Morning Run","duration":30,"calories_burned":320,"completed_at":null}
+""".data(using: .utf8)!
+
+// TODO: let workout = try JSONDecoder().decode(Workout.self, from: sampleJSON)
+// TODO: print("Decoded: \\(workout.name), \\(workout.caloriesBurned) kcal")
+
+print("NetworkService pattern: URLSession.shared.data(from:) → check status → JSONDecoder().decode()")
+`,
+    skillTags: ["URLSession", "async/await", "Codable", "JSONDecoder", "Error Handling"],
+    hints: [
+      "CodingKeys enum lets you map snake_case JSON keys to camelCase Swift properties",
+      "Always check HTTPURLResponse status before decoding — a 404 returns data (an error JSON) but decode would fail or give wrong result",
+      "throws + async together mean callers use try await — Swift propagates both automatically",
+    ],
+  },
+  {
+    id: "ios-003",
+    title: "Core Data with NSFetchedResultsController",
+    category: "Data Persistence",
+    icon: "🗄️",
+    difficulty: "Medium",
+    timeLimit: "35 min",
+    eloGain: 20,
+    tools: ["Swift", "Core Data"],
+    scenario:
+      "Your note-taking app needs offline persistence. Notes must survive app restarts, support search, and update the SwiftUI list instantly when saved. You'll use Core Data with NSFetchedResultsController to drive the list reactively.",
+    objective:
+      "Define a Note entity, write a CoreDataStack, add CRUD operations, and wire NSFetchedResultsController to a SwiftUI List.",
+    steps: [
+      "Define PersistenceController singleton with an NSPersistentContainer",
+      "Write createNote(title:content:) and deleteNote(_:) using viewContext",
+      "Fetch all notes sorted by createdAt descending",
+      "Wire results to @FetchRequest in SwiftUI",
+      "Add a search predicate to filter notes by title",
+    ],
+    workstation: "code",
+    starterCode: `// Core Data Setup
+// Swift pseudo-code
+
+import CoreData
+import SwiftUI
+
+// STEP 1: Persistence stack
+// struct PersistenceController {
+//     static let shared = PersistenceController()
+//     let container: NSPersistentContainer
+//
+//     init() {
+//         container = NSPersistentContainer(name: "CapabilioNotes")
+//         container.loadPersistentStores { _, error in
+//             if let error { fatalError("Core Data load failed: \\(error)") }
+//         }
+//         container.viewContext.automaticallyMergesChangesFromParent = true
+//     }
+//
+//     var viewContext: NSManagedObjectContext { container.viewContext }
+// }
+// TODO: Implement PersistenceController
+
+// Core Data entity (defined in .xcdatamodeld — summarized here):
+// Entity: Note
+// Attributes: id (UUID), title (String), content (String), createdAt (Date)
+
+// STEP 2: CRUD helpers
+// extension PersistenceController {
+//     func createNote(title: String, content: String = "") {
+//         let note = Note(context: viewContext)  // Note is the NSManagedObject subclass
+//         note.id        = UUID()
+//         note.title     = title
+//         note.content   = content
+//         note.createdAt = Date()
+//         save()
+//     }
+//
+//     func deleteNote(_ note: Note) {
+//         viewContext.delete(note)
+//         save()
+//     }
+//
+//     private func save() {
+//         guard viewContext.hasChanges else { return }
+//         try? viewContext.save()
+//     }
+// }
+// TODO: Implement CRUD helpers
+
+// STEP 3 & 4: SwiftUI List with @FetchRequest
+// struct NotesListView: View {
+//     @FetchRequest(
+//         entity: Note.entity(),
+//         sortDescriptors: [NSSortDescriptor(key: "createdAt", ascending: false)],
+//         predicate: nil,
+//         animation: .default
+//     ) var notes: FetchedResults<Note>
+//
+//     @State private var searchText = ""
+//     var pc = PersistenceController.shared
+//
+//     var body: some View {
+//         List {
+//             ForEach(notes) { note in
+//                 VStack(alignment: .leading) {
+//                     Text(note.title ?? "").font(.headline)
+//                     Text(note.createdAt ?? Date(), style: .date).font(.caption)
+//                 }
+//             }
+//             .onDelete { indices in
+//                 indices.forEach { pc.deleteNote(notes[$0]) }
+//             }
+//         }
+//         // STEP 5: Search predicate
+//         .searchable(text: $searchText)
+//         .onChange(of: searchText) { query in
+//             notes.nsPredicate = query.isEmpty ? nil :
+//                 NSPredicate(format: "title CONTAINS[cd] %@", query)
+//         }
+//     }
+// }
+
+print("Core Data pattern:")
+print("  PersistenceController.shared.container.viewContext → single context")
+print("  @FetchRequest auto-updates SwiftUI list when data changes")
+print("  CONTAINS[cd] predicate: c=case-insensitive, d=diacritic-insensitive")
+`,
+    skillTags: ["Core Data", "NSFetchRequest", "@FetchRequest", "CRUD", "NSPredicate"],
+    hints: [
+      "automaticallyMergesChangesFromParent = true lets background context saves appear in viewContext automatically",
+      "guard viewContext.hasChanges else { return } avoids unnecessary save calls when nothing changed",
+      "CONTAINS[cd] in NSPredicate: [c] = case insensitive, [d] = ignores accents/diacritics",
+    ],
+  },
+  {
+    id: "ios-004",
+    title: "Combine: Publisher Chain for Live Search",
+    category: "Reactive Programming",
+    icon: "⚡",
+    difficulty: "Hard",
+    timeLimit: "35 min",
+    eloGain: 22,
+    tools: ["Swift", "Combine"],
+    scenario:
+      "Your e-commerce app has a search bar that hits an API on every keystroke — burning through API quota. You need to debounce the input, remove duplicate queries, cancel in-flight requests, and map the result to your UI model.",
+    objective:
+      "Build a Combine publisher chain: debounce → removeDuplicates → flatMap (cancelling previous) → map to UI model → assign to @Published.",
+    steps: [
+      "Add @Published var searchText = \"\" to the ViewModel",
+      "Chain: $searchText.debounce(0.3s) .removeDuplicates() .filter { !$0.isEmpty }",
+      "Add .flatMap(maxPublishers: .max(1)) { query in self.searchAPI(query) }",
+      "Map results to [SearchResult] UI model",
+      "Store subscription in Set<AnyCancellable>",
+    ],
+    workstation: "code",
+    starterCode: `// Combine — Live Search with Debounce + Cancel
+import Combine
+import Foundation
+
+struct SearchResult: Identifiable {
+    let id: Int
+    let name: String
+    let category: String
+}
+
+// Fake API — simulates async search
+func searchAPI(query: String) -> AnyPublisher<[SearchResult], Error> {
+    // In production: URLSession.shared.dataTaskPublisher(for: url).decode(...)
+    let results = [
+        SearchResult(id: 1, name: "\\(query) Pro", category: "Electronics"),
+        SearchResult(id: 2, name: "\\(query) Lite", category: "Accessories"),
+    ]
+    return Just(results)
+        .setFailureType(to: Error.self)
+        .delay(for: .milliseconds(200), scheduler: RunLoop.main)  // simulate latency
+        .eraseToAnyPublisher()
+}
+
+// STEP 1-5: ViewModel with Combine chain
+// @MainActor
+// class SearchViewModel: ObservableObject {
+//     @Published var searchText: String = ""
+//     @Published var results: [SearchResult] = []
+//     @Published var isSearching: Bool = false
+//     private var cancellables = Set<AnyCancellable>()
+//
+//     init() {
+//         // STEP 2: Debounce + deduplicate + filter
+//         $searchText
+//             .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
+//             .removeDuplicates()
+//             .filter { !$0.isEmpty }
+//             // STEP 3: flatMap with maxPublishers .max(1) — cancels in-flight requests
+//             .flatMap(maxPublishers: .max(1)) { [weak self] query -> AnyPublisher<[SearchResult], Never> in
+//                 self?.isSearching = true
+//                 return searchAPI(query: query)
+//                     .replaceError(with: [])  // STEP 4: Handle errors gracefully
+//                     .eraseToAnyPublisher()
+//             }
+//             // STEP 5: Assign to @Published
+//             .receive(on: RunLoop.main)
+//             .sink { [weak self] results in
+//                 self?.results = results
+//                 self?.isSearching = false
+//             }
+//             .store(in: &cancellables)  // STEP 5: Store subscription
+//     }
+// }
+// TODO: Implement SearchViewModel
+
+// Verify the chain logic
+print("Combine search chain:")
+print("  $searchText → debounce(300ms) → removeDuplicates() → filter(!empty)")
+print("  → flatMap(maxPublishers:.max(1)) { searchAPI($0) }  ← cancels previous!")
+print("  → replaceError(with: []) → .receive(on: RunLoop.main) → sink { results = $0 }")
+print("  → .store(in: &cancellables)")
+print()
+print("Key insight: maxPublishers: .max(1) means each new query cancels the previous network call")
+`,
+    skillTags: ["Combine", "debounce", "flatMap", "AnyCancellable", "Publisher Chain"],
+    hints: [
+      "maxPublishers: .max(1) in flatMap means only one inner publisher runs at a time — the previous is cancelled",
+      "replaceError(with: []) converts AnyPublisher<T, Error> to AnyPublisher<T, Never> — required before sink",
+      "Always use [weak self] in Combine closures to avoid retain cycles with the ViewModel",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHARMACY
+// ─────────────────────────────────────────────────────────────────────────────
+export const PHARMACY_CHALLENGES = [
+  {
+    id: "pharm-001",
+    title: "Dose Calculation: Weight-Based Paediatric Dosing",
+    category: "Drug Dose Calculations",
+    icon: "💊",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python"],
+    scenario:
+      "A paediatrician orders Amoxicillin for a 4-year-old child weighing 18 kg. The standard dose is 25 mg/kg/day divided into 2 doses. Available: Amoxicillin 125 mg/5 mL oral suspension. Calculate the per-dose volume and daily volume.",
+    objective:
+      "Write Python functions to compute weight-based doses and convert to available formulation volume.",
+    steps: [
+      "Calculate total daily dose = weight × dose_per_kg_per_day",
+      "Calculate per-dose amount = total_daily / frequency",
+      "Calculate volume per dose = (per_dose / concentration_mg_per_mL)",
+      "Validate the dose is within safe range (10–40 mg/kg/day for Amoxicillin)",
+      "Print a clear dispensing label",
+    ],
+    workstation: "notebook",
+    starterCode: `# Paediatric Dose Calculation — Amoxicillin
+# Clinical context: Amoxicillin for otitis media in a 4-year-old
+
+# Patient parameters
+weight_kg = 18
+age_years = 4
+
+# Drug parameters
+dose_per_kg_per_day = 25   # mg/kg/day (standard dose)
+frequency = 2              # doses per day (BD = twice daily)
+safe_range = (10, 40)      # mg/kg/day (safe therapeutic range)
+
+# Formulation available
+concentration_mg_per_5mL = 125   # 125 mg/5 mL
+# TODO: Calculate concentration_mg_per_mL
+
+# STEP 1: Total daily dose
+# TODO: total_daily_mg = weight_kg * dose_per_kg_per_day
+# TODO: print(f"Total daily dose: {total_daily_mg} mg/day")
+
+# STEP 2: Per-dose amount
+# TODO: per_dose_mg = total_daily_mg / frequency
+# TODO: print(f"Dose per administration: {per_dose_mg} mg")
+
+# STEP 3: Volume to dispense per dose
+# TODO: volume_per_dose_mL = per_dose_mg / concentration_mg_per_mL
+# TODO: print(f"Volume per dose: {volume_per_dose_mL:.1f} mL")
+
+# STEP 4: Safety check
+# TODO: actual_mg_per_kg = total_daily_mg / weight_kg
+# TODO: is_safe = safe_range[0] <= actual_mg_per_kg <= safe_range[1]
+# TODO: print(f"Dose safety check: {actual_mg_per_kg} mg/kg/day — {'SAFE ✓' if is_safe else 'OUT OF RANGE ✗'}")
+
+# STEP 5: Dispensing label
+# TODO: Print structured label:
+# Patient: 18 kg, 4 yr
+# Drug: Amoxicillin 125 mg/5 mL suspension
+# Dose: {per_dose_mg} mg ({volume_per_dose_mL:.1f} mL) TWICE DAILY
+# Duration: 5 days → Dispense {volume_per_dose_mL * 2 * 5:.0f} mL total
+`,
+    skillTags: ["Dose Calculation", "Weight-Based Dosing", "Paediatric Pharmacy", "Safety Check", "Dispensing"],
+    hints: [
+      "concentration mg/mL = (mg per label unit) / (mL per label unit) — 125 mg/5 mL = 25 mg/mL",
+      "Always validate against therapeutic range BEFORE dispensing — errors at this step can be fatal",
+      "Round oral suspension volumes to the nearest 0.5 mL — most oral syringes are accurate to 0.5 mL",
+    ],
+  },
+  {
+    id: "pharm-002",
+    title: "Drug Interaction Screen: CYP450 Pathway Analysis",
+    category: "Clinical Pharmacology",
+    icon: "⚠️",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 18,
+    tools: ["Python"],
+    scenario:
+      "A 55-year-old patient on Warfarin (anticoagulant) is newly prescribed Fluconazole (antifungal). Both drugs interact via the CYP2C9 pathway. Build a drug interaction screener that flags risk level and suggests monitoring or alternatives.",
+    objective:
+      "Build a drug interaction checker with a CYP450 inhibitor/substrate database and risk classification logic.",
+    steps: [
+      "Define a CYP_DATABASE with inhibitors and substrates for CYP2C9, CYP3A4, CYP1A2",
+      "Write check_interaction(drug_a, drug_b) that identifies shared pathways",
+      "Classify risk: HIGH if inhibitor+substrate on same enzyme, MODERATE if inducers involved",
+      "Add monitoring recommendations for HIGH risk interactions",
+      "Screen a patient's full medication list for all pairwise interactions",
+    ],
+    workstation: "notebook",
+    starterCode: `# Drug Interaction Checker — CYP450 Pathway Analysis
+
+# STEP 1: CYP450 database
+CYP_DATABASE = {
+    "CYP2C9": {
+        "substrates":  ["warfarin", "phenytoin", "celecoxib", "ibuprofen", "glipizide"],
+        "inhibitors":  ["fluconazole", "amiodarone", "trimethoprim", "miconazole"],
+        "inducers":    ["rifampicin", "carbamazepine", "phenobarbital"],
+    },
+    "CYP3A4": {
+        "substrates":  ["simvastatin", "atorvastatin", "cyclosporine", "midazolam", "amlodipine"],
+        "inhibitors":  ["clarithromycin", "ketoconazole", "ritonavir", "grapefruit"],
+        "inducers":    ["rifampicin", "carbamazepine", "St John's Wort"],
+    },
+    "CYP1A2": {
+        "substrates":  ["clozapine", "theophylline", "caffeine", "olanzapine"],
+        "inhibitors":  ["ciprofloxacin", "fluvoxamine", "enoxacin"],
+        "inducers":    ["smoking", "rifampicin", "omeprazole"],
+    },
+}
+
+# STEP 2: Interaction checker
+def check_interaction(drug_a: str, drug_b: str) -> dict:
+    """Returns {risk_level, pathways, mechanism, recommendation}"""
+    drug_a = drug_a.lower()
+    drug_b = drug_b.lower()
+    interactions = []
+
+    for enzyme, roles in CYP_DATABASE.items():
+        # TODO: Check if drug_a is substrate and drug_b is inhibitor (or vice versa)
+        # Inhibitor + Substrate on same enzyme = HIGH risk (increased drug levels)
+        # Inducer + Substrate = MODERATE risk (decreased drug levels)
+        pass
+
+    # TODO: Return risk summary
+    if not interactions:
+        return {"risk_level": "NONE", "pathways": [], "mechanism": "No known CYP interaction", "recommendation": "No action needed"}
+    # TODO: Classify: HIGH if any inhibitor-substrate pair, else MODERATE
+    pass
+
+# STEP 3: Test the Warfarin + Fluconazole pair
+result = check_interaction("warfarin", "fluconazole")
+# TODO: print the interaction report
+
+# STEP 4: Screen a full medication list
+patient_meds = ["warfarin", "fluconazole", "atorvastatin", "clarithromycin", "omeprazole"]
+print("\\n=== FULL MEDICATION INTERACTION SCREEN ===")
+# TODO: Check all pairwise combinations using itertools.combinations
+# TODO: Print HIGH risk interactions first, then MODERATE
+`,
+    skillTags: ["Drug Interactions", "CYP450", "Pharmacokinetics", "Clinical Safety", "Medication Review"],
+    hints: [
+      "A CYP inhibitor blocks the enzyme → substrate plasma levels RISE → toxicity risk increases",
+      "Warfarin + Fluconazole (CYP2C9 inhibitor) can double INR — requires urgent dose reduction or alternative",
+      "Use itertools.combinations(meds, 2) to check all pairs without repeating — O(n²/2) pairs",
+    ],
+  },
+  {
+    id: "pharm-003",
+    title: "IV Infusion Rate Calculation",
+    category: "Drug Dose Calculations",
+    icon: "🧮",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Python"],
+    scenario:
+      "ICU order: Dopamine infusion at 5 mcg/kg/min for a 70 kg patient. Available: Dopamine 400 mg in 250 mL D5W. Calculate the infusion rate in mL/hr and verify it's within the vasopressor dosing range.",
+    objective:
+      "Write a clinical IV infusion calculator handling mcg/kg/min dose orders and converting to mL/hr pump rates.",
+    steps: [
+      "Calculate drug concentration in mcg/mL from the available solution",
+      "Calculate required dose rate in mcg/min = dose_mcg_kg_min × weight_kg",
+      "Calculate infusion rate mL/hr = (dose_rate_mcg_min × 60) / concentration_mcg_mL",
+      "Verify infusion rate is within safe pump range (1–40 mL/hr for Dopamine)",
+      "Build a reusable infusion_rate() function for any drug",
+    ],
+    workstation: "notebook",
+    starterCode: `# IV Infusion Rate Calculator — ICU Pharmacist Tool
+
+# STEP 5: Reusable function
+def infusion_rate(
+    drug_mg: float,
+    diluent_mL: float,
+    dose_mcg_kg_min: float,
+    weight_kg: float,
+    safe_range_mL_hr: tuple = (1, 40)
+) -> dict:
+    """
+    Calculate IV infusion rate from weight-based mcg/kg/min order.
+    Returns mL/hr rate with safety check.
+    """
+    # STEP 1: Concentration
+    # TODO: drug_mcg = drug_mg * 1000  (convert mg → mcg)
+    # TODO: concentration_mcg_mL = drug_mcg / diluent_mL
+
+    # STEP 2: Required dose rate
+    # TODO: dose_rate_mcg_min = dose_mcg_kg_min * weight_kg
+
+    # STEP 3: Infusion rate mL/hr
+    # TODO: rate_mL_hr = (dose_rate_mcg_min * 60) / concentration_mcg_mL
+
+    # STEP 4: Safety check
+    # TODO: is_safe = safe_range_mL_hr[0] <= rate_mL_hr <= safe_range_mL_hr[1]
+
+    # TODO: return {"rate_mL_hr": round(rate_mL_hr, 1),
+    #               "concentration_mcg_mL": round(concentration_mcg_mL, 2),
+    #               "dose_rate_mcg_min": round(dose_rate_mcg_min, 1),
+    #               "safe": is_safe,
+    #               "warning": "" if is_safe else f"Rate {rate_mL_hr:.1f} outside {safe_range_mL_hr}"}
+    pass
+
+# Test: Dopamine 5 mcg/kg/min for 70 kg patient, 400 mg in 250 mL D5W
+result = infusion_rate(
+    drug_mg=400,
+    diluent_mL=250,
+    dose_mcg_kg_min=5,
+    weight_kg=70
+)
+# TODO: Print result with clear label
+# Expected: ~13.1 mL/hr
+
+# Also test with a vasopressin order
+print("\\n--- Vasopressin 0.04 units/min ---")
+# Vasopressin uses units/min not mcg/kg/min — show how function signature would change
+print("Different unit system: would need separate function for units/min dosing")
+`,
+    skillTags: ["IV Infusion", "mcg/kg/min", "Concentration", "Pump Rate", "ICU Pharmacy"],
+    hints: [
+      "Always convert mg → mcg early (×1000) to keep all dose calculations in the same unit",
+      "Rate mL/hr = (dose_mcg/min × 60 min/hr) / concentration_mcg/mL — the 60 converts per-minute to per-hour",
+      "Dopamine ranges: 2–5 mcg/kg/min = renal dose, 5–10 = cardiac, >10 = vasopressor — flag each range",
+    ],
+  },
+  {
+    id: "pharm-004",
+    title: "Adverse Drug Reaction (ADR) Causality Assessment",
+    category: "Pharmacovigilance",
+    icon: "🔍",
+    difficulty: "Hard",
+    timeLimit: "35 min",
+    eloGain: 22,
+    tools: ["Python"],
+    scenario:
+      "A patient developed rash and eosinophilia 10 days after starting Carbamazepine. The pharmacovigilance team needs to assess causality using the Naranjo Algorithm and WHO-UMC scale, then decide whether to report to CDSCO.",
+    objective:
+      "Implement the Naranjo Algorithm scoring system and WHO-UMC causality categories, then generate an ADR report.",
+    steps: [
+      "Implement naranjo_score(responses) with the 10 standardized questions",
+      "Map total score to causality category: Definite(≥9), Probable(5-8), Possible(1-4), Doubtful(≤0)",
+      "Implement who_umc_category(criteria) with the 6 WHO-UMC criteria",
+      "Generate a structured CDSCO ADR report from the assessment",
+      "Test with the Carbamazepine rash case",
+    ],
+    workstation: "notebook",
+    starterCode: `# ADR Causality Assessment — Naranjo Algorithm + WHO-UMC
+
+# STEP 1: Naranjo Algorithm
+# Each question: 1=Yes, 0=No/Don't know, -1=No (where applicable
+NARANJO_QUESTIONS = [
+    ("Q1", "Previous conclusive reports of this reaction?",               {"yes": 1, "no": 0}),
+    ("Q2", "Did ADR appear after suspected drug given?",                  {"yes": 2, "no": -1, "dk": 0}),
+    ("Q3", "Did ADR improve on withdrawal (dechallenge)?",               {"yes": 1, "no": 0, "dk": 0}),
+    ("Q4", "Did ADR reappear on rechallenge?",                           {"yes": 2, "no": -1, "dk": 0}),
+    ("Q5", "Possible alternative causes other than drug?",               {"yes": -1, "no": 2, "dk": 0}),
+    ("Q6", "Did ADR reappear when placebo given?",                       {"yes": -1, "no": 1, "dk": 0}),
+    ("Q7", "Was drug detected in blood at toxic levels?",                {"yes": 1, "no": 0, "dk": 0}),
+    ("Q8", "Was reaction more severe with dose increase or less with decrease?", {"yes": 1, "no": 0, "dk": 0}),
+    ("Q9", "Had patient had same/similar reaction to drug/class before?", {"yes": 1, "no": 0, "dk": 0}),
+    ("Q10","Was adverse event confirmed by objective evidence?",          {"yes": 1, "no": 0}),
+]
+
+def naranjo_score(responses: dict) -> dict:
+    """
+    responses: {"Q1": "yes", "Q2": "yes", "Q3": "yes", ...}
+    Returns: {score, category, interpretation}
+    """
+    # TODO: Calculate total score by summing response values
+    # TODO: Map score to category:
+    #   >= 9  → "Definite"
+    #   5-8   → "Probable"
+    #   1-4   → "Possible"
+    #   <= 0  → "Doubtful"
+    pass
+
+# STEP 3: WHO-UMC Scale
+def who_umc_category(criteria: dict) -> str:
+    """
+    criteria keys: temporal_relation, plausible_mechanism, cannot_be_explained_otherwise,
+                   dechallenge_positive, rechallenge_positive, documented_conclusively
+    Returns WHO-UMC category string
+    """
+    # WHO-UMC Categories:
+    # Certain:   temporal + plausible + not_otherwise + dechallenge + rechallenge + documented
+    # Probable:  temporal + plausible + not_otherwise + dechallenge (no rechallenge needed)
+    # Possible:  temporal + plausible (alternative causes possible)
+    # Unlikely:  temporal relation improbable, other drugs/disease explain it
+    # TODO: Implement categorization logic
+    pass
+
+# STEP 4: Test Case — Carbamazepine Rash
+carbamazepine_case = {
+    "Q1": "yes",   # Previous reports exist
+    "Q2": "yes",   # Rash appeared after drug (day 10)
+    "Q3": "yes",   # Rash improved on stopping
+    "Q4": "dk",    # Rechallenge not done (rash contraindication)
+    "Q5": "no",    # No alternative cause identified
+    "Q6": "dk",    # Placebo not given
+    "Q7": "no",    # Drug levels not toxic
+    "Q8": "dk",    # Dose-response not assessed
+    "Q9": "no",    # First occurrence
+    "Q10": "yes",  # Rash + eosinophilia confirmed by blood test
+}
+
+# TODO: result = naranjo_score(carbamazepine_case)
+# TODO: print ADR report with drug, reaction, score, category, CDSCO reporting requirement
+`,
+    skillTags: ["Pharmacovigilance", "Naranjo Algorithm", "WHO-UMC", "ADR Assessment", "CDSCO"],
+    hints: [
+      "Naranjo score ≥5 (Probable) or any Definite ADR must be reported to CDSCO within 15 days",
+      "Q4 (rechallenge) is often 'dk' (don't know) because rechallenge is unethical for serious reactions",
+      "eosinophilia + rash with Carbamazepine = DRESS syndrome — a Definite reportable serious ADR",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MBA / BUSINESS
+// ─────────────────────────────────────────────────────────────────────────────
+export const MBA_CHALLENGES = [
+  {
+    id: "mba-001",
+    title: "DCF Valuation: Startup Financial Model",
+    category: "Financial Modelling",
+    icon: "📊",
+    difficulty: "Easy",
+    timeLimit: "25 min",
+    eloGain: 14,
+    tools: ["Python"],
+    scenario:
+      "You're a strategy analyst at a PE firm evaluating a SaaS startup. The founders provided 5-year revenue projections. You need to build a DCF model to estimate enterprise value and judge whether their ₹50 Cr asking price is justified.",
+    objective:
+      "Build a Python DCF model with explicit cash flows, terminal value, and WACC discounting.",
+    steps: [
+      "Define 5-year free cash flow projections",
+      "Calculate discount factors using WACC = 12%",
+      "Calculate present value of each year's FCF",
+      "Add terminal value using Gordon Growth Model (TV = FCF_5 × (1+g) / (WACC - g))",
+      "Sum to enterprise value and compare to asking price",
+    ],
+    workstation: "notebook",
+    starterCode: `# DCF Valuation — SaaS Startup Enterprise Value
+import numpy as np
+
+# Company: CloudOps SaaS (B2B infrastructure monitoring)
+# Asking price: ₹50 Cr
+
+# STEP 1: 5-Year Free Cash Flow projections (₹ Crores)
+# Revenue grows 40%/yr, EBITDA margin expands from 15% to 30%
+fcf_projections = {
+    "Year 1": 2.5,    # Currently break-even, FCF starts at ₹2.5 Cr
+    "Year 2": 4.2,
+    "Year 3": 7.0,
+    "Year 4": 10.5,
+    "Year 5": 14.8,
+}
+
+# Valuation parameters
+wacc = 0.12          # Weighted Average Cost of Capital = 12%
+terminal_growth = 0.04  # Long-term growth rate = 4% (in line with GDP)
+
+# STEP 2 & 3: Discount each FCF
+# TODO: For each year n (1 to 5), discount_factor = 1 / (1 + wacc)^n
+# TODO: pv_fcf = fcf * discount_factor
+# TODO: Print year, FCF, discount factor, PV
+
+# STEP 4: Terminal Value (Gordon Growth Model)
+# TV = FCF_Year5 × (1 + g) / (WACC - g)
+# PV of TV = TV / (1 + WACC)^5
+# TODO: Calculate TV and PV_TV
+
+# STEP 5: Enterprise Value
+# EV = sum(PV of FCFs) + PV of Terminal Value
+# TODO: Calculate EV
+# TODO: Print: EV = ₹X Cr
+# TODO: Print: Asking price = ₹50 Cr
+# TODO: Print verdict: "OVERVALUED" or "UNDERVALUED" vs asking price
+
+# Bonus: Sensitivity analysis
+print("\\n--- Sensitivity: EV at different WACC and terminal growth ---")
+for w in [0.10, 0.12, 0.14]:
+    for g in [0.03, 0.04, 0.05]:
+        # TODO: Recalculate EV for each combination
+        # TODO: print(f"WACC={w:.0%}, g={g:.0%}: EV = ₹{ev:.1f} Cr")
+        pass
+`,
+    skillTags: ["DCF", "Financial Modelling", "WACC", "Terminal Value", "Valuation"],
+    hints: [
+      "Discount factor for year n = 1 / (1 + WACC)^n — multiply FCF by this to get present value",
+      "Terminal value dominates DCF (often 60-80% of EV) — always stress-test the growth rate assumption",
+      "If EV >> asking price, the startup is undervalued — if EV << asking price, negotiate down or walk away",
+    ],
+  },
+  {
+    id: "mba-002",
+    title: "Porter's Five Forces: Market Entry Analysis",
+    category: "Business Strategy",
+    icon: "♟️",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python"],
+    scenario:
+      "Your company is considering entering the Indian EdTech market. The CEO wants a structured Porter's Five Forces analysis before committing ₹5 Cr to product development. Build a scoring model and generate a go/no-go recommendation.",
+    objective:
+      "Implement a Porter's Five Forces scoring model with weighted factors and generate a market attractiveness report.",
+    steps: [
+      "Define 5 forces with sub-factors and scores (1-10, where 10 = most attractive to entrant)",
+      "Assign weights to each force",
+      "Calculate weighted scores and overall market attractiveness score",
+      "Add thresholds: score ≥7 = Enter, 5-7 = Enter with caution, <5 = Do not enter",
+      "Print a board-ready analysis report",
+    ],
+    workstation: "notebook",
+    starterCode: `# Porter's Five Forces Analysis — Indian EdTech Market Entry
+
+# STEP 1: Five Forces scoring model
+# Score 1-10: higher = more attractive for new entrant
+# (e.g., LOW buyer power = 8/10 for attractiveness)
+
+forces = {
+    "Threat of New Entrants": {
+        "weight": 0.20,
+        "factors": {
+            "Capital requirements":         6,  # Moderate — ₹2-5 Cr to launch MVP
+            "Brand loyalty to incumbents":  3,  # High loyalty to BYJU'S, Unacademy
+            "Regulatory barriers":          8,  # Low regulation — no license needed
+            "Tech differentiation needed":  5,  # AI/adaptive learning is differentiator
+        }
+    },
+    "Bargaining Power of Suppliers": {
+        "weight": 0.15,
+        "factors": {
+            "Content creator supply":       7,  # Large pool of educators
+            "Tech vendor lock-in":          8,  # Cloud/AI tools are commoditized
+            "Teacher exclusivity risk":     4,  # Star teachers can negotiate high fees
+        }
+    },
+    "Bargaining Power of Buyers": {
+        "weight": 0.25,
+        "factors": {
+            "Price sensitivity":            3,  # High — students compare aggressively
+            "Switching costs":              4,  # Low — easy to switch platforms
+            "Trial/freemium expectation":   3,  # Users expect free trial
+        }
+    },
+    "Threat of Substitutes": {
+        "weight": 0.20,
+        "factors": {
+            "YouTube free content":         2,  # Strong substitute — free video lectures
+            "Government platforms (SWAYAM)":5,  # Moderate — free but low quality
+            "Offline tuition centres":      4,  # Still preferred for board exams
+        }
+    },
+    "Competitive Rivalry": {
+        "weight": 0.20,
+        "factors": {
+            "Number of competitors":        2,  # Highly fragmented — 100+ players
+            "Price wars":                   3,  # Aggressive discounting common
+            "Differentiation possible":     7,  # Niche (STEM, vernacular) can stand out
+        }
+    },
+}
+
+# STEP 2 & 3: Calculate weighted scores
+def analyze_forces(forces: dict) -> dict:
+    results = {}
+    total_weighted_score = 0
+
+    for force_name, data in forces.items():
+        # TODO: avg_factor_score = mean of all factor scores in this force
+        # TODO: weighted_score = avg_factor_score * data["weight"]
+        # TODO: results[force_name] = {"avg": avg, "weighted": weighted, "weight": data["weight"]}
+        # TODO: total_weighted_score += weighted_score
+        pass
+
+    # STEP 4: Overall attractiveness
+    # TODO: verdict = "ENTER" if total >= 7 else "ENTER WITH CAUTION" if total >= 5 else "DO NOT ENTER"
+    return {"forces": results, "total": total_weighted_score, "verdict": "TODO"}
+
+# TODO: Run analysis and print board-ready report
+result = analyze_forces(forces)
+`,
+    skillTags: ["Porter's Five Forces", "Market Entry", "Strategic Analysis", "Competitive Strategy", "EdTech"],
+    hints: [
+      "Weight the five forces by their strategic relevance — buyer power (0.25) matters most in B2C EdTech",
+      "A force score below 4 is a structural barrier — highlight these as key risks in the board report",
+      "Always end with actionable recommendation: niche to target, barriers to address, 3-year milestone",
+    ],
+  },
+  {
+    id: "mba-003",
+    title: "Operations: Inventory EOQ and Reorder Point",
+    category: "Operations Management",
+    icon: "⚙️",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 18,
+    tools: ["Python"],
+    scenario:
+      "You're an operations consultant for a pharma distributor. Their stock-outs are costing ₹12L/month in lost sales. You need to calculate the Economic Order Quantity and reorder point for their top 5 SKUs and recommend an inventory policy.",
+    objective:
+      "Implement EOQ model and ROP calculation for multiple SKUs, then identify which SKUs need immediate policy change.",
+    steps: [
+      "Implement EOQ formula: sqrt(2 × D × S / H)",
+      "Calculate Reorder Point: (avg daily demand × lead time) + safety stock",
+      "Apply to 5 SKUs with different demand patterns",
+      "Identify SKUs where current order qty deviates >30% from EOQ",
+      "Calculate annual holding and ordering cost savings from switching to EOQ",
+    ],
+    workstation: "notebook",
+    starterCode: `# Inventory Optimization — EOQ and Reorder Point
+import math
+
+# SKU data: (annual_demand_units, order_cost_INR, holding_cost_pct, unit_cost, lead_time_days, current_order_qty)
+skus = {
+    "Paracetamol 500mg": {
+        "annual_demand": 12000,   # units/year
+        "order_cost":    800,     # ₹ per order (delivery + processing)
+        "holding_rate":  0.20,    # 20% of unit cost per year (storage + capital)
+        "unit_cost":     12,      # ₹ per unit
+        "lead_time_days": 7,
+        "current_order_qty": 2000,  # what they order now
+        "safety_stock":  150,
+    },
+    "Augmentin 625mg": {
+        "annual_demand": 3600,
+        "order_cost":    1200,
+        "holding_rate":  0.25,
+        "unit_cost":     85,
+        "lead_time_days": 10,
+        "current_order_qty": 400,
+        "safety_stock":  50,
+    },
+    "Insulin Glargine": {
+        "annual_demand": 1200,
+        "order_cost":    2000,
+        "holding_rate":  0.30,    # Cold chain storage expensive
+        "unit_cost":     450,
+        "lead_time_days": 14,
+        "current_order_qty": 100,
+        "safety_stock":  30,
+    },
+    "Cetirizine 10mg": {
+        "annual_demand": 24000,
+        "order_cost":    600,
+        "holding_rate":  0.18,
+        "unit_cost":     5,
+        "lead_time_days": 5,
+        "current_order_qty": 3000,
+        "safety_stock":  400,
+    },
+    "Metformin 500mg": {
+        "annual_demand": 18000,
+        "order_cost":    750,
+        "holding_rate":  0.20,
+        "unit_cost":     8,
+        "lead_time_days": 7,
+        "current_order_qty": 1500,
+        "safety_stock":  250,
+    },
+}
+
+# STEP 1: EOQ formula
+def calculate_eoq(annual_demand, order_cost, holding_cost_per_unit):
+    """EOQ = sqrt(2 × D × S / H)"""
+    # TODO: return math.sqrt(2 * annual_demand * order_cost / holding_cost_per_unit)
+    pass
+
+# STEP 2: Reorder Point
+def calculate_rop(annual_demand, lead_time_days, safety_stock):
+    """ROP = (daily demand × lead time) + safety stock"""
+    # TODO: daily_demand = annual_demand / 365
+    # TODO: return (daily_demand * lead_time_days) + safety_stock
+    pass
+
+# STEP 3-5: Analyze all SKUs
+print(f"{'SKU':<25} {'EOQ':>6} {'Current':>8} {'Dev%':>6} {'ROP':>5} {'Action'}")
+print("-" * 70)
+for sku_name, d in skus.items():
+    holding_cost_unit = d["unit_cost"] * d["holding_rate"]
+    # TODO: eoq = calculate_eoq(...)
+    # TODO: rop = calculate_rop(...)
+    # TODO: deviation = abs(d["current_order_qty"] - eoq) / eoq * 100
+    # TODO: action = "⚠️ CHANGE" if deviation > 30 else "✓ OK"
+    # TODO: print formatted row
+    pass
+`,
+    skillTags: ["EOQ", "Inventory Management", "Reorder Point", "Operations", "Supply Chain"],
+    hints: [
+      "Holding cost per unit = unit_cost × holding_rate (convert percentage to annual ₹ cost)",
+      "Daily demand = annual_demand / 365 — assumes uniform demand (add seasonality for real models)",
+      "Deviation >30% from EOQ is a rule of thumb — above this, the cost penalty becomes significant",
+    ],
+  },
+  {
+    id: "mba-004",
+    title: "Market Sizing: Bottom-Up TAM/SAM/SOM Analysis",
+    category: "Business Strategy",
+    icon: "📈",
+    difficulty: "Hard",
+    timeLimit: "35 min",
+    eloGain: 22,
+    tools: ["Python"],
+    scenario:
+      "Your startup is pitching to investors. They've asked for a rigorous bottom-up market sizing for your B2B HR SaaS product targeting Indian SMEs with 50-500 employees. They specifically said they don't want a top-down guess — they want assumptions they can interrogate.",
+    objective:
+      "Build a bottom-up TAM/SAM/SOM model with explicit, auditable assumptions for each layer.",
+    steps: [
+      "Define the target customer profile and count (total SMEs in India by employee size)",
+      "Calculate TAM: all companies who could theoretically buy HR software",
+      "Calculate SAM: companies reachable given your geography and segment focus",
+      "Calculate SOM: realistic 3-year capture based on sales capacity and conversion",
+      "Build a sensitivity table showing SOM under bull/base/bear cases",
+    ],
+    workstation: "notebook",
+    starterCode: `# Market Sizing — Bottom-Up TAM/SAM/SOM for B2B HR SaaS
+
+# ─────────────────────────────────────────────────────
+# ASSUMPTIONS (each auditable — investors will grill these)
+# ─────────────────────────────────────────────────────
+
+# India SME landscape (source: MSME Ministry 2023)
+TOTAL_INDIAN_COMPANIES = 63_000_000     # 6.3 Cr registered enterprises
+SME_50_500_EMPLOYEES_PCT = 0.008        # 0.8% have 50-500 employees
+HR_SOFTWARE_ADOPTION_RATE = 0.35        # 35% already use some HR software (TAM = those who could switch OR adopt)
+
+# Pricing
+ANNUAL_CONTRACT_VALUE = 180_000         # ₹1.8L/yr = ₹15K/month for 100-employee firm
+
+# SAM filters — your serviceable market
+ENGLISH_LANGUAGE_FILTER = 0.60          # 60% of SMEs operate in English/Hindi-English
+TIER1_TIER2_CITY_FILTER = 0.45          # 45% in cities where you can sell/support
+INDUSTRY_FOCUS = ["Manufacturing", "IT Services", "Retail", "Healthcare"]  # 4 sectors = 55%
+INDUSTRY_COVERAGE = 0.55
+
+# SOM — realistic capture
+SALES_REPS_YEAR3 = 15                   # 15 reps by year 3
+DEALS_PER_REP_PER_YEAR = 40             # Conservative: 40 closed deals/rep/yr
+CHURN_RATE = 0.15                       # 15% annual churn
+
+# STEP 1: Count target companies
+total_smes = TOTAL_INDIAN_COMPANIES * SME_50_500_EMPLOYEES_PCT
+print(f"Total Indian SMEs (50-500 employees): {total_smes:,.0f}")
+
+# STEP 2: TAM
+# TODO: tam_companies = total_smes (all could benefit from HR SaaS)
+# TODO: tam_value = tam_companies * ANNUAL_CONTRACT_VALUE
+# TODO: print(f"TAM: {tam_companies:,.0f} companies = ₹{tam_value/1e7:.0f} Cr")
+
+# STEP 3: SAM (apply filters)
+# TODO: sam_companies = total_smes × ENGLISH_LANGUAGE_FILTER × TIER1_TIER2_CITY_FILTER × INDUSTRY_COVERAGE
+# TODO: sam_value = sam_companies × ANNUAL_CONTRACT_VALUE
+# TODO: print(f"SAM: {sam_companies:,.0f} companies = ₹{sam_value/1e7:.0f} Cr")
+
+# STEP 4: SOM — Year 3 sales capacity
+# Customers added per year = reps × deals_per_rep
+# Net customers at end of Y3 = cumulative adds - churn
+# TODO: Calculate Y1, Y2, Y3 customers and revenue
+
+# STEP 5: Sensitivity table
+print("\\n--- Sensitivity: SOM Year-3 Revenue (₹ Cr) ---")
+print(f"{'':30} {'Bear':>8} {'Base':>8} {'Bull':>10}")
+for reps, case in [(10, "Bear"), (15, "Base"), (22, "Bull")]:
+    for deals, acv in [(30, 150000), (40, 180000), (55, 220000)]:
+        # TODO: Calculate Y3 revenue for each combination
+        # TODO: print the bull/base/bear comparison
+        pass
+`,
+    skillTags: ["Market Sizing", "TAM/SAM/SOM", "Bottom-Up", "B2B SaaS", "Investor Pitch"],
+    hints: [
+      "Bottom-up: count customers × price per customer — more credible than top-down percentage of market",
+      "SAM filters stack multiplicatively: total × 0.60 × 0.45 × 0.55 — each filter must be justifiable",
+      "SOM must tie to your actual sales capacity — '1% of TAM' is not a bottom-up answer",
+    ],
+  },
+]
+
 export const DOMAIN_CHALLENGES = {
   data:      DATA_ANALYST_CHALLENGES,
   bi_analyst:DATA_ANALYST_CHALLENGES,
@@ -7506,6 +9247,12 @@ export const DOMAIN_CHALLENGES = {
   data_engineer: DBA_CHALLENGES,
   cyber:     CYBER_CHALLENGES,
   soc:       CYBER_CHALLENGES,
+  // Embedded / VLSI / Analog IC (arenaKey → challenge pool)
+  embedded:     [...ECE_CHALLENGES, ...ECE_CIRCUIT_CHALLENGES],  // firmware/embedded engineers
+  vlsi:         ECE_VLSI_CHALLENGES,                             // VLSI / ASIC / digital design
+  analog_ic:    [...ECE_CIRCUIT_CHALLENGES, ...ECE_VLSI_CHALLENGES], // analog IC / mixed-signal (reuses closest ECE pools)
+  // Mechanical (arenaKey)
+  mechanical:   [...MECH_CHALLENGES, ...MECH_DESIGN_CHALLENGES, ...MECH_THERMAL_CHALLENGES],
   // ECE sub-roles — route to role-specific challenge pool
   ece:          [...ECE_INTERACTIVE_CHALLENGES, ...ECE_CIRCUIT_CHALLENGES, ...ECE_CHALLENGES],   // interactive circuit first
   ece_interactive: ECE_INTERACTIVE_CHALLENGES,
@@ -7535,6 +9282,14 @@ export const DOMAIN_CHALLENGES = {
   mech_design:         MECH_DESIGN_CHALLENGES,
   mech_manufacturing:  MECH_MFG_CHALLENGES,
   mech_hvac:           MECH_HVAC_CHALLENGES,
+  // ML / AI
+  ml:         ML_CHALLENGES,
+  // Mobile
+  android:    ANDROID_CHALLENGES,
+  ios:        IOS_CHALLENGES,
+  // Non-engineering professional tracks
+  pharmacy:   PHARMACY_CHALLENGES,
+  mba:        MBA_CHALLENGES,
   // Medical and QA still use generic SWE challenges as placeholders
   medical:   SWE_CHALLENGES,
   qa:        SWE_CHALLENGES,

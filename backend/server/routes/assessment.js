@@ -148,7 +148,7 @@ function getDomainSkills(jobTitle, branch = "") {
 
 // ─── 3. Generate MCQ ── Groq (generation, not user-visible analysis) ──────────
 router.post("/generate-mcq", async (req, res) => {
-  const { jobTitle="Software Developer", branch="", count=25, skills=[], resumeContext="", resumeSummary="" } = req.body
+  const { jobTitle="Professional", branch="", count=25, skills=[], resumeContext="", resumeSummary="" } = req.body
 
   // Get the EXACT skills for this domain — these become mandatory question categories
   // branch is the student's enrolled branch (ECE/EEE/Mechanical/Civil/etc.) used as fallback
@@ -314,7 +314,7 @@ Return JSON now:`,
 
 // ─── 4. Analyse Assessment ── Claude Haiku (user reads this output) ────────────
 router.post("/analyse-assessment", async (req, res) => {
-  const { keyword="Software Developer", score=0, total=25, pct=0, radarData=[], resumeContext="" } = req.body
+  const { keyword="Professional", score=0, total=25, pct=0, radarData=[], resumeContext="" } = req.body
 
   // Build a detailed skill-by-skill performance summary for the AI
   const skillBreakdown = radarData.map(d => {

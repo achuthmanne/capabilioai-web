@@ -28,8 +28,8 @@ async function generateQuestion(sessionData, questionIndex, previousQA) {
 
   const context = `
 Professional Profile:
-- Role: ${sessionData.role_target || "Software Engineer"}
-- Domain: ${sessionData.domain || "Technology"}
+- Role: ${sessionData.role_target || "Professional"}
+- Domain: ${sessionData.domain || "Professional Domain"}
 - Technologies: ${(sessionData.technologies || []).join(", ") || "Not specified"}
 - Session type: ${sessionData.session_type || "general"}
 
@@ -124,8 +124,8 @@ router.post("/pro/interview/start", requireAuth, async (req, res) => {
       user_id:         uid,
       session_type,
       interview_mode,
-      domain:          domain || profile?.keyword || "Software Engineering",
-      role_target:     role_target || profile?.current_role_title || "Software Engineer",
+      domain:          domain || profile?.keyword || "Professional",
+      role_target:     role_target || profile?.current_role_title || "Professional",
       technologies:    technologies.length ? technologies : (profile?.skill_graph || []).slice(0, 5).map(s => s.name || s),
       total_questions: Math.min(20, Math.max(3, total_questions)),
       status:          "in_progress",

@@ -510,7 +510,7 @@ router.post("/run-tests", async (req, res) => {
 // ─── Forge: Personalised maintenance tasks ───────────────────────────────────
 // Called by Forge.jsx — generates 5 tasks tailored to user's skills & weak areas
 router.post("/forge-tasks", async (req, res) => {
-  const { skills="", weakAreas="", eloRating=800, domain="software engineering", role="professional", yearsExp=1, strengths="" } = req.body
+  const { skills="", weakAreas="", eloRating=800, domain="professional", role="professional", yearsExp=1, strengths="" } = req.body
   try {
     const diff = eloRating < 900 ? "intermediate" : eloRating < 1200 ? "senior" : "expert"
     const raw = await groq([

@@ -332,26 +332,190 @@ function AICopilotPanel({ domain, task, code }) {
   const getAIReply = (msg, domain) => {
     const lower = msg.toLowerCase()
     const domainKey = domain?.key || "swe"
+    // Domain-specific AI copilot reply bank.
+    // Keys are keyword substrings matched against the user's message (lowercase).
+    // Keyed by arenaKey so every role gets a specialist, not a generic fallback.
     const REPLIES = {
+      // ── Database ─────────────────────────────────────────────────────────────
       dba: {
-        "review": `DBA review complete:\n\n1. Check for missing index on filtered columns — verify with EXPLAIN ANALYZE.\n2. Consider a composite index if multiple WHERE conditions exist.\n3. VACUUM ANALYZE after any bulk operation to keep planner stats fresh.\n4. Wrap destructive operations in explicit BEGIN/COMMIT.`,
+        "review":  `DBA review complete:\n\n1. Check for missing index on filtered columns — verify with EXPLAIN ANALYZE.\n2. Consider a composite index if multiple WHERE conditions exist.\n3. VACUUM ANALYZE after any bulk operation to keep planner stats fresh.\n4. Wrap destructive operations in explicit BEGIN/COMMIT.`,
         "explain": `This approach leverages PostgreSQL's query planner to choose between Seq Scan and Index Scan based on cost estimation. The planner uses statistics (pg_statistics) to estimate row counts — stale stats lead to bad plans, so ANALYZE frequently.`,
-        "bug": `Common DBA bugs:\n• Missing index on JOIN column → Seq Scan on large table\n• Implicit type cast preventing index use (e.g. WHERE id = '123' on integer column)\n• Nested loop on unindexed FK → N+1 at scale\n• autovacuum not keeping up → table bloat and planner drift`,
+        "bug":     `Common DBA bugs:\n• Missing index on JOIN column → Seq Scan on large table\n• Implicit type cast preventing index use (e.g. WHERE id = '123' on integer column)\n• Nested loop on unindexed FK → N+1 at scale\n• autovacuum not keeping up → table bloat and planner drift`,
         "improve": `Performance improvement ideas:\n1. Create a covering index (include columns in SELECT)\n2. Use connection pooling (PgBouncer) — don't let app open raw connections\n3. CLUSTER the table on the most-used index for sequential access\n4. Partition large tables on time-based column`,
       },
-      frontend: {
-        "review": `Frontend review:\n\n1. Add error boundaries around async data fetches.\n2. Use React.memo() on pure child components to avoid re-renders.\n3. Check keyboard navigation — all interactive elements reachable via Tab.\n4. Verify colour contrast ratio ≥ 4.5:1 for AA compliance.`,
-        "bug": `Common React bugs:\n• Missing dependency in useEffect → stale closure\n• Object/array in dependency array → infinite re-render\n• setState in cleanup → memory leak (add cleanup return)\n• Missing key prop on lists → reconciliation issues`,
+      data_engineer: {
+        "review":  `Pipeline review:\n\n1. Add idempotency to every ingestion step — re-runs must not duplicate data.\n2. Log row counts at each transformation stage — silent data loss is the hardest bug.\n3. Add schema validation (Great Expectations / dbt tests) before loading to warehouse.\n4. Ensure partitioning aligns with your most common filter column (usually date).`,
+        "bug":     `Common data pipeline bugs:\n• Non-idempotent writes → duplicate rows on retry\n• Schema drift from source API → silent column mismatch\n• Timezone mismatch in timestamp joins → off-by-1-day errors\n• Missing NULL handling in aggregates → SUM returns NULL instead of 0`,
+        "improve": `Pipeline optimisation:\n1. Push filters as close to the source as possible — reduce data transferred\n2. Use columnar storage (Parquet/ORC) for analytical workloads\n3. Partition by ingestion date so incremental loads touch minimal files\n4. Add SLA alerting — fail loudly before stakeholders notice`,
       },
+      // ── Frontend / Full Stack ─────────────────────────────────────────────────
+      frontend: {
+        "review":  `Frontend review:\n\n1. Add error boundaries around async data fetches.\n2. Use React.memo() on pure child components to avoid re-renders.\n3. Check keyboard navigation — all interactive elements reachable via Tab.\n4. Verify colour contrast ratio ≥ 4.5:1 for AA compliance.`,
+        "bug":     `Common React bugs:\n• Missing dependency in useEffect → stale closure\n• Object/array in dependency array → infinite re-render\n• setState in cleanup → memory leak (add cleanup return)\n• Missing key prop on lists → reconciliation issues`,
+        "improve": `Frontend performance wins:\n1. Code-split with React.lazy + Suspense — defer heavy routes\n2. Use CSS containment on list items — isolates layout recalculation\n3. Virtualise long lists (react-window) — DOM nodes stay bounded\n4. Preconnect to critical third-party origins in <head>`,
+      },
+      backend: {
+        "review":  `Backend review:\n\n1. Validate all input at the API boundary — never trust client data.\n2. Check that database calls are wrapped in transactions where atomicity matters.\n3. Ensure error responses don't leak stack traces or internal paths.\n4. Rate-limit all public endpoints — even authenticated ones.`,
+        "bug":     `Common backend bugs:\n• Missing await on async DB call → returns Promise, not data\n• N+1 queries in ORM — use eager loading / .include()\n• Unhandled Promise rejection crashes the process\n• Missing Content-Type header → client mis-parses response`,
+        "improve": `Backend performance:\n1. Add Redis caching for expensive read queries (TTL = data freshness SLA)\n2. Use database connection pooling — each request should not open a new connection\n3. Paginate all list endpoints — unbounded queries will OOM in production\n4. Add request ID header — critical for tracing errors across services`,
+      },
+      fullstack: {
+        "review":  `Full-stack review:\n\n1. Check the API contract — does the frontend handle all error shapes the backend can return?\n2. Verify auth tokens are refreshed before expiry, not only on 401.\n3. Ensure environment variables are not bundled into the client build.\n4. Confirm CORS is configured correctly — wildcard '*' is never acceptable in production.`,
+        "bug":     `Common full-stack bugs:\n• CORS misconfiguration — works in dev, fails in prod\n• JWT stored in localStorage — vulnerable to XSS; prefer httpOnly cookie\n• Race condition: two concurrent writes clobber each other without optimistic locking\n• Env var leak: VITE_ prefix exposes secrets to client bundle`,
+      },
+      swe: {
+        "review":  `SWE code review:\n\n1. Every public function needs a clear, tested contract — what does it guarantee?\n2. Check Big-O: is any loop nested inside another on the same collection?\n3. Fail fast: validate preconditions at function entry, not mid-logic.\n4. Name variables for what they represent, not how they're computed.`,
+        "bug":     `Common SWE bugs:\n• Off-by-one on array index or loop bound\n• Mutation of shared state across threads/async contexts\n• Integer overflow when computing large products or sums\n• Early return missing in else branch → falls through to wrong path`,
+        "improve": `Code quality improvements:\n1. Extract pure helper functions — easier to test and reason about\n2. Replace magic numbers with named constants\n3. Use guard clauses to flatten nested conditionals\n4. Add a single integration test that covers the happy path end-to-end`,
+      },
+      // ── DevOps / Cloud / SRE / Security ──────────────────────────────────────
       devops: {
-        "review": `Pipeline review:\n\n1. Add a health check step after deployment before routing traffic.\n2. Secret scanning should run before Docker build, not after.\n3. Cache node_modules between runs — CI will be 3x faster.\n4. Add --fail-fast to test runner so pipeline fails early.`,
-        "bug": `Common DevOps issues:\n• No rollback strategy defined → manual recovery under pressure\n• Secrets in YAML → rotate immediately, use vault/SOPS\n• Missing resource limits on k8s pods → OOM kills in prod\n• No liveness probe → dead container stays in service`,
+        "review":  `Pipeline review:\n\n1. Add a health check step after deployment before routing traffic.\n2. Secret scanning should run before Docker build, not after.\n3. Cache node_modules between runs — CI will be 3x faster.\n4. Add --fail-fast to test runner so pipeline fails early.`,
+        "bug":     `Common DevOps issues:\n• No rollback strategy defined → manual recovery under pressure\n• Secrets in YAML → rotate immediately, use vault/SOPS\n• Missing resource limits on k8s pods → OOM kills in prod\n• No liveness probe → dead container stays in service`,
+        "improve": `DevOps improvements:\n1. Shift security left — add SAST/DAST scans to the PR pipeline\n2. Add canary deployments — route 5% of traffic first, monitor error rate\n3. Define runbooks for every alert — reduce MTTR under pressure\n4. Enforce resource quotas per namespace — prevent noisy-neighbour OOM`,
+      },
+      aws: {
+        "review":  `AWS architecture review:\n\n1. Check IAM roles — every Lambda/EC2 should have least-privilege policies.\n2. Enable S3 versioning and MFA delete on production buckets.\n3. Use VPC endpoints for S3/DynamoDB — keep traffic off the public internet.\n4. Set CloudWatch alarms on all critical metrics with SNS notification.`,
+        "bug":     `Common AWS bugs:\n• Lambda cold start timeout — increase memory (CPU scales with memory on Lambda)\n• S3 eventual consistency window — don't read-after-write in same request\n• RDS connection exhaustion — Lambda + RDS without RDS Proxy\n• Missing VPC NAT gateway — Lambda in VPC can't reach internet`,
+      },
+      azure: {
+        "review":  `Azure architecture review:\n\n1. Use Managed Identities — avoid storing credentials in app config.\n2. Enable Defender for Cloud on all subscriptions — free tier catches most misconfigs.\n3. Put everything in a Resource Group with consistent naming and tags.\n4. Use Azure Policy to enforce compliance at scale.`,
+        "bug":     `Common Azure bugs:\n• Function App cold start — use Always On for production workloads\n• Storage Account key leaked in logs — rotate immediately, use SAS tokens\n• Missing Application Insights — blind to errors and latency\n• NSG rules too permissive — audit inbound 0.0.0.0/0 rules`,
+      },
+      sre: {
+        "review":  `SRE review:\n\n1. Is your SLO defined and measurable? Error budget burns should alert before you're out.\n2. Every runbook must have a "done" condition — not just steps.\n3. Verify your toil-to-engineering ratio is below 50% — above that, reliability degrades.\n4. Chaos test your most critical dependency — what happens when it's unavailable?`,
+        "bug":     `Common reliability issues:\n• No circuit breaker on downstream dependency → cascade failure\n• Alert fatigue from non-actionable alerts → on-call misses real incidents\n• Missing retry with exponential backoff → thundering herd on recovery\n• No graceful shutdown handling → in-flight requests dropped on deploy`,
+      },
+      cyber: {
+        "review":  `Security review:\n\n1. Verify all user input is sanitised before being passed to SQL, shell, or HTML.\n2. Check authentication tokens — are they rotated? Stored securely?\n3. Audit third-party dependencies — run npm audit / pip-audit weekly.\n4. Confirm sensitive data is encrypted at rest AND in transit.`,
+        "bug":     `Common security vulnerabilities:\n• SQL injection via string concatenation in queries\n• XSS through unsanitised innerHTML or dangerouslySetInnerHTML\n• Insecure Direct Object Reference — user can access another user's resource by changing ID\n• JWT 'alg: none' acceptance — always validate the algorithm`,
+      },
+      soc: {
+        "review":  `SOC review:\n\n1. Check alert correlation — are you grouping related events into incidents?\n2. Verify log retention meets your compliance requirement (90 days min for most standards).\n3. Test your incident response playbook — tabletop exercise quarterly.\n4. Confirm SIEM rules are tuned — false positive rate above 20% causes alert fatigue.`,
+        "bug":     `Common SOC issues:\n• Log gaps — agent not running on a host, events are invisible\n• Unencrypted log transport — logs contain secrets, treat them as sensitive data\n• Missing enrichment — raw IP with no geo/threat intel context slows triage\n• Alert without context — analyst can't act without knowing asset criticality`,
+      },
+      // ── Data / BI / ML ─────────────────────────────────────────────────────────
+      data: {
+        "review":  `Data analysis review:\n\n1. Verify your aggregation handles NULL correctly — AVG ignores NULLs, COUNT(*) does not.\n2. Check for survivorship bias — are you only analysing records that exist today?\n3. Validate joins don't fan out — a many-to-many join silently inflates row counts.\n4. Confirm your date filter uses the correct timezone.`,
+        "bug":     `Common SQL / data bugs:\n• GROUP BY missing a selected column → wrong aggregation\n• HAVING vs WHERE confusion — HAVING filters after aggregation, WHERE filters before\n• Implicit CROSS JOIN from missing ON clause in older SQL syntax\n• Integer division truncates: 7/2 = 3, not 3.5 — cast to FLOAT first`,
+        "improve": `Analysis improvements:\n1. Use CTEs to break complex queries into named, readable steps\n2. Add EXPLAIN ANALYZE before submitting heavy queries to prod\n3. Store intermediate results in temp tables for multi-step analysis\n4. Sanity-check final numbers against a known baseline before presenting`,
+      },
+      bi_analyst: {
+        "review":  `BI review:\n\n1. Verify the metric definition matches business stakeholder expectations exactly.\n2. Check dashboard load time — if it takes >3 seconds, users will stop trusting it.\n3. Ensure every chart has an axis label and data source citation.\n4. Test all filters in combination — edge cases break drilldowns.`,
+        "bug":     `Common BI bugs:\n• Date grain mismatch — mixing daily and monthly metrics on same chart\n• Filter doesn't apply to all visuals — one chart shows unfiltered data\n• Calculated field uses incorrect aggregation order (SUM of AVG)\n• Data refresh failure not surfaced to end user — stale numbers shown as current`,
+      },
+      ml: {
+        "review":  `ML review:\n\n1. Check for data leakage — is any target information present in your features?\n2. Validate train/test split is stratified if classes are imbalanced.\n3. Confirm preprocessing pipeline is fitted only on training data, never the full dataset.\n4. Evaluate on a held-out test set, not the validation set you used for tuning.`,
+        "bug":     `Common ML bugs:\n• Fitting scaler on full dataset before split → data leakage\n• Using accuracy on imbalanced classes → 95% accuracy on 5% minority = useless model\n• Not setting random_state → non-reproducible results across runs\n• Missing .transform() on test set — raw features fed to fitted model`,
+        "improve": `Model improvement strategies:\n1. Try feature importance first — remove zero-importance features (noise reduction)\n2. Cross-validate with StratifiedKFold — single split variance is deceptive\n3. Calibrate predicted probabilities if you need confidence scores, not just labels\n4. Track experiments with MLflow/W&B — you'll repeat work without it`,
+      },
+      // ── Embedded / ECE / VLSI ─────────────────────────────────────────────────
+      embedded: {
+        "review":  `Embedded review:\n\n1. Check all ISRs are as short as possible — set a flag, do work in main loop.\n2. Verify volatile keyword on all variables shared between ISR and main.\n3. Confirm no dynamic memory allocation (malloc) in bare-metal code.\n4. Check timeout on all blocking peripheral calls — UART/I2C/SPI can hang.`,
+        "bug":     `Common embedded bugs:\n• Missing volatile → compiler optimises away the check, ISR flag never seen\n• Stack overflow — deeply nested calls on small MCU stack (often 256–2048 bytes)\n• SPI CS de-asserted too early → partial byte clocked, corrupted transfer\n• UART baud mismatch → garbled data that looks like noise`,
+        "improve": `Firmware quality improvements:\n1. Use a hardware timer for timeouts — never busy-wait with delay loops\n2. Add watchdog timer reset in main loop — catches infinite loops in production\n3. Use ring buffer for UART RX — prevents data loss at high baud rates\n4. Log build SHA and timestamp to UART on boot — identifies firmware version in field`,
+      },
+      ece: {
+        "review":  `ECE/Electronics review:\n\n1. Check decoupling capacitors on every power rail — 100nF ceramic close to VCC pin.\n2. Verify pull-up/pull-down resistors on open-drain lines (I2C SDA/SCL).\n3. Confirm signal integrity — long PCB traces need series termination resistors.\n4. Check for ground plane stitching vias near high-frequency signals.`,
+        "bug":     `Common electronics bugs:\n• Floating input pin → random switching, unpredictable behaviour\n• Missing flyback diode on inductive load (motor/relay) → voltage spike kills MCU\n• Insufficient bulk capacitance → voltage droop under load transients\n• I2C address conflict → two devices share same address, both respond`,
+      },
+      vlsi: {
+        "review":  `RTL/VLSI review:\n\n1. Check for combinational loops — synthesis tools may resolve them differently than simulation.\n2. Verify all flip-flops have synchronous reset — async reset increases routing congestion.\n3. Confirm clock domain crossings use proper synchroniser FFs (2-FF synchroniser minimum).\n4. Run lint tool (SpyGlass/Verilator -Wall) — catch undriven nets and bit-width mismatches.`,
+        "bug":     `Common RTL bugs:\n• Incomplete sensitivity list in always block (pre-SystemVerilog) → simulation/synthesis mismatch\n• Non-blocking vs blocking assignment confusion → wrong register behaviour\n• Missing default in case statement → latches inferred in synthesis\n• Width mismatch in port connection → silent truncation, wrong result`,
+        "improve": `Design improvements:\n1. Write assertions (SVA) alongside RTL — catches bugs simulation alone misses\n2. Use parameterised modules — width and depth should not be magic numbers\n3. Add pipeline registers at critical paths — meets timing without over-clocking\n4. Use CDC analysis tool (Meridian/Questa CDC) — CDC bugs survive simulation`,
+      },
+      analog_ic: {
+        "review":  `Analog IC review:\n\n1. Check DC operating point — all transistors in correct region (saturation for amplifiers).\n2. Verify gain-bandwidth product — closed-loop bandwidth must be < open-loop GBW/10 for stability.\n3. Run CMRR and PSRR simulations — power supply noise couples into output if PSRR is poor.\n4. Confirm layout matches schematic — parasitic extraction can shift poles significantly.`,
+        "bug":     `Common analog bugs:\n• Oscillation from insufficient phase margin — add dominant pole compensation\n• Output clipping at supply rails — bias current insufficient for load\n• SPICE convergence failure — tighten RELTOL or add initial conditions\n• Layout-dependent mismatch on differential pair → offset voltage`,
+      },
+      // ── EEE / Power / Control ────────────────────────────────────────────────
+      eee: {
+        "review":  `Power systems review:\n\n1. Verify fault current calculations — breaker ratings must exceed maximum fault current.\n2. Check protection coordination — downstream device must trip before upstream.\n3. Confirm earthing system matches site requirements (TN-S, TN-C-S, TT).\n4. Validate load flow study — no bus voltage below 0.95 pu under peak load.`,
+        "bug":     `Common EEE errors:\n• Neutral-earth loop → nuisance tripping and measurement noise\n• Power factor not corrected — reactive kVA inflates apparent demand charges\n• Transformer tap set incorrectly → secondary voltage out of ±5% tolerance\n• Missing inrush current consideration → motor start trips upstream breaker`,
+        "improve": `Power system improvements:\n1. Add capacitor bank for power factor correction — target PF ≥ 0.95\n2. Use energy monitoring at feeder level — locate waste before fixing it\n3. Install surge protection on sensitive equipment panels\n4. Schedule harmonic analysis if >20% load is non-linear (VFDs, UPS, SMPS)`,
+      },
+      // ── Mechanical ───────────────────────────────────────────────────────────
+      mechanical: {
+        "review":  `Mechanical design review:\n\n1. Check FEA boundary conditions — incorrect constraints give incorrect stress results.\n2. Verify material properties are at operating temperature, not room temperature.\n3. Confirm safety factor meets design standard (typically 1.5–4 depending on application).\n4. Review fatigue life — static FEA passing is not sufficient for cyclic loads.`,
+        "bug":     `Common mechanical errors:\n• Stress concentration factor ignored at notches and holes → premature fatigue failure\n• Thermal expansion not accounted for in constrained assemblies → binding or fracture\n• Incorrect mesh density at stress concentrations → FEA underestimates peak stress\n• Wrong material in BOM → wrong yield strength used in design calculation`,
+        "improve": `Design improvements:\n1. Run topology optimisation early — identify minimum material distribution\n2. Use GD&T correctly — vague tolerances cause manufacturing variation\n3. Apply DFM principles — complex geometry increases cost and lead time\n4. Validate CFD mesh independence — halve element size and check results converge`,
+      },
+      // ── Civil ────────────────────────────────────────────────────────────────
+      civil: {
+        "review":  `Structural review:\n\n1. Verify load combinations per IS 875 / applicable code — both strength and serviceability.\n2. Check deflection limits — L/250 for beams under live load (IS 456).\n3. Confirm reinforcement meets minimum and maximum steel percentage limits.\n4. Review connection design — often the critical failure point, not the member.`,
+        "bug":     `Common structural errors:\n• Eccentric loading not considered → torsion in beam or column\n• Short column effect (slenderness ignored) → premature buckling failure\n• Wrong load path assumption → loads bypass structural members\n• Inadequate lap length in rebar splices → bond failure under seismic loads`,
+        "improve": `Design improvements:\n1. Use BIM early — clash detection prevents field rework (expensive)\n2. Run pushover analysis for seismic zones — elastic analysis alone is insufficient\n3. Add water stops at all construction joints in water-retaining structures\n4. Document design assumptions — future modifications need this context`,
+      },
+      // ── Mobile ───────────────────────────────────────────────────────────────
+      android: {
+        "review":  `Android review:\n\n1. Verify no network calls on main thread — use coroutines + IO dispatcher.\n2. Check lifecycle awareness — cancel coroutines in viewModelScope, use lifecycleScope in Fragment.\n3. Confirm RecyclerView uses DiffUtil — prevents full list rebind on every update.\n4. Verify ProGuard/R8 rules — minification can break reflection-based libraries.`,
+        "bug":     `Common Android bugs:\n• Memory leak — Activity reference held in static field or anonymous listener\n• IllegalStateException — Fragment transaction after onSaveInstanceState\n• NetworkOnMainThreadException — blocking call on main thread\n• Missing null check on Bundle extras — crashes on re-launch from notification`,
+        "improve": `Android improvements:\n1. Use Paging 3 for lists over 100 items — lazy loading with built-in error handling\n2. Profile with Android Profiler — identify jank frames before users report them\n3. Add baseline profiles — reduces app startup by 20–40% on cold launch\n4. Use WorkManager for deferrable background work — survives process death and doze`,
+      },
+      ios: {
+        "review":  `iOS review:\n\n1. Check for strong reference cycles — closures capturing self in combine/async need [weak self].\n2. Verify UI updates are always on main actor — publishing from background thread crashes on iOS 17+.\n3. Confirm URLSession tasks are cancelled on view disappearance.\n4. Test on real device — Simulator doesn't reproduce memory pressure or GPU limits.`,
+        "bug":     `Common iOS bugs:\n• Retain cycle in closure: [self.property] instead of [weak self]\n• Main thread violation — URLSession completion on background thread updating @Published\n• Optional force-unwrap crash — use guard let or if let instead\n• UserDefaults synchronize() removed in iOS 12 — don't call it`,
+        "improve": `iOS improvements:\n1. Use async/await with structured concurrency — cleaner than nested completion handlers\n2. Add os_signpost for performance tracing — instruments can visualise your custom spans\n3. Implement App Clip for key user flows — dramatically lowers try-before-install friction\n4. Write snapshot tests for UI components — catches visual regressions in CI`,
+      },
+      // ── Pharmacy / MBA ────────────────────────────────────────────────────────
+      pharmacy: {
+        "review":  `Pharmacy review:\n\n1. Verify dose is within therapeutic range and adjusted for renal/hepatic function.\n2. Check for drug-drug interactions, especially CYP450 enzyme inhibitors/inducers.\n3. Confirm dosage form is appropriate — enteric-coated tablets must not be crushed.\n4. Validate allergy status before dispensing any new drug class.`,
+        "bug":     `Common dispensing errors:\n• Look-alike/sound-alike drug name confusion (e.g. hydroxyzine vs hydralazine)\n• Incorrect unit: mg/kg/day vs mg/kg/dose — 2× overdose in paediatrics\n• Decimal point error: 0.1 mg misread as 1 mg → 10× dose\n• Wrong route: oral solution administered IV → serious adverse event`,
+        "improve": `Pharmacy practice improvements:\n1. Implement double-check protocol for high-alert medications (insulin, warfarin, opioids)\n2. Use tall-man lettering for look-alike drug names in the dispensing system\n3. Add clinical decision support alerts for dose range checking\n4. Conduct root cause analysis on every near-miss — most errors have systemic causes`,
+      },
+      mba: {
+        "review":  `Business analysis review:\n\n1. Check all assumptions in the financial model — stress test the two most sensitive ones.\n2. Verify market sizing uses bottom-up logic, not top-down percentage of TAM.\n3. Confirm the strategy recommendation is specific and time-bound, not directional.\n4. Align on success metric before presenting — stakeholders judge on different criteria.`,
+        "bug":     `Common business analysis errors:\n• Circular reasoning in valuation — using the conclusion to justify the assumption\n• Survivorship bias in benchmarking — only successful companies in the comparison set\n• Ignoring second-order effects — strategy that works in isolation fails in market context\n• Confusing correlation with causation in data-driven recommendations`,
+        "improve": `Analysis improvements:\n1. Run a pre-mortem: assume the strategy failed, what was the cause?\n2. Use MECE structure for frameworks — mutually exclusive, collectively exhaustive\n3. Build sensitivity tables for every DCF — show the range of outcomes, not a point estimate\n4. Test recommendations with a devil's advocate: what would the strongest opponent say?`,
+      },
+      // ── Catchall aliases ──────────────────────────────────────────────────────
+      ba_product: {
+        "review":  `Product/BA review:\n\n1. Does every requirement have a measurable acceptance criterion?\n2. Verify the user story captures the "why" (job to be done), not just the "what".\n3. Check for scope creep — each story should be completable in one sprint.\n4. Confirm stakeholder sign-off on priority before dev starts.`,
+        "bug":     `Common requirements bugs:\n• Ambiguous acceptance criteria → dev and QA interpret differently\n• Missing non-functional requirements → performance or security surprise at launch\n• Edge cases undocumented → discovered only in production\n• Requirements written as solution, not problem — constrains design unnecessarily`,
       },
     }
+    // Alias keys that share the same reply bank
+    REPLIES.swe = REPLIES.swe || REPLIES.fullstack
+    REPLIES.aws = REPLIES.aws || REPLIES.devops
+    REPLIES.azure = REPLIES.azure || REPLIES.devops
+    REPLIES.sre = REPLIES.sre || REPLIES.devops
+    REPLIES.soc = REPLIES.soc || REPLIES.cyber
+    REPLIES.data_engineer = REPLIES.data_engineer || REPLIES.data
+    REPLIES.bi_analyst = REPLIES.bi_analyst || REPLIES.data
+    REPLIES.eee_power = REPLIES.eee_power || REPLIES.eee
+    REPLIES.eee_machines = REPLIES.eee_machines || REPLIES.eee
+    REPLIES.eee_control = REPLIES.eee_control || REPLIES.eee
+    REPLIES.mech = REPLIES.mech || REPLIES.mechanical
+    REPLIES.mech_thermal = REPLIES.mech_thermal || REPLIES.mechanical
+    REPLIES.civil_structural = REPLIES.civil_structural || REPLIES.civil
+    REPLIES.ece_embedded = REPLIES.ece_embedded || REPLIES.embedded
+    REPLIES.ece_vlsi = REPLIES.ece_vlsi || REPLIES.vlsi
+
     const domainReplies = REPLIES[domainKey] || {}
     const match = Object.entries(domainReplies).find(([k]) => lower.includes(k))
     if (match) return match[1]
-    return `Good question for ${domain?.label || "Arena"}. The key principle here is: ${domainKey === "dba" ? "always verify your execution plan — assumptions about index usage are wrong more often than you'd think" : domainKey === "frontend" ? "start with semantics and accessibility before adding interactivity" : domainKey === "devops" ? "automate everything, but always have a manual rollback path documented" : "break the problem into the smallest unit that can be independently tested"}.`
+
+    // Domain-aware fallback principle — every role gets a relevant hint, not a generic one
+    const DOMAIN_PRINCIPLES = {
+      embedded:    "always validate peripheral state before reading — assume the hardware is in an unknown state on boot",
+      vlsi:        "simulation passing is necessary but not sufficient — synthesis and timing must also close",
+      analog_ic:   "DC operating point must be correct before you trust any AC or transient simulation",
+      eee:         "protection coordination is as important as the design itself — a fault must be cleared safely",
+      mechanical:  "safety factor selection is an engineering judgement, not a formula lookup — understand the failure mode first",
+      civil:       "load path clarity is everything — if you can't draw the load path, the design is not yet understood",
+      android:     "every network call, disk read, and heavy computation must happen off the main thread — no exceptions",
+      ios:         "view updates must always run on the main actor — background thread UI mutations will crash on iOS 17+",
+      ml:          "a model that cannot be explained to a business stakeholder will not be trusted, regardless of accuracy",
+      pharmacy:    "when in doubt about a dose, verify with a second source before dispensing — patient safety is non-negotiable",
+      mba:         "a recommendation without a clearly stated assumption is not yet a recommendation",
+      devops:      "automate everything, but always have a documented manual rollback path",
+      dba:         "always verify your execution plan — assumptions about index usage are wrong more often than you'd think",
+      frontend:    "start with semantics and accessibility before adding interactivity",
+      data:        "validate your aggregation handles NULL correctly before drawing any conclusions",
+      cyber:       "treat all external input as hostile until proven otherwise",
+    }
+    const principle = DOMAIN_PRINCIPLES[domainKey] || "break the problem into the smallest unit that can be independently tested"
+    return `Good question for ${domain?.label || "Arena"}. The key principle here is: ${principle}.`
   }
 
   const send = async (text) => {

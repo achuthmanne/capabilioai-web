@@ -19,6 +19,8 @@ export const ARCHETYPES = {
   GROWTH:      "growth",       // Student / Fresher
   FULLSTACK:   "fullstack",    // Full Stack / SWE
   MOBILE:      "mobile",       // Mobile Developer
+  ENGINEER:    "engineer",     // Hardware/ECE/EEE/Mech/Civil engineer
+  PROFESSIONAL:"professional", // Pharmacy, MBA, non-engineering professional
 }
 
 // ── Domain keyword → Archetype mapping ───────────────────────────────────────
@@ -55,6 +57,30 @@ const DOMAIN_MAP = [
   // Full Stack / SWE catch-alls
   { keywords: ["full stack","fullstack","software engineer","software developer","swe","mern","mean","sde"],
     archetype: ARCHETYPES.FULLSTACK },
+
+  // Hardware / Engineering (ECE, EEE, Mech, Civil, VLSI, Embedded, IoT, RF)
+  { keywords: [
+      "embedded","firmware","iot","rtos","microcontroller","fpga",
+      "vlsi","asic","rtl","verilog","vhdl","physical design","chip design",
+      "rf engineer","antenna","microwave","analog","mixed signal","ic design",
+      "electrical engineer","eee","power systems","electrical machines","power electronics",
+      "control systems","instrumentation","plc","scada",
+      "mechanical engineer","thermal","fluid mechanics","cad engineer","solidworks","catia","ansys",
+      "civil engineer","structural engineer","geotechnical","highway","transportation engineer",
+      "construction management","bim","revit","staad","etabs",
+      "electronics","circuit design","pcb","signal processing","telecom","5g engineer",
+    ],
+    archetype: ARCHETYPES.ENGINEER },
+
+  // Professional non-engineering (Pharmacy, MBA, HR, Finance, Marketing)
+  { keywords: [
+      "pharmacist","pharmacy","clinical pharmacology","drug","regulatory affairs","pharmacovigilance",
+      "mba","business analyst","management consultant","strategy consultant","operations manager",
+      "hr manager","human resources","talent acquisition","recruiter",
+      "finance","financial analyst","investment","chartered accountant","ca",
+      "marketing manager","brand manager","growth hacker","digital marketing",
+    ],
+    archetype: ARCHETYPES.PROFESSIONAL },
 ]
 
 // ── Archetype detection ───────────────────────────────────────────────────────
@@ -801,6 +827,147 @@ export const ARCHETYPE_CONFIG = {
 
     hideWhenEmpty: ["web_demos", "infra_diagrams"],
     minimise:      ["backend_apis", "deployment_pipelines"],
+  },
+
+
+  // ── ENGINEER — Hardware / ECE / EEE / Mech / Civil ───────────────────────
+  [ARCHETYPES.ENGINEER]: {
+    name:      "The Build Map",
+    tagline:   "Hardware expertise, simulation proof, real-world projects",
+    icon:      "⚙️",
+
+    palette: {
+      hero:       "linear-gradient(135deg,#064E3B 0%,#065F46 50%,#0F766E 100%)",
+      accent:     "#10B981",
+      accentSoft: "#ECFDF5",
+      tag:        "#059669",
+      terminal:   false,
+    },
+
+    typography: {
+      headingFont: "'DM Sans', sans-serif",
+      codeFont:    "'DM Mono', monospace",
+      headingWeight: 800,
+      heroSize:    48,
+      monoAccent:  false,
+    },
+
+    sections: [
+      "hero",
+      "summary",
+      "projects",        // hardware/simulation projects with tools used
+      "stats",
+      "skills",          // radar: domain tools (ANSYS, Verilog, AutoCAD, ETABS…)
+      "arena",           // engineering challenge completions
+      "certifications",  // GATE, domain certs, professional memberships
+      "education",
+      "contact",
+    ],
+
+    sectionEmphasis: {
+      projects:      "LEAD",    // hardware/simulation projects are the proof
+      skills:        "STRONG",  // domain tools radar matters to hiring engineers
+      certifications:"STRONG",  // GATE score, professional certs
+      arena:         "MEDIUM",
+      education:     "MEDIUM",
+    },
+
+    proofElements: [
+      "simulation_screenshot",  // ANSYS/MATLAB/LTSpice/AutoCAD output images
+      "project_specs",          // specs: power rating, load capacity, frequency, etc.
+      "tool_badges",            // ANSYS, MATLAB, Verilog, SolidWorks, AutoCAD, ETABS…
+      "gate_score",             // GATE percentile if present
+      "publication_link",       // paper or report link
+      "elo_score",              // Arena engineering challenge ELO
+    ],
+
+    recruiterSummary: (ud, tier, tasks) => {
+      const role = ud.keyword || ud.job_role || "Engineer"
+      const elo = ud.eloRating
+      return `${role} · ${tier.label} ELO ${elo}${tasks > 0 ? ` · ${tasks} engineering challenges` : ""}`
+    },
+
+    heroTagline:     "Engineering solutions that work in the real world.",
+    proofBadgeLabel: "Engineering Proof",
+
+    uniqueWidgets: [
+      { id:"simulation_gallery", label:"Simulation Gallery",      desc:"ANSYS/MATLAB/LTSpice/PCB screenshots with annotations" },
+      { id:"tool_proficiency",   label:"Tools & Software",        desc:"domain software radar — CAD, EDA, simulation, BIM" },
+      { id:"project_specs",      label:"Project Specifications",  desc:"key specs: voltage, load, frequency, material grade, etc." },
+    ],
+
+    hideWhenEmpty: ["app_store_link", "web_demos", "api_docs"],
+    minimise:      ["javascript_stack", "cloud_services"],
+  },
+
+
+  // ── PROFESSIONAL — Pharmacy / MBA / HR / Finance / Marketing ─────────────
+  [ARCHETYPES.PROFESSIONAL]: {
+    name:      "The Impact Map",
+    tagline:   "Domain expertise, measurable outcomes, professional credentials",
+    icon:      "🎯",
+
+    palette: {
+      hero:       "linear-gradient(135deg,#1E1B4B 0%,#4C1D95 50%,#7C3AED 100%)",
+      accent:     "#8B5CF6",
+      accentSoft: "#F5F3FF",
+      tag:        "#7C3AED",
+      terminal:   false,
+    },
+
+    typography: {
+      headingFont: "'DM Sans', sans-serif",
+      codeFont:    "'DM Mono', monospace",
+      headingWeight: 800,
+      heroSize:    48,
+      monoAccent:  false,
+    },
+
+    sections: [
+      "hero",
+      "summary",
+      "impact",          // 3-4 bullet impact statements (₹, %, patients, projects)
+      "skills",          // domain skills radar: pharmacology, strategy, financial modelling…
+      "projects",        // case studies, research, campaigns, clinical work
+      "certifications",  // CDSCO, CFA, SHRM, PMP, Six Sigma, MBA specialisation
+      "arena",
+      "education",
+      "contact",
+    ],
+
+    sectionEmphasis: {
+      impact:        "LEAD",    // quantified outcomes headline the portfolio
+      certifications:"STRONG",  // professional credentials matter in these fields
+      skills:        "STRONG",
+      projects:      "MEDIUM",
+      arena:         "MEDIUM",
+    },
+
+    proofElements: [
+      "impact_metrics",     // ₹ saved, % improvement, patients served, deals closed
+      "credential_badges",  // professional credential logos
+      "case_study_link",    // MBA/pharmacy/HR case study PDFs or links
+      "publication_link",   // research papers, pharmacovigilance reports
+      "elo_score",          // Arena professional-track ELO
+    ],
+
+    recruiterSummary: (ud, tier, tasks) => {
+      const role = ud.keyword || ud.job_role || "Professional"
+      const elo = ud.eloRating
+      return `${role} · ${tier.label} ELO ${elo}${tasks > 0 ? ` · ${tasks} domain challenges` : ""}`
+    },
+
+    heroTagline:     "Domain expertise backed by measurable outcomes.",
+    proofBadgeLabel: "Credentials & Impact",
+
+    uniqueWidgets: [
+      { id:"impact_bullets",  label:"Impact Statements",     desc:"3-4 quantified outcomes: '₹2Cr revenue impact', '200 patients counselled'" },
+      { id:"credential_wall", label:"Credential Wall",       desc:"professional certifications, licenses, memberships" },
+      { id:"case_study",      label:"Case Study Spotlight",  desc:"one deep case study with context, analysis, and outcome" },
+    ],
+
+    hideWhenEmpty: ["github_activity", "app_store_link", "deployment_pipelines"],
+    minimise:      ["code_challenges", "system_design"],
   },
 }
 

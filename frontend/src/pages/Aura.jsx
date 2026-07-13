@@ -1056,7 +1056,7 @@ function AIInterviewPanel({ user, userData, save, setUserData, onNavigatePricing
   const [saved, setSaved] = useState(false)
   const videoRef = useRef()
 
-  const keyword = userData?.keyword || "Software Developer"
+  const keyword = userData?.keyword || getRoleConfig(userData).label
   // ── Plan quota ──
   const plan         = getPlan(userData)
   const interviewQuota = plan.interviewSessions          // 0 = no access, 3 = pro, 5 = elite
@@ -2998,7 +2998,7 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
     setSkillGapLoading(true); setSkillGapError("")
     const rawSG=(userData?.skillGraph||[]).filter(d=>d&&(d.label||d.skill))
     const mySkills=rawSG.map(s=>`${s.label||s.skill}(${s.value||s.score||0}%)`).join(", ")||"No skills assessed yet"
-    const role=userData?.keyword||"Software Developer"
+    const role=userData?.keyword||getRoleConfig(userData).label
     const weak=(userData?.weakAreas||[]).join(", ")||"general concepts"
 
     // Role-aware market data — each domain has real skill demand benchmarks
@@ -3424,7 +3424,7 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
   const getCatColor=c=>({Resume:T.indigo,Certification:T.amber,Badge:T.green,Project:"#8E44AD",Other:T.ink4}[c]||T.indigo)
   const C=[T.indigo,T.green,"#E67E22","#8E44AD","#E74C3C","#16A085","#2980B9","#C0392B"]
   // Use keyword or fall back to "Software Developer" so skills are always role-specific
-  const resolvedKeyword = keyword || userData?.job_role || userData?.target_role || "Software Developer"
+  const resolvedKeyword = keyword || userData?.job_role || userData?.target_role || getRoleConfig(userData).label
   const domainSkills = getSkillsForDomain(resolvedKeyword)
 
   // Build an augmented skill score map: skillGraph + Arena history scores

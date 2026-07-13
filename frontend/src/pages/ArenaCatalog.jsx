@@ -46,6 +46,11 @@ const TYPE_CONFIG = {
   finance:       { label: "Finance",       icon: "💹", color: "#065F46" },
   product:       { label: "Product",       icon: "📱", color: "#BE185D" },
   ops:           { label: "Operations",    icon: "⚡", color: "#92400E" },
+  embedded:      { label: "Embedded",      icon: "🔌", color: "#0369A1" },
+  vlsi:          { label: "VLSI",          icon: "🔬", color: "#7C3AED" },
+  mechanical:    { label: "Mechanical",    icon: "🔩", color: "#92400E" },
+  civil:         { label: "Civil",         icon: "🏗️", color: "#065F46" },
+  eee:           { label: "Electrical",    icon: "⚡", color: "#D97706" },
 }
 
 const DIFF_CONFIG = {
@@ -230,6 +235,62 @@ const INLINE_CHALLENGES = [
     proof_type:"code", participation_count:987, solve_count:423, tags:["sql","window-functions","hard"],
     status:"active",
   },
+  // ─── Engineering domain challenges (ECE / EEE / Mechanical / Civil) ──────────
+  {
+    id:"c-16", slug:"gpio-interrupt-handler", title:"GPIO Interrupt-Driven Button Debounce",
+    description:"Implement a debounced GPIO interrupt handler in C. The button must register exactly one press per physical click even under 50 ms bounce noise. Validate with simulated edge sequences.",
+    type:"embedded", domain:"embedded", difficulty:"Medium", estimated_mins:40, elo_impact:22,
+    technologies:["C","RTOS","GPIO","Interrupt"],
+    skills:["Interrupt Handling","Debounce","Bare-metal C","GPIO"],
+    sandbox_type:"code", language:"C",
+    company_name:"Texas Instruments", is_company_sponsored:true, is_recruiter_visible:true,
+    proof_type:"code", participation_count:412, solve_count:198, tags:["embedded","gpio","c"],
+    status:"active",
+  },
+  {
+    id:"c-17", slug:"vlsi-ripple-carry-adder", title:"Design a 4-bit Ripple Carry Adder in Verilog",
+    description:"Write synthesisable Verilog for a 4-bit ripple carry adder. Include a testbench that checks all 256 input combinations and validates the carry-out signal.",
+    type:"vlsi", domain:"vlsi", difficulty:"Medium", estimated_mins:45, elo_impact:25,
+    technologies:["Verilog","ModelSim","FPGA"],
+    skills:["Verilog","Combinational Logic","Testbench","Synthesis"],
+    sandbox_type:"code", language:"Verilog",
+    company_name:"Intel", is_company_sponsored:true, is_recruiter_visible:true,
+    proof_type:"code", participation_count:321, solve_count:147, tags:["vlsi","verilog","digital-design"],
+    status:"active",
+  },
+  {
+    id:"c-18", slug:"beam-deflection-calculator", title:"Beam Deflection Under Distributed Load",
+    description:"Write a Python program to calculate maximum deflection and bending moment for a simply supported beam under a uniformly distributed load. Use numerical integration and plot the bending moment diagram.",
+    type:"mechanical", domain:"mechanical", difficulty:"Medium", estimated_mins:35, elo_impact:20,
+    technologies:["Python","NumPy","Matplotlib"],
+    skills:["Structural Mechanics","Numerical Methods","Bending Moment","Python"],
+    sandbox_type:"notebook", language:"Python",
+    company_name:"L&T", is_company_sponsored:true, is_recruiter_visible:true,
+    proof_type:"report", participation_count:287, solve_count:134, tags:["mechanical","structural","python"],
+    status:"active",
+  },
+  {
+    id:"c-19", slug:"concrete-mix-design", title:"Concrete Mix Design for M25 Grade",
+    description:"Given target compressive strength and exposure conditions, compute the water-cement ratio, cement content, and aggregate proportions for M25 concrete per IS 10262:2019. Output a structured mix design report.",
+    type:"civil", domain:"civil", difficulty:"Medium", estimated_mins:40, elo_impact:20,
+    technologies:["Python","IS Codes","Mix Design"],
+    skills:["Mix Design","IS 10262","Water-Cement Ratio","Aggregate Proportioning"],
+    sandbox_type:"notebook", language:"Python",
+    company_name:"DLF", is_company_sponsored:true, is_recruiter_visible:true,
+    proof_type:"report", participation_count:198, solve_count:87, tags:["civil","concrete","is-code"],
+    status:"active",
+  },
+  {
+    id:"c-20", slug:"power-flow-newton-raphson", title:"Power Flow Analysis — Newton-Raphson Method",
+    description:"Implement Newton-Raphson power flow for a 4-bus system. Compute voltage magnitudes, angles, and real/reactive power at each bus. Compare against the flat-start solution.",
+    type:"eee", domain:"eee", difficulty:"Hard", estimated_mins:50, elo_impact:30,
+    technologies:["Python","NumPy","Power Systems"],
+    skills:["Newton-Raphson","Power Flow","Bus Admittance Matrix","Load Flow"],
+    sandbox_type:"notebook", language:"Python",
+    company_name:"NTPC", is_company_sponsored:true, is_recruiter_visible:true,
+    proof_type:"report", participation_count:156, solve_count:61, tags:["eee","power-systems","numerical"],
+    status:"active",
+  },
 ]
 
 // ─── FILTER CONFIG ────────────────────────────────────────────────────────────
@@ -247,6 +308,11 @@ const TYPE_FILTERS = [
   { id: "cybersecurity", label: "Security 🔒" },
   { id: "finance",       label: "Finance 💹" },
   { id: "product",       label: "Product 📱" },
+  { id: "embedded",      label: "Embedded ⚙️" },
+  { id: "vlsi",          label: "VLSI 🔬" },
+  { id: "mechanical",    label: "Mechanical 🔩" },
+  { id: "civil",         label: "Civil 🏗️" },
+  { id: "eee",           label: "Electrical ⚡" },
 ]
 
 const INITIAL_FILTERS = {

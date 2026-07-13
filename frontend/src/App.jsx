@@ -695,6 +695,7 @@ function App() {
     professional: "orbit",
     authority:    "executiveHome",
     institution:  "orgHome",
+    recruiter:    "recruiterHome",
   }
 
   const navPath = (() => {
@@ -702,6 +703,7 @@ function App() {
     if (p === "authority")    return "authority"
     if (p === "institution")  return "institution"
     if (p === "professional") return "professional"
+    if (p === "recruiter")    return "recruiter"
     return "student"
   })()
 

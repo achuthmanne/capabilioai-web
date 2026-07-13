@@ -262,7 +262,7 @@ router.get("/pro/skills/gaps", requireAuth, async (req, res) => {
       supabaseAdmin.from("profiles").select("target_role,keyword,experiences").eq("id", uid).single(),
     ])
 
-    const role = target_role || profile?.target_role || profile?.keyword || "Software Engineer"
+    const role = target_role || profile?.target_role || profile?.keyword || "Professional"
     const mySkillNames = (userSkills || []).map(s => s.skill_name.toLowerCase())
 
     // Use AI to compute gaps
