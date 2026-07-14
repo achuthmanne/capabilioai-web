@@ -8000,7 +8000,7 @@ data class User(val id: Int, val name: String, val email: String, val avatar: St
 //     suspend fun getUser(id: Int): Result<User> = try {
 //         Result.success(api.getUser(id))
 //     } catch (e: HttpException) {
-//         Result.failure(Exception("HTTP ${e.code()}: ${e.message()}"))
+//         Result.failure(Exception("HTTP \${e.code()}: \${e.message()}"))
 //     } catch (e: IOException) {
 //         Result.failure(Exception("Network error: check your connection"))
 //     }
