@@ -146,6 +146,26 @@ export function classifyBucket(message) {
   return TOPIC_BUCKETS.domain_specific
 }
 
+// ── Coach intent — "what should I do next" style questions ─────────────────
+// ADDED 2026-07-14: routes these specific questions to the MCP-backed
+// /api/copilot/coach endpoint (tool-augmented: real ELO/role/weak-skills data
+// via arena.recommendNextChallenge + elo.getScore + student.getCurrentRole/
+// getWeakSkills) instead of the direct-Groq path. Deliberately narrow — every
+// other message keeps using the existing client-side Groq flow unchanged.
+const COACH_INTENT_PATTERNS = [
+  /\bwhat should i (do|focus on|work on|learn|practice)\b/i,
+  /\bwhat('s| is) next\b/i,
+  /\bwhat next\b/i,
+  /\brecommend(ed)? (a |the )?(challenge|task|next step)\b/i,
+  /\bam i (ready|placement.?ready|interview.?ready)\b/i,
+  /\bhelp me (improve|get better|level up)\b/i,
+  /\bwhat('s| are) my weak(nesses|ness| skills?| areas?)\b/i,
+]
+
+export function isCoachIntent(message) {
+  return COACH_INTENT_PATTERNS.some(p => p.test(message))
+}
+
 // ── 3. PROMPT BUILDERS ──────────────────────────────────────
 
 export function buildSystemPrompt() {

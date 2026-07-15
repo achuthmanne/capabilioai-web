@@ -1,0 +1,2699 @@
+{
+  "generatedAt": "2026-07-14T11:21:36.073Z",
+  "source": "frontend/src/config/arenaDomains.js (WORKBENCH_REGISTRY, ARENA_DOMAINS)",
+  "workbenches": {
+    "code_ide": {
+      "id": "code_ide",
+      "label": "Code IDE",
+      "renderer": "code",
+      "icon": "💻",
+      "desc": "General-purpose code editor — JS, Python, Go, Java, etc.",
+      "usedBy": [
+        "frontend",
+        "backend",
+        "fullstack",
+        "swe",
+        "devops",
+        "android",
+        "ios",
+        "eee",
+        "mechanical"
+      ],
+      "widgets": [
+        "code_editor",
+        "test_output",
+        "mission_control",
+        "hints"
+      ]
+    },
+    "documentation_studio": {
+      "id": "documentation_studio",
+      "label": "Documentation Studio",
+      "renderer": "markdown",
+      "icon": "📝",
+      "desc": "Rich markdown editor for specs, reports, design docs, and architecture notes",
+      "usedBy": [
+        "all"
+      ],
+      "widgets": [
+        "markdown_editor",
+        "preview_pane",
+        "mission_control",
+        "hints"
+      ]
+    },
+    "terminal_console": {
+      "id": "terminal_console",
+      "label": "Terminal Console",
+      "renderer": "terminal",
+      "icon": "🖥️",
+      "desc": "Shell/bash console for scripts, debugging, log inspection, and CLI tools",
+      "usedBy": [
+        "devops",
+        "sre",
+        "embedded",
+        "backend"
+      ],
+      "widgets": [
+        "terminal",
+        "build_output",
+        "mission_control",
+        "hints"
+      ]
+    },
+    "firmware_ide": {
+      "id": "firmware_ide",
+      "label": "Firmware IDE",
+      "renderer": "code",
+      "icon": "🔌",
+      "desc": "Embedded C/C++ editor with register map sidebar and compiler feedback",
+      "lang": "C",
+      "usedBy": [
+        "embedded"
+      ],
+      "widgets": [
+        "code_editor",
+        "register_viewer",
+        "serial_terminal",
+        "build_output",
+        "mission_control",
+        "hints"
+      ]
+    },
+    "logic_analyzer": {
+      "id": "logic_analyzer",
+      "label": "Logic Analyzer",
+      "renderer": "notebook",
+      "icon": "📊",
+      "desc": "Digital signal timeline: decode UART/SPI/I²C frames and spot glitches",
+      "lang": "Python",
+      "usedBy": [
+        "embedded",
+        "vlsi"
+      ],
+      "widgets": [
+        "notebook",
+        "waveform_viewer",
+        "decode_panel",
+        "mission_control",
+        "hints"
+      ]
+    },
+    "rtos_debugger": {
+      "id": "rtos_debugger",
+      "label": "RTOS Debugger",
+      "renderer": "code",
+      "icon": "⏱️",
+      "desc": "Visualise FreeRTOS/Zephyr task states, stack usage, priority inversion",
+      "lang": "C",
+      "usedBy": [
+        "embedded"
+      ],
+      "widgets": [
+        "code_editor",
+        "task_viewer",
+        "stack_inspector",
+        "mission_control",
+        "hints"
+      ]
+    },
+    "hdl_ide": {
+      "id": "hdl_ide",
+      "label": "HDL IDE",
+      "renderer": "code",
+      "icon": "🔬",
+      "desc": "Verilog / SystemVerilog / VHDL editor with lint and synthesis checks",
+      "lang": "Verilog",
+      "usedBy": [
+        "vlsi",
+        "ece"
+      ],
+      "widgets": [
+        "code_editor",
+        "waveform_viewer",
+        "synthesis_report",
+        "mission_control",
+        "hints"
+      ]
+    },
+    "circuit_workbench": {
+      "id": "circuit_workbench",
+      "label": "Circuit Workbench",
+      "renderer": "notebook",
+      "icon": "⚡",
+      "desc": "Python SPICE simulation: op-amps, filters, converters, small-signal models",
+      "lang": "Python",
+      "usedBy": [
+        "analog_ic",
+        "eee",
+        "ece"
+      ],
+      "widgets": [
+        "notebook",
+        "schematic_canvas",
+        "simulation_output",
+        "mission_control",
+        "hints"
+      ]
+    },
+    "layout_studio": {
+      "id": "layout_studio",
+      "label": "Layout Studio",
+      "renderer": "markdown",
+      "icon": "🔧",
+      "desc": "IC layout strategy docs, DRC/LVS checklist, matching and shielding notes",
+      "usedBy": [
+        "analog_ic"
+      ],
+      "widgets": [
+        "markdown_editor",
+        "layer_palette",
+        "drc_panel",
+        "lvs_panel",
+        "mission_control",
+        "hints"
+      ]
+    },
+    "engineering_calculator": {
+      "id": "engineering_calculator",
+      "label": "Engineering Calculator",
+      "renderer": "notebook",
+      "icon": "🧮",
+      "desc": "Python notebook for numerical engineering: load flow, stress, thermo, fluid, PK",
+      "lang": "Python",
+      "usedBy": [
+        "mechanical",
+        "civil",
+        "eee",
+        "pharmacy"
+      ],
+      "widgets": [
+        "notebook",
+        "formula_reference",
+        "unit_converter",
+        "mission_control",
+        "hints"
+      ]
+    },
+    "structural_workbench": {
+      "id": "structural_workbench",
+      "label": "Structural Workbench",
+      "renderer": "notebook",
+      "icon": "🏗️",
+      "desc": "Beam, column, slab, frame analysis with IS/ACI code checks",
+      "lang": "Python",
+      "usedBy": [
+        "civil"
+      ],
+      "widgets": [
+        "notebook",
+        "beam_canvas",
+        "load_diagram",
+        "analysis_results",
+        "mission_control",
+        "hints"
+      ]
+    },
+    "mechanical_studio": {
+      "id": "mechanical_studio",
+      "label": "Mechanical Studio",
+      "renderer": "notebook",
+      "icon": "⚙️",
+      "desc": "Thermodynamics, fluid mechanics, and stress analysis workspace",
+      "lang": "Python",
+      "usedBy": [
+        "mechanical"
+      ],
+      "widgets": [
+        "notebook",
+        "property_panel",
+        "analysis_results",
+        "mission_control",
+        "hints"
+      ]
+    },
+    "ml_workbench": {
+      "id": "ml_workbench",
+      "label": "ML Workbench",
+      "renderer": "notebook",
+      "icon": "🤖",
+      "desc": "Model training, evaluation, experiment tracking, and feature engineering",
+      "lang": "Python",
+      "usedBy": [
+        "ml"
+      ],
+      "widgets": [
+        "notebook",
+        "metrics_dashboard",
+        "model_compare",
+        "experiment_log",
+        "mission_control",
+        "hints"
+      ]
+    },
+    "business_studio": {
+      "id": "business_studio",
+      "label": "Business Studio",
+      "renderer": "markdown",
+      "icon": "💼",
+      "desc": "Case study, strategy frameworks (SWOT, Porter, BCG), and business writing",
+      "usedBy": [
+        "mba",
+        "ba_product"
+      ],
+      "widgets": [
+        "markdown_editor",
+        "framework_canvas",
+        "data_table",
+        "mission_control",
+        "hints"
+      ]
+    },
+    "clinical_lab": {
+      "id": "clinical_lab",
+      "label": "Clinical Lab",
+      "renderer": "markdown",
+      "icon": "💊",
+      "desc": "Clinical case analysis, drug interaction check, and regulatory documentation",
+      "usedBy": [
+        "pharmacy",
+        "medical"
+      ],
+      "widgets": [
+        "markdown_editor",
+        "drug_reference",
+        "patient_record",
+        "mission_control",
+        "hints"
+      ]
+    },
+    "design_canvas": {
+      "id": "design_canvas",
+      "label": "Design Canvas",
+      "renderer": "react",
+      "icon": "🎨",
+      "desc": "Live React/HTML component preview with hot reload",
+      "usedBy": [
+        "frontend",
+        "fullstack"
+      ],
+      "widgets": [
+        "react_preview",
+        "code_editor",
+        "component_tree",
+        "mission_control",
+        "hints"
+      ]
+    }
+  },
+  "domains": {
+    "frontend": {
+      "key": "frontend",
+      "label": "Frontend Developer",
+      "arenaKey": "frontend",
+      "defaultModule": "ui_builder",
+      "defaultSandbox": "react",
+      "modules": [
+        {
+          "id": "ui_builder",
+          "label": "UI Builder",
+          "icon": "🎨",
+          "desc": "Build and preview components live",
+          "sandbox": "react"
+        },
+        {
+          "id": "component",
+          "label": "Component Explorer",
+          "icon": "🧩",
+          "desc": "Browse and fork component library",
+          "sandbox": "react"
+        },
+        {
+          "id": "preview",
+          "label": "Browser Preview",
+          "icon": "🌐",
+          "desc": "Full-page live preview with DevTools",
+          "sandbox": "react"
+        },
+        {
+          "id": "design_system",
+          "label": "Design System",
+          "icon": "🎯",
+          "desc": "Tokens, typography, spacing spec",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "a11y",
+          "label": "Accessibility Scanner",
+          "icon": "♿",
+          "desc": "WCAG 2.1 AA audit and fixes",
+          "sandbox": "react"
+        },
+        {
+          "id": "perf",
+          "label": "Performance Analyzer",
+          "icon": "⚡",
+          "desc": "Core Web Vitals, LCP, CLS analysis",
+          "sandbox": "markdown"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "component_build",
+          "label": "Component Build",
+          "sandbox": "react",
+          "lang": "JSX",
+          "icon": "🧩"
+        },
+        {
+          "id": "page_layout",
+          "label": "Page Layout",
+          "sandbox": "react",
+          "lang": "JSX",
+          "icon": "🖥️"
+        },
+        {
+          "id": "a11y_fix",
+          "label": "Accessibility Fix",
+          "sandbox": "react",
+          "lang": "JSX",
+          "icon": "♿"
+        },
+        {
+          "id": "perf_optimize",
+          "label": "Performance Fix",
+          "sandbox": "markdown",
+          "lang": "Markdown",
+          "icon": "⚡"
+        },
+        {
+          "id": "design_system",
+          "label": "Design System",
+          "sandbox": "react",
+          "lang": "JSX",
+          "icon": "🎨"
+        }
+      ]
+    },
+    "backend": {
+      "key": "backend",
+      "label": "Backend Developer",
+      "arenaKey": "backend",
+      "defaultModule": "api_designer",
+      "defaultSandbox": "code",
+      "modules": [
+        {
+          "id": "api_designer",
+          "label": "API Designer",
+          "icon": "🔌",
+          "desc": "Design and test REST / GraphQL endpoints",
+          "sandbox": "code"
+        },
+        {
+          "id": "service",
+          "label": "Service Explorer",
+          "icon": "🔧",
+          "desc": "Browse microservice architecture",
+          "sandbox": "diagram"
+        },
+        {
+          "id": "queue",
+          "label": "Queue Monitor",
+          "icon": "📬",
+          "desc": "Message queues, events, async flows",
+          "sandbox": "code"
+        },
+        {
+          "id": "logs",
+          "label": "Log Viewer",
+          "icon": "📋",
+          "desc": "Structured log analysis and tracing",
+          "sandbox": "terminal"
+        },
+        {
+          "id": "testing",
+          "label": "Testing Center",
+          "icon": "🧪",
+          "desc": "Unit, integration, contract tests",
+          "sandbox": "code"
+        },
+        {
+          "id": "arch",
+          "label": "Architecture Explorer",
+          "icon": "🏗️",
+          "desc": "System diagram and dependency graph",
+          "sandbox": "diagram"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "api_design",
+          "label": "API Design",
+          "sandbox": "code",
+          "lang": "JavaScript",
+          "icon": "🔌"
+        },
+        {
+          "id": "auth_system",
+          "label": "Auth System",
+          "sandbox": "code",
+          "lang": "JavaScript",
+          "icon": "🔐"
+        },
+        {
+          "id": "db_query",
+          "label": "Database Query",
+          "sandbox": "sql",
+          "lang": "SQL",
+          "icon": "🗃️"
+        },
+        {
+          "id": "service_design",
+          "label": "Service Design",
+          "sandbox": "diagram",
+          "lang": "Markdown",
+          "icon": "🏗️"
+        },
+        {
+          "id": "testing",
+          "label": "Unit Tests",
+          "sandbox": "code",
+          "lang": "JavaScript",
+          "icon": "🧪"
+        }
+      ]
+    },
+    "fullstack": {
+      "key": "fullstack",
+      "label": "Full Stack Developer",
+      "arenaKey": "fullstack",
+      "defaultModule": "code_editor",
+      "defaultSandbox": "code",
+      "modules": [
+        {
+          "id": "code_editor",
+          "label": "Code Editor",
+          "icon": "💻",
+          "desc": "Multi-language editor with LSP",
+          "sandbox": "code"
+        },
+        {
+          "id": "terminal",
+          "label": "Terminal",
+          "icon": "⌨️",
+          "desc": "Full bash terminal",
+          "sandbox": "terminal"
+        },
+        {
+          "id": "api_explorer",
+          "label": "API Explorer",
+          "icon": "🔌",
+          "desc": "Test APIs with request builder",
+          "sandbox": "code"
+        },
+        {
+          "id": "db_browser",
+          "label": "Database Browser",
+          "icon": "🗃️",
+          "desc": "Inspect tables, run queries",
+          "sandbox": "sql"
+        },
+        {
+          "id": "deploy",
+          "label": "Deployment Center",
+          "icon": "🚀",
+          "desc": "CI/CD pipeline, env vars, releases",
+          "sandbox": "terminal"
+        },
+        {
+          "id": "git",
+          "label": "Git Workspace",
+          "icon": "🌿",
+          "desc": "Branch, diff, merge, PR review",
+          "sandbox": "terminal"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "feature_build",
+          "label": "Feature Build",
+          "sandbox": "code",
+          "lang": "JavaScript",
+          "icon": "⚡"
+        },
+        {
+          "id": "api_ui",
+          "label": "API + UI",
+          "sandbox": "react",
+          "lang": "JSX",
+          "icon": "🔌"
+        },
+        {
+          "id": "db_migration",
+          "label": "DB Migration",
+          "sandbox": "sql",
+          "lang": "SQL",
+          "icon": "🗃️"
+        },
+        {
+          "id": "deploy_script",
+          "label": "Deploy Script",
+          "sandbox": "terminal",
+          "lang": "Bash",
+          "icon": "🚀"
+        },
+        {
+          "id": "code_review",
+          "label": "Code Review",
+          "sandbox": "markdown",
+          "lang": "Markdown",
+          "icon": "🔍"
+        }
+      ]
+    },
+    "swe": {
+      "key": "swe",
+      "label": "Software Engineer",
+      "arenaKey": "swe",
+      "defaultModule": "lang_studio",
+      "defaultSandbox": "code",
+      "modules": [
+        {
+          "id": "lang_studio",
+          "label": "Language Studio",
+          "icon": "💻",
+          "desc": "Multi-language IDE with test runner",
+          "sandbox": "code"
+        },
+        {
+          "id": "dsa_arena",
+          "label": "DSA Arena",
+          "icon": "🧠",
+          "desc": "Data structures & algorithm challenges",
+          "sandbox": "code"
+        },
+        {
+          "id": "compiler",
+          "label": "Compiler Lab",
+          "icon": "⚙️",
+          "desc": "Compile, run, debug any language",
+          "sandbox": "terminal"
+        },
+        {
+          "id": "system_design",
+          "label": "System Design Studio",
+          "icon": "🏗️",
+          "desc": "Design distributed systems on canvas",
+          "sandbox": "diagram"
+        },
+        {
+          "id": "problem",
+          "label": "Problem Solver",
+          "icon": "🎯",
+          "desc": "Timed problem-solving with evaluation",
+          "sandbox": "code"
+        },
+        {
+          "id": "code_runner",
+          "label": "Code Runner",
+          "icon": "▶️",
+          "desc": "Run code in any language instantly",
+          "sandbox": "terminal"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "dsa",
+          "label": "DSA Challenge",
+          "sandbox": "code",
+          "lang": "Python",
+          "icon": "🧠"
+        },
+        {
+          "id": "system_design",
+          "label": "System Design",
+          "sandbox": "diagram",
+          "lang": "Markdown",
+          "icon": "🏗️"
+        },
+        {
+          "id": "code_impl",
+          "label": "Implementation",
+          "sandbox": "code",
+          "lang": "JavaScript",
+          "icon": "💻"
+        },
+        {
+          "id": "debugging",
+          "label": "Debug Session",
+          "sandbox": "code",
+          "lang": "Python",
+          "icon": "🔍"
+        },
+        {
+          "id": "review",
+          "label": "Code Review",
+          "sandbox": "markdown",
+          "lang": "Markdown",
+          "icon": "📝"
+        }
+      ]
+    },
+    "data": {
+      "key": "data",
+      "label": "Data Analyst",
+      "arenaKey": "data",
+      "defaultModule": "sql_studio",
+      "defaultSandbox": "sql",
+      "modules": [
+        {
+          "id": "sql_studio",
+          "label": "SQL Studio",
+          "icon": "🗃️",
+          "desc": "Write and optimise analytical SQL",
+          "sandbox": "sql"
+        },
+        {
+          "id": "python_analyst",
+          "label": "Python / Pandas",
+          "icon": "🐍",
+          "desc": "EDA, data cleaning, statistics with pandas",
+          "sandbox": "notebook"
+        },
+        {
+          "id": "excel_ws",
+          "label": "Excel Workbook",
+          "icon": "📗",
+          "desc": "Spreadsheet formulas, pivot tables, VLOOKUP",
+          "sandbox": "excel"
+        },
+        {
+          "id": "dashboard_bi",
+          "label": "BI Dashboard",
+          "icon": "📈",
+          "desc": "KPI cards, bar/line/pie charts, Power BI sim",
+          "sandbox": "dashboard"
+        },
+        {
+          "id": "report_writer",
+          "label": "Analysis Report",
+          "icon": "📝",
+          "desc": "Executive summary, findings, recommendations",
+          "sandbox": "report"
+        },
+        {
+          "id": "viz_center",
+          "label": "Visualization",
+          "icon": "🎨",
+          "desc": "Charts, heatmaps, scatter plots",
+          "sandbox": "notebook"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "sql_analysis",
+          "label": "SQL Analysis",
+          "sandbox": "sql",
+          "lang": "SQL",
+          "icon": "🗃️",
+          "missionType": "sql"
+        },
+        {
+          "id": "python_eda",
+          "label": "Python / EDA",
+          "sandbox": "notebook",
+          "lang": "Python",
+          "icon": "🐍",
+          "missionType": "notebook"
+        },
+        {
+          "id": "excel_model",
+          "label": "Excel Model",
+          "sandbox": "excel",
+          "lang": "Excel",
+          "icon": "📗",
+          "missionType": "excel"
+        },
+        {
+          "id": "bi_dashboard",
+          "label": "BI Dashboard",
+          "sandbox": "dashboard",
+          "lang": "Dashboard",
+          "icon": "📈",
+          "missionType": "dashboard"
+        },
+        {
+          "id": "analysis_report",
+          "label": "Analysis Report",
+          "sandbox": "report",
+          "lang": "Markdown",
+          "icon": "📝",
+          "missionType": "report"
+        },
+        {
+          "id": "data_cleaning",
+          "label": "Data Cleaning",
+          "sandbox": "notebook",
+          "lang": "Python",
+          "icon": "🧹",
+          "missionType": "notebook"
+        }
+      ]
+    },
+    "dba": {
+      "key": "dba",
+      "label": "Database Administrator",
+      "arenaKey": "dba",
+      "defaultModule": "query",
+      "defaultSandbox": "sql",
+      "modules": [
+        {
+          "id": "schema",
+          "label": "Schema Manager",
+          "icon": "📐",
+          "desc": "Tables, indexes, constraints, ERDs",
+          "sandbox": "sql"
+        },
+        {
+          "id": "query",
+          "label": "Query Analyzer",
+          "icon": "🔍",
+          "desc": "EXPLAIN ANALYZE, plan visualizer",
+          "sandbox": "sql"
+        },
+        {
+          "id": "index",
+          "label": "Index Optimizer",
+          "icon": "⚡",
+          "desc": "Missing indexes, bloat analysis",
+          "sandbox": "sql"
+        },
+        {
+          "id": "backup",
+          "label": "Backup Center",
+          "icon": "💾",
+          "desc": "pg_dump, PITR, restore procedures",
+          "sandbox": "terminal"
+        },
+        {
+          "id": "replication",
+          "label": "Replication Monitor",
+          "icon": "🔄",
+          "desc": "WAL lag, replica health, failover",
+          "sandbox": "terminal"
+        },
+        {
+          "id": "health",
+          "label": "DB Health Dashboard",
+          "icon": "🏥",
+          "desc": "Connections, cache hit rate, autovacuum",
+          "sandbox": "sql"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "query_opt",
+          "label": "Query Optimisation",
+          "sandbox": "sql",
+          "lang": "SQL",
+          "icon": "🔍"
+        },
+        {
+          "id": "index_design",
+          "label": "Index Design",
+          "sandbox": "sql",
+          "lang": "SQL",
+          "icon": "⚡"
+        },
+        {
+          "id": "schema",
+          "label": "Schema Design",
+          "sandbox": "sql",
+          "lang": "SQL",
+          "icon": "📐"
+        },
+        {
+          "id": "backup",
+          "label": "Backup & Recovery",
+          "sandbox": "terminal",
+          "lang": "Bash",
+          "icon": "💾"
+        },
+        {
+          "id": "replication",
+          "label": "Replication Setup",
+          "sandbox": "terminal",
+          "lang": "Bash",
+          "icon": "🔄"
+        }
+      ]
+    },
+    "cyber": {
+      "key": "cyber",
+      "label": "Cybersecurity",
+      "arenaKey": "cyber",
+      "defaultModule": "soc",
+      "defaultSandbox": "terminal",
+      "modules": [
+        {
+          "id": "soc",
+          "label": "SOC Dashboard",
+          "icon": "🛡️",
+          "desc": "Alerts, severity triage, SIEM events",
+          "sandbox": "terminal"
+        },
+        {
+          "id": "siem",
+          "label": "SIEM Explorer",
+          "icon": "🔎",
+          "desc": "Log correlation, rule authoring",
+          "sandbox": "terminal"
+        },
+        {
+          "id": "threat",
+          "label": "Threat Hunter",
+          "icon": "🎯",
+          "desc": "IOCs, TTPs, MITRE ATT&CK mapping",
+          "sandbox": "terminal"
+        },
+        {
+          "id": "incident",
+          "label": "Incident Response",
+          "icon": "🚨",
+          "desc": "Playbooks, containment, forensics",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "vuln",
+          "label": "Vulnerability Scanner",
+          "icon": "🔍",
+          "desc": "CVE triage, CVSS scoring, patch plans",
+          "sandbox": "terminal"
+        },
+        {
+          "id": "pentest",
+          "label": "Pentest Lab",
+          "icon": "⚔️",
+          "desc": "Recon, exploit, report chain",
+          "sandbox": "terminal"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "triage",
+          "label": "Alert Triage",
+          "sandbox": "terminal",
+          "lang": "Bash",
+          "icon": "🚨"
+        },
+        {
+          "id": "threat_hunt",
+          "label": "Threat Hunt",
+          "sandbox": "terminal",
+          "lang": "Bash",
+          "icon": "🎯"
+        },
+        {
+          "id": "pentest",
+          "label": "Pentest Scenario",
+          "sandbox": "terminal",
+          "lang": "Bash",
+          "icon": "⚔️"
+        },
+        {
+          "id": "incident",
+          "label": "Incident Response",
+          "sandbox": "markdown",
+          "lang": "Markdown",
+          "icon": "🛡️"
+        },
+        {
+          "id": "vuln_report",
+          "label": "Vuln Report",
+          "sandbox": "markdown",
+          "lang": "Markdown",
+          "icon": "📋"
+        }
+      ]
+    },
+    "medical": {
+      "key": "medical",
+      "label": "Medical Coding",
+      "arenaKey": "medical",
+      "defaultModule": "records",
+      "defaultSandbox": "markdown",
+      "modules": [
+        {
+          "id": "icd",
+          "label": "ICD Explorer",
+          "icon": "📖",
+          "desc": "Search ICD-10-CM/PCS code tree",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "cpt",
+          "label": "CPT Workspace",
+          "icon": "💊",
+          "desc": "CPT code lookup and bundling rules",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "records",
+          "label": "Medical Records Viewer",
+          "icon": "📋",
+          "desc": "Annotate clinical notes for codes",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "compliance",
+          "label": "Compliance Center",
+          "icon": "✅",
+          "desc": "Coding guidelines, official guidance",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "audit",
+          "label": "Audit Dashboard",
+          "icon": "🔍",
+          "desc": "DRG validation, upcoding flags, audits",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "assistant",
+          "label": "Coding Assistant",
+          "icon": "🤖",
+          "desc": "AI-powered code suggestion and review",
+          "sandbox": "markdown"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "icd_coding",
+          "label": "ICD-10 Coding",
+          "sandbox": "markdown",
+          "lang": "Markdown",
+          "icon": "📖"
+        },
+        {
+          "id": "cpt_coding",
+          "label": "CPT Coding",
+          "sandbox": "markdown",
+          "lang": "Markdown",
+          "icon": "💊"
+        },
+        {
+          "id": "drg_assign",
+          "label": "DRG Assignment",
+          "sandbox": "markdown",
+          "lang": "Markdown",
+          "icon": "🏥"
+        },
+        {
+          "id": "audit",
+          "label": "Coding Audit",
+          "sandbox": "markdown",
+          "lang": "Markdown",
+          "icon": "🔍"
+        },
+        {
+          "id": "compliance",
+          "label": "Compliance Review",
+          "sandbox": "markdown",
+          "lang": "Markdown",
+          "icon": "✅"
+        }
+      ]
+    },
+    "ece": {
+      "key": "ece",
+      "label": "ECE / Embedded Systems",
+      "arenaKey": "ece",
+      "defaultModule": "embedded",
+      "defaultSandbox": "code",
+      "modules": [
+        {
+          "id": "circuit",
+          "label": "Circuit Studio",
+          "icon": "⚡",
+          "desc": "Schematic design and simulation",
+          "sandbox": "code"
+        },
+        {
+          "id": "pcb",
+          "label": "PCB Designer",
+          "icon": "🔌",
+          "desc": "PCB layout, DRC, gerber export",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "rtl",
+          "label": "RTL Editor",
+          "icon": "💾",
+          "desc": "Verilog/VHDL code with synthesis",
+          "sandbox": "code"
+        },
+        {
+          "id": "fpga",
+          "label": "FPGA Workspace",
+          "icon": "🖥️",
+          "desc": "FPGA design, timing analysis, floorplan",
+          "sandbox": "code"
+        },
+        {
+          "id": "embedded",
+          "label": "Embedded IDE",
+          "icon": "🤖",
+          "desc": "C/C++ for microcontrollers (ARM/AVR)",
+          "sandbox": "code"
+        },
+        {
+          "id": "sim",
+          "label": "Verilog Simulator",
+          "icon": "🔄",
+          "desc": "Testbench simulation and waveforms",
+          "sandbox": "code"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "firmware",
+          "label": "Firmware Task",
+          "sandbox": "code",
+          "lang": "C",
+          "icon": "🤖"
+        },
+        {
+          "id": "rtl_design",
+          "label": "RTL Design",
+          "workbench": "hdl_ide",
+          "lang": "Verilog",
+          "icon": "💾"
+        },
+        {
+          "id": "circuit",
+          "label": "Circuit Design",
+          "sandbox": "markdown",
+          "lang": "Markdown",
+          "icon": "⚡"
+        },
+        {
+          "id": "protocol",
+          "label": "Protocol Impl",
+          "sandbox": "code",
+          "lang": "C",
+          "icon": "🔌"
+        },
+        {
+          "id": "debug",
+          "label": "HW Debug",
+          "sandbox": "terminal",
+          "lang": "Bash",
+          "icon": "🔍"
+        }
+      ]
+    },
+    "devops": {
+      "key": "devops",
+      "label": "DevOps Engineer",
+      "arenaKey": "devops",
+      "defaultModule": "pipeline",
+      "defaultSandbox": "code",
+      "modules": [
+        {
+          "id": "pipeline",
+          "label": "Pipeline Center",
+          "icon": "⚙️",
+          "desc": "CI/CD YAML authoring and visualiser",
+          "sandbox": "code"
+        },
+        {
+          "id": "infra",
+          "label": "Infrastructure Explorer",
+          "icon": "🏗️",
+          "desc": "Terraform / CDK IaC workbench",
+          "sandbox": "code"
+        },
+        {
+          "id": "k8s",
+          "label": "Kubernetes Dashboard",
+          "icon": "☸️",
+          "desc": "kubectl, manifests, Helm charts",
+          "sandbox": "code"
+        },
+        {
+          "id": "monitoring",
+          "label": "Monitoring Center",
+          "icon": "📡",
+          "desc": "Prometheus, Grafana, alerting rules",
+          "sandbox": "code"
+        },
+        {
+          "id": "alerts",
+          "label": "Alert Manager",
+          "icon": "🚨",
+          "desc": "SLO/SLA config, alert routing, runbooks",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "cost",
+          "label": "Cost Analytics",
+          "icon": "💰",
+          "desc": "Cloud spend, rightsizing, waste reports",
+          "sandbox": "markdown"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "pipeline",
+          "label": "Pipeline Build",
+          "sandbox": "code",
+          "lang": "YAML",
+          "icon": "⚙️"
+        },
+        {
+          "id": "iac",
+          "label": "IaC Module",
+          "sandbox": "code",
+          "lang": "HCL",
+          "icon": "🏗️"
+        },
+        {
+          "id": "k8s",
+          "label": "K8s Manifest",
+          "sandbox": "code",
+          "lang": "YAML",
+          "icon": "☸️"
+        },
+        {
+          "id": "incident",
+          "label": "Incident Response",
+          "sandbox": "markdown",
+          "lang": "Markdown",
+          "icon": "🚨"
+        },
+        {
+          "id": "runbook",
+          "label": "Runbook",
+          "sandbox": "markdown",
+          "lang": "Markdown",
+          "icon": "📋"
+        }
+      ]
+    },
+    "aws": {
+      "key": "aws",
+      "label": "AWS Cloud Engineer",
+      "arenaKey": "aws",
+      "defaultModule": "arch_builder",
+      "defaultSandbox": "diagram",
+      "modules": [
+        {
+          "id": "arch_builder",
+          "label": "Architecture Builder",
+          "icon": "🏗️",
+          "desc": "Draw and document AWS architectures",
+          "sandbox": "diagram"
+        },
+        {
+          "id": "iam",
+          "label": "IAM Manager",
+          "icon": "🔐",
+          "desc": "Policies, roles, trust relationships",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "vpc",
+          "label": "VPC Designer",
+          "icon": "🌐",
+          "desc": "Subnets, routing, security groups",
+          "sandbox": "diagram"
+        },
+        {
+          "id": "cloudwatch",
+          "label": "CloudWatch Center",
+          "icon": "📊",
+          "desc": "Dashboards, alarms, log insights",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "cost",
+          "label": "Cost Explorer",
+          "icon": "💰",
+          "desc": "Cost analysis, Savings Plans, rightsizing",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "serverless",
+          "label": "Serverless Studio",
+          "icon": "⚡",
+          "desc": "Lambda, API Gateway, Step Functions",
+          "sandbox": "code"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "arch_design",
+          "label": "Architecture Design",
+          "workbench": "documentation_studio",
+          "lang": "Markdown",
+          "icon": "🏗️"
+        },
+        {
+          "id": "iac",
+          "label": "IaC (CDK/CF)",
+          "sandbox": "code",
+          "lang": "TypeScript",
+          "icon": "⚙️"
+        },
+        {
+          "id": "iam_policy",
+          "label": "IAM Policy",
+          "sandbox": "code",
+          "lang": "JSON",
+          "icon": "🔐"
+        },
+        {
+          "id": "lambda",
+          "label": "Lambda Function",
+          "sandbox": "code",
+          "lang": "JavaScript",
+          "icon": "⚡"
+        },
+        {
+          "id": "cost_review",
+          "label": "Cost Review",
+          "sandbox": "markdown",
+          "lang": "Markdown",
+          "icon": "💰"
+        }
+      ]
+    },
+    "azure": {
+      "key": "azure",
+      "label": "Azure Cloud Engineer",
+      "arenaKey": "azure",
+      "defaultModule": "arch_builder",
+      "defaultSandbox": "diagram",
+      "modules": [
+        {
+          "id": "arch_builder",
+          "label": "Architecture Builder",
+          "icon": "🏗️",
+          "desc": "Azure architecture diagrams and patterns",
+          "sandbox": "diagram"
+        },
+        {
+          "id": "entra",
+          "label": "Entra ID Manager",
+          "icon": "🔐",
+          "desc": "AAD, app registrations, RBAC, PIM",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "monitoring",
+          "label": "Monitoring Center",
+          "icon": "📊",
+          "desc": "Azure Monitor, Log Analytics, KQL",
+          "sandbox": "terminal"
+        },
+        {
+          "id": "cost",
+          "label": "Cost Management",
+          "icon": "💰",
+          "desc": "Cost analysis, budgets, advisor",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "aks",
+          "label": "AKS Dashboard",
+          "icon": "☸️",
+          "desc": "AKS cluster management, Helm, Flux",
+          "sandbox": "terminal"
+        },
+        {
+          "id": "resource",
+          "label": "Resource Explorer",
+          "icon": "🌐",
+          "desc": "Resource groups, ARM/Bicep templates",
+          "sandbox": "code"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "arch_design",
+          "label": "Architecture Design",
+          "workbench": "documentation_studio",
+          "lang": "Markdown",
+          "icon": "🏗️"
+        },
+        {
+          "id": "bicep_iac",
+          "label": "Bicep Template",
+          "sandbox": "code",
+          "lang": "Bicep",
+          "icon": "⚙️"
+        },
+        {
+          "id": "rbac",
+          "label": "RBAC / Policy",
+          "sandbox": "code",
+          "lang": "JSON",
+          "icon": "🔐"
+        },
+        {
+          "id": "kql_query",
+          "label": "KQL Query",
+          "sandbox": "code",
+          "lang": "KQL",
+          "icon": "📊"
+        },
+        {
+          "id": "cost_review",
+          "label": "Cost Review",
+          "sandbox": "markdown",
+          "lang": "Markdown",
+          "icon": "💰"
+        }
+      ]
+    },
+    "bi_analyst": {
+      "key": "bi_analyst",
+      "label": "BI Analyst",
+      "arenaKey": "bi_analyst",
+      "defaultModule": "dashboard",
+      "defaultSandbox": "dashboard",
+      "modules": [
+        {
+          "id": "dashboard",
+          "label": "Dashboard Builder",
+          "icon": "📊",
+          "desc": "Build interactive dashboards with real data",
+          "sandbox": "dashboard"
+        },
+        {
+          "id": "sql_queries",
+          "label": "SQL Queries",
+          "icon": "🗄️",
+          "desc": "Write reporting queries and aggregations",
+          "sandbox": "sql"
+        },
+        {
+          "id": "kpi_design",
+          "label": "KPI Design",
+          "icon": "🎯",
+          "desc": "Define metrics, dimensions and KPI trees",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "data_story",
+          "label": "Data Storytelling",
+          "icon": "📖",
+          "desc": "Communicate insights to stakeholders",
+          "sandbox": "report"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "build_dashboard",
+          "label": "Build Dashboard",
+          "sandbox": "dashboard",
+          "lang": "SQL",
+          "icon": "📊"
+        },
+        {
+          "id": "write_query",
+          "label": "Write SQL Report",
+          "sandbox": "sql",
+          "lang": "SQL",
+          "icon": "🗄️"
+        },
+        {
+          "id": "define_kpi",
+          "label": "Define KPI",
+          "sandbox": "markdown",
+          "lang": "Markdown",
+          "icon": "🎯"
+        }
+      ]
+    },
+    "data_engineer": {
+      "key": "data_engineer",
+      "label": "Data Engineer",
+      "arenaKey": "data_engineer",
+      "defaultModule": "pipeline",
+      "defaultSandbox": "notebook",
+      "modules": [
+        {
+          "id": "pipeline",
+          "label": "Pipeline Studio",
+          "icon": "⚙️",
+          "desc": "Build ETL/ELT pipelines with DAG visualiser",
+          "sandbox": "notebook"
+        },
+        {
+          "id": "sql_transform",
+          "label": "SQL Transforms",
+          "icon": "🗄️",
+          "desc": "dbt-style SQL transforms and data models",
+          "sandbox": "sql"
+        },
+        {
+          "id": "streaming",
+          "label": "Streaming Design",
+          "icon": "🌊",
+          "desc": "Kafka topics, consumers, streaming logic",
+          "sandbox": "terminal"
+        },
+        {
+          "id": "infra",
+          "label": "Data Infra",
+          "icon": "🏗️",
+          "desc": "Warehouse design, partitioning, indexing",
+          "sandbox": "markdown"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "build_pipeline",
+          "label": "Build Pipeline",
+          "sandbox": "notebook",
+          "lang": "Python",
+          "icon": "⚙️"
+        },
+        {
+          "id": "write_transform",
+          "label": "Write Transform",
+          "sandbox": "sql",
+          "lang": "SQL",
+          "icon": "🗄️"
+        },
+        {
+          "id": "debug_pipeline",
+          "label": "Debug Pipeline",
+          "sandbox": "terminal",
+          "lang": "Bash",
+          "icon": "🐛"
+        }
+      ]
+    },
+    "sre": {
+      "key": "sre",
+      "label": "SRE / Platform Eng",
+      "arenaKey": "sre",
+      "defaultModule": "k8s_ops",
+      "defaultSandbox": "terminal",
+      "modules": [
+        {
+          "id": "k8s_ops",
+          "label": "K8s Operations",
+          "icon": "☸️",
+          "desc": "Debug pods, write manifests, scale deployments",
+          "sandbox": "terminal"
+        },
+        {
+          "id": "slo_design",
+          "label": "SLO / SLI Design",
+          "icon": "🎯",
+          "desc": "Define reliability targets and error budgets",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "observability",
+          "label": "Observability",
+          "icon": "📡",
+          "desc": "PromQL queries, alerting rules, dashboards",
+          "sandbox": "terminal"
+        },
+        {
+          "id": "postmortem",
+          "label": "Postmortem Writing",
+          "icon": "📝",
+          "desc": "Blameless postmortems and root-cause analysis",
+          "sandbox": "markdown"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "debug_incident",
+          "label": "Debug Incident",
+          "sandbox": "terminal",
+          "lang": "Bash",
+          "icon": "🚨"
+        },
+        {
+          "id": "write_slo",
+          "label": "Write SLO",
+          "sandbox": "markdown",
+          "lang": "Markdown",
+          "icon": "🎯"
+        },
+        {
+          "id": "write_runbook",
+          "label": "Write Runbook",
+          "sandbox": "markdown",
+          "lang": "Markdown",
+          "icon": "📝"
+        }
+      ]
+    },
+    "soc": {
+      "key": "soc",
+      "label": "SOC Analyst / IR",
+      "arenaKey": "soc",
+      "defaultModule": "alert_triage",
+      "defaultSandbox": "terminal",
+      "modules": [
+        {
+          "id": "alert_triage",
+          "label": "Alert Triage",
+          "icon": "🚨",
+          "desc": "Classify alerts: true/false positive, severity",
+          "sandbox": "terminal"
+        },
+        {
+          "id": "ir_playbook",
+          "label": "IR Playbook",
+          "icon": "📋",
+          "desc": "Follow and execute incident response steps",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "siem_queries",
+          "label": "SIEM Queries",
+          "icon": "🔍",
+          "desc": "Splunk/Elastic queries to find threat patterns",
+          "sandbox": "terminal"
+        },
+        {
+          "id": "threat_report",
+          "label": "Threat Report",
+          "icon": "📄",
+          "desc": "Write structured threat intelligence reports",
+          "sandbox": "report"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "triage_alerts",
+          "label": "Triage Alerts",
+          "sandbox": "terminal",
+          "lang": "SPL",
+          "icon": "🚨"
+        },
+        {
+          "id": "investigate_ioc",
+          "label": "Investigate IOC",
+          "sandbox": "terminal",
+          "lang": "KQL",
+          "icon": "🔍"
+        },
+        {
+          "id": "write_ir_report",
+          "label": "Write IR Report",
+          "sandbox": "report",
+          "lang": "Markdown",
+          "icon": "📄"
+        }
+      ]
+    },
+    "qa": {
+      "key": "qa",
+      "label": "QA / Test Automation",
+      "arenaKey": "qa",
+      "defaultModule": "write_tests",
+      "defaultSandbox": "code",
+      "modules": [
+        {
+          "id": "write_tests",
+          "label": "Write Test Suite",
+          "icon": "🧪",
+          "desc": "Write automated E2E and unit tests",
+          "sandbox": "code"
+        },
+        {
+          "id": "find_bugs",
+          "label": "Bug Hunting",
+          "icon": "🐛",
+          "desc": "Find bugs in a given application or code",
+          "sandbox": "code"
+        },
+        {
+          "id": "api_testing",
+          "label": "API Testing",
+          "icon": "📡",
+          "desc": "Test REST endpoints with assertions",
+          "sandbox": "api"
+        },
+        {
+          "id": "test_strategy",
+          "label": "Test Strategy",
+          "icon": "🗺️",
+          "desc": "Design test plans and coverage strategy",
+          "sandbox": "markdown"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "write_e2e",
+          "label": "Write E2E Tests",
+          "sandbox": "code",
+          "lang": "TypeScript",
+          "icon": "🧪"
+        },
+        {
+          "id": "api_test",
+          "label": "API Test Suite",
+          "sandbox": "api",
+          "lang": "JavaScript",
+          "icon": "📡"
+        },
+        {
+          "id": "bug_report",
+          "label": "Write Bug Report",
+          "sandbox": "markdown",
+          "lang": "Markdown",
+          "icon": "🐛"
+        }
+      ]
+    },
+    "ba_product": {
+      "key": "ba_product",
+      "label": "BA / Product Analyst",
+      "arenaKey": "ba_product",
+      "defaultModule": "requirements",
+      "defaultSandbox": "markdown",
+      "modules": [
+        {
+          "id": "requirements",
+          "label": "Requirements",
+          "icon": "📋",
+          "desc": "Write user stories, acceptance criteria, specs",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "metrics",
+          "label": "Metrics & KPIs",
+          "icon": "📊",
+          "desc": "Define, query and analyse product metrics",
+          "sandbox": "sql"
+        },
+        {
+          "id": "process_map",
+          "label": "Process Mapping",
+          "icon": "🗺️",
+          "desc": "Design and document business processes",
+          "sandbox": "diagram"
+        },
+        {
+          "id": "data_analysis",
+          "label": "Data Analysis",
+          "icon": "🔍",
+          "desc": "Explore data to answer business questions",
+          "sandbox": "notebook"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "write_user_story",
+          "label": "Write User Story",
+          "sandbox": "markdown",
+          "lang": "Markdown",
+          "icon": "📋"
+        },
+        {
+          "id": "analyse_metrics",
+          "label": "Analyse Metrics",
+          "sandbox": "sql",
+          "lang": "SQL",
+          "icon": "📊"
+        },
+        {
+          "id": "process_document",
+          "label": "Document Process",
+          "sandbox": "markdown",
+          "lang": "Markdown",
+          "icon": "🗺️"
+        }
+      ]
+    },
+    "embedded": {
+      "key": "embedded",
+      "label": "Embedded Engineer",
+      "arenaKey": "embedded",
+      "defaultModule": "firmware_lab",
+      "defaultSandbox": "code",
+      "modules": [
+        {
+          "id": "firmware_lab",
+          "label": "Firmware Lab",
+          "icon": "🔌",
+          "desc": "Write and simulate embedded C programs",
+          "sandbox": "code"
+        },
+        {
+          "id": "protocol_sim",
+          "label": "Protocol Simulator",
+          "icon": "📡",
+          "desc": "Simulate UART, SPI, I²C, CAN transactions",
+          "sandbox": "code"
+        },
+        {
+          "id": "rtos_bench",
+          "label": "RTOS Bench",
+          "icon": "⏱️",
+          "desc": "Design task scheduler, priority, semaphores",
+          "sandbox": "code"
+        },
+        {
+          "id": "power_calc",
+          "label": "Power Calculator",
+          "icon": "🔋",
+          "desc": "Compute power budgets and sleep currents",
+          "sandbox": "notebook"
+        },
+        {
+          "id": "debug_console",
+          "label": "Debug Console",
+          "icon": "🐛",
+          "desc": "Trace register states and interrupt vectors",
+          "sandbox": "terminal"
+        },
+        {
+          "id": "hw_design",
+          "label": "HW Interface Docs",
+          "icon": "📋",
+          "desc": "Datasheet reading and register map notes",
+          "sandbox": "markdown"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "driver_write",
+          "label": "Write Driver",
+          "workbench": "firmware_ide",
+          "lang": "C",
+          "icon": "🔌",
+          "skill": "gpio_peripherals"
+        },
+        {
+          "id": "rtos_task",
+          "label": "RTOS Task Design",
+          "workbench": "rtos_debugger",
+          "lang": "C",
+          "icon": "⏱️",
+          "skill": "rtos_design"
+        },
+        {
+          "id": "protocol_impl",
+          "label": "Protocol Impl",
+          "workbench": "firmware_ide",
+          "lang": "C",
+          "icon": "📡",
+          "skill": "serial_protocols"
+        },
+        {
+          "id": "power_budget",
+          "label": "Power Budget",
+          "workbench": "engineering_calculator",
+          "lang": "Python",
+          "icon": "🔋",
+          "skill": "power_management"
+        },
+        {
+          "id": "debug_trace",
+          "label": "Debug & Trace",
+          "workbench": "terminal_console",
+          "lang": "Shell",
+          "icon": "🐛",
+          "skill": "debug_techniques"
+        }
+      ]
+    },
+    "vlsi": {
+      "key": "vlsi",
+      "label": "VLSI Engineer",
+      "arenaKey": "vlsi",
+      "defaultModule": "rtl_editor",
+      "defaultSandbox": "code",
+      "modules": [
+        {
+          "id": "rtl_editor",
+          "label": "RTL Editor",
+          "icon": "🔬",
+          "desc": "Write Verilog / SystemVerilog modules",
+          "sandbox": "code"
+        },
+        {
+          "id": "sim_bench",
+          "label": "Simulation Bench",
+          "icon": "🧪",
+          "desc": "Build testbenches and run simulation",
+          "sandbox": "code"
+        },
+        {
+          "id": "timing_analysis",
+          "label": "Timing Analysis",
+          "icon": "⏱️",
+          "desc": "Compute setup/hold and path analysis",
+          "sandbox": "notebook"
+        },
+        {
+          "id": "verify_lab",
+          "label": "Verify Lab",
+          "icon": "✅",
+          "desc": "UVM sequences, assertions, coverage",
+          "sandbox": "code"
+        },
+        {
+          "id": "synthesis_view",
+          "label": "Synthesis Notes",
+          "icon": "⚙️",
+          "desc": "Synthesis constraints and area reports",
+          "sandbox": "markdown"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "rtl_design",
+          "label": "RTL Design",
+          "workbench": "hdl_ide",
+          "lang": "Verilog",
+          "icon": "🔬",
+          "skill": "hdl_design"
+        },
+        {
+          "id": "testbench",
+          "label": "Testbench",
+          "workbench": "hdl_ide",
+          "lang": "SystemVerilog",
+          "icon": "🧪",
+          "skill": "functional_verify"
+        },
+        {
+          "id": "timing_calc",
+          "label": "Timing Calc",
+          "workbench": "engineering_calculator",
+          "lang": "Python",
+          "icon": "⏱️",
+          "skill": "timing_analysis"
+        },
+        {
+          "id": "uvm_sequence",
+          "label": "UVM Sequence",
+          "workbench": "hdl_ide",
+          "lang": "SystemVerilog",
+          "icon": "✅",
+          "skill": "functional_verify"
+        },
+        {
+          "id": "synthesis_doc",
+          "label": "Synthesis Doc",
+          "workbench": "documentation_studio",
+          "lang": "Markdown",
+          "icon": "⚙️",
+          "skill": "synthesis_flow"
+        }
+      ]
+    },
+    "analog_ic": {
+      "key": "analog_ic",
+      "label": "Analog Layout Engineer",
+      "arenaKey": "analog_ic",
+      "defaultModule": "spice_sim",
+      "defaultSandbox": "notebook",
+      "modules": [
+        {
+          "id": "spice_sim",
+          "label": "SPICE Simulator",
+          "icon": "📈",
+          "desc": "Run op-amp, comparator, LDO simulations",
+          "sandbox": "notebook"
+        },
+        {
+          "id": "layout_review",
+          "label": "Layout Review",
+          "icon": "🔧",
+          "desc": "Describe layout strategy and constraints",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "drc_check",
+          "label": "DRC / LVS Notes",
+          "icon": "✅",
+          "desc": "Document DRC rules and LVS fixes",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "pex_analysis",
+          "label": "Parasitic Analysis",
+          "icon": "🔍",
+          "desc": "RC extraction and post-layout simulation",
+          "sandbox": "notebook"
+        },
+        {
+          "id": "circuit_calc",
+          "label": "Circuit Calculator",
+          "icon": "🧮",
+          "desc": "Compute bias, bandwidth, noise floor",
+          "sandbox": "notebook"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "circuit_analysis",
+          "label": "Circuit Analysis",
+          "workbench": "circuit_workbench",
+          "lang": "Python",
+          "icon": "📈",
+          "skill": "spice_simulation"
+        },
+        {
+          "id": "layout_strategy",
+          "label": "Layout Strategy",
+          "workbench": "layout_studio",
+          "lang": "Markdown",
+          "icon": "🔧",
+          "skill": "layout_skills"
+        },
+        {
+          "id": "drc_fix",
+          "label": "DRC Fix",
+          "workbench": "layout_studio",
+          "lang": "Markdown",
+          "icon": "✅",
+          "skill": "layout_skills"
+        },
+        {
+          "id": "parasitic_calc",
+          "label": "Parasitic Calc",
+          "workbench": "circuit_workbench",
+          "lang": "Python",
+          "icon": "🔍",
+          "skill": "noise_matching"
+        }
+      ]
+    },
+    "eee": {
+      "key": "eee",
+      "label": "Electrical Engineer",
+      "arenaKey": "eee",
+      "defaultModule": "power_calc",
+      "defaultSandbox": "notebook",
+      "modules": [
+        {
+          "id": "power_calc",
+          "label": "Power Calculator",
+          "icon": "⚡",
+          "desc": "Load flow, short-circuit, power factor",
+          "sandbox": "notebook"
+        },
+        {
+          "id": "machine_sim",
+          "label": "Machine Simulator",
+          "icon": "🔄",
+          "desc": "Motor/generator torque-speed analysis",
+          "sandbox": "notebook"
+        },
+        {
+          "id": "control_design",
+          "label": "Control Design",
+          "icon": "🎛️",
+          "desc": "PID tuning, Bode plot, stability margins",
+          "sandbox": "notebook"
+        },
+        {
+          "id": "pe_converter",
+          "label": "PE Converter",
+          "icon": "🔋",
+          "desc": "Buck/Boost/Inverter waveform calculation",
+          "sandbox": "notebook"
+        },
+        {
+          "id": "plc_editor",
+          "label": "PLC / IEC 61131",
+          "icon": "🏭",
+          "desc": "Ladder logic and structured text exercises",
+          "sandbox": "code"
+        },
+        {
+          "id": "standards_ref",
+          "label": "Standards Ref",
+          "icon": "📋",
+          "desc": "IEEE, IEC, IS standards quick reference",
+          "sandbox": "markdown"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "load_flow",
+          "label": "Load Flow",
+          "workbench": "engineering_calculator",
+          "lang": "Python",
+          "icon": "⚡",
+          "skill": "power_systems"
+        },
+        {
+          "id": "motor_analysis",
+          "label": "Motor Analysis",
+          "workbench": "engineering_calculator",
+          "lang": "Python",
+          "icon": "🔄",
+          "skill": "electrical_machines"
+        },
+        {
+          "id": "control_loop",
+          "label": "Control Loop",
+          "workbench": "engineering_calculator",
+          "lang": "Python",
+          "icon": "🎛️",
+          "skill": "control_systems"
+        },
+        {
+          "id": "pe_design",
+          "label": "PE Converter",
+          "workbench": "engineering_calculator",
+          "lang": "Python",
+          "icon": "🔋",
+          "skill": "power_electronics"
+        },
+        {
+          "id": "plc_program",
+          "label": "PLC Programming",
+          "workbench": "code_ide",
+          "lang": "IEC61131",
+          "icon": "🏭",
+          "skill": "plc_programming"
+        }
+      ]
+    },
+    "mechanical": {
+      "key": "mechanical",
+      "label": "Mechanical Engineer",
+      "arenaKey": "mechanical",
+      "defaultModule": "thermo_calc",
+      "defaultSandbox": "notebook",
+      "modules": [
+        {
+          "id": "thermo_calc",
+          "label": "Thermo Calculator",
+          "icon": "🌡️",
+          "desc": "Heat transfer, cycles, efficiency calcs",
+          "sandbox": "notebook"
+        },
+        {
+          "id": "fluid_calc",
+          "label": "Fluid Mechanics",
+          "icon": "💧",
+          "desc": "Pipe flow, Bernoulli, Reynolds, pump curves",
+          "sandbox": "notebook"
+        },
+        {
+          "id": "stress_calc",
+          "label": "Stress Analysis",
+          "icon": "⚙️",
+          "desc": "Beam bending, torsion, FOS calculations",
+          "sandbox": "notebook"
+        },
+        {
+          "id": "mfg_planner",
+          "label": "Mfg Process Planner",
+          "icon": "🏭",
+          "desc": "Machining, tolerances, GD&T process plans",
+          "sandbox": "code"
+        },
+        {
+          "id": "cad_review",
+          "label": "Design Review",
+          "icon": "📐",
+          "desc": "Design criteria, material selection, DFM",
+          "sandbox": "markdown"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "thermo_problem",
+          "label": "Thermo Problem",
+          "workbench": "mechanical_studio",
+          "lang": "Python",
+          "icon": "🌡️",
+          "skill": "thermodynamics"
+        },
+        {
+          "id": "fluid_problem",
+          "label": "Fluid Problem",
+          "workbench": "mechanical_studio",
+          "lang": "Python",
+          "icon": "💧",
+          "skill": "fluid_mechanics"
+        },
+        {
+          "id": "stress_problem",
+          "label": "Stress Analysis",
+          "workbench": "mechanical_studio",
+          "lang": "Python",
+          "icon": "⚙️",
+          "skill": "solid_mechanics"
+        },
+        {
+          "id": "mfg_plan",
+          "label": "Mfg Planning",
+          "workbench": "code_ide",
+          "lang": "Python",
+          "icon": "🏭",
+          "skill": "manufacturing"
+        },
+        {
+          "id": "design_review",
+          "label": "Design Review",
+          "workbench": "documentation_studio",
+          "lang": "Markdown",
+          "icon": "📐",
+          "skill": "cad_modeling"
+        }
+      ]
+    },
+    "civil": {
+      "key": "civil",
+      "label": "Civil Engineer",
+      "arenaKey": "civil",
+      "defaultModule": "structural_calc",
+      "defaultSandbox": "notebook",
+      "modules": [
+        {
+          "id": "structural_calc",
+          "label": "Structural Calc",
+          "icon": "🏗️",
+          "desc": "Beam, column, slab, frame analysis",
+          "sandbox": "notebook"
+        },
+        {
+          "id": "soil_lab",
+          "label": "Soil Lab",
+          "icon": "🌍",
+          "desc": "Bearing capacity, settlement, slope stability",
+          "sandbox": "notebook"
+        },
+        {
+          "id": "hydro_calc",
+          "label": "Hydrology Calc",
+          "icon": "💧",
+          "desc": "Runoff, open channel, pipe network calcs",
+          "sandbox": "notebook"
+        },
+        {
+          "id": "transport_plan",
+          "label": "Transport Planning",
+          "icon": "🛣️",
+          "desc": "HCM, pavement design, traffic analysis",
+          "sandbox": "notebook"
+        },
+        {
+          "id": "drawing_review",
+          "label": "Drawing Review",
+          "icon": "📐",
+          "desc": "Review and annotate engineering drawings",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "quantity_est",
+          "label": "Quantity Estimation",
+          "icon": "🧮",
+          "desc": "BOQ preparation and cost estimation",
+          "sandbox": "notebook"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "structural_problem",
+          "label": "Structural Analysis",
+          "workbench": "structural_workbench",
+          "lang": "Python",
+          "icon": "🏗️",
+          "skill": "structural_analysis"
+        },
+        {
+          "id": "geotech_problem",
+          "label": "Geotechnical Calc",
+          "workbench": "engineering_calculator",
+          "lang": "Python",
+          "icon": "🌍",
+          "skill": "geotechnical"
+        },
+        {
+          "id": "hydro_problem",
+          "label": "Hydrology Problem",
+          "workbench": "engineering_calculator",
+          "lang": "Python",
+          "icon": "💧",
+          "skill": "hydraulics"
+        },
+        {
+          "id": "transport_problem",
+          "label": "Transport Analysis",
+          "workbench": "engineering_calculator",
+          "lang": "Python",
+          "icon": "🛣️",
+          "skill": "transportation"
+        },
+        {
+          "id": "design_review",
+          "label": "Design Review",
+          "workbench": "documentation_studio",
+          "lang": "Markdown",
+          "icon": "📐",
+          "skill": "bim"
+        }
+      ]
+    },
+    "ml": {
+      "key": "ml",
+      "label": "ML / AI Engineer",
+      "arenaKey": "ml",
+      "defaultModule": "model_trainer",
+      "defaultSandbox": "notebook",
+      "modules": [
+        {
+          "id": "model_trainer",
+          "label": "Model Trainer",
+          "icon": "🤖",
+          "desc": "Train classifiers, regressors, neural nets",
+          "sandbox": "notebook"
+        },
+        {
+          "id": "data_explorer",
+          "label": "Data Explorer",
+          "icon": "📊",
+          "desc": "EDA, feature engineering, data cleaning",
+          "sandbox": "notebook"
+        },
+        {
+          "id": "experiment_track",
+          "label": "Experiment Tracker",
+          "icon": "📈",
+          "desc": "Compare runs, metrics, hyperparameter search",
+          "sandbox": "notebook"
+        },
+        {
+          "id": "deploy_lab",
+          "label": "Deploy Lab",
+          "icon": "🚀",
+          "desc": "FastAPI serving, Docker, model packaging",
+          "sandbox": "code"
+        },
+        {
+          "id": "eval_suite",
+          "label": "Eval Suite",
+          "icon": "✅",
+          "desc": "Confusion matrix, AUC-ROC, BLEU, ROUGE",
+          "sandbox": "notebook"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "classification",
+          "label": "Classification",
+          "workbench": "ml_workbench",
+          "lang": "Python",
+          "icon": "🤖",
+          "skill": "ml_fundamentals"
+        },
+        {
+          "id": "regression",
+          "label": "Regression",
+          "workbench": "ml_workbench",
+          "lang": "Python",
+          "icon": "📈",
+          "skill": "feature_engineering"
+        },
+        {
+          "id": "nlp_task",
+          "label": "NLP Task",
+          "workbench": "ml_workbench",
+          "lang": "Python",
+          "icon": "💬",
+          "skill": "deep_learning"
+        },
+        {
+          "id": "cv_task",
+          "label": "Computer Vision",
+          "workbench": "ml_workbench",
+          "lang": "Python",
+          "icon": "👁️",
+          "skill": "deep_learning"
+        },
+        {
+          "id": "deploy_api",
+          "label": "Deploy Model API",
+          "workbench": "code_ide",
+          "lang": "Python",
+          "icon": "🚀",
+          "skill": "mlops"
+        }
+      ]
+    },
+    "android": {
+      "key": "android",
+      "label": "Android Developer",
+      "arenaKey": "android",
+      "defaultModule": "kotlin_editor",
+      "defaultSandbox": "code",
+      "modules": [
+        {
+          "id": "kotlin_editor",
+          "label": "Kotlin Editor",
+          "icon": "📱",
+          "desc": "Write and test Kotlin code snippets",
+          "sandbox": "code"
+        },
+        {
+          "id": "compose_ui",
+          "label": "Compose UI",
+          "icon": "🎨",
+          "desc": "Build Jetpack Compose UI components",
+          "sandbox": "code"
+        },
+        {
+          "id": "arch_planner",
+          "label": "Architecture Planner",
+          "icon": "🏗️",
+          "desc": "Design MVVM layers and component diagram",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "api_tester",
+          "label": "API Tester",
+          "icon": "🔌",
+          "desc": "Retrofit calls, JSON parsing, coroutines",
+          "sandbox": "code"
+        },
+        {
+          "id": "db_explorer",
+          "label": "Room DB Explorer",
+          "icon": "🗃️",
+          "desc": "Define entities, DAOs, and migrations",
+          "sandbox": "code"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "compose_build",
+          "label": "Build Compose UI",
+          "workbench": "code_ide",
+          "lang": "Kotlin",
+          "icon": "🎨",
+          "skill": "compose_ui"
+        },
+        {
+          "id": "viewmodel",
+          "label": "ViewModel / Flow",
+          "workbench": "code_ide",
+          "lang": "Kotlin",
+          "icon": "🏗️",
+          "skill": "android_arch"
+        },
+        {
+          "id": "retrofit_api",
+          "label": "Retrofit API",
+          "workbench": "code_ide",
+          "lang": "Kotlin",
+          "icon": "🔌",
+          "skill": "api_design"
+        },
+        {
+          "id": "room_db",
+          "label": "Room Database",
+          "workbench": "code_ide",
+          "lang": "Kotlin",
+          "icon": "🗃️",
+          "skill": "database_design"
+        },
+        {
+          "id": "arch_design",
+          "label": "Architecture Design",
+          "workbench": "documentation_studio",
+          "lang": "Markdown",
+          "icon": "📐",
+          "skill": "android_arch"
+        }
+      ]
+    },
+    "ios": {
+      "key": "ios",
+      "label": "iOS Developer",
+      "arenaKey": "ios",
+      "defaultModule": "swift_editor",
+      "defaultSandbox": "code",
+      "modules": [
+        {
+          "id": "swift_editor",
+          "label": "Swift Editor",
+          "icon": "🍎",
+          "desc": "Write and test Swift code snippets",
+          "sandbox": "code"
+        },
+        {
+          "id": "swiftui_canvas",
+          "label": "SwiftUI Canvas",
+          "icon": "🎨",
+          "desc": "Build and preview SwiftUI views",
+          "sandbox": "code"
+        },
+        {
+          "id": "arch_planner",
+          "label": "Architecture Planner",
+          "icon": "🏗️",
+          "desc": "Design MVVM/TCA layers and flows",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "network_lab",
+          "label": "Network Lab",
+          "icon": "🔌",
+          "desc": "URLSession, async/await, Codable models",
+          "sandbox": "code"
+        },
+        {
+          "id": "core_data",
+          "label": "Core Data / SwiftData",
+          "icon": "🗃️",
+          "desc": "Entity model, fetch, migration",
+          "sandbox": "code"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "swiftui_build",
+          "label": "SwiftUI View",
+          "workbench": "code_ide",
+          "lang": "Swift",
+          "icon": "🎨",
+          "skill": "swiftui"
+        },
+        {
+          "id": "viewmodel",
+          "label": "ViewModel / ObservableObject",
+          "workbench": "code_ide",
+          "lang": "Swift",
+          "icon": "🏗️",
+          "skill": "ios_arch"
+        },
+        {
+          "id": "network_call",
+          "label": "Network Call",
+          "workbench": "code_ide",
+          "lang": "Swift",
+          "icon": "🔌",
+          "skill": "api_design"
+        },
+        {
+          "id": "coredata_model",
+          "label": "Core Data Schema",
+          "workbench": "code_ide",
+          "lang": "Swift",
+          "icon": "🗃️",
+          "skill": "database_design"
+        },
+        {
+          "id": "arch_design",
+          "label": "Architecture Design",
+          "workbench": "documentation_studio",
+          "lang": "Markdown",
+          "icon": "📐",
+          "skill": "ios_arch"
+        }
+      ]
+    },
+    "pharmacy": {
+      "key": "pharmacy",
+      "label": "Pharmacist / Pharmacy Specialist",
+      "arenaKey": "pharmacy",
+      "defaultModule": "clinical_case",
+      "defaultSandbox": "markdown",
+      "modules": [
+        {
+          "id": "drug_calc",
+          "label": "Drug Calculator",
+          "icon": "🧮",
+          "desc": "Dosage, creatinine clearance, IV drip calcs",
+          "sandbox": "notebook"
+        },
+        {
+          "id": "clinical_case",
+          "label": "Clinical Case",
+          "icon": "🏥",
+          "desc": "Patient scenario: DRP identification & plan",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "formulation",
+          "label": "Formulation Design",
+          "icon": "⚗️",
+          "desc": "Tablet / suspension formulation excipients",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "regulatory_doc",
+          "label": "Regulatory Dossier",
+          "icon": "📋",
+          "desc": "CTD, WHO/CDSCO submission document drafting",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "pharmacovigilance",
+          "label": "Pharmacovigilance",
+          "icon": "⚠️",
+          "desc": "ADR reporting, signal detection, causality",
+          "sandbox": "markdown"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "clinical_case",
+          "label": "Clinical Case",
+          "workbench": "clinical_lab",
+          "lang": "Markdown",
+          "icon": "🏥",
+          "skill": "pharmacology"
+        },
+        {
+          "id": "drug_calc",
+          "label": "Drug Calculation",
+          "workbench": "engineering_calculator",
+          "lang": "Python",
+          "icon": "🧮",
+          "skill": "drug_calculations"
+        },
+        {
+          "id": "interaction_check",
+          "label": "Interaction Check",
+          "workbench": "clinical_lab",
+          "lang": "Markdown",
+          "icon": "⚠️",
+          "skill": "pharmacology"
+        },
+        {
+          "id": "formulation_task",
+          "label": "Formulation",
+          "workbench": "clinical_lab",
+          "lang": "Markdown",
+          "icon": "⚗️",
+          "skill": "pharmacovigilance"
+        },
+        {
+          "id": "regulatory_task",
+          "label": "Regulatory Doc",
+          "workbench": "documentation_studio",
+          "lang": "Markdown",
+          "icon": "📋",
+          "skill": "regulatory_affairs"
+        }
+      ]
+    },
+    "mba": {
+      "key": "mba",
+      "label": "MBA / Business Manager",
+      "arenaKey": "mba",
+      "defaultModule": "case_study",
+      "defaultSandbox": "markdown",
+      "modules": [
+        {
+          "id": "case_study",
+          "label": "Case Study",
+          "icon": "📋",
+          "desc": "Structured problem-solving with frameworks",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "financial_model",
+          "label": "Financial Model",
+          "icon": "📊",
+          "desc": "P&L, DCF, unit economics, break-even",
+          "sandbox": "notebook"
+        },
+        {
+          "id": "strategy_canvas",
+          "label": "Strategy Canvas",
+          "icon": "🗺️",
+          "desc": "SWOT, Porter's Five Forces, Blue Ocean",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "ops_design",
+          "label": "Operations Design",
+          "icon": "⚙️",
+          "desc": "Process maps, capacity, supply chain",
+          "sandbox": "markdown"
+        },
+        {
+          "id": "market_analysis",
+          "label": "Market Analysis",
+          "icon": "📈",
+          "desc": "TAM/SAM/SOM, competitive landscape, pricing",
+          "sandbox": "notebook"
+        }
+      ],
+      "missionCategories": [
+        {
+          "id": "case_analysis",
+          "label": "Case Analysis",
+          "workbench": "business_studio",
+          "lang": "Markdown",
+          "icon": "📋",
+          "skill": "business_strategy"
+        },
+        {
+          "id": "financial_model",
+          "label": "Financial Model",
+          "workbench": "engineering_calculator",
+          "lang": "Python",
+          "icon": "📊",
+          "skill": "financial_modelling"
+        },
+        {
+          "id": "strategy_problem",
+          "label": "Strategy Problem",
+          "workbench": "business_studio",
+          "lang": "Markdown",
+          "icon": "🗺️",
+          "skill": "business_strategy"
+        },
+        {
+          "id": "ops_problem",
+          "label": "Operations Problem",
+          "workbench": "business_studio",
+          "lang": "Markdown",
+          "icon": "⚙️",
+          "skill": "operations_mgmt"
+        },
+        {
+          "id": "market_sizing",
+          "label": "Market Sizing",
+          "workbench": "engineering_calculator",
+          "lang": "Python",
+          "icon": "📈",
+          "skill": "marketing"
+        }
+      ]
+    }
+  }
+}

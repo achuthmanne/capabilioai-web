@@ -121,6 +121,8 @@ import mentorHubRoutes           from "./server/routes/mentorHub.js"
 import pulseNexusRoutes          from "./server/routes/pulseNexus.js"
 import orbitPlansRoutes          from "./server/routes/orbitPlans.js"
 import hardwareChallengesRoutes  from "./server/routes/hardwareChallenges.js"
+import copilotCoachRoutes        from "./server/routes/copilotCoach.js" // pilot: tool-augmented Capi coach intent, MCP-backed
+import groqProxyRoutes           from "./server/routes/groqProxy.js"    // P0 fix: Capi's Groq calls, moved server-side off the client
 import { startGradingWorker }    from "./server/lib/grading-worker.js"
 
 // ─── App setup ────────────────────────────────────────────────────────────────
@@ -138,6 +140,8 @@ app.use("/api/arena/v2",     aiLimiter)
 app.use("/api/skill-studio", aiLimiter)
 app.use("/api/chat",         aiLimiter)
 app.use("/api/voice",        aiLimiter)
+app.use("/api/copilot",      aiLimiter)
+app.use("/api/groq",         aiLimiter)
 app.use("/api/verify",       strictLimiter)
 
 app.use(cors({
@@ -201,6 +205,8 @@ app.use("/api",              mentorHubRoutes)           // mentors, mentors/book
 app.use("/api",              pulseNexusRoutes)          // pulse/feed, pulse/market-insights (Gemini Search), nexus/*
 app.use("/api",              orbitPlansRoutes)          // orbit/plans, intel/report
 app.use("/api",              hardwareChallengesRoutes)  // hardware/challenges, hardware/my-attempts
+app.use("/api/copilot",       copilotCoachRoutes)       // coach — pilot MCP tool-use path for Capi's career-coach intent
+app.use("/api/groq",          groqProxyRoutes)          // chat — server-side Groq proxy for Capi's general chat + classifier
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {

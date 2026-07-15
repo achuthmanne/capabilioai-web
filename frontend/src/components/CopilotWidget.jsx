@@ -13,6 +13,7 @@ import {
   getSuggestionChips,
   classifyBucket,
   isCareerFastPath,
+  isCoachIntent,
   canSendMessage,
   getRemainingQuestions,
   shouldShowLimitWarning,
@@ -22,8 +23,14 @@ import {
 } from "../config/copilotConfig"
 
 // ── Constants ────────────────────────────────────────────────
-const GROQ_API = "https://api.groq.com/openai/v1/chat/completions"
-const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || ""
+// P0 FIX (2026-07-14): Groq is no longer called directly from the browser —
+// that exposed the API key in the client bundle (inspectable via devtools /
+// network tab). Both callGroq (streaming) and classify (non-streaming) now
+// go through a server-side proxy (backend/server/routes/groqProxy.js) that
+// holds the real key. Request/response shape is unchanged — only the
+// destination and the key moved.
+const API = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
+const GROQ_PROXY = `${API}/api/groq/chat`
 
 function sessionId() {
   const k = "capi_session_id"
@@ -165,14 +172,11 @@ export default function CopilotWidget({ user, userData }) {
     if (open) setTimeout(() => inputRef.current?.focus(), 150)
   }, [open])
 
-  // ── Groq call ───────────────────────────────────────────────
+  // ── Groq call (via server-side proxy — see GROQ_PROXY comment above) ─────
   const callGroq = useCallback(async (msgs, model, maxTokens, temperature) => {
-    const res = await fetch(GROQ_API, {
+    const res = await fetch(GROQ_PROXY, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${GROQ_KEY}`,
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model,
         temperature,
@@ -192,14 +196,10 @@ export default function CopilotWidget({ user, userData }) {
     // terms like "Aura score", "ELO", "Arena", "Orbit", etc.
     if (isCareerFastPath(message)) return "CAREER"
 
-    if (!GROQ_KEY) return "CAREER"  // dev fallback — no key
     try {
-      const res = await fetch(GROQ_API, {
+      const res = await fetch(GROQ_PROXY, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${GROQ_KEY}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: GROQ_MODELS.FAST,
           temperature: 0,
@@ -267,6 +267,43 @@ export default function CopilotWidget({ user, userData }) {
         }])
         setLoading(false)
         return
+      }
+
+      // 1b. Coach-intent pilot: "what should I do next" style questions go
+      // through the MCP-backed /api/copilot/coach endpoint (real ELO/role/
+      // weak-skills data via tool calls) instead of the direct-Groq path.
+      // Falls through to the normal Groq flow below on ANY failure — this
+      // must never be able to break the existing chat experience.
+      if (isCoachIntent(msg)) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+          const jwt = session?.access_token
+          if (jwt) {
+            setThinkText(getThinkingText(tier, bucket))
+            const res = await fetch(`${API}/api/copilot/coach`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${jwt}` },
+              body: JSON.stringify({ message: msg }),
+            })
+            if (res.ok) {
+              const d = await res.json()
+              if (d.text) {
+                setMessages(prev => [...prev, { role: "assistant", content: d.text }])
+                setLoading(false)
+                await incrementUsage()
+                setChips(getSuggestionChips({
+                  ...userData,
+                  blended_elo: userData?.blended_elo || userData?.eloRating,
+                }))
+                return
+              }
+            }
+            // Non-OK response or empty text — fall through to Groq below.
+          }
+        } catch {
+          // Any error (network, auth, MCP unavailable) — fall through to the
+          // existing Groq path so the user always gets an answer.
+        }
       }
 
       // 2. Build prompts
@@ -360,9 +397,7 @@ export default function CopilotWidget({ user, userData }) {
     } catch (err) {
       setMessages(prev => [...prev, {
         role: "assistant",
-        content: GROQ_KEY
-          ? "Something went wrong. Please try again."
-          : "⚠️ Add VITE_GROQ_API_KEY to .env to enable the copilot.",
+        content: "Something went wrong. Please try again.",
       }])
       setStreamText("")
     } finally {

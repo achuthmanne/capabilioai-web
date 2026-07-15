@@ -1,0 +1,3643 @@
+{
+  "generatedAt": "2026-07-14T11:21:36.058Z",
+  "source": "frontend/src/config/roleConfig.js (AUGMENTED_ROLE_REGISTRY)",
+  "roles": [
+    {
+      "id": "frontend",
+      "label": "Frontend Developer",
+      "slug": "frontend-developer",
+      "stream": "IT",
+      "arenaKey": "frontend",
+      "challengeKey": "frontend",
+      "color": "#F59E0B",
+      "aliases": [
+        "react js developer",
+        "angular js developer",
+        "vue js developer",
+        "front-end engineer",
+        "ui/ux developer",
+        "web ui engineer",
+        "javascript developer"
+      ],
+      "keywords": [
+        "frontend",
+        "react developer",
+        "ui developer",
+        "angular developer",
+        "vue developer",
+        "ui engineer",
+        "react engineer",
+        "next.js developer",
+        "web developer",
+        "html css"
+      ],
+      "auraSkills": [
+        "React",
+        "JavaScript",
+        "TypeScript",
+        "CSS/Tailwind",
+        "HTML5",
+        "Next.js",
+        "State Management",
+        "REST APIs",
+        "Testing (Jest/RTL)",
+        "Performance Optimization",
+        "Accessibility",
+        "Build Tools (Webpack/Vite)"
+      ],
+      "assessmentSkills": [
+        "React Hooks & State",
+        "Component Design Patterns",
+        "JavaScript ES6+",
+        "TypeScript Generics",
+        "CSS Flexbox/Grid",
+        "Next.js SSR/SSG",
+        "REST API Integration",
+        "Testing with Jest/RTL",
+        "Web Performance (Core Web Vitals)",
+        "Accessibility (WCAG)",
+        "Browser APIs",
+        "Build Tooling"
+      ],
+      "streamCategories": [],
+      "launchpadTags": [
+        "frontend developer",
+        "react developer",
+        "ui engineer",
+        "web developer"
+      ],
+      "pulseTopics": [
+        "React",
+        "JavaScript",
+        "TypeScript",
+        "CSS",
+        "Next.js",
+        "Vite",
+        "Web Performance",
+        "Frontend"
+      ],
+      "interviewFocus": [
+        "component lifecycle",
+        "hooks",
+        "state management",
+        "performance",
+        "accessibility",
+        "browser rendering"
+      ]
+    },
+    {
+      "id": "backend",
+      "label": "Backend Developer",
+      "slug": "backend-developer",
+      "stream": "IT",
+      "arenaKey": "backend",
+      "color": "#10B981",
+      "aliases": [
+        "node developer",
+        "java backend",
+        "python backend",
+        "spring developer",
+        "flask developer",
+        "fastapi developer",
+        "server engineer",
+        "rest api developer"
+      ],
+      "keywords": [
+        "backend",
+        "node.js developer",
+        "django developer",
+        "spring boot",
+        "backend engineer",
+        "server-side",
+        "api developer",
+        "express developer",
+        "fastapi"
+      ],
+      "auraSkills": [
+        "Node.js / Express",
+        "REST API Design",
+        "Database Design",
+        "Authentication & JWT",
+        "Caching (Redis)",
+        "Message Queues",
+        "Microservices",
+        "Docker",
+        "SQL / PostgreSQL",
+        "System Design",
+        "Error Handling",
+        "API Security"
+      ],
+      "assessmentSkills": [
+        "REST API Design",
+        "Node.js / Express",
+        "SQL & Databases",
+        "Authentication & JWT",
+        "Caching Strategies",
+        "Microservices Architecture",
+        "Message Queues (Kafka/RabbitMQ)",
+        "Docker & Containerization",
+        "System Design",
+        "Error Handling & Logging",
+        "API Rate Limiting",
+        "Database Indexing"
+      ],
+      "streamCategories": [],
+      "launchpadTags": [
+        "backend developer",
+        "node.js engineer",
+        "api developer",
+        "server-side engineer"
+      ],
+      "pulseTopics": [
+        "Node.js",
+        "Python",
+        "APIs",
+        "Databases",
+        "Microservices",
+        "Backend",
+        "Docker",
+        "PostgreSQL"
+      ],
+      "interviewFocus": [
+        "API design",
+        "database optimization",
+        "scalability",
+        "caching",
+        "authentication",
+        "system design"
+      ],
+      "challengeKey": "backend"
+    },
+    {
+      "id": "fullstack",
+      "label": "Full Stack Developer",
+      "slug": "fullstack-developer",
+      "stream": "IT",
+      "arenaKey": "fullstack",
+      "color": "#8B5CF6",
+      "aliases": [
+        "mern developer",
+        "mean developer",
+        "react node developer",
+        "web application developer",
+        "full-stack engineer",
+        "mern stack"
+      ],
+      "keywords": [
+        "full stack",
+        "fullstack",
+        "mern",
+        "mean",
+        "full-stack",
+        "react node",
+        "frontend backend"
+      ],
+      "auraSkills": [
+        "React / Next.js",
+        "Node.js / Express",
+        "PostgreSQL / MongoDB",
+        "REST & GraphQL APIs",
+        "Authentication",
+        "Docker / CI-CD",
+        "TypeScript",
+        "System Design",
+        "Testing",
+        "Cloud Deployment",
+        "State Management",
+        "Database Design"
+      ],
+      "assessmentSkills": [
+        "React + Node.js Integration",
+        "REST & GraphQL APIs",
+        "Database Design",
+        "Authentication Flows",
+        "Docker & Deployment",
+        "TypeScript Full-Stack",
+        "System Design",
+        "Testing (Frontend + Backend)",
+        "State Management",
+        "Cloud Platforms",
+        "CI/CD Pipelines",
+        "Performance Optimization"
+      ],
+      "streamCategories": [],
+      "launchpadTags": [
+        "full stack developer",
+        "mern stack",
+        "mean stack",
+        "react node developer"
+      ],
+      "pulseTopics": [
+        "React",
+        "Node.js",
+        "MongoDB",
+        "PostgreSQL",
+        "Full Stack",
+        "APIs",
+        "TypeScript"
+      ],
+      "interviewFocus": [
+        "full-stack architecture",
+        "database design",
+        "API design",
+        "deployment",
+        "performance"
+      ],
+      "challengeKey": "fullstack"
+    },
+    {
+      "id": "swe",
+      "label": "Software Engineer",
+      "slug": "software-engineer",
+      "stream": "IT",
+      "arenaKey": "swe",
+      "color": "#6366F1",
+      "aliases": [
+        "software development engineer",
+        "sde 1",
+        "sde 2",
+        "application engineer",
+        "java engineer",
+        "python engineer",
+        "c++ developer",
+        "golang developer",
+        "backend sde"
+      ],
+      "keywords": [
+        "software engineer",
+        "software developer",
+        "sde",
+        "sde-1",
+        "sde-2",
+        "sde1",
+        "sde2",
+        "programmer",
+        "application developer",
+        "java developer",
+        "python developer",
+        "golang",
+        "rust developer"
+      ],
+      "auraSkills": [
+        "Data Structures & Algorithms",
+        "System Design",
+        "OOP Principles",
+        "Design Patterns",
+        "Concurrency",
+        "Databases",
+        "Testing",
+        "Version Control (Git)",
+        "Code Reviews",
+        "API Design",
+        "Performance",
+        "Problem Solving"
+      ],
+      "assessmentSkills": [
+        "Data Structures (Arrays/Trees/Graphs)",
+        "Algorithm Complexity",
+        "System Design",
+        "OOP & SOLID Principles",
+        "Design Patterns",
+        "Concurrency & Multithreading",
+        "Database Fundamentals",
+        "Unit Testing",
+        "Git Workflow",
+        "API Design",
+        "Performance Optimization",
+        "Problem-Solving (LeetCode style)"
+      ],
+      "streamCategories": [],
+      "launchpadTags": [
+        "software engineer",
+        "software developer",
+        "sde",
+        "java developer",
+        "python developer"
+      ],
+      "pulseTopics": [
+        "DSA",
+        "System Design",
+        "OOP",
+        "Java",
+        "Python",
+        "Algorithms",
+        "Software Engineering"
+      ],
+      "interviewFocus": [
+        "algorithms",
+        "data structures",
+        "system design",
+        "object-oriented design",
+        "problem solving"
+      ],
+      "challengeKey": "swe"
+    },
+    {
+      "id": "data",
+      "label": "Data Analyst",
+      "slug": "data-analyst",
+      "stream": "IT",
+      "arenaKey": "data",
+      "color": "#D97706",
+      "aliases": [
+        "sql analyst",
+        "reporting analyst",
+        "analytics specialist",
+        "business intelligence analyst",
+        "excel data analyst"
+      ],
+      "keywords": [
+        "data analyst",
+        "data analysis",
+        "analytics",
+        "business analyst",
+        "data reporting",
+        "excel analyst",
+        "power bi",
+        "tableau analyst",
+        "analytics engineer"
+      ],
+      "auraSkills": [
+        "SQL (Advanced)",
+        "Python (Pandas/NumPy)",
+        "Power BI / Tableau",
+        "Excel / Spreadsheets",
+        "Statistical Analysis",
+        "Data Cleaning",
+        "Dashboard Design",
+        "KPI Definition",
+        "A/B Testing",
+        "Data Storytelling",
+        "ETL Concepts",
+        "Business Acumen"
+      ],
+      "assessmentSkills": [
+        "Advanced SQL (CTEs/Window Functions)",
+        "Python Pandas",
+        "Power BI / Tableau",
+        "Excel Pivot Tables",
+        "Statistical Analysis",
+        "Data Cleaning Techniques",
+        "Dashboard Design",
+        "KPI Metrics",
+        "A/B Testing",
+        "Data Visualization",
+        "ETL Pipelines",
+        "Business Intelligence"
+      ],
+      "streamCategories": [],
+      "launchpadTags": [
+        "data analyst",
+        "business analyst",
+        "sql analyst",
+        "power bi developer",
+        "tableau developer"
+      ],
+      "pulseTopics": [
+        "SQL",
+        "Python",
+        "Power BI",
+        "Tableau",
+        "Data Analysis",
+        "Statistics",
+        "Excel"
+      ],
+      "interviewFocus": [
+        "SQL queries",
+        "data cleaning",
+        "visualization",
+        "business metrics",
+        "statistical thinking"
+      ],
+      "challengeKey": "data"
+    },
+    {
+      "id": "data_engineer",
+      "label": "Data Engineer",
+      "slug": "data-engineer",
+      "stream": "IT",
+      "arenaKey": "data_engineer",
+      "color": "#059669",
+      "aliases": [
+        "big data engineer",
+        "airflow developer",
+        "data infrastructure engineer",
+        "data platform engineer",
+        "lakehouse engineer",
+        "pyspark developer"
+      ],
+      "keywords": [
+        "data engineer",
+        "etl developer",
+        "pipeline engineer",
+        "spark developer",
+        "kafka engineer",
+        "dbt developer",
+        "data platform",
+        "warehouse engineer",
+        "lakehouse"
+      ],
+      "auraSkills": [
+        "Apache Spark",
+        "Kafka / Streaming",
+        "dbt (Data Build Tool)",
+        "Airflow / Orchestration",
+        "SQL Warehousing",
+        "Python (PySpark)",
+        "Data Modeling",
+        "Cloud (AWS/GCP/Azure)",
+        "ETL Pipeline Design",
+        "Schema Design",
+        "Data Quality",
+        "Monitoring & SLAs"
+      ],
+      "assessmentSkills": [
+        "Apache Spark Architecture",
+        "Kafka Streams",
+        "dbt Core & Cloud",
+        "Airflow DAGs",
+        "Data Warehousing (Snowflake/BigQuery)",
+        "PySpark",
+        "Dimensional Modeling",
+        "Cloud Data Services",
+        "ETL vs ELT",
+        "Schema Design",
+        "Data Quality Checks",
+        "Pipeline Monitoring"
+      ],
+      "streamCategories": [],
+      "launchpadTags": [
+        "data engineer",
+        "etl developer",
+        "spark developer",
+        "data pipeline",
+        "dbt developer"
+      ],
+      "pulseTopics": [
+        "Spark",
+        "Kafka",
+        "dbt",
+        "Airflow",
+        "Data Engineering",
+        "SQL",
+        "Data Pipelines"
+      ],
+      "interviewFocus": [
+        "pipeline design",
+        "spark optimization",
+        "data modeling",
+        "streaming",
+        "warehouse architecture"
+      ],
+      "challengeKey": "data_engineer"
+    },
+    {
+      "id": "bi_analyst",
+      "label": "BI Analyst",
+      "slug": "bi-analyst",
+      "stream": "IT",
+      "arenaKey": "bi_analyst",
+      "color": "#8B5CF6",
+      "aliases": [
+        "reporting specialist",
+        "dashboard developer",
+        "power bi specialist",
+        "data visualization analyst",
+        "looker developer",
+        "bi developer"
+      ],
+      "keywords": [
+        "bi analyst",
+        "business intelligence",
+        "bi developer",
+        "power bi developer",
+        "looker developer",
+        "tableau developer",
+        "data visualization engineer",
+        "reporting analyst"
+      ],
+      "auraSkills": [
+        "Power BI (DAX/Power Query)",
+        "Tableau",
+        "Looker / LookML",
+        "SQL for BI",
+        "Star Schema / Dimensional Modeling",
+        "KPI Design",
+        "ETL for Reporting",
+        "Data Storytelling",
+        "Executive Dashboards",
+        "Self-Service BI",
+        "Data Governance",
+        "Excel Advanced"
+      ],
+      "assessmentSkills": [
+        "Power BI DAX Formulas",
+        "Tableau Calculated Fields",
+        "SQL for BI Reporting",
+        "Star Schema Design",
+        "KPI Frameworks",
+        "Power Query / ETL",
+        "Looker LookML",
+        "Dashboard UX Design",
+        "Data Storytelling",
+        "Self-Service Analytics",
+        "Data Governance",
+        "Excel Power Tools"
+      ],
+      "streamCategories": [],
+      "launchpadTags": [
+        "bi analyst",
+        "power bi developer",
+        "tableau developer",
+        "data visualization",
+        "reporting analyst"
+      ],
+      "pulseTopics": [
+        "Power BI",
+        "Tableau",
+        "Looker",
+        "SQL",
+        "Business Intelligence",
+        "Data Visualization"
+      ],
+      "interviewFocus": [
+        "dashboard design",
+        "DAX",
+        "data modeling",
+        "stakeholder reporting",
+        "KPI definition"
+      ],
+      "challengeKey": "bi_analyst"
+    },
+    {
+      "id": "dba",
+      "label": "Database Administrator",
+      "slug": "database-administrator",
+      "stream": "IT",
+      "arenaKey": "dba",
+      "color": "#06B6D4",
+      "aliases": [
+        "sql server dba",
+        "database admin",
+        "oracle developer",
+        "postgres dba",
+        "mysql developer",
+        "db developer"
+      ],
+      "keywords": [
+        "database administrator",
+        "dba",
+        "sql developer",
+        "database engineer",
+        "oracle dba",
+        "mysql dba",
+        "postgresql dba",
+        "database developer",
+        "db admin"
+      ],
+      "auraSkills": [
+        "SQL (Expert)",
+        "Database Design & Normalization",
+        "Indexing & Query Optimization",
+        "Backup & Recovery",
+        "Replication & HA",
+        "PostgreSQL / MySQL / Oracle",
+        "Performance Tuning",
+        "Security & Access Control",
+        "Stored Procedures",
+        "Partitioning",
+        "Monitoring",
+        "Cloud Databases (RDS/Cloud SQL)"
+      ],
+      "assessmentSkills": [
+        "Advanced SQL",
+        "Database Normalization",
+        "Indexing Strategies",
+        "Backup & Recovery",
+        "Replication Setup",
+        "Query Optimization",
+        "PostgreSQL Internals",
+        "Performance Tuning",
+        "Security Hardening",
+        "Stored Procedures & Triggers",
+        "Partitioning Strategies",
+        "Cloud Managed DBs"
+      ],
+      "streamCategories": [],
+      "launchpadTags": [
+        "database administrator",
+        "dba",
+        "sql developer",
+        "database engineer"
+      ],
+      "pulseTopics": [
+        "SQL",
+        "PostgreSQL",
+        "MySQL",
+        "Oracle",
+        "Database",
+        "Performance Tuning"
+      ],
+      "interviewFocus": [
+        "query optimization",
+        "indexing",
+        "backup recovery",
+        "replication",
+        "schema design"
+      ],
+      "challengeKey": "dba"
+    },
+    {
+      "id": "cyber",
+      "label": "Cybersecurity Engineer",
+      "slug": "cybersecurity-engineer",
+      "stream": "IT",
+      "arenaKey": "cyber",
+      "color": "#EF4444",
+      "aliases": [
+        "security analyst",
+        "infosec analyst",
+        "vapt engineer",
+        "pentester",
+        "bug bounty hunter",
+        "network security engineer",
+        "appsec engineer"
+      ],
+      "keywords": [
+        "cybersecurity",
+        "cyber security",
+        "security engineer",
+        "penetration tester",
+        "ethical hacker",
+        "red team",
+        "blue team",
+        "infosec",
+        "information security",
+        "appsec",
+        "devsecops"
+      ],
+      "auraSkills": [
+        "Network Security",
+        "OWASP Top 10",
+        "Penetration Testing",
+        "SIEM Tools",
+        "Threat Modeling",
+        "Vulnerability Assessment",
+        "Incident Response",
+        "Cryptography",
+        "Firewall & IDS/IPS",
+        "Cloud Security",
+        "Secure Coding",
+        "Compliance (ISO/NIST)"
+      ],
+      "assessmentSkills": [
+        "Network Security Fundamentals",
+        "OWASP Top 10 Vulnerabilities",
+        "Penetration Testing Methodology",
+        "SIEM & Log Analysis",
+        "Threat Modeling (STRIDE)",
+        "Vulnerability Scanning",
+        "Incident Response Playbooks",
+        "Cryptography Basics",
+        "Firewall Rules & IDS",
+        "Cloud Security (AWS/Azure)",
+        "Secure SDLC",
+        "Compliance Frameworks"
+      ],
+      "streamCategories": [],
+      "launchpadTags": [
+        "cybersecurity engineer",
+        "security engineer",
+        "penetration tester",
+        "ethical hacker",
+        "infosec analyst"
+      ],
+      "pulseTopics": [
+        "Cybersecurity",
+        "Penetration Testing",
+        "OWASP",
+        "Network Security",
+        "Threat Intelligence",
+        "Incident Response"
+      ],
+      "interviewFocus": [
+        "threat modeling",
+        "OWASP",
+        "penetration testing",
+        "incident response",
+        "network security"
+      ],
+      "challengeKey": "cyber"
+    },
+    {
+      "id": "devops",
+      "label": "DevOps Engineer",
+      "slug": "devops-engineer",
+      "stream": "IT",
+      "arenaKey": "devops",
+      "color": "#F97316",
+      "aliases": [
+        "ci/cd engineer",
+        "release engineer",
+        "build engineer",
+        "gitops engineer",
+        "cloud automation engineer",
+        "deployment engineer"
+      ],
+      "keywords": [
+        "devops",
+        "site reliability",
+        "platform engineer",
+        "kubernetes",
+        "docker",
+        "jenkins",
+        "ci cd",
+        "cicd",
+        "ci/cd",
+        "infrastructure engineer",
+        "gitops",
+        "helm",
+        "terraform"
+      ],
+      "auraSkills": [
+        "Docker & Kubernetes",
+        "CI/CD Pipelines (Jenkins/GitHub Actions)",
+        "Terraform / IaC",
+        "Linux Administration",
+        "Monitoring (Prometheus/Grafana)",
+        "Git & GitOps",
+        "Bash Scripting",
+        "Cloud Platforms",
+        "Ansible / Chef / Puppet",
+        "Log Management (ELK)",
+        "Security (DevSecOps)",
+        "Incident Management"
+      ],
+      "assessmentSkills": [
+        "Docker Containerization",
+        "Kubernetes Orchestration",
+        "CI/CD Design",
+        "Terraform IaC",
+        "Linux Administration",
+        "Prometheus & Grafana",
+        "GitOps Workflows",
+        "Bash/Python Scripting",
+        "Cloud Infrastructure (AWS/GCP)",
+        "Ansible Automation",
+        "ELK Stack",
+        "SRE Principles"
+      ],
+      "streamCategories": [],
+      "launchpadTags": [
+        "devops engineer",
+        "site reliability engineer",
+        "kubernetes engineer",
+        "platform engineer",
+        "infrastructure engineer"
+      ],
+      "pulseTopics": [
+        "DevOps",
+        "Kubernetes",
+        "Docker",
+        "Terraform",
+        "CI/CD",
+        "GitOps",
+        "SRE",
+        "Platform Engineering"
+      ],
+      "interviewFocus": [
+        "CI/CD pipeline design",
+        "Kubernetes",
+        "infrastructure as code",
+        "monitoring",
+        "incident management"
+      ],
+      "challengeKey": "devops"
+    },
+    {
+      "id": "sre",
+      "label": "SRE / Platform Engineer",
+      "slug": "sre-platform-engineer",
+      "stream": "IT",
+      "arenaKey": "sre",
+      "color": "#0EA5E9",
+      "aliases": [
+        "production engineer",
+        "cloud reliability engineer",
+        "chaos engineer",
+        "on-call engineer",
+        "infrastructure reliability engineer"
+      ],
+      "keywords": [
+        "sre",
+        "site reliability engineer",
+        "platform engineer",
+        "reliability engineer",
+        "production engineer",
+        "infrastructure sre"
+      ],
+      "auraSkills": [
+        "SLI/SLO/SLA Design",
+        "Incident Management",
+        "Chaos Engineering",
+        "Kubernetes (Production)",
+        "Observability Stack",
+        "Capacity Planning",
+        "Toil Reduction",
+        "On-Call Engineering",
+        "Runbooks & Playbooks",
+        "Error Budgets",
+        "Distributed Systems",
+        "Post-Mortems"
+      ],
+      "assessmentSkills": [
+        "SLI/SLO/SLA Fundamentals",
+        "Incident Response & Post-Mortems",
+        "Chaos Engineering",
+        "Production Kubernetes",
+        "Observability (Metrics/Logs/Traces)",
+        "Capacity Planning",
+        "Error Budget Policy",
+        "On-Call Best Practices",
+        "Runbook Authoring",
+        "Distributed Systems Reliability",
+        "Toil Automation",
+        "Reliability Patterns"
+      ],
+      "streamCategories": [],
+      "launchpadTags": [
+        "site reliability engineer",
+        "sre",
+        "platform engineer",
+        "production engineer"
+      ],
+      "pulseTopics": [
+        "SRE",
+        "Observability",
+        "Kubernetes",
+        "Incident Management",
+        "Chaos Engineering",
+        "Platform Engineering"
+      ],
+      "interviewFocus": [
+        "SLOs",
+        "incident response",
+        "chaos engineering",
+        "observability",
+        "reliability patterns"
+      ],
+      "challengeKey": "sre"
+    },
+    {
+      "id": "aws",
+      "label": "AWS Cloud Engineer",
+      "slug": "aws-cloud-engineer",
+      "stream": "IT",
+      "arenaKey": "aws",
+      "color": "#F59E0B",
+      "aliases": [
+        "aws developer",
+        "aws architect",
+        "aws certified developer",
+        "cloud infrastructure engineer",
+        "cloud solutions architect",
+        "amazon cloud developer"
+      ],
+      "keywords": [
+        "aws",
+        "amazon web services",
+        "cloud engineer",
+        "cloud architect",
+        "aws developer",
+        "aws solutions architect",
+        "cloud practitioner",
+        "aws devops"
+      ],
+      "auraSkills": [
+        "EC2 / VPC / IAM",
+        "S3 & Storage Services",
+        "Lambda & Serverless",
+        "RDS & DynamoDB",
+        "CloudFormation / CDK",
+        "EKS / ECS",
+        "CloudWatch & X-Ray",
+        "Route 53 & CloudFront",
+        "Security (KMS/Secrets Manager)",
+        "Cost Optimization",
+        "Well-Architected Framework",
+        "Migration Strategies"
+      ],
+      "assessmentSkills": [
+        "EC2 & VPC Networking",
+        "IAM Roles & Policies",
+        "S3 Storage & Lifecycle",
+        "Lambda Serverless Design",
+        "RDS vs DynamoDB",
+        "CloudFormation / Terraform on AWS",
+        "EKS / ECS Patterns",
+        "CloudWatch Monitoring",
+        "Route 53 DNS",
+        "Cost Optimization",
+        "AWS Well-Architected",
+        "Migration to AWS"
+      ],
+      "streamCategories": [],
+      "launchpadTags": [
+        "aws engineer",
+        "cloud engineer",
+        "aws architect",
+        "aws developer",
+        "cloud practitioner"
+      ],
+      "pulseTopics": [
+        "AWS",
+        "Cloud",
+        "Serverless",
+        "Lambda",
+        "Kubernetes",
+        "Cloud Architecture"
+      ],
+      "interviewFocus": [
+        "AWS services",
+        "architecture design",
+        "IAM",
+        "cost optimization",
+        "serverless"
+      ],
+      "challengeKey": "aws"
+    },
+    {
+      "id": "azure",
+      "label": "Azure Cloud Engineer",
+      "slug": "azure-cloud-engineer",
+      "stream": "IT",
+      "arenaKey": "azure",
+      "color": "#0EA5E9",
+      "aliases": [
+        "azure architect",
+        "microsoft azure developer",
+        "azure data engineer",
+        "azure administrator",
+        "cloud engineer microsoft"
+      ],
+      "keywords": [
+        "azure",
+        "azure engineer",
+        "azure developer",
+        "azure architect",
+        "microsoft cloud",
+        "azure devops",
+        "azure solutions architect"
+      ],
+      "auraSkills": [
+        "Azure VMs & VNets",
+        "Azure AD & RBAC",
+        "Azure Functions (Serverless)",
+        "Azure SQL & Cosmos DB",
+        "ARM Templates / Bicep",
+        "AKS (Kubernetes)",
+        "Azure Monitor & Log Analytics",
+        "Azure DevOps Pipelines",
+        "Key Vault & Security",
+        "Azure Storage",
+        "Cost Management",
+        "Well-Architected (Azure)"
+      ],
+      "assessmentSkills": [
+        "Azure Networking (VNet/NSG)",
+        "Azure AD & RBAC",
+        "Azure Functions",
+        "Azure SQL vs Cosmos DB",
+        "ARM / Bicep IaC",
+        "AKS Orchestration",
+        "Azure Monitor & Alerts",
+        "Azure DevOps Pipelines",
+        "Key Vault Secrets",
+        "Azure Blob Storage",
+        "Cost Management",
+        "Azure Well-Architected"
+      ],
+      "streamCategories": [],
+      "launchpadTags": [
+        "azure engineer",
+        "azure developer",
+        "azure architect",
+        "microsoft cloud engineer"
+      ],
+      "pulseTopics": [
+        "Azure",
+        "Microsoft Cloud",
+        "Azure DevOps",
+        "Kubernetes",
+        "Serverless",
+        "Cloud Architecture"
+      ],
+      "interviewFocus": [
+        "Azure services",
+        "ARM templates",
+        "networking",
+        "security",
+        "cost optimization"
+      ],
+      "challengeKey": "azure"
+    },
+    {
+      "id": "soc",
+      "label": "SOC Analyst",
+      "slug": "soc-analyst",
+      "stream": "IT",
+      "arenaKey": "soc",
+      "color": "#DC2626",
+      "aliases": [
+        "siem analyst",
+        "splunk analyst",
+        "threat analyst",
+        "ioc analyst",
+        "dfir analyst",
+        "tier 1 security analyst"
+      ],
+      "keywords": [
+        "soc analyst",
+        "security operations",
+        "incident responder",
+        "threat hunter",
+        "dfir",
+        "digital forensics",
+        "malware analyst",
+        "threat intelligence"
+      ],
+      "auraSkills": [
+        "SIEM (Splunk/QRadar)",
+        "Log Analysis",
+        "Threat Hunting",
+        "Malware Analysis",
+        "DFIR",
+        "Network Traffic Analysis",
+        "IOC/IOA Detection",
+        "Phishing Analysis",
+        "Vulnerability Triage",
+        "Threat Intelligence",
+        "MITRE ATT&CK",
+        "Playbook Execution"
+      ],
+      "assessmentSkills": [
+        "SIEM Log Correlation",
+        "Threat Hunting Techniques",
+        "Malware Triage",
+        "Digital Forensics Basics",
+        "Network Traffic Analysis (Wireshark)",
+        "IOC Detection",
+        "Phishing Email Analysis",
+        "Vulnerability Severity Triage",
+        "MITRE ATT&CK Framework",
+        "Threat Intelligence Sources",
+        "Incident Playbooks",
+        "SOC Tier 1/2 Workflow"
+      ],
+      "streamCategories": [],
+      "launchpadTags": [
+        "soc analyst",
+        "security operations analyst",
+        "threat hunter",
+        "incident responder",
+        "dfir analyst"
+      ],
+      "pulseTopics": [
+        "SOC",
+        "Threat Hunting",
+        "SIEM",
+        "Incident Response",
+        "Malware Analysis",
+        "Cybersecurity"
+      ],
+      "interviewFocus": [
+        "SIEM queries",
+        "threat hunting",
+        "malware analysis",
+        "MITRE ATT&CK",
+        "incident workflow"
+      ],
+      "challengeKey": "soc"
+    },
+    {
+      "id": "qa",
+      "label": "QA / Test Automation Engineer",
+      "slug": "qa-engineer",
+      "stream": "IT",
+      "arenaKey": "qa",
+      "color": "#7C3AED",
+      "aliases": [
+        "software tester",
+        "test engineer",
+        "automation tester",
+        "qe engineer",
+        "test lead",
+        "manual tester",
+        "qa automation engineer"
+      ],
+      "keywords": [
+        "qa engineer",
+        "test automation",
+        "quality assurance",
+        "selenium",
+        "cypress",
+        "playwright",
+        "sdet",
+        "performance testing",
+        "api testing",
+        "qa analyst",
+        "software tester"
+      ],
+      "auraSkills": [
+        "Test Automation (Selenium/Playwright)",
+        "API Testing (Postman/RestAssured)",
+        "CI Integration",
+        "Test Strategy & Planning",
+        "BDD (Cucumber/Gherkin)",
+        "Performance Testing (JMeter)",
+        "Mobile Testing",
+        "SQL for QA",
+        "Bug Reporting",
+        "ISTQB Concepts",
+        "Risk-Based Testing",
+        "Accessibility Testing"
+      ],
+      "assessmentSkills": [
+        "Selenium / Playwright Automation",
+        "API Testing with Postman",
+        "Cypress Test Design",
+        "BDD with Cucumber",
+        "Performance Testing (JMeter)",
+        "CI/CD Integration for Tests",
+        "Test Strategy Design",
+        "Mobile App Testing",
+        "SQL Data Validation",
+        "Risk-Based Testing",
+        "Accessibility Testing",
+        "Test Reporting & Metrics"
+      ],
+      "streamCategories": [],
+      "launchpadTags": [
+        "qa engineer",
+        "test automation engineer",
+        "sdet",
+        "quality assurance engineer",
+        "selenium developer"
+      ],
+      "pulseTopics": [
+        "QA",
+        "Test Automation",
+        "Selenium",
+        "Playwright",
+        "API Testing",
+        "Performance Testing",
+        "CI/CD"
+      ],
+      "interviewFocus": [
+        "test strategy",
+        "automation framework design",
+        "API testing",
+        "CI integration",
+        "risk-based testing"
+      ],
+      "challengeKey": "qa"
+    },
+    {
+      "id": "ba_product",
+      "label": "BA / Product Analyst",
+      "slug": "ba-product-analyst",
+      "stream": "IT",
+      "arenaKey": "ba_product",
+      "color": "#D97706",
+      "aliases": [
+        "business analyst it",
+        "product owner",
+        "requirements engineer",
+        "digital business analyst",
+        "it ba",
+        "product manager associate"
+      ],
+      "keywords": [
+        "business analyst",
+        "product analyst",
+        "product manager",
+        "ba analyst",
+        "requirements analyst",
+        "scrum master",
+        "product owner",
+        "agile analyst",
+        "functional analyst"
+      ],
+      "auraSkills": [
+        "Requirements Gathering",
+        "User Story Writing",
+        "Process Mapping (BPMN)",
+        "Stakeholder Management",
+        "Agile / Scrum",
+        "SQL for Analysis",
+        "Wireframing (Figma/Balsamiq)",
+        "UAT Coordination",
+        "KPI Metrics",
+        "Data Analysis",
+        "Presentation Skills",
+        "Jira / Confluence"
+      ],
+      "assessmentSkills": [
+        "Requirements Elicitation Techniques",
+        "User Story & Acceptance Criteria",
+        "BPMN Process Flows",
+        "Stakeholder Analysis",
+        "Agile Ceremonies",
+        "SQL Business Queries",
+        "Wireframing & Prototyping",
+        "UAT Planning",
+        "KPI Definition",
+        "Business Case Writing",
+        "Jira Workflow",
+        "Gap Analysis"
+      ],
+      "streamCategories": [],
+      "launchpadTags": [
+        "business analyst",
+        "product analyst",
+        "product manager",
+        "scrum master",
+        "product owner"
+      ],
+      "pulseTopics": [
+        "Product Management",
+        "Business Analysis",
+        "Agile",
+        "Scrum",
+        "User Stories",
+        "Jira",
+        "Stakeholder Management"
+      ],
+      "interviewFocus": [
+        "requirements gathering",
+        "user stories",
+        "process mapping",
+        "stakeholder communication",
+        "metrics"
+      ],
+      "challengeKey": "ba_product"
+    },
+    {
+      "id": "medical",
+      "label": "Medical Coding Specialist",
+      "slug": "medical-coding-specialist",
+      "stream": "Medical",
+      "arenaKey": "medical",
+      "color": "#EC4899",
+      "aliases": [
+        "medical billing specialist",
+        "clinical documentation specialist",
+        "aapc coder",
+        "ahima coder",
+        "health information coder"
+      ],
+      "keywords": [
+        "medical coder",
+        "medical coding",
+        "medical billing",
+        "clinical coder",
+        "health information",
+        "icd coder",
+        "cpt coder",
+        "drg coder",
+        "hcc coder",
+        "healthcare coding"
+      ],
+      "auraSkills": [
+        "ICD-10-CM/PCS Coding",
+        "CPT Procedure Coding",
+        "Medical Terminology",
+        "Anatomy & Physiology",
+        "HCPCS Level II",
+        "DRG Assignment",
+        "HCC Risk Adjustment",
+        "Medical Record Review",
+        "Payer Guidelines",
+        "Compliance (HIPAA)",
+        "EHR Systems",
+        "Coding Audits"
+      ],
+      "assessmentSkills": [
+        "ICD-10-CM Diagnosis Coding",
+        "ICD-10-PCS Procedure Coding",
+        "CPT / E&M Coding",
+        "HCPCS Level II Codes",
+        "Medical Terminology",
+        "Anatomy for Coders",
+        "DRG Grouping",
+        "HCC Risk Adjustment",
+        "HIPAA Compliance",
+        "Payer-Specific Guidelines",
+        "EHR Navigation",
+        "Coding Audit Techniques"
+      ],
+      "streamCategories": [
+        "Pharmacy",
+        "Aptitude",
+        "Logical"
+      ],
+      "launchpadTags": [
+        "medical coder",
+        "medical billing",
+        "clinical coder",
+        "health information specialist",
+        "icd coder"
+      ],
+      "pulseTopics": [
+        "Medical Coding",
+        "ICD-10",
+        "CPT",
+        "Healthcare",
+        "Medical Billing",
+        "HIPAA",
+        "HCC"
+      ],
+      "interviewFocus": [
+        "ICD-10 coding",
+        "CPT codes",
+        "medical terminology",
+        "compliance",
+        "audit"
+      ],
+      "challengeKey": "medical"
+    },
+    {
+      "id": "embedded",
+      "label": "Embedded Engineer",
+      "slug": "embedded-engineer",
+      "stream": "ECE",
+      "arenaKey": "embedded",
+      "color": "#84CC16",
+      "aliases": [
+        "embedded c developer",
+        "mcu developer",
+        "stm32 developer",
+        "esp32 developer",
+        "embedded linux engineer",
+        "firmware developer",
+        "bare metal developer",
+        "microcontroller programmer"
+      ],
+      "keywords": [
+        "embedded",
+        "embedded engineer",
+        "embedded systems",
+        "firmware",
+        "firmware engineer",
+        "embedded software",
+        "bare metal",
+        "rtos",
+        "microcontroller",
+        "arm cortex",
+        "stm32",
+        "esp32",
+        "embedded developer",
+        "embedded c"
+      ],
+      "auraSkills": [
+        "ARM Cortex Architecture",
+        "Embedded C / Bare-Metal",
+        "RTOS (FreeRTOS / Zephyr)",
+        "Device Drivers & HAL",
+        "Interrupt Handling",
+        "Memory Management (MMU/MPU)",
+        "Bootloader & Startup Code",
+        "SPI / I2C / UART Protocols",
+        "CAN & LIN Bus",
+        "Debugging (JTAG/OpenOCD)",
+        "Low-Power Design",
+        "FOTA (Firmware OTA)"
+      ],
+      "assessmentSkills": [
+        "ARM Cortex Architecture",
+        "Embedded C / Bare-Metal",
+        "RTOS (FreeRTOS / Zephyr)",
+        "Device Drivers & HAL",
+        "Interrupt Handling",
+        "Memory Management (MMU / MPU)",
+        "Bootloader & Startup Code",
+        "SPI / I2C / UART Protocols",
+        "CAN & LIN Bus",
+        "Debugging (JTAG / OpenOCD)",
+        "Low-Power Design",
+        "Firmware Over-the-Air (FOTA)"
+      ],
+      "streamCategories": [
+        "ECE"
+      ],
+      "launchpadTags": [
+        "embedded engineer",
+        "firmware engineer",
+        "embedded systems engineer",
+        "embedded c developer",
+        "rtos engineer"
+      ],
+      "pulseTopics": [
+        "Embedded Systems",
+        "RTOS",
+        "ARM",
+        "Firmware",
+        "IoT",
+        "Microcontrollers",
+        "C Programming"
+      ],
+      "interviewFocus": [
+        "RTOS concepts",
+        "memory management",
+        "interrupt handling",
+        "protocol debugging",
+        "low-power design"
+      ],
+      "challengeKey": "ece_embedded"
+    },
+    {
+      "id": "vlsi",
+      "label": "VLSI Engineer",
+      "slug": "vlsi-engineer",
+      "stream": "ECE",
+      "arenaKey": "vlsi",
+      "color": "#84CC16",
+      "aliases": [
+        "chip design engineer",
+        "asic design engineer",
+        "rtl design engineer",
+        "fpga developer",
+        "dv engineer",
+        "physical design engineer",
+        "digital design engineer",
+        "verification engineer"
+      ],
+      "keywords": [
+        "vlsi",
+        "vlsi engineer",
+        "chip design",
+        "asic",
+        "rtl",
+        "rtl design",
+        "verilog",
+        "systemverilog",
+        "vhdl",
+        "fpga",
+        "chip verification",
+        "physical design",
+        "vlsi verification",
+        "dv engineer",
+        "design verification"
+      ],
+      "auraSkills": [
+        "Digital Logic Design",
+        "Verilog / SystemVerilog",
+        "VHDL",
+        "RTL Design & Synthesis",
+        "Static Timing Analysis",
+        "Floorplanning & Placement",
+        "Clock Tree Synthesis",
+        "DRC / LVS / ERC",
+        "UVM Verification",
+        "ASIC Design Flow",
+        "FPGA Implementation",
+        "Low-Power VLSI Techniques"
+      ],
+      "assessmentSkills": [
+        "Digital Logic Design",
+        "Verilog / SystemVerilog",
+        "VHDL",
+        "RTL Design & Synthesis",
+        "Static Timing Analysis",
+        "Floorplanning & Placement",
+        "Clock Tree Synthesis",
+        "DRC / LVS / ERC",
+        "UVM Verification",
+        "ASIC Design Flow",
+        "FPGA Implementation",
+        "Low-Power VLSI Techniques"
+      ],
+      "streamCategories": [
+        "ECE"
+      ],
+      "launchpadTags": [
+        "vlsi engineer",
+        "asic design engineer",
+        "rtl engineer",
+        "fpga engineer",
+        "chip design engineer",
+        "dv engineer"
+      ],
+      "pulseTopics": [
+        "VLSI",
+        "ASIC",
+        "Verilog",
+        "SystemVerilog",
+        "FPGA",
+        "RTL",
+        "Chip Design",
+        "EDA Tools"
+      ],
+      "interviewFocus": [
+        "RTL coding",
+        "timing analysis",
+        "verification methodology",
+        "ASIC flow",
+        "UVM"
+      ],
+      "challengeKey": "ece_vlsi"
+    },
+    {
+      "id": "analog_layout",
+      "label": "Analog Layout Engineer",
+      "slug": "analog-layout-engineer",
+      "stream": "ECE",
+      "arenaKey": "analog_ic",
+      "color": "#84CC16",
+      "aliases": [
+        "ic layout engineer",
+        "custom layout engineer",
+        "virtuoso layout engineer",
+        "mixed signal engineer",
+        "analog ic designer",
+        "full custom layout engineer"
+      ],
+      "keywords": [
+        "analog layout",
+        "analog design engineer",
+        "analog engineer",
+        "layout engineer",
+        "ic layout",
+        "custom ic",
+        "mixed signal layout",
+        "analog ic",
+        "cadence layout",
+        "virtuoso",
+        "full custom",
+        "analog mixed signal",
+        "ams",
+        "analog layout engineer"
+      ],
+      "auraSkills": [
+        "Full-Custom IC Layout",
+        "Cadence Virtuoso",
+        "Analog Circuit Understanding",
+        "Device Matching Techniques",
+        "DRC / LVS / ERC",
+        "Guard Rings & Shielding",
+        "Parasitic Extraction (PEX)",
+        "Floorplanning Analog Blocks",
+        "Electromigration Rules",
+        "ESD Protection Layout",
+        "Mixed-Signal Interface",
+        "Multi-Vt Device Layout"
+      ],
+      "assessmentSkills": [
+        "Full-Custom IC Layout Principles",
+        "Cadence Virtuoso Tools",
+        "Analog Circuit Analysis",
+        "Device Matching & Interdigitation",
+        "DRC / LVS / ERC Rules",
+        "Guard Rings & Shielding",
+        "Parasitic Extraction (PEX)",
+        "Analog Block Floorplanning",
+        "Electromigration Design Rules",
+        "ESD Protection Structures",
+        "Mixed-Signal Integration",
+        "Low-Noise Layout Techniques"
+      ],
+      "streamCategories": [
+        "ECE"
+      ],
+      "launchpadTags": [
+        "analog layout engineer",
+        "ic layout engineer",
+        "full custom layout",
+        "analog design engineer",
+        "cadence virtuoso engineer"
+      ],
+      "pulseTopics": [
+        "Analog IC",
+        "Layout Design",
+        "Cadence Virtuoso",
+        "VLSI",
+        "Mixed Signal",
+        "IC Design",
+        "EDA"
+      ],
+      "interviewFocus": [
+        "layout techniques",
+        "device matching",
+        "DRC/LVS",
+        "parasitic extraction",
+        "analog fundamentals"
+      ],
+      "challengeKey": "ece_interactive"
+    },
+    {
+      "id": "rf_engineer",
+      "label": "RF Engineer",
+      "slug": "rf-engineer",
+      "stream": "ECE",
+      "arenaKey": "ece",
+      "color": "#84CC16",
+      "aliases": [
+        "rf hardware engineer",
+        "antenna design engineer",
+        "microwave circuit designer",
+        "5g rf engineer",
+        "wireless hardware engineer",
+        "radio frequency engineer"
+      ],
+      "keywords": [
+        "rf engineer",
+        "rf design",
+        "radio frequency",
+        "rf circuit",
+        "antenna engineer",
+        "microwave engineer",
+        "rf systems",
+        "wireless engineer",
+        "5g engineer",
+        "rf hardware"
+      ],
+      "auraSkills": [
+        "RF Circuit Design",
+        "Antenna Design & Simulation",
+        "S-Parameters & Smith Chart",
+        "Impedance Matching",
+        "RF Amplifiers (LNA / PA)",
+        "Filters (BPF / LPF)",
+        "Noise Figure Analysis",
+        "ADS / HFSS / CST Tools",
+        "PCB RF Layout",
+        "RF Testing (VNA / Spectrum Analyzer)",
+        "5G/LTE Standards",
+        "EMC/EMI Compliance"
+      ],
+      "assessmentSkills": [
+        "RF Circuit Design Fundamentals",
+        "Antenna Design & Simulation",
+        "S-Parameters & Smith Chart",
+        "Impedance Matching Networks",
+        "LNA & PA Design",
+        "RF Filter Design",
+        "Noise Figure Calculation",
+        "EDA Tools (ADS / HFSS)",
+        "RF PCB Layout Rules",
+        "VNA Measurements",
+        "5G NR / LTE Standards",
+        "EMC/EMI Guidelines"
+      ],
+      "streamCategories": [
+        "ECE"
+      ],
+      "launchpadTags": [
+        "rf engineer",
+        "rf design engineer",
+        "antenna engineer",
+        "microwave engineer",
+        "wireless hardware engineer"
+      ],
+      "pulseTopics": [
+        "RF Engineering",
+        "5G",
+        "Antenna Design",
+        "Wireless",
+        "Microwave",
+        "RF Circuits",
+        "EMC"
+      ],
+      "interviewFocus": [
+        "S-parameters",
+        "impedance matching",
+        "amplifier design",
+        "antenna fundamentals",
+        "RF measurements"
+      ],
+      "challengeKey": "ece_rf"
+    },
+    {
+      "id": "iot_engineer",
+      "label": "IoT Engineer",
+      "slug": "iot-engineer",
+      "stream": "ECE",
+      "arenaKey": "ece",
+      "color": "#84CC16",
+      "aliases": [
+        "iot developer",
+        "edge ai engineer",
+        "connected devices engineer",
+        "smart home engineer",
+        "iot firmware engineer",
+        "mqtt developer"
+      ],
+      "keywords": [
+        "iot",
+        "iot engineer",
+        "internet of things",
+        "iot developer",
+        "iot systems",
+        "mqtt",
+        "iot architect",
+        "edge computing",
+        "iot firmware",
+        "smart devices",
+        "iot solutions"
+      ],
+      "auraSkills": [
+        "IoT Protocols (MQTT / CoAP / HTTP)",
+        "Edge Computing",
+        "Embedded C / Python",
+        "Cloud IoT Platforms (AWS IoT / Azure IoT Hub)",
+        "Sensor Interfacing",
+        "Microcontrollers (ESP32 / Arduino / Raspberry Pi)",
+        "BLE / Zigbee / LoRaWAN",
+        "Data Pipeline for IoT",
+        "Security for IoT Devices",
+        "OTA Updates",
+        "Digital Twins",
+        "Power Management"
+      ],
+      "assessmentSkills": [
+        "IoT Communication Protocols (MQTT/CoAP)",
+        "Edge Computing Concepts",
+        "Embedded C / MicroPython",
+        "AWS IoT Core / Azure IoT Hub",
+        "Sensor & Actuator Interfacing",
+        "ESP32 / Arduino / RPi",
+        "BLE & LoRaWAN",
+        "IoT Data Pipelines",
+        "IoT Security Best Practices",
+        "OTA Firmware Updates",
+        "Digital Twin Architecture",
+        "Low-Power IoT Design"
+      ],
+      "streamCategories": [
+        "ECE",
+        "IoT"
+      ],
+      "launchpadTags": [
+        "iot engineer",
+        "iot developer",
+        "edge computing engineer",
+        "embedded iot engineer",
+        "smart devices engineer"
+      ],
+      "pulseTopics": [
+        "IoT",
+        "MQTT",
+        "Edge Computing",
+        "AWS IoT",
+        "Embedded Systems",
+        "Smart Devices",
+        "LoRaWAN"
+      ],
+      "interviewFocus": [
+        "MQTT protocol",
+        "edge vs cloud",
+        "security",
+        "sensor integration",
+        "OTA updates"
+      ],
+      "challengeKey": "ece_iot"
+    },
+    {
+      "id": "telecom_engineer",
+      "label": "Telecom Engineer",
+      "slug": "telecom-engineer",
+      "stream": "ECE",
+      "arenaKey": "ece",
+      "color": "#84CC16",
+      "aliases": [
+        "5g network engineer",
+        "ran engineer",
+        "lte engineer",
+        "core network engineer",
+        "telecom protocol engineer",
+        "wireless network engineer"
+      ],
+      "keywords": [
+        "telecom engineer",
+        "telecommunications",
+        "5g engineer",
+        "4g lte",
+        "network engineer ece",
+        "wireless networks",
+        "3gpp",
+        "core network",
+        "ran engineer",
+        "telecom systems",
+        "nsa sa 5g"
+      ],
+      "auraSkills": [
+        "5G NR Architecture (SA/NSA)",
+        "LTE / 4G RAN",
+        "3GPP Standards",
+        "Core Network (EPC / 5GC)",
+        "Protocol Stacks (PHY/MAC/RLC/PDCP)",
+        "RF Planning & Optimization",
+        "Network Management (OMC/NMS)",
+        "OSS/BSS Systems",
+        "VoLTE / VoNR",
+        "MIMO & Beamforming",
+        "Network Slicing",
+        "IoT-NTN Connectivity"
+      ],
+      "assessmentSkills": [
+        "5G NR Architecture",
+        "LTE RAN Design",
+        "3GPP Release Standards",
+        "5G Core (5GC) vs EPC",
+        "PHY/MAC/RLC Protocol Layers",
+        "RF Network Planning",
+        "OMC/NMS Network Management",
+        "OSS/BSS Concepts",
+        "VoLTE Design",
+        "MIMO & Beamforming",
+        "Network Slicing",
+        "IoT on 5G Networks"
+      ],
+      "streamCategories": [
+        "ECE"
+      ],
+      "launchpadTags": [
+        "telecom engineer",
+        "5g engineer",
+        "rf planning engineer",
+        "network engineer",
+        "wireless engineer"
+      ],
+      "pulseTopics": [
+        "5G",
+        "Telecom",
+        "LTE",
+        "3GPP",
+        "Network Engineering",
+        "RAN",
+        "Core Network",
+        "Wireless"
+      ],
+      "interviewFocus": [
+        "5G architecture",
+        "protocol stacks",
+        "RF planning",
+        "core network",
+        "3GPP standards"
+      ],
+      "challengeKey": "ece_telecom"
+    },
+    {
+      "id": "hardware_engineer",
+      "label": "Hardware Engineer",
+      "slug": "hardware-engineer",
+      "stream": "ECE",
+      "arenaKey": "ece",
+      "color": "#84CC16",
+      "aliases": [
+        "pcb designer",
+        "board design engineer",
+        "schematic engineer",
+        "circuit board designer",
+        "electronics hardware engineer",
+        "hardware design engineer"
+      ],
+      "keywords": [
+        "hardware engineer",
+        "pcb design",
+        "circuit design",
+        "pcb engineer",
+        "electronics engineer",
+        "schematic design",
+        "altium",
+        "kicad",
+        "hardware design",
+        "board bring-up",
+        "signal integrity"
+      ],
+      "auraSkills": [
+        "Schematic Design (Altium/KiCad)",
+        "PCB Layout & Routing",
+        "Signal Integrity Analysis",
+        "Power Electronics Design",
+        "Analog Circuit Design",
+        "Digital Logic Design",
+        "Component Selection & Sourcing",
+        "Board Bring-Up & Debug",
+        "EMC/EMI Testing",
+        "DFM & DFT",
+        "Hardware Testing (Oscilloscope/Logic Analyzer)",
+        "BOM Management"
+      ],
+      "assessmentSkills": [
+        "Schematic Design Principles",
+        "PCB Layout Rules",
+        "Signal Integrity (SI/PI)",
+        "Power Supply Design",
+        "Analog Circuit Fundamentals",
+        "Digital Logic on PCB",
+        "Component Datasheets & Selection",
+        "Board Bring-Up Techniques",
+        "EMC/EMI Compliance",
+        "Design for Manufacturing (DFM)",
+        "Hardware Debug Tools",
+        "BOM & Revision Control"
+      ],
+      "streamCategories": [
+        "ECE"
+      ],
+      "launchpadTags": [
+        "hardware engineer",
+        "pcb design engineer",
+        "electronics engineer",
+        "circuit design engineer",
+        "board design engineer"
+      ],
+      "pulseTopics": [
+        "PCB Design",
+        "Hardware Engineering",
+        "Altium",
+        "Signal Integrity",
+        "Electronics",
+        "Embedded Hardware"
+      ],
+      "interviewFocus": [
+        "PCB design rules",
+        "signal integrity",
+        "power design",
+        "schematic review",
+        "bring-up debugging"
+      ],
+      "challengeKey": "ece"
+    },
+    {
+      "id": "power_engineer",
+      "label": "Power Systems Engineer",
+      "slug": "power-systems-engineer",
+      "stream": "EEE",
+      "arenaKey": "eee",
+      "color": "#EAB308",
+      "aliases": [
+        "electrical engineer",
+        "grid engineer",
+        "power distribution engineer",
+        "transmission engineer",
+        "protection engineer",
+        "smart grid engineer",
+        "substation engineer"
+      ],
+      "keywords": [
+        "power engineer",
+        "power systems",
+        "electrical power",
+        "power electronics",
+        "power grid",
+        "smart grid",
+        "transmission",
+        "distribution engineer",
+        "substation",
+        "eee power",
+        "power systems engineer"
+      ],
+      "auraSkills": [
+        "Power System Analysis (Load Flow / Fault)",
+        "Protection Relays & Coordination",
+        "SCADA & Energy Management",
+        "Transmission & Distribution Design",
+        "Power Electronics (Converters)",
+        "Renewable Energy Integration",
+        "Switchgear & Circuit Breakers",
+        "Power Quality Analysis",
+        "Transformer Design",
+        "Smart Grid Technologies",
+        "ETAP / PowerWorld",
+        "Grid Codes & Standards"
+      ],
+      "assessmentSkills": [
+        "Load Flow Analysis (Newton-Raphson)",
+        "Fault Analysis (Symmetrical/Unsymmetrical)",
+        "Protection Relaying Coordination",
+        "SCADA & DMS Systems",
+        "Power System Stability",
+        "Transmission Line Design",
+        "Distribution System Design",
+        "Power Electronics (AC-DC/DC-DC)",
+        "Renewable Energy (Solar/Wind)",
+        "Switchgear & Busbar Design",
+        "Power Quality (Harmonics/Flicker)",
+        "Smart Grid & AMI"
+      ],
+      "streamCategories": [
+        "EEE"
+      ],
+      "launchpadTags": [
+        "power systems engineer",
+        "power engineer",
+        "electrical engineer",
+        "grid engineer",
+        "power electronics engineer"
+      ],
+      "pulseTopics": [
+        "Power Systems",
+        "Smart Grid",
+        "Renewable Energy",
+        "Power Electronics",
+        "Substation",
+        "SCADA",
+        "Electrical Engineering"
+      ],
+      "interviewFocus": [
+        "load flow",
+        "fault analysis",
+        "protection coordination",
+        "power quality",
+        "renewable integration"
+      ],
+      "challengeKey": "eee_power"
+    },
+    {
+      "id": "electrical_machines",
+      "label": "Electrical Machines Engineer",
+      "slug": "electrical-machines-engineer",
+      "stream": "EEE",
+      "arenaKey": "eee",
+      "color": "#EAB308",
+      "aliases": [
+        "motor design engineer",
+        "vfd engineer",
+        "drive engineer",
+        "servo engineer",
+        "bldc engineer",
+        "ev motor engineer",
+        "electric motor engineer"
+      ],
+      "keywords": [
+        "electrical machines",
+        "motor drives",
+        "variable frequency drive",
+        "vfd",
+        "electric motor",
+        "generator",
+        "transformer engineer",
+        "drive engineer",
+        "servo drives",
+        "brushless motor",
+        "eee machines"
+      ],
+      "auraSkills": [
+        "DC / AC Machine Analysis",
+        "Transformer Design & Testing",
+        "Induction Motor Characteristics",
+        "Variable Frequency Drives (VFD)",
+        "Servo & Stepper Motor Control",
+        "BLDC Motor Design",
+        "Field-Oriented Control (FOC)",
+        "Power Electronics for Drives",
+        "Motor Testing Standards",
+        "Thermal Management of Machines",
+        "Simulation (MATLAB/Simulink)",
+        "IEC/IS Standards for Machines"
+      ],
+      "assessmentSkills": [
+        "DC Machine Analysis",
+        "Induction Motor Equivalent Circuit",
+        "Transformer Testing (OC/SC)",
+        "VFD Operation & Control",
+        "Servo Motor Selection",
+        "BLDC Motor Control",
+        "Field-Oriented Control",
+        "Space Vector PWM",
+        "Motor Thermal Analysis",
+        "Standards (IEC 60034)",
+        "MATLAB Motor Simulation",
+        "Drive-Motor Integration"
+      ],
+      "streamCategories": [
+        "EEE"
+      ],
+      "launchpadTags": [
+        "electrical machines engineer",
+        "motor drives engineer",
+        "vfd engineer",
+        "drive systems engineer",
+        "electric motor design engineer"
+      ],
+      "pulseTopics": [
+        "Electrical Machines",
+        "Motor Drives",
+        "VFD",
+        "Electric Vehicles",
+        "BLDC",
+        "Power Electronics",
+        "Automation"
+      ],
+      "interviewFocus": [
+        "induction motor control",
+        "VFD design",
+        "FOC",
+        "transformer analysis",
+        "machine testing"
+      ],
+      "challengeKey": "eee_machines"
+    },
+    {
+      "id": "control_engineer",
+      "label": "Control Systems Engineer",
+      "slug": "control-systems-engineer",
+      "stream": "EEE",
+      "arenaKey": "eee",
+      "color": "#EAB308",
+      "aliases": [
+        "plc programmer",
+        "scada developer",
+        "industrial automation engineer",
+        "process automation engineer",
+        "pid engineer",
+        "automation and control engineer"
+      ],
+      "keywords": [
+        "control systems",
+        "control engineer",
+        "pid controller",
+        "automation engineer",
+        "plc engineer",
+        "scada engineer",
+        "process control",
+        "industrial automation",
+        "control theory",
+        "feedback control",
+        "eee control"
+      ],
+      "auraSkills": [
+        "Control System Theory (Transfer Functions)",
+        "PID Controller Design",
+        "Root Locus & Bode Plots",
+        "State-Space Representation",
+        "Digital Control Systems",
+        "PLC Programming (Ladder/FBD)",
+        "SCADA Design",
+        "DCS Systems",
+        "Sensor Integration",
+        "Actuator Selection",
+        "MATLAB/Simulink Control",
+        "Real-Time Control Platforms"
+      ],
+      "assessmentSkills": [
+        "Transfer Functions & Block Diagrams",
+        "PID Tuning Methods",
+        "Root Locus Analysis",
+        "Bode Plot Stability",
+        "State-Space & Observability",
+        "Z-Transform (Digital Control)",
+        "PLC Ladder / FBD / ST Programming",
+        "SCADA & HMI Design",
+        "DCS Architecture",
+        "Sensor Calibration & Integration",
+        "MATLAB/Simulink Simulation",
+        "Real-Time Controllers (dSPACE)"
+      ],
+      "streamCategories": [
+        "EEE"
+      ],
+      "launchpadTags": [
+        "control systems engineer",
+        "automation engineer",
+        "plc programmer",
+        "scada engineer",
+        "process control engineer"
+      ],
+      "pulseTopics": [
+        "Control Systems",
+        "PLC",
+        "SCADA",
+        "Automation",
+        "PID Control",
+        "Industrial Automation",
+        "Process Control"
+      ],
+      "interviewFocus": [
+        "PID tuning",
+        "stability analysis",
+        "PLC programming",
+        "SCADA design",
+        "control theory"
+      ],
+      "challengeKey": "eee_control"
+    },
+    {
+      "id": "power_electronics",
+      "label": "Power Electronics Engineer",
+      "slug": "power-electronics-engineer",
+      "stream": "EEE",
+      "arenaKey": "eee",
+      "color": "#EAB308",
+      "aliases": [
+        "inverter engineer",
+        "ev charging engineer",
+        "battery engineer",
+        "smps design engineer",
+        "dc-dc converter engineer",
+        "ev powertrain engineer",
+        "bms engineer"
+      ],
+      "keywords": [
+        "power electronics",
+        "inverter design",
+        "converter design",
+        "ev engineer",
+        "ev charging",
+        "battery management",
+        "ups design",
+        "smps engineer",
+        "pwm inverter",
+        "solar inverter",
+        "motor controller eee pe"
+      ],
+      "auraSkills": [
+        "DC-DC Converters (Buck/Boost/Flyback)",
+        "DC-AC Inverters (Full-Bridge/H-Bridge)",
+        "Gate Driver Design",
+        "MOSFET / IGBT / SiC / GaN Devices",
+        "PWM Techniques (SPWM / SVPWM)",
+        "Battery Management Systems (BMS)",
+        "EV Charging Standards (CCS / CHAdeMO)",
+        "Thermal Management of Power Devices",
+        "EMI/EMC in Power Electronics",
+        "Protection Circuits (OCP/OVP)",
+        "SMPS Design",
+        "Simulation (PSIM / LTspice)"
+      ],
+      "assessmentSkills": [
+        "DC-DC Converter Topologies",
+        "Inverter Design Techniques",
+        "MOSFET/IGBT/SiC/GaN Selection",
+        "PWM Control (SPWM/SVPWM)",
+        "BMS Architecture",
+        "EV Charging Protocols",
+        "Gate Driver Design",
+        "Thermal Resistance Calculation",
+        "EMI Filtering in SMPS",
+        "Protection Circuit Design",
+        "SMPS Magnetics Design",
+        "PSIM / LTspice Simulation"
+      ],
+      "streamCategories": [
+        "EEE"
+      ],
+      "launchpadTags": [
+        "power electronics engineer",
+        "inverter design engineer",
+        "ev engineer",
+        "bms engineer",
+        "smps design engineer"
+      ],
+      "pulseTopics": [
+        "Power Electronics",
+        "EV Charging",
+        "BMS",
+        "Inverters",
+        "SiC/GaN",
+        "SMPS",
+        "Electric Vehicles"
+      ],
+      "interviewFocus": [
+        "converter topologies",
+        "PWM strategies",
+        "thermal design",
+        "BMS architecture",
+        "EV standards"
+      ],
+      "challengeKey": "eee_pe"
+    },
+    {
+      "id": "instrumentation_engineer",
+      "label": "Instrumentation Engineer",
+      "slug": "instrumentation-engineer",
+      "stream": "EEE",
+      "arenaKey": "eee",
+      "color": "#EAB308",
+      "aliases": [
+        "field instrument engineer",
+        "calibration specialist",
+        "control and instrumentation engineer",
+        "ci engineer",
+        "process control engineer",
+        "instrument design engineer"
+      ],
+      "keywords": [
+        "instrumentation engineer",
+        "instrumentation",
+        "process instrumentation",
+        "instrument technician",
+        "calibration engineer",
+        "smart instruments",
+        "flow measurement",
+        "pressure measurement",
+        "temperature sensors",
+        "pid calibration",
+        "eee instrumentation"
+      ],
+      "auraSkills": [
+        "Sensor Types & Selection (Pressure/Flow/Temperature/Level)",
+        "Signal Conditioning & Amplifiers",
+        "4-20mA & HART Protocols",
+        "Field Instruments (Transmitters/Valves)",
+        "PLC & DCS Integration",
+        "Calibration Techniques",
+        "P&ID Reading",
+        "Safety Instrumented Systems (SIS)",
+        "Fieldbus Protocols (PROFIBUS / Foundation Fieldbus)",
+        "Data Acquisition Systems",
+        "Loop Diagrams",
+        "ISA Standards"
+      ],
+      "assessmentSkills": [
+        "Sensor Selection Criteria",
+        "Signal Conditioning Circuits",
+        "4-20mA Current Loops",
+        "HART Protocol Communication",
+        "Transmitter Calibration",
+        "Control Valve Sizing",
+        "PLC/DCS I/O Wiring",
+        "SIS & SIL Level Assessment",
+        "Fieldbus (PROFIBUS / FF)",
+        "P&ID Interpretation",
+        "Data Acquisition (DAQ)",
+        "ISA-5.1 & ISA-84 Standards"
+      ],
+      "streamCategories": [
+        "EEE"
+      ],
+      "launchpadTags": [
+        "instrumentation engineer",
+        "process instrumentation engineer",
+        "calibration engineer",
+        "automation instrumentation engineer",
+        "field instruments engineer"
+      ],
+      "pulseTopics": [
+        "Instrumentation",
+        "Process Control",
+        "Sensors",
+        "HART Protocol",
+        "Calibration",
+        "PLC",
+        "DCS",
+        "Industrial IoT"
+      ],
+      "interviewFocus": [
+        "sensor selection",
+        "calibration",
+        "HART/fieldbus",
+        "P&ID reading",
+        "SIS design"
+      ],
+      "challengeKey": "eee_instrumentation"
+    },
+    {
+      "id": "mechanical_design",
+      "label": "Mechanical Design Engineer",
+      "slug": "mechanical-design-engineer",
+      "stream": "Mechanical",
+      "arenaKey": "mechanical",
+      "color": "#64748B",
+      "aliases": [
+        "cad design engineer",
+        "product design engineer",
+        "solidworks designer",
+        "catia engineer",
+        "nx engineer",
+        "design draughtsman",
+        "mechanical product engineer"
+      ],
+      "keywords": [
+        "mechanical design",
+        "mechanical engineer",
+        "cad engineer",
+        "catia",
+        "solidworks",
+        "nx engineer",
+        "product design",
+        "machine design",
+        "mechanical product",
+        "design engineer mechanical"
+      ],
+      "auraSkills": [
+        "CAD (SolidWorks / CATIA / NX)",
+        "GD&T (Geometric Dimensioning & Tolerancing)",
+        "Engineering Drawing Standards",
+        "FEA (ANSYS / Abaqus)",
+        "Material Selection",
+        "Mechanism Design",
+        "DFM & DFA",
+        "Prototyping & Testing",
+        "Product Lifecycle Management (PLM)",
+        "Tolerance Stack-Up Analysis",
+        "Injection Moulding Design",
+        "Sheet Metal Design"
+      ],
+      "assessmentSkills": [
+        "SolidWorks / CATIA / NX Proficiency",
+        "GD&T Application",
+        "Engineering Drawing Interpretation",
+        "FEA Simulation Setup",
+        "Material Properties & Selection",
+        "Mechanism Kinematics",
+        "DFM / DFA Principles",
+        "Prototype Testing Methods",
+        "PLM Systems",
+        "Tolerance Analysis",
+        "Plastic Part Design",
+        "Sheet Metal Forming Design"
+      ],
+      "streamCategories": [
+        "Mechanical"
+      ],
+      "launchpadTags": [
+        "mechanical design engineer",
+        "cad engineer",
+        "product design engineer",
+        "solidworks engineer",
+        "mechanical engineer"
+      ],
+      "pulseTopics": [
+        "CAD",
+        "SolidWorks",
+        "CATIA",
+        "GD&T",
+        "Mechanical Design",
+        "FEA",
+        "Product Design",
+        "PLM"
+      ],
+      "interviewFocus": [
+        "GD&T",
+        "CAD modeling",
+        "FEA interpretation",
+        "material selection",
+        "DFM principles"
+      ],
+      "challengeKey": "mech_design"
+    },
+    {
+      "id": "thermal_engineer",
+      "label": "Thermal / Mechanical Engineer",
+      "slug": "thermal-engineer",
+      "stream": "Mechanical",
+      "arenaKey": "mechanical",
+      "color": "#64748B",
+      "aliases": [
+        "hvac engineer",
+        "cfd analyst",
+        "cooling engineer",
+        "thermal analysis engineer",
+        "refrigeration engineer",
+        "heat transfer engineer"
+      ],
+      "keywords": [
+        "thermal engineer",
+        "heat transfer",
+        "hvac engineer",
+        "thermal design",
+        "mechanical thermal",
+        "fluid dynamics",
+        "cfd engineer",
+        "cooling engineer",
+        "refrigeration engineer",
+        "mech thermal"
+      ],
+      "auraSkills": [
+        "Heat Transfer (Conduction/Convection/Radiation)",
+        "Fins & Extended Surfaces",
+        "Heat Exchangers (LMTD/NTU)",
+        "Boilers & Steam Power Plants",
+        "Gas Turbine Cycles (Brayton)",
+        "Refrigeration & HVAC (VCR)",
+        "CFD Simulation (ANSYS Fluent)",
+        "Thermodynamic Property Tables",
+        "Combustion & Fuels",
+        "Energy Audit & Conservation",
+        "Thermal Insulation Design",
+        "Numerical Methods in Heat Transfer"
+      ],
+      "assessmentSkills": [
+        "Heat Transfer Modes (Conduction / Convection / Radiation)",
+        "Fins & Extended Surfaces",
+        "Heat Exchangers (LMTD / NTU)",
+        "Boilers & Steam Power Plants",
+        "Gas Turbine Cycles (Brayton)",
+        "Refrigeration Cycles (VCR)",
+        "HVAC System Design",
+        "Thermodynamic Property Tables",
+        "Combustion & Fuels",
+        "Numerical Methods in Heat Transfer",
+        "Thermal Insulation Design",
+        "Energy Audit & Conservation"
+      ],
+      "streamCategories": [
+        "Mechanical"
+      ],
+      "launchpadTags": [
+        "thermal engineer",
+        "hvac engineer",
+        "cfd engineer",
+        "heat transfer engineer",
+        "mechanical thermal engineer"
+      ],
+      "pulseTopics": [
+        "Thermal Engineering",
+        "CFD",
+        "HVAC",
+        "Heat Transfer",
+        "Thermodynamics",
+        "Energy",
+        "Refrigeration"
+      ],
+      "interviewFocus": [
+        "heat exchanger design",
+        "CFD setup",
+        "refrigeration cycles",
+        "energy audit",
+        "thermodynamics"
+      ],
+      "challengeKey": "mech_thermal"
+    },
+    {
+      "id": "manufacturing_engineer",
+      "label": "Manufacturing Engineer",
+      "slug": "manufacturing-engineer",
+      "stream": "Mechanical",
+      "arenaKey": "mechanical",
+      "color": "#64748B",
+      "aliases": [
+        "production planning engineer",
+        "cnc programmer",
+        "lean expert",
+        "six sigma engineer",
+        "quality manufacturing engineer",
+        "tooling design engineer"
+      ],
+      "keywords": [
+        "manufacturing engineer",
+        "production engineer",
+        "process engineer",
+        "cnc engineer",
+        "lean engineer",
+        "quality engineer",
+        "industrial engineer",
+        "tooling engineer",
+        "mfg engineer",
+        "mech manufacturing"
+      ],
+      "auraSkills": [
+        "Manufacturing Processes (Machining/Casting/Welding)",
+        "CNC Programming (G-Code/M-Code)",
+        "Lean Manufacturing & Kaizen",
+        "Statistical Process Control (SPC)",
+        "FMEA & Control Plans",
+        "Jigs & Fixture Design",
+        "Production Planning",
+        "Quality Systems (ISO 9001)",
+        "Work Study & Time-Motion",
+        "CAM Software (Mastercam)",
+        "Tolerance & GD&T",
+        "Overall Equipment Effectiveness (OEE)"
+      ],
+      "assessmentSkills": [
+        "Manufacturing Process Selection",
+        "CNC G-Code & M-Code",
+        "Lean Six Sigma Concepts",
+        "Statistical Process Control (SPC)",
+        "FMEA Methodology",
+        "Jig & Fixture Design",
+        "Production Planning & Scheduling",
+        "ISO 9001 Quality Systems",
+        "Work Measurement Techniques",
+        "CAM Software Workflow",
+        "GD&T for Manufacturing",
+        "OEE Calculation & Improvement"
+      ],
+      "streamCategories": [
+        "Mechanical"
+      ],
+      "launchpadTags": [
+        "manufacturing engineer",
+        "process engineer",
+        "cnc engineer",
+        "lean manufacturing engineer",
+        "production engineer"
+      ],
+      "pulseTopics": [
+        "Manufacturing",
+        "Lean",
+        "Six Sigma",
+        "CNC",
+        "Quality Engineering",
+        "Industry 4.0",
+        "Production"
+      ],
+      "interviewFocus": [
+        "manufacturing processes",
+        "lean principles",
+        "SPC",
+        "FMEA",
+        "jig design"
+      ],
+      "challengeKey": "mech_manufacturing"
+    },
+    {
+      "id": "fluid_mechanics_engineer",
+      "label": "Fluid Mechanics / Hydraulic Engineer",
+      "slug": "fluid-mechanics-engineer",
+      "stream": "Mechanical",
+      "arenaKey": "mechanical",
+      "color": "#64748B",
+      "aliases": [
+        "piping engineer",
+        "hydraulic design engineer",
+        "pump engineer",
+        "turbomachinery engineer",
+        "process piping engineer",
+        "compressor design engineer"
+      ],
+      "keywords": [
+        "fluid mechanics",
+        "hydraulic engineer",
+        "fluid engineer",
+        "turbomachinery",
+        "pumps",
+        "compressor engineer",
+        "hydraulics",
+        "piping engineer",
+        "pipeline engineer",
+        "mech fluid"
+      ],
+      "auraSkills": [
+        "Fluid Statics & Dynamics",
+        "Bernoulli & Continuity Equations",
+        "Pipe Flow & Head Loss (Darcy-Weisbach)",
+        "Pumps & Turbines Characteristics",
+        "Boundary Layer Theory",
+        "Turbulence & Reynolds Number",
+        "Hydraulic Machines (Pelton/Francis/Kaplan)",
+        "CFD (ANSYS Fluent / OpenFOAM)",
+        "Pipe Network Analysis",
+        "Hydraulic Transients (Water Hammer)",
+        "Two-Phase Flow",
+        "Fluid System Design"
+      ],
+      "assessmentSkills": [
+        "Fluid Statics (Pressure/Buoyancy)",
+        "Bernoulli & Energy Equation",
+        "Pipe Flow (Darcy-Weisbach/Hazen-Williams)",
+        "Pump Affinity Laws",
+        "Boundary Layer Concepts",
+        "Turbulence Modeling",
+        "Hydraulic Turbine Selection",
+        "CFD Meshing & Solver Setup",
+        "Pipe Network Simulation",
+        "Water Hammer Analysis",
+        "Two-Phase Flow Fundamentals",
+        "Fluid System Sizing"
+      ],
+      "streamCategories": [
+        "Mechanical"
+      ],
+      "launchpadTags": [
+        "fluid mechanics engineer",
+        "hydraulic engineer",
+        "piping engineer",
+        "cfd engineer",
+        "turbomachinery engineer"
+      ],
+      "pulseTopics": [
+        "Fluid Mechanics",
+        "CFD",
+        "Hydraulics",
+        "Turbomachinery",
+        "Piping Design",
+        "Energy"
+      ],
+      "interviewFocus": [
+        "Bernoulli equation",
+        "pump selection",
+        "CFD setup",
+        "pipe sizing",
+        "hydraulic transients"
+      ],
+      "challengeKey": "mech_fluid"
+    },
+    {
+      "id": "structural_engineer",
+      "label": "Structural Engineer",
+      "slug": "structural-engineer",
+      "stream": "Civil",
+      "arenaKey": "civil",
+      "color": "#78716C",
+      "aliases": [
+        "rcc designer",
+        "steel structure engineer",
+        "building engineer",
+        "bridge designer",
+        "structural design engineer",
+        "concrete design engineer"
+      ],
+      "keywords": [
+        "structural engineer",
+        "civil structural",
+        "rcc design",
+        "steel design",
+        "building structure",
+        "structural analysis",
+        "bridge engineer",
+        "structural design",
+        "concrete design",
+        "structural civil"
+      ],
+      "auraSkills": [
+        "Structural Analysis (Indeterminate)",
+        "RC Design (IS 456)",
+        "Steel Design (IS 800)",
+        "Pre-stressed Concrete",
+        "Matrix Methods & Stiffness",
+        "Finite Element Analysis (SAP2000/ETABS)",
+        "Load Calculations (IS 875)",
+        "Seismic Design (IS 1893)",
+        "Foundation Design",
+        "Yield Line Theory",
+        "Plate Girder & Connection Design",
+        "Structural Audit & Retrofitting"
+      ],
+      "assessmentSkills": [
+        "Structural Analysis (Indeterminate)",
+        "RC Design (IS 456)",
+        "Steel Design (IS 800)",
+        "Pre-stressed Concrete",
+        "Matrix Methods & Stiffness",
+        "Finite Element Basics",
+        "Load Calculations (IS 875)",
+        "Seismic Design (IS 1893)",
+        "Yield Line Theory",
+        "Plate Girder Design",
+        "Connection Design (Bolted / Welded)",
+        "Structural Audit & Retrofitting"
+      ],
+      "streamCategories": [
+        "Civil"
+      ],
+      "launchpadTags": [
+        "structural engineer",
+        "civil structural engineer",
+        "rcc design engineer",
+        "steel design engineer",
+        "bridge engineer"
+      ],
+      "pulseTopics": [
+        "Structural Engineering",
+        "RCC Design",
+        "Steel Structures",
+        "Seismic Design",
+        "ETABS",
+        "Foundation Design",
+        "IS Codes"
+      ],
+      "interviewFocus": [
+        "RCC beam design",
+        "IS 456",
+        "seismic design",
+        "structural analysis",
+        "connection design"
+      ],
+      "challengeKey": "civil_structural"
+    },
+    {
+      "id": "geotechnical_engineer",
+      "label": "Geotechnical Engineer",
+      "slug": "geotechnical-engineer",
+      "stream": "Civil",
+      "arenaKey": "civil",
+      "color": "#78716C",
+      "aliases": [
+        "soil investigation engineer",
+        "piling specialist",
+        "ground engineer",
+        "foundation design engineer",
+        "retaining wall designer"
+      ],
+      "keywords": [
+        "geotechnical engineer",
+        "soil mechanics",
+        "foundation engineer",
+        "geotechnical",
+        "earthworks",
+        "ground improvement",
+        "piling engineer",
+        "retaining wall",
+        "slope stability",
+        "soil testing",
+        "civil geo"
+      ],
+      "auraSkills": [
+        "Soil Classification & Index Properties",
+        "Shear Strength (Mohr-Coulomb)",
+        "Compressibility & Settlement Analysis",
+        "Foundation Types (Shallow/Deep)",
+        "Pile Design & Load Test",
+        "Retaining Wall Design",
+        "Slope Stability Analysis (Bishop)",
+        "Ground Improvement Techniques",
+        "Seismic Site Classification",
+        "Soil Testing (SPT/CPT/Plate Load)",
+        "Geotechnical Report Writing",
+        "GeoStudio / PLAXIS"
+      ],
+      "assessmentSkills": [
+        "Soil Classification (IS 1498)",
+        "Shear Strength Parameters",
+        "Terzaghi Settlement Theory",
+        "Bearing Capacity (Terzaghi/Meyerhof)",
+        "Pile Design Methods",
+        "Retaining Wall Earth Pressure (Rankine/Coulomb)",
+        "Bishop Slope Stability",
+        "Ground Improvement Methods",
+        "Liquefaction Assessment",
+        "SPT / CPT Interpretation",
+        "Geotechnical Investigation",
+        "PLAXIS / GeoStudio Modeling"
+      ],
+      "streamCategories": [
+        "Civil"
+      ],
+      "launchpadTags": [
+        "geotechnical engineer",
+        "foundation engineer",
+        "soil engineer",
+        "piling engineer",
+        "ground improvement engineer"
+      ],
+      "pulseTopics": [
+        "Geotechnical Engineering",
+        "Soil Mechanics",
+        "Foundation Design",
+        "Ground Improvement",
+        "Piling",
+        "Slope Stability"
+      ],
+      "interviewFocus": [
+        "bearing capacity",
+        "settlement",
+        "pile design",
+        "slope stability",
+        "soil testing"
+      ],
+      "challengeKey": "civil_geotechnical"
+    },
+    {
+      "id": "transportation_engineer",
+      "label": "Transportation Engineer",
+      "slug": "transportation-engineer",
+      "stream": "Civil",
+      "arenaKey": "civil",
+      "color": "#78716C",
+      "aliases": [
+        "road design engineer",
+        "traffic planning engineer",
+        "urban mobility engineer",
+        "highway design engineer",
+        "pavement design engineer"
+      ],
+      "keywords": [
+        "transportation engineer",
+        "highway engineer",
+        "road design",
+        "traffic engineer",
+        "pavement engineer",
+        "road engineer",
+        "urban transport",
+        "transport planning",
+        "civil transport",
+        "highway design"
+      ],
+      "auraSkills": [
+        "Highway Geometric Design (IRC)",
+        "Pavement Design (Flexible / Rigid)",
+        "Traffic Engineering & Studies",
+        "Traffic Signal Design",
+        "Road Safety Audit",
+        "Horizontal & Vertical Alignment",
+        "Grade Separator & Interchange Design",
+        "Urban Transportation Planning",
+        "Travel Demand Modeling",
+        "Public Transport Planning",
+        "AutoCAD Civil 3D",
+        "IRC Standards (IRC:73, IRC:37)"
+      ],
+      "assessmentSkills": [
+        "Horizontal Alignment Design",
+        "Vertical Alignment & Grade",
+        "IRC Geometric Design Standards",
+        "Flexible Pavement Design (IRC:37)",
+        "Rigid Pavement Design (IRC:58)",
+        "Traffic Volume Studies",
+        "PCU & LOS Analysis",
+        "Sight Distance Calculations",
+        "Intersection Design",
+        "Road Safety Audit",
+        "Civil 3D Alignment",
+        "VISSIM Traffic Simulation"
+      ],
+      "streamCategories": [
+        "Civil"
+      ],
+      "launchpadTags": [
+        "transportation engineer",
+        "highway engineer",
+        "road design engineer",
+        "traffic engineer",
+        "pavement engineer"
+      ],
+      "pulseTopics": [
+        "Transportation Engineering",
+        "Highway Design",
+        "Traffic Engineering",
+        "Pavement",
+        "Urban Mobility",
+        "IRC Codes"
+      ],
+      "interviewFocus": [
+        "geometric design",
+        "pavement design",
+        "traffic analysis",
+        "IRC standards",
+        "sight distance"
+      ],
+      "challengeKey": "civil_transportation"
+    },
+    {
+      "id": "water_resources_engineer",
+      "label": "Water Resources Engineer",
+      "slug": "water-resources-engineer",
+      "stream": "Civil",
+      "arenaKey": "civil",
+      "color": "#78716C",
+      "aliases": [
+        "hydrologist",
+        "irrigation engineer",
+        "water supply engineer",
+        "drainage engineer",
+        "dam design engineer",
+        "flood management engineer"
+      ],
+      "keywords": [
+        "water resources",
+        "hydraulic engineer civil",
+        "irrigation engineer",
+        "hydrology",
+        "dam engineer",
+        "flood control",
+        "water supply",
+        "drainage engineer",
+        "canal design",
+        "civil water"
+      ],
+      "auraSkills": [
+        "Hydrology (Rainfall-Runoff Analysis)",
+        "Open Channel Flow",
+        "Canal Design & Lining",
+        "Dam & Spillway Design",
+        "Flood Routing & Estimation",
+        "Irrigation Systems",
+        "Water Supply Network Design",
+        "Drainage System Design",
+        "Groundwater Hydrology",
+        "Watershed Management",
+        "HEC-RAS / SWMM",
+        "IS / IRC Water Standards"
+      ],
+      "assessmentSkills": [
+        "Rainfall-Runoff Methods (SCS / Rational)",
+        "Manning's Equation for Open Channels",
+        "Canal Design (IS 7112)",
+        "Dam Types & Spillway Design",
+        "Flood Frequency Analysis",
+        "Irrigation Water Requirements",
+        "Water Supply Distribution (Hardy-Cross)",
+        "Storm Drain Design",
+        "Groundwater Well Design",
+        "Unit Hydrograph",
+        "HEC-RAS 1D/2D Modeling",
+        "Drought Management"
+      ],
+      "streamCategories": [
+        "Civil"
+      ],
+      "launchpadTags": [
+        "water resources engineer",
+        "hydraulic engineer",
+        "irrigation engineer",
+        "hydrology engineer",
+        "dam engineer"
+      ],
+      "pulseTopics": [
+        "Water Resources",
+        "Hydrology",
+        "Hydraulics",
+        "Irrigation",
+        "Flood Management",
+        "Open Channel Flow",
+        "Water Supply"
+      ],
+      "interviewFocus": [
+        "Manning's equation",
+        "flood routing",
+        "canal design",
+        "groundwater",
+        "water supply network"
+      ],
+      "challengeKey": "civil_water"
+    },
+    {
+      "id": "construction_engineer",
+      "label": "Construction Engineer / Site Engineer",
+      "slug": "construction-engineer",
+      "stream": "Civil",
+      "arenaKey": "civil",
+      "color": "#78716C",
+      "aliases": [
+        "site manager",
+        "civil supervisor",
+        "quantity estimator",
+        "project site engineer",
+        "bq engineer",
+        "construction site engineer"
+      ],
+      "keywords": [
+        "construction engineer",
+        "site engineer",
+        "project engineer civil",
+        "building construction",
+        "construction management",
+        "quantity surveyor",
+        "civil site engineer",
+        "construction supervisor",
+        "estimation engineer",
+        "civil construction",
+        "site civil"
+      ],
+      "auraSkills": [
+        "Construction Sequence & Method Statements",
+        "Bar Bending Schedule (BBS)",
+        "Quantity Estimation & BOQ",
+        "Project Scheduling (CPM/PERT)",
+        "Construction Materials Testing",
+        "Quality Control (IS / ASTM)",
+        "Safety at Site (IS 4014)",
+        "Contract Management (FIDIC/PWD)",
+        "Equipment Selection",
+        "Concrete Mix Design",
+        "Auto-CAD for Site Drawings",
+        "ERP Systems (Primavera / MS Project)"
+      ],
+      "assessmentSkills": [
+        "Construction Sequence Planning",
+        "Bar Bending Schedule (BBS)",
+        "BOQ Preparation",
+        "CPM / PERT Network Analysis",
+        "Concrete & Steel Testing Standards",
+        "Site Quality Control Checks",
+        "Safety Regulations (IS 4014)",
+        "FIDIC Contract Terms",
+        "Equipment Productivity Calculation",
+        "Mix Design (IS 10262)",
+        "Reading Working Drawings",
+        "Primavera / MS Project Scheduling"
+      ],
+      "streamCategories": [
+        "Civil"
+      ],
+      "launchpadTags": [
+        "construction engineer",
+        "site engineer",
+        "project engineer",
+        "civil engineer",
+        "quantity surveyor"
+      ],
+      "pulseTopics": [
+        "Construction Management",
+        "Site Engineering",
+        "Project Planning",
+        "Quality Control",
+        "Building Materials",
+        "BOQ",
+        "Safety"
+      ],
+      "interviewFocus": [
+        "BBS preparation",
+        "BOQ estimation",
+        "CPM scheduling",
+        "quality control",
+        "site safety"
+      ],
+      "challengeKey": "civil_construction"
+    },
+    {
+      "id": "civil_general",
+      "label": "Civil Engineer",
+      "slug": "civil-engineer",
+      "stream": "Civil",
+      "arenaKey": "civil",
+      "color": "#78716C",
+      "aliases": [
+        "civil engineering fresher",
+        "junior civil engineer",
+        "graduate civil engineer",
+        "infrastructure graduate"
+      ],
+      "keywords": [
+        "civil engineer",
+        "civil engineering",
+        "civil graduate",
+        "municipal engineer",
+        "environmental engineer",
+        "infrastructure engineer"
+      ],
+      "auraSkills": [
+        "Structural Analysis",
+        "Soil Mechanics",
+        "Fluid Mechanics / Hydraulics",
+        "Transportation Engineering",
+        "Construction Technology",
+        "Surveying & Geomatics",
+        "Engineering Materials",
+        "Environmental Engineering",
+        "Project Management",
+        "AutoCAD",
+        "IS Codes Fundamentals",
+        "Estimation & Costing"
+      ],
+      "assessmentSkills": [
+        "Structural Analysis Basics",
+        "Soil Mechanics Fundamentals",
+        "Fluid Mechanics & Hydraulics",
+        "Highway Engineering",
+        "Construction Materials",
+        "Surveying Methods",
+        "Environmental Engineering",
+        "Estimation & Costing",
+        "AutoCAD Basics",
+        "IS Code References",
+        "Project Planning Basics",
+        "Site Management"
+      ],
+      "streamCategories": [
+        "Civil"
+      ],
+      "launchpadTags": [
+        "civil engineer",
+        "infrastructure engineer",
+        "municipal engineer",
+        "civil engineering graduate"
+      ],
+      "pulseTopics": [
+        "Civil Engineering",
+        "Structural",
+        "Geotechnical",
+        "Transportation",
+        "Hydraulics",
+        "Construction",
+        "IS Codes"
+      ],
+      "interviewFocus": [
+        "structural fundamentals",
+        "soil mechanics",
+        "fluid flow",
+        "highway design",
+        "construction methods"
+      ],
+      "challengeKey": "civil"
+    },
+    {
+      "id": "ml_engineer",
+      "label": "ML / AI Engineer",
+      "slug": "ml-engineer",
+      "stream": "IT",
+      "arenaKey": "ml",
+      "challengeKey": "ml",
+      "color": "#A855F7",
+      "aliases": [
+        "ai developer",
+        "llm engineer",
+        "genai engineer",
+        "deep learning engineer",
+        "nlp developer",
+        "computer vision engineer",
+        "data scientist ai",
+        "mlops engineer"
+      ],
+      "keywords": [
+        "machine learning",
+        "ml engineer",
+        "ai engineer",
+        "deep learning",
+        "data scientist",
+        "nlp engineer",
+        "computer vision",
+        "llm engineer",
+        "generative ai",
+        "pytorch",
+        "tensorflow",
+        "model engineer",
+        "ai ml",
+        "artificial intelligence"
+      ],
+      "auraSkills": [
+        "Python (NumPy/Pandas)",
+        "Scikit-learn",
+        "PyTorch / TensorFlow",
+        "Model Evaluation (AUC/F1/RMSE)",
+        "Feature Engineering",
+        "Data Preprocessing",
+        "Neural Network Design",
+        "NLP (Transformers/BERT)",
+        "Computer Vision (CNNs)",
+        "Model Deployment (FastAPI/TorchServe)",
+        "Experiment Tracking (MLflow/W&B)",
+        "LLM Fine-Tuning / RAG"
+      ],
+      "assessmentSkills": [
+        "Python",
+        "NumPy / Pandas",
+        "Scikit-learn",
+        "Model Evaluation",
+        "Feature Engineering",
+        "Neural Networks",
+        "Data Preprocessing",
+        "Statistics",
+        "Regression / Classification",
+        "Deep Learning Basics",
+        "Model Deployment",
+        "Experiment Tracking"
+      ],
+      "streamCategories": [],
+      "launchpadTags": [
+        "machine learning engineer",
+        "ai engineer",
+        "data scientist",
+        "nlp engineer",
+        "computer vision engineer",
+        "deep learning engineer"
+      ],
+      "pulseTopics": [
+        "Machine Learning",
+        "Deep Learning",
+        "PyTorch",
+        "TensorFlow",
+        "NLP",
+        "LLMs",
+        "GenAI",
+        "Data Science",
+        "Computer Vision"
+      ],
+      "interviewFocus": [
+        "model evaluation",
+        "feature engineering",
+        "neural network design",
+        "bias/variance",
+        "deployment pipeline"
+      ]
+    },
+    {
+      "id": "android_developer",
+      "label": "Android Developer",
+      "slug": "android-developer",
+      "stream": "IT",
+      "arenaKey": "android",
+      "challengeKey": "android",
+      "color": "#22C55E",
+      "aliases": [
+        "kotlin engineer",
+        "mobile app developer android",
+        "android application developer",
+        "android studio developer"
+      ],
+      "keywords": [
+        "android developer",
+        "android engineer",
+        "kotlin developer",
+        "android app",
+        "android sdk",
+        "jetpack compose",
+        "android studio",
+        "mobile android",
+        "android application"
+      ],
+      "auraSkills": [
+        "Kotlin",
+        "Android SDK",
+        "Jetpack Compose",
+        "MVVM Architecture",
+        "Room Database",
+        "Retrofit / OkHttp",
+        "Coroutines & Flow",
+        "UI/UX for Android",
+        "Push Notifications (FCM)",
+        "Unit & UI Testing (Espresso)",
+        "Play Store Deployment",
+        "Deep Links & Intents"
+      ],
+      "assessmentSkills": [
+        "Kotlin",
+        "Java",
+        "Android SDK",
+        "Jetpack Compose",
+        "MVVM Architecture",
+        "Room Database",
+        "Retrofit",
+        "Coroutines",
+        "UI/UX Design",
+        "Testing",
+        "Push Notifications",
+        "Play Store Deployment"
+      ],
+      "streamCategories": [],
+      "launchpadTags": [
+        "android developer",
+        "kotlin developer",
+        "android engineer",
+        "mobile developer android"
+      ],
+      "pulseTopics": [
+        "Android",
+        "Kotlin",
+        "Jetpack Compose",
+        "Mobile Development",
+        "Android Studio",
+        "MVVM",
+        "Firebase"
+      ],
+      "interviewFocus": [
+        "activity/fragment lifecycle",
+        "coroutines",
+        "MVVM",
+        "room database",
+        "compose state"
+      ]
+    },
+    {
+      "id": "ios_developer",
+      "label": "iOS Developer",
+      "slug": "ios-developer",
+      "stream": "IT",
+      "arenaKey": "ios",
+      "challengeKey": "ios",
+      "color": "#64748B",
+      "aliases": [
+        "swift engineer",
+        "apple ios developer",
+        "iphone app developer",
+        "swiftui developer",
+        "mobile app developer ios",
+        "xcode engineer",
+        "ios application developer"
+      ],
+      "keywords": [
+        "ios developer",
+        "swift developer",
+        "ios engineer",
+        "xcode developer",
+        "swiftui developer",
+        "apple developer",
+        "objective-c developer",
+        "ios app developer",
+        "iphone developer"
+      ],
+      "auraSkills": [
+        "Swift",
+        "Xcode",
+        "SwiftUI",
+        "UIKit",
+        "Core Data",
+        "Networking (URLSession/Combine)",
+        "MVVM / MVC Patterns",
+        "Auto Layout",
+        "Push Notifications (APNs)",
+        "App Store Deployment",
+        "Unit Testing (XCTest)",
+        "Memory Management (ARC)"
+      ],
+      "assessmentSkills": [
+        "Swift",
+        "Xcode",
+        "UIKit",
+        "SwiftUI",
+        "Core Data",
+        "Networking (URLSession)",
+        "MVC/MVVM",
+        "Auto Layout",
+        "Push Notifications",
+        "App Store Deployment",
+        "Testing (XCTest)",
+        "Memory Management"
+      ],
+      "streamCategories": [],
+      "launchpadTags": [
+        "ios developer",
+        "swift developer",
+        "ios engineer",
+        "apple developer",
+        "mobile developer ios"
+      ],
+      "pulseTopics": [
+        "iOS",
+        "Swift",
+        "SwiftUI",
+        "Xcode",
+        "Apple",
+        "Mobile Development",
+        "UIKit",
+        "Core Data"
+      ],
+      "interviewFocus": [
+        "ARC memory management",
+        "SwiftUI vs UIKit",
+        "Core Data",
+        "URLSession",
+        "App Store review guidelines"
+      ]
+    },
+    {
+      "id": "pharmacy",
+      "label": "Pharmacist / Pharmacy Specialist",
+      "slug": "pharmacist",
+      "stream": "Pharmacy",
+      "arenaKey": "pharmacy",
+      "challengeKey": "pharmacy",
+      "color": "#EC4899",
+      "aliases": [
+        "pharma professional",
+        "drug regulatory officer",
+        "quality assurance pharmacist",
+        "pharmaceutical analyst",
+        "pharma QA",
+        "clinical pharmacist",
+        "hospital pharmacist",
+        "pharmaceutical scientist"
+      ],
+      "keywords": [
+        "pharmacist",
+        "pharmacy",
+        "pharma",
+        "pharmaceutical",
+        "drug formulation",
+        "clinical pharmacist",
+        "hospital pharmacist",
+        "community pharmacist",
+        "pharmacy technician",
+        "drug regulatory",
+        "pharmacovigilance",
+        "drug discovery"
+      ],
+      "auraSkills": [
+        "Pharmaceutics (Dosage Forms)",
+        "Pharmacology (MOA & Drug Classes)",
+        "Medicinal Chemistry",
+        "Clinical Pharmacy Practice",
+        "Pharmacokinetics & Pharmacodynamics",
+        "Drug Interactions",
+        "Quality Assurance & GMP",
+        "Biopharmaceutics (BCS Classification)",
+        "Hospital Pharmacy Workflow",
+        "Regulatory Affairs (FDA/CDSCO)",
+        "Pharmaceutical Analysis",
+        "Drug Storage & Handling"
+      ],
+      "assessmentSkills": [
+        "Pharmaceutics",
+        "Pharmacology",
+        "Medicinal Chemistry",
+        "Drug Design & Discovery",
+        "Clinical Pharmacy",
+        "Pharmacokinetics & Pharmacodynamics",
+        "Drug Regulatory Affairs",
+        "Quality Assurance & GMP",
+        "Biopharmaceutics",
+        "Hospital & Community Pharmacy",
+        "Industrial Pharmacy",
+        "Pharmaceutical Analysis"
+      ],
+      "streamCategories": [],
+      "launchpadTags": [
+        "pharmacist",
+        "clinical pharmacist",
+        "hospital pharmacist",
+        "pharmaceutical scientist",
+        "drug regulatory affairs specialist"
+      ],
+      "pulseTopics": [
+        "Pharmacy",
+        "Pharmaceutical Sciences",
+        "Clinical Pharmacy",
+        "Drug Discovery",
+        "GMP",
+        "Regulatory Affairs",
+        "FDA",
+        "CDSCO"
+      ],
+      "interviewFocus": [
+        "pharmacokinetics",
+        "drug interactions",
+        "clinical pharmacy",
+        "GMP",
+        "regulatory submissions"
+      ]
+    },
+    {
+      "id": "mba",
+      "label": "MBA / Business Manager",
+      "slug": "mba-business-manager",
+      "stream": "MBA",
+      "arenaKey": "mba",
+      "challengeKey": "mba",
+      "color": "#F59E0B",
+      "aliases": [
+        "mba graduate",
+        "management consultant",
+        "business development manager",
+        "operations analyst",
+        "marketing executive",
+        "finance analyst",
+        "hr executive",
+        "strategy analyst",
+        "management trainee"
+      ],
+      "keywords": [
+        "mba",
+        "business manager",
+        "operations manager",
+        "hr manager",
+        "marketing manager",
+        "management trainee",
+        "business analyst mba",
+        "general manager",
+        "product manager mba",
+        "strategy consultant",
+        "brand manager",
+        "supply chain manager"
+      ],
+      "auraSkills": [
+        "Business Strategy (Porter / SWOT)",
+        "Financial Analysis (P&L / Balance Sheet)",
+        "Marketing (4Ps / STP)",
+        "Operations & Supply Chain",
+        "Human Resources Management",
+        "Business Communication",
+        "Data for Decisions (Excel / SQL)",
+        "Project Management",
+        "Entrepreneurship",
+        "Organisational Behaviour",
+        "Business Ethics & Law",
+        "Stakeholder Management"
+      ],
+      "assessmentSkills": [
+        "Management Principles",
+        "Financial Accounting",
+        "Marketing Management",
+        "Business Strategy",
+        "Operations Management",
+        "Human Resource Management",
+        "Business Analytics",
+        "Financial Management",
+        "Entrepreneurship",
+        "Business Law & Ethics",
+        "Supply Chain Management",
+        "Organisational Behaviour"
+      ],
+      "streamCategories": [],
+      "launchpadTags": [
+        "business manager",
+        "operations manager",
+        "management trainee",
+        "product manager",
+        "marketing manager",
+        "strategy analyst"
+      ],
+      "pulseTopics": [
+        "Business Strategy",
+        "Marketing",
+        "Finance",
+        "Operations",
+        "MBA",
+        "Consulting",
+        "Leadership",
+        "Entrepreneurship"
+      ],
+      "interviewFocus": [
+        "case study analysis",
+        "business strategy",
+        "financial modelling",
+        "marketing mix",
+        "supply chain"
+      ]
+    }
+  ]
+}

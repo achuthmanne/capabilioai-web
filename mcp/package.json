@@ -1,0 +1,28 @@
+{
+  "name": "@capabilio/mcp-server",
+  "version": "1.0.0",
+  "description": "Capabilio MCP Server — AI ↔ MCP ↔ Capabilio Services ↔ Database",
+  "private": true,
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "prebuild":    "node scripts/generate-registry.js",
+    "build":       "tsc --noEmit && tsc",
+    "typecheck":   "tsc --noEmit",
+    "start":       "node dist/server.js",
+    "dev":         "tsx watch src/server.ts",
+    "generate-registry": "node scripts/generate-registry.js",
+    "lint":        "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "jsonwebtoken":              "^9.0.3",
+    "zod":                       "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/node":         "^22.0.0",
+    "tsx":                 "^4.19.0",
+    "typescript":          "^5.7.0"
+  }
+}
