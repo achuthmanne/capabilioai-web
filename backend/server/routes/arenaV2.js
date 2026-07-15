@@ -254,7 +254,7 @@ router.post("/challenges/:id/submit", requireAuth, async (req, res) => {
     const [challengeRes, profileRes, attemptsRes] = await Promise.all([
       supabase.from("challenges").select("*").eq("id", id).single(),
       supabase.from("profiles")
-        .select("elo_rating, arena_completed, arena_streak, last_arena_date")
+        .select("elo_rating, arena_completed, arena_streak, last_arena_date, last_arena_day")
         .eq("id", userId).single(),
       // Count prior submissions from arena_history (production table)
       supabase.from("arena_history")
@@ -284,7 +284,7 @@ router.post("/challenges/:id/submit", requireAuth, async (req, res) => {
       userProfile: {
         arena_completed:  profile?.arena_completed,
         arena_streak:     profile?.arena_streak,
-        last_arena_date:  profile?.last_arena_date,
+        last_arena_date:  profile?.last_arena_date || profile?.last_arena_day,
       },
       attempts,
     })
@@ -339,7 +339,7 @@ router.get("/streaks/:uid", async (req, res) => {
     // Profile streak data
     const { data: profile } = await supabase
       .from("profiles")
-      .select("arena_streak, last_arena_date, arena_completed")
+      .select("arena_streak, last_arena_date, last_arena_day, arena_completed")
       .eq("id", uid)
       .single()
 
@@ -422,7 +422,7 @@ router.get("/streaks/:uid", async (req, res) => {
     return res.json({
       current_streak:     currentStreak,
       longest_streak:     longestStreak,
-      last_active_date:   profile?.last_arena_date || null,
+      last_active_date:   profile?.last_arena_date || profile?.last_arena_day || null,
       total_active_days:  (events || []).length,
       total_submissions:  profile?.arena_completed || 0,
       freeze_available:   2,   // TODO: compute from plan
