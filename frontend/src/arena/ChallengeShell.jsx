@@ -368,6 +368,11 @@ export default function ChallengeShell({
 
   // ── behavioral tracking (consumed by Arena.handleSubmit) ──
   const pasteRef = useRef(0), keysRef = useRef(0), startRef = useRef(Date.now())
+  // Set by the real onPaste DOM handler right before its onChange fires — lets
+  // handleCodeChange tell an actual OS paste apart from a workstation writing
+  // a computed summary (slider readings, MCQ answer, etc.) in one onCodeChange
+  // call. See BUG FIX note in handleCodeChange below.
+  const justPastedRef = useRef(false)
   const starterLenRef = useRef((mission.starterCode || "").length)
   const validationsRef = useRef(0)
   mission.__behavioral = {
@@ -383,8 +388,18 @@ export default function ChallengeShell({
     const delta = v.length - prevLenRef.current
     prevLenRef.current = v.length
     keysRef.current += 1
-    // Real-time paste detection: single onChange with >80 char delta = large paste
-    if (delta > 80 && !isPractice) setPasteWarning({ chars: delta })
+    // BUG FIX (2026-07-18): this used to flag ANY onCodeChange call with a
+    // >80 char delta as "Large paste detected" — regardless of source. But
+    // many workstations (Circuit Lab, Excel, Dashboard, Report, etc.) write
+    // a full computed summary/export string in ONE onCodeChange call as a
+    // normal result of clicking a button or dragging a slider — that's real,
+    // honest work, not a paste, and was being wrongly flagged as "0 ELO,
+    // VOID grade — AI-assisted". Only treat it as a paste if it's actually
+    // preceded by a real OS paste event (justPastedRef, set by the onPaste
+    // DOM handler on the workstation container, which always fires before
+    // this onChange for a genuine paste into a text field).
+    if (delta > 80 && !isPractice && justPastedRef.current) setPasteWarning({ chars: delta })
+    justPastedRef.current = false
     onCodeChange(v)
   }
 
@@ -661,7 +676,7 @@ export default function ChallengeShell({
 
         {/* ── CENTER: WORKSTATION RENDERER SLOT ── */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0, background: T.bg }}
-          onPaste={() => { pasteRef.current += 1 }}
+          onPaste={() => { pasteRef.current += 1; justPastedRef.current = true }}
           onContextMenu={!isPractice ? (e) => e.preventDefault() : undefined}>
           <WorkstationRouter
             mission={mission}
