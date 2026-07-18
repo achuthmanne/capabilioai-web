@@ -3820,6 +3820,19 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
     const timedOut = timedOutOrPayload === true
     const validationPayload = (timedOutOrPayload && typeof timedOutOrPayload === "object") ? timedOutOrPayload : null
 
+    // BUG FIX (2026-07-18): every fetch below talks to capabilio-server.onrender.com,
+    // which cold-starts (30-60s+) after idling on Render's free tier. None of
+    // these calls had a timeout, so a cold/slow backend left Submit Solution
+    // stuck indefinitely on "Freezing & scoring…" with no feedback at all —
+    // indistinguishable from a dead button. This wraps fetch with a hard
+    // deadline so handleSubmit always completes and falls back gracefully,
+    // the same way it already does on a network error.
+    const fetchWithTimeout = (url, opts = {}, ms = 12000) => {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), ms)
+      return fetch(url, { ...opts, signal: controller.signal }).finally(() => clearTimeout(timer))
+    }
+
     // Extract real validation results if available
     const valChecks    = validationPayload?.validation || []
     const realChecks   = valChecks.filter(v => !v.info)
@@ -3910,7 +3923,7 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
       if (_uid) {
         try {
           const _SERVER = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
-          const flagRes = await fetch(`${_SERVER}/api/arena/flag-integrity`, {
+          const flagRes = await fetchWithTimeout(`${_SERVER}/api/arena/flag-integrity`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -3937,7 +3950,7 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
         const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
         // P0-5: send bearer token so the server can do the authoritative ELO write.
         const { data: { session: _rvSess } } = await supabase.auth.getSession()
-        const res = await fetch(`${SERVER}/api/arena/review`, {
+        const res = await fetchWithTimeout(`${SERVER}/api/arena/review`, {
           method:  "POST",
           headers: { "Content-Type": "application/json", ...(_rvSess?.access_token ? { Authorization: `Bearer ${_rvSess.access_token}` } : {}) },
           body: JSON.stringify({
@@ -3963,7 +3976,9 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
           const d = await res.json()
           if (d && typeof d.score === "number") aiReview = d
         }
-      } catch {}
+      } catch (e) {
+        console.warn("Arena AI review unavailable (timeout or network) — using fallback score:", e?.message)
+      }
     }
 
     // ── Detect challenge type: DSA vs Domain ──
@@ -4204,7 +4219,7 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
             const { data: _refreshed } = await _sb.auth.refreshSession()
             const _token = _refreshed?.session?.access_token
               || (await _sb.auth.getSession()).data.session?.access_token
-            await fetch(`${SERVER}/api/arena/proof-artifacts`, {
+            await fetchWithTimeout(`${SERVER}/api/arena/proof-artifacts`, {
               method:  "POST",
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${_token}` },
               body: JSON.stringify({
