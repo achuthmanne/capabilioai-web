@@ -802,7 +802,7 @@ function MissionPanel({ slots, activeMission, onSelect, onRefresh, domain, loadi
                 </div>
                 <div style={{ fontSize: 9, color: "#6B6560", lineHeight: 1.6, marginBottom: 10 }}>
                   {isProdTimeout
-                    ? <>Production server is cold-starting (Render.com).<br/>Click retry — it should work on the next attempt.</>
+                    ? <>The server is warming up — this takes about 30 seconds.<br/>Click retry and it should connect right away.</>
                     : <>Start the local server for instant response:<br/>
                         <code style={{ background: "#1A1A18", color: "#E8E3DA", padding: "2px 6px",
                           borderRadius: 4, fontSize: 8, display: "inline-block", marginTop: 4 }}>
@@ -3608,6 +3608,15 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
     tools:              challenge.tools || [],
     icon:               challenge.icon,
     lang:               challenge.lang || "",
+    // BUG FIX (2026-07-18): these three were never forwarded, so any domain
+    // challenge relying on them silently rendered as empty/broken —
+    // ArenaWorkstations.jsx's CircuitLabWorkstation reads mission.simulation
+    // (6 challenges in domainChallenges.js), its MCQ layer reads
+    // mission.test_cases (102 challenges), and mission.question (43
+    // challenges) is shown as the conceptual-question prompt alongside it.
+    question:           challenge.question,
+    simulation:         challenge.simulation,
+    test_cases:         challenge.test_cases || [],
     _isDomainChallenge: true,   // prevents misclassification as DSA on submit
   })
 
@@ -3726,6 +3735,29 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
     })
   }
 
+  // ── Net effort — meaningful lines the STUDENT actually added, beyond the
+  // mission's own starter/boilerplate. getMeaningfulLines() alone undercounts
+  // nothing: an untouched starter template (imports, `export default function
+  // Solution() {`, a JSX skeleton, closing braces) is already full of
+  // non-comment, non-blank lines, so a timeout on a completely untouched
+  // editor could previously still score ~40-50 and earn ELO. This diffs the
+  // submitted code's meaningful lines against the starter's meaningful lines
+  // (multiset compare, so identical scaffold lines don't count as "written")
+  // and returns only the net-new lines — the actual signal of student work.
+  const diffMeaningfulCount = (src, starter) => {
+    const cur = getMeaningfulLines(src)
+    if (!starter || !starter.trim()) return cur.length
+    const starterCounts = new Map()
+    getMeaningfulLines(starter).forEach(l => starterCounts.set(l, (starterCounts.get(l) || 0) + 1))
+    let net = 0
+    for (const l of cur) {
+      const avail = starterCounts.get(l) || 0
+      if (avail > 0) starterCounts.set(l, avail - 1)
+      else net++
+    }
+    return net
+  }
+
   // ── Integrity detection — catches copy-paste-and-submit cheating ──────────
   // Returns { isCheat, flags, verdict } based on behavioral signals.
   // Conservative thresholds to avoid false positives on fast typists.
@@ -3795,19 +3827,30 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
     const submissionAnswer = isMulti ? codeMap : code
 
     // ── Compute meaningful lines up-front (used for guard + fallback score) ──
-    const allContent = isMulti ? Object.values(codeMap).join("\n") : (code || "")
-    const meaningful = getMeaningfulLines(allContent)
+    // Multi-workstation tabs are seeded with "" (no boilerplate), so diffing
+    // against "" there is a no-op and this stays equivalent to before. The
+    // single-workstation case is where the fix matters: activeMission.starterCode
+    // is real boilerplate (imports, function shell, JSX skeleton), and those
+    // lines must NOT count as "written" just because they're non-blank.
+    const allContent   = isMulti ? Object.values(codeMap).join("\n") : (code || "")
+    const starterCode  = isMulti ? "" : (activeMission?.starterCode || "")
+    const meaningful   = getMeaningfulLines(allContent)          // raw (legacy signal, kept for feedback text)
+    const netMeaningful = diffMeaningfulCount(allContent, starterCode)  // actual student-authored lines
 
-    // Guard: reject if nothing meaningful was written
+    // Guard: reject if nothing was actually written — an untouched starter
+    // template must never pass this check, whether submitted manually or via
+    // timeout auto-submit. Manual submits still alert (so the student can
+    // fix it); a timeout submit can't alert anyone, so it falls through to
+    // the zero-effort branch below instead (forced score 0 / ELO +0).
     if (!timedOut) {
       if (isMulti) {
-        if (meaningful.length < 3) {
+        if (netMeaningful < 3) {
           alert("⚠️ Complete at least one workstation before submitting.")
           return
         }
       } else {
-        if (meaningful.length < 3) {
-          alert("⚠️ Write your solution first — blank or comment-only submissions are not accepted.")
+        if (netMeaningful < 3) {
+          alert("⚠️ Write your solution first — blank, comment-only, or untouched-starter submissions are not accepted.")
           return
         }
       }
@@ -3816,8 +3859,14 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
     if (timerRef.current) clearInterval(timerRef.current)
     setSubmitting(true)
 
+    // A timeout with essentially zero student-authored content (editor left
+    // untouched from the starter template) — this is not a "partial" attempt,
+    // it's no attempt. Score and ELO gain must both be exactly 0, and no AI
+    // review call (or its cost/latency) is warranted.
+    const isZeroEffortTimeout = timedOut && netMeaningful < 3
+
     // ── Fallback score from line count (used if AI review fails) ──
-    const lineScore  = Math.min(100, meaningful.length * 6)
+    const lineScore  = isZeroEffortTimeout ? 0 : Math.min(100, netMeaningful * 6)
     const baseScore  = timedOut ? Math.min(50, lineScore) : lineScore
 
     // ── Collect behavioral signals from ProblemSolvePage tracker ──
@@ -3861,13 +3910,18 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
     }
 
     // ── Call AI review endpoint with behavioral context ──
+    // Skipped entirely for zero-effort timeouts — nothing to review, and it
+    // saves an AI call. Gate on net (student-authored) lines, not raw lines,
+    // so an untouched starter template can't slip past on manual submit either.
     let aiReview = null
-    if (meaningful.length >= 2) {
+    if (!isZeroEffortTimeout && netMeaningful >= 2) {
       try {
         const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
+        // P0-5: send bearer token so the server can do the authoritative ELO write.
+        const { data: { session: _rvSess } } = await supabase.auth.getSession()
         const res = await fetch(`${SERVER}/api/arena/review`, {
           method:  "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...(_rvSess?.access_token ? { Authorization: `Bearer ${_rvSess.access_token}` } : {}) },
           body: JSON.stringify({
             challenge:     activeMission,
             answer:        submissionAnswer,
@@ -3942,7 +3996,9 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
       // Deterministic fallback: anchor each criterion to finalScore with a small
       // fixed offset per position (no randomness).
       const offsets   = [0, -4, -4, +5, -3]   // Correctness, Complexity1, Complexity2, Quality, EdgeCases
-      const minFloor  = timedOut ? 15 : 30
+      // No floor at all for a zero-effort timeout — every rubric row must
+      // honestly read 0, not a flattering-looking "15" for work never done.
+      const minFloor  = isZeroEffortTimeout ? 0 : timedOut ? 15 : 30
       return {
         criterion: r.criterion,
         score: Math.min(100, Math.max(minFloor, finalScore + (offsets[i] ?? 0))),
@@ -3955,8 +4011,12 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
 
     // Integrity override: cheated submissions lose ELO (-10 penalty, floored at 0)
     const ELO_CHEAT_PENALTY = -10
-    const eloGain = isPractice ? 0 : integrity.isCheat ? ELO_CHEAT_PENALTY : timedOut
-      ? (finalScore >= 60 ? 8 : finalScore >= 40 ? 4 : meaningful.length >= 5 ? 2 : 0)
+    // Zero-effort timeout (starter template never touched) is hard-pinned to
+    // +0 ELO regardless of finalScore — belt-and-suspenders alongside
+    // finalScore already being forced to 0 above, since ELO is the one number
+    // that must never be gameable by simply opening a tab and waiting.
+    const eloGain = isPractice ? 0 : integrity.isCheat ? ELO_CHEAT_PENALTY : isZeroEffortTimeout ? 0 : timedOut
+      ? (finalScore >= 60 ? 8 : finalScore >= 40 ? 4 : netMeaningful >= 5 ? 2 : 0)
       : (finalScore >= 80 ? 25 : finalScore >= 60 ? 12 : finalScore >= 40 ? 5 : 3)
     const newElo = Math.max(0, elo + eloGain)
 
@@ -4000,7 +4060,9 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
       ? ` You ran validation ${validationsRun} time${validationsRun > 1 ? "s" : ""} before submitting.`
       : ""
 
-    const fallbackSummary = timedOut
+    const fallbackSummary = isZeroEffortTimeout
+      ? `Time's up on "${mTitle}". No changes were made before the timer expired — this attempt is recorded with a score of 0 and no ELO change.`
+      : timedOut
       ? `Time's up on "${mTitle}".${passRateSummary}${failedCheckSummary} A partial score has been awarded based on work completed.`
       : finalScore >= 80
         ? `Strong submission on "${mTitle}".${passRateSummary} ${category ? `Your ${category} work demonstrates solid professional competence.` : "Clean logic and solid execution."}`
@@ -4119,9 +4181,14 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
         if (finalScore >= 50 && !integrity.isCheat) {
           try {
             const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
+            // Use refreshSession to get a fresh token — long Arena sessions can expire the JWT.
+            const { supabase: _sb } = await import("../lib/supabase")
+            const { data: _refreshed } = await _sb.auth.refreshSession()
+            const _token = _refreshed?.session?.access_token
+              || (await _sb.auth.getSession()).data.session?.access_token
             await fetch(`${SERVER}/api/arena/proof-artifacts`, {
               method:  "POST",
-              headers: { "Content-Type": "application/json", Authorization: `Bearer ${(await import("../lib/supabase")).supabase.auth.getSession().then(r => r.data.session?.access_token)}` },
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${_token}` },
               body: JSON.stringify({
                 challenge_id:  activeMission?.id || activeMission?.slug,
                 workspace_type: activeMission?.sandbox_type || "code",

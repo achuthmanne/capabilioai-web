@@ -204,18 +204,27 @@ export default function MissionDesk({
     return () => { try { unsub?.() } catch { /* noop */ } }
   }, [uid])
 
-  // ELO trend from history (oldest → newest)
+  // ELO trend from history (oldest → newest).
+  // arena_history rows only ever store the per-submission elo_delta, never a
+  // running "new total" — so the trend line is reconstructed by walking the
+  // deltas backward from the caller's current `elo` (profiles.elo_rating).
   const trend = useMemo(() => {
-    const pts = [...history]
-      .sort((a, b) => new Date(a.createdAt || a.created_at || 0) - new Date(b.createdAt || b.created_at || 0))
-      .map(d => d.newElo || d.new_elo)
-      .filter(n => typeof n === "number")
+    const sorted = [...history].sort((a, b) =>
+      new Date(a.completedAt || a.completed_at || 0) - new Date(b.completedAt || b.completed_at || 0))
+    const deltas = sorted.map(d => Number(d.eloDelta ?? d.elo_delta ?? 0))
+    const startingElo = Number(elo || 0) - deltas.reduce((sum, n) => sum + n, 0)
+    const pts = []
+    let running = startingElo
+    for (const delta of deltas) {
+      running += delta
+      pts.push(running)
+    }
     return pts.slice(-20)
-  }, [history])
+  }, [history, elo])
 
   const proofs = useMemo(() =>
     [...history]
-      .sort((a, b) => new Date(b.createdAt || b.created_at || 0) - new Date(a.createdAt || a.created_at || 0))
+      .sort((a, b) => new Date(b.completedAt || b.completed_at || 0) - new Date(a.completedAt || a.completed_at || 0))
       .slice(0, 3),
   [history])
 
@@ -318,7 +327,7 @@ export default function MissionDesk({
                     <div style={{ fontSize: 11.5, fontWeight: 800, color: T.ink2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {d.title || d.missionTitle || d.mission_title || "Frozen attempt"}
                     </div>
-                    <div style={{ fontSize: 9.5, color: T.ink4 }}>{new Date(d.createdAt || d.created_at || Date.now()).toLocaleDateString()}</div>
+                    <div style={{ fontSize: 9.5, color: T.ink4 }}>{new Date(d.completedAt || d.completed_at || Date.now()).toLocaleDateString()}</div>
                   </div>
                   <span style={{ fontSize: 11, fontWeight: 900, fontFamily: "'DM Mono',monospace", color: (d.score ?? 0) >= 70 ? T.green : T.amber }}>{d.score ?? "—"}</span>
                 </div>
@@ -332,7 +341,7 @@ export default function MissionDesk({
                 <div style={{ fontSize: 11, color: T.ink4, lineHeight: 1.6 }}>Your first mission writes your story →</div>
               ) : [...history].slice(0, 5).map((d, i) => (
                 <div key={d.id || i} style={{ display: "flex", gap: 8, fontSize: 11, color: T.ink3, padding: "4px 0", borderBottom: i < 4 ? `1px solid ${T.borderSoft}` : "none" }}>
-                  <span style={{ color: T.green, fontFamily: "'DM Mono',monospace", fontWeight: 800, flexShrink: 0 }}>+{d.eloGain ?? d.elo_gain ?? 0}</span>
+                  <span style={{ color: T.green, fontFamily: "'DM Mono',monospace", fontWeight: 800, flexShrink: 0 }}>+{d.eloDelta ?? d.elo_delta ?? 0}</span>
                   <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.title || d.missionTitle || d.mission_title || "Mission"}</span>
                 </div>
               ))}

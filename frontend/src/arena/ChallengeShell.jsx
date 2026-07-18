@@ -231,11 +231,11 @@ function AttemptHistory({ uid, mission }) {
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
             <span style={{ fontSize: 11 }}>🧊</span>
             <span style={{ fontSize: 11, fontWeight: 800, color: T.ink2 }}>Attempt · frozen</span>
-            <span style={{ marginLeft: "auto", fontSize: 10, color: T.ink4 }}>{new Date(d.createdAt || d.created_at || Date.now()).toLocaleString()}</span>
+            <span style={{ marginLeft: "auto", fontSize: 10, color: T.ink4 }}>{new Date(d.completedAt || d.completed_at || Date.now()).toLocaleString()}</span>
           </div>
           <div style={{ display: "flex", gap: 10, fontSize: 11, fontFamily: "'DM Mono',monospace" }}>
             <span style={{ color: (d.score ?? 0) >= 70 ? T.green : T.amber, fontWeight: 800 }}>score {d.score ?? "—"}</span>
-            <span style={{ color: T.green }}>+{d.eloGain ?? d.elo_gain ?? 0} ELO</span>
+            <span style={{ color: T.green }}>+{d.eloDelta ?? d.elo_delta ?? 0} ELO</span>
             {d.grade && <span style={{ color: T.ink3 }}>grade {d.grade}</span>}
           </div>
         </div>

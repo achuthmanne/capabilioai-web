@@ -4,6 +4,7 @@
  */
 import { useState, useEffect, useRef } from "react"
 import { arenaDb } from "../lib/db"
+import { getRoleConfig } from "../config/roleConfig"
 
 // ── Design tokens ─────────────────────────────────────────────────────────
 const D = {
@@ -64,10 +65,10 @@ function toProof(sub) {
     company: sub.company || sub.domain || null,
     score: sub.score ?? sub.final_score ?? null,
     badge: sub.percentile ? `Top ${sub.percentile}%` : null,
-    time: sub.submitted_at
-      ? new Date(sub.submitted_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
+    time: (sub.submittedAt || sub.completed_at)
+      ? new Date(sub.submittedAt || sub.completed_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
       : "Recent",
-    elo: sub.elo_gained ?? sub.eloGained ?? 0,
+    elo: sub.eloDelta ?? sub.elo_delta ?? 0,
   }
 }
 
@@ -112,17 +113,18 @@ export default function StudentHome({ user, userData, onNavigate }) {
   const firstName = name.split(" ")[0]
   const elo       = userData?.eloRating || 400
   const streak    = userData?.streak    || 0
-  const domain    = userData?.domain    || userData?.keyword || "Software Engineering"
+  const domain    = userData?.domain    || userData?.keyword || getRoleConfig(userData).label
   const { tier, color: tierColor, bg: tierBg, border: tierBorder } = eloTier(elo)
 
   const recentEloGained = submissions
-    .filter(s => Date.now() - new Date(s.submitted_at).getTime() < 7 * 24 * 60 * 60 * 1000)
-    .reduce((sum, s) => sum + (s.elo_gained || s.eloGained || 0), 0)
+    .filter(s => Date.now() - new Date(s.submittedAt || s.completed_at || 0).getTime() < 7 * 24 * 60 * 60 * 1000)
+    .reduce((sum, s) => sum + (s.eloDelta || s.elo_delta || 0), 0)
 
   const recentProof      = submissions.slice(0, 3).map(toProof)
-  const todaySubmissions = submissions.filter(s =>
-    s.submitted_at && new Date(s.submitted_at).toDateString() === new Date().toDateString()
-  ).length
+  const todaySubmissions = submissions.filter(s => {
+    const t = s.submittedAt || s.completed_at
+    return t && new Date(t).toDateString() === new Date().toDateString()
+  }).length
   const missionProgress  = Math.min(100, todaySubmissions * 100)
   const goalDone         = todaySubmissions >= 1
 
