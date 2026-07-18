@@ -4239,7 +4239,10 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
             elo:      newElo,
             elo_delta: eloGain,
             tasks_done: prevCount + 1,
-            streak,
+            // BUG FIX (2026-07-18): arena_leaderboard's actual column is
+            // arena_streak, not streak — this always 400'd, silently caught,
+            // so the leaderboard row's streak was never actually written.
+            arena_streak: streak,
           })
           const rank = await arenaDb.getRankCount(domainKey, newElo)
           await arenaDb.upsertLeaderboard(uid, domainKey, { rank })

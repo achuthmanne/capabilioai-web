@@ -9,7 +9,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react"
 import { supabase } from "../lib/supabase"
-import { applySkillUpdates } from "../services/arenaSkillEngine"
+import { profileRealtime } from "../lib/realtimeSingletons"
 import { getPlan, daysSinceLastArenaTask } from "../config/plans"
 import { resolveArenaKey } from "../config/roleConfig"
 
@@ -206,18 +206,15 @@ export function useArenaMissions() {
   useEffect(() => {
     let profileChannel = null
 
+    let profileUnsub = null
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       const u = session?.user || null
       if (u) {
         setUser(u)
-        // Subscribe to profile changes
-        if (profileChannel) supabase.removeChannel(profileChannel)
-        profileChannel = supabase
-          .channel(`arena-profile-${u.id}`)
-          .on("postgres_changes", { event: "*", schema: "public", table: "profiles", filter: `id=eq.${u.id}` },
-            (payload) => { if (payload.new) setUserData(payload.new) }
-          )
-          .subscribe()
+        // Use shared singleton — no extra channel if useArenaState already watching this uid
+        if (profileUnsub) profileUnsub()
+        profileUnsub = profileRealtime.subscribe(u.id, (row) => setUserData(row))
         // Initial fetch
         const { data } = await supabase.from("profiles").select("*").eq("id", u.id).single()
         if (data) setUserData(data)
@@ -229,7 +226,7 @@ export function useArenaMissions() {
 
     return () => {
       subscription.unsubscribe()
-      if (profileChannel) supabase.removeChannel(profileChannel)
+      if (profileUnsub) profileUnsub()
     }
   }, [])
 
@@ -317,36 +314,28 @@ export function useArenaMissions() {
 
     await persistSlot(user.id, slotIndex, { status: "cooldown", completedAt: now, cooldownUntil, review: reviewResult })
 
-    const historyId = `${Date.now()}`
     const completedSkillTags = task?.skillTags || [task?.category].filter(Boolean)
 
-    // Save to arena_submissions table
-    await supabase.from("arena_submissions").insert({
-      user_id: user.id,
-      slot_index: slotIndex,
-      task_id: task?.slotId || `task_${Date.now()}`,
-      title: task?.title || "Arena Mission",
-      domain: task?.domainKey || "swe",
-      category: task?.category || "",
-      difficulty: task?.difficulty || "Medium",
-      lang: task?.lang || "",
-      skill_tags: completedSkillTags,
-      scenario: task?.scenario || "",
-      submitted_answer: String(reviewResult?.answer || "").slice(0, 3000),
-      score: reviewResult?.score || 0,
-      elo_delta: reviewResult?.eloDelta || 0,
-      grade: reviewResult?.grade || "",
-      summary: reviewResult?.summary || "",
-      strengths: reviewResult?.strengths || [],
-      improvements: reviewResult?.improvements || [],
-      tip: reviewResult?.tip || "",
-      submitted_at: now,
-    })
-
-    // Apply ELO + skill updates
-    try {
-      await applySkillUpdates({ uid: user.id, userData, task, review: reviewResult })
-    } catch (e) { console.warn("Skill update failed:", e.message) }
+    // BUG FIX (2026-07-18): removed two redundant, actively-harmful writes
+    // that used to live here:
+    //   1. An insert into `arena_submissions` — a write-only table nothing
+    //      in the app ever reads (confirmed via grep). Arena.jsx's own
+    //      handleSubmit already writes the canonical, actually-read history
+    //      row to `arena_history`.
+    //   2. A call to applySkillUpdates(), which writes profiles.elo_rating /
+    //      arena_completed / skill_graph directly from the client — using a
+    //      DIFFERENT ELO formula (calcEloDelta) than the one Arena.jsx's
+    //      handleSubmit already computes and writes via userDoc.update().
+    //      The comment a few lines below this (search "P0-5") already
+    //      documents that ELO/streak/arena_completed were migrated to be
+    //      server-authoritative and "the client no longer writes
+    //      profiles.elo_rating" — this call was leftover, unmigrated code
+    //      that kept doing exactly that. Net effect before this fix: every
+    //      completed slotted mission double-counted arena_completed and
+    //      raced two independently-computed ELO deltas against each other,
+    //      with whichever write landed last silently winning.
+    // markCompleted's real, unique job — slot cooldown/rotation bookkeeping
+    // below this point — is untouched.
 
     // Track completed mission title — prevents ever repeating the same mission
     await appendCompletedMission(user.id, task?.title || "").catch(() => {})
@@ -356,31 +345,23 @@ export function useArenaMissions() {
     await saveSkillCoverage(user.id, bumpCoverage(currentCoverage, completedSkillTags))
     await pushRecentSkills(user.id, completedSkillTags, 20)
 
-    // Update profile — ELO, streak, last active
-    const currentElo = Number(userData?.elo_rating || 800)
-    const eloDelta   = reviewResult?.eloDelta || 0
-    const newElo     = Math.max(400, currentElo + eloDelta)
-    const lastDate   = userData?.last_arena_date || ""
-    const yesterday  = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
-    const today      = todayStr()
-    const newStreak  = lastDate === today ? (userData?.arena_streak || 1) : lastDate === yesterday ? (userData?.arena_streak || 0) + 1 : 1
+    // P0-5: ELO / streak / arena_completed are now written SERVER-SIDE by
+    // /api/arena/review (authoritative, service_role). The client no longer
+    // writes profiles.elo_rating. Use the server-returned values for UI + the
+    // (non-authoritative) leaderboard cache and domain hint.
+    const newElo    = reviewResult?.newElo ?? Number(userData?.elo_rating || 800)
+    const tasksDone = reviewResult?.arenaCompleted ?? ((userData?.arena_completed || 0) + 1)
 
-    await supabase.from("profiles").update({
-      elo_rating: newElo,
-      arena_completed: (userData?.arena_completed || 0) + 1,
-      arena_streak: newStreak,
-      last_arena_date: today,
-      arena_last_active: now,
-      domain_key: resolveDomain(userData),
-    }).eq("id", user.id)
+    // Only the non-privileged domain hint remains a client write.
+    await supabase.from("profiles").update({ domain_key: resolveDomain(userData) }).eq("id", user.id)
 
-    // Update leaderboard
+    // Update leaderboard cache with the server-authoritative ELO.
     await supabase.from("arena_leaderboard").upsert({
       id: `${user.id}_${resolveDomain(userData)}`,
       user_id: user.id,
       domain_key: resolveDomain(userData),
       elo: newElo,
-      tasks_done: (userData?.arena_completed || 0) + 1,
+      tasks_done: tasksDone,
       updated_at: now,
     })
   }, [user, userData])

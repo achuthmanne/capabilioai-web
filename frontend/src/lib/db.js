@@ -10,6 +10,7 @@
  */
 
 import { supabase } from './supabase'
+import { profileRealtime, arenaHistoryRealtime } from './realtimeSingletons'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SCHEMA NORMALISATION
@@ -221,8 +222,13 @@ export const userDoc = {
       .from('profiles')
       .update(normalised)
       .eq('id', uid)
-    if (error && process.env.NODE_ENV !== 'production') {
-      console.warn('userDoc.update error:', error.message)
+    // BUG FIX (2026-07-18): this was gated behind `NODE_ENV !== 'production'`,
+    // which silently swallowed every real write failure on the actual live
+    // site — exactly where it matters most, since this writes ELO,
+    // arena_completed, and skill_graph (real scoring/progress data, not
+    // cosmetic state). Always log now so a failed write is never invisible.
+    if (error) {
+      console.error('userDoc.update error:', error.code, error.message, { attemptedKeys: Object.keys(normalised) })
     }
     return !error
   },
@@ -239,17 +245,10 @@ export const userDoc = {
       .single()
       .then(({ data }) => { if (data) callback(toCompat(data)) })
 
-    // Listen for Realtime changes
-    const channel = supabase
-      .channel(`profile-${uid}-${Date.now()}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${uid}` },
-        (payload) => { if (payload.new) callback(toCompat(payload.new)) }
-      )
-      .subscribe()
-
-    return () => supabase.removeChannel(channel)
+    // Shared singleton channel — one connection per uid regardless of how many
+    // consumers call subscribe() simultaneously.
+    const unsub = profileRealtime.subscribe(uid, (row) => callback(toCompat(row)))
+    return unsub
   },
 }
 
@@ -321,14 +320,9 @@ export const arenaDb = {
 
     fetchHistory()
 
-    const channel = supabase
-      .channel(`arena-history-${uid}-${Date.now()}`)
-      .on('postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'arena_history', filter: `user_id=eq.${uid}` },
-        fetchHistory)
-      .subscribe()
-
-    return () => supabase.removeChannel(channel)
+    // Shared singleton — one arena_history channel per uid
+    const unsub = arenaHistoryRealtime.subscribe(uid, () => fetchHistory())
+    return unsub
   },
 
   /** Upsert leaderboard — gracefully skips if table missing */
@@ -361,6 +355,7 @@ export const arenaDb = {
           streak:   p.arena_streak || 0,
         }))))
 
+    // Initial fetch
     supabase
       .from('arena_leaderboard')
       .select('*')
@@ -369,12 +364,11 @@ export const arenaDb = {
       .limit(20)
       .then(({ data, error }) => { if (error || !data?.length) fetchProfiles(); else callback(data) })
 
-    const channel = supabase
-      .channel(`leaderboard-${domainKey}-${Date.now()}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, fetchProfiles)
-      .subscribe()
-
-    return () => supabase.removeChannel(channel)
+    // Poll every 30s instead of a broadcast Realtime channel on the entire
+    // profiles table (which would fan out to every connected user on every
+    // profile update — very expensive on the free-tier connection cap).
+    const timer = setInterval(fetchProfiles, 30_000)
+    return () => clearInterval(timer)
   },
 
   getRankCount: async (domainKey, elo) => {
