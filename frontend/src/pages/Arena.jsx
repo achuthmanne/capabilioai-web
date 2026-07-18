@@ -3766,8 +3766,27 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
   // ── Integrity detection — catches copy-paste-and-submit cheating ──────────
   // Returns { isCheat, flags, verdict } based on behavioral signals.
   // Conservative thresholds to avoid false positives on fast typists.
-  function detectIntegrity({ pasteCount, keystrokeCount, timeOnTaskSecs, typedLen }) {
+  function detectIntegrity({ pasteCount, keystrokeCount, timeOnTaskSecs, typedLen, hasPassingValidatorCheck = false }) {
     const flags = []
+
+    // BUG FIX (2026-07-18): "one onCodeChange = one keystroke" (the comment
+    // below) was only ever true for free-text code/answer editors. Several
+    // workstations (Circuit Lab, Interactive Circuit, Excel, Dashboard,
+    // Report, etc.) legitimately compute and write a full multi-line summary
+    // string in ONE onCodeChange call as the direct result of dragging a
+    // slider or clicking a button — real work, with real UI interaction, but
+    // it produces the exact same signature this heuristic was built to catch
+    // (many chars, almost no onCodeChange events). Every one of those
+    // workstations' submissions was being hard-flagged as cheating and
+    // zeroed to 0 ELO / VOID grade. A validator check that actually passed
+    // (registerValidator output, computed from live simulation/answer state,
+    // not just text pattern matching) is strong independent evidence of
+    // genuine interaction, so it suppresses these two paste-shaped signals —
+    // pasting someone else's answer wouldn't also produce a real passing
+    // check against a live circuit solver or MCQ grader.
+    if (hasPassingValidatorCheck) {
+      return { isCheat: false, flags: [], verdict: "clean" }
+    }
 
     // Signal 1: Code exists but almost no keystrokes.
     // You cannot write >80 non-starter chars with ≤5 onCodeChange events.
@@ -3819,6 +3838,26 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
     //   2. manual submit from ChallengeShell: handleSubmit({ validation, passCount, totalChecks, hintsUsed, validationsRun })
     const timedOut = timedOutOrPayload === true
     const validationPayload = (timedOutOrPayload && typeof timedOutOrPayload === "object") ? timedOutOrPayload : null
+    // BUG FIX (2026-07-18): this was declared far below (~230 lines down) but
+    // used at "integrity.isCheat && !isPractice" right after the integrity
+    // check — a genuine TDZ (temporal dead zone) ReferenceError, not caught
+    // by any try/catch, so it crashed the entire submission uncaught whenever
+    // integrity.isCheat was true. Declared here, at first use, instead.
+    const isPractice = !!activeMission?._practice
+
+    // BUG FIX (2026-07-18): same TDZ bug — isDSA was declared ~150 lines below
+    // but used inside the AI-review fetch body above that point. That
+    // reference IS inside a try/catch, so it never crashed the page, but it
+    // silently threw on every single submission, meaning the AI review call
+    // never actually ran — every submission silently fell back to the
+    // line-count-based score. Declared here instead so the AI review call
+    // actually executes.
+    const isDSA = !activeMission?._isDomainChallenge && (
+      ["dsa","algorithm","DSA","Arrays","Strings","Hash Maps","Two Pointers",
+       "Sliding Window","Stack","Queue","Linked List","Binary Search","Trees","Graphs","DP"]
+      .includes(activeMission?.category || activeMission?.type || "")
+      || (activeMission?.workstation || activeMission?.sandbox_type) === "code"
+    )
 
     // BUG FIX (2026-07-18): every fetch below talks to capabilio-server.onrender.com,
     // which cold-starts (30-60s+) after idling on Render's free tier. None of
@@ -3913,7 +3952,12 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
     const pasteRatio     = typedLen > 0 ? Math.round((pasteCount * 80) / Math.max(typedLen, 1) * 100) / 100 : 0
 
     // ── Integrity check ──
-    const integrity = detectIntegrity({ pasteCount, keystrokeCount, timeOnTaskSecs, typedLen })
+    // BUG FIX (2026-07-18): pass real, already-passed validator evidence —
+    // see BUG FIX note inside detectIntegrity() for why this is needed.
+    const integrity = detectIntegrity({
+      pasteCount, keystrokeCount, timeOnTaskSecs, typedLen,
+      hasPassingValidatorCheck: valTotal > 0 && valPassCount > 0,
+    })
 
     // ── If cheat detected: record warning + ELO penalty via backend ──
     // Returns { warningCount, eloPenalty, newElo, isBanned, banUntil }
@@ -3981,15 +4025,7 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
       }
     }
 
-    // ── Detect challenge type: DSA vs Domain ──
-    // _isDomainChallenge flag is set on all domain-bank challenges so code-sandbox
-    // domain challenges (e.g. backend JWT auth) are NOT misclassified as DSA.
-    const isDSA = !activeMission?._isDomainChallenge && (
-      ["dsa","algorithm","DSA","Arrays","Strings","Hash Maps","Two Pointers",
-       "Sliding Window","Stack","Queue","Linked List","Binary Search","Trees","Graphs","DP"]
-      .includes(activeMission?.category || activeMission?.type || "")
-      || (activeMission?.workstation || activeMission?.sandbox_type) === "code"
-    )
+    // (isDSA is declared at the top of this function now — see BUG FIX note there.)
 
     // ── Rubric: DSA gets algorithm-specific criteria, Domain gets role rubric ──
     const DSA_RUBRIC = [
@@ -4040,7 +4076,7 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
 
     // ELO gain — timeouts still earn based on score (AI reviewed) so the gain is meaningful.
     // A student who wrote real code and scored 40+ on timeout shouldn't get the same as blank.
-    const isPractice = !!activeMission?._practice
+    // (isPractice is declared at the top of this function now — see BUG FIX note there.)
 
     // Integrity override: cheated submissions lose ELO (-10 penalty, floored at 0)
     const ELO_CHEAT_PENALTY = -10
