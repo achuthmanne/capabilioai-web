@@ -3865,8 +3865,14 @@ export const ECE_CIRCUIT_CHALLENGES = [
         nodes: ["A", "B", "GND"],
         components: [
           { id: "V1",  type: "voltage_source", value: 5,     unit: "V", node_plus: "A", node_minus: "GND", editable: false },
-          { id: "R1",  type: "resistor",        value: 17000, unit: "Ω", node_a: "A",   node_b: "B",        editable: true, min: 1000, max: 100000, step: 1000, description: "Upper resistor" },
-          { id: "R2",  type: "resistor",        value: 33000, unit: "Ω", node_a: "B",   node_b: "GND",      editable: true, min: 1000, max: 100000, step: 1000, description: "Lower resistor" },
+          // BUG FIX (2026-07-18): these used to start AT the correct answer
+          // (17k/33k -> exactly 3.30V, matching MCQ option A verbatim), so
+          // the challenge was already "solved" on first render — no
+          // adjustment or reasoning required. Now starts at a wrong,
+          // non-matching combination (10k/10k -> 2.50V, option B's values)
+          // so the student has to actually move the sliders to reach 3.3V.
+          { id: "R1",  type: "resistor",        value: 10000, unit: "Ω", node_a: "A",   node_b: "B",        editable: true, min: 1000, max: 100000, step: 1000, description: "Upper resistor" },
+          { id: "R2",  type: "resistor",        value: 10000, unit: "Ω", node_a: "B",   node_b: "GND",      editable: true, min: 1000, max: 100000, step: 1000, description: "Lower resistor" },
         ],
         // Layout: rectangle — V1 left-vertical, R1 top-horizontal, R2 right-vertical, bus at bottom
         layout: {
@@ -3965,7 +3971,11 @@ export const ECE_CIRCUIT_CHALLENGES = [
         nodes: ["A", "B", "GND"],
         components: [
           { id: "Vsup", type: "voltage_source", value: 5,   unit: "V", node_plus: "A", node_minus: "GND", editable: false },
-          { id: "Rlim", type: "resistor",        value: 150, unit: "Ω", node_a: "A",   node_b: "B",        editable: true, min: 10, max: 1000, step: 10, description: "Current limiter" },
+          // BUG FIX (2026-07-18): started at 150Ω, which IS the correct
+          // answer (target is exactly 20mA at 150Ω) — same "already solved"
+          // flaw as circuit-001. Starts at 470Ω (I≈6.4mA) instead so the
+          // student has to actually adjust it to hit the 20mA target.
+          { id: "Rlim", type: "resistor",        value: 470, unit: "Ω", node_a: "A",   node_b: "B",        editable: true, min: 10, max: 1000, step: 10, description: "Current limiter" },
           { id: "VLED", type: "voltage_source",  value: 2,   unit: "V", node_plus: "B", node_minus: "GND", editable: false },
         ],
         layout: {
