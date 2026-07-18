@@ -24,6 +24,76 @@ import ArenaWatermark from "./ArenaWatermark"
 
 const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
 
+// ── Deterministic "ticket" context synthesizer ───────────────────────────────
+// Real companies never hand an engineer a bare problem statement — they hand
+// a ticket with a company, project, team, sprint, priority, and an assignee.
+// We don't have that data authored per-challenge across all 18 domains yet,
+// so this derives a STABLE (same mission -> same ticket every time, not
+// randomized per render) synthetic ticket from the mission's own id/domain,
+// via a small seeded hash. Any challenge that DOES carry a real `mission.ticket`
+// object (future content) is used as-is and this is skipped entirely.
+function _hashSeed(str) {
+  let h = 0
+  for (let i = 0; i < str.length; i++) { h = (h << 5) - h + str.charCodeAt(i); h |= 0 }
+  return Math.abs(h)
+}
+const TICKET_POOLS = {
+  ece:       { companies: ["Bosch Automotive", "Texas Instruments", "STMicroelectronics", "NXP Semiconductors"], projects: ["Battery Monitoring Unit", "Sensor Fusion Board", "Motor Control Firmware", "Power Management IC"], teams: ["Hardware Design", "Embedded Firmware", "Signal Integrity"] },
+  mech:      { companies: ["Tata Motors", "Mahindra Engineering", "L&T Heavy Industries", "Caterpillar"], projects: ["Drivetrain Redesign", "Thermal Systems Upgrade", "Chassis Load Analysis", "HVAC Efficiency Program"], teams: ["Mechanical Design", "Structural Analysis", "Product Engineering"] },
+  civil:     { companies: ["Larsen & Toubro", "Shapoorji Pallonji", "AECOM", "Arup"], projects: ["Metro Corridor Extension", "Highway Overpass Retrofit", "Commercial Tower Foundation", "Flood Defense Upgrade"], teams: ["Structural Engineering", "Geotechnical", "Site Engineering"] },
+  swe:       { companies: ["Razorpay", "Freshworks", "Atlassian", "Stripe"], projects: ["Payments Reconciliation Service", "Internal Developer Platform", "Checkout API v3", "Fraud Signals Pipeline"], teams: ["Platform Engineering", "Backend Services", "Core Infra"] },
+  data:      { companies: ["Flipkart", "Swiggy", "Zomato", "Myntra"], projects: ["Demand Forecasting Model", "Churn Prediction Pipeline", "Realtime Analytics Warehouse", "Pricing Engine Revamp"], teams: ["Data Platform", "Analytics Engineering", "ML Infra"] },
+  default:   { companies: ["Capabilio Client Co.", "Northwind Industries", "Vertex Systems", "Meridian Labs"], projects: ["Q3 Platform Initiative", "Reliability Workstream", "Customer-Facing Revamp", "Core Systems Modernization"], teams: ["Engineering", "Product Engineering", "Systems Team"] },
+}
+const PRIORITIES   = ["P1", "P2", "P3"]
+const ASSIGNERS    = ["Senior Hardware Engineer", "Engineering Manager", "Staff Engineer", "Tech Lead", "Principal Engineer"]
+function synthesizeTicket(mission, domain) {
+  if (mission.ticket && typeof mission.ticket === "object") return mission.ticket
+  const seedKey = String(mission.id || mission.title || "mission")
+  const seed = _hashSeed(seedKey)
+  const domainKey = /circuit|embedded|ece|eee/i.test(domain?.label || "") ? "ece"
+    : /mech/i.test(domain?.label || "") ? "mech"
+    : /civil/i.test(domain?.label || "") ? "civil"
+    : /data|analy/i.test(domain?.label || "") ? "data"
+    : /swe|software|dsa|backend|full.?stack/i.test(domain?.label || "") ? "swe"
+    : "default"
+  const pool = TICKET_POOLS[domainKey]
+  const issuePrefix = domainKey === "ece" ? "HW" : domainKey === "mech" ? "MECH" : domainKey === "civil" ? "CE" : domainKey === "data" ? "DATA" : "ENG"
+  return {
+    company:    pool.companies[seed % pool.companies.length],
+    project:    pool.projects[(seed >> 3) % pool.projects.length],
+    team:       pool.teams[(seed >> 6) % pool.teams.length],
+    sprint:     `Sprint ${(seed % 24) + 1}`,
+    priority:   PRIORITIES[(seed >> 9) % PRIORITIES.length],
+    assignedBy: ASSIGNERS[(seed >> 12) % ASSIGNERS.length],
+    issueId:    `${issuePrefix}-${1000 + (seed % 9000)}`,
+  }
+}
+function TicketHeader({ mission, domain }) {
+  const t = synthesizeTicket(mission, domain)
+  const Field = ({ label, value }) => (
+    <div style={{ minWidth: 0 }}>
+      <div style={{ fontSize: 8.5, fontWeight: 800, color: T.ink4, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 1 }}>{label}</div>
+      <div style={{ fontSize: 11.5, fontWeight: 700, color: T.ink2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{value}</div>
+    </div>
+  )
+  return (
+    <div style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 12px", marginBottom: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 10px" }}>
+      <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+        <span style={{ fontSize: 9.5, fontWeight: 900, color: "#fff", background: t.priority === "P1" ? T.red : t.priority === "P2" ? T.amber : T.ink4, padding: "1.5px 6px", borderRadius: 4 }}>{t.priority}</span>
+        <span style={{ fontSize: 10, fontWeight: 800, color: T.ink3, fontFamily: "'DM Mono',monospace" }}>{t.issueId}</span>
+      </div>
+      <Field label="Company" value={t.company} />
+      <Field label="Project" value={t.project} />
+      <Field label="Team" value={t.team} />
+      <Field label="Sprint" value={t.sprint} />
+      <div style={{ gridColumn: "1 / -1" }}>
+        <Field label="Assigned by" value={t.assignedBy} />
+      </div>
+    </div>
+  )
+}
+
 // ── Lightweight markdown (briefs) ────────────────────────────────────────────
 function Md({ text }) {
   if (!text) return null
@@ -521,6 +591,7 @@ export default function ChallengeShell({
 
             {leftTab === "brief" && (
               <div style={{ flex: 1, overflowY: "auto", padding: "18px 20px" }}>
+                {!isPractice && <TicketHeader mission={mission} domain={domain} />}
                 <h1 style={{ fontSize: 17, fontWeight: 900, color: T.ink, margin: "0 0 8px", lineHeight: 1.25 }}>{mission.title}</h1>
                 <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 14 }}>
                   {(mission.tags || mission.skillTags || []).map((t, i) => <Pill key={i}>{t}</Pill>)}

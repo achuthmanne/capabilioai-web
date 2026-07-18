@@ -3590,8 +3590,13 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
   const challengeToMission = (challenge) => ({
     id:                 challenge.id,
     title:              challenge.title,
-    description:        challenge.scenario,
-    scenario:           challenge.scenario,
+    // BUG FIX (2026-07-18): domainChallenges.js entries store their brief text
+    // under `description` (e.g. circuit-001), not `scenario` — this was always
+    // overwritten with the (usually empty) `scenario` field, leaving the Brief
+    // panel blank. Fall back through both so whichever the content actually
+    // populated is shown.
+    description:        challenge.description || challenge.scenario,
+    scenario:           challenge.scenario || challenge.description,
     objective:          challenge.objective,
     steps:              challenge.steps || [],
     difficulty:         challenge.difficulty,
@@ -3842,14 +3847,27 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
     // timeout auto-submit. Manual submits still alert (so the student can
     // fix it); a timeout submit can't alert anyone, so it falls through to
     // the zero-effort branch below instead (forced score 0 / ELO +0).
+    //
+    // BUG FIX (2026-07-18): this used to require >=3 "meaningful lines" no
+    // matter what. That's correct for code/text editors, but several
+    // non-code workstations (MCQ answers, circuit-target checks, wiring
+    // checks) legitimately produce only 1-2 real lines of proof (e.g.
+    // "Selected: B" or "Target: MET") — those submissions always hit this
+    // guard and silently did nothing, even though the student had actually
+    // completed and validated real work. A real, already-run validator check
+    // (registerValidator output, surfaced here as valTotal) is just as valid
+    // a signal of genuine engagement as 3 lines of text, so it's accepted as
+    // an alternate pass condition instead of requiring every workstation
+    // type to pad its proof text to satisfy a line-count meant for editors.
+    const hasRealValidatorCheck = valTotal > 0
     if (!timedOut) {
       if (isMulti) {
-        if (netMeaningful < 3) {
+        if (netMeaningful < 3 && !hasRealValidatorCheck) {
           alert("⚠️ Complete at least one workstation before submitting.")
           return
         }
       } else {
-        if (netMeaningful < 3) {
+        if (netMeaningful < 3 && !hasRealValidatorCheck) {
           alert("⚠️ Write your solution first — blank, comment-only, or untouched-starter submissions are not accepted.")
           return
         }
