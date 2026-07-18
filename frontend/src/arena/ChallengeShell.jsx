@@ -889,7 +889,7 @@ export default function ChallengeShell({
       {confirming && (
         <SubmitConfirm mission={mission} meta={meta} validation={validation} hintsUsed={revealedHints} isPractice={isPractice}
           pasteDetected={pasteRef.current > 0}
-          onConfirm={() => { setConfirming(false); onSubmit({ validation, passCount, totalChecks: realChecks.length, hintsUsed: revealedHints, validationsRun }) }}
+          onConfirm={() => { setConfirming(false); onSubmit({ validation, passCount, totalChecks: realChecks.length, hintsUsed: revealedHints, validationsRun: validationsRef.current }) }}
           onCancel={() => setConfirming(false)} />
       )}
     </div>
