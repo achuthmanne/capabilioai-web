@@ -9,7 +9,8 @@
     "dev:all": "concurrently \"npm run dev\" \"npm run dev:server\"",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "node backend/server.js"
+    "start": "node backend/server.js",
+    "test:arena-v2": "node --test $(find backend/server/lib/arena-v2 -name '*.test.js')"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.36.0",
@@ -37,9 +38,11 @@
     "react-is": "^19.2.7",
     "react-router-dom": "^6.26.2",
     "recharts": "^3.8.1",
+    "sql.js": "^1.10.3",
     "three": "^0.184.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.4",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
