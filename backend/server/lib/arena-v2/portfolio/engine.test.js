@@ -19,6 +19,7 @@ function domainEvent(overrides = {}) {
 function fakeDeps() {
   const calls = []
   const artifacts = {}
+  const proofObjects = []
   return {
     deps: {
       getArtifactForAssessment: async (assessmentId) => { calls.push("getArtifactForAssessment"); return artifacts[assessmentId] || null },
@@ -28,8 +29,14 @@ function fakeDeps() {
         artifacts[row.assessmentId] = artifact
         return artifact
       },
+      insertProofObject: async (proofObject) => {
+        calls.push("insertProofObject")
+        proofObjects.push(proofObject)
+        return { id: `proof-${proofObjects.length}`, ...proofObject }
+      },
     },
     calls,
+    proofObjects,
   }
 }
 
@@ -69,6 +76,57 @@ test("creates nothing when below threshold and manual publish is disallowed", as
   assert.equal(calls.includes("insertArtifact"), false)
 })
 
+// Phase 1A (Evidence System unification, 2026-07-20): every completed
+// assessment now becomes a Proof Object regardless of portfolio
+// eligibility — evidence existing is independent of whether it's ever
+// visible on the portfolio/to recruiters.
+
+test("still records a Proof Object for a common challenge, even though no legacy artifact is created", async () => {
+  const { deps, calls, proofObjects } = fakeDeps()
+  const result = await recordPortfolioOutcome(domainEvent({ instance: { challenge_type: "common" } }), deps)
+  assert.equal(result.artifact, null) // legacy artifact behavior unchanged
+  assert.equal(calls.includes("insertProofObject"), true)
+  assert.equal(proofObjects.length, 1)
+  assert.equal(proofObjects[0].publishState, "not_applicable")
+  assert.equal(proofObjects[0].isPortfolioVisible, false)
+})
+
+test("still records a Proof Object when below threshold and manual publish is disallowed", async () => {
+  const { deps, proofObjects } = fakeDeps()
+  const event = domainEvent({
+    assessment: { final_score: 60 },
+    instance: { portfolio_decision: { minScoreToAutoPublish: 80, allowManualPublishBelowThreshold: false, artifactType: "code" } },
+  })
+  await recordPortfolioOutcome(event, deps)
+  assert.equal(proofObjects.length, 1)
+  assert.equal(proofObjects[0].publishState, "not_applicable")
+})
+
+test("Proof Object publishState is auto_published when the score meets the threshold", async () => {
+  const { deps, proofObjects } = fakeDeps()
+  await recordPortfolioOutcome(domainEvent(), deps)
+  assert.equal(proofObjects.length, 1)
+  assert.equal(proofObjects[0].publishState, "auto_published")
+  assert.equal(proofObjects[0].isPortfolioVisible, true)
+  assert.equal(proofObjects[0].isRecruiterVisible, true)
+})
+
+test("Proof Object publishState is not_published (draft) when below threshold but manual publish is allowed", async () => {
+  const { deps, proofObjects } = fakeDeps()
+  await recordPortfolioOutcome(domainEvent({ assessment: { final_score: 60 } }), deps)
+  assert.equal(proofObjects.length, 1)
+  assert.equal(proofObjects[0].publishState, "not_published")
+  assert.equal(proofObjects[0].isPortfolioVisible, false)
+})
+
+test("a Proof Object write failure never fails the overall assessment-completed flow", async () => {
+  const { deps } = fakeDeps()
+  deps.insertProofObject = async () => { throw new Error("boom") }
+  const result = await recordPortfolioOutcome(domainEvent(), deps)
+  assert.equal(result.decisionType, DECISION_TYPES.AUTO_PUBLISH)
+  assert.ok(result.artifact) // legacy artifact path still succeeds
+})
+
 test("IDEMPOTENCY: re-running for the same assessment does not create a second artifact", async () => {
   const { deps, calls } = fakeDeps()
   const first = await recordPortfolioOutcome(domainEvent(), deps)
@@ -86,5 +144,9 @@ test("throws if the event is missing required fields", async () => {
 test("never calls anything reward-related — Reward Engine and Portfolio Decision are independent consumers of the same event", async () => {
   const { deps, calls } = fakeDeps()
   await recordPortfolioOutcome(domainEvent(), deps)
-  assert.equal(calls.every((c) => /Artifact/.test(c)), true)
+  // Updated for Phase 1A: calls now also legitimately include
+  // "insertProofObject" (not reward-related), so the assertion checks for
+  // the ABSENCE of reward-engine-shaped calls rather than requiring every
+  // call name to contain "Artifact".
+  assert.equal(calls.some((c) => /Elo|Xp|Reward/i.test(c)), false)
 })

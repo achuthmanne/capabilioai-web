@@ -37,6 +37,7 @@ function toRow(p) {
     elo_delta: p.eloDelta ?? 0,
     time_taken_secs: p.timeTakenSecs ?? null,
     trust_level: p.trustLevel || "self-claimed",
+    publish_state: p.publishState || "not_applicable",
     is_portfolio_visible: p.isPortfolioVisible ?? true,
     is_recruiter_visible: p.isRecruiterVisible ?? true,
     completed_at: p.completedAt || new Date().toISOString(),
@@ -86,8 +87,43 @@ export async function listForUser(userId, { portfolioOnly = false } = {}) {
   return data || []
 }
 
+// Phase 1A (Evidence System unification) — the recruiter-facing equivalent
+// of the old listPublishedArtifactsForUser(userId) from
+// portfolio/repository.js, now reading proof_objects instead of
+// av2_portfolio_artifacts. Filters on is_recruiter_visible specifically
+// (kept as its own boolean from is_portfolio_visible in case the two ever
+// diverge — e.g. a proof visible on the public portfolio but withheld from
+// recruiter search, or vice versa).
+export async function listRecruiterVisibleForUser(userId) {
+  const { data, error } = await supabaseAdmin
+    .from(TABLE)
+    .select("*")
+    .eq("user_id", userId)
+    .eq("is_recruiter_visible", true)
+    .order("completed_at", { ascending: false })
+  if (error) throw error
+  return data || []
+}
+
 export async function getById(id) {
   const { data, error } = await supabaseAdmin.from(TABLE).select("*").eq("id", id).maybeSingle()
+  if (error) throw error
+  return data
+}
+
+// Phase 1A (Evidence System unification) — the proof_objects equivalent of
+// the old updatePublishState(artifactId, publishState) from
+// portfolio/repository.js. Only ever called from the self-publish route to
+// flip a 'not_published' draft to 'self_selected'; flips visibility flags
+// alongside the state so /api/proofs and the recruiter endpoint pick it up
+// immediately without a second write.
+export async function updatePublishState(id, publishState) {
+  const isVisible = publishState === "auto_published" || publishState === "self_selected"
+  const { data, error } = await supabaseAdmin
+    .from(TABLE)
+    .update({ publish_state: publishState, is_portfolio_visible: isVisible, is_recruiter_visible: isVisible })
+    .eq("id", id)
+    .select().single()
   if (error) throw error
   return data
 }

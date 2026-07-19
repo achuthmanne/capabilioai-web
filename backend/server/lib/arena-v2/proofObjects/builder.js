@@ -16,6 +16,18 @@
 
 import { humanizeDomain } from "./domains.js"
 
+// Phase 1A (Evidence System unification): maps a Portfolio Decision's
+// `type` (portfolio/decision.js's DECISION_TYPES) onto the Proof Object's
+// own publish_state. Every completed assessment gets a Proof Object now —
+// this mapping only controls whether it's ever visible on the portfolio/to
+// recruiters, not whether it exists as evidence.
+const PUBLISH_STATE_BY_DECISION_TYPE = {
+  auto_publish: "auto_published",
+  pending_manual: "not_published", // draft — student can self-publish later
+  not_qualifying: "not_applicable", // below threshold, no manual publish allowed — never eligible
+  not_eligible: "not_applicable", // common/non-domain challenge, or no portfolio_decision configured
+}
+
 function synthesizeTitle(instance) {
   const role = instance.role || instance.challenge_type || "Challenge"
   const skill = instance.skill
@@ -31,7 +43,8 @@ function synthesizeTitle(instance) {
 export function buildProofObjectFromAssessment(event, decision) {
   const { instance, submission, assessment, rewardResult } = event
 
-  const isVisible = decision?.publishState && decision.publishState !== "not_published"
+  const publishState = PUBLISH_STATE_BY_DECISION_TYPE[decision?.type] || "not_applicable"
+  const isVisible = publishState === "auto_published"
 
   return {
     userId: assessment.user_id,
@@ -70,6 +83,7 @@ export function buildProofObjectFromAssessment(event, decision) {
     timeTakenSecs: submission.time_taken_secs ?? null,
     trustLevel: "verified", // graded by the live Arena V2 pipeline, not self-reported
 
+    publishState,
     isPortfolioVisible: !!isVisible,
     isRecruiterVisible: !!isVisible,
 

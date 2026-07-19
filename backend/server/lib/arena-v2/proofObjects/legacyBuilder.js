@@ -47,6 +47,7 @@ export function buildProofObjectFromArenaHistory(row) {
     timeTakenSecs: null,
     trustLevel: "self-claimed", // pre-Arena-V2 pipeline — not the new verified grading path
 
+    publishState: row.visible_in_portfolio !== false ? "self_selected" : "not_applicable",
     isPortfolioVisible: row.visible_in_portfolio !== false,
     isRecruiterVisible: row.visible_in_portfolio !== false,
 
@@ -92,6 +93,7 @@ export function buildProofObjectFromArenaSubmission(row) {
     timeTakenSecs: null,
     trustLevel: "self-claimed",
 
+    publishState: "self_selected",
     isPortfolioVisible: true,
     isRecruiterVisible: true,
 

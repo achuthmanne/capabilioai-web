@@ -60,3 +60,35 @@ export function buildRecruiterEvidenceView(artifact) {
     createdAt: artifact.created_at,
   }
 }
+
+// Phase 1A (Evidence System unification, 2026-07-20): the proof_objects
+// equivalent of buildRecruiterEvidenceView above — used by
+// routes/arenaV2Portfolio.js's /candidates/:userId/evidence endpoint, now
+// reading proof_objects instead of av2_portfolio_artifacts. Verification
+// label is derived from publish_state rather than stored separately, since
+// proof_objects folds decision.verification into that one field.
+const VERIFICATION_BY_PUBLISH_STATE = {
+  auto_published: "Verified",
+  self_selected: "Self-Selected",
+}
+
+/**
+ * @param {object} proof a proof_objects row (only ever called with
+ *   is_recruiter_visible=true rows, so publish_state is always
+ *   'auto_published' or 'self_selected' in practice)
+ * @returns {object} the recruiter-facing view
+ */
+export function buildRecruiterEvidenceViewFromProof(proof) {
+  return {
+    skill: proof.skill,
+    status: "Completed",
+    scorePct: proof.score,
+    verification: VERIFICATION_BY_PUBLISH_STATE[proof.publish_state] || "Self-Selected",
+    difficulty: proof.difficulty,
+    industry: proof.industry,
+    scenario: null, // KNOWN GAP, same as the legacy builder above — proof_objects doesn't carry a scenario name either
+    skillsDemonstrated: proof.skills_demonstrated || [],
+    artifactType: proof.challenge_type,
+    createdAt: proof.completed_at,
+  }
+}

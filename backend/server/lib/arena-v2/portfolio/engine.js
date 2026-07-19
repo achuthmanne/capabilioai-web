@@ -57,6 +57,24 @@ export async function recordPortfolioOutcome(event, deps = defaultDeps) {
 
   const decision = decidePortfolioPublication(event)
 
+  // Phase 1A (Evidence System unification, 2026-07-20): every completed
+  // assessment becomes a Proof Object now — not just domain challenges that
+  // clear the portfolio-eligibility bar. Evidence existing is independent of
+  // whether it's ever *visible*; visibility is entirely controlled by
+  // publishState inside the builder. This runs BEFORE the eligibility
+  // early-return below (unlike the legacy av2_portfolio_artifacts write,
+  // which is unchanged and still only fires for domain-eligible challenges —
+  // proof_objects is now the sole source routes/arenaV2Portfolio.js reads
+  // from, av2_portfolio_artifacts is retained only because the e2e suite
+  // still asserts against it). Non-fatal: a Proof Object write hiccup must
+  // never fail the assessment-completed flow.
+  try {
+    const proofObject = buildProofObjectFromAssessment(event, decision)
+    await deps.insertProofObject(proofObject)
+  } catch (err) {
+    console.error("[portfolio/engine] Failed to record proof object (non-fatal):", err.message)
+  }
+
   if (decision.type === DECISION_TYPES.NOT_ELIGIBLE || decision.type === DECISION_TYPES.NOT_QUALIFYING) {
     return { decisionType: decision.type, artifact: null, alreadyApplied: false }
   }
@@ -77,17 +95,6 @@ export async function recordPortfolioOutcome(event, deps = defaultDeps) {
     publishState: decision.publishState,
     recruiterEvidence,
   })
-
-  // Also record the new Proof Object — non-fatal if it fails, since the
-  // legacy artifact above (which existing routes depend on) already
-  // succeeded; we don't want a Proof Object write hiccup to fail the whole
-  // assessment-completed flow. Logged loudly so it's never silently lost.
-  try {
-    const proofObject = buildProofObjectFromAssessment(event, decision)
-    await deps.insertProofObject(proofObject)
-  } catch (err) {
-    console.error("[portfolio/engine] Failed to record proof object (non-fatal):", err.message)
-  }
 
   return { decisionType: decision.type, artifact, alreadyApplied: false }
 }
