@@ -106,6 +106,21 @@ export async function listRecruiterVisibleForUser(userId) {
   return data || []
 }
 
+// Trust & Verification Center, Phase 1 — promotes a proof object's
+// trust_level to 'verified' once a verification provider confirms it (see
+// verification/pipeline.js). Never called from client-writable paths;
+// proof_objects has no client update policy, matching the rest of this
+// file's backend-writes-only discipline.
+export async function updateTrustLevel(id, trustLevel) {
+  const { data, error } = await supabaseAdmin
+    .from(TABLE)
+    .update({ trust_level: trustLevel })
+    .eq("id", id)
+    .select().single()
+  if (error) throw error
+  return data
+}
+
 export async function getById(id) {
   const { data, error } = await supabaseAdmin.from(TABLE).select("*").eq("id", id).maybeSingle()
   if (error) throw error

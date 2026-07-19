@@ -106,6 +106,7 @@ import arenaV2SubmissionRoutes from "./server/routes/arenaV2Submission.js" // Ar
 import arenaV2PortfolioRoutes  from "./server/routes/arenaV2Portfolio.js"  // Arena V2 rebuild, Milestone 10 — Portfolio & Recruiter Evidence API: GET /mine, POST /:id/publish, GET /candidates/:userId/evidence
 import proofsRoutes           from "./server/routes/proofs.js"            // Portfolio redesign — public Engineering Proofs API: GET /:userId (grouped+filtered), GET /:userId/:proofId
 import educationRoutes        from "./server/routes/education.js"        // Education redesign Phase 1 — GET /profile/:userId (public), POST /profile (auth, own profile only)
+import verificationRoutes     from "./server/routes/verification.js"     // Trust & Verification Center Phase 1 — provider registry, hash-chained audit log, POST /verify
 import skillStudioRoutes      from "./server/routes/skillStudio.js"
 import chatRoutes             from "./server/routes/chat.js"
 import githubRoutes           from "./server/routes/github.js"
@@ -203,6 +204,7 @@ app.use("/api/av2/submissions", arenaV2SubmissionRoutes) // Arena V2 rebuild, Mi
 app.use("/api/av2/portfolio",   arenaV2PortfolioRoutes)  // Arena V2 rebuild, Milestone 10 — Portfolio & Recruiter Evidence API
 app.use("/api/proofs",          proofsRoutes)            // Portfolio redesign — public Engineering Proofs API (no auth: portfolios are public pages)
 app.use("/api/education",       educationRoutes)         // Education redesign Phase 1 — academic identity (education_profile) + achievements (proof_objects)
+app.use("/api/verification",    verificationRoutes)      // Trust & Verification Center Phase 1 — provider registry, hash-chained audit log
 app.use("/api/skill-studio", skillStudioRoutes)  // lesson, learning-path, youtube, resources
 app.use("/api/chat",         chatRoutes)         // chat
 app.use("/api/github",       githubRoutes)       // analyze
