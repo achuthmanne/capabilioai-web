@@ -55,7 +55,18 @@ export function buildProofObjectFromArenaHistory(row) {
   }
 }
 
-/** @param {object} row an arena_submissions row */
+/**
+ * KEPT BUT UNUSED as of 2026-07-19 — scripts/backfillProofObjects.js no
+ * longer calls this. Every arena_submissions row was found to duplicate an
+ * arena_history row for the same user+title (same action written to both
+ * legacy tables seconds apart), and arena_submissions.domain is the literal
+ * string 'swe' for every row regardless of actual subject matter, which
+ * produced Proof Objects mislabeled "Software Engineering" for
+ * ECE/DevOps/Data challenges. Fixed below to source `domain` from
+ * `row.category` first (the reliable field) rather than `row.domain` — if
+ * this table is ever reintroduced as a source, keep that precedence.
+ * @param {object} row an arena_submissions row
+ */
 export function buildProofObjectFromArenaSubmission(row) {
   const skillTags = Array.isArray(row.skill_tags) ? row.skill_tags : []
   return {
@@ -63,7 +74,7 @@ export function buildProofObjectFromArenaSubmission(row) {
     source: "arena_v1",
     sourceRef: { table: "arena_submissions", id: row.id },
 
-    domain: humanizeDomain(row.domain || row.domain_key || row.category),
+    domain: humanizeDomain(row.category || row.domain_key || row.domain),
     skill: skillTags[0] || null,
     skillsDemonstrated: skillTags,
     challengeType: row.category || null,

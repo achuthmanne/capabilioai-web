@@ -5,6 +5,8 @@
  * across data sources.
  */
 export const DOMAIN_LABELS = {
+  ece: "ECE", // acronym — the title-case fallback below would otherwise render "Ece"
+  sql: "SQL",
   embedded_systems: "Embedded Systems",
   digital_electronics: "Digital Electronics",
   rtos: "RTOS",
@@ -16,6 +18,7 @@ export const DOMAIN_LABELS = {
   mechanical: "Mechanical Engineering",
   civil: "Civil Engineering",
   iot: "IoT",
+  devops: "DevOps",
 }
 
 export function humanizeDomain(raw) {
