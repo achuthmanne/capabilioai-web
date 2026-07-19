@@ -37,7 +37,7 @@ router.post("/extract-pdf", upload.single("resume"), async (req, res) => {
     if (text.trim().length >= 30) {
       const raw = await groq([
         { role:"system", content:"Resume parser. Return ONLY valid JSON, no markdown." },
-        { role:"user",   content:`Parse this resume. Return JSON: ${SCHEMA}\n\nResume:\n${text.slice(0,4000)}` },
+        { role:"user",   content:`Parse this resume. Return JSON: ${SCHEMA}\n\nResume:\n${text.slice(0,12000)}` },
       ], { model:GROQ_FAST, max_tokens:2000, json:true })
 
       let p = {}
@@ -108,7 +108,14 @@ CRITICAL RULES FOR roleSkills:
 - Do NOT add skills that are not written in that specific role's description.
 - Maximum 6 items in roleSkills per experience. If fewer are explicitly mentioned, use fewer.
 - The top-level "skills" array is for GLOBAL/OVERALL skills found in the document (skills section, top skills, etc.).` },
-        { role:"user",   content:`Parse this professional resume. Include separate projects array for any project entries. Return JSON: ${PROF_SCHEMA}\n\nResume:\n${text.slice(0,4000)}` },
+        // BUG FIX (2026-07-20): this was slice(0,4000) — ~800-1000 tokens, well under
+        // llama-3.1-8b-instant's 128K context window. A one-page resume's raw pdf-parse
+        // text (with all its whitespace/newline bloat) routinely exceeds 4000 chars, and
+        // Education is often the LAST section on fresher/student resumes — so it was
+        // silently getting cut off before the AI ever saw it, while sections earlier in
+        // the document (skills, certifications) still parsed fine. That's why certs came
+        // through from a resume upload but education didn't.
+        { role:"user",   content:`Parse this professional resume. Include separate projects array for any project entries. Return JSON: ${PROF_SCHEMA}\n\nResume:\n${text.slice(0,12000)}` },
       ], { model:GROQ_FAST, max_tokens:2500, json:true })
     }
 
