@@ -36,9 +36,11 @@ router.post("/extract-pdf", upload.single("resume"), async (req, res) => {
 
     if (text.trim().length >= 30) {
       const raw = await groq([
-        { role:"system", content:"Resume parser. Return ONLY valid JSON, no markdown." },
+        { role:"system", content:`Resume parser. Return ONLY valid JSON, no markdown.
+
+Scan the ENTIRE document for an education/academic section before deciding it's absent — headers include "Education", "Academic Background", "Qualifications", or it may appear with no header, just institution + degree + dates. Education is often the LAST section on fresher/student resumes — do not stop scanning once earlier sections are filled in. If any institution+degree/field/year appears anywhere, it must appear in "education" — never return education:[] while such text exists.` },
         { role:"user",   content:`Parse this resume. Return JSON: ${SCHEMA}\n\nResume:\n${text.slice(0,12000)}` },
-      ], { model:GROQ_FAST, max_tokens:2000, json:true })
+      ], { model:GROQ_FAST, max_tokens:2000, json:true, temperature:0.2 })
 
       let p = {}
       try { p = JSON.parse(raw) } catch {}
@@ -59,7 +61,8 @@ Rules:
 - Extract every skill mentioned anywhere in the document
 - For current roles: endDate="" and current=true
 - keywords = 15-20 job-relevant technical terms from the whole document
-- Empty string or [] for missing fields`
+- Empty string or [] for missing fields
+- Scan the whole document for an education/academic section (often the LAST section on fresher resumes) before returning education:[] — any institution+degree/field/year found must be included`
 
         const extracted = await geminiExtractImage(base64, mime, prompt)
         const p = (extracted && !extracted.raw) ? extracted : {}
@@ -102,6 +105,12 @@ router.post("/professional/parse-resume", upload.single("resume"), async (req, r
       raw = await groq([
         { role:"system", content:`Resume parser. Return ONLY valid JSON matching the schema exactly, no markdown, no extra text.
 
+CRITICAL RULES FOR education:
+- Scan the ENTIRE document for an education/academic section before deciding it's absent — common headers include "Education", "Academic Background", "Qualifications", "Academic Qualifications", "Degree", or it may appear with no header at all, just institution + degree + dates.
+- Education is very often the LAST section on fresher/student resumes, after Skills and Certifications — do not stop scanning once you've filled in skills/certifications.
+- If you find ANY institution name paired with a degree, field of study, or graduation year anywhere in the document, it MUST appear in the "education" array — never return education:[] while such text exists in the resume.
+- One entry per degree/program. A single line like "B.Tech in Electronics, XYZ University, 2022" is a complete, valid education entry on its own — extract it even if brief.
+
 CRITICAL RULES FOR roleSkills:
 - For each experience entry, the "roleSkills" array must contain ONLY skills, tools, or technologies that are explicitly mentioned or directly demonstrated in THAT SPECIFIC role's own description or responsibilities.
 - Do NOT copy skills from the top-level "skills" array or other sections into roleSkills.
@@ -116,7 +125,40 @@ CRITICAL RULES FOR roleSkills:
         // the document (skills, certifications) still parsed fine. That's why certs came
         // through from a resume upload but education didn't.
         { role:"user",   content:`Parse this professional resume. Include separate projects array for any project entries. Return JSON: ${PROF_SCHEMA}\n\nResume:\n${text.slice(0,12000)}` },
-      ], { model:GROQ_FAST, max_tokens:2500, json:true })
+      ], { model:GROQ_FAST, max_tokens:2500, json:true, temperature:0.2 })
+      // BUG FIX (2026-07-20): temperature was defaulting to 0.7 (groq.js's
+      // default, tuned for creative tasks) for what is a deterministic
+      // structured-extraction task. Confirmed in production: the identical
+      // resume file, re-uploaded a day apart, produced edu_count=0/cert_count=0
+      // on one run and edu_count=3/cert_count=5 on the next — pure model
+      // non-determinism, not a parsing/plumbing bug. 0.2 trades away any
+      // creativity this task never needed for run-to-run consistency.
+
+      // Second line of defense: the prompt/temperature fix above should make
+      // this rare, but if the model still comes back with an empty education
+      // array while the raw text plainly contains an education-shaped
+      // section, retry once with a prompt that does nothing else but extract
+      // education — cheap (small token count) and only fires on the failure
+      // path, so it costs nothing on the common case.
+      try {
+        const parsedOnce = JSON.parse(raw)
+        const eduLooksEmpty = !Array.isArray(parsedOnce.education) || parsedOnce.education.length === 0
+        const textHasEducationSection = /\b(education|academic (background|qualifications)|qualifications)\b/i.test(text)
+        if (eduLooksEmpty && textHasEducationSection) {
+          console.warn("[parse-resume] education came back empty despite an education-shaped section in the text — retrying education-only extraction")
+          const eduRaw = await groq([
+            { role:"system", content:`Extract ONLY the education/academic history from this resume. Return ONLY valid JSON: {"education":[{"institution":"","degree":"","field":"","year":""}]}. Look for headers like "Education", "Academic Background", "Qualifications", or a bare institution+degree+dates line with no header. If genuinely no education is mentioned anywhere, return {"education":[]}.` },
+            { role:"user", content:text.slice(0, 12000) },
+          ], { model:GROQ_FAST, max_tokens:600, json:true, temperature:0.2 })
+          try {
+            const eduParsed = JSON.parse(eduRaw)
+            if (Array.isArray(eduParsed.education) && eduParsed.education.length > 0) {
+              parsedOnce.education = eduParsed.education
+              raw = JSON.stringify(parsedOnce)
+            }
+          } catch (e) { console.warn("[parse-resume] education retry parse failed:", e.message) }
+        }
+      } catch (e) { /* raw wasn't valid JSON at all — the normal parse below already handles this */ }
     }
 
     // Path B: Gemini multimodal for image-only PDFs
@@ -127,7 +169,9 @@ CRITICAL RULES FOR roleSkills:
           `You are a resume parser. Extract ALL information from this resume.
 Return ONLY valid JSON: ${PROF_SCHEMA}. No markdown.
 
-CRITICAL: For each experience, "roleSkills" must ONLY contain skills explicitly mentioned in THAT role's own description (max 6). Do NOT copy global skills into roleSkills.`)
+CRITICAL: For each experience, "roleSkills" must ONLY contain skills explicitly mentioned in THAT role's own description (max 6). Do NOT copy global skills into roleSkills.
+
+CRITICAL: Scan the whole document for an education/academic section (often the LAST section on fresher resumes, after skills/certifications) before returning education:[] — any institution+degree/field/year found anywhere must be included.`)
         if (extracted && !extracted.raw && (extracted.name || extracted.skills?.length || extracted.experience?.length)) {
           const p = extracted
           return res.json({
