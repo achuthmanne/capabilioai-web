@@ -12,6 +12,7 @@ import { useEffect, useState, useRef } from "react"
 import { getPortfolioConfig, ARCHETYPES } from "../config/portfolioArchetypes"
 import { userDoc } from "../lib/db"
 import { supabase } from "../lib/supabase"
+import EngineeringProofsPanel from "../components/EngineeringProofsPanel"
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   Radar, ResponsiveContainer, Tooltip,
@@ -1316,6 +1317,11 @@ export default function Portfolio({ username: usernameProp }) {
   const [summary,     setSummary]     = useState("")
   const [scrolled,    setScrolled]    = useState(false)
   const [currentUid,  setCurrentUid]  = useState(null)
+  // "overview" = the existing scroll-sectioned page (unchanged below); "proofs"
+  // = the new Engineering Proofs tab (EngineeringProofsPanel), which fully
+  // replaces the body rather than being threaded into the scroll-nav, so the
+  // existing page's layout/refs/PDF-export logic stays untouched.
+  const [activeView,  setActiveView]  = useState("overview")
 
   const refs = { overview:useRef(), summary:useRef(), activity:useRef(), skills:useRef(), challenges:useRef(), interviews:useRef(), experience:useRef(), certificates:useRef(), testimonials:useRef() }
 
@@ -1580,7 +1586,7 @@ export default function Portfolio({ username: usernameProp }) {
     setLoading(false)
   }
 
-  const scrollTo=(k)=>refs[k]?.current?.scrollIntoView({behavior:"smooth",block:"start"})
+  const scrollTo=(k)=>{ setActiveView("overview"); requestAnimationFrame(()=>refs[k]?.current?.scrollIntoView({behavior:"smooth",block:"start"})) }
 
   // ─── Loading ──────────────────────────────────────────────────────────────
   if(loading) return (
@@ -1680,11 +1686,22 @@ export default function Portfolio({ username: usernameProp }) {
             ud.testimonials?.length>0&&{k:"testimonials",l:"Reviews"},
           ].filter(Boolean).map(({k,l})=>(
             <button key={k} onClick={()=>scrollTo(k)}
-              style={{padding:"6px 14px",borderRadius:99,border:"none",background:"transparent",
+              style={{padding:"6px 14px",borderRadius:99,border:"none",
+                background:activeView==="overview"?"transparent":"transparent",
                 color:C.ink3,fontSize:13,fontWeight:600,cursor:"pointer"}}>
               {l}
             </button>
           ))}
+          {/* Engineering Proofs — the Proof Object system, a real tab-switch
+              (not a scroll anchor) since its data is fetched independently. */}
+          <button onClick={()=>setActiveView(v=>v==="proofs"?"overview":"proofs")}
+            style={{padding:"6px 14px",borderRadius:99,
+              border:activeView==="proofs"?`1px solid ${C.purple}55`:"1px solid transparent",
+              background:activeView==="proofs"?C.purple2:"transparent",
+              color:activeView==="proofs"?C.purple:C.ink3,fontSize:13,fontWeight:700,cursor:"pointer",
+              display:"flex",alignItems:"center",gap:5}}>
+            🛡 Engineering Proofs
+          </button>
         </div>
         {isOwner&&(
           <button onClick={()=>window.print()} className="np"
@@ -1696,8 +1713,12 @@ export default function Portfolio({ username: usernameProp }) {
       </nav>
 
       {/* ══════════════════════════════════════════════════════════════════ */}
-      {/* HERO                                                              */}
+      {/* HERO — existing scroll-sectioned page, unchanged below. Wrapped so   */}
+      {/* the Engineering Proofs tab can fully replace the body instead of    */}
+      {/* being threaded into the scroll-nav (keeps refs/PDF export intact).  */}
       {/* ══════════════════════════════════════════════════════════════════ */}
+      {activeView==="overview" && (
+      <>
       <div ref={refs.overview}>
         {/* ── GENZ HERO — 2-col split: left=text, right=avatar ───────────── */}
         <div style={{background:heroBg,position:"relative",overflow:"hidden",minHeight:520}}>
@@ -2485,6 +2506,15 @@ export default function Portfolio({ username: usernameProp }) {
           </div>
         </div>
       </div>
+      </>
+      )}
+
+      {/* ══ ENGINEERING PROOFS — Proof Object system ═══════════════════════ */}
+      {activeView==="proofs" && (
+        <div style={{maxWidth:1200,margin:"0 auto",padding:"32px 24px 80px"}}>
+          <EngineeringProofsPanel userId={ud.uid || ud.id || currentUid}/>
+        </div>
+      )}
     </div>
   )
 }

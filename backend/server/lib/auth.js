@@ -19,9 +19,11 @@ export async function requireAuth(req, res, next) {
   const secret = process.env.SUPABASE_JWT_SECRET
 
   if (secret) {
-    // Fast path — local verification, no network call
+    // Fast path — local verification, no network call.
+    // Pin the algorithm to HS256 (Supabase's signing alg) so a token can't be
+    // presented with an unexpected/"none" alg header.
     try {
-      const payload = jwt.verify(token, secret)
+      const payload = jwt.verify(token, secret, { algorithms: ["HS256"] })
       // Supabase JWTs store user id in `sub`
       req.user = { id: payload.sub, email: payload.email, role: payload.role, ...payload }
       return next()

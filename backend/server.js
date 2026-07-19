@@ -100,6 +100,11 @@ import resumeRoutes           from "./server/routes/resume.js"
 import assessmentRoutes       from "./server/routes/assessment.js"
 import arenaRoutes            from "./server/routes/arena.js"
 import arenaV2Routes          from "./server/routes/arenaV2.js"
+import arenaV2LibraryRoutes   from "./server/routes/arenaV2Library.js"  // Arena V2 (real rebuild) Milestone 2 — Challenge Library CRUD, separate from legacy arena/v2 above
+import arenaV2DeliveryRoutes  from "./server/routes/arenaV2Delivery.js" // Arena V2 rebuild, Milestone 6 — Challenge Delivery API (next/active/expire-sweep)
+import arenaV2SubmissionRoutes from "./server/routes/arenaV2Submission.js" // Arena V2 rebuild, Milestone 8 — Submission API (the return path: Submission -> Submission Engine -> Validator -> Assessment -> Feedback DTO)
+import arenaV2PortfolioRoutes  from "./server/routes/arenaV2Portfolio.js"  // Arena V2 rebuild, Milestone 10 — Portfolio & Recruiter Evidence API: GET /mine, POST /:id/publish, GET /candidates/:userId/evidence
+import proofsRoutes           from "./server/routes/proofs.js"            // Portfolio redesign — public Engineering Proofs API: GET /:userId (grouped+filtered), GET /:userId/:proofId
 import skillStudioRoutes      from "./server/routes/skillStudio.js"
 import chatRoutes             from "./server/routes/chat.js"
 import githubRoutes           from "./server/routes/github.js"
@@ -142,6 +147,13 @@ app.use("/api/chat",         aiLimiter)
 app.use("/api/voice",        aiLimiter)
 app.use("/api/copilot",      aiLimiter)
 app.use("/api/groq",         aiLimiter)
+// PC-3: these AI-backed endpoints were only under the general 100/min limit.
+// Put them on the tighter AI limiter to blunt anonymous cost-abuse. (Requiring
+// auth on them additionally needs the onboarding client to send its bearer token.)
+app.use("/api/generate-mcq",                aiLimiter)
+app.use("/api/analyse-assessment",          aiLimiter)
+app.use("/api/analyse-professional-profile", aiLimiter)
+app.use("/api/resolve-role",                aiLimiter)
 app.use("/api/verify",       strictLimiter)
 
 app.use(cors({
@@ -184,6 +196,11 @@ app.use("/api",              resumeRoutes)       // extract-pdf, extract-linkedi
 app.use("/api",              assessmentRoutes)   // generate-mcq, analyse-assessment, analyse-professional-profile
 app.use("/api/arena",        arenaRoutes)        // daily, challenge, review, hint, run-tests
 app.use("/api/arena/v2",    arenaV2Routes)      // catalog, submit, streaks, leaderboard, recruiter, roles, daily-assignment, proof-artifacts, weak-topics, sub-elo, stats
+app.use("/api/av2/library",  arenaV2LibraryRoutes) // Arena V2 rebuild, Milestone 2 — role-capabilities, skill-graphs, scenario-packs, datasets, challenge-templates CRUD
+app.use("/api/av2/challenges", arenaV2DeliveryRoutes) // Arena V2 rebuild, Milestone 6 — Challenge Delivery API: POST /next, GET /active, POST /expire-sweep
+app.use("/api/av2/submissions", arenaV2SubmissionRoutes) // Arena V2 rebuild, Milestone 8 — Submission API: POST / (submit an attempt, get back a graded Feedback DTO)
+app.use("/api/av2/portfolio",   arenaV2PortfolioRoutes)  // Arena V2 rebuild, Milestone 10 — Portfolio & Recruiter Evidence API
+app.use("/api/proofs",          proofsRoutes)            // Portfolio redesign — public Engineering Proofs API (no auth: portfolios are public pages)
 app.use("/api/skill-studio", skillStudioRoutes)  // lesson, learning-path, youtube, resources
 app.use("/api/chat",         chatRoutes)         // chat
 app.use("/api/github",       githubRoutes)       // analyze
