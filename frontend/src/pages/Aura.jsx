@@ -2929,13 +2929,25 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
       })
   }, [user?.id])
 
+  // Returns true/false so callers that need to know (e.g. resume upload) can
+  // show an accurate result instead of assuming success. BUG FIX (2026-07-20):
+  // this previously always optimistically applied `updates` to local state
+  // even when userDoc.update()'s DB write failed (it returns false on error,
+  // it doesn't throw) — so the UI would show "saved" for a write that never
+  // actually landed. On the next refresh/login, the fresh Supabase fetch would
+  // overwrite local state with the real (unsaved) row, making data that was
+  // "there a moment ago" appear to vanish. Root cause of the "resume disappears
+  // after refresh/logout" report — a real DB write failure was being silently
+  // treated as success.
   const save = async (updates) => {
     try {
-      await userDoc.update(user.id || user.uid, updates)
+      const ok = await userDoc.update(user.id || user.uid, updates)
+      if (!ok) { console.error('[Aura] save failed — DB write rejected, not applying to local state:', Object.keys(updates)); return false }
       const merged = {...userData,...updates}
       setLocalUserData(merged)
       if (setUserData) setUserData(merged)
-    } catch(e) { console.warn(e) }
+      return true
+    } catch(e) { console.warn(e); return false }
   }
 
   // ELO history logger — records today's ELO snapshot for the trend chart.
@@ -3139,10 +3151,20 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
       // Certificates — merged (existing + new resume-sourced, deduped above)
       updates.certificates = mergedCerts
 
-      await save(updates)
+      // save() now returns whether the DB write actually succeeded — only reflect
+      // "done" (and only close the upload panel) if it really landed. Previously
+      // this always proceeded to show ✅ and update local React state regardless
+      // of the write outcome, which is exactly how an upload could look successful
+      // in the moment but be gone on the next refresh/login.
+      const saved = await save(updates)
+      if (!saved) {
+        setResumeStatus("❌ Extracted your resume, but saving it failed — check your connection and try again. (Your previous data is unchanged.)")
+        setResumeUploading(false)
+        if(resumeFileInputRef.current) resumeFileInputRef.current.value=""
+        return
+      }
       setExperiences(mergedExperiences)
       setVaultFiles(updatedVault)
-      if(setUserData) setUserData(p=>({...p,...updates}))
       const count=newExps.length+(newProjects.length>0?newProjects.length:0)
       const extras=[]
       if(newEducation.length>0) extras.push(`${newEducation.length} education`)
