@@ -37,6 +37,7 @@ function toRow(p) {
     elo_delta: p.eloDelta ?? 0,
     time_taken_secs: p.timeTakenSecs ?? null,
     trust_level: p.trustLevel || "self-claimed",
+    proof_type: p.proofType || "challenge",
     publish_state: p.publishState || "not_applicable",
     is_portfolio_visible: p.isPortfolioVisible ?? true,
     is_recruiter_visible: p.isRecruiterVisible ?? true,

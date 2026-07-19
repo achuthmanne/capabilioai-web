@@ -87,7 +87,15 @@ Rules:
 // ─── 2. Professional Resume Parse (Orbit dashboard "Import Resume" modal) ────
 // Same fast extraction as /extract-pdf but returns the shape ResumeModal expects:
 // { experiences, skills, projects, certifications, summary }
-const PROF_SCHEMA = `{"name":"","title":"","summary":"","skills":[""],"experience":[{"company":"","role":"","startDate":"","endDate":"","current":false,"description":"","responsibilities":[""],"roleSkills":[""]}],"projects":[{"title":"","description":"","techStack":[""],"url":""}],"education":[{"institution":"","degree":"","field":"","year":""}],"certifications":[""],"keywords":[""]}`
+// Education redesign, Phase 1: academicIdentity is a SINGLE best-guess
+// object (institution/degree/CGPA etc.) even if the resume lists multiple
+// degrees — takes the most recent/highest one, since education_profile is
+// one row per user. The existing "education" array below is unchanged and
+// still feeds the Vault's multi-entry education list. achievements covers
+// awards/honors/publications/dean's-list-type credentials in one array
+// (with a "type" tag) rather than three separate arrays, to keep the
+// prompt simple — these become proof_objects with proof_type='achievement'.
+const PROF_SCHEMA = `{"name":"","title":"","summary":"","skills":[""],"experience":[{"company":"","role":"","startDate":"","endDate":"","current":false,"description":"","responsibilities":[""],"roleSkills":[""]}],"projects":[{"title":"","description":"","techStack":[""],"url":""}],"education":[{"institution":"","degree":"","field":"","year":""}],"academicIdentity":{"institution":"","university":"","degree":"","branch":"","admissionYear":"","graduationYear":"","cgpa":"","relevantCoursework":[""]},"achievements":[{"title":"","type":"","date":""}],"certifications":[""],"keywords":[""]}`
 
 router.post("/professional/parse-resume", upload.single("resume"), async (req, res) => {
   try {
@@ -110,6 +118,19 @@ CRITICAL RULES FOR education:
 - Education is very often the LAST section on fresher/student resumes, after Skills and Certifications — do not stop scanning once you've filled in skills/certifications.
 - If you find ANY institution name paired with a degree, field of study, or graduation year anywhere in the document, it MUST appear in the "education" array — never return education:[] while such text exists in the resume.
 - One entry per degree/program. A single line like "B.Tech in Electronics, XYZ University, 2022" is a complete, valid education entry on its own — extract it even if brief.
+
+CRITICAL RULES FOR academicIdentity:
+- Fill this from the SAME education section used for the "education" array above — it's a single summary object for the candidate's primary/most recent degree, not a new source of information.
+- admissionYear is the degree's START year (when they began the program), graduationYear is the END year — do not confuse these; a resume showing "2019 - 2023" means admissionYear="2019", graduationYear="2023".
+- cgpa: only fill if a GPA/CGPA/percentage is explicitly stated (e.g. "CGPA: 8.4/10", "GPA: 3.7"). Leave "" if not mentioned — never estimate or invent one.
+- relevantCoursework: only from an explicit "Relevant Coursework"/"Key Courses"/"Coursework" line if present. Leave [] if the resume doesn't have one — do not infer courses from the degree name or skills list.
+- If the resume has NO education section at all (common for first-year students who haven't finished a degree yet), return an empty academicIdentity object with empty strings/arrays — do not fabricate a degree.
+
+CRITICAL RULES FOR achievements:
+- Extract awards, honors, scholarships, dean's list mentions, hackathon wins, competition placements, and publications — each as one entry with "type" set to one of: award, scholarship, honor, hackathon, competition, publication, achievement.
+- Do NOT duplicate certifications here — certifications go in the "certifications" array, not "achievements".
+- Do NOT duplicate work experience or projects here.
+- If none are mentioned, return [].
 
 CRITICAL RULES FOR roleSkills:
 - For each experience entry, the "roleSkills" array must contain ONLY skills, tools, or technologies that are explicitly mentioned or directly demonstrated in THAT SPECIFIC role's own description or responsibilities.
@@ -182,6 +203,8 @@ CRITICAL: Scan the whole document for an education/academic section (often the L
               techStack: e.skills||[], url: ""
             }))],
             education: (p.education||[]).map(_toEdu),
+            academicIdentity: _toAcademicIdentity(p.academicIdentity),
+            achievements: (p.achievements||[]).map(_toAchievement).filter(a => a.title),
             certifications: p.certifications || [],
             summary: p.summary || "",
             name: p.name || "", _source: "gemini",
@@ -207,6 +230,8 @@ CRITICAL: Scan the whole document for an education/academic section (often the L
       skills: p.skills || [],
       projects: [...(p.projects||[]), ...projFromExp],
       education: (p.education||[]).map(_toEdu),
+      academicIdentity: _toAcademicIdentity(p.academicIdentity),
+      achievements: (p.achievements||[]).map(_toAchievement).filter(a => a.title),
       certifications: p.certifications || [],
       summary: p.summary || "",
       name: p.name || "", _source: text.trim().length >= 30 ? "groq" : "pdf-empty",
@@ -262,6 +287,42 @@ function _toExp(e, i) {
     skills,
     verificationStatus: "self-claimed",
     _source: "resume",
+  }
+}
+
+// Education redesign, Phase 1. Normalizes the AI's academicIdentity object
+// into education_profile's shape. Returns null (not an empty object) when
+// nothing at all was extracted, so callers can skip the write entirely
+// rather than upserting a blank row — important for first-year students
+// whose resume has no degree yet (per spec: "Resume may contain almost
+// nothing... system should fully support profile growth").
+function _toAcademicIdentity(a) {
+  if (!a || typeof a !== "object") return null
+  const institution = a.institution || ""
+  const degree = a.degree || ""
+  if (!institution && !degree) return null
+  const cgpaNum = a.cgpa ? parseFloat(String(a.cgpa).replace(/[^\d.]/g, "")) : null
+  return {
+    institution,
+    university: a.university || "",
+    degree,
+    branch: a.branch || "",
+    admissionYear: a.admissionYear || "",
+    graduationYear: a.graduationYear || "",
+    cgpa: Number.isFinite(cgpaNum) ? cgpaNum : null,
+    relevantCoursework: Array.isArray(a.relevantCoursework) ? a.relevantCoursework.filter(Boolean) : [],
+  }
+}
+
+// Education redesign, Phase 1. Awards/honors/publications become
+// proof_objects with proof_type='achievement' (see /api/education routes)
+// rather than a parallel evidence table — normalizes shape + drops entries
+// missing a title.
+function _toAchievement(a) {
+  return {
+    title: a.title || "",
+    type: a.type || "achievement",
+    date: a.date || "",
   }
 }
 
