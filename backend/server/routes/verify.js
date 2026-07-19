@@ -1,17 +1,39 @@
 // Routes: POST /api/verify/* (Digilocker, EPFO, Certification)
 // EPFO /confirm now does real employer-name matching against profiles.experiences
-import { Router } from "express"
+import { Router }        from "express"
+import multer            from "multer"
+import { createRequire } from "module"
 import { supabase } from "../lib/supabase.js"
+import { requireAuth } from "../lib/auth.js"
 import { matchEpfoToExperiences, normalizeCompany } from "../lib/employerMatch.js"
+import { groq, GROQ_FAST }            from "../lib/groq.js"
+import { gemini, geminiExtractImage } from "../lib/gemini.js"
 
 const router = Router()
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } })
+
+let _pdfParse = null
+async function parsePdf(buffer) {
+  if (!_pdfParse) _pdfParse = createRequire(import.meta.url)("pdf-parse/lib/pdf-parse.js")
+  return _pdfParse(buffer)
+}
+const hasGemini = () => process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== "your_gemini_key_here"
+
+// SECURITY (PC-5): every verify route now requires auth and derives the target
+// user from the JWT (req.user.id) — never from a client-supplied `uid` in the
+// body. Previously these were unauthenticated and trusted body `uid`, so anyone
+// could stamp epfo_verified onto any account.
+// NOTE: DigiLocker/EPFO/certification are still STUBS (any OTP != "000000"
+// passes). The "verified" badge must not be presented as a real, production
+// verification until the real integrations replace these stubs — tracked as an
+// external-integration blocker.
 
 // ─── Digilocker (stub) ───────────────────────────────────────────────────────
-router.post("/digilocker/init", async (req, res) => {
+router.post("/digilocker/init", requireAuth, async (req, res) => {
   res.json({ success: true, txnId: `digi_${Date.now()}`, message: `OTP sent to ${req.body.mobile}` })
 })
 
-router.post("/digilocker/confirm", async (req, res) => {
+router.post("/digilocker/confirm", requireAuth, async (req, res) => {
   if (req.body.otp === "000000")
     return res.json({ verified: false, error: "Invalid OTP" })
   res.json({
@@ -21,7 +43,7 @@ router.post("/digilocker/confirm", async (req, res) => {
 })
 
 // ─── EPFO init (stub — OTP trigger) ─────────────────────────────────────────
-router.post("/epfo/init", async (req, res) => {
+router.post("/epfo/init", requireAuth, async (req, res) => {
   const { uan } = req.body
   if (!uan || String(uan).length < 10)
     return res.json({ success: false, error: "Invalid UAN (must be 12 digits)" })
@@ -29,8 +51,9 @@ router.post("/epfo/init", async (req, res) => {
 })
 
 // ─── EPFO confirm — employer matching ────────────────────────────────────────
-router.post("/epfo/confirm", async (req, res) => {
-  const { otp, uan, uid } = req.body
+router.post("/epfo/confirm", requireAuth, async (req, res) => {
+  const { otp, uan } = req.body
+  const uid = req.user.id   // PC-5: bind to the authenticated user, not body uid
 
   if (otp === "000000")
     return res.json({ verified: false, error: "Invalid OTP" })
@@ -119,13 +142,118 @@ router.post("/epfo/confirm", async (req, res) => {
 })
 
 // ─── Certification (stub) ────────────────────────────────────────────────────
-router.post("/certification", async (req, res) => {
+router.post("/certification", requireAuth, async (req, res) => {
   if (!req.body.certId?.trim())
     return res.json({ verified: false, error: "Invalid certificate ID" })
   res.json({
     verified: true,
     data: { provider: req.body.provider, certId: req.body.certId, verifiedAt: new Date().toISOString() },
   })
+})
+
+// ─── Certification — file upload verification ────────────────────────────────
+// Promotes a "self-claimed" certificate (added manually or extracted from a resume)
+// to "verified" by checking the actual certificate file the user uploads.
+// SECURITY: this is the ONLY path that may set certifications[].verificationStatus
+// to "verified" — the client never writes that value directly (see Aura.jsx /
+// StudentCertificatesPanel, which only ever writes "self-claimed" or leaves it
+// untouched). Written with supabase() (service_role), so it bypasses RLS by
+// design — the auth check below (requireAuth + uid from JWT) is what keeps this
+// safe, exactly like the EPFO confirm handler above.
+//
+// HONESTY NOTE: this checks whether the extracted text of the uploaded file
+// plausibly names the claimed certificate + issuer (an OCR/text match, done via
+// Groq/Gemini). It is NOT a cryptographic or issuer-API verification — there is
+// no per-provider integration here. Treat "verified" as "a real certificate file
+// was uploaded and its content matches what the user claimed", not as "confirmed
+// with AWS/Coursera/etc." Same caveat class as the DigiLocker/EPFO stubs above,
+// but this one does real content extraction rather than always-pass.
+router.post("/certification-file", requireAuth, upload.single("certificate"), async (req, res) => {
+  try {
+    const uid = req.user.id
+    if (!req.file) return res.status(400).json({ verified: false, error: "No file uploaded" })
+    const certIndex = parseInt(req.body.certIndex, 10)
+    if (!Number.isInteger(certIndex) || certIndex < 0)
+      return res.status(400).json({ verified: false, error: "certIndex is required" })
+
+    // ── 1. Load this user's certifications array ────────────────────────────
+    const { data: profile, error: fetchErr } = await supabase()
+      .from("profiles").select("certifications").eq("id", uid).single()
+    if (fetchErr) return res.status(500).json({ verified: false, error: fetchErr.message })
+
+    const certs = Array.isArray(profile?.certifications) ? profile.certifications : []
+    const cert  = certs[certIndex]
+    if (!cert) return res.status(404).json({ verified: false, error: "Certificate entry not found" })
+
+    const claimedName   = cert.name  || cert.label    || ""
+    const claimedIssuer = cert.issuer || cert.provider || ""
+    if (!claimedName) return res.status(400).json({ verified: false, error: "This entry has no certificate name to match against" })
+
+    // ── 2. Extract text from the uploaded file ───────────────────────────────
+    const buffer = req.file.buffer
+    const mime   = req.file.mimetype || ""
+    let extractedText = ""
+
+    if (mime === "application/pdf") {
+      try { const r = await parsePdf(buffer); extractedText = r.text || "" }
+      catch (e) { console.warn("[certification-file] pdf-parse failed:", e.message) }
+    }
+    if (extractedText.trim().length < 10 && mime.startsWith("image/") && hasGemini()) {
+      try {
+        const base64 = buffer.toString("base64")
+        const r = await geminiExtractImage(base64, mime,
+          "Extract ALL visible text from this certificate image, verbatim. Return ONLY the raw text, no commentary.")
+        extractedText = (typeof r === "string" ? r : (r?.raw || r?.text || JSON.stringify(r || {}))) || ""
+      } catch (e) { console.warn("[certification-file] Gemini image extract failed:", e.message) }
+    }
+
+    if (extractedText.trim().length < 10) {
+      return res.json({ verified: false, error: "Could not read this file — try a clearer PDF or image of the certificate." })
+    }
+
+    // ── 3. Ask the model whether the extracted text confirms the claim ──────
+    let match = { match: false, confidence: 0, reason: "" }
+    try {
+      const raw = await groq([
+        { role: "system", content: "You verify certificates. Return ONLY valid JSON, no markdown." },
+        { role: "user", content:
+          `A user claims to hold this certificate:\nName: ${claimedName}\nIssuer: ${claimedIssuer || "(not specified)"}\n\n` +
+          `Here is the text extracted from the certificate file they uploaded:\n"""${extractedText.slice(0, 3000)}"""\n\n` +
+          `Does the extracted text plausibly confirm this specific certificate and issuer (allow for reasonable naming/formatting differences, but the credential and issuer must genuinely match — do not pass a vague or unrelated document)? ` +
+          `Return JSON: {"match":true|false,"confidence":0-100,"reason":"one short sentence"}` },
+      ], { model: GROQ_FAST, max_tokens: 300, json: true })
+      match = JSON.parse(raw)
+    } catch (e) {
+      console.warn("[certification-file] match check failed:", e.message)
+      return res.status(500).json({ verified: false, error: "Verification check failed — try again." })
+    }
+
+    if (!match.match || (match.confidence || 0) < 60) {
+      return res.json({
+        verified: false,
+        confidence: match.confidence || 0,
+        reason: match.reason || "The uploaded file doesn't clearly match the claimed certificate — check the name/issuer or upload a clearer copy.",
+      })
+    }
+
+    // ── 4. Promote this entry to verified — server-side write only ──────────
+    const updatedCerts = certs.map((c, i) => i === certIndex ? {
+      ...c,
+      verificationStatus: "verified",
+      verificationSource: "Certificate Upload",
+      verifiedAt: new Date().toISOString(),
+      matchConfidence: match.confidence,
+    } : c)
+
+    const { error: saveErr } = await supabase()
+      .from("profiles").update({ certifications: updatedCerts }).eq("id", uid)
+    if (saveErr) return res.status(500).json({ verified: false, error: saveErr.message })
+
+    res.json({ verified: true, confidence: match.confidence, reason: match.reason, certifications: updatedCerts })
+  } catch (e) {
+    console.error("[certification-file]", e.message)
+    res.status(500).json({ verified: false, error: e.message })
+  }
 })
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

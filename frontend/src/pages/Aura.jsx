@@ -1,6 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { userDoc } from "../lib/db"
 import { supabase } from "../lib/supabase"
+
+// PC-5: /api/verify/* now requires auth — attach the Supabase bearer token.
+async function vHeaders() {
+  const h = { "Content-Type": "application/json" }
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.access_token) h.Authorization = `Bearer ${session.access_token}`
+  } catch { /* no session */ }
+  return h
+}
 import { getPlan, interviewsUsedThisMonth, reportsUsedThisMonth } from "../config/plans"
 import { getDomainChallenges } from "../config/domainChallenges"
 import { getRoleConfig, resolveRoleLabel, resolveAuraSkills } from "../config/roleConfig"
@@ -697,6 +707,10 @@ function VerificationSection({ userData, user, onUpdate }) {
   const [certProvider, setCertProvider] = useState(CERT_PROVIDERS[0])
   const [certId, setCertId]     = useState("")
   const [certs, setCerts]       = useState(userData?.certifications || [])
+  // Re-sync when the shared certifications array changes elsewhere (e.g. StudentCertificatesPanel
+  // adds/edits a manual or resume-sourced cert) — this array is shared with `certificates` (same
+  // DB column, see db.js), so staying in sync here avoids clobbering entries added by the other panel.
+  useEffect(()=>setCerts(userData?.certifications || []),[userData?.certifications])
   const educationDone = userData?.educationVerified
   const epfoDone      = userData?.epfoVerified
   const close = () => { setModal(null); setStep(1); setError(""); setOtp(""); setUan(""); setDigiId(""); setTxnId("") }
@@ -706,7 +720,7 @@ function VerificationSection({ userData, user, onUpdate }) {
     if (!digiId.trim()) { setError("Enter your DigiLocker mobile number"); return }
     setLoading(true); setError("")
     try {
-      const res = await fetch(`${API}/api/verify/digilocker/init`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mobile:digiId,uid:user.id||user.uid})}).then(r=>r.json())
+      const res = await fetch(`${API}/api/verify/digilocker/init`,{method:"POST",headers:await vHeaders(),body:JSON.stringify({mobile:digiId})}).then(r=>r.json())
       if (res.txnId||res.success) { setTxnId(res.txnId||"mock-txn"); setStep(2) }
       else setError(res.error||"Failed to send OTP.")
     } catch { setError("Server error. Try again.") }
@@ -716,7 +730,7 @@ function VerificationSection({ userData, user, onUpdate }) {
     if (!otp.trim()) { setError("Enter OTP"); return }
     setLoading(true); setError("")
     try {
-      const res = await fetch(`${API}/api/verify/digilocker/confirm`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({otp,txnId,uid:user.id||user.uid})}).then(r=>r.json())
+      const res = await fetch(`${API}/api/verify/digilocker/confirm`,{method:"POST",headers:await vHeaders(),body:JSON.stringify({otp,txnId})}).then(r=>r.json())
       if (res.verified) { await onUpdate({educationVerified:true,educationData:res.data||{}}); setStep(3) }
       else setError(res.error||"Invalid OTP.")
     } catch { setError("Server error.") }
@@ -726,7 +740,7 @@ function VerificationSection({ userData, user, onUpdate }) {
     if (!uan.trim()||uan.length<12) { setError("Enter valid 12-digit UAN"); return }
     setLoading(true); setError("")
     try {
-      const res = await fetch(`${API}/api/verify/epfo/init`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({uan,uid:user.id||user.uid})}).then(r=>r.json())
+      const res = await fetch(`${API}/api/verify/epfo/init`,{method:"POST",headers:await vHeaders(),body:JSON.stringify({uan})}).then(r=>r.json())
       if (res.txnId||res.success) { setTxnId(res.txnId||"mock-txn"); setStep(2) }
       else setError(res.error||"UAN not found.")
     } catch { setError("Server error.") }
@@ -736,7 +750,7 @@ function VerificationSection({ userData, user, onUpdate }) {
     if (!otp.trim()) { setError("Enter OTP"); return }
     setLoading(true); setError("")
     try {
-      const res = await fetch(`${API}/api/verify/epfo/confirm`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({otp,txnId,uan,uid:user.id||user.uid})}).then(r=>r.json())
+      const res = await fetch(`${API}/api/verify/epfo/confirm`,{method:"POST",headers:await vHeaders(),body:JSON.stringify({otp,txnId,uan})}).then(r=>r.json())
       if (res.verified) {
         const updates = { epfoVerified:true, epfoData:res.data||{}, uan }
         // Apply per-experience verification statuses returned from employer matching
@@ -754,9 +768,13 @@ function VerificationSection({ userData, user, onUpdate }) {
     if (!certId.trim()) { setError("Enter certificate ID"); return }
     setLoading(true); setError("")
     try {
-      const res = await fetch(`${API}/api/verify/certification`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({provider:certProvider.id,certId:certId.trim(),uid:user.id||user.uid})}).then(r=>r.json())
+      const res = await fetch(`${API}/api/verify/certification`,{method:"POST",headers:await vHeaders(),body:JSON.stringify({provider:certProvider.id,certId:certId.trim()})}).then(r=>r.json())
       if (res.verified) {
-        const nc = [...certs,{provider:certProvider.id,label:certProvider.label,certId:certId.trim(),verifiedAt:new Date().toISOString()}]
+        const nc = [...certs,{
+          name:certProvider.label, provider:certProvider.id, label:certProvider.label,
+          certId:certId.trim(), credentialId:certId.trim(), verifiedAt:new Date().toISOString(),
+          verificationStatus:"verified", verificationSource:certProvider.label, _source:"id-verification",
+        }]
         setCerts(nc); await onUpdate({certifications:nc}); setStep(3)
       } else setError(res.error||"Certificate not found.")
     } catch { setError("Server error.") }
@@ -2541,6 +2559,10 @@ function StudentCertificatesPanel({ certs, onSave }) {
   const [items, setItems] = useState(certs||[])
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState({})
+  const [verifyingIdx, setVerifyingIdx] = useState(null)
+  const [verifyMsg, setVerifyMsg] = useState({})
+  const verifyFileRef = useRef(null)
+  const [pendingVerifyIdx, setPendingVerifyIdx] = useState(null)
 
   useEffect(()=>setItems(certs||[]),[certs])
 
@@ -2551,6 +2573,30 @@ function StudentCertificatesPanel({ certs, onSave }) {
     const skills = typeof form.skills==="string" ? form.skills.split(",").map(s=>s.trim()).filter(Boolean) : (form.skills||[])
     const next = editing==="new" ? [...items,{...form,skills}] : items.map((x,i)=>i===editing?{...form,skills}:x)
     setItems(next); setEditing(null); await onSave(next)
+  }
+
+  // Uploads the actual certificate file so the backend can check it against the
+  // claimed name/issuer and — only if it genuinely matches — flip this entry to
+  // "verified". The client never sets verificationStatus itself; it just reflects
+  // whatever the server (which owns this decision) returns.
+  const requestVerify = i => { setPendingVerifyIdx(i); verifyFileRef.current?.click() }
+  const onVerifyFileChosen = async e => {
+    const file = e.target.files[0]; const i = pendingVerifyIdx
+    if (!file || i === null) return
+    setVerifyingIdx(i); setVerifyMsg(m=>({...m,[i]:""}))
+    try {
+      const fd = new FormData(); fd.append("certificate", file); fd.append("certIndex", String(i))
+      const res = await fetch(`${API}/api/verify/certification-file`, { method:"POST", headers:await vHeaders(), body:fd }).then(r=>r.json())
+      if (res.verified && res.certifications) {
+        setItems(res.certifications)
+        await onSave(res.certifications)
+        setVerifyMsg(m=>({...m,[i]:"✅ Verified"}))
+      } else {
+        setVerifyMsg(m=>({...m,[i]:`❌ ${res.reason || res.error || "Could not verify — try a clearer file."}`}))
+      }
+    } catch { setVerifyMsg(m=>({...m,[i]:"❌ Server error — try again."}))}
+    setVerifyingIdx(null)
+    if (verifyFileRef.current) verifyFileRef.current.value = ""
   }
 
   const inp = {width:"100%",padding:"8px 11px",border:`1px solid ${T.border}`,borderRadius:8,background:"#FAF7F2",color:T.ink,fontSize:13,outline:"none",boxSizing:"border-box",marginTop:4}
@@ -2589,8 +2635,94 @@ function StudentCertificatesPanel({ certs, onSave }) {
         <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderBottom:i<items.length-1?`1px solid ${T.border}`:"none"}}>
           <span style={{fontSize:20}}>🏅</span>
           <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:700,color:T.ink}}>{c.name||"Certificate"}</div>
-            <div style={{fontSize:11,color:T.ink4}}>{c.issuer}{c.date?` · ${c.date}`:""}</div>
+            <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+              <div style={{fontSize:13,fontWeight:700,color:T.ink}}>{c.name||c.label||"Certificate"}</div>
+              <CertBadge c={c}/>
+            </div>
+            <div style={{fontSize:11,color:T.ink4}}>{c.issuer||c.provider}{c.date?` · ${c.date}`:""}{c.credentialId||c.certId?` · ID: ${c.credentialId||c.certId}`:""}</div>
+            {verifyMsg[i]&&<div style={{fontSize:11,marginTop:3,color:verifyMsg[i].startsWith("✅")?T.green:T.red}}>{verifyMsg[i]}</div>}
+          </div>
+          <div style={{display:"flex",gap:6}}>
+            {c.verificationStatus!=="verified"&&(
+              <button onClick={()=>requestVerify(i)} disabled={verifyingIdx===i}
+                style={{padding:"4px 10px",fontSize:11,border:`1px solid ${T.green}40`,borderRadius:6,background:T.green2,color:T.green,cursor:verifyingIdx===i?"not-allowed":"pointer",fontWeight:600}}>
+                {verifyingIdx===i?"Checking…":"⬆ Verify"}
+              </button>
+            )}
+            <button onClick={()=>openEdit(i)} style={{padding:"4px 10px",fontSize:11,border:`1px solid ${T.border}`,borderRadius:6,background:"transparent",color:T.ink3,cursor:"pointer"}}>Edit</button>
+            <button onClick={()=>del(i)} style={{padding:"4px 10px",fontSize:11,border:"none",background:"rgba(220,38,38,0.07)",color:"#DC2626",borderRadius:6,cursor:"pointer"}}>✕</button>
+          </div>
+        </div>
+      ))}
+      <input ref={verifyFileRef} type="file" accept=".pdf,image/*" onChange={onVerifyFileChosen} style={{display:"none"}}/>
+    </Card>
+  )
+}
+
+// ─── Certificate verification badge — same visual language as CareerTimeline ──
+function CertBadge({ c }) {
+  const isVerified = c.verificationStatus === "verified"
+  return isVerified
+    ? <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 9px", borderRadius:100, background:T.green2, color:T.green, fontSize:10, fontWeight:700, fontFamily:"'DM Mono',monospace", letterSpacing:"0.06em", textTransform:"uppercase" }}>✓ VERIFIED{c.verificationSource?` · ${c.verificationSource}`:""}</span>
+    : <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 9px", borderRadius:100, background:T.amber2, color:T.amber, fontSize:10, fontWeight:700, fontFamily:"'DM Mono',monospace", letterSpacing:"0.06em", textTransform:"uppercase" }}>SELF-CLAIMED{c.verificationSource?` · ${c.verificationSource}`:(c._source==="resume"?" · Resume":"")}</span>
+}
+
+// ─── Education Panel ───────────────────────────────────────────────────────────
+function EducationPanel({ education, onSave }) {
+  const [items, setItems] = useState(education||[])
+  const [editing, setEditing] = useState(null)
+  const [form, setForm] = useState({})
+
+  useEffect(()=>setItems(education||[]),[education])
+
+  const openNew = () => { setForm({institution:"",degree:"",field:"",year:""}); setEditing("new") }
+  const openEdit = i => { setForm({...items[i]}); setEditing(i) }
+  const del = async i => { const next=[...items]; next.splice(i,1); setItems(next); await onSave(next) }
+  const save = async () => {
+    const entry = editing==="new" ? {...form,_source:"manual"} : {...items[editing],...form}
+    const next = editing==="new" ? [...items,entry] : items.map((x,i)=>i===editing?entry:x)
+    setItems(next); setEditing(null); await onSave(next)
+  }
+
+  const inp = {width:"100%",padding:"8px 11px",border:`1px solid ${T.border}`,borderRadius:8,background:"#FAF7F2",color:T.ink,fontSize:13,outline:"none",boxSizing:"border-box",marginTop:4}
+
+  return (
+    <Card style={{marginBottom:20}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+        <SectionLabel color="#1A7A4A">🎓 Education</SectionLabel>
+        <button onClick={openNew} style={{padding:"6px 14px",background:"#FF5701",color:"#fff",border:"none",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>+ Add Education</button>
+      </div>
+      <p style={{fontSize:12,color:T.ink3,margin:"0 0 14px"}}>Degrees, diplomas, and schooling — auto-filled from your resume, or add manually.</p>
+
+      {editing!==null&&(
+        <div style={{background:"#FAF7F2",border:`1.5px solid ${T.border}`,borderRadius:12,padding:"16px",marginBottom:14}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+            <div><div style={{fontSize:11,fontWeight:700,color:T.ink3}}>Institution *</div><input style={inp} value={form.institution||""} onChange={e=>setForm(f=>({...f,institution:e.target.value}))} placeholder="e.g. VIT University"/></div>
+            <div><div style={{fontSize:11,fontWeight:700,color:T.ink3}}>Degree</div><input style={inp} value={form.degree||""} onChange={e=>setForm(f=>({...f,degree:e.target.value}))} placeholder="e.g. B.Tech"/></div>
+            <div><div style={{fontSize:11,fontWeight:700,color:T.ink3}}>Field of Study</div><input style={inp} value={form.field||""} onChange={e=>setForm(f=>({...f,field:e.target.value}))} placeholder="e.g. Electronics & Communication"/></div>
+            <div><div style={{fontSize:11,fontWeight:700,color:T.ink3}}>Year</div><input style={inp} value={form.year||""} onChange={e=>setForm(f=>({...f,year:e.target.value}))} placeholder="e.g. 2025"/></div>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={save} style={{padding:"7px 18px",background:"#FF5701",color:"#fff",border:"none",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>Save</button>
+            <button onClick={()=>setEditing(null)} style={{padding:"7px 14px",background:"transparent",color:T.ink3,border:`1px solid ${T.border}`,borderRadius:8,fontSize:12,cursor:"pointer"}}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {items.length===0&&editing===null&&(
+        <div style={{textAlign:"center",padding:"20px 16px",color:T.ink4,fontSize:13,border:`1.5px dashed ${T.border}`,borderRadius:10}}>
+          No education yet — upload a resume or add your degree manually
+        </div>
+      )}
+      {items.map((ed,i)=>(
+        <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderBottom:i<items.length-1?`1px solid ${T.border}`:"none"}}>
+          <span style={{fontSize:20}}>🎓</span>
+          <div style={{flex:1}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+              <div style={{fontSize:13,fontWeight:700,color:T.ink}}>{ed.institution||"Institution"}</div>
+              {ed._source==="resume"&&<CertBadge c={ed}/>}
+            </div>
+            <div style={{fontSize:11,color:T.ink4}}>{[ed.degree,ed.field].filter(Boolean).join(" · ")}{ed.year?` · ${ed.year}`:""}</div>
           </div>
           <div style={{display:"flex",gap:6}}>
             <button onClick={()=>openEdit(i)} style={{padding:"4px 10px",fontSize:11,border:`1px solid ${T.border}`,borderRadius:6,background:"transparent",color:T.ink3,cursor:"pointer"}}>Edit</button>
@@ -2936,6 +3068,33 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
         resumeFile: file.name,
       }))
 
+      // Parse education — resume already has this in the schema, just wasn't being read
+      const newEducation = (extractData.education || []).filter(e => e && (e.institution || e.degree)).map(e => ({
+        institution: e.institution || "",
+        degree: e.degree || "",
+        field: e.field || "",
+        year: e.year || "",
+        _source: "resume",
+        resumeFile: file.name,
+      }))
+
+      // Parse certifications — resume returns plain strings; normalise into cert records,
+      // tagged self-claimed since only the resume text was seen, not an actual certificate file.
+      // Dedupe against existing certs by name (case-insensitive) so re-uploading the same resume doesn't duplicate.
+      const existingCerts = userData?.certificates || []
+      const existingCertNames = new Set(existingCerts.map(c => (c.name||"").toLowerCase().trim()).filter(Boolean))
+      const newCerts = (extractData.certifications || [])
+        .filter(Boolean)
+        .map(c => (typeof c === "string" ? { name: c } : c))
+        .filter(c => c.name && !existingCertNames.has(c.name.toLowerCase().trim()))
+        .map(c => ({
+          name: c.name, issuer: c.issuer || "", date: c.date || "", credentialId: c.credentialId || "",
+          url: c.url || "", skills: [],
+          verificationStatus: "self-claimed", verificationSource: "Resume",
+          _source: "resume", resumeFile: file.name,
+        }))
+      const mergedCerts = [...existingCerts, ...newCerts]
+
       // Build/update skill graph from resume skills
       const resumeSkillsList=(extractData.skills||[]).filter(Boolean)
       let updatedSkillGraph=userData?.skillGraph||[]
@@ -2973,11 +3132,22 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
       updates.resumeProjects = [...newProjects, ...otherResumeProjects]
       if(updatedSkillGraph.length>0&&(userData?.skillGraph||[]).length===0) updates.skillGraph=updatedSkillGraph
 
+      // Education — accumulate like experiences: keep entries from other resumes/manual, replace this resume's
+      const otherEducation = (userData?.education||[]).filter(ed => ed.resumeFile !== file.name)
+      updates.education = [...newEducation, ...otherEducation]
+
+      // Certificates — merged (existing + new resume-sourced, deduped above)
+      updates.certificates = mergedCerts
+
       await save(updates)
       setExperiences(mergedExperiences)
       setVaultFiles(updatedVault)
+      if(setUserData) setUserData(p=>({...p,...updates}))
       const count=newExps.length+(newProjects.length>0?newProjects.length:0)
-      setResumeStatus(`✅ Done — ${newExps.length} experience${newExps.length!==1?"s":""}${newProjects.length>0?` + ${newProjects.length} project${newProjects.length!==1?"s":""}`:""} extracted`)
+      const extras=[]
+      if(newEducation.length>0) extras.push(`${newEducation.length} education`)
+      if(newCerts.length>0) extras.push(`${newCerts.length} certification${newCerts.length!==1?"s":""}`)
+      setResumeStatus(`✅ Done — ${newExps.length} experience${newExps.length!==1?"s":""}${newProjects.length>0?` + ${newProjects.length} project${newProjects.length!==1?"s":""}`:""}${extras.length?` + ${extras.join(" + ")}`:""} extracted`)
       setShowResumeUpload(false)
     } catch(err) { console.error(err); setResumeStatus("❌ Failed to parse resume. Check your file format.") }
     setResumeUploading(false)
@@ -3784,11 +3954,59 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
               <MissionTicker userData={userData} keyword={keyword} onNavigate={onNavigate} />
             )}
 
+            {/* ── First-time user onboarding card — hides after first Arena completion ── */}
+            {arenaCompleted === 0 && path !== "professional" && (()=>{
+              const role = getRoleConfig(userData)
+              const workbenchName = role?.label ? `${role.label} Arena` : "Arena"
+              const steps = [
+                { n:"1", icon:"⚔️", title:`Complete your first ${workbenchName} challenge`, sub:"Solve a real coding challenge to earn your first ELO points and unlock your skill graph.", cta:"Go to Arena →", action:()=>onNavigate("arena"), color:T.indigo, bg:T.indigo+"10", border:T.indigo+"30" },
+                { n:"2", icon:"📄", title:"Upload your resume", sub:"We'll extract your skills, projects, and experience to populate your Aura profile automatically.", cta:"Upload Resume", action:()=>resumeFileInputRef.current?.click(), color:T.green, bg:T.green+"10", border:T.green+"30" },
+                { n:"3", icon:"🔗", title:"Add your LinkedIn & GitHub", sub:"Connect your profiles so recruiters can verify your work and reach you directly.", cta:"Edit Profile →", action:()=>setActiveTab("vault"), color:"#E67E22", bg:"rgba(230,126,34,0.08)", border:"rgba(230,126,34,0.25)" },
+              ]
+              return (
+                <div style={{marginBottom:20,borderRadius:16,border:`1.5px solid rgba(99,102,241,0.20)`,background:"linear-gradient(135deg,rgba(99,102,241,0.04),rgba(139,92,246,0.04))",overflow:"hidden"}}>
+                  <div style={{padding:"16px 20px 12px",display:"flex",alignItems:"center",gap:10,borderBottom:`1px solid rgba(99,102,241,0.10)`}}>
+                    <div style={{fontSize:18}}>🚀</div>
+                    <div>
+                      <div style={{fontSize:14,fontWeight:800,color:T.ink,marginBottom:1}}>Welcome — here's what to do first</div>
+                      <div style={{fontSize:11,color:T.ink3}}>3 quick steps to activate your Aura profile and start building your career record.</div>
+                    </div>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:0}}>
+                    {steps.map((s,i)=>(
+                      <div key={i} style={{padding:"14px 16px",borderRight:i<2?`1px solid rgba(99,102,241,0.10)`:"none",display:"flex",flexDirection:"column",gap:8}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                          <div style={{width:22,height:22,borderRadius:"50%",background:s.color,color:"#fff",fontSize:10,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{s.n}</div>
+                          <span style={{fontSize:16}}>{s.icon}</span>
+                        </div>
+                        <div style={{fontSize:12,fontWeight:700,color:T.ink,lineHeight:1.35}}>{s.title}</div>
+                        <div style={{fontSize:11,color:T.ink3,lineHeight:1.55,flex:1}}>{s.sub}</div>
+                        <button onClick={s.action} style={{marginTop:4,padding:"6px 12px",background:s.bg,border:`1px solid ${s.border}`,borderRadius:8,color:s.color,fontSize:11,fontWeight:700,cursor:"pointer",textAlign:"left",width:"fit-content"}}>
+                          {s.cta}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
+
             {/* ELO + Momentum */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:20}}>
               {/* ELO History — redesigned */}
               <Card style={{background:"linear-gradient(145deg,#FAFBFF,#F0F4FF)"}}>
-                <SectionLabel color={T.indigo}>📈 ELO Rating History</SectionLabel>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                  <SectionLabel color={T.indigo} style={{marginBottom:0}}>📈 ELO Rating History</SectionLabel>
+                  <div style={{position:"relative",display:"inline-block"}} className="elo-tooltip-wrap">
+                    <span style={{fontSize:10,color:T.indigo,fontWeight:700,cursor:"help",borderBottom:`1px dashed ${T.indigo}`,paddingBottom:1}}>What is ELO? ℹ</span>
+                    <div style={{position:"absolute",right:0,top:"calc(100% + 6px)",width:220,background:"#1A1A2E",color:"#E8E3DA",fontSize:11,lineHeight:1.6,padding:"10px 12px",borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,0.25)",zIndex:200,pointerEvents:"none",opacity:0,transition:"opacity 0.2s"}} className="elo-tooltip">
+                      <strong style={{color:"#A5B4FC"}}>ELO</strong> is a skill rating system (borrowed from chess) that adjusts your score based on challenge difficulty and your performance.<br/><br/>
+                      <span style={{color:"#86EFAC"}}>Higher score</span> = harder challenges mastered.<br/>
+                      Starting ELO: <strong style={{color:"#FCD34D"}}>{eloRating} pts</strong> (derived from your baseline assessment).
+                    </div>
+                  </div>
+                </div>
+                <style>{`.elo-tooltip-wrap:hover .elo-tooltip{opacity:1!important}`}</style>
                 <EloHistoryCard history={eloHistoryDisplay} currentElo={eloRating} eloDecayToday={eloDecayToday}/>
               </Card>
 
@@ -5183,6 +5401,12 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
               onSave={async(certs)=>{ await save({certificates:certs}); if(setUserData) setUserData(p=>({...p,certificates:certs})) }}
             />
 
+            {/* ── Education ──────────────────────────────────────────────── */}
+            <EducationPanel
+              education={userData?.education||[]}
+              onSave={async(education)=>{ await save({education}); if(setUserData) setUserData(p=>({...p,education})) }}
+            />
+
             {/* ── Recommendations ───────────────────────────────────────── */}
             <StudentTestimonialsPanel
               testimonials={userData?.testimonials||[]}
@@ -5317,6 +5541,18 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
                 )}
               </div>
             </Card>
+
+            {/* ── Certificates & Training ───────────────────────────────── */}
+            <StudentCertificatesPanel
+              certs={userData?.certificates||[]}
+              onSave={async(certs)=>{ await save({certificates:certs}); if(setUserData) setUserData(p=>({...p,certificates:certs})) }}
+            />
+
+            {/* ── Education ──────────────────────────────────────────────── */}
+            <EducationPanel
+              education={userData?.education||[]}
+              onSave={async(education)=>{ await save({education}); if(setUserData) setUserData(p=>({...p,education})) }}
+            />
 
             {/* EPFO Verification in Vault */}
             <Card style={{marginBottom:20,border:`1.5px solid rgba(26,122,74,0.15)`}}>

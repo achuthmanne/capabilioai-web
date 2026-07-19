@@ -130,6 +130,7 @@ CRITICAL: For each experience, "roleSkills" must ONLY contain skills explicitly 
               title: e.role||e.title||"Project", description: e.description||"",
               techStack: e.skills||[], url: ""
             }))],
+            education: (p.education||[]).map(_toEdu),
             certifications: p.certifications || [],
             summary: p.summary || "",
             name: p.name || "", _source: "gemini",
@@ -154,6 +155,7 @@ CRITICAL: For each experience, "roleSkills" must ONLY contain skills explicitly 
       experiences: expEntries.map((e, i) => _toExp(e, i)),
       skills: p.skills || [],
       projects: [...(p.projects||[]), ...projFromExp],
+      education: (p.education||[]).map(_toEdu),
       certifications: p.certifications || [],
       summary: p.summary || "",
       name: p.name || "", _source: text.trim().length >= 30 ? "groq" : "pdf-empty",
@@ -208,6 +210,17 @@ function _toExp(e, i) {
     industry: "Technology",
     skills,
     verificationStatus: "self-claimed",
+    _source: "resume",
+  }
+}
+
+function _toEdu(e, i) {
+  return {
+    id: `edu-${i}-${Date.now()}`,
+    institution: e.institution || e.school || "",
+    degree: e.degree || "",
+    field: e.field || e.fieldOfStudy || "",
+    year: e.year || e.endYear || "",
     _source: "resume",
   }
 }

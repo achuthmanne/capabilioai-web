@@ -1059,9 +1059,14 @@ function CertCard({ cert, last }) {
         🏅
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: C.ink }}>{cert.name || cert.title || "Certificate"}</div>
-        <div style={{ fontSize: 12, color: C.ink3, marginTop: 2 }}>{cert.issuer || cert.organization || ""}{cert.date ? ` · ${cert.date}` : ""}</div>
-        {cert.credentialId && <div style={{ fontSize: 11, color: C.ink4, marginTop: 2, fontFamily: "'DM Mono', monospace" }}>ID: {cert.credentialId}</div>}
+        <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.ink }}>{cert.name || cert.title || cert.label || "Certificate"}</div>
+          {cert.verificationStatus === "verified"
+            ? <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 9px", borderRadius:100, background:C.green2, color:C.green, fontSize:10, fontWeight:700, fontFamily:"'DM Mono',monospace", letterSpacing:"0.06em", textTransform:"uppercase" }}>✓ VERIFIED{cert.verificationSource?` · ${cert.verificationSource}`:""}</span>
+            : <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 9px", borderRadius:100, background:C.amber2, color:C.amber, fontSize:10, fontWeight:700, fontFamily:"'DM Mono',monospace", letterSpacing:"0.06em", textTransform:"uppercase" }}>SELF-CLAIMED{cert.verificationSource?` · ${cert.verificationSource}`:(cert._source==="resume"?" · Resume":"")}</span>}
+        </div>
+        <div style={{ fontSize: 12, color: C.ink3, marginTop: 2 }}>{cert.issuer || cert.organization || cert.provider || ""}{cert.date ? ` · ${cert.date}` : ""}</div>
+        {(cert.credentialId||cert.certId) && <div style={{ fontSize: 11, color: C.ink4, marginTop: 2, fontFamily: "'DM Mono', monospace" }}>ID: {cert.credentialId||cert.certId}</div>}
         {(cert.skills || []).length > 0 && (
           <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 7 }}>
             {cert.skills.slice(0, 5).map((s, i) => (
@@ -2404,8 +2409,8 @@ export default function Portfolio({ username: usernameProp }) {
           </div>
         )}
 
-        {/* ══ EDUCATION — students ════════════════════════════════════════════ */}
-        {ud.path==="student"&&ud.education?.length>0&&(
+        {/* ══ EDUCATION ═══════════════════════════════════════════════════════ */}
+        {ud.education?.length>0&&(
           <div className="ps">
             <Card>
               <SectionTitle icon="🎓" title="Education" accent={C.blue}/>
