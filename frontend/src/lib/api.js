@@ -6,22 +6,9 @@ import { supabase } from "./supabase"
 
 const BASE = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
 
-// Returns a valid, non-expired access token.
-// Proactively refreshes if the token expires within the next 5 minutes so that
-// long Arena sessions (>60 min) never hit a 401 on submission.
 async function getToken() {
   const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return null
-
-  // expires_at is a Unix timestamp (seconds). Refresh if < 5 min remaining.
-  const expiresAt = session.expires_at ?? 0
-  const secsRemaining = expiresAt - Math.floor(Date.now() / 1000)
-  if (secsRemaining < 300) {
-    const { data: refreshed } = await supabase.auth.refreshSession()
-    return refreshed?.session?.access_token || session.access_token
-  }
-
-  return session.access_token
+  return session?.access_token || null
 }
 
 async function request(method, path, body = null, opts = {}) {
@@ -34,21 +21,6 @@ async function request(method, path, body = null, opts = {}) {
 
   const url = path.startsWith("http") ? path : `${BASE}/api${path}`
   const res = await fetch(url, config)
-
-  // If 401 despite our proactive refresh, do one reactive refresh + retry.
-  if (res.status === 401) {
-    const { data: refreshed } = await supabase.auth.refreshSession()
-    const newToken = refreshed?.session?.access_token
-    if (newToken) {
-      headers["Authorization"] = `Bearer ${newToken}`
-      const retry = await fetch(url, { ...config, headers })
-      if (!retry.ok) {
-        const err = await retry.json().catch(() => ({ error: `HTTP ${retry.status}` }))
-        throw new Error(err.error || err.message || `Request failed: ${retry.status}`)
-      }
-      return retry.json()
-    }
-  }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
@@ -119,23 +91,6 @@ export const vaultApi = {
   },
   getUrl:  (id) => request("GET", `/pro/vault/${id}/url`),
   remove:  (id) => request("DELETE", `/pro/vault/${id}`),
-}
-
-// ══════════════════════════════════════════
-// TRUST & VERIFICATION CENTER
-// ══════════════════════════════════════════
-export const verificationApi = {
-  providers:   () => request("GET", "/verification/providers"),
-  integrity:   () => request("GET", "/verification/integrity"),
-  auditMine:   () => request("GET", "/verification/audit/mine"),
-  verify:      (providerId, { file, proofObjectId, claim } = {}) => {
-    const fd = new FormData()
-    fd.append("providerId", providerId)
-    if (proofObjectId) fd.append("proofObjectId", proofObjectId)
-    if (claim) fd.append("claim", JSON.stringify(claim))
-    if (file) fd.append("file", file)
-    return upload("/verification/verify", fd)
-  },
 }
 
 // ══════════════════════════════════════════

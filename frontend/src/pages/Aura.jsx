@@ -18,7 +18,7 @@ import CareerVideoGenerator from "./CareerVideoGenerator"
 // Portfolio themes removed — single universal design
 // ── Professional Path: API-connected components ───────────────────────────────
 import CareerTimelinePro from "../components/CareerTimeline"
-import VaultManagerPro   from "../components/VaultTrustCenter"
+import VaultManagerPro   from "../components/VaultManager"
 import SkillGraphPro     from "../components/SkillGraphView"
 import { interviewApi }  from "../lib/api"
 import SettingsPanel from "./SettingsPanel"
@@ -5362,12 +5362,54 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
               }}
             />
 
-            {/* ── Vault Trust Center: replaces the old local-storage upload
-                 grid. Reads/writes vault_documents via vaultApi, not
-                 profiles.vaultFiles — files uploaded through the OLD grid
-                 above (client-side, base64) do not appear here; that's a
-                 real storage-model change, not a bug. ── */}
-            <VaultManagerPro user={user}/>
+            {/* Upload section */}
+            <Card style={{marginBottom:20,background:T.indigo3,border:`1.5px solid rgba(61,78,172,0.15)`}}>
+              <SectionLabel color={T.indigo}>⬆️ Upload File</SectionLabel>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:16,marginTop:10}}>
+                {["Resume","Certification","Badge","Project","Other"].map(cat=>(
+                  <button key={cat} onClick={()=>setUploadCategory(cat)}
+                    style={{padding:"6px 14px",borderRadius:99,border:`1.5px solid ${uploadCategory===cat?"rgba(61,78,172,0.4)":T.border}`,
+                      background:uploadCategory===cat?T.indigo:"#fff",color:uploadCategory===cat?"#fff":T.ink3,
+                      fontSize:11,fontWeight:600,cursor:"pointer",transition:"all 0.15s"}}>
+                    {getCatIcon(cat)} {cat}
+                  </button>
+                ))}
+              </div>
+              <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+                <button onClick={()=>{if(uploadCategory==="Resume"){resumeFileInputRef.current?.click()}else{fileInputRef.current?.click()}}}
+                  disabled={uploading||resumeUploading}
+                  style={{padding:"10px 20px",background:uploading||resumeUploading?T.cream2:T.indigo,border:"none",borderRadius:10,
+                    color:uploading||resumeUploading?T.ink4:"#fff",fontSize:13,fontWeight:700,cursor:uploading||resumeUploading?"not-allowed":"pointer",
+                    display:"flex",alignItems:"center",gap:7}}>
+                  {uploading||resumeUploading?<><div style={{width:12,height:12,border:`2px solid ${T.ink4}`,borderTopColor:"transparent",borderRadius:"50%",animation:"spin .8s linear infinite"}}/>{resumeUploading?"Parsing resume…":"Uploading…"}</>:"⬆️ Upload File"}
+                </button>
+                {uploadCategory==="Resume"&&resumeStatus&&(
+                  <div style={{fontSize:11,color:resumeStatus.startsWith("✅")?T.green:resumeStatus.startsWith("❌")?T.red:T.ink3,fontWeight:500}}>{resumeStatus}</div>
+                )}
+              </div>
+              {vaultFiles.length>0&&(
+                <div style={{marginTop:20}}>
+                  <div style={{fontSize:10,fontWeight:700,letterSpacing:2,color:T.ink4,textTransform:"uppercase",marginBottom:12}}>Uploaded Files ({vaultFiles.length})</div>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>
+                    {vaultFiles.map((file,i)=>{
+                      const c=getCatColor(file.category), isImg=file.type?.startsWith("image/")
+                      return (
+                        <div key={file.id||i} style={{background:"#FFFFFF",border:`1px solid ${c}20`,borderRadius:12,padding:"12px",display:"flex",flexDirection:"column",gap:6,boxShadow:T.shadow}}>
+                          <div style={{height:48,background:c+"10",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
+                            {isImg?<img src={file.url} alt={file.name} style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:8}}/>:<span style={{fontSize:22}}>{getCatIcon(file.category)}</span>}
+                          </div>
+                          <div style={{fontSize:11,fontWeight:600,color:T.ink,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{file.name}</div>
+                          <div style={{display:"flex",gap:4}}>
+                            {file.url&&<a href={file.url} target="_blank" rel="noreferrer" style={{flex:1,padding:"5px",background:c+"10",border:`1px solid ${c}20`,borderRadius:6,color:c,fontSize:10,fontWeight:600,textDecoration:"none",textAlign:"center"}}>👁️ View</a>}
+                            <button onClick={()=>deleteFile(file.id||i.toString())} style={{padding:"5px 8px",background:T.red2,border:`1px solid rgba(192,57,43,0.15)`,borderRadius:6,color:T.red,fontSize:10,cursor:"pointer",fontWeight:600}}>🗑️</button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </Card>
 
             {/* ── My Projects ───────────────────────────────────────────── */}
             <StudentProjectsPanel
@@ -5495,13 +5537,32 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
               }}
             />
 
-            {/* ── Vault Trust Center: replaces the old local-storage upload
-                 grid + the "Stats"/"Files grid" block further down (removed).
-                 Reads/writes vault_documents via vaultApi, not
-                 profiles.vaultFiles — files uploaded through the OLD grid
-                 (client-side, base64) do not appear here; that's a real
-                 storage-model change, not a bug. ── */}
-            <VaultManagerPro user={user}/>
+            {/* Upload section */}
+            <Card style={{marginBottom:20,background:T.indigo3,border:`1.5px solid rgba(61,78,172,0.15)`}}>
+              <SectionLabel color={T.indigo}>Upload New File</SectionLabel>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:16,marginTop:10}}>
+                {["Resume","Certification","Badge","Project","Other"].map(cat=>(
+                  <button key={cat} onClick={()=>setUploadCategory(cat)}
+                    style={{padding:"6px 14px",borderRadius:99,border:`1.5px solid ${uploadCategory===cat?"rgba(61,78,172,0.4)":T.border}`,
+                      background:uploadCategory===cat?T.indigo:"#fff",color:uploadCategory===cat?"#fff":T.ink3,
+                      fontSize:11,fontWeight:600,cursor:"pointer",transition:"all 0.15s"}}>
+                    {getCatIcon(cat)} {cat}
+                  </button>
+                ))}
+              </div>
+              <div style={{display:"flex",gap:12,alignItems:"flex-start",flexWrap:"wrap"}}>
+                <button onClick={()=>{if(uploadCategory==="Resume"){resumeFileInputRef.current?.click()}else{fileInputRef.current?.click()}}}
+                  disabled={uploading||resumeUploading}
+                  style={{padding:"10px 20px",background:uploading||resumeUploading?T.cream2:T.indigo,border:"none",borderRadius:10,
+                    color:uploading||resumeUploading?T.ink4:"#fff",fontSize:13,fontWeight:700,cursor:uploading||resumeUploading?"not-allowed":"pointer",
+                    display:"flex",alignItems:"center",gap:7}}>
+                  {uploading||resumeUploading?<><div style={{width:12,height:12,border:`2px solid ${T.ink4}`,borderTopColor:"transparent",borderRadius:"50%",animation:"spin .8s linear infinite"}}/>{resumeUploading?"Parsing resume…":"Uploading…"}</>:"⬆️ Upload File"}
+                </button>
+                {uploadCategory==="Resume"&&resumeStatus&&(
+                  <div style={{fontSize:11,marginTop:12,color:resumeStatus.startsWith("✅")?T.green:resumeStatus.startsWith("❌")?T.red:T.ink3,fontWeight:500}}>{resumeStatus}</div>
+                )}
+              </div>
+            </Card>
 
             {/* ── Certificates & Training ───────────────────────────────── */}
             <StudentCertificatesPanel
@@ -5536,6 +5597,56 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
               </div>
             </Card>
 
+            {/* Stats */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:20}}>
+              {["Resume","Certification","Badge","Project","Other"].map(cat=>{
+                const n=vaultFiles.filter(f=>f.category===cat).length
+                const c=getCatColor(cat)
+                return (
+                  <div key={cat} style={{background:"#FFFFFF",border:`1.5px solid ${c}25`,borderRadius:12,padding:"12px",textAlign:"center",boxShadow:T.shadow}}>
+                    <div style={{fontSize:18,marginBottom:4}}>{getCatIcon(cat)}</div>
+                    <div style={{fontSize:20,fontWeight:800,color:c}}>{n}</div>
+                    <div style={{fontSize:9,color:T.ink4,fontWeight:600,textTransform:"uppercase",letterSpacing:0.5,marginTop:2}}>{cat}</div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Files grid */}
+            {vaultFiles.length>0?(
+              <>
+                <div style={{fontSize:10,fontWeight:700,letterSpacing:2,color:T.ink4,textTransform:"uppercase",marginBottom:14}}>Your Files ({vaultFiles.length})</div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
+                  {vaultFiles.map((file,i)=>{
+                    const c=getCatColor(file.category), isImg=file.type?.startsWith("image/")
+                    return (
+                      <div key={file.id||i} className="hover-card" style={{background:"#FFFFFF",border:`1px solid ${c}20`,borderRadius:14,padding:"14px",display:"flex",flexDirection:"column",gap:8,boxShadow:T.shadow}}>
+                        <div style={{height:64,background:c+"10",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
+                          {isImg?<img src={file.url} alt={file.name} style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:10}}/>:<span style={{fontSize:28}}>{getCatIcon(file.category)}</span>}
+                        </div>
+                        <div>
+                          <div style={{fontSize:12,fontWeight:600,color:T.ink,marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{file.name}</div>
+                          <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
+                            <Badge color={c} bg={c+"10"}>{file.category}</Badge>
+                            {file.size&&<span style={{fontSize:9,color:T.ink4}}>{file.size}</span>}
+                          </div>
+                        </div>
+                        <div style={{display:"flex",gap:6,marginTop:"auto"}}>
+                          {file.url&&<a href={file.url} target="_blank" rel="noreferrer" style={{flex:1,padding:"6px",background:c+"10",border:`1px solid ${c}20`,borderRadius:7,color:c,fontSize:11,fontWeight:600,textDecoration:"none",textAlign:"center"}}>👁️ View</a>}
+                          <button onClick={()=>deleteFile(file.id||i.toString())} style={{padding:"6px 9px",background:T.red2,border:`1px solid rgba(192,57,43,0.15)`,borderRadius:7,color:T.red,fontSize:11,cursor:"pointer",fontWeight:600}}>🗑️</button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
+            ):(
+              <div style={{textAlign:"center",padding:"50px 0",color:T.ink4}}>
+                <div style={{fontSize:40,marginBottom:14}}>📂</div>
+                <div style={{fontSize:14,fontWeight:600,color:T.ink3,marginBottom:5}}>Vault is empty</div>
+                <div style={{fontSize:12}}>Upload your resume, certifications, or badges above</div>
+              </div>
+            )}
           </div>
         )}
 
