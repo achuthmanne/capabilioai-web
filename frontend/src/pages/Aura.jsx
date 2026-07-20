@@ -18,7 +18,7 @@ import CareerVideoGenerator from "./CareerVideoGenerator"
 // Portfolio themes removed — single universal design
 // ── Professional Path: API-connected components ───────────────────────────────
 import CareerTimelinePro from "../components/CareerTimeline"
-import VaultManagerPro   from "../components/VaultManager"
+import VaultManagerPro   from "../components/VaultTrustCenter"
 import SkillGraphPro     from "../components/SkillGraphView"
 import { interviewApi }  from "../lib/api"
 import SettingsPanel from "./SettingsPanel"
