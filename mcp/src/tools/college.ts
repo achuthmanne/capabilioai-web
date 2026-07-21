@@ -1,25 +1,34 @@
 /**
- * tools/college.ts — College / Institution Admin domain (5 tools, all not yet implemented)
+ * tools/college.ts — College / Institution Admin domain (5 tools)
  *
  * Tools:
- *   college.getDepartmentLeaderboard — NOT_IMPLEMENTED
- *   college.getStudentRoster         — NOT_IMPLEMENTED
- *   college.getCollegeStats          — NOT_IMPLEMENTED
- *   college.getBranchBreakdown       — NOT_IMPLEMENTED
- *   college.exportReport             — NOT_IMPLEMENTED
+ *   college.getDepartmentLeaderboard — real (backend/server/routes/college.js)
+ *   college.getStudentRoster         — real
+ *   college.getCollegeStats          — real
+ *   college.getBranchBreakdown       — real
+ *   college.exportReport             — real for reportType='full_roster';
+ *                                       other report types honestly declared
+ *                                       NOT_IMPLEMENTED rather than silently
+ *                                       returning the wrong data.
  *
- * BACKEND WIRING NOTE (2026-07-14 fix): there is no /api/college/* route
- * prefix, and no institution-admin analytics backend of any kind exists —
- * this isn't a path/verb mismatch, it's a whole missing domain (would need
- * new Supabase queries scoped by institution/college, new RLS policies, and
- * genuinely new aggregation logic). All 5 tools below fail fast with a clear
- * NOT_IMPLEMENTED error instead of calling nonexistent paths. Scoped as
- * separate, dedicated follow-up work — building this safely requires its own
- * schema/RLS design pass, not an inline fix alongside wiring corrections.
+ * IMPLEMENTED 2026-07-22: backend/server/routes/college.js now exists
+ * (mounted at /api/college in backend/server.js) backed by the canonical
+ * College Path schema (college_path_foundation_migration.sql — institutions,
+ * institution_staff, institution_students, elo_events, activity_logs, etc.).
+ * Closes the gap this file previously documented ("no institution-admin
+ * analytics backend of any kind exists").
  *
- * Security: all tools require institution_admin role (or admin).
- * Never returns individual private student data (email, phone, DOB).
- * Aggregate analytics only except getStudentRoster which is institution-scoped.
+ * `collegeCode` (this tool's public contract) maps to institutions.slug —
+ * the backend's `router.param("id", ...)` accepts either the UUID or the
+ * slug, so no schema change was needed here to wire this up.
+ *
+ * Security: all tools require institution_admin role (or admin) —
+ * assertCollegeAdmin. The backend independently re-checks institution_staff
+ * membership (see requireInstitutionStaff/requireInstitutionAdmin in
+ * college.js) — this tool's permission check does not replace that, it's
+ * the first of two independent layers.
+ * Never returns individual private student data (email, phone, DOB) — the
+ * backend enforces this via an explicit column allowlist, not a blocklist.
  */
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
@@ -29,13 +38,11 @@ import { assertPermission, canViewCollegeAnalytics } from "../shared/permissions
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js"
 import {
   parse, AuthSchema, PaginationSchema, CollegeCodeSchema,
-  AnalyticsGranularitySchema, DateRangeShape, dateRangeRefinement, DATE_RANGE_REFINEMENT_MESSAGE,
+  DateRangeShape, dateRangeRefinement, DATE_RANGE_REFINEMENT_MESSAGE,
 } from "../shared/validation.js"
+import { api } from "../shared/client.js"
 import { createLogger, startTimer } from "../shared/logger.js"
 
-// Fixed 2026-07-14: was a narrowed { id, role } fake of CapabilioUser, which
-// broke `tsc`/`npm run build` at every call site. Widened to the real shared
-// type — no behavior change, purely a type-annotation fix.
 function assertCollegeAdmin(user: CapabilioUser): void {
   if (!canViewCollegeAnalytics(user)) {
     throw new McpError(
@@ -53,7 +60,7 @@ export function registerCollegeTools(server: McpServer): void {
     "Get the ELO leaderboard for a department/branch within a college. Useful for placement cell views and counselling sessions.",
     {
       authorization: z.string().describe("Bearer JWT"),
-      collegeCode:   CollegeCodeSchema.describe("College identifier (e.g. 'VITU', 'BITS_HYD')"),
+      collegeCode:   CollegeCodeSchema.describe("College identifier (institutions.slug, e.g. 'vitu' or 'bits-hyd')"),
       branch:        z.string().optional().describe("Branch filter, e.g. 'CSE', 'ECE', 'MECH'"),
       page:          z.number().int().min(1).default(1).optional(),
       pageSize:      z.number().int().min(1).max(100).default(50).optional(),
@@ -70,23 +77,31 @@ export function registerCollegeTools(server: McpServer): void {
       assertPermission(user, "college")
       assertCollegeAdmin(user)
 
-      log.failure(t, "NOT_IMPLEMENTED", "No backend endpoint exists for department leaderboards", { collegeCode, branch })
-      throw new McpError(
-        ErrorCode.MethodNotFound,
-        "college.getDepartmentLeaderboard has no backend implementation yet. Tracked as follow-up work."
-      )
+      try {
+        const data = await api.get(
+          authorization,
+          `/api/college/institutions/${encodeURIComponent(collegeCode)}/leaderboard`,
+          { branch, page, pageSize }
+        )
+        log.success(t)
+        return { content: [{ type: "text", text: JSON.stringify(data) }] }
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : "Unknown error"
+        log.failure(t, "API_ERROR", msg, { collegeCode, branch })
+        throw e
+      }
     }
   )
 
   // ── college.getStudentRoster ───────────────────────────────────────────────
   server.tool(
     "college.getStudentRoster",
-    "Get a paginated roster of students enrolled in a college. Returns public profile summaries (name, stream, ELO, top skills). No private PII.",
+    "Get a paginated roster of students enrolled in a college. Returns institution-scoped summaries (department, batch, roll number, ELO, job-readiness, status). No private PII (no email/phone/DOB — enforced server-side by an explicit column allowlist).",
     {
       authorization: z.string().describe("Bearer JWT"),
       collegeCode:   CollegeCodeSchema,
       branch:        z.string().optional(),
-      search:        z.string().max(200).optional().describe("Search by name or skill"),
+      search:        z.string().max(200).optional().describe("Search by roll number (name search requires a profile join — not yet supported)"),
       page:          z.number().int().min(1).default(1).optional(),
       pageSize:      z.number().int().min(1).max(100).default(50).optional(),
     },
@@ -103,22 +118,30 @@ export function registerCollegeTools(server: McpServer): void {
       assertPermission(user, "college")
       assertCollegeAdmin(user)
 
-      log.failure(t, "NOT_IMPLEMENTED", "No backend endpoint exists for the student roster", { collegeCode, branch })
-      throw new McpError(
-        ErrorCode.MethodNotFound,
-        "college.getStudentRoster has no backend implementation yet. Tracked as follow-up work."
-      )
+      try {
+        const data = await api.get(
+          authorization,
+          `/api/college/institutions/${encodeURIComponent(collegeCode)}/students`,
+          { department: branch, search, page, pageSize }
+        )
+        log.success(t)
+        return { content: [{ type: "text", text: JSON.stringify(data) }] }
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : "Unknown error"
+        log.failure(t, "API_ERROR", msg, { collegeCode, branch })
+        throw e
+      }
     }
   )
 
   // ── college.getCollegeStats ────────────────────────────────────────────────
   server.tool(
     "college.getCollegeStats",
-    "Get college-level engagement and performance statistics: active students, average ELO, Arena completion rate, interview readiness score.",
+    "Get college-level engagement and performance statistics: total students, average ELO, average job readiness, status breakdown, confirmed placement rate.",
     {
       authorization: z.string().describe("Bearer JWT"),
       collegeCode:   CollegeCodeSchema,
-      from:          z.string().datetime({ offset: true }).optional(),
+      from:          z.string().datetime({ offset: true }).optional().describe("Not yet used server-side — stats are current-state, not historical range (tracked follow-up)"),
       to:            z.string().datetime({ offset: true }).optional(),
     },
     async (args) => {
@@ -127,25 +150,32 @@ export function registerCollegeTools(server: McpServer): void {
       }).refine(dateRangeRefinement, {
         message: DATE_RANGE_REFINEMENT_MESSAGE,
       })
-      const { authorization, collegeCode, from, to } = parse(Schema, args)
+      const { authorization, collegeCode } = parse(Schema, args)
       const user = verifyJWT(extractBearer(authorization))
       const log  = createLogger("college.getCollegeStats", user.id, user.role)
       const t    = startTimer()
       assertPermission(user, "college")
       assertCollegeAdmin(user)
 
-      log.failure(t, "NOT_IMPLEMENTED", "No backend endpoint exists for college stats", { collegeCode })
-      throw new McpError(
-        ErrorCode.MethodNotFound,
-        "college.getCollegeStats has no backend implementation yet. Tracked as follow-up work."
-      )
+      try {
+        const data = await api.get(
+          authorization,
+          `/api/college/institutions/${encodeURIComponent(collegeCode)}/stats`
+        )
+        log.success(t)
+        return { content: [{ type: "text", text: JSON.stringify(data) }] }
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : "Unknown error"
+        log.failure(t, "API_ERROR", msg, { collegeCode })
+        throw e
+      }
     }
   )
 
   // ── college.getBranchBreakdown ─────────────────────────────────────────────
   server.tool(
     "college.getBranchBreakdown",
-    "Get per-branch/stream performance breakdown for a college — average ELO, top skills, skill gaps, placement readiness scores per branch.",
+    "Get per-branch/department performance breakdown for a college — student count, average ELO, average job-readiness, placed % per department.",
     {
       authorization: z.string().describe("Bearer JWT"),
       collegeCode:   CollegeCodeSchema,
@@ -159,18 +189,25 @@ export function registerCollegeTools(server: McpServer): void {
       assertPermission(user, "college")
       assertCollegeAdmin(user)
 
-      log.failure(t, "NOT_IMPLEMENTED", "No backend endpoint exists for branch breakdown", { collegeCode })
-      throw new McpError(
-        ErrorCode.MethodNotFound,
-        "college.getBranchBreakdown has no backend implementation yet. Tracked as follow-up work."
-      )
+      try {
+        const data = await api.get(
+          authorization,
+          `/api/college/institutions/${encodeURIComponent(collegeCode)}/branches`
+        )
+        log.success(t)
+        return { content: [{ type: "text", text: JSON.stringify(data) }] }
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : "Unknown error"
+        log.failure(t, "API_ERROR", msg, { collegeCode })
+        throw e
+      }
     }
   )
 
   // ── college.exportReport ───────────────────────────────────────────────────
   server.tool(
     "college.exportReport",
-    "Trigger an async export of a college analytics report (CSV or PDF). Returns a jobId — poll for status via the backend export API.",
+    "Export a college analytics report. Only reportType='full_roster' is implemented today (CSV or JSON, PII-excluded). Other report types (placement_readiness, elo_distribution, skill_gap, branch_summary) throw a clear NOT_IMPLEMENTED error instead of returning incorrect data — tracked as follow-up work, same honesty-first pattern used elsewhere in this codebase (e.g. verification.js's provider registry).",
     {
       authorization: z.string().describe("Bearer JWT"),
       collegeCode:   CollegeCodeSchema,
@@ -193,18 +230,45 @@ export function registerCollegeTools(server: McpServer): void {
       }).refine(dateRangeRefinement, {
         message: DATE_RANGE_REFINEMENT_MESSAGE,
       })
-      const { authorization, collegeCode, reportType, format, from, to } = parse(Schema, args)
+      const { authorization, collegeCode, reportType, format } = parse(Schema, args)
       const user = verifyJWT(extractBearer(authorization))
       const log  = createLogger("college.exportReport", user.id, user.role)
       const t    = startTimer()
       assertPermission(user, "college")
       assertCollegeAdmin(user)
 
-      log.failure(t, "NOT_IMPLEMENTED", "No backend endpoint exists for report export", { collegeCode, reportType, format })
-      throw new McpError(
-        ErrorCode.MethodNotFound,
-        "college.exportReport has no backend implementation yet. Tracked as follow-up work."
-      )
+      if (reportType !== "full_roster") {
+        log.failure(t, "NOT_IMPLEMENTED", `reportType '${reportType}' has no backend implementation yet`, { collegeCode })
+        throw new McpError(
+          ErrorCode.MethodNotFound,
+          `college.exportReport(reportType='${reportType}') has no backend implementation yet. Only 'full_roster' is implemented. Tracked as follow-up work.`
+        )
+      }
+      if (format === "pdf") {
+        log.failure(t, "NOT_IMPLEMENTED", "PDF export not implemented — CSV/JSON only", { collegeCode })
+        throw new McpError(
+          ErrorCode.MethodNotFound,
+          "college.exportReport(format='pdf') has no backend implementation yet. Use format='csv'. Tracked as follow-up work."
+        )
+      }
+
+      try {
+        // shared/client.ts's call() always does res.json() — it cannot parse
+        // the backend's text/csv response, so this always requests the JSON
+        // form regardless of the caller's `format` arg. CSV download is
+        // available directly from the backend (?format=csv) for the admin
+        // web UI, which fetches it outside the MCP relay.
+        const data = await api.get(
+          authorization,
+          `/api/college/institutions/${encodeURIComponent(collegeCode)}/export`
+        )
+        log.success(t)
+        return { content: [{ type: "text", text: JSON.stringify(data) }] }
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : "Unknown error"
+        log.failure(t, "API_ERROR", msg, { collegeCode, reportType, format })
+        throw e
+      }
     }
   )
 }

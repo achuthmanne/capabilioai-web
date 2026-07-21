@@ -130,6 +130,7 @@ import orbitPlansRoutes          from "./server/routes/orbitPlans.js"
 import hardwareChallengesRoutes  from "./server/routes/hardwareChallenges.js"
 import copilotCoachRoutes        from "./server/routes/copilotCoach.js" // pilot: tool-augmented Capi coach intent, MCP-backed
 import groqProxyRoutes           from "./server/routes/groqProxy.js"    // P0 fix: Capi's Groq calls, moved server-side off the client
+import collegeRoutes             from "./server/routes/college.js"      // College Path — institution-admin operational API (roster, leaderboard, stats, branches, export, placement confirm, ELO ledger)
 import { startGradingWorker }    from "./server/lib/grading-worker.js"
 
 // ─── App setup ────────────────────────────────────────────────────────────────
@@ -169,6 +170,11 @@ app.use(cors({
   ],
   credentials: true,
 }))
+// Roster CSV imports (college.js) need more than the 512kb default — override
+// for that path specifically, before the general limit below. body-parser
+// skips re-parsing a body that's already been parsed, so this is safe layering.
+app.use("/api/college/institutions", express.json({ limit: "4mb" }))
+
 // 512kb global limit — prevents large-body DDOS. Routes that genuinely need
 // more (PDF upload, resume extract) override locally with express.json({limit:"4mb"})
 app.use(express.json({ limit: "512kb" }))
@@ -228,6 +234,8 @@ app.use("/api",              orbitPlansRoutes)          // orbit/plans, intel/re
 app.use("/api",              hardwareChallengesRoutes)  // hardware/challenges, hardware/my-attempts
 app.use("/api/copilot",       copilotCoachRoutes)       // coach — pilot MCP tool-use path for Capi's career-coach intent
 app.use("/api/groq",          groqProxyRoutes)          // chat — server-side Groq proxy for Capi's general chat + classifier
+// ── College Path ───────────────────────────────────────────────────────────────
+app.use("/api/college",       collegeRoutes)            // institutions/:id/{roster,students,leaderboard,stats,branches,export,placements/:id/confirm,students/:id/elo-adjustment}
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {

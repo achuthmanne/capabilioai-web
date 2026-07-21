@@ -4,7 +4,22 @@
 //  • Singleton per process — one client reused across all requests
 //  • 10s global fetch timeout — prevents slow Supabase queries hanging connections
 //  • auth.persistSession:false — no local session storage overhead
+//
+// FIXED 2026-07-22: `realtime: { enabled: false }` below is NOT a real
+// @supabase/supabase-js config key — it silently did nothing. createClient()
+// unconditionally constructs a RealtimeClient internally (even though this
+// server never calls .channel()), and on Node <22 (no native global
+// WebSocket — that only landed in Node 22) that constructor throws
+// synchronously. Because getClient() is called from inside the lazy
+// singleton getters below, the throw meant `_admin`/`_client` never got
+// cached — every supabaseAdmin/supabase() call, from every route in the
+// backend, was silently re-throwing and failing on every single invocation
+// when running on Node 20/21. Fixed by supplying the `ws` package as the
+// realtime transport, which is the SDK's own documented workaround for
+// pre-Node-22 environments — this makes RealtimeClient construct
+// successfully without ever opening a socket (nothing here calls .channel()).
 import { createClient } from "@supabase/supabase-js"
+import WsWebSocket        from "ws"
 
 // Global fetch with 10-second timeout — prevents slow DB queries tying up workers
 function fetchWithTimeout(url, options = {}) {
@@ -13,6 +28,11 @@ function fetchWithTimeout(url, options = {}) {
   return fetch(url, { ...options, signal: ctrl.signal }).finally(() => clearTimeout(timer))
 }
 
+// Node 22+ has a native global WebSocket; earlier versions don't. Only pass
+// the `ws` package as an explicit transport when it's actually needed —
+// avoids depending on `ws` behavior on runtimes where it isn't required.
+const needsWsTransport = typeof globalThis.WebSocket === "undefined"
+
 const getClient = () => {
   return createClient(
     process.env.SUPABASE_URL         || "",
@@ -20,8 +40,10 @@ const getClient = () => {
     {
       auth:   { autoRefreshToken: false, persistSession: false },
       global: { fetch: fetchWithTimeout },
-      // Realtime intentionally disabled on server side — no WS connections needed
-      realtime: { enabled: false },
+      // Realtime is never used server-side (no .channel() calls anywhere in
+      // this codebase) — this config only needs to let the client CONSTRUCT
+      // without throwing on Node <22; it does not open a socket by itself.
+      realtime: needsWsTransport ? { transport: WsWebSocket } : {},
     }
   )
 }

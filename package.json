@@ -39,7 +39,8 @@
     "react-router-dom": "^6.26.2",
     "recharts": "^3.8.1",
     "sql.js": "^1.10.3",
-    "three": "^0.184.0"
+    "three": "^0.184.0",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.4",
