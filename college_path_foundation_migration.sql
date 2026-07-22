@@ -352,7 +352,7 @@ create table if not exists public.professional_profiles (
   origin_placement_id      uuid references public.institution_placements(id),
   upgraded_at              timestamptz not null default now(),
   current_company          text,
-  current_role             text
+  current_job_role         text
 );
 
 create table if not exists public.epf_records (
