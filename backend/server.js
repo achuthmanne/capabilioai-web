@@ -132,6 +132,7 @@ import copilotCoachRoutes        from "./server/routes/copilotCoach.js" // pilot
 import groqProxyRoutes           from "./server/routes/groqProxy.js"    // P0 fix: Capi's Groq calls, moved server-side off the client
 import collegeRoutes             from "./server/routes/college.js"      // College Path — institution-admin operational API (roster, leaderboard, stats, branches, export, placement confirm, ELO ledger)
 import orgVerificationRoutes     from "./server/routes/orgVerification.js" // Institution OS bugfix — server-side profiles.verificationStatus write (PC-7 compliant)
+import orgJoinLinksRoutes        from "./server/routes/orgJoinLinks.js"    // Self-serve student join links — org_members, replaces one-by-one admin invite for ~1000-student rosters
 import { startGradingWorker }    from "./server/lib/grading-worker.js"
 
 // ─── App setup ────────────────────────────────────────────────────────────────
@@ -238,6 +239,7 @@ app.use("/api/groq",          groqProxyRoutes)          // chat — server-side 
 // ── College Path ───────────────────────────────────────────────────────────────
 app.use("/api/college",       collegeRoutes)            // institutions/:id/{roster,students,leaderboard,stats,branches,export,placements/:id/confirm,students/:id/elo-adjustment}
 app.use("/api/org",           orgVerificationRoutes)    // verify-email — server-side PC-7-compliant write to profiles.verificationStatus
+app.use("/api/org",           orgJoinLinksRoutes)       // join-links (CRUD), join/:token (resolve + claim) — self-serve student onboarding
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {

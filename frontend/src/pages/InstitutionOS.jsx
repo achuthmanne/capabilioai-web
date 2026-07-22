@@ -1367,6 +1367,45 @@ function PeoplePage({ userData, user, members, membersLoading, membersError, rel
   const setF = (k, v) => setForm(f => ({ ...f, [k]: v }))
   const isCollege = (userData?.org_type || "college") !== "company"
 
+  // Self-serve join link — lets a professor share one link instead of typing
+  // every student (of ~1000) into the invite modal individually.
+  const [showJoinLink, setShowJoinLink]   = useState(false)
+  const [linkForm, setLinkForm]           = useState({ label: "", role: "student", department: "", batch: "" })
+  const setLF = (k, v) => setLinkForm(f => ({ ...f, [k]: v }))
+  const [linkCreating, setLinkCreating]   = useState(false)
+  const [linkError, setLinkError]         = useState(null)
+  const [createdLink, setCreatedLink]     = useState(null)
+  const [linkCopied, setLinkCopied]       = useState(false)
+
+  async function handleCreateJoinLink() {
+    setLinkCreating(true); setLinkError(null)
+    try {
+      const res = await orgApi.createJoinLink({
+        label: linkForm.label.trim(),
+        role: linkForm.role,
+        department: linkForm.department.trim(),
+        batch: linkForm.batch.trim(),
+      })
+      setCreatedLink(res.link ? { ...res.link, url: res.url } : null)
+    } catch (err) {
+      setLinkError(err.message)
+    } finally {
+      setLinkCreating(false)
+    }
+  }
+
+  function copyLinkUrl() {
+    if (!createdLink?.url) return
+    navigator.clipboard?.writeText(createdLink.url)
+    setLinkCopied(true)
+    setTimeout(() => setLinkCopied(false), 2000)
+  }
+
+  function closeJoinLinkModal() {
+    setShowJoinLink(false); setCreatedLink(null); setLinkError(null)
+    setLinkForm({ label: "", role: "student", department: "", batch: "" })
+  }
+
   const tabs = isCollege
     ? ["all", "students", "faculty", "recruiters", "pending"]
     : ["all", "engineers", "pending"]
@@ -1437,7 +1476,10 @@ function PeoplePage({ userData, user, members, membersLoading, membersError, rel
       <PageHeader
         title="People"
         sub={isCollege ? "Students, faculty, and recruiters" : "Talent pool and hiring team"}
-        actions={[<Btn key="i" onClick={() => setShowInvite(true)}>+ Invite</Btn>]}
+        actions={[
+          <Btn key="l" variant="outline" onClick={() => setShowJoinLink(true)}>🔗 Get Invite Link</Btn>,
+          <Btn key="i" onClick={() => setShowInvite(true)}>+ Invite</Btn>,
+        ]}
       />
 
       {pendingCount > 0 && (
@@ -1534,6 +1576,45 @@ function PeoplePage({ userData, user, members, membersLoading, membersError, rel
               <Btn onClick={handleInvite} disabled={inviting}>{inviting ? "Inviting…" : "Send Invite"}</Btn>
             </div>
           </div>
+        </Modal>
+      )}
+
+      {showJoinLink && (
+        <Modal title="Get Invite Link" onClose={closeJoinLinkModal}>
+          {!createdLink ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ fontSize: 12, color: T.ink4, lineHeight: 1.5 }}>
+                Generate one link you can share with an entire batch — students who open it and sign up join automatically, no manual entry needed.
+              </div>
+              <FieldInput label="Label (optional)" value={linkForm.label} onChange={v => setLF("label", v)} placeholder="e.g. CSE 2026 Batch" />
+              <FieldSelect label="Role" value={linkForm.role} onChange={v => setLF("role", v)} options={[
+                { value: "student",   label: "Student"    },
+                { value: "faculty",   label: "Faculty"    },
+                { value: "recruiter", label: "Recruiter"  },
+                { value: "mentor",    label: "Mentor"     },
+              ]} />
+              <FieldInput label="Department" value={linkForm.department} onChange={v => setLF("department", v)} placeholder="e.g. Computer Science" />
+              {isCollege && <FieldInput label="Batch" value={linkForm.batch} onChange={v => setLF("batch", v)} placeholder="e.g. B.Tech CSE 2026" />}
+              {linkError && <div style={{ fontSize: 12, color: T.red }}>{linkError}</div>}
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <Btn variant="outline" onClick={closeJoinLinkModal}>Cancel</Btn>
+                <Btn onClick={handleCreateJoinLink} disabled={linkCreating}>{linkCreating ? "Creating…" : "Create Link"}</Btn>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ fontSize: 13, color: T.ink3 }}>Share this link — anyone who joins through it is added as <b>{createdLink.role}</b>{createdLink.department ? ` · ${createdLink.department}` : ""}{createdLink.batch ? ` · ${createdLink.batch}` : ""}.</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input readOnly value={createdLink.url} onFocus={e => e.target.select()}
+                  style={{ flex: 1, padding: "10px 12px", border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 12, fontFamily: MONO, color: T.ink, background: T.bg }} />
+                <Btn onClick={copyLinkUrl}>{linkCopied ? "Copied ✓" : "Copy"}</Btn>
+              </div>
+              <div style={{ fontSize: 11, color: T.ink4 }}>This link doesn't expire and has unlimited uses unless you revoke it.</div>
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <Btn variant="outline" onClick={closeJoinLinkModal}>Done</Btn>
+              </div>
+            </div>
+          )}
         </Modal>
       )}
     </PageShell>

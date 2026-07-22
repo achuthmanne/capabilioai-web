@@ -61,6 +61,14 @@ export const profileApi = {
 // ══════════════════════════════════════════
 export const orgApi = {
   verifyEmail: () => request("POST", "/org/verify-email"),
+
+  // Self-serve student join links — share one link instead of inviting
+  // hundreds of students one at a time via the "+ Invite" modal.
+  createJoinLink: (opts = {}) => request("POST", "/org/join-links", opts),
+  listJoinLinks:  ()          => request("GET",  "/org/join-links"),
+  revokeJoinLink: (id)        => request("PATCH", `/org/join-links/${id}/revoke`),
+  resolveJoinLink: (token)    => request("GET",  `/org/join/${token}`),
+  claimJoinLink:  (token)     => request("POST", `/org/join/${token}`),
 }
 
 // ══════════════════════════════════════════

@@ -14,6 +14,7 @@ import LandingPage  from "./pages/LandingPage"
 import AccountType  from "./pages/AccountType"
 import Onboarding   from "./pages/Onboarding"
 import JoinPage     from "./pages/JoinPage"
+import JoinOrgPage  from "./pages/JoinOrgPage"
 import CareerPicker from "./pages/CareerPicker"
 
 // ── Feature pages — lazy-loaded per navigation ───────────────────────────────
@@ -605,6 +606,22 @@ function App() {
     if (window.location.pathname.startsWith("/portfolio/")) setCurrentPage("portfolio")
   }, [])
 
+  // Auto-complete a pending org-join-link claim once login/signup finishes.
+  // JoinOrgPage stashes the token in sessionStorage when a visitor isn't
+  // logged in yet (mirrors JoinPage's existing capabilio_invite pattern); by
+  // the time `user` becomes truthy here, they've navigated away from
+  // /join-org/:token, so this is the only place left to actually claim it.
+  useEffect(() => {
+    if (!user) return
+    let token
+    try { token = sessionStorage.getItem("capabilio_org_join_token") } catch { return }
+    if (!token) return
+    try { sessionStorage.removeItem("capabilio_org_join_token") } catch {}
+    import("./lib/api").then(({ orgApi }) => {
+      orgApi.claimJoinLink(token).catch(err => console.warn("[org-join] pending claim failed:", err.message))
+    })
+  }, [user])
+
   useEffect(() => {
     let profileUnsub = null
 
@@ -733,6 +750,21 @@ function App() {
         onDone={() => {
           window.history.replaceState({}, "", "/")
           setAppStage("landing")
+        }}
+      />
+    )
+  }
+
+  if (window.location.pathname.startsWith("/join-org/")) {
+    const orgToken = window.location.pathname.replace("/join-org/", "").split("/")[0]
+    return (
+      <JoinOrgPage
+        token={orgToken}
+        user={user}
+        onDone={() => {
+          window.history.replaceState({}, "", "/")
+          if (user) window.location.reload() // refresh so the new org_members row is picked up
+          else setAppStage("accountType")
         }}
       />
     )
