@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { userDoc } from "../lib/db";
 import { PLANS, getPlansByPath, getPlansByPathWithDiscount, getDefaultPlanForPath, getInviteContext, applyDiscount } from "../config/plans"
 import { useRazorpay } from "../hooks/useRazorpay"
 import { getSkillModule } from "../config/skillModules"
+import { ROLE_REGISTRY } from "../config/roleConfig"
 
 const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
 
@@ -271,6 +272,53 @@ const FieldRow = ({ label, children, hint }) => (
   </div>
 )
 
+// Generic multi-select chip group — used by the company onboarding wizard's
+// Hiring Intelligence (goals, domains) and AI Workspace Setup (modules) steps.
+const ChipMultiSelect = ({ options, selected, onToggle, accent, accentBg }) => (
+  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
+    {options.map(opt => {
+      const isOn = selected.includes(opt)
+      return (
+        <button key={opt} type="button" onClick={() => onToggle(opt)}
+          style={{
+            padding: "6px 13px", borderRadius: 999,
+            border: `1px solid ${isOn ? accent : "rgba(0,0,0,0.12)"}`,
+            background: isOn ? accentBg : "transparent",
+            color: isOn ? accent : T.muted,
+            fontSize: 12, fontWeight: 600, cursor: "pointer",
+            transition: "all 0.15s", fontFamily: T.body,
+          }}>
+          {isOn ? "✓ " : ""}{opt}
+        </button>
+      )
+    })}
+  </div>
+)
+
+// Sub-progress for the company onboarding wizard (4 data-entry steps before
+// the Welcome Dashboard). Deliberately separate from PathBanner's own step
+// dots (which stay "Type / Details / Preview / Plan" for both college and
+// company) so this redesign never touches the college flow's banner.
+const CompanyWizardDots = ({ activeIdx }) => {
+  const labels = ["Workspace", "Hiring Intel", "Verification", "AI Setup"]
+  const greenAccent = "#059669"
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 22 }}>
+      {labels.map((l, i) => (
+        <div key={l} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{
+            width: i === activeIdx ? 22 : 7, height: 7, borderRadius: 999,
+            background: i === activeIdx ? greenAccent : i < activeIdx ? `${greenAccent}80` : "rgba(0,0,0,0.1)",
+            transition: "all 0.3s",
+          }} />
+          {i === activeIdx && <span style={{ fontSize: 10, color: greenAccent, fontWeight: 700, fontFamily: T.mono, whiteSpace: "nowrap" }}>{l}</span>}
+          {i < labels.length - 1 && <div style={{ width: 10, height: 1, background: "rgba(0,0,0,0.08)" }} />}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 const BackBtn = ({ onClick }) => (
   <button onClick={onClick} style={{
     background: "transparent", border: "none", color: T.muted,
@@ -422,7 +470,7 @@ const BRANCH_TO_CAREER_SLUG = {
 
 // ─── Payload builders ───────────────────────────────────────────────
 const buildStudentSavePayload = ({ path, user, username, data }) => {
-  const { keyword, college, branch, result, resumeData, resumeFileObj, resumeBase64 } = data
+  const { keyword, college, branch, result, resumeData, resumeFileObj, resumeBase64, selectedRole } = data
   const analysis = result?.analysis || {}
   const score = safeNumber(result?.score, 0)
   const total = safeNumber(result?.total, 25)
@@ -464,6 +512,14 @@ const buildStudentSavePayload = ({ path, user, username, data }) => {
     username, path: "student", keyword: keyword || "", onboardingComplete: true, onboarding_complete: true,
     college: college || user.user_metadata?.college || "",
     branch:  branch  || user.user_metadata?.branch  || "",
+    // Canonical role — set when student picks from the role picker (not free-text)
+    ...(selectedRole ? {
+      roleId:    selectedRole.id,
+      roleLabel: selectedRole.label,
+      roleSlug:  selectedRole.slug,
+      roleStream: selectedRole.stream,
+      arenaKey:  selectedRole.arenaKey,
+    } : {}),
     ...(careerSlug ? { career_track_slug: careerSlug } : {}),
     eloRating, baseElo: getBaseEloByPath("student"), initialElo: eloRating,
     assessmentType: "student-mcq", assessmentScore: score, assessmentTotal: total,
@@ -977,6 +1033,427 @@ function ProfessionalResultModal({ auraResult, onGoToDashboard, savingResult }) 
 }
 
 // ══════════════════════════════════════════════════════════════════
+// ROLE SEARCH PICKER — typeahead over all 44 roles across all streams
+// ══════════════════════════════════════════════════════════════════
+// ─── Aliases: real-world job-title variations not already in keywords[] ─────
+// Scoring treats these identically to keywords. Kept here (not in roleConfig.js)
+// so roleConfig stays clean; can be merged into the registry in a future pass.
+const ROLE_ALIASES = {
+  frontend:               ["react js developer","angular js developer","vue js developer","js developer","front-end engineer","ui developer","ui/ux developer"],
+  backend:                ["node developer","java backend","python backend","spring developer","flask developer","fastapi developer","server engineer"],
+  fullstack:              ["mern developer","mean developer","react node developer","web application developer","full-stack engineer"],
+  swe:                    ["software development engineer","sde 1","sde 2","application engineer","java engineer","python engineer","c++ developer","golang developer","rust developer"],
+  data:                   ["sql analyst","excel analyst","reporting analyst","analytics specialist","business intelligence analyst"],
+  data_engineer:          ["big data engineer","airflow developer","data infrastructure engineer","data platform engineer","lakehouse engineer"],
+  bi_analyst:             ["reporting specialist","dashboard developer","power bi specialist","looker developer","data visualization analyst"],
+  dba:                    ["sql server dba","database admin","oracle developer","postgres dba","mysql developer","db developer"],
+  cyber:                  ["security analyst","infosec analyst","penetration tester","vapt engineer","ethical hacker","network security engineer","appsec engineer"],
+  devops:                 ["ci/cd engineer","release engineer","build engineer","gitops engineer","cloud automation engineer"],
+  sre:                    ["production engineer","cloud reliability engineer","chaos engineer","on-call engineer"],
+  aws:                    ["aws developer","aws architect","aws certified developer","cloud infrastructure engineer","cloud solutions architect"],
+  azure:                  ["azure architect","microsoft azure developer","azure data engineer","azure administrator","cloud engineer azure"],
+  soc:                    ["siem analyst","splunk analyst","threat analyst","ioc analyst","dfir analyst","tier 1 analyst"],
+  qa:                     ["software tester","test engineer","automation tester","manual tester","qe engineer","test lead"],
+  ba_product:             ["business analyst it","product owner","requirements engineer","digital business analyst","it ba"],
+  medical:                ["medical billing specialist","clinical coder","health information coder","aapc coder","ahima coder"],
+  embedded:               ["embedded c developer","mcu developer","stm32 developer","esp32 developer","embedded linux engineer","firmware developer","bare metal developer"],
+  vlsi:                   ["chip design engineer","asic design engineer","rtl design engineer","fpga developer","dv engineer","physical design engineer","digital design engineer"],
+  analog_layout:          ["ic layout engineer","custom layout engineer","virtuoso layout engineer","mixed signal engineer","analog ic designer"],
+  rf_engineer:            ["rf hardware engineer","antenna design engineer","microwave circuit designer","5g rf engineer","wireless hardware engineer"],
+  iot_engineer:           ["iot developer","edge ai engineer","connected devices engineer","smart home engineer","iot firmware engineer"],
+  telecom_engineer:       ["5g network engineer","ran engineer","lte engineer","core network engineer","telecom protocol engineer"],
+  hardware_engineer:      ["pcb designer","board design engineer","schematic engineer","circuit board designer","electronics hardware engineer"],
+  power_engineer:         ["electrical engineer","grid engineer","power distribution engineer","transmission engineer","protection engineer","smart grid engineer"],
+  electrical_machines:    ["motor design engineer","vfd engineer","drive engineer","servo engineer","bldc engineer","ev motor engineer"],
+  control_engineer:       ["plc programmer","scada developer","industrial automation engineer","process automation engineer","pid engineer"],
+  power_electronics:      ["inverter engineer","ev charging engineer","battery engineer","smps design engineer","dc-dc converter engineer","ev powertrain engineer"],
+  instrumentation_engineer:["field instrument engineer","calibration specialist","control and instrumentation engineer","ci engineer","process control engineer"],
+  mechanical_design:      ["cad design engineer","product design engineer","solidworks designer","catia engineer","nx engineer","design draughtsman"],
+  thermal_engineer:       ["hvac engineer","cfd analyst","cooling engineer","thermal analysis engineer","refrigeration engineer"],
+  manufacturing_engineer: ["production planning engineer","cnc programmer","lean expert","six sigma engineer","quality manufacturing engineer"],
+  fluid_mechanics_engineer:["piping engineer","hydraulic design engineer","pump engineer","turbomachinery engineer","process piping engineer"],
+  structural_engineer:    ["rcc designer","steel structure engineer","building engineer","bridge designer","structural design engineer"],
+  geotechnical_engineer:  ["soil investigation engineer","piling specialist","ground engineer","foundation design engineer"],
+  transportation_engineer:["road design engineer","traffic planning engineer","urban mobility engineer","highway design engineer"],
+  water_resources_engineer:["hydrologist","irrigation engineer","water supply engineer","drainage engineer","dam design engineer"],
+  construction_engineer:  ["site manager","civil supervisor","quantity estimator","project site engineer","bq engineer"],
+  civil_general:          ["civil engineering fresher","junior civil engineer","graduate civil engineer","infrastructure graduate"],
+  ml_engineer:            ["ai developer","llm engineer","genai engineer","deep learning engineer","nlp developer","computer vision engineer","data scientist ai"],
+  android_developer:      ["kotlin engineer","mobile app developer android","android application developer","android studio developer"],
+  ios_developer:          ["swift engineer","apple ios developer","iphone app developer","swiftui developer"],
+  pharmacy:               ["pharma professional","drug regulatory officer","quality assurance pharmacist","pharmaceutical analyst","pharma QA"],
+  mba:                    ["mba graduate","management consultant","business development manager","operations analyst","marketing executive","finance analyst","hr executive"],
+}
+
+// ─── Arena workbench name per arenaKey ──────────────────────────────────────
+const ARENA_WORKBENCH = {
+  frontend: "UI / Frontend Studio", backend: "API Studio", fullstack: "Full-Stack Workbench",
+  swe: "Code Arena", data: "Data Lab", data_engineer: "Pipeline Studio",
+  bi_analyst: "BI Dashboard Studio", dba: "SQL Arena", cyber: "Security Lab",
+  devops: "DevOps Pipeline", sre: "SRE Console", aws: "AWS Cloud Lab",
+  azure: "Azure Cloud Lab", soc: "SOC Operations Center", qa: "Test Automation Studio",
+  ba_product: "Product Analytics Studio", medical: "Medical Coding Suite",
+  embedded: "Embedded C Workbench", vlsi: "VLSI Design Studio", analog_ic: "Analog IC Studio",
+  ece: "Electronics Lab", eee: "Electrical Lab", mechanical: "Mechanical Design Studio",
+  civil: "Civil Engineering Lab", ml: "ML Model Studio", android: "Android Studio",
+  ios: "iOS Xcode Lab", pharmacy: "Pharmacy Practice Suite", mba: "Business Case Studio",
+}
+
+// ─── Top hiring companies per role ──────────────────────────────────────────
+const ROLE_COMPANIES = {
+  frontend: ["Google","Meta","Flipkart","Swiggy"], backend: ["Amazon","Microsoft","Infosys","Wipro"],
+  fullstack: ["Razorpay","CRED","Zepto","Zomato"], swe: ["TCS","Infosys","Google","Amazon"],
+  data: ["Accenture","Deloitte","Amazon","Mu Sigma"], data_engineer: ["Databricks","Snowflake","Amazon","Swiggy"],
+  bi_analyst: ["Deloitte","Accenture","PwC","EY"], dba: ["Oracle","IBM","TCS","Infosys"],
+  cyber: ["KPMG","EY","IBM Security","Palo Alto"], devops: ["Google","Microsoft","Amazon","Flipkart"],
+  sre: ["Google","Meta","Netflix","Razorpay"], aws: ["Amazon","Deloitte","Wipro","HCL"],
+  azure: ["Microsoft","Accenture","TCS","Infosys"], soc: ["Wipro","HCL","IBM Security","Palo Alto"],
+  qa: ["Zoho","Freshworks","TCS","Capgemini"], ba_product: ["Accenture","McKinsey","Flipkart","Paytm"],
+  medical: ["Optum","Cognizant","iGate","Conduent"], embedded: ["Qualcomm","NXP","STMicro","Bosch"],
+  vlsi: ["Intel","Qualcomm","NVIDIA","AMD"], analog_layout: ["Texas Instruments","Qualcomm","AMD","Intel"],
+  rf_engineer: ["Qualcomm","Ericsson","Nokia","Samsung"], iot_engineer: ["Bosch","Siemens","Honeywell","AWS"],
+  telecom_engineer: ["Ericsson","Nokia","Samsung","BSNL"], hardware_engineer: ["Apple","Samsung","Bosch","L&T Tech"],
+  power_engineer: ["BHEL","L&T Power","ABB","Siemens"], electrical_machines: ["ABB","Siemens","BHEL","Bosch"],
+  control_engineer: ["Siemens","ABB","Honeywell","L&T"], power_electronics: ["Tata Power","ABB","Delta","Bosch"],
+  instrumentation_engineer: ["Emerson","Honeywell","Yokogawa","ABB"], mechanical_design: ["Tata Motors","L&T","Mahindra","Bosch"],
+  thermal_engineer: ["BHEL","Thermax","L&T","Voltas"], manufacturing_engineer: ["Tata Steel","Mahindra","Bosch","Honda"],
+  fluid_mechanics_engineer: ["L&T Hydro","ONGC","BHEL","Tata Projects"], structural_engineer: ["L&T","Shapoorji","AECOM","WSP"],
+  geotechnical_engineer: ["Arup","Mott MacDonald","RITES","NHPC"], transportation_engineer: ["L&T Infra","NHAI","AECOM","Stup"],
+  water_resources_engineer: ["WAPCOS","NHPC","L&T","Jacobs"], construction_engineer: ["L&T Construction","Shapoorji","NCC","Afcons"],
+  civil_general: ["L&T Construction","RITES","CPWD","NHAI"], ml_engineer: ["Google","Microsoft","Amazon","OpenAI"],
+  android_developer: ["Flipkart","Swiggy","CRED","Razorpay"], ios_developer: ["Flipkart","Meesho","Apple","Goldman Sachs"],
+  pharmacy: ["Sun Pharma","Dr. Reddy's","Cipla","Lupin"], mba: ["McKinsey","BCG","Deloitte","Amazon"],
+}
+
+const STREAM_BADGES = {
+  IT:         { bg: "#EEF2FF", color: "#6366F1", label: "IT" },
+  ECE:        { bg: "#FEF3C7", color: "#D97706", label: "ECE" },
+  EEE:        { bg: "#FFF7ED", color: "#B45309", label: "EEE" },
+  Mechanical: { bg: "#F0FDF4", color: "#16A34A", label: "Mech" },
+  Civil:      { bg: "#FFF7ED", color: "#EA580C", label: "Civil" },
+  IoT:        { bg: "#F0F9FF", color: "#0284C7", label: "IoT" },
+  Pharmacy:   { bg: "#FDF4FF", color: "#9333EA", label: "Pharma" },
+  MBA:        { bg: "#FFF1F2", color: "#E11D48", label: "MBA" },
+  Medical:    { bg: "#F0FDF4", color: "#15803D", label: "Medical" },
+}
+
+const ROLE_SEARCH_EXAMPLES = [
+  "e.g. VLSI Design Engineer",
+  "e.g. Data Analyst",
+  "e.g. Embedded Systems",
+  "e.g. Structural Engineer",
+  "e.g. Power Electronics",
+  "e.g. ML Engineer",
+  "e.g. IoT Developer",
+  "e.g. Business Analyst",
+]
+
+function scoreRoleMatch(role, query) {
+  const q = query.toLowerCase().trim()
+  if (!q) return 0
+  const lbl = role.label.toLowerCase()
+  let best = 0
+  // Label-level scoring
+  if (lbl === q)               best = Math.max(best, 100)
+  else if (lbl.startsWith(q)) best = Math.max(best, 88)
+  else if (lbl.includes(q))   best = Math.max(best, 72)
+  // Keyword-level scoring (keywords[] from registry)
+  for (const kw of (role.keywords || [])) {
+    const k = kw.toLowerCase()
+    if (k === q)               { best = Math.max(best, 95); break }
+    else if (k.startsWith(q)) best = Math.max(best, 83)
+    else if (k.includes(q))   best = Math.max(best, 65)
+  }
+  // Alias-level scoring (same weight as keywords — avoids AI for common variants)
+  for (const alias of (ROLE_ALIASES[role.id] || [])) {
+    const a = alias.toLowerCase()
+    if (a === q)               { best = Math.max(best, 95); break }
+    else if (a.startsWith(q)) best = Math.max(best, 83)
+    else if (a.includes(q))   best = Math.max(best, 65)
+  }
+  // Multi-token fallback: query words found in label + keywords + aliases
+  if (q.length >= 4) {
+    const tokens = q.split(/\s+/).filter(t => t.length >= 3)
+    if (tokens.length > 0) {
+      const corpus = [role.label, ...(role.keywords || []), ...(ROLE_ALIASES[role.id] || [])].join(" ").toLowerCase()
+      const hit = tokens.filter(t => corpus.includes(t)).length
+      if (hit > 0) best = Math.max(best, 38 + hit * 14)
+    }
+  }
+  return best
+}
+
+function RoleSearchPicker({ value, onChange, onRoleSelect, selectedRole }) {
+  const [open, setOpen]             = useState(false)
+  const [suggestions, setSuggestions] = useState([])
+  const [aiLoading, setAiLoading]   = useState(false)
+  const [phIdx, setPhIdx]           = useState(0)
+  const [highlighted, setHighlighted] = useState(-1)
+  const inputRef = useRef(null)
+  const dropRef  = useRef(null)
+  const aiTimer  = useRef(null)
+
+  // Rotate placeholder text so idle state feels alive
+  useEffect(() => {
+    const t = setInterval(() => setPhIdx(i => (i + 1) % ROLE_SEARCH_EXAMPLES.length), 2800)
+    return () => clearInterval(t)
+  }, [])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handle = e => {
+      if (!dropRef.current?.contains(e.target) && !inputRef.current?.contains(e.target))
+        setOpen(false)
+    }
+    document.addEventListener("mousedown", handle)
+    return () => document.removeEventListener("mousedown", handle)
+  }, [])
+
+  // Recompute suggestions on every keystroke
+  useEffect(() => {
+    const q = value.trim()
+    if (q.length < 2) { setSuggestions([]); setOpen(false); return }
+
+    const ranked = ROLE_REGISTRY
+      .map(role => ({ role, score: scoreRoleMatch(role, q) }))
+      .filter(({ score }) => score >= 40)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 6)
+      .map(({ role }) => role)
+
+    setSuggestions(ranked)
+    setOpen(ranked.length > 0 || q.length >= 3) // show "Continue with..." even if no match
+    setHighlighted(-1)
+
+    // Stage 2 (AI): only fires when input > 5 chars AND local search found nothing.
+    // 99% of students are served by Stage 1 (local scoring + aliases).
+    // AI adds cost per call — guard it tightly.
+    clearTimeout(aiTimer.current)
+    if (q.length > 5 && ranked.length === 0) {
+      aiTimer.current = setTimeout(() => resolveByAI(q), 700)
+    }
+
+    return () => clearTimeout(aiTimer.current)
+  }, [value])
+
+  async function resolveByAI(query) {
+    setAiLoading(true)
+    try {
+      const res = await fetch(`${SERVER}/api/resolve-role`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query,
+          roles: ROLE_REGISTRY.map(r => ({ id: r.id, label: r.label, stream: r.stream, keywords: (r.keywords || []).slice(0, 6) })),
+        }),
+        signal: AbortSignal.timeout(6000),
+      })
+      if (res.ok) {
+        const { roleIds } = await res.json()
+        if (roleIds?.length > 0) {
+          const aiRoles = roleIds.map(id => ROLE_REGISTRY.find(r => r.id === id)).filter(Boolean)
+          setSuggestions(prev => {
+            const seen = new Set(prev.map(r => r.id))
+            return [...prev, ...aiRoles.filter(r => !seen.has(r.id))].slice(0, 6)
+          })
+          setOpen(true)
+        }
+      }
+    } catch (_) { /* silent — local results are good enough */ }
+    setAiLoading(false)
+  }
+
+  function handleSelect(role) {
+    onChange(role.label)
+    onRoleSelect(role)
+    setOpen(false)
+    setSuggestions([])
+  }
+
+  function handleContinueWithTyped() {
+    // No canonical role match — pass null so we fall back to free-text
+    onRoleSelect(null)
+    setOpen(false)
+  }
+
+  function handleKeyDown(e) {
+    if (!open) return
+    const max = suggestions.length - 1
+    if (e.key === "ArrowDown")  { e.preventDefault(); setHighlighted(h => Math.min(h + 1, max)) }
+    if (e.key === "ArrowUp")    { e.preventDefault(); setHighlighted(h => Math.max(h - 1, -1)) }
+    if (e.key === "Enter" && highlighted >= 0) { e.preventDefault(); handleSelect(suggestions[highlighted]) }
+    if (e.key === "Escape")     setOpen(false)
+  }
+
+  const q = value.trim()
+  const showContinue = q.length >= 3 && suggestions.length === 0 && !aiLoading
+  const badge = selectedRole ? (STREAM_BADGES[selectedRole.stream] || STREAM_BADGES.IT) : null
+
+  return (
+    <div style={{ position: "relative" }}>
+      {/* Input */}
+      <div style={{ position: "relative" }}>
+        <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 15, pointerEvents: "none", zIndex: 1 }}>
+          {selectedRole ? "✅" : "🎯"}
+        </span>
+        <input
+          ref={inputRef}
+          value={value}
+          onChange={e => {
+            onChange(e.target.value)
+            if (!e.target.value.trim()) onRoleSelect(null)
+          }}
+          onKeyDown={handleKeyDown}
+          onFocus={e => {
+            e.target.style.borderColor = "#6366F160"
+            if (suggestions.length > 0 || q.length >= 3) setOpen(true)
+          }}
+          onBlur={e => {
+            e.target.style.borderColor = selectedRole ? "#6366F1" : "#E8E3DA"
+          }}
+          placeholder={selectedRole ? "" : ROLE_SEARCH_EXAMPLES[phIdx]}
+          style={{
+            width: "100%", padding: "13px 42px 13px 44px",
+            borderRadius: T.radius,
+            background: T.raised,
+            border: `1px solid ${selectedRole ? "#6366F1" : "#E8E3DA"}`,
+            color: T.text, fontSize: 14, fontFamily: T.body,
+            outline: "none", boxSizing: "border-box",
+            transition: "border-color 0.15s, box-shadow 0.15s",
+            boxShadow: selectedRole ? "0 0 0 3px rgba(99,102,241,0.12)" : "none",
+          }}
+        />
+        <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", zIndex: 1 }}>
+          {aiLoading
+            ? <Spinner size={16} />
+            : (value.length > 0
+                ? <button
+                    onClick={() => { onChange(""); onRoleSelect(null); inputRef.current?.focus() }}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: T.muted, fontSize: 15, padding: 0, lineHeight: 1 }}
+                  >✕</button>
+                : null)
+          }
+        </span>
+      </div>
+
+      {/* Role preview card — shown after a canonical role is selected */}
+      {selectedRole && (() => {
+        const b = badge
+        const workbench = ARENA_WORKBENCH[selectedRole.arenaKey] || "Arena Workbench"
+        const skillCount = (selectedRole.auraSkills || []).length
+        const topics = (selectedRole.interviewFocus || []).slice(0, 3).join(", ")
+        const companies = ROLE_COMPANIES[selectedRole.id] || []
+        return (
+          <div style={{
+            marginTop: 10,
+            background: "rgba(99,102,241,0.05)",
+            border: "1px solid rgba(99,102,241,0.20)",
+            borderRadius: T.radiusLg, padding: "14px 16px",
+          }}>
+            {/* Header row */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <span style={{ fontSize: 14 }}>✅</span>
+              <span style={{ fontWeight: 800, fontSize: 14, color: T.text }}>{selectedRole.label}</span>
+              <span style={{ fontSize: 10, fontWeight: 800, background: b.bg, color: b.color, padding: "2px 7px", borderRadius: 100, marginLeft: 2 }}>
+                {b.label}
+              </span>
+              <span style={{ marginLeft: "auto", fontSize: 11, color: "#6366F1", fontWeight: 600 }}>Your platform will be fully personalised</span>
+            </div>
+            {/* 4-column preview grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+              {[
+                { icon: "⚔️", label: "Arena", value: workbench },
+                { icon: "📊", label: "Skills tracked", value: `${skillCount} skills` },
+                { icon: "🎤", label: "AI Interview", value: topics || "Role-specific questions" },
+                { icon: "🏢", label: "Top hirers", value: companies.join(", ") || "Industry leaders" },
+              ].map((item, i) => (
+                <div key={i} style={{
+                  background: "#FFFFFF", borderRadius: T.radius,
+                  border: "1px solid rgba(0,0,0,0.05)", padding: "10px 12px",
+                }}>
+                  <div style={{ fontSize: 11, marginBottom: 3 }}>{item.icon} <span style={{ fontSize: 10, fontWeight: 700, color: T.muted, letterSpacing: "0.06em", textTransform: "uppercase" }}>{item.label}</span></div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: T.text, lineHeight: 1.4 }}>{item.value}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* Dropdown */}
+      {open && (
+        <div
+          ref={dropRef}
+          style={{
+            position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0,
+            background: "#FFFFFF", border: "1px solid #E8E3DA",
+            borderRadius: T.radiusLg, boxShadow: "0 8px 32px rgba(0,0,0,0.13)",
+            zIndex: 1000, overflow: "hidden",
+          }}
+        >
+          {suggestions.map((role, i) => {
+            const b = STREAM_BADGES[role.stream] || STREAM_BADGES.IT
+            return (
+              <div
+                key={role.id}
+                onMouseDown={e => { e.preventDefault(); handleSelect(role) }}
+                onMouseEnter={() => setHighlighted(i)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "11px 14px", cursor: "pointer",
+                  background: highlighted === i ? "#F8F7FF" : "#FFFFFF",
+                  borderBottom: i < suggestions.length - 1 ? "1px solid #F5F5F5" : "none",
+                  transition: "background 0.1s",
+                }}
+              >
+                <span style={{ fontSize: 10, fontWeight: 800, background: b.bg, color: b.color, padding: "2px 7px", borderRadius: 100, flexShrink: 0 }}>
+                  {b.label}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{role.label}</div>
+                  {role.keywords?.length > 0 && (
+                    <div style={{ fontSize: 11, color: T.muted, marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {role.keywords.slice(0, 4).join(" · ")}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+
+          {/* AI loading row */}
+          {aiLoading && (
+            <div style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 10, color: T.muted, fontSize: 13, borderTop: suggestions.length > 0 ? "1px solid #F5F5F5" : "none" }}>
+              <Spinner size={14} />
+              <span>Searching more roles…</span>
+            </div>
+          )}
+
+          {/* "Continue with typed text" fallback */}
+          {showContinue && !aiLoading && (
+            <div
+              onMouseDown={e => { e.preventDefault(); handleContinueWithTyped() }}
+              style={{
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "12px 14px", cursor: "pointer",
+                background: "#FAFAFA",
+                borderTop: suggestions.length > 0 ? "1px solid #F5F5F5" : "none",
+              }}
+            >
+              <span style={{ fontSize: 14 }}>🔍</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Continue with "{q}"</div>
+                <div style={{ fontSize: 11, color: T.muted }}>Not in our registry — we'll map to the closest available track</div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════════
 // MAIN ONBOARDING COMPONENT
 // KEY FIX: reads "capabilio_selected_path" (matches what LandingPage writes)
 // ══════════════════════════════════════════════════════════════════
@@ -1003,6 +1480,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
 
   // Student
   const [keyword, setKeyword] = useState("")
+  const [selectedRole, setSelectedRole] = useState(null) // canonical {id,label,stream,arenaKey,slug,...}
   // College / branch — pre-filled from signup user_metadata, editable
   const [college, setCollege] = useState(user?.user_metadata?.college || "")
   const [branch,  setBranch]  = useState(user?.user_metadata?.branch  || "")
@@ -1044,6 +1522,15 @@ export default function Onboarding({ user, onComplete, onBack }) {
   const [orgGstCin, setOrgGstCin] = useState("")             // GST / CIN (optional)
   const [orgSubmitting, setOrgSubmitting] = useState(false)
   const [orgError, setOrgError] = useState("")
+  // Company onboarding wizard (5 steps) — additive fields, see
+  // add_company_onboarding_wizard_fields migration for the matching DB columns.
+  const [orgHiringGoals, setOrgHiringGoals]         = useState([]) // multi-select — Hiring Intelligence
+  const [orgKeyDomains, setOrgKeyDomains]           = useState([]) // multi-select — Hiring Intelligence
+  const [orgWorkEmail, setOrgWorkEmail]             = useState("") // Verification step
+  const [orgSelectedModules, setOrgSelectedModules] = useState([]) // AI Workspace Setup step
+  const [orgInitializing, setOrgInitializing]       = useState(false) // true while the setup checklist animates
+  const [orgInitDone, setOrgInitDone]               = useState(0)     // how many setup tasks have "completed" so far
+  const [orgInitError, setOrgInitError]             = useState("")
 
   // Quiz
   const [questions, setQuestions] = useState([])
@@ -1075,6 +1562,25 @@ export default function Onboarding({ user, onComplete, onBack }) {
   const [proError, setProError] = useState("")
   const [proResumeData, setProResumeData] = useState(null)
   const [linkedinData, setLinkedinData] = useState(null)
+
+  // ── Role selection handler (student onboarding) ─────────────────
+  // Maps a role's stream → the branch value expected downstream
+  const STREAM_TO_BRANCH = {
+    IT: "IT", ECE: "ECE", EEE: "EEE",
+    Mechanical: "Mechanical", Civil: "Civil",
+    IoT: "IoT", Pharmacy: "Pharmacy", MBA: "MBA",
+    Medical: "Other",
+  }
+
+  const handleRoleSelect = useCallback((role) => {
+    setSelectedRole(role)
+    if (role) {
+      setKeyword(role.label)
+      // Auto-derive branch for downstream career_track_slug resolution
+      const derivedBranch = STREAM_TO_BRANCH[role.stream] || branch || ""
+      setBranch(prev => prev || derivedBranch) // don't override user's manual branch pick
+    }
+  }, [branch])
 
   // ── All useEffect hooks ──────────────────────────────────────────
   useEffect(() => {
@@ -1398,15 +1904,13 @@ export default function Onboarding({ user, onComplete, onBack }) {
   const handleGoToDashboard = async () => {
     if (!result||savingResult) return
     setSavingResult(true)
-    // Show recommendation popup BEFORE going to plan step
-    setShowRecoPopup(true)
     try {
       const username = slugifyUsername(getUserDisplayName())
       let resumeBase64 = ""
       if (resumeFile && resumeFile.size < 3 * 1024 * 1024) {
         try { resumeBase64 = await fileToBase64(resumeFile) } catch {}
       }
-      const payload = buildUserSavePayload({ path:"student", user: { ...user, displayName: getUserDisplayName() }, username, data:{ keyword, college, branch, result, resumeData, resumeFileObj: resumeFile, resumeBase64 } })
+      const payload = buildUserSavePayload({ path:"student", user: { ...user, displayName: getUserDisplayName() }, username, data:{ keyword, college, branch, result, resumeData, resumeFileObj: resumeFile, resumeBase64, selectedRole } })
       // ✅ Use Supabase via userDoc (user.id, not user.uid)
       // ⚠️  Do NOT set onboarding_complete here — that would fire the real-time
       // listener in App.jsx and unmount Onboarding before the plan step shows.
@@ -1424,8 +1928,10 @@ export default function Onboarding({ user, onComplete, onBack }) {
       })
     } catch (err) { console.warn("Profile save failed:", err) }
     setSavingResult(false)
+    // Show RecoPopup only AFTER save is complete — prevents it appearing while
+    // the spinner is still running (race condition fix).
     // setStep("plan") is called by RecoPopup's "Continue to Dashboard →" button.
-    // Do NOT call it here — popup handles the transition.
+    setShowRecoPopup(true)
   }
 
   const handleProGoToDashboard = async () => {
@@ -1512,6 +2018,86 @@ export default function Onboarding({ user, onComplete, onBack }) {
       setOrgError("Failed to save profile. Please try again.")
       setOrgSubmitting(false)
     }
+  }
+
+  // Company onboarding wizard (5 steps) — separate from handleOrgSubmit
+  // deliberately, so the college flow (org-college → handleOrgSubmit →
+  // org-preview) is never touched by this redesign. Called from the "AI
+  // Workspace Setup" step once modules are picked; does the real profile
+  // write, then plays a short checklist animation before landing on the new
+  // company-only Welcome Dashboard step.
+  const COMPANY_SETUP_TASKS = [
+    "Creating your company profile",
+    "Applying your hiring domains",
+    "Configuring selected modules",
+    "Preparing your Talent Network access",
+  ]
+
+  const handleCompanySubmit = async () => {
+    setOrgInitError(""); setOrgInitDone(0); setOrgInitializing(true)
+    try {
+      const displayName = user?.user_metadata?.full_name || user?.user_metadata?.name || orgAdminName || user?.email?.split("@")[0] || ""
+      const username = slugifyUsername(displayName || orgInstName)
+      const payload = {
+        displayName, email: user?.email || "", username,
+        path: "institution", accountType: "institution",
+        org_type: "company",
+        org_name: orgInstName,
+        org_website: orgWebsite,
+        org_industry: orgIndustry,
+        org_company_size: orgCompanySize,
+        org_hiring_goals: orgHiringGoals,
+        org_hiring_volume: orgHiringVolume,
+        org_key_domains: orgKeyDomains,
+        org_key_roles: orgKeyRoles,
+        org_work_email: orgWorkEmail.trim(),
+        org_admin_name: orgAdminName,
+        org_admin_role: orgAdminRole,
+        org_gst_cin: orgGstCin,
+        org_selected_modules: orgSelectedModules,
+        authorityType: "Company",
+        verifiedAuthority: false, verificationStatus: "pending",
+        followers: 0, following: 0, posts: 0,
+        onboardingComplete: false, onboarding_complete: false,
+        createdAt: new Date().toISOString(),
+      }
+      // The real save happens immediately — the staged checklist below is a
+      // genuine progress indicator for this one write, not a fake delay
+      // pretending to be a bigger job. Each "task" completing on the screen
+      // corresponds to a fraction of the same completed save.
+      await userDoc.set(user.id, payload)
+
+      for (let i = 0; i < COMPANY_SETUP_TASKS.length; i++) {
+        await new Promise(r => setTimeout(r, 380))
+        setOrgInitDone(i + 1)
+      }
+      await new Promise(r => setTimeout(r, 250))
+      setOrgInitializing(false)
+      transition("org-company-welcome")
+    } catch (err) {
+      console.warn("Company profile save failed:", err)
+      setOrgInitError("Failed to save your workspace. Please try again.")
+      setOrgInitializing(false)
+    }
+  }
+
+  // Institution's only plan is the free "org_trial" tier (see config/plans.js —
+  // no paid institution plans exist yet), so the Welcome Dashboard's final CTA
+  // can complete onboarding directly rather than routing through the generic
+  // "plan" step, which would otherwise re-derive the same free-plan branch.
+  const handleEnterCompanyWorkspace = async () => {
+    setOrgSubmitting(true)
+    try {
+      if (user?.id) {
+        await userDoc.update(user.id, {
+          subscription: "org_trial",
+          subscriptionCycleStart: new Date().toISOString(),
+          path: "institution",
+        })
+      }
+    } catch (err) { console.warn("Plan save failed:", err) }
+    setOrgSubmitting(false)
+    onComplete?.("institution")
   }
 
   // ── Plan selection handler ───────────────────────────────────────
@@ -1852,7 +2438,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
 
   // ══ SCREEN: STUDENT SEARCH ════════════════════════════════════════
   if (step === "search") {
-    const canGo = keyword.trim().length > 1
+    const canGo = selectedRole !== null || keyword.trim().length > 1
     const pt = getPathTheme("student")
     return (
       <Screen style={{ background: pt.bg }}>
@@ -1861,9 +2447,18 @@ export default function Onboarding({ user, onComplete, onBack }) {
           <Card accent={pt.accentBd}>
             <BackBtn onClick={()=>{ setPath(null); transition("path") }} />
             <PathBanner pathKey="student" stepIndex={0} />
-            <H2>Pick your domain</H2>
-            <Sub>You'll get 25 beginner-level assessment questions focused on fundamentals and early-stage practical reasoning. Your ELO starts at 400 from here.</Sub>
+            <H2>What role are you preparing for?</H2>
+            <Sub>We'll calibrate 25 beginner-level questions to your exact target role. Your ELO baseline starts at 400.</Sub>
             {apiError && <div style={{ background:`${T.red}10`,border:`1px solid ${T.red}30`,borderRadius:T.radius,padding:"12px 14px",color:"#F87171",fontSize:13,marginBottom:16 }}>{apiError}</div>}
+            {/* Role picker — primary input. Branch auto-derives from selected role. */}
+            <FieldRow label="🎯 Target role">
+              <RoleSearchPicker
+                value={keyword}
+                onChange={setKeyword}
+                onRoleSelect={handleRoleSelect}
+                selectedRole={selectedRole}
+              />
+            </FieldRow>
             {/* College + Branch — pre-filled from signup, editable */}
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16 }}>
               <FieldRow label="College / University">
@@ -1894,9 +2489,6 @@ export default function Onboarding({ user, onComplete, onBack }) {
                 </FieldSelect>
               </FieldRow>
             </div>
-            <FieldRow label="Target role / domain">
-              <FieldInput value={keyword} onChange={e=>setKeyword(e.target.value)} placeholder="e.g. Frontend Developer, Data Analyst, ECE Engineer" />
-            </FieldRow>
             <FieldRow label="Resume upload — optional" hint={resumeStatus==="done"?"✓ Resume parsed successfully.":resumeStatus==="reading"?"Reading…":resumeStatus==="error"?"Uploaded but parsing was partial.":"Optional — used to personalise questions."}>
               <UploadBox file={resumeFile} status={resumeStatus} onUpload={handleFileUpload} label="Upload resume or profile PDF" hint="Personalises beginner-level questions around your foundation areas." color={T.primary} />
             </FieldRow>
@@ -2437,7 +3029,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
 
               {/* Company / Organisation card */}
               <div
-                onClick={() => { setOrgSubType("company"); transition("org-company") }}
+                onClick={() => { setOrgSubType("company"); transition("org-company-workspace") }}
                 style={{ borderRadius:16, border:"1.5px solid rgba(5,150,105,0.3)", background:"rgba(0,0,0,0.02)", padding:"22px 20px", cursor:"pointer", transition:"all 0.18s" }}
                 onMouseEnter={e=>{ e.currentTarget.style.borderColor="#059669"; e.currentTarget.style.background="rgba(5,150,105,0.05)"; e.currentTarget.style.boxShadow="0 0 24px rgba(5,150,105,0.15)" }}
                 onMouseLeave={e=>{ e.currentTarget.style.borderColor="rgba(5,150,105,0.3)"; e.currentTarget.style.background="rgba(0,0,0,0.02)"; e.currentTarget.style.boxShadow="none" }}
@@ -2586,12 +3178,17 @@ export default function Onboarding({ user, onComplete, onBack }) {
     )
   }
 
-  // ══ SCREEN: ORG COMPANY PROFILE ══════════════════════════════════
-  if (step === "org-company") {
-    const greenAccent = "#059669"
-    const greenBg    = "rgba(5,150,105,0.10)"
-    const greenBd    = "rgba(5,150,105,0.28)"
-    const canSubmit  = orgInstName.trim() && orgAdminName.trim() && orgAdminRole.trim() && orgIndustry && orgCompanySize && orgHiringVolume
+  // ══════════════════════════════════════════════════════════════════
+  // COMPANY ONBOARDING WIZARD — 5 steps, company org_type only.
+  // College flow (org-college → handleOrgSubmit → org-preview) is untouched.
+  // ══════════════════════════════════════════════════════════════════
+  const greenAccent = "#059669"
+  const greenBg    = "rgba(5,150,105,0.10)"
+  const greenBd    = "rgba(5,150,105,0.28)"
+
+  // ── STEP 1 of 5: Create Your AI Hiring Workspace ──────────────────
+  if (step === "org-company-workspace") {
+    const canSubmit = orgInstName.trim() && orgIndustry && orgCompanySize
 
     return (
       <Screen style={{ background:`radial-gradient(ellipse at 20% 50%, rgba(5,150,105,0.10) 0%, transparent 55%), #FFFFFF` }}>
@@ -2599,22 +3196,22 @@ export default function Onboarding({ user, onComplete, onBack }) {
         <div style={{ width:"100%", maxWidth:720 }}>
           <Card accent={greenBd} style={{ padding:"28px 28px 32px" }}>
             <BackBtn onClick={()=>transition("org-type")} />
-            <PathBanner pathKey="institution" stepIndex={1} />
+            <CompanyWizardDots activeIdx={0} />
 
             <div style={{ background:greenBg, border:`1px solid ${greenBd}`, borderRadius:14, padding:"14px 18px", marginBottom:22, display:"flex", alignItems:"center", gap:14 }}>
               <div style={{ fontSize:28, flexShrink:0 }}>🏢</div>
               <div>
-                <div style={{ fontSize:17, fontWeight:800, color:T.text, marginBottom:3 }}>Set up your Company Profile</div>
-                <div style={{ fontSize:12, color:T.muted, lineHeight:1.6 }}>Access verified talent, build Company ELO, and integrate your ATS.</div>
+                <div style={{ fontSize:17, fontWeight:800, color:T.text, marginBottom:3 }}>Create Your AI Hiring Workspace</div>
+                <div style={{ fontSize:12, color:T.muted, lineHeight:1.6 }}>Step 1 of 5 — tell us who you are. Takes under a minute.</div>
               </div>
             </div>
 
-            {orgError && <div style={{ background:"rgba(244,63,94,0.08)", border:"1px solid rgba(244,63,94,0.25)", borderRadius:T.radius, padding:"12px 14px", color:"#F43F5E", fontSize:13, marginBottom:16 }}>{orgError}</div>}
-
-            <div style={{ fontSize:10, fontWeight:700, color:T.muted, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:12 }}>Company Details</div>
-
-            <FieldRow label="Company Name *">
+            <FieldRow label="Organisation Name *">
               <FieldInput value={orgInstName} onChange={e=>setOrgInstName(e.target.value)} placeholder="e.g. Razorpay, Infosys, Zoho" />
+            </FieldRow>
+
+            <FieldRow label="Website" hint="Optional">
+              <FieldInput value={orgWebsite} onChange={e=>setOrgWebsite(e.target.value)} placeholder="https://yourcompany.com" />
             </FieldRow>
 
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
@@ -2649,43 +3246,113 @@ export default function Onboarding({ user, onComplete, onBack }) {
               </FieldRow>
             </div>
 
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
-              <FieldRow label="Annual Hiring Volume *" hint="Hires per year">
-                <FieldSelect value={orgHiringVolume} onChange={e=>setOrgHiringVolume(e.target.value)}>
-                  <option value="">Hires per year</option>
-                  <option value="1-10">1 – 10</option>
-                  <option value="11-50">11 – 50</option>
-                  <option value="51-200">51 – 200</option>
-                  <option value="201-500">201 – 500</option>
-                  <option value="500+">500+</option>
-                </FieldSelect>
-              </FieldRow>
-              <FieldRow label="Current ATS" hint="Optional — we'll help integrate">
-                <FieldSelect value={orgCurrentATS} onChange={e=>setOrgCurrentATS(e.target.value)}>
-                  <option value="">Current ATS (optional)</option>
-                  <option value="None">None / Manual process</option>
-                  <option value="Workday">Workday</option>
-                  <option value="Greenhouse">Greenhouse</option>
-                  <option value="Lever">Lever</option>
-                  <option value="Keka">Keka</option>
-                  <option value="Darwinbox">Darwinbox</option>
-                  <option value="Zoho Recruit">Zoho Recruit</option>
-                  <option value="BambooHR">BambooHR</option>
-                  <option value="Naukri RMS">Naukri RMS</option>
-                  <option value="Other">Other</option>
-                </FieldSelect>
-              </FieldRow>
+            <PrimaryBtn onClick={()=>transition("org-company-hiring")} disabled={!canSubmit} color={greenAccent}>
+              Continue →
+            </PrimaryBtn>
+          </Card>
+        </div>
+      </Screen>
+    )
+  }
+
+  // ── STEP 2 of 5: Hiring Intelligence ──────────────────────────────
+  if (step === "org-company-hiring") {
+    const canSubmit = orgHiringVolume && orgHiringGoals.length > 0 && orgKeyDomains.length > 0
+    const GOALS   = ["Build a fresh-graduate pipeline", "Scale a specific team fast", "Reduce agency hiring costs", "Build employer brand & visibility", "Access verified, pre-vetted talent only", "Improve hiring speed & quality"]
+    const DOMAINS = ["Engineering", "Product", "Design", "Data / Analytics", "Sales", "Marketing", "Operations", "Finance", "HR", "Customer Success", "Other"]
+    const toggleGoal   = (g) => setOrgHiringGoals(prev => prev.includes(g) ? prev.filter(x=>x!==g) : [...prev, g])
+    const toggleDomain = (d) => setOrgKeyDomains(prev => prev.includes(d) ? prev.filter(x=>x!==d) : [...prev, d])
+
+    return (
+      <Screen style={{ background:`radial-gradient(ellipse at 20% 50%, rgba(5,150,105,0.10) 0%, transparent 55%), #FFFFFF` }}>
+        <style>{ONBOARDING_STYLES}</style>
+        <div style={{ width:"100%", maxWidth:720 }}>
+          <Card accent={greenBd} style={{ padding:"28px 28px 32px" }}>
+            <BackBtn onClick={()=>transition("org-company-workspace")} />
+            <CompanyWizardDots activeIdx={1} />
+
+            <div style={{ background:greenBg, border:`1px solid ${greenBd}`, borderRadius:14, padding:"14px 18px", marginBottom:22, display:"flex", alignItems:"center", gap:14 }}>
+              <div style={{ fontSize:28, flexShrink:0 }}>🎯</div>
+              <div>
+                <div style={{ fontSize:17, fontWeight:800, color:T.text, marginBottom:3 }}>Hiring Intelligence</div>
+                <div style={{ fontSize:12, color:T.muted, lineHeight:1.6 }}>This shapes what candidates and colleges we surface for you first.</div>
+              </div>
             </div>
 
-            <FieldRow label="Key Roles You're Hiring For" hint="Optional — helps surface relevant candidates">
+            {orgError && <div style={{ background:"rgba(244,63,94,0.08)", border:"1px solid rgba(244,63,94,0.25)", borderRadius:T.radius, padding:"12px 14px", color:"#F43F5E", fontSize:13, marginBottom:16 }}>{orgError}</div>}
+
+            <FieldRow label="Hiring Goals *" hint="Select all that apply">
+              <ChipMultiSelect options={GOALS} selected={orgHiringGoals} onToggle={toggleGoal} accent={greenAccent} accentBg={greenBg} />
+            </FieldRow>
+
+            <FieldRow label="Annual Hiring Volume *" hint="Hires per year">
+              <FieldSelect value={orgHiringVolume} onChange={e=>setOrgHiringVolume(e.target.value)}>
+                <option value="">Hires per year</option>
+                <option value="1-10">1 – 10</option>
+                <option value="11-50">11 – 50</option>
+                <option value="51-200">51 – 200</option>
+                <option value="201-500">201 – 500</option>
+                <option value="500+">500+</option>
+              </FieldSelect>
+            </FieldRow>
+
+            <FieldRow label="Key Hiring Domains *" hint="Select all that apply">
+              <ChipMultiSelect options={DOMAINS} selected={orgKeyDomains} onToggle={toggleDomain} accent={greenAccent} accentBg={greenBg} />
+            </FieldRow>
+
+            <FieldRow label="Specific roles (optional)" hint="e.g. Backend Engineer, Data Analyst, DevOps — helps surface exact-match candidates">
               <FieldInput value={orgKeyRoles} onChange={e=>setOrgKeyRoles(e.target.value)} placeholder="e.g. Backend Engineer, Data Analyst, DevOps" />
             </FieldRow>
 
-            <FieldRow label="GST / CIN Number" hint="Optional — adds Verified badge to company profile">
-              <FieldInput value={orgGstCin} onChange={e=>setOrgGstCin(e.target.value)} placeholder="e.g. 22AAAAA0000A1Z5" />
+            <FieldRow label="Current ATS" hint="Optional — we'll help integrate">
+              <FieldSelect value={orgCurrentATS} onChange={e=>setOrgCurrentATS(e.target.value)}>
+                <option value="">Current ATS (optional)</option>
+                <option value="None">None / Manual process</option>
+                <option value="Workday">Workday</option>
+                <option value="Greenhouse">Greenhouse</option>
+                <option value="Lever">Lever</option>
+                <option value="Keka">Keka</option>
+                <option value="Darwinbox">Darwinbox</option>
+                <option value="Zoho Recruit">Zoho Recruit</option>
+                <option value="BambooHR">BambooHR</option>
+                <option value="Naukri RMS">Naukri RMS</option>
+                <option value="Other">Other</option>
+              </FieldSelect>
             </FieldRow>
 
-            <div style={{ fontSize:10, fontWeight:700, color:T.muted, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:12, marginTop:4 }}>Your Details (HR / Talent Lead)</div>
+            <PrimaryBtn onClick={()=>transition("org-company-verify")} disabled={!canSubmit} color={greenAccent}>
+              Continue →
+            </PrimaryBtn>
+          </Card>
+        </div>
+      </Screen>
+    )
+  }
+
+  // ── STEP 3 of 5: Verification ─────────────────────────────────────
+  if (step === "org-company-verify") {
+    const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(orgWorkEmail.trim())
+    const canSubmit  = emailValid && orgAdminName.trim() && orgAdminRole.trim()
+
+    return (
+      <Screen style={{ background:`radial-gradient(ellipse at 20% 50%, rgba(5,150,105,0.10) 0%, transparent 55%), #FFFFFF` }}>
+        <style>{ONBOARDING_STYLES}</style>
+        <div style={{ width:"100%", maxWidth:720 }}>
+          <Card accent={greenBd} style={{ padding:"28px 28px 32px" }}>
+            <BackBtn onClick={()=>transition("org-company-hiring")} />
+            <CompanyWizardDots activeIdx={2} />
+
+            <div style={{ background:greenBg, border:`1px solid ${greenBd}`, borderRadius:14, padding:"14px 18px", marginBottom:22, display:"flex", alignItems:"center", gap:14 }}>
+              <div style={{ fontSize:28, flexShrink:0 }}>🔒</div>
+              <div>
+                <div style={{ fontSize:17, fontWeight:800, color:T.text, marginBottom:3 }}>Verification</div>
+                <div style={{ fontSize:12, color:T.muted, lineHeight:1.6 }}>Your work email confirms you represent this company. GST/CIN is optional but adds a Verified badge later.</div>
+              </div>
+            </div>
+
+            <FieldRow label="Work Email *" hint="Your company email — not necessarily your login email">
+              <FieldInput value={orgWorkEmail} onChange={e=>setOrgWorkEmail(e.target.value)} placeholder="e.g. priya@yourcompany.com" />
+            </FieldRow>
 
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
               <FieldRow label="Your Name *">
@@ -2696,22 +3363,187 @@ export default function Onboarding({ user, onComplete, onBack }) {
               </FieldRow>
             </div>
 
-            <FieldRow label="Company Website" hint="Optional">
-              <FieldInput value={orgWebsite} onChange={e=>setOrgWebsite(e.target.value)} placeholder="https://yourcompany.com" />
+            <FieldRow label="GST / CIN Number" hint="Optional — adds a Verified badge to your company profile">
+              <FieldInput value={orgGstCin} onChange={e=>setOrgGstCin(e.target.value)} placeholder="e.g. 22AAAAA0000A1Z5" />
+            </FieldRow>
+
+            <div style={{ fontSize:11, color:T.muted, fontFamily:T.body, marginBottom:20, lineHeight:1.7, padding:"10px 14px", background:"#F9F8F6", border:`1px solid ${T.border}`, borderRadius:10 }}>
+              We don't run an email OTP check yet — your work email is recorded as <strong>pending verification</strong> and reviewed before your Verified badge is granted.
+            </div>
+
+            <PrimaryBtn onClick={()=>transition("org-company-modules")} disabled={!canSubmit} color={greenAccent}>
+              Continue →
+            </PrimaryBtn>
+          </Card>
+        </div>
+      </Screen>
+    )
+  }
+
+  // ── STEP 4 of 5: AI Workspace Setup ───────────────────────────────
+  if (step === "org-company-modules") {
+    const MODULES = [
+      "Talent Network (college partnerships)",
+      "Verified Company Profile",
+      "ATS Integration",
+      "Anonymous Rating System",
+      "Company ELO",
+      "Culture DNA",
+    ]
+    const toggleModule = (m) => setOrgSelectedModules(prev => prev.includes(m) ? prev.filter(x=>x!==m) : [...prev, m])
+    const canSubmit = orgSelectedModules.length > 0
+
+    if (orgInitializing) {
+      return (
+        <Screen style={{ background:`radial-gradient(ellipse at 20% 50%, rgba(5,150,105,0.10) 0%, transparent 55%), #FFFFFF` }}>
+          <style>{ONBOARDING_STYLES}</style>
+          <div style={{ width:"100%", maxWidth:560 }}>
+            <Card accent={greenBd} style={{ padding:"32px 32px 36px", textAlign:"center" }}>
+              <Spinner size={30} color={greenAccent} />
+              <div style={{ fontFamily:T.display, fontSize:18, fontWeight:800, color:T.text, margin:"16px 0 22px" }}>Setting up your workspace…</div>
+              <div style={{ textAlign:"left", display:"flex", flexDirection:"column", gap:10 }}>
+                {COMPANY_SETUP_TASKS.map((task, i) => (
+                  <div key={task} style={{ display:"flex", alignItems:"center", gap:10, fontSize:13, color: i < orgInitDone ? T.text : T.muted, fontFamily:T.body, transition:"color 0.2s" }}>
+                    <span style={{ width:18, textAlign:"center" }}>{i < orgInitDone ? "✅" : (i === orgInitDone ? <Spinner size={13} color={greenAccent} /> : "○")}</span>
+                    {task}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        </Screen>
+      )
+    }
+
+    return (
+      <Screen style={{ background:`radial-gradient(ellipse at 20% 50%, rgba(5,150,105,0.10) 0%, transparent 55%), #FFFFFF` }}>
+        <style>{ONBOARDING_STYLES}</style>
+        <div style={{ width:"100%", maxWidth:720 }}>
+          <Card accent={greenBd} style={{ padding:"28px 28px 32px" }}>
+            <BackBtn onClick={()=>transition("org-company-verify")} />
+            <CompanyWizardDots activeIdx={3} />
+
+            <div style={{ background:greenBg, border:`1px solid ${greenBd}`, borderRadius:14, padding:"14px 18px", marginBottom:22, display:"flex", alignItems:"center", gap:14 }}>
+              <div style={{ fontSize:28, flexShrink:0 }}>⚙️</div>
+              <div>
+                <div style={{ fontSize:17, fontWeight:800, color:T.text, marginBottom:3 }}>AI Workspace Setup</div>
+                <div style={{ fontSize:12, color:T.muted, lineHeight:1.6 }}>Pick the modules you want active. You can turn on more later from Settings.</div>
+              </div>
+            </div>
+
+            {orgInitError && <div style={{ background:"rgba(244,63,94,0.08)", border:"1px solid rgba(244,63,94,0.25)", borderRadius:T.radius, padding:"12px 14px", color:"#F43F5E", fontSize:13, marginBottom:16 }}>{orgInitError}</div>}
+
+            <FieldRow label="Select Modules *" hint="Select all that apply">
+              <ChipMultiSelect options={MODULES} selected={orgSelectedModules} onToggle={toggleModule} accent={greenAccent} accentBg={greenBg} />
             </FieldRow>
 
             <div style={{ background:greenBg, border:`1px solid ${greenBd}`, borderRadius:12, padding:"12px 16px", marginBottom:20 }}>
-              <div style={{ fontSize:10, fontWeight:800, color:greenAccent, letterSpacing:"0.12em", textTransform:"uppercase", fontFamily:T.mono, marginBottom:8 }}>After setup, you get:</div>
+              <div style={{ fontSize:10, fontWeight:800, color:greenAccent, letterSpacing:"0.12em", textTransform:"uppercase", fontFamily:T.mono, marginBottom:8 }}>What each module does</div>
               {[
-                "🔍 Search & shortlist EPFO-verified candidates from Launchpad",
-                "🧬 Company ELO built from verified ratings — not self-reported",
-                "⭐ Anonymous Day-30 + exit review system (6 dimensions)",
-                "🔌 ATS integration (Workday, Greenhouse, Keka, Darwinbox)",
+                "🤝 Talent Network — connect with colleges, see student ELO with their consent, never contact info",
+                "🏢 Verified Company Profile — logo, culture, locations, GST/CIN verified badge",
+                "🔌 ATS Integration — sync Workday, Greenhouse, Lever, Keka, Darwinbox",
+                "⭐ Anonymous Rating System — Day-30 + exit ratings, identity stripped, min 5 before visible",
+                "🧬 Company ELO — built from anonymous ratings + hire quality + retention",
+                "🧠 Culture DNA — AI-generated fingerprint from ratings, posts, JDs, retention patterns",
               ].map((f,i)=><div key={i} style={{ fontSize:12, color:T.muted, marginBottom:4 }}>{f}</div>)}
             </div>
 
-            <PrimaryBtn onClick={handleOrgSubmit} disabled={!canSubmit} loading={orgSubmitting} color={greenAccent}>
-              Create Company Profile →
+            <PrimaryBtn onClick={handleCompanySubmit} disabled={!canSubmit} loading={orgSubmitting} color={greenAccent}>
+              Create My Workspace →
+            </PrimaryBtn>
+          </Card>
+        </div>
+      </Screen>
+    )
+  }
+
+  // ── STEP 5 of 5: Welcome Dashboard ────────────────────────────────
+  if (step === "org-company-welcome") {
+    // Rule-based, not an LLM call — computed directly from what was captured
+    // in steps 1-4. Labeled "Recommendations" rather than claiming live AI
+    // analysis, since there's no real usage data yet for a brand-new account.
+    const recommendations = []
+    if (orgHiringGoals.includes("Build a fresh-graduate pipeline"))
+      recommendations.push("You're building a fresh-graduate pipeline — start by connecting with a college through Talent Network.")
+    if (orgKeyDomains.length)
+      recommendations.push(`You're hiring for ${orgKeyDomains.slice(0,3).join(", ")}${orgKeyDomains.length > 3 ? " and more" : ""} — candidates matching these domains will be prioritized once a college connects with you.`)
+    if (!orgCurrentATS || orgCurrentATS === "None")
+      recommendations.push("You don't have an ATS connected yet — you can still track candidates manually inside Capabilio, or configure ATS Integration anytime from Settings.")
+    else
+      recommendations.push(`Connect your ${orgCurrentATS} account under ATS Integration to keep candidate data in sync.`)
+    if (!orgGstCin.trim())
+      recommendations.push("Add your GST/CIN number anytime from Settings to unlock the Verified badge on your company profile.")
+    if (recommendations.length === 0)
+      recommendations.push("Head into your workspace — connect a college via Talent Network to start seeing candidates.")
+
+    const checklist = [
+      { done: true,  label: "Company profile created" },
+      { done: false, label: "Work email verified", note: "pending review" },
+      { done: orgSelectedModules.includes("ATS Integration") && !!orgCurrentATS && orgCurrentATS !== "None", label: "ATS integration configured" },
+      { done: false, label: "First college connected via Talent Network", note: "0 connected so far" },
+      { done: false, label: "Invite your team", note: "coming soon" },
+    ]
+
+    return (
+      <Screen style={{ background:`radial-gradient(ellipse at 20% 50%, rgba(5,150,105,0.10) 0%, transparent 55%), #FFFFFF` }}>
+        <style>{ONBOARDING_STYLES}</style>
+        <div style={{ width:"100%", maxWidth:820 }}>
+          <Card accent={greenBd} style={{ padding:"28px 28px 32px" }}>
+            <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:greenBg, border:`1px solid ${greenBd}`, borderRadius:999, padding:"6px 14px", marginBottom:22 }}>
+              <span style={{ fontSize:12 }}>✅</span>
+              <span style={{ fontSize:10, fontWeight:800, color:greenAccent, letterSpacing:"0.14em", textTransform:"uppercase", fontFamily:T.mono }}>Workspace setup complete</span>
+            </div>
+
+            <div style={{ display:"flex", alignItems:"flex-start", gap:16, marginBottom:24, paddingBottom:22, borderBottom:`1px solid ${greenBd}` }}>
+              <div style={{ width:52, height:52, borderRadius:14, background:greenBg, border:`1px solid ${greenBd}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, flexShrink:0 }}>🏢</div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontFamily:T.display, fontSize:22, fontWeight:800, color:T.text, marginBottom:3 }}>
+                  Welcome, {orgInstName || "your workspace"} is live.
+                </div>
+                <div style={{ fontSize:13, color:T.muted, fontFamily:T.body }}>Here's where things stand today — and what to do next.</div>
+              </div>
+            </div>
+
+            {/* Talent Snapshot — honest zero-state, not fabricated numbers */}
+            <div style={{ fontSize:11, fontWeight:800, color:T.hint, letterSpacing:"0.14em", textTransform:"uppercase", fontFamily:T.mono, marginBottom:12 }}>Talent Snapshot</div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12, marginBottom:24 }}>
+              {[
+                { val:"0", sub:"Colleges connected — invite one via Talent Network" },
+                { val:"0", sub:"Candidates in view — unlocked once a college connects" },
+                { val:"—", sub:"Avg. time-to-shortlist — needs your first ratings" },
+              ].map((s,i)=>(
+                <div key={i} style={{ background:"#F9F8F6", border:`1px solid ${greenBd}`, borderRadius:12, padding:"12px 14px" }}>
+                  <div style={{ fontSize:20, fontWeight:800, color:greenAccent, fontFamily:T.display, marginBottom:4 }}>{s.val}</div>
+                  <div style={{ fontSize:11, color:T.muted, lineHeight:1.5, fontFamily:T.body }}>{s.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* AI Recommendations */}
+            <div style={{ fontSize:11, fontWeight:800, color:T.hint, letterSpacing:"0.14em", textTransform:"uppercase", fontFamily:T.mono, marginBottom:12 }}>Recommendations for you</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:24 }}>
+              {recommendations.map((r,i)=>(
+                <div key={i} style={{ display:"flex", gap:10, background:"#FFFFFF", border:`1px solid ${T.border}`, borderRadius:10, padding:"10px 14px", fontSize:12, color:T.text, lineHeight:1.6, fontFamily:T.body }}>
+                  <span>💡</span>{r}
+                </div>
+              ))}
+            </div>
+
+            {/* Workspace Completion Checklist */}
+            <div style={{ fontSize:11, fontWeight:800, color:T.hint, letterSpacing:"0.14em", textTransform:"uppercase", fontFamily:T.mono, marginBottom:12 }}>Workspace Completion Checklist</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:24 }}>
+              {checklist.map((c,i)=>(
+                <div key={i} style={{ display:"flex", alignItems:"center", gap:10, fontSize:13, color: c.done ? T.text : T.muted, fontFamily:T.body }}>
+                  <span style={{ width:18, textAlign:"center" }}>{c.done ? "✅" : "⬜"}</span>
+                  {c.label}
+                  {c.note && <span style={{ fontSize:11, color:T.hint, fontFamily:T.mono }}>({c.note})</span>}
+                </div>
+              ))}
+            </div>
+
+            <PrimaryBtn onClick={handleEnterCompanyWorkspace} loading={orgSubmitting} color={greenAccent}>
+              Enter Workspace →
             </PrimaryBtn>
           </Card>
         </div>
