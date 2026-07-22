@@ -1960,8 +1960,16 @@ export default function Onboarding({ user, onComplete, onBack }) {
         eloRating: guaranteedElo,
         keyword:  auraResult?.analysis?.domain || auraResult?.extractedData?.title || payload.keyword || "",
       })
+      // Professional's free tier is a real, currently-available plan (see
+      // config/plans.js) — no pricing screen needed to grant it. Paid tiers
+      // (orbit_pro/orbit_elite) remain available later via Settings/upgrade.
+      await userDoc.update(user.id, {
+        subscription: "free",
+        subscriptionCycleStart: new Date().toISOString(),
+      })
     } catch (err) { console.warn("Profile save failed:", err) }
-    setSavingResult(false); setStep("plan")
+    setSavingResult(false)
+    onComplete?.("professional")
   }
 
   const handleAuthSubmit = async () => {
@@ -2082,10 +2090,11 @@ export default function Onboarding({ user, onComplete, onBack }) {
   }
 
   // Institution's only plan is the free "org_trial" tier (see config/plans.js —
-  // no paid institution plans exist yet), so the Welcome Dashboard's final CTA
-  // can complete onboarding directly rather than routing through the generic
-  // "plan" step, which would otherwise re-derive the same free-plan branch.
-  const handleEnterCompanyWorkspace = async () => {
+  // no paid institution plans exist yet), so both the college (org-preview)
+  // and company (Welcome Dashboard) completion buttons can finish onboarding
+  // directly instead of routing through the pricing "plan" step. Shared by
+  // both org sub-types since there's exactly one plan either way.
+  const handleEnterInstitutionWorkspace = async () => {
     setOrgSubmitting(true)
     try {
       if (user?.id) {
@@ -2098,6 +2107,25 @@ export default function Onboarding({ user, onComplete, onBack }) {
     } catch (err) { console.warn("Plan save failed:", err) }
     setOrgSubmitting(false)
     onComplete?.("institution")
+  }
+
+  // Authority/Executive has no free tier (cheapest paid plan is "authority" at
+  // ₹1,499/mo) — per product decision, onboarding grants that lowest tier
+  // unbilled rather than showing a pricing screen up front. Real billing can
+  // be introduced later via Settings when the business is ready to charge.
+  const handleEnterAuthorityWorkspace = async () => {
+    setSavingPlan(true)
+    try {
+      if (user?.id) {
+        await userDoc.update(user.id, {
+          subscription: "authority",
+          subscriptionCycleStart: new Date().toISOString(),
+          path: "authority",
+        })
+      }
+    } catch (err) { console.warn("Plan save failed:", err) }
+    setSavingPlan(false)
+    onComplete?.("authority")
   }
 
   // ── Plan selection handler ───────────────────────────────────────
@@ -2861,11 +2889,11 @@ export default function Onboarding({ user, onComplete, onBack }) {
 
             {/* Note */}
             <div style={{ background:pt.accentBg, border:`1px solid ${pt.accentBd}`, borderRadius:12, padding:"12px 16px", marginBottom:24, fontSize:12, color:T.muted, fontFamily:T.body, lineHeight:1.7 }}>
-              <span style={{ color:pt.accent, fontWeight:700 }}>Next step:</span> Your profile goes live after verification. Pick a plan — higher tiers get lower Time Market commission, Signal Rooms hosting, Venture Radar access, and Deal Rooms.
+              <span style={{ color:pt.accent, fontWeight:700 }}>Next step:</span> Your profile goes live after verification. Time Market commission starts at 18% — lower tiers with Signal Rooms and Venture Radar access are available anytime from Settings.
             </div>
 
-            <PrimaryBtn onClick={()=>transition("plan")} color={pt.accent}>
-              Choose Your Plan →
+            <PrimaryBtn onClick={handleEnterAuthorityWorkspace} loading={savingPlan} color={pt.accent}>
+              Enter Your Workspace →
             </PrimaryBtn>
           </Card>
         </div>
@@ -2975,11 +3003,11 @@ export default function Onboarding({ user, onComplete, onBack }) {
             )}
 
             <div style={{ fontSize:12, color:T.muted, fontFamily:T.body, marginBottom:20, lineHeight:1.7, padding:"10px 14px", background:pt.accentBg, border:`1px solid ${pt.accentBd}`, borderRadius:10 }}>
-              <span style={{ color:pt.accent, fontWeight:700 }}>Next step:</span> {isCollege ? "Pick a plan to activate the Professor Task Engine, Cohort Intelligence, and Placement Command Center." : "Pick a plan to activate ATS integration, Culture DNA, Talent Intelligence Feed, and unlimited job posts."}
+              <span style={{ color:pt.accent, fontWeight:700 }}>Next step:</span> Full access is free during the trial — no credit card required. The Professor Task Engine, Cohort Intelligence, and Placement Command Center activate as soon as you enter your workspace.
             </div>
 
-            <PrimaryBtn onClick={()=>transition("plan")} color={pt.accent}>
-              Choose Your Plan →
+            <PrimaryBtn onClick={handleEnterInstitutionWorkspace} loading={orgSubmitting} color={pt.accent}>
+              Enter Your Workspace →
             </PrimaryBtn>
           </Card>
         </div>
@@ -3542,7 +3570,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
               ))}
             </div>
 
-            <PrimaryBtn onClick={handleEnterCompanyWorkspace} loading={orgSubmitting} color={greenAccent}>
+            <PrimaryBtn onClick={handleEnterInstitutionWorkspace} loading={orgSubmitting} color={greenAccent}>
               Enter Workspace →
             </PrimaryBtn>
           </Card>
