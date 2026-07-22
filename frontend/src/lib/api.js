@@ -73,6 +73,9 @@ export const orgApi = {
   // Talent Network <-> real company org account linkage + NDA workflow.
   inviteCompany:        (opts)  => request("POST", "/org/company-links", opts),
   listAllCompanyLinks:  ()      => request("GET",  "/org/company-links"),           // college's own full network, every status
+  updateCompanyLink:    (id, opts) => request("PATCH", `/org/company-links/${id}`, opts),
+  deleteCompanyLink:    (id)    => request("DELETE", `/org/company-links/${id}`),
+  resendCompanyInvite:  (id)    => request("POST", `/org/company-links/${id}/resend`),
   listReceivedCompanyLinks: ()  => request("GET",  "/org/company-links/received"),
   getCompanyLinkStudents: (id)  => request("GET",  `/org/company-links/${id}/students`),
   // Token-based — works whether or not the company had a matched account at

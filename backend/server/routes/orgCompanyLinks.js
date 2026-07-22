@@ -36,6 +36,18 @@ const VISIBILITY_COLUMNS = {
 
 const APP_URL = process.env.PUBLIC_APP_URL || "https://capabilio.online"
 
+async function sendInviteEmail({ institutionOrgId, companyEmail, companyName, inviteToken }) {
+  if (!companyEmail.trim()) return { sent: false, reason: "no_email_provided" }
+  const { data: inviterProfile } = await supabaseAdmin.from("profiles").select("org_name, name").eq("id", institutionOrgId).single()
+  const institutionName = inviterProfile?.org_name || inviterProfile?.name || "An institution on Capabilio"
+  const inviteUrl = `${APP_URL}/company-invite/${inviteToken}`
+  return sendEmail({
+    to: companyEmail.trim(),
+    subject: `${institutionName} invited you to their Talent Network on Capabilio`,
+    html: `<p>Hi,</p><p><strong>${institutionName}</strong> has invited your company to connect on Capabilio's Talent Network.</p><p>Review and accept or decline here: <a href="${inviteUrl}">${inviteUrl}</a></p><p>If you accept, you'll see student ELO scores and placement performance — never personal contact details. Reaching a student always goes through the college, never directly.</p>`,
+  })
+}
+
 // ─── College: invite a company (matches a real account if one exists) ───────
 router.post("/company-links", requireAuth, async (req, res) => {
   const institutionOrgId = req.user.id // PC-5
@@ -76,17 +88,9 @@ router.post("/company-links", requireAuth, async (req, res) => {
 
   if (error) return res.status(500).json({ error: error.message })
 
-  let emailResult = { sent: false, reason: "no_email_provided" }
-  if (company_email.trim()) {
-    const { data: inviterProfile } = await supabaseAdmin.from("profiles").select("org_name, name").eq("id", institutionOrgId).single()
-    const institutionName = inviterProfile?.org_name || inviterProfile?.name || "An institution on Capabilio"
-    const inviteUrl = `${APP_URL}/company-invite/${inviteToken}`
-    emailResult = await sendEmail({
-      to: company_email.trim(),
-      subject: `${institutionName} invited you to their Talent Network on Capabilio`,
-      html: `<p>Hi,</p><p><strong>${institutionName}</strong> has invited your company to connect on Capabilio's Talent Network.</p><p>Review and accept or decline here: <a href="${inviteUrl}">${inviteUrl}</a></p><p>If you accept, you'll see student ELO scores and placement performance — never personal contact details. Reaching a student always goes through the college, never directly.</p>`,
-    })
-  }
+  const emailResult = await sendInviteEmail({
+    institutionOrgId, companyEmail: company_email, companyName: company_name.trim(), inviteToken,
+  })
 
   res.json({ success: true, link: row, matchedExistingAccount: !!companyUserId, emailSent: emailResult.sent, emailReason: emailResult.reason })
 })
@@ -99,6 +103,81 @@ router.get("/company-links", requireAuth, async (req, res) => {
     .order("created_at", { ascending: false })
   if (error) return res.status(500).json({ error: error.message })
   res.json({ links: data || [] })
+})
+
+// ─── College: edit a link's non-consent details ──────────────────────────────
+// Deliberately excludes status/visibility/company_user_id/nda_* — those
+// either flow through the token consent routes (status) or the existing
+// direct-client visibility update (RLS-permitted, unrelated to consent).
+// Re-checks ownership server-side rather than trusting RLS alone, since a
+// second defense-in-depth layer costs nothing here and the pattern is already
+// established throughout this route file.
+router.patch("/company-links/:id", requireAuth, async (req, res) => {
+  const { data: existing } = await supabaseAdmin.from("org_company_links").select("id, institution_org_id").eq("id", req.params.id).single()
+  if (!existing || existing.institution_org_id !== req.user.id)
+    return res.status(404).json({ error: "Link not found" })
+
+  const { company_name, company_email, company_website, company_address, company_size, industry, notes } = req.body || {}
+  if (company_name !== undefined && !company_name.trim())
+    return res.status(400).json({ error: "Company name is required." })
+
+  const patch = {}
+  if (company_name    !== undefined) patch.company_name    = company_name.trim()
+  if (company_email   !== undefined) patch.company_email   = company_email.trim()
+  if (company_website  !== undefined) patch.company_website  = company_website.trim()
+  if (company_address !== undefined) patch.company_address = company_address.trim()
+  if (company_size    !== undefined) patch.company_size    = company_size
+  if (industry         !== undefined) patch.industry         = industry
+  if (notes            !== undefined) patch.notes            = notes
+
+  // If the email changed, re-run the account match so the "linked" badge
+  // stays accurate — but only for links that haven't already been accepted
+  // (an accepted link's company_user_id is the company that actually
+  // consented; editing contact details afterward shouldn't silently re-point
+  // access to a different account).
+  if (patch.company_email !== undefined) {
+    const { data: current } = await supabaseAdmin.from("org_company_links").select("status").eq("id", req.params.id).single()
+    if (current?.status === "invited") {
+      if (patch.company_email) {
+        const { data: match } = await supabaseAdmin.from("profiles").select("id").eq("email", patch.company_email).eq("org_type", "company").maybeSingle()
+        patch.company_user_id = match?.id || null
+      } else {
+        patch.company_user_id = null
+      }
+    }
+  }
+
+  const { data: row, error } = await supabaseAdmin.from("org_company_links").update(patch).eq("id", req.params.id).select().single()
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ success: true, link: row })
+})
+
+// ─── College: delete a link entirely ─────────────────────────────────────────
+router.delete("/company-links/:id", requireAuth, async (req, res) => {
+  const { data: existing } = await supabaseAdmin.from("org_company_links").select("id, institution_org_id").eq("id", req.params.id).single()
+  if (!existing || existing.institution_org_id !== req.user.id)
+    return res.status(404).json({ error: "Link not found" })
+
+  const { error } = await supabaseAdmin.from("org_company_links").delete().eq("id", req.params.id)
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ success: true })
+})
+
+// ─── College: resend the invite email (same token, no new consent state) ────
+router.post("/company-links/:id/resend", requireAuth, async (req, res) => {
+  const { data: link } = await supabaseAdmin.from("org_company_links").select("*").eq("id", req.params.id).single()
+  if (!link || link.institution_org_id !== req.user.id)
+    return res.status(404).json({ error: "Link not found" })
+  if (link.status !== "invited")
+    return res.status(409).json({ error: `Can't resend — this invite was already ${link.status}.` })
+  if (!link.company_email)
+    return res.status(400).json({ error: "This company has no contact email on file." })
+
+  const emailResult = await sendInviteEmail({
+    institutionOrgId: link.institution_org_id, companyEmail: link.company_email,
+    companyName: link.company_name, inviteToken: link.invite_token,
+  })
+  res.json({ success: true, emailSent: emailResult.sent, emailReason: emailResult.reason })
 })
 
 // ─── Public: resolve an invite token (preview before login/signup) ──────────

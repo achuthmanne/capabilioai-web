@@ -2091,6 +2091,70 @@ function CollegeCompaniesPage({ userData, user }) {
   const [form, setForm]               = useState({ company_name: "", company_email: "", company_website: "", company_address: "", company_size: "", industry: "", notes: "" })
   const setF = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
+  // Edit / delete / resend
+  const [editingLink, setEditingLink] = useState(null) // the company row being edited, or null
+  const [editForm, setEditForm]       = useState({ company_name: "", company_email: "", company_website: "", company_address: "", company_size: "", industry: "", notes: "" })
+  const setEF = (k, v) => setEditForm(f => ({ ...f, [k]: v }))
+  const [editSaving, setEditSaving]   = useState(false)
+  const [editError, setEditError]     = useState(null)
+  const [deletingLink, setDeletingLink] = useState(null) // confirm-delete modal target, or null
+  const [deleting, setDeleting]       = useState(false)
+  const [rowActionId, setRowActionId] = useState(null)   // id + "-resend" | "-delete" while in flight
+  const [rowMsg, setRowMsg]           = useState(null)   // { id, text } transient status per row
+
+  function openEdit(c) {
+    setEditingLink(c)
+    setEditForm({
+      company_name: c.company_name || "", company_email: c.company_email || "",
+      company_website: c.company_website || "", company_address: c.company_address || "",
+      company_size: c.company_size || "", industry: c.industry || "", notes: c.notes || "",
+    })
+    setEditError(null)
+  }
+
+  async function handleSaveEdit() {
+    if (!editForm.company_name.trim()) { setEditError("Company name is required."); return }
+    setEditSaving(true); setEditError(null)
+    try {
+      await orgApi.updateCompanyLink(editingLink.id, editForm)
+      await auditLog(user.id, user.id, userData?.name || "Admin", `Updated details for ${editForm.company_name.trim()}`, "company.updated", "company", editingLink.id)
+      setEditingLink(null)
+      reload()
+    } catch (err) {
+      setEditError(err.message)
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
+  async function handleResend(c) {
+    setRowActionId(c.id + "-resend"); setRowMsg(null)
+    try {
+      const res = await orgApi.resendCompanyInvite(c.id)
+      setRowMsg({ id: c.id, text: res.emailSent ? "Invite resent ✓" : "Couldn't send email — check company's contact address" })
+    } catch (err) {
+      setRowMsg({ id: c.id, text: err.message })
+    } finally {
+      setRowActionId(null)
+      setTimeout(() => setRowMsg(m => (m?.id === c.id ? null : m)), 4000)
+    }
+  }
+
+  async function handleDeleteConfirmed() {
+    setDeleting(true)
+    try {
+      await orgApi.deleteCompanyLink(deletingLink.id)
+      await auditLog(user.id, user.id, userData?.name || "Admin", `Removed ${deletingLink.company_name} from talent network`, "company.deleted", "company", deletingLink.id)
+      setDeletingLink(null)
+      reload()
+    } catch (err) {
+      setRowMsg({ id: deletingLink.id, text: err.message })
+      setDeletingLink(null)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   const filtered = companies.filter(c => tab === "active" ? c.status === "active" || c.status === "invited" : c.status === "paused" || c.status === "rejected")
 
   // Performance-only tiers — email/phone are never exposed at any level.
@@ -2254,17 +2318,31 @@ function CollegeCompaniesPage({ userData, user }) {
                   {/* Actions */}
                   <div style={{ display: "flex", gap: 6, flexShrink: 0, flexDirection: "column", alignItems: "flex-end" }}>
                     {c.status === "invited" && (
-                      <span style={{ fontSize: 10, color: T.ink4, fontStyle: "italic" }}>
-                        {c.company_email ? "Awaiting company's response" : "No contact email — add one to send an invite"}
-                      </span>
+                      <>
+                        <span style={{ fontSize: 10, color: T.ink4, fontStyle: "italic" }}>
+                          {c.company_email ? "Awaiting company's response" : "No contact email — add one to send an invite"}
+                        </span>
+                        {c.company_email && (
+                          <Btn variant="outline" disabled={rowActionId === c.id + "-resend"} onClick={() => handleResend(c)} style={{ fontSize: 11, padding: "5px 10px" }}>
+                            {rowActionId === c.id + "-resend" ? "Sending…" : "Resend Invite"}
+                          </Btn>
+                        )}
+                      </>
                     )}
                     {(c.status === "active" || c.status === "paused") && (
                       <Btn variant="outline" onClick={() => handlePause(c)} style={{ fontSize: 11, padding: "5px 10px" }}>
                         {c.status === "paused" ? "Resume" : "Pause"}
                       </Btn>
                     )}
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button onClick={() => openEdit(c)} title="Edit details" style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: T.ink4, padding: 2 }}>✏️ Edit</button>
+                      <button onClick={() => setDeletingLink(c)} title="Delete" style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: T.red, padding: 2 }}>🗑 Delete</button>
+                    </div>
                     {c.linked_at && (
                       <span style={{ fontSize: 10, color: T.ink4 }}>Linked {timeSince(c.linked_at)}</span>
+                    )}
+                    {rowMsg?.id === c.id && (
+                      <span style={{ fontSize: 10, color: T.sky, fontWeight: 600 }}>{rowMsg.text}</span>
                     )}
                   </div>
                 </div>
@@ -2313,12 +2391,23 @@ function CollegeCompaniesPage({ userData, user }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 480, overflowY: "auto" }}>
               {companies.map(c => (
                 <div key={c.id} style={{ padding: "12px 14px", border: `1px solid ${T.border}`, borderRadius: 10 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>{c.company_name}</span>
-                    <Chip color={statusColor[c.status] || T.ink3} bg={`${statusColor[c.status] || T.ink3}15`}>
-                      {c.status === "active" ? "✓ Active" : c.status === "invited" ? "⏳ Invited" : c.status === "paused" ? "⏸ Paused" : "✗ Rejected"}
-                    </Chip>
-                    {c.company_user_id && <Chip color={T.sky} bg={`${T.sky}15`}>🔗 Linked account</Chip>}
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>{c.company_name}</span>
+                      <Chip color={statusColor[c.status] || T.ink3} bg={`${statusColor[c.status] || T.ink3}15`}>
+                        {c.status === "active" ? "✓ Active" : c.status === "invited" ? "⏳ Invited" : c.status === "paused" ? "⏸ Paused" : "✗ Rejected"}
+                      </Chip>
+                      {c.company_user_id && <Chip color={T.sky} bg={`${T.sky}15`}>🔗 Linked account</Chip>}
+                    </div>
+                    <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                      {c.status === "invited" && c.company_email && (
+                        <button onClick={() => handleResend(c)} disabled={rowActionId === c.id + "-resend"} title="Resend invite" style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: T.sky }}>
+                          {rowActionId === c.id + "-resend" ? "…" : "↻ Resend"}
+                        </button>
+                      )}
+                      <button onClick={() => openEdit(c)} title="Edit" style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: T.ink4 }}>✏️</button>
+                      <button onClick={() => setDeletingLink(c)} title="Delete" style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: T.red }}>🗑</button>
+                    </div>
                   </div>
                   <div style={{ fontSize: 11, color: T.ink4, lineHeight: 1.7 }}>
                     {c.industry && <div>🏭 Industry: {c.industry}</div>}
@@ -2330,11 +2419,58 @@ function CollegeCompaniesPage({ userData, user }) {
                     {c.linked_at && <div>✅ Accepted: {timeSince(c.linked_at)}</div>}
                     {c.status === "active" && <div>🔐 Data access: {visibilityLabel[c.visibility] || c.visibility}</div>}
                     {c.notes && <div>📝 {c.notes}</div>}
+                    {rowMsg?.id === c.id && <div style={{ color: T.sky, fontWeight: 600 }}>{rowMsg.text}</div>}
                   </div>
                 </div>
               ))}
             </div>
           )}
+        </Modal>
+      )}
+
+      {editingLink && (
+        <Modal title={`Edit — ${editingLink.company_name}`} onClose={() => setEditingLink(null)} width={520}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {editingLink.status !== "invited" && (
+              <div style={{ fontSize: 12, color: T.amber, padding: "8px 12px", background: T.amberL, borderRadius: 8 }}>
+                This invite is already {editingLink.status} — editing contact details won't change the linked account or re-trigger consent.
+              </div>
+            )}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <FieldInput label="Company Name *" value={editForm.company_name} onChange={v => setEF("company_name", v)} required />
+              <FieldInput label="Contact Email" value={editForm.company_email} onChange={v => setEF("company_email", v)} placeholder="hr@company.com" />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <FieldInput label="Industry" value={editForm.industry} onChange={v => setEF("industry", v)} placeholder="IT / Manufacturing / Finance" />
+              <FieldInput label="Company Size" value={editForm.company_size} onChange={v => setEF("company_size", v)} placeholder="e.g. 500–5000" />
+            </div>
+            <FieldInput label="Website" value={editForm.company_website} onChange={v => setEF("company_website", v)} placeholder="https://company.com" />
+            <FieldInput label="Company Address" value={editForm.company_address} onChange={v => setEF("company_address", v)} placeholder="e.g. HITEC City, Hyderabad" />
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 6 }}>Notes</label>
+              <textarea value={editForm.notes} onChange={e => setEF("notes", e.target.value)} rows={2}
+                style={{ width: "100%", padding: "9px 12px", border: `1px solid ${T.border}`, borderRadius: 10, fontSize: 13, fontFamily: FONT, outline: "none", background: T.bg, resize: "vertical", color: T.ink }} />
+            </div>
+            {editError && <div style={{ fontSize: 12, color: T.red }}>{editError}</div>}
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <Btn variant="outline" onClick={() => setEditingLink(null)}>Cancel</Btn>
+              <Btn onClick={handleSaveEdit} disabled={editSaving}>{editSaving ? "Saving…" : "Save Changes"}</Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {deletingLink && (
+        <Modal title="Remove from Talent Network?" onClose={() => setDeletingLink(null)} width={420}>
+          <div style={{ fontSize: 13, color: T.ink3, marginBottom: 16, lineHeight: 1.6 }}>
+            This permanently removes <b>{deletingLink.company_name}</b> from your network.
+            {deletingLink.status === "active" && " They will immediately lose access to your student data."}
+            {" "}This can't be undone.
+          </div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <Btn variant="outline" onClick={() => setDeletingLink(null)}>Cancel</Btn>
+            <Btn variant="danger" onClick={handleDeleteConfirmed} disabled={deleting}>{deleting ? "Removing…" : "Remove"}</Btn>
+          </div>
         </Modal>
       )}
     </PageShell>
