@@ -1625,18 +1625,24 @@ function PeoplePage({ userData, user, members, membersLoading, membersError, rel
 // PAGE 5 — COMMUNITY (beta gate on post creation)
 // ═══════════════════════════════════════════════════════════════════════════════
 function CommunityPage({ userData, user }) {
+  const isCollege = (userData?.org_type || "college") !== "company"
   const [tab, setTab] = useState("posts")
   const orgId = user?.id
   const { data: posts, loading: postsLoading } = useOrgPosts(orgId)
   const { data: members } = useOrgMembers(orgId)
 
-  const orgName     = userData?.org_name || "Your Institution"
+  const orgName     = userData?.org_name || (isCollege ? "Your Institution" : "Your Company")
   const orgLocation = userData?.org_location || ""
-  const orgType     = userData?.org_inst_type || userData?.org_industry || "Institution"
+  const orgType     = isCollege ? (userData?.org_inst_type || "Institution") : (userData?.org_industry || "Company")
   const memberCount = members.filter(m => m.status === "active").length
   const coverPhoto  = userData?.org_cover_photo
   const profilePhoto= userData?.org_profile_photo
   const initials    = orgName.split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase()
+  // College's third tab is an alumni directory; companies get a filtered
+  // review feed instead (Company Review + Candidate Spotlight posts).
+  const thirdTab      = isCollege ? "alumni" : "reviews"
+  const thirdTabLabel = isCollege ? "Alumni" : "Reviews"
+  const reviewPosts   = posts.filter(p => p.category === "Company Review" || p.category === "Candidate Spotlight")
 
   return (
     <div style={{ flex: 1, overflow: "auto", background: "transparent" }}>
@@ -1727,15 +1733,15 @@ function CommunityPage({ userData, user }) {
 
       {/* Tab bar */}
       <div style={{ display: "flex", gap: 0, borderBottom: `1px solid ${T.border}`, padding: "0 24px", background: "rgba(255,255,255,.01)" }}>
-        {["posts", "about", "alumni"].map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{
+        {[["posts", "Posts"], ["about", "About"], [thirdTab, thirdTabLabel]].map(([id, label]) => (
+          <button key={id} onClick={() => setTab(id)} style={{
             padding: "14px 16px 12px", background: "none", border: "none",
             fontSize: 13, fontWeight: 700, fontFamily: FONT, cursor: "pointer",
-            color: tab === t ? T.ink : T.ink4,
-            borderBottom: `2px solid ${tab === t ? T.gold : "transparent"}`,
+            color: tab === id ? T.ink : T.ink4,
+            borderBottom: `2px solid ${tab === id ? T.gold : "transparent"}`,
             transition: "color .12s",
           }}>
-            {t.charAt(0).toUpperCase() + t.slice(1)}
+            {label}
           </button>
         ))}
       </div>
@@ -1768,10 +1774,15 @@ function CommunityPage({ userData, user }) {
                       }}>
                         {pPhoto ? <img src={pPhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : pInit}
                       </div>
-                      <div>
+                      <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{orgName}</div>
                         <div style={{ fontSize: 11, color: T.ink4 }}>{memberCount} followers · {timeSince(post.created_at)}</div>
                       </div>
+                      {post.category && (() => { const b = POST_CATEGORY_BADGE[post.category] || POST_CATEGORY_BADGE["Update"]; return (
+                        <span style={{ flexShrink: 0, padding: "3px 9px", borderRadius: 999, border: `1px solid ${b.color}`, background: `${b.color}18`, color: b.color, fontSize: 10.5, fontWeight: 800, whiteSpace: "nowrap" }}>
+                          {b.icon} {post.category}
+                        </span>
+                      )})()}
                     </div>
                     <div style={{ fontSize: 13.5, color: T.ink2, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{post.title}</div>
                     {post.description && post.description.startsWith("http") && (
@@ -1791,13 +1802,19 @@ function CommunityPage({ userData, user }) {
 
         {tab === "about" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {[
+            {(isCollege ? [
               { label: "Institution type", value: orgType },
               { label: "Location",         value: orgLocation || "—" },
               { label: "Website",          value: userData?.org_website || "—" },
               { label: "NAAC Grade",       value: userData?.org_naac_grade || "—" },
               { label: "Members",          value: memberCount },
-            ].map((r, i) => (
+            ] : [
+              { label: "Industry",         value: orgType },
+              { label: "Company size",     value: userData?.org_company_size || "—" },
+              { label: "Website",          value: userData?.org_website || "—" },
+              { label: "Hiring for",       value: (userData?.org_key_domains || []).join(", ") || "—" },
+              { label: "Team members",     value: memberCount },
+            ]).map((r, i) => (
               <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: `1px solid ${T.border}` }}>
                 <span style={{ fontSize: 12, color: T.ink4, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em" }}>{r.label}</span>
                 <span style={{ fontSize: 13, color: T.ink, fontWeight: 600 }}>{r.value}</span>
@@ -1806,10 +1823,30 @@ function CommunityPage({ userData, user }) {
           </div>
         )}
 
-        {tab === "alumni" && (
+        {tab === "alumni" && isCollege && (
           <div style={{ padding: "20px 0", textAlign: "center", color: T.ink4, fontSize: 13 }}>
             Alumni directory coming soon.
           </div>
+        )}
+
+        {tab === "reviews" && !isCollege && (
+          postsLoading ? <Spinner /> : reviewPosts.length === 0 ? (
+            <div style={{ padding: "32px 0", textAlign: "center", color: T.ink4, fontSize: 13 }}>
+              No reviews or candidate spotlights yet. Tag a post as <b style={{ color: T.gold }}>Company Review</b> or <b style={{ color: T.gold }}>Candidate Spotlight</b> from the Posts composer to have it show up here.
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {reviewPosts.map(post => { const b = POST_CATEGORY_BADGE[post.category]; return (
+                <div key={post.id} style={{ border: `1px solid ${T.border}`, borderRadius: 22, background: "linear-gradient(180deg,rgba(255,255,255,0.052),rgba(255,255,255,0.026))", padding: 18 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <span style={{ padding: "3px 9px", borderRadius: 999, border: `1px solid ${b.color}`, background: `${b.color}18`, color: b.color, fontSize: 10.5, fontWeight: 800 }}>{b.icon} {post.category}</span>
+                    <span style={{ fontSize: 11, color: T.ink4 }}>{timeSince(post.created_at)}</span>
+                  </div>
+                  <div style={{ fontSize: 13.5, color: T.ink2, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{post.title}</div>
+                </div>
+              )})}
+            </div>
+          )
         )}
       </div>
     </div>
@@ -1853,11 +1890,26 @@ function CohortsPage({ members }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // PAGE 8 — POSTS (Institution LinkedIn-style feed)
 // ═══════════════════════════════════════════════════════════════════════════════
+const POST_CATEGORIES_COLLEGE = ["Update", "Achievement", "Placement News", "Event Recap"]
+const POST_CATEGORIES_COMPANY = ["Update", "Company Insight", "Company Review", "Candidate Spotlight"]
+const POST_CATEGORY_BADGE = {
+  "Update":             { icon: "📝", color: "#6B7280" },
+  "Achievement":        { icon: "🏆", color: "#D97706" },
+  "Placement News":     { icon: "🎓", color: "#059669" },
+  "Event Recap":        { icon: "📅", color: "#3D4EAC" },
+  "Company Insight":    { icon: "💡", color: "#3D4EAC" },
+  "Company Review":     { icon: "⭐", color: "#D97706" },
+  "Candidate Spotlight":{ icon: "🌟", color: "#059669" },
+}
+
 function EventsPage({ userData, user }) {
   const orgId = user?.id
   const { data: posts, loading, error, reload } = useOrgPosts(orgId)
+  const isCollege = (userData?.org_type || "college") !== "company"
+  const categoryOptions = isCollege ? POST_CATEGORIES_COLLEGE : POST_CATEGORIES_COMPANY
 
   const [text, setText]             = useState("")
+  const [category, setCategory]     = useState(categoryOptions[0])
   const [imgFile, setImgFile]       = useState(null)
   const [imgPreview, setImgPreview] = useState(null)
   const [publishing, setPublishing] = useState(false)
@@ -1889,14 +1941,15 @@ function EventsPage({ userData, user }) {
         title:       text.trim(),
         description: imageUrl || "",
         type:        "post",
+        category,
         event_date:  today,
         status:      "published",
         created_by:  orgId,
       })
       if (insertErr) throw new Error(insertErr.message)
       await auditLog(orgId, orgId, userData?.name || "Admin",
-        `Published a post`, "post.created", "post", "", {})
-      setText(""); setImgFile(null); setImgPreview(null)
+        `Published a ${category.toLowerCase()} post`, "post.created", "post", "", { category })
+      setText(""); setImgFile(null); setImgPreview(null); setCategory(categoryOptions[0])
       reload()
     } catch (e) {
       setPubError(e.message)
@@ -1957,6 +2010,24 @@ function EventsPage({ userData, user }) {
               onFocus={e => e.target.style.borderColor = T.gold}
               onBlur={e => e.target.style.borderColor = T.border}
             />
+
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+              {categoryOptions.map(c => {
+                const on = category === c
+                const badge = POST_CATEGORY_BADGE[c]
+                return (
+                  <button key={c} type="button" onClick={() => setCategory(c)} style={{
+                    padding: "5px 11px", borderRadius: 999,
+                    border: `1px solid ${on ? badge.color : T.border}`,
+                    background: on ? `${badge.color}22` : "transparent",
+                    color: on ? badge.color : T.ink4,
+                    fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: FONT,
+                  }}>
+                    {badge.icon} {c}
+                  </button>
+                )
+              })}
+            </div>
 
             {imgPreview && (
               <div style={{ position: "relative", marginTop: 10, display: "inline-block" }}>
@@ -2026,8 +2097,15 @@ function EventsPage({ userData, user }) {
                     <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{orgName}</span>
                     {userData?.verified && <span style={{ fontSize: 11, color: T.sky }}>✓</span>}
                   </div>
-                  <div style={{ fontSize: 11, color: T.ink4 }}>Institution · {timeSince(post.created_at)}</div>
+                  <div style={{ fontSize: 11, color: T.ink4 }}>{isCollege ? "Institution" : "Company"} · {timeSince(post.created_at)}</div>
                 </div>
+                {post.category && (
+                  (() => { const b = POST_CATEGORY_BADGE[post.category] || POST_CATEGORY_BADGE["Update"]; return (
+                    <span style={{ flexShrink: 0, padding: "3px 9px", borderRadius: 999, border: `1px solid ${b.color}`, background: `${b.color}18`, color: b.color, fontSize: 10.5, fontWeight: 800, whiteSpace: "nowrap" }}>
+                      {b.icon} {post.category}
+                    </span>
+                  )})()
+                )}
                 <button onClick={() => handleDelete(post)} style={{
                   background: "none", border: "none", color: T.ink4, fontSize: 14,
                   cursor: "pointer", padding: "2px 6px", borderRadius: 6,
