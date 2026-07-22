@@ -801,6 +801,7 @@ function App() {
           if (user) window.location.reload()
           else setAppStage("accountType")
         }}
+        onSignOut={handleSignOut}
       />
     )
   }

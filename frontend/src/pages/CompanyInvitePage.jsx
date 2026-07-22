@@ -6,11 +6,12 @@
 import { useEffect, useState } from "react"
 import { orgApi } from "../lib/api"
 
-export default function CompanyInvitePage({ token, user, userData, onDone }) {
+export default function CompanyInvitePage({ token, user, userData, onDone, onSignOut }) {
   const [status, setStatus] = useState("loading") // loading | preview | needs_company_account | acting | done_accept | done_decline | already | invalid
   const [institutionName, setInstitutionName] = useState("")
   const [companyName, setCompanyName] = useState("")
   const [error, setError] = useState(null)
+  const [signingOut, setSigningOut] = useState(false)
 
   useEffect(() => {
     if (!token) { setStatus("invalid"); return }
@@ -28,7 +29,14 @@ export default function CompanyInvitePage({ token, user, userData, onDone }) {
 
         if (!user) { setStatus("preview"); try { sessionStorage.setItem("capabilio_company_invite_token", token) } catch {}; return }
 
-        if ((userData?.org_type || "") !== "company") { setStatus("needs_company_account"); return }
+        if ((userData?.org_type || "") !== "company") {
+          // Stash the token even though we're logged in — the account switch
+          // below signs this user out, and App.jsx's post-login effect reads
+          // this same key to auto-accept once a real company account exists.
+          try { sessionStorage.setItem("capabilio_company_invite_token", token) } catch {}
+          setStatus("needs_company_account")
+          return
+        }
 
         setStatus("preview") // logged in AND a company account — show real Accept/Decline buttons
       } catch (err) {
@@ -47,6 +55,21 @@ export default function CompanyInvitePage({ token, user, userData, onDone }) {
       setStatus("done_accept")
     } catch (err) {
       setError(err.message); setStatus("preview")
+    }
+  }
+
+  async function handleSwitchAccount() {
+    setSigningOut(true)
+    try {
+      await onSignOut?.()
+      // Token is already stashed in sessionStorage (see resolve() above).
+      // After sign-out, `user` becomes null, this same page re-resolves into
+      // the "preview" (not-logged-in) state, and its own sign-up button
+      // routes to account-type selection — pick "Organisation" → "Company"
+      // there. Once that new account finishes onboarding, App.jsx's post-login
+      // effect auto-accepts this invite using the stashed token.
+    } finally {
+      setSigningOut(false)
     }
   }
 
@@ -130,9 +153,17 @@ export default function CompanyInvitePage({ token, user, userData, onDone }) {
       <div style={wrap}><div style={card}>
         <div style={{ fontSize: 32, marginBottom: 16 }}>🏢</div>
         <div style={badge}>🎓 {institutionName}</div>
-        <div style={{ fontSize: 18, fontWeight: 700, color: "#111827", marginBottom: 8 }}>Finish setting up your company account</div>
-        <div style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.7, marginBottom: 24 }}>You're logged in, but this invite is for a company/recruiter account. Complete your Organisation (Company) profile, then come back to this link to accept.</div>
-        <button onClick={() => onDone?.()} style={btnPrimary}>Set up my company profile →</button>
+        <div style={{ fontSize: 18, fontWeight: 700, color: "#111827", marginBottom: 8 }}>This invite needs a Company account</div>
+        <div style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.7, marginBottom: 16 }}>
+          You're currently signed in as <strong>{userData?.name || userData?.org_name || "an Institution account"}</strong>. Each Capabilio login is a single role, so an Institution account can't also accept a Talent Network invite — that takes a separate Company account (a different email address).
+        </div>
+        <div style={{ fontSize: 12, color: "#9CA3AF", lineHeight: 1.7, marginBottom: 24 }}>
+          Sign out below, then sign up again choosing <strong>Organisation → Company</strong> with the email your company uses. This invite link stays valid — come back to it and it'll be waiting to accept.
+        </div>
+        {error && <div style={{ fontSize: 12, color: "#DC2626", marginBottom: 12 }}>{error}</div>}
+        <button onClick={handleSwitchAccount} disabled={signingOut} style={{ ...btnPrimary, opacity: signingOut ? 0.7 : 1, cursor: signingOut ? "not-allowed" : "pointer" }}>
+          {signingOut ? "Signing out…" : "Sign out & create a Company account →"}
+        </button>
       </div></div>
     )
   }
