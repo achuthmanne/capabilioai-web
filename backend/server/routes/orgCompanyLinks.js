@@ -10,11 +10,16 @@
 // frontend used previously. Identity for the "who am I acting as" checks
 // always comes from req.user.id (PC-5), never the request body.
 import { Router } from "express"
+import crypto from "crypto"
 import { requireAuth } from "../lib/auth.js"
 import { supabaseAdmin } from "../lib/supabase.js"
 import { sendEmail } from "../lib/email.js"
 
 const router = Router()
+
+function generateInviteToken() {
+  return crypto.randomBytes(12).toString("hex")
+}
 
 // PII is never exposed to a connected company through this feature, at any
 // visibility tier — "full" means fuller PERFORMANCE data, not contact info.
@@ -34,7 +39,7 @@ const APP_URL = process.env.PUBLIC_APP_URL || "https://capabilio.online"
 // ─── College: invite a company (matches a real account if one exists) ───────
 router.post("/company-links", requireAuth, async (req, res) => {
   const institutionOrgId = req.user.id // PC-5
-  const { company_name, company_email = "", company_website = "", company_size = "", industry = "", notes = "" } = req.body || {}
+  const { company_name, company_email = "", company_website = "", company_address = "", company_size = "", industry = "", notes = "" } = req.body || {}
 
   if (!company_name || !company_name.trim())
     return res.status(400).json({ error: "Company name is required." })
@@ -49,15 +54,24 @@ router.post("/company-links", requireAuth, async (req, res) => {
     companyUserId = match?.id || null
   }
 
+  // company_user_id is recorded for informational display only (the
+  // "🔗 Linked to Capabilio account" badge) — it does NOT grant access.
+  // status always starts 'invited' and can only become 'active' through the
+  // token-based accept route below, run by the company itself. This closes
+  // the exact bug reported: a college could previously self-Activate any
+  // unmatched invite with zero real consent from the company.
+  const inviteToken = generateInviteToken()
   const { data: row, error } = await supabaseAdmin.from("org_company_links").insert({
     institution_org_id: institutionOrgId,
     company_name: company_name.trim(),
     company_email: company_email.trim(),
     company_website: company_website.trim(),
+    company_address: company_address.trim(),
     company_size, industry, notes,
     status: "invited",
     invited_by: institutionOrgId,
     company_user_id: companyUserId,
+    invite_token: inviteToken,
   }).select().single()
 
   if (error) return res.status(500).json({ error: error.message })
@@ -66,16 +80,72 @@ router.post("/company-links", requireAuth, async (req, res) => {
   if (company_email.trim()) {
     const { data: inviterProfile } = await supabaseAdmin.from("profiles").select("org_name, name").eq("id", institutionOrgId).single()
     const institutionName = inviterProfile?.org_name || inviterProfile?.name || "An institution on Capabilio"
+    const inviteUrl = `${APP_URL}/company-invite/${inviteToken}`
     emailResult = await sendEmail({
       to: company_email.trim(),
       subject: `${institutionName} invited you to their Talent Network on Capabilio`,
-      html: companyUserId
-        ? `<p>Hi,</p><p><strong>${institutionName}</strong> has invited your company to connect on Capabilio's Talent Network.</p><p>Log in to your Recruiter Network page to accept or decline: <a href="${APP_URL}">${APP_URL}</a></p><p>If you accept, you'll see student ELO scores and placement performance — never personal contact details. Reaching a student always goes through the college.</p>`
-        : `<p>Hi,</p><p><strong>${institutionName}</strong> wants to connect with your company on Capabilio's Talent Network — a platform for verified student skill assessment and placements.</p><p>Sign up for a free Recruiter/Company account to review and accept this invite: <a href="${APP_URL}">${APP_URL}</a></p><p>If you accept, you'll see student ELO scores and placement performance — never personal contact details.</p>`,
+      html: `<p>Hi,</p><p><strong>${institutionName}</strong> has invited your company to connect on Capabilio's Talent Network.</p><p>Review and accept or decline here: <a href="${inviteUrl}">${inviteUrl}</a></p><p>If you accept, you'll see student ELO scores and placement performance — never personal contact details. Reaching a student always goes through the college, never directly.</p>`,
     })
   }
 
   res.json({ success: true, link: row, matchedExistingAccount: !!companyUserId, emailSent: emailResult.sent, emailReason: emailResult.reason })
+})
+
+// ─── All companies (college's own full network, every status) ──────────────
+router.get("/company-links", requireAuth, async (req, res) => {
+  const { data, error } = await supabaseAdmin
+    .from("org_company_links").select("*")
+    .eq("institution_org_id", req.user.id)
+    .order("created_at", { ascending: false })
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ links: data || [] })
+})
+
+// ─── Public: resolve an invite token (preview before login/signup) ──────────
+router.get("/company-invite/:token", async (req, res) => {
+  const { data: link, error } = await supabaseAdmin
+    .from("org_company_links").select("company_name, institution_org_id, status, visibility")
+    .eq("invite_token", req.params.token).single()
+  if (error || !link) return res.json({ valid: false, reason: "not_found" })
+
+  const { data: inst } = await supabaseAdmin.from("profiles").select("org_name, name").eq("id", link.institution_org_id).single()
+  res.json({
+    valid: true,
+    institutionName: inst?.org_name || inst?.name || "An institution",
+    companyName: link.company_name,
+    status: link.status, // lets the page show "already accepted/declined" instead of the buttons
+  })
+})
+
+// ─── Company: accept via the emailed token (works with or without a prior account match) ──
+router.post("/company-invite/:token/accept", requireAuth, async (req, res) => {
+  const { data: profile } = await supabaseAdmin.from("profiles").select("org_type").eq("id", req.user.id).single()
+  if (profile?.org_type !== "company")
+    return res.status(403).json({ error: "This invite is for a company account. Complete your Organisation (Company) signup first, then try again." })
+
+  const { data: link } = await supabaseAdmin.from("org_company_links").select("id, status").eq("invite_token", req.params.token).single()
+  if (!link) return res.status(404).json({ error: "Invite not found." })
+  if (link.status !== "invited") return res.status(409).json({ error: `This invite was already ${link.status}.` })
+
+  const { error } = await supabaseAdmin.from("org_company_links").update({
+    status: "active", linked_at: new Date().toISOString(),
+    nda_signed_at: new Date().toISOString(), nda_signed_by: req.user.id,
+    company_user_id: req.user.id, // covers the "no prior match at invite time" case too
+  }).eq("id", link.id)
+
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ success: true })
+})
+
+// ─── Company: decline via the emailed token ──────────────────────────────────
+router.post("/company-invite/:token/decline", requireAuth, async (req, res) => {
+  const { data: link } = await supabaseAdmin.from("org_company_links").select("id, status").eq("invite_token", req.params.token).single()
+  if (!link) return res.status(404).json({ error: "Invite not found." })
+  if (link.status !== "invited") return res.status(409).json({ error: `This invite was already ${link.status}.` })
+
+  const { error } = await supabaseAdmin.from("org_company_links").update({ status: "rejected" }).eq("id", link.id)
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ success: true })
 })
 
 // ─── Company: list institutions that have linked/invited them ───────────────
@@ -95,32 +165,6 @@ router.get("/company-links/received", requireAuth, async (req, res) => {
   }
 
   res.json({ links: (data || []).map(l => ({ ...l, institution_name: orgNames[l.institution_org_id] || "An institution" })) })
-})
-
-// ─── Company: accept the NDA and activate the link ───────────────────────────
-router.post("/company-links/:id/accept-nda", requireAuth, async (req, res) => {
-  const { data: link } = await supabaseAdmin.from("org_company_links").select("id, company_user_id").eq("id", req.params.id).single()
-  if (!link || link.company_user_id !== req.user.id)
-    return res.status(404).json({ error: "Link not found" })
-
-  const { error } = await supabaseAdmin.from("org_company_links").update({
-    status: "active", linked_at: new Date().toISOString(),
-    nda_signed_at: new Date().toISOString(), nda_signed_by: req.user.id,
-  }).eq("id", req.params.id)
-
-  if (error) return res.status(500).json({ error: error.message })
-  res.json({ success: true })
-})
-
-// ─── Company: decline the invite ─────────────────────────────────────────────
-router.post("/company-links/:id/decline", requireAuth, async (req, res) => {
-  const { data: link } = await supabaseAdmin.from("org_company_links").select("id, company_user_id").eq("id", req.params.id).single()
-  if (!link || link.company_user_id !== req.user.id)
-    return res.status(404).json({ error: "Link not found" })
-
-  const { error } = await supabaseAdmin.from("org_company_links").update({ status: "rejected" }).eq("id", req.params.id)
-  if (error) return res.status(500).json({ error: error.message })
-  res.json({ success: true })
 })
 
 // ─── Company: view the connected institution's student roster (PII-free) ────

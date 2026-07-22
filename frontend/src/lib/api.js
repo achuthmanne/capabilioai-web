@@ -72,10 +72,15 @@ export const orgApi = {
 
   // Talent Network <-> real company org account linkage + NDA workflow.
   inviteCompany:        (opts)  => request("POST", "/org/company-links", opts),
+  listAllCompanyLinks:  ()      => request("GET",  "/org/company-links"),           // college's own full network, every status
   listReceivedCompanyLinks: ()  => request("GET",  "/org/company-links/received"),
-  acceptCompanyNda:     (id)    => request("POST", `/org/company-links/${id}/accept-nda`),
-  declineCompanyLink:   (id)    => request("POST", `/org/company-links/${id}/decline`),
   getCompanyLinkStudents: (id)  => request("GET",  `/org/company-links/${id}/students`),
+  // Token-based — works whether or not the company had a matched account at
+  // invite time. Real consent always flows through these, never a college
+  // self-activate shortcut.
+  resolveCompanyInvite: (token) => request("GET",  `/org/company-invite/${token}`),
+  acceptCompanyInvite:  (token) => request("POST", `/org/company-invite/${token}/accept`),
+  declineCompanyInvite: (token) => request("POST", `/org/company-invite/${token}/decline`),
 }
 
 // ══════════════════════════════════════════

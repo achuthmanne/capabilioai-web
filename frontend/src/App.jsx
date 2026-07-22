@@ -15,6 +15,7 @@ import AccountType  from "./pages/AccountType"
 import Onboarding   from "./pages/Onboarding"
 import JoinPage     from "./pages/JoinPage"
 import JoinOrgPage  from "./pages/JoinOrgPage"
+import CompanyInvitePage from "./pages/CompanyInvitePage"
 import CareerPicker from "./pages/CareerPicker"
 
 // ── Feature pages — lazy-loaded per navigation ───────────────────────────────
@@ -622,6 +623,24 @@ function App() {
     })
   }, [user])
 
+  // Auto-complete a pending company-invite acceptance once the visitor is
+  // logged in AND their profile has finished company onboarding (org_type ===
+  // 'company') — accepting requires that, so unlike the student join-link
+  // effect above, this one deliberately does NOT clear the token until the
+  // accept call actually succeeds, so it can retry after onboarding completes
+  // rather than silently dropping the invite if they weren't a company yet.
+  useEffect(() => {
+    if (!user || userData?.org_type !== "company") return
+    let token
+    try { token = sessionStorage.getItem("capabilio_company_invite_token") } catch { return }
+    if (!token) return
+    import("./lib/api").then(({ orgApi }) => {
+      orgApi.acceptCompanyInvite(token)
+        .then(() => { try { sessionStorage.removeItem("capabilio_company_invite_token") } catch {} })
+        .catch(err => console.warn("[company-invite] pending accept failed:", err.message))
+    })
+  }, [user, userData?.org_type])
+
   useEffect(() => {
     let profileUnsub = null
 
@@ -764,6 +783,22 @@ function App() {
         onDone={() => {
           window.history.replaceState({}, "", "/")
           if (user) window.location.reload() // refresh so the new org_members row is picked up
+          else setAppStage("accountType")
+        }}
+      />
+    )
+  }
+
+  if (window.location.pathname.startsWith("/company-invite/")) {
+    const inviteToken = window.location.pathname.replace("/company-invite/", "").split("/")[0]
+    return (
+      <CompanyInvitePage
+        token={inviteToken}
+        user={user}
+        userData={userData}
+        onDone={() => {
+          window.history.replaceState({}, "", "/")
+          if (user) window.location.reload()
           else setAppStage("accountType")
         }}
       />

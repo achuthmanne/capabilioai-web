@@ -2087,7 +2087,8 @@ function CollegeCompaniesPage({ userData, user }) {
   const [saving, setSaving]           = useState(false)
   const [saveError, setSaveError]     = useState(null)
   const [tab, setTab]                 = useState("active")
-  const [form, setForm]               = useState({ company_name: "", company_email: "", company_website: "", company_size: "", industry: "", notes: "" })
+  const [showAllModal, setShowAllModal] = useState(false)
+  const [form, setForm]               = useState({ company_name: "", company_email: "", company_website: "", company_address: "", company_size: "", industry: "", notes: "" })
   const setF = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   const filtered = companies.filter(c => tab === "active" ? c.status === "active" || c.status === "invited" : c.status === "paused" || c.status === "rejected")
@@ -2106,15 +2107,16 @@ function CollegeCompaniesPage({ userData, user }) {
         company_name:    form.company_name.trim(),
         company_email:   form.company_email.trim(),
         company_website: form.company_website.trim(),
+        company_address: form.company_address.trim(),
         company_size:    form.company_size,
         industry:        form.industry,
         notes:           form.notes,
       })
       await auditLog(user.id, user.id, userData?.name || "Admin",
-        `Invited company "${form.company_name.trim()}" to talent network${res.matchedExistingAccount ? " (linked to existing Capabilio account)" : ""}`,
-        "company.invited", "company", res.link.id, { company: form.company_name, matched: res.matchedExistingAccount })
+        `Invited company "${form.company_name.trim()}" to talent network${res.emailSent ? " — invite email sent" : ""}`,
+        "company.invited", "company", res.link.id, { company: form.company_name, matched: res.matchedExistingAccount, emailSent: res.emailSent })
       setShowInvite(false)
-      setForm({ company_name: "", company_email: "", company_website: "", company_size: "", industry: "", notes: "" })
+      setForm({ company_name: "", company_email: "", company_website: "", company_address: "", company_size: "", industry: "", notes: "" })
       reload()
     } catch (err) {
       setSaveError(err.message)
@@ -2123,18 +2125,13 @@ function CollegeCompaniesPage({ userData, user }) {
     }
   }
 
-  // Manual activation is ONLY for companies with no matched Capabilio account
-  // (c.company_user_id is null) — i.e. still just a CRM record the college is
-  // managing themselves, nobody else can act on it. Once a link is matched to
-  // a real company account, only that company can activate it — by accepting
-  // the NDA from their own Recruiter Network page — never the college
-  // unilaterally. This is what actually closes the consent loop.
-  async function handleActivate(c) {
-    if (c.company_user_id) return // guarded in the UI too; belt-and-suspenders
-    await supabase.from("org_company_links").update({ status: "active", linked_at: new Date().toISOString() }).eq("id", c.id)
-    await auditLog(user.id, user.id, userData?.name || "Admin", `Activated link with ${c.company_name} (no linked account — manual CRM record)`, "company.activated", "company", c.id)
-    reload()
-  }
+  // There is intentionally NO college-side "Activate" action anymore. Every
+  // invite — matched to an existing account or not — can only become active
+  // by the company explicitly accepting via their emailed /company-invite/
+  // :token link (backend/server/routes/orgCompanyLinks.js), and the DB
+  // trigger (org_company_links_token_consent_migration.sql) blocks any direct
+  // client write to status/NDA fields regardless. This closes the bug where a
+  // college could self-activate an unmatched invite with zero real consent.
 
   async function handleVisibility(c, vis) {
     await supabase.from("org_company_links").update({ visibility: vis }).eq("id", c.id)
@@ -2162,7 +2159,7 @@ function CollegeCompaniesPage({ userData, user }) {
       <div style={{ display: "flex", gap: 10, marginBottom: 20, overflowX: "auto" }}>
         <KPICard value={activeCount || "—"} label="Active Partners" color={T.green} context="Companies with access" />
         <KPICard value={invitedCount || "—"} label="Invited" color={T.amber} context="Awaiting confirmation" />
-        <KPICard value={companies.length || "—"} label="Total Network" color={T.sky} context="All company links" />
+        <KPICard value={companies.length || "—"} label="Total Network" color={T.sky} context="All company links · click to view all" onClick={() => setShowAllModal(true)} />
       </div>
 
       {/* How it works */}
@@ -2230,6 +2227,8 @@ function CollegeCompaniesPage({ userData, user }) {
                       {c.industry && <span style={{ fontSize: 11, color: T.ink4 }}>🏭 {c.industry}</span>}
                       {c.company_size && <span style={{ fontSize: 11, color: T.ink4 }}>👥 {c.company_size}</span>}
                       {c.company_email && <span style={{ fontSize: 11, color: T.ink4 }}>✉️ {c.company_email}</span>}
+                      {c.company_address && <span style={{ fontSize: 11, color: T.ink4 }}>📍 {c.company_address}</span>}
+                      {c.company_website && <span style={{ fontSize: 11, color: T.ink4 }}>🔗 {c.company_website}</span>}
                     </div>
 
                     {/* Visibility control */}
@@ -2255,9 +2254,9 @@ function CollegeCompaniesPage({ userData, user }) {
                   {/* Actions */}
                   <div style={{ display: "flex", gap: 6, flexShrink: 0, flexDirection: "column", alignItems: "flex-end" }}>
                     {c.status === "invited" && (
-                      c.company_user_id
-                        ? <span style={{ fontSize: 10, color: T.ink4, fontStyle: "italic" }}>Awaiting company's response</span>
-                        : <Btn onClick={() => handleActivate(c)} style={{ fontSize: 11, padding: "5px 12px" }}>Activate ✓</Btn>
+                      <span style={{ fontSize: 10, color: T.ink4, fontStyle: "italic" }}>
+                        {c.company_email ? "Awaiting company's response" : "No contact email — add one to send an invite"}
+                      </span>
                     )}
                     {(c.status === "active" || c.status === "paused") && (
                       <Btn variant="outline" onClick={() => handlePause(c)} style={{ fontSize: 11, padding: "5px 10px" }}>
@@ -2290,6 +2289,7 @@ function CollegeCompaniesPage({ userData, user }) {
               <FieldInput label="Company Size" value={form.company_size} onChange={v => setF("company_size", v)} placeholder="e.g. 500–5000" />
             </div>
             <FieldInput label="Website" value={form.company_website} onChange={v => setF("company_website", v)} placeholder="https://company.com" />
+            <FieldInput label="Company Address" value={form.company_address} onChange={v => setF("company_address", v)} placeholder="e.g. HITEC City, Hyderabad" />
             <div>
               <label style={{ fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 6 }}>Notes (optional)</label>
               <textarea value={form.notes} onChange={e => setF("notes", e.target.value)} rows={2}
@@ -2302,6 +2302,39 @@ function CollegeCompaniesPage({ userData, user }) {
               <Btn onClick={handleInvite} disabled={saving}>{saving ? "Saving…" : "Add to Network"}</Btn>
             </div>
           </div>
+        </Modal>
+      )}
+
+      {showAllModal && (
+        <Modal title="All Companies — Full Network" onClose={() => setShowAllModal(false)} width={680}>
+          {companies.length === 0 ? (
+            <EmptyState icon="🏢" title="No companies yet" sub="Invite your first company partner." />
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 480, overflowY: "auto" }}>
+              {companies.map(c => (
+                <div key={c.id} style={{ padding: "12px 14px", border: `1px solid ${T.border}`, borderRadius: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>{c.company_name}</span>
+                    <Chip color={statusColor[c.status] || T.ink3} bg={`${statusColor[c.status] || T.ink3}15`}>
+                      {c.status === "active" ? "✓ Active" : c.status === "invited" ? "⏳ Invited" : c.status === "paused" ? "⏸ Paused" : "✗ Rejected"}
+                    </Chip>
+                    {c.company_user_id && <Chip color={T.sky} bg={`${T.sky}15`}>🔗 Linked account</Chip>}
+                  </div>
+                  <div style={{ fontSize: 11, color: T.ink4, lineHeight: 1.7 }}>
+                    {c.industry && <div>🏭 Industry: {c.industry}</div>}
+                    {c.company_size && <div>👥 Size: {c.company_size}</div>}
+                    {c.company_email && <div>✉️ Email: {c.company_email}</div>}
+                    {c.company_address && <div>📍 Address: {c.company_address}</div>}
+                    {c.company_website && <div>🔗 Website: {c.company_website}</div>}
+                    <div>🕓 Requested: {timeSince(c.created_at)}</div>
+                    {c.linked_at && <div>✅ Accepted: {timeSince(c.linked_at)}</div>}
+                    {c.status === "active" && <div>🔐 Data access: {visibilityLabel[c.visibility] || c.visibility}</div>}
+                    {c.notes && <div>📝 {c.notes}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </Modal>
       )}
     </PageShell>
@@ -2341,14 +2374,14 @@ function RecruiterNetworkReceivedPage({ user }) {
 
   async function handleAccept(link) {
     setActionLoading(link.id + "-accept")
-    try { await orgApi.acceptCompanyNda(link.id); await load() }
+    try { await orgApi.acceptCompanyInvite(link.invite_token); await load() }
     catch (err) { setError(err.message) }
     finally { setActionLoading(null) }
   }
 
   async function handleDecline(link) {
     setActionLoading(link.id + "-decline")
-    try { await orgApi.declineCompanyLink(link.id); await load() }
+    try { await orgApi.declineCompanyInvite(link.invite_token); await load() }
     catch (err) { setError(err.message) }
     finally { setActionLoading(null) }
   }
