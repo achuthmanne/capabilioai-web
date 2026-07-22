@@ -2131,12 +2131,25 @@ function CollegeCompaniesPage({ userData, user }) {
     setRowActionId(c.id + "-resend"); setRowMsg(null)
     try {
       const res = await orgApi.resendCompanyInvite(c.id)
-      setRowMsg({ id: c.id, text: res.emailSent ? "Invite resent ✓" : "Couldn't send email — check company's contact address" })
+      setRowMsg({ id: c.id, text: res.emailSent ? "Invite resent ✓" : emailFailureText(res.emailReason) })
     } catch (err) {
       setRowMsg({ id: c.id, text: err.message })
     } finally {
       setRowActionId(null)
-      setTimeout(() => setRowMsg(m => (m?.id === c.id ? null : m)), 4000)
+      setTimeout(() => setRowMsg(m => (m?.id === c.id ? null : m)), 6000)
+    }
+  }
+
+  // Maps the backend's emailReason to accurate copy — "not_configured" means the
+  // college's own email provider isn't set up yet, which has nothing to do with
+  // whether the company's address is valid. Don't blame the address for that.
+  function emailFailureText(reason) {
+    switch (reason) {
+      case "not_configured": return "Invite saved, but email sending isn't set up yet — ask your Capabilio admin to configure the email provider."
+      case "no_email_provided": return "This company has no contact email on file — add one to send an invite."
+      case "provider_error": return "Invite saved, but the email provider rejected the send. Double-check the address, then try again."
+      case "network_error": return "Invite saved, but the email couldn't be sent right now — try again in a moment."
+      default: return "Invite saved, but the email didn't send. You can share the invite link directly instead."
     }
   }
 
@@ -2177,10 +2190,11 @@ function CollegeCompaniesPage({ userData, user }) {
         notes:           form.notes,
       })
       await auditLog(user.id, user.id, userData?.name || "Admin",
-        `Invited company "${form.company_name.trim()}" to talent network${res.emailSent ? " — invite email sent" : ""}`,
-        "company.invited", "company", res.link.id, { company: form.company_name, matched: res.matchedExistingAccount, emailSent: res.emailSent })
+        `Invited company "${form.company_name.trim()}" to talent network${res.emailSent ? " — invite email sent" : " — " + emailFailureText(res.emailReason)}`,
+        "company.invited", "company", res.link.id, { company: form.company_name, matched: res.matchedExistingAccount, emailSent: res.emailSent, emailReason: res.emailReason })
       setShowInvite(false)
       setForm({ company_name: "", company_email: "", company_website: "", company_address: "", company_size: "", industry: "", notes: "" })
+      if (!res.emailSent) setRowMsg({ id: res.link.id, text: emailFailureText(res.emailReason) })
       reload()
     } catch (err) {
       setSaveError(err.message)
