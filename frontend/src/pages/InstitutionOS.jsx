@@ -74,7 +74,7 @@ const NAV_GROUPS = [
     items: [
       { id: "home",      label: "Institution home", badge: "Live", mobileShow: true },
       { id: "pubprofile",label: "Public Profile", mobileShow: true  },
-      { id: "community", label: "Public profile",   mobileShow: false  },
+      { id: "community", label: "Community",        mobileShow: false  },
       { id: "events",    label: "Posts",            mobileShow: false },
       { id: "outcomes",  label: "Search presence",  mobileShow: false },
     ],
