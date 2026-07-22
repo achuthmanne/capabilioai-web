@@ -57,6 +57,13 @@ export const profileApi = {
 }
 
 // ══════════════════════════════════════════
+// ORG / INSTITUTION OS — server-side writes to PC-7-protected profiles columns
+// ══════════════════════════════════════════
+export const orgApi = {
+  verifyEmail: () => request("POST", "/org/verify-email"),
+}
+
+// ══════════════════════════════════════════
 // EPFO VERIFICATION
 // ══════════════════════════════════════════
 export const epfoApi = {

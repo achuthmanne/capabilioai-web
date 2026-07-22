@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { supabase } from "../lib/supabase"
+import { orgApi } from "../lib/api"
 import InstitutionPublicProfile from "./InstitutionPublicProfile"
 
 // ─── Design Tokens — Futuristic dark theme (matches institution-path-prototype) ─
@@ -72,7 +73,7 @@ const NAV_GROUPS = [
     label: "Visibility",
     items: [
       { id: "home",      label: "Institution home", badge: "Live", mobileShow: true },
-      { id: "pubprofile",label: "Institution Profile", mobileShow: true  },
+      { id: "pubprofile",label: "Public Profile", mobileShow: true  },
       { id: "community", label: "Public profile",   mobileShow: false  },
       { id: "events",    label: "Posts",            mobileShow: false },
       { id: "outcomes",  label: "Search presence",  mobileShow: false },
@@ -92,7 +93,7 @@ const NAV_GROUPS = [
     label: "Intelligence",
     items: [
       { id: "intelligence", label: "Placement cell", mobileShow: true  },
-      { id: "settings",     label: "Readiness",      mobileShow: false },
+      { id: "settings",     label: "Student Readiness", mobileShow: false },
     ],
   },
 ]
@@ -2379,11 +2380,14 @@ function SettingsPage({ userData, user, initialTab = "profile", reloadAudit, aud
 
   async function handleEmailVerify() {
     setVerifyMsg(null); setVerifyError(null)
-    // User is authenticated → their email IS confirmed. Mark email_verified in profiles.
-    const { error } = await supabase.from("profiles")
-      .update({ verificationStatus: "email_verified" })
-      .eq("id", user.id)
-    if (error) { setVerifyError("Verification failed: " + error.message); return }
+    // profiles.verificationStatus is PC-7-protected (server-side only) — the
+    // write now goes through the backend, not a direct client-side Supabase call.
+    try {
+      await orgApi.verifyEmail()
+    } catch (err) {
+      setVerifyError("Verification failed: " + err.message)
+      return
+    }
     await auditLog(user.id, user.id, userData?.name || "Admin",
       "Completed Level 1 Email Verification", "verification.email_verified", "setting", "verification")
     setLocalVLevelBoost(1)
