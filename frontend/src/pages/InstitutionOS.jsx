@@ -2072,6 +2072,16 @@ function EventsPage({ userData, user }) {
 // PAGE 9 — COMPANIES (Partner Talent Network)
 // ═══════════════════════════════════════════════════════════════════════════════
 function CompaniesPage({ userData, user }) {
+  const isCollege = (userData?.org_type || "college") !== "company"
+  // Two entirely different UIs share this nav slot: a college invites
+  // companies here; a company org account instead sees institutions that
+  // invited THEM and an NDA accept/decline flow. Routing at this level (rather
+  // than an early-return inside one function body) keeps each side's hooks
+  // unconditional, per the Rules of Hooks.
+  return isCollege ? <CollegeCompaniesPage userData={userData} user={user} /> : <RecruiterNetworkReceivedPage userData={userData} user={user} />
+}
+
+function CollegeCompaniesPage({ userData, user }) {
   const { data: companies, loading, error, reload } = useOrgCompanyLinks(user?.id)
   const [showInvite, setShowInvite]   = useState(false)
   const [saving, setSaving]           = useState(false)
@@ -2089,25 +2099,26 @@ function CompaniesPage({ userData, user }) {
   async function handleInvite() {
     if (!form.company_name.trim()) { setSaveError("Company name is required."); return }
     setSaving(true); setSaveError(null)
-    const { data: row, error: err } = await supabase.from("org_company_links").insert({
-      institution_org_id: user.id,
-      company_name:       form.company_name.trim(),
-      company_email:      form.company_email.trim(),
-      company_website:    form.company_website.trim(),
-      company_size:       form.company_size,
-      industry:           form.industry,
-      notes:              form.notes,
-      status:             "invited",
-      invited_by:         user.id,
-    }).select().single()
-    setSaving(false)
-    if (err) { setSaveError(err.message); return }
-    await auditLog(user.id, user.id, userData?.name || "Admin",
-      `Invited company "${form.company_name.trim()}" to talent network`,
-      "company.invited", "company", row.id, { company: form.company_name })
-    setShowInvite(false)
-    setForm({ company_name: "", company_email: "", company_website: "", company_size: "", industry: "", notes: "" })
-    reload()
+    try {
+      const res = await orgApi.inviteCompany({
+        company_name:    form.company_name.trim(),
+        company_email:   form.company_email.trim(),
+        company_website: form.company_website.trim(),
+        company_size:    form.company_size,
+        industry:        form.industry,
+        notes:           form.notes,
+      })
+      await auditLog(user.id, user.id, userData?.name || "Admin",
+        `Invited company "${form.company_name.trim()}" to talent network${res.matchedExistingAccount ? " (linked to existing Capabilio account)" : ""}`,
+        "company.invited", "company", res.link.id, { company: form.company_name, matched: res.matchedExistingAccount })
+      setShowInvite(false)
+      setForm({ company_name: "", company_email: "", company_website: "", company_size: "", industry: "", notes: "" })
+      reload()
+    } catch (err) {
+      setSaveError(err.message)
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleActivate(c) {
@@ -2200,6 +2211,11 @@ function CompaniesPage({ userData, user }) {
                       <Chip color={statusColor[c.status] || T.ink3} bg={`${statusColor[c.status] || T.ink3}15`}>
                         {c.status === "active" ? "✓ Active" : c.status === "invited" ? "⏳ Invited" : c.status === "paused" ? "⏸ Paused" : "✗ Rejected"}
                       </Chip>
+                      {c.company_user_id ? (
+                        <Chip color={T.sky} bg={`${T.sky}15`}>🔗 Linked to Capabilio account</Chip>
+                      ) : c.status === "invited" && (
+                        <Chip color={T.ink4} bg={`${T.ink4}15`}>No Capabilio account yet</Chip>
+                      )}
                     </div>
                     <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
                       {c.industry && <span style={{ fontSize: 11, color: T.ink4 }}>🏭 {c.industry}</span>}
@@ -2276,6 +2292,110 @@ function CompaniesPage({ userData, user }) {
             </div>
           </div>
         </Modal>
+      )}
+    </PageShell>
+  )
+}
+
+// ─── Recruiter Network — company-side view of institutions that invited them ──
+// Symmetric counterpart to CollegeCompaniesPage: a company org account
+// (userData.org_type === 'company') sees institutions that have linked them,
+// and accepts/declines an NDA before their status flips to 'active'. Actual
+// student-data browsing (scoped by the visibility level the college set) is
+// a separate, not-yet-built increment — this closes the account-linkage +
+// consent gap first.
+function RecruiterNetworkReceivedPage({ user }) {
+  const [links, setLinks]     = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState(null)
+  const [actionLoading, setActionLoading] = useState(null)
+
+  const load = useCallback(async () => {
+    setLoading(true); setError(null)
+    try {
+      const res = await orgApi.listReceivedCompanyLinks()
+      setLinks(res.links || [])
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  async function handleAccept(link) {
+    setActionLoading(link.id + "-accept")
+    try { await orgApi.acceptCompanyNda(link.id); await load() }
+    catch (err) { setError(err.message) }
+    finally { setActionLoading(null) }
+  }
+
+  async function handleDecline(link) {
+    setActionLoading(link.id + "-decline")
+    try { await orgApi.declineCompanyLink(link.id); await load() }
+    catch (err) { setError(err.message) }
+    finally { setActionLoading(null) }
+  }
+
+  const visibilityLabel = { roster: "Roster only", elo: "Roster + ELO", placements: "Placement data", full: "Full access" }
+  const statusColor = { invited: T.amber, active: T.green, paused: T.ink4, rejected: T.red }
+  const pendingCount = links.filter(l => l.status === "invited").length
+
+  return (
+    <PageShell>
+      <PageHeader title="Recruiter Network" sub="Institutions that have invited you to their talent pool" />
+
+      <div style={{ display: "flex", gap: 10, marginBottom: 20, overflowX: "auto" }}>
+        <KPICard value={links.filter(l => l.status === "active").length || "—"} label="Active Partners" color={T.green} context="Institutions you can access" />
+        <KPICard value={pendingCount || "—"} label="Pending NDA" color={T.amber} context="Awaiting your response" />
+        <KPICard value={links.length || "—"} label="Total Invites" color={T.sky} context="All institution links" />
+      </div>
+
+      {loading ? <Spinner /> : error ? <ErrorBanner msg={error} onRetry={load} /> : (
+        links.length === 0 ? (
+          <EmptyState icon="🎓" title="No institution invites yet" sub="When a college or university adds your company to their Talent Network using this account's email, it will show up here." />
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {links.map(l => (
+              <Card key={l.id} style={{ padding: "16px 18px" }}>
+                <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                    background: `linear-gradient(135deg, ${T.sky}20, ${T.purple}20)`,
+                    border: `1px solid ${T.sky}30`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 15, fontWeight: 800, color: T.sky,
+                  }}>
+                    {l.institution_name.charAt(0).toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 4 }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>{l.institution_name}</span>
+                      <Chip color={statusColor[l.status] || T.ink3} bg={`${statusColor[l.status] || T.ink3}15`}>
+                        {l.status === "active" ? "✓ Active" : l.status === "invited" ? "⏳ Awaiting your response" : l.status === "paused" ? "⏸ Paused" : "✗ Declined"}
+                      </Chip>
+                    </div>
+                    {l.status === "active" && (
+                      <div style={{ fontSize: 11, color: T.ink4 }}>Data access: <b style={{ color: T.ink3 }}>{visibilityLabel[l.visibility] || l.visibility}</b> · NDA signed {timeSince(l.nda_signed_at)}</div>
+                    )}
+                    {l.notes && <div style={{ fontSize: 11, color: T.ink4, marginTop: 6, fontStyle: "italic" }}>{l.notes}</div>}
+                  </div>
+                  {l.status === "invited" && (
+                    <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                      <Btn disabled={actionLoading === l.id + "-accept"} onClick={() => handleAccept(l)} style={{ fontSize: 11, padding: "5px 12px" }}>
+                        {actionLoading === l.id + "-accept" ? "…" : "Accept NDA ✓"}
+                      </Btn>
+                      <Btn variant="outline" disabled={actionLoading === l.id + "-decline"} onClick={() => handleDecline(l)} style={{ fontSize: 11, padding: "5px 10px" }}>
+                        Decline
+                      </Btn>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )
       )}
     </PageShell>
   )

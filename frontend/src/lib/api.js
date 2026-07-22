@@ -69,6 +69,12 @@ export const orgApi = {
   revokeJoinLink: (id)        => request("PATCH", `/org/join-links/${id}/revoke`),
   resolveJoinLink: (token)    => request("GET",  `/org/join/${token}`),
   claimJoinLink:  (token)     => request("POST", `/org/join/${token}`),
+
+  // Talent Network <-> real company org account linkage + NDA workflow.
+  inviteCompany:        (opts)  => request("POST", "/org/company-links", opts),
+  listReceivedCompanyLinks: ()  => request("GET",  "/org/company-links/received"),
+  acceptCompanyNda:     (id)    => request("POST", `/org/company-links/${id}/accept-nda`),
+  declineCompanyLink:   (id)    => request("POST", `/org/company-links/${id}/decline`),
 }
 
 // ══════════════════════════════════════════
