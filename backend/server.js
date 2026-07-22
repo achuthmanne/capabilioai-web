@@ -202,6 +202,19 @@ app.use((req, res, next) => {
 app.get("/",       (_, res) => res.json({ status: "ok", service: "Capabilio Server", version: "3.0.0", arena: "15 roles · 14 workspaces · full proof pipeline" }))
 app.get("/health", (_, res) => res.json({ status: "ok", ts: Date.now() }))
 
+// Diagnostic-only — reports whether the email provider env vars are visible to
+// THIS running process, with no secrets in the response. Added 2026-07-22 to
+// stop guessing from Render dashboard screenshots whether a deploy actually
+// picked up RESEND_API_KEY / RESEND_FROM_ADDRESS.
+const __serverBootedAt = new Date().toISOString()
+app.get("/api/_debug/email-config", (_, res) => res.json({
+  hasResendApiKey: !!process.env.RESEND_API_KEY,
+  resendApiKeyLength: process.env.RESEND_API_KEY ? process.env.RESEND_API_KEY.length : 0,
+  fromAddress: process.env.RESEND_FROM_ADDRESS || "Capabilio <onboarding@resend.dev> (default — RESEND_FROM_ADDRESS not set)",
+  pid: process.pid,
+  workerBootedAt: __serverBootedAt,
+}))
+
 // ─── Mount routes ─────────────────────────────────────────────────────────────
 app.use("/api",              resumeRoutes)       // extract-pdf, extract-linkedin
 app.use("/api",              assessmentRoutes)   // generate-mcq, analyse-assessment, analyse-professional-profile
