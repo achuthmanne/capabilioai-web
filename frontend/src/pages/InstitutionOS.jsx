@@ -2092,7 +2092,9 @@ function CollegeCompaniesPage({ userData, user }) {
 
   const filtered = companies.filter(c => tab === "active" ? c.status === "active" || c.status === "invited" : c.status === "paused" || c.status === "rejected")
 
-  const visibilityLabel = { roster: "Roster only", elo: "Roster + ELO", placements: "Placement data", full: "Full access" }
+  // Performance-only tiers — email/phone are never exposed at any level.
+  // "Full access" means fuller performance data, not contact details.
+  const visibilityLabel = { roster: "Roster (name, dept, batch)", elo: "Roster + ELO scores", placements: "+ Placement outcomes", full: "Full performance profile" }
   const visibilityColor = { roster: T.ink3, elo: T.amber, placements: T.sky, full: T.green }
   const statusColor     = { invited: T.amber, active: T.green, paused: T.ink4, rejected: T.red }
 
@@ -2121,9 +2123,16 @@ function CollegeCompaniesPage({ userData, user }) {
     }
   }
 
+  // Manual activation is ONLY for companies with no matched Capabilio account
+  // (c.company_user_id is null) — i.e. still just a CRM record the college is
+  // managing themselves, nobody else can act on it. Once a link is matched to
+  // a real company account, only that company can activate it — by accepting
+  // the NDA from their own Recruiter Network page — never the college
+  // unilaterally. This is what actually closes the consent loop.
   async function handleActivate(c) {
+    if (c.company_user_id) return // guarded in the UI too; belt-and-suspenders
     await supabase.from("org_company_links").update({ status: "active", linked_at: new Date().toISOString() }).eq("id", c.id)
-    await auditLog(user.id, user.id, userData?.name || "Admin", `Activated link with ${c.company_name}`, "company.activated", "company", c.id)
+    await auditLog(user.id, user.id, userData?.name || "Admin", `Activated link with ${c.company_name} (no linked account — manual CRM record)`, "company.activated", "company", c.id)
     reload()
   }
 
@@ -2246,7 +2255,9 @@ function CollegeCompaniesPage({ userData, user }) {
                   {/* Actions */}
                   <div style={{ display: "flex", gap: 6, flexShrink: 0, flexDirection: "column", alignItems: "flex-end" }}>
                     {c.status === "invited" && (
-                      <Btn onClick={() => handleActivate(c)} style={{ fontSize: 11, padding: "5px 12px" }}>Activate ✓</Btn>
+                      c.company_user_id
+                        ? <span style={{ fontSize: 10, color: T.ink4, fontStyle: "italic" }}>Awaiting company's response</span>
+                        : <Btn onClick={() => handleActivate(c)} style={{ fontSize: 11, padding: "5px 12px" }}>Activate ✓</Btn>
                     )}
                     {(c.status === "active" || c.status === "paused") && (
                       <Btn variant="outline" onClick={() => handlePause(c)} style={{ fontSize: 11, padding: "5px 10px" }}>
@@ -2267,7 +2278,7 @@ function CollegeCompaniesPage({ userData, user }) {
       {showInvite && (
         <Modal title="Invite Company to Talent Network" onClose={() => { setShowInvite(false); setSaveError(null) }} width={520}>
           <div style={{ fontSize: 12, color: T.ink3, marginBottom: 16, padding: "10px 14px", background: T.skyL, borderRadius: 10 }}>
-            🔔 The company will be notified and can browse your student pool based on the data access level you set after activation.
+            🔔 The company will be emailed. They must accept an NDA before any access is granted. Student email and contact details are never shared at any access level — companies reach students only through you.
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -2309,6 +2320,10 @@ function RecruiterNetworkReceivedPage({ user }) {
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState(null)
   const [actionLoading, setActionLoading] = useState(null)
+  const [viewingLink, setViewingLink] = useState(null)
+  const [students, setStudents]       = useState([])
+  const [studentsLoading, setStudentsLoading] = useState(false)
+  const [studentsError, setStudentsError]     = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true); setError(null)
@@ -2338,7 +2353,21 @@ function RecruiterNetworkReceivedPage({ user }) {
     finally { setActionLoading(null) }
   }
 
-  const visibilityLabel = { roster: "Roster only", elo: "Roster + ELO", placements: "Placement data", full: "Full access" }
+  async function handleViewStudents(link) {
+    setViewingLink(link); setStudentsLoading(true); setStudentsError(null); setStudents([])
+    try {
+      const res = await orgApi.getCompanyLinkStudents(link.id)
+      setStudents(res.students || [])
+    } catch (err) {
+      setStudentsError(err.message)
+    } finally {
+      setStudentsLoading(false)
+    }
+  }
+
+  // Performance-only tiers — no tier ever includes email/phone/contact info.
+  // Reaching a specific student always goes through the college, not directly.
+  const visibilityLabel = { roster: "Roster (name, dept, batch)", elo: "Roster + ELO scores", placements: "+ Placement outcomes", full: "Full performance profile" }
   const statusColor = { invited: T.amber, active: T.green, paused: T.ink4, rejected: T.red }
   const pendingCount = links.filter(l => l.status === "invited").length
 
@@ -2377,7 +2406,7 @@ function RecruiterNetworkReceivedPage({ user }) {
                       </Chip>
                     </div>
                     {l.status === "active" && (
-                      <div style={{ fontSize: 11, color: T.ink4 }}>Data access: <b style={{ color: T.ink3 }}>{visibilityLabel[l.visibility] || l.visibility}</b> · NDA signed {timeSince(l.nda_signed_at)}</div>
+                      <div style={{ fontSize: 11, color: T.ink4 }}>Data access: <b style={{ color: T.ink3 }}>{visibilityLabel[l.visibility] || l.visibility}</b> · NDA signed {timeSince(l.nda_signed_at)} · No personal contact info is ever shared — reach students through the college.</div>
                     )}
                     {l.notes && <div style={{ fontSize: 11, color: T.ink4, marginTop: 6, fontStyle: "italic" }}>{l.notes}</div>}
                   </div>
@@ -2391,11 +2420,44 @@ function RecruiterNetworkReceivedPage({ user }) {
                       </Btn>
                     </div>
                   )}
+                  {l.status === "active" && (
+                    <Btn variant="outline" onClick={() => handleViewStudents(l)} style={{ fontSize: 11, padding: "5px 10px", flexShrink: 0 }}>View Students</Btn>
+                  )}
                 </div>
               </Card>
             ))}
           </div>
         )
+      )}
+
+      {viewingLink && (
+        <Modal title={`Students — ${viewingLink.institution_name}`} onClose={() => setViewingLink(null)} width={640}>
+          <div style={{ fontSize: 11, color: T.ink4, marginBottom: 12 }}>
+            Showing {visibilityLabel[viewingLink.visibility] || viewingLink.visibility}. No email, phone, or contact details are included at any access level.
+          </div>
+          {studentsLoading ? <Spinner /> : studentsError ? <ErrorBanner msg={studentsError} onRetry={() => handleViewStudents(viewingLink)} /> : (
+            students.length === 0 ? (
+              <EmptyState icon="🎓" title="No students visible yet" sub="This institution hasn't added students to their roster yet." />
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 420, overflowY: "auto" }}>
+                {students.map(s => (
+                  <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", border: `1px solid ${T.border}`, borderRadius: 10 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: T.skyL, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: T.sky, flexShrink: 0 }}>
+                      {s.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>{s.name}</div>
+                      <div style={{ fontSize: 11, color: T.ink4 }}>{s.department}{s.batch ? ` · ${s.batch}` : ""}{s.placement_company ? ` · Placed at ${s.placement_company}` : ""}</div>
+                    </div>
+                    {typeof s.elo_rating === "number" && s.elo_rating > 0 && (
+                      <div style={{ fontFamily: MONO, fontSize: 13, fontWeight: 700, color: T.sky }}>ELO {s.elo_rating}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )
+          )}
+        </Modal>
       )}
     </PageShell>
   )

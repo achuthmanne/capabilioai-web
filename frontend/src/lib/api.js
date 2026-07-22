@@ -75,6 +75,7 @@ export const orgApi = {
   listReceivedCompanyLinks: ()  => request("GET",  "/org/company-links/received"),
   acceptCompanyNda:     (id)    => request("POST", `/org/company-links/${id}/accept-nda`),
   declineCompanyLink:   (id)    => request("POST", `/org/company-links/${id}/decline`),
+  getCompanyLinkStudents: (id)  => request("GET",  `/org/company-links/${id}/students`),
 }
 
 // ══════════════════════════════════════════
