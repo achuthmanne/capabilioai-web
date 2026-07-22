@@ -859,6 +859,20 @@ function App() {
             subscription: fresh?.subscription,
             eloRating:    fresh?.eloRating || fresh?.elo_rating,
           })
+          // Institution/company accounts: force a full reload rather than
+          // trusting in-memory state here. org_type (college vs company) is
+          // set mid-wizard, well before this callback fires, so the DB value
+          // is already correct — but this callback's own setUserData/realtime
+          // paths have shown stale-state symptoms in practice (dashboard
+          // rendering the wrong org_type right after finishing onboarding).
+          // A reload guarantees the very next render reads org_type fresh
+          // from userDoc.get(), matching the same defensive pattern already
+          // used by JoinOrgPage.jsx and CompanyInvitePage.jsx after their own
+          // profile-changing actions.
+          if (confirmedPath === "institution") {
+            window.location.reload()
+            return
+          }
           setOnboardingDone(true)
           const home = confirmedPath === "student" ? "aura" : (HOME_PAGE[confirmedPath] || "studentHome")
           setCurrentPage(home)
