@@ -155,7 +155,7 @@ export default function WeeklyCareerCheck({ user, onNavigate }) {
             <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: P, fontFamily: MONO }}>Weekly Career Check</div>
             <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 800, color: INK, marginTop: 4 }}>5-minute refresh</div>
           </div>
-          <button onClick={() => onNavigate?.("professionalHome")} style={{ background: "none", border: "none", color: MUT, fontSize: 20, cursor: "pointer" }}>✕</button>
+          <button onClick={() => onNavigate?.("orbit")} style={{ background: "none", border: "none", color: MUT, fontSize: 20, cursor: "pointer" }}>✕</button>
         </div>
 
         {state === "loading" && <Spinner />}
@@ -267,7 +267,7 @@ export default function WeeklyCareerCheck({ user, onNavigate }) {
             <button onClick={() => onNavigate?.("orbit")} style={{ background: P, color: "#fff", border: "none", borderRadius: 14, padding: "12px 20px", fontWeight: 800, cursor: "pointer", fontSize: 12, fontFamily: MONO, letterSpacing: "0.04em", textTransform: "uppercase", width: "100%", marginBottom: 10 }}>
               See updated skill scores →
             </button>
-            <button onClick={() => onNavigate?.("professionalHome")} style={{ background: "none", border: `1px solid ${BDR}`, borderRadius: 14, padding: "12px 20px", fontWeight: 700, cursor: "pointer", fontSize: 12, color: MUT, width: "100%" }}>
+            <button onClick={() => onNavigate?.("orbit")} style={{ background: "none", border: `1px solid ${BDR}`, borderRadius: 14, padding: "12px 20px", fontWeight: 700, cursor: "pointer", fontSize: 12, color: MUT, width: "100%" }}>
               Back to Home
             </button>
           </div>

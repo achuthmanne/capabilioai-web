@@ -4,9 +4,9 @@
  * Career Timeline and Vault are in Profile → Career & Vault / Vault tabs
  * Supabase-native: uses userDoc.update() from lib/db
  */
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useRef, useEffect } from "react"
 import { userDoc } from "../lib/db"
-import { vaultApi } from "../lib/api"
+import { vaultApi, weeklyCheckApi } from "../lib/api"
 import { getRoleConfig } from "../config/roleConfig"
 
 const API = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
@@ -39,6 +39,43 @@ const G=`
 .olink{transition:color .15s;cursor:pointer;}
 ::-webkit-scrollbar{width:5px;height:5px} ::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.07);border-radius:3px}
 `
+
+// ─── Weekly Career Check banner ───────────────────────────────────────────────
+// This is the actual, reachable entry point for the Weekly Refresh Engine —
+// Orbit is the real professional-path landing tab (PathNav.jsx's "professional"
+// array), so this banner lives here rather than the unreachable ProfessionalHome.jsx
+// page. Never say "assessment" in this copy — product naming rule.
+function WeeklyCheckBanner({onNav}){
+  const[state,setState]=useState("loading") // loading|none|due|in_progress|done|error
+  useEffect(()=>{
+    let cancelled=false
+    weeklyCheckApi.current()
+      .then(res=>{
+        if(cancelled)return
+        if(!res.available){setState("none");return}
+        if(res.pulse.status==="completed")setState("done")
+        else if(res.pulse.status==="in_progress")setState("in_progress")
+        else setState("due")
+      })
+      .catch(()=>!cancelled&&setState("error"))
+    return()=>{cancelled=true}
+  },[])
+  if(state==="loading"||state==="error")return null
+  const copy={
+    none:{title:"Set up your Weekly Career Check",desc:"Add a few skills below and this comes alive — a 5-minute check-in that keeps your skill scores current.",cta:"Add skills",tab:"vault",color:DS.ink4},
+    due:{title:"This week's Career Check is ready",desc:"5 quick scenario questions based on your skills. About a minute.",cta:"Start check-in →",tab:"weeklycheck",color:DS.primary},
+    in_progress:{title:"Pick up where you left off",desc:"A couple questions left in this week's Career Check.",cta:"Continue →",tab:"weeklycheck",color:DS.amber},
+    done:{title:"This week's Career Check is done",desc:"Skill confidence signals are current. Next check-in opens next week.",cta:"View skills →",tab:"vault",color:DS.green},
+  }[state]
+  return<div className="ocard" style={{marginBottom:18,padding:"15px 20px",background:DS.surface,border:`1.5px solid ${copy.color}33`,borderRadius:DS.r2,boxShadow:DS.sh,display:"flex",alignItems:"center",justifyContent:"space-between",gap:14,flexWrap:"wrap"}}>
+    <div>
+      <div style={{fontSize:10,fontWeight:700,color:copy.color,letterSpacing:2.2,fontFamily:DS.mono,textTransform:"uppercase"}}>Weekly Career Check</div>
+      <div style={{fontFamily:DS.display,fontSize:15,fontWeight:800,color:DS.ink,marginTop:3}}>{copy.title}</div>
+      <div style={{fontSize:12,color:DS.ink3,marginTop:2}}>{copy.desc}</div>
+    </div>
+    <Btn onClick={()=>onNav(copy.tab)} style={state==="due"||state==="in_progress"?{background:copy.color,color:"#fff",border:"none"}:{}}>{copy.cta}</Btn>
+  </div>
+}
 
 // ─── Career Score Engine ──────────────────────────────────────────────────────
 function parseYear(s){if(!s)return null;const m=String(s).match(/\b(20\d{2}|19\d{2})\b/);return m?parseInt(m[1]):null}
@@ -943,6 +980,8 @@ function OrbitDash({ud,user,onSave,onNav,onPricing}){
       </div>
     </Card>
 
+    <WeeklyCheckBanner onNav={onNav}/>
+
     {/* 4 ELO cards — all users */}
     <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:18}}>
       {CARDS.map((c,i)=>(
@@ -1107,7 +1146,7 @@ export default function Orbit({user,userData,setUserData,activeTab,setActiveTab,
   const setTab=setActiveTab||setLocalTab
 
   const handleNav=t=>{
-    if(["forge","launchpad","pulse","nexus","aura"].includes(t))onNavigate(t)
+    if(["forge","launchpad","pulse","nexus","aura","weeklycheck"].includes(t))onNavigate(t)
     else setTab(t)
   }
 
