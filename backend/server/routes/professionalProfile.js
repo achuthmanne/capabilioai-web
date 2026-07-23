@@ -147,28 +147,50 @@ router.post("/pro/photo", requireAuth, upload.single("photo"), async (req, res) 
 })
 
 // ── EPFO Submit ───────────────────────────────────────────────────────────────
+// RETARGETED (see PROFESSIONAL_PATH_ARCHITECTURE.md §"schema fork"): this
+// previously wrote to "epfo_verifications", a table that was never migrated
+// anywhere — this endpoint has been throwing "relation does not exist" on
+// every call. There's a real, RLS-enabled table for exactly this — epf_records
+// (linked via professional_profiles, one row per user) — so this now targets
+// that instead. It also previously wrote profiles.epfo_verified/epfo_uan,
+// columns that don't exist either; the real columns are uan_verified/uan_number.
+//
+// Note: supabase/functions/verify-uan is a SEPARATE, REAL integration against
+// Eko's government EPFO API (HMAC-signed), currently called directly from
+// Orbit.jsx. That is the production-grade verification path. This endpoint
+// remains as a manual-fallback / non-realtime path (per the product
+// requirement for a manual fallback when live EPFO lookup fails) and should
+// not be treated as equivalent to the Eko integration.
 router.post("/pro/epfo/submit", requireAuth, async (req, res) => {
   try {
     const uid  = req.user.id
     const { uan, employerList } = req.body
     if (!uan) return res.status(400).json({ error: "UAN is required" })
 
-    // In production: call actual EPFO API / DigiLocker integration
-    // For now: create verification record and simulate async processing
+    const { data: pp, error: ppError } = await supabaseAdmin
+      .from("professional_profiles")
+      .upsert({ user_id: uid }, { onConflict: "user_id" })
+      .select()
+      .single()
+    if (ppError) return res.status(500).json({ error: ppError.message })
+
     const { data, error } = await supabaseAdmin
-      .from("epfo_verifications")
+      .from("epf_records")
       .insert({
-        user_id:         uid,
-        uan:             uan,
-        submission_data: { uan, employerList: employerList || [] },
-        status:          "processing",
+        professional_profile_id: pp.id,
+        uan,
+        verification_status:     "in_progress",
+        source:                  "manual_document",
       })
       .select()
       .single()
 
     if (error) return res.status(500).json({ error: error.message })
 
-    // Async: attempt to match with career timeline
+    // Async fallback matching against career_timeline. This is explicitly NOT
+    // a real government EPFO lookup (that's the Eko edge function) — it's a
+    // manual-review-adjacent heuristic for when a user submits a UAN here
+    // instead of through the real verification flow.
     setImmediate(async () => {
       try {
         const { data: timeline } = await supabaseAdmin
@@ -177,57 +199,59 @@ router.post("/pro/epfo/submit", requireAuth, async (req, res) => {
           .eq("user_id", uid)
           .order("start_date", { ascending: false })
 
-        // Simulate EPFO match (in production: actual EPFO API call)
-        const matched = (timeline || []).map(entry => ({
-          timeline_id: entry.id,
-          company:     entry.company,
-          status:      "matched",
-          confidence:  0.9,
-        }))
+        const hasTimelineEvidence = (timeline || []).length > 0
 
         await supabaseAdmin
-          .from("epfo_verifications")
-          .update({ status: "verified", matched_entries: matched, verified_at: new Date().toISOString() })
+          .from("epf_records")
+          .update({
+            verification_status: hasTimelineEvidence ? "verified" : "in_progress",
+            verified_at:          hasTimelineEvidence ? new Date().toISOString() : null,
+          })
           .eq("id", data.id)
 
-        await supabaseAdmin
-          .from("profiles")
-          .update({
-            epfo_verified:      true,
-            epfo_uan:           uan,
-            epfo_verified_at:   new Date().toISOString(),
-            verification_state: "employment_verified",
-          })
-          .eq("id", uid)
+        if (hasTimelineEvidence) {
+          await supabaseAdmin
+            .from("profiles")
+            .update({
+              uan_verified:        true,
+              uan_number:          uan,
+              uan_verified_at:     new Date().toISOString(),
+              verification_state:  "employment_verified",
+            })
+            .eq("id", uid)
 
-        // Recompute ELO
-        const { data: p } = await supabaseAdmin.from("profiles").select("*").eq("id", uid).single()
-        if (p) {
-          const sig = computeEloSignals(p)
-          await supabaseAdmin.from("profiles").update({
-            role_elo: sig.roleElo, market_elo: sig.marketElo,
-            proof_elo: sig.proofElo, mobility_elo: sig.mobilityElo,
-            aura_score: sig.auraScore,
-          }).eq("id", uid)
+          const { data: p } = await supabaseAdmin.from("profiles").select("*").eq("id", uid).single()
+          if (p) {
+            const sig = computeEloSignals(p)
+            await supabaseAdmin.from("profiles").update({
+              role_elo: sig.roleElo, market_elo: sig.marketElo,
+              proof_elo: sig.proofElo, mobility_elo: sig.mobilityElo,
+              aura_score: sig.auraScore, profile_completeness: sig.profileCompleteness,
+            }).eq("id", uid)
+          }
         }
       } catch (err) { console.error("[epfo async]", err.message) }
     })
 
-    res.json({ success: true, verification_id: data.id, status: "processing" })
+    res.json({ success: true, verification_id: data.id, status: "in_progress" })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
 // ── EPFO Status ───────────────────────────────────────────────────────────────
 router.get("/pro/epfo/status", requireAuth, async (req, res) => {
   try {
+    const { data: pp } = await supabaseAdmin
+      .from("professional_profiles").select("id").eq("user_id", req.user.id).single()
+    if (!pp) return res.json({ status: "not_started" })
+
     const { data, error } = await supabaseAdmin
-      .from("epfo_verifications")
+      .from("epf_records")
       .select("*")
-      .eq("user_id", req.user.id)
+      .eq("professional_profile_id", pp.id)
       .order("created_at", { ascending: false })
       .limit(1)
       .single()
-    if (error) return res.json({ status: "none" })
+    if (error) return res.json({ status: "not_started" })
     res.json(data)
   } catch (e) { res.status(500).json({ error: e.message }) }
 })

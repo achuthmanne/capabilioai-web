@@ -49,34 +49,13 @@ function optionalAuth(req, res, next) {
 // Called by Pulse page for market trends and technology news.
 // Gemini Search uses Google Search grounding — returns real, current data.
 // Cached per domain for 2 hours so we don't burn API quota on repeated page loads.
-// ── GET /pulse/mentors — top mentors filtered by domain ──────────────────────
-// Called by Arena page sidebar to show relevant mentors.
-router.get("/pulse/mentors", optionalAuth, async (req, res) => {
-  try {
-    const domain = (req.query.domain || "").toLowerCase().trim()
-    const limit  = Math.min(parseInt(req.query.limit) || 5, 20)
-
-    let q = supabaseAdmin
-      .from("mentor_profiles")
-      .select("id, hourly_rate_inr, rating, session_count, is_active, specializations, profiles(id,name,display_name,headline,profile_photo_url,current_company,current_role_title,elo_rating,keyword)")
-      .eq("is_active", true)
-      .order("rating", { ascending: false })
-      .limit(limit)
-
-    if (domain) {
-      // filter by domain keyword in specializations array or profiles.keyword
-      q = q.or(`specializations.cs.{"${domain}"}`)
-    }
-
-    const { data, error } = await q
-    if (error) throw error
-    return res.json({ mentors: data || [] })
-  } catch (e) {
-    console.error("[pulse/mentors]", e.message)
-    // Graceful fallback — never crash the Arena page over mentor sidebar
-    return res.json({ mentors: [] })
-  }
-})
+// NOTE: this route was previously defined TWICE in this file — a live bug.
+// Express dispatches to whichever handler is registered first, so the older
+// definition (which queried a "mentor_profiles" table that has never been
+// migrated anywhere and always fell through to an empty list) silently won
+// every time, and the version below — which has a real, working fallback to
+// profiles.is_mentor — never ran. Removed the dead duplicate; see the
+// surviving definition further down this file for the real implementation.
 
 router.get("/pulse/market-insights", optionalAuth, async (req, res) => {
   const domain = (req.query.domain || "technology").toLowerCase().trim()

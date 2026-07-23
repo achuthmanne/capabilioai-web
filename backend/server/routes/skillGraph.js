@@ -7,6 +7,23 @@
  * DELETE /api/pro/skills/:id    — remove skill
  * POST /api/pro/skills/:id/proof — submit proof for a skill
  * GET  /api/pro/skills/gaps     — compute skill gaps vs target role
+ *
+ * RETARGETED (see PROFESSIONAL_PATH_ARCHITECTURE.md §"schema fork"): this
+ * previously queried a "skill_graph" table that was never migrated anywhere in
+ * the repo — every route here would have thrown "relation does not exist" the
+ * moment it was called. There's a real, RLS-protected table that already covers
+ * this — user_skills — so these routes now target that instead of creating a
+ * second parallel schema. Field mapping vs. the old (never-real) shape:
+ *   skill_name        -> name
+ *   skill_slug         -> slug
+ *   category           -> group_type (core/domain/proof/tool_stack/growth/verified_strength/career_signal)
+ *   confidence_score   -> confidence, rescaled 0-100 -> 0-1 (user_skills' real check constraint)
+ *   elo_value          -> level_score (0-100, real column) — "ELO" language dropped, level_score is the
+ *                         real analogous field on this table and doesn't share ELO's 0-2000+ semantics
+ *   verification_state -> verified (boolean) + source (constrained enum, extended additively with
+ *                         'resume_derived' via migration retarget_skills_onto_user_skills)
+ *   years_used, companies_used, is_current, proof_artifacts, icon_url, color -> added as nullable
+ *   columns on user_skills by the same migration (additive, doesn't touch existing rows/callers)
  */
 import { Router } from "express"
 import { supabaseAdmin }  from "../lib/supabase.js"
@@ -15,6 +32,7 @@ import { requireAuth } from "../lib/auth.js"
 
 const router = Router()
 
+const TABLE = "user_skills"
 
 // ── Technology icon / color map ───────────────────────────────────────────────
 const TECH_META = {
@@ -85,6 +103,9 @@ const TECH_META = {
   "system design": { color: "#8B5CF6", icon: null, fallbackIcon: "🏗️" },
 }
 
+const GROUP_TYPES = ["core", "domain", "proof", "tool_stack", "growth", "verified_strength", "career_signal"]
+const LEVELS = ["learning", "beginner", "developing", "proficient", "advanced", "expert"]
+
 function enrichSkill(name) {
   const slug = name.toLowerCase().trim()
   const meta = TECH_META[slug] || TECH_META[slug.replace(/\.js$/, "")] || {}
@@ -99,14 +120,27 @@ function makeSlug(name) {
   return name.toLowerCase().trim().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
 }
 
+// level_score (0-100) -> the closest textual level bucket, since `level` is a
+// separate, check-constrained column on user_skills (not derived automatically).
+function levelFromScore(score) {
+  if (score >= 90) return "expert"
+  if (score >= 75) return "advanced"
+  if (score >= 55) return "proficient"
+  if (score >= 35) return "developing"
+  if (score >= 15) return "beginner"
+  return "learning"
+}
+
+function safeGroupType(v) { return GROUP_TYPES.includes(v) ? v : "core" }
+
 // ── GET skills ────────────────────────────────────────────────────────────────
 router.get("/pro/skills", requireAuth, async (req, res) => {
   try {
     const { data, error } = await supabaseAdmin
-      .from("skill_graph")
+      .from(TABLE)
       .select("*")
       .eq("user_id", req.user.id)
-      .order("elo_value", { ascending: false })
+      .order("level_score", { ascending: false })
     if (error) throw error
     res.json(data || [])
   } catch (e) { res.status(500).json({ error: e.message }) }
@@ -121,26 +155,28 @@ router.post("/pro/skills", requireAuth, async (req, res) => {
 
     const slug = makeSlug(body.skill_name)
     const meta = enrichSkill(body.skill_name)
+    const levelScore = body.confidence_score != null ? Math.max(0, Math.min(100, Math.round(body.confidence_score))) : 60
 
     const { data, error } = await supabaseAdmin
-      .from("skill_graph")
+      .from(TABLE)
       .upsert({
-        user_id:            uid,
-        skill_name:         body.skill_name,
-        skill_slug:         slug,
-        category:           body.category || "technical",
-        domain:             body.domain || null,
-        icon_url:           meta.icon_url,
-        color:              meta.color,
-        verification_state: body.verification_state || "user_added",
-        confidence_score:   body.confidence_score || 60,
-        elo_value:          body.elo_value || 500,
-        years_used:         body.years_used || null,
-        is_current:         body.is_current !== undefined ? body.is_current : true,
-        is_target:          body.is_target || false,
-        companies_used:     body.companies_used || [],
-        updated_at:         new Date().toISOString(),
-      }, { onConflict: "user_id,skill_slug" })
+        user_id:          uid,
+        name:             body.skill_name,
+        slug,
+        group_type:       safeGroupType(body.category),
+        domain:           body.domain || null,
+        icon_url:         meta.icon_url,
+        color:            meta.color,
+        level:            levelFromScore(levelScore),
+        level_score:      levelScore,
+        confidence:       levelScore / 100,
+        verified:         body.verification_state === "proof_submitted",
+        source:           body.source || "manual",
+        years_used:       body.years_used || null,
+        is_current:       body.is_current !== undefined ? body.is_current : true,
+        companies_used:   body.companies_used || [],
+        updated_at:       new Date().toISOString(),
+      }, { onConflict: "user_id,slug" })
       .select()
       .single()
 
@@ -157,35 +193,41 @@ router.post("/pro/skills/bulk", requireAuth, async (req, res) => {
     if (!Array.isArray(skills) || !skills.length)
       return res.status(400).json({ error: "skills array required" })
 
+    const isResume = source === "resume"
     const rows = skills.map(s => {
       const name = typeof s === "string" ? s : s.skill_name || s.name || ""
       if (!name) return null
       const slug = makeSlug(name)
       const meta = enrichSkill(name)
+      const levelScore = isResume ? 50 : 70
       return {
-        user_id:            uid,
-        skill_name:         name,
-        skill_slug:         slug,
-        icon_url:           meta.icon_url,
-        color:              meta.color,
-        verification_state: source === "resume" ? "inferred" : "user_added",
-        confidence_score:   source === "resume" ? 50 : 70,
-        elo_value:          500,
-        is_current:         true,
-        updated_at:         new Date().toISOString(),
+        user_id:      uid,
+        name,
+        slug,
+        group_type:   "core",
+        icon_url:     meta.icon_url,
+        color:        meta.color,
+        level:        levelFromScore(levelScore),
+        level_score:  levelScore,
+        confidence:   levelScore / 100,
+        verified:     false,
+        source:       isResume ? "resume_derived" : "manual",
+        is_current:   true,
+        updated_at:   new Date().toISOString(),
       }
     }).filter(Boolean)
 
     const { data, error } = await supabaseAdmin
-      .from("skill_graph")
-      .upsert(rows, { onConflict: "user_id,skill_slug", ignoreDuplicates: false })
+      .from(TABLE)
+      .upsert(rows, { onConflict: "user_id,slug", ignoreDuplicates: false })
       .select()
 
     if (error) throw error
 
-    // Also update the profiles.skill_graph JSONB for backward compat
+    // Also update the profiles.skill_graph JSONB for backward compat with
+    // whatever frontend still reads that blob directly.
     await supabaseAdmin.from("profiles").update({
-      skill_graph: data.map(s => ({ name: s.skill_name, icon: s.icon_url, color: s.color, elo: s.elo_value }))
+      skill_graph: data.map(s => ({ name: s.name, icon: s.icon_url, color: s.color, elo: s.level_score }))
     }).eq("id", uid)
 
     res.json({ success: true, count: data.length, skills: data })
@@ -196,13 +238,23 @@ router.post("/pro/skills/bulk", requireAuth, async (req, res) => {
 router.put("/pro/skills/:id", requireAuth, async (req, res) => {
   try {
     const { data: existing } = await supabaseAdmin
-      .from("skill_graph").select("user_id").eq("id", req.params.id).single()
+      .from(TABLE).select("user_id").eq("id", req.params.id).single()
     if (!existing || existing.user_id !== req.user.id)
       return res.status(403).json({ error: "Forbidden" })
 
+    const patch = { ...req.body, updated_at: new Date().toISOString() }
+    if (patch.category) { patch.group_type = safeGroupType(patch.category); delete patch.category }
+    if (patch.confidence_score != null) {
+      const ls = Math.max(0, Math.min(100, Math.round(patch.confidence_score)))
+      patch.level_score = ls
+      patch.confidence  = ls / 100
+      patch.level       = levelFromScore(ls)
+      delete patch.confidence_score
+    }
+
     const { data, error } = await supabaseAdmin
-      .from("skill_graph")
-      .update({ ...req.body, updated_at: new Date().toISOString() })
+      .from(TABLE)
+      .update(patch)
       .eq("id", req.params.id).select().single()
     if (error) throw error
     res.json({ success: true, skill: data })
@@ -212,10 +264,10 @@ router.put("/pro/skills/:id", requireAuth, async (req, res) => {
 router.delete("/pro/skills/:id", requireAuth, async (req, res) => {
   try {
     const { data: existing } = await supabaseAdmin
-      .from("skill_graph").select("user_id").eq("id", req.params.id).single()
+      .from(TABLE).select("user_id").eq("id", req.params.id).single()
     if (!existing || existing.user_id !== req.user.id)
       return res.status(403).json({ error: "Forbidden" })
-    await supabaseAdmin.from("skill_graph").delete().eq("id", req.params.id)
+    await supabaseAdmin.from(TABLE).delete().eq("id", req.params.id)
     res.json({ success: true })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
@@ -227,24 +279,24 @@ router.post("/pro/skills/:id/proof", requireAuth, async (req, res) => {
     const { proof_url, proof_type, notes } = req.body
 
     const { data: existing } = await supabaseAdmin
-      .from("skill_graph").select("*").eq("id", id).single()
+      .from(TABLE).select("*").eq("id", id).single()
     if (!existing || existing.user_id !== req.user.id)
       return res.status(403).json({ error: "Forbidden" })
 
     const artifacts = existing.proof_artifacts || []
     artifacts.push({ type: proof_type, url: proof_url, notes, submitted_at: new Date().toISOString() })
 
-    const newConfidence = Math.min(100, (existing.confidence_score || 50) + 20)
-    const newElo        = Math.min(1400, (existing.elo_value || 500) + 100)
+    const newLevelScore = Math.min(100, (existing.level_score || 50) + 20)
 
-    const { data, error } = await supabaseAdmin.from("skill_graph").update({
-      proof_artifacts:    artifacts,
-      verification_state: "proof_submitted",
-      confidence_score:   newConfidence,
-      elo_value:          newElo,
-      last_proof_date:    new Date().toISOString().split("T")[0],
-      proof_source:       proof_type,
-      updated_at:         new Date().toISOString(),
+    const { data, error } = await supabaseAdmin.from(TABLE).update({
+      proof_artifacts: artifacts,
+      verified:        true,
+      source:          "proof_derived",
+      level:           levelFromScore(newLevelScore),
+      level_score:      newLevelScore,
+      confidence:      newLevelScore / 100,
+      proof_count:     (existing.proof_count || 0) + 1,
+      updated_at:      new Date().toISOString(),
     }).eq("id", id).select().single()
     if (error) throw error
     res.json({ success: true, skill: data })
@@ -258,12 +310,12 @@ router.get("/pro/skills/gaps", requireAuth, async (req, res) => {
     const { target_role } = req.query
 
     const [{ data: userSkills }, { data: profile }] = await Promise.all([
-      supabaseAdmin.from("skill_graph").select("skill_name,elo_value,verification_state").eq("user_id", uid),
+      supabaseAdmin.from(TABLE).select("name,level_score,verified").eq("user_id", uid),
       supabaseAdmin.from("profiles").select("target_role,keyword,experiences").eq("id", uid).single(),
     ])
 
     const role = target_role || profile?.target_role || profile?.keyword || "Professional"
-    const mySkillNames = (userSkills || []).map(s => s.skill_name.toLowerCase())
+    const mySkillNames = (userSkills || []).map(s => s.name.toLowerCase())
 
     // Use AI to compute gaps
     const prompt = `Given target role: "${role}"
@@ -294,14 +346,14 @@ Return only valid JSON.`
 router.post("/pro/skills/enrich-icons", requireAuth, async (req, res) => {
   try {
     const { data: skills } = await supabaseAdmin
-      .from("skill_graph").select("id,skill_name").eq("user_id", req.user.id)
+      .from(TABLE).select("id,name").eq("user_id", req.user.id)
     if (!skills?.length) return res.json({ updated: 0 })
 
     let updated = 0
     for (const s of skills) {
-      const meta = enrichSkill(s.skill_name)
+      const meta = enrichSkill(s.name)
       if (meta.icon_url) {
-        await supabaseAdmin.from("skill_graph")
+        await supabaseAdmin.from(TABLE)
           .update({ icon_url: meta.icon_url, color: meta.color }).eq("id", s.id)
         updated++
       }
