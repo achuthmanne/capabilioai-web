@@ -1091,7 +1091,9 @@ function App() {
         </div>
       </header>
 
-      {navPath !== "student" && navPath !== "institution" && (
+      {/* Professional path's full nav now lives in the scrollable header
+          (PROFESSIONAL_HEADER_NAV) — PathNav's icon row would just duplicate it. */}
+      {navPath !== "student" && navPath !== "institution" && navPath !== "professional" && (
         <PathNav
           path={navPath}
           activeItem={activeNavItem}
