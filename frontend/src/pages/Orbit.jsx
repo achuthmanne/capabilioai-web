@@ -644,10 +644,14 @@ function ResumeModal({show,onClose,user,ud,onSave}){
     const form=new FormData();form.append("resume",f)
     try{
       const res=await fetch(`${API}/api/professional/parse-resume`,{method:"POST",body:form})
-      if(!res.ok)throw new Error(`Server error ${res.status}`)
       const text=await res.text()
-      let d;try{d=JSON.parse(text)}catch{throw new Error("Invalid response from server")}
-      if(d.error)throw new Error(d.error)
+      // BUG FIX: this used to throw on !res.ok BEFORE reading the body, so the
+      // real error message the backend sent (e.g. "GROQ 429: rate limited")
+      // was discarded and the user only ever saw a generic "Server error 500"
+      // with zero diagnostic detail. Now we always read the body first and
+      // surface whatever detail is actually there.
+      let d;try{d=JSON.parse(text)}catch{throw new Error(res.ok?"Invalid response from server":`Server error ${res.status}`)}
+      if(!res.ok||d.error)throw new Error(d.error||`Server error ${res.status}`)
       setParsed(d);setStage("review")
     }catch(e){
       const fallback={experiences:[],skills:[],projects:[],certifications:[],summary:"",_fallback:true,_error:e.message}

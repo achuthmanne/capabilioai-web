@@ -110,6 +110,16 @@ router.post("/professional/parse-resume", upload.single("resume"), async (req, r
 
     let raw = null
     if (text.trim().length >= 30) {
+      // BUG FIX: this groq() call previously wasn't wrapped in its own
+      // try/catch, so any Groq failure (rate limit / invalid key / network
+      // blip) bubbled straight to the outer catch and returned a bare 500
+      // with no usable text — the frontend then showed "Server parsing
+      // unavailable (Server error 500)" and the user got nothing to work
+      // with, not even the raw extracted text. Now a Groq failure here falls
+      // through to the Gemini path (if configured) and, failing that, to the
+      // same safe partial-response shape used at the bottom of this route —
+      // so the request degrades gracefully instead of hard-failing.
+      try {
       raw = await groq([
         { role:"system", content:`Resume parser. Return ONLY valid JSON matching the schema exactly, no markdown, no extra text.
 
@@ -180,6 +190,10 @@ CRITICAL RULES FOR roleSkills:
           } catch (e) { console.warn("[parse-resume] education retry parse failed:", e.message) }
         }
       } catch (e) { /* raw wasn't valid JSON at all — the normal parse below already handles this */ }
+      } catch (e) {
+        console.warn("[parse-resume] Groq extraction failed, falling back:", e.message)
+        raw = null
+      }
     }
 
     // Path B: Gemini multimodal for image-only PDFs

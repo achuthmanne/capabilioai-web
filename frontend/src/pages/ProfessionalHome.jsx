@@ -398,7 +398,11 @@ function ActionGaps({ userData, onNavigate }) {
 // deep-dive tabs (Timeline/Verification/Compensation/Readiness) live on the
 // "Career" nav item (same underlying Orbit.jsx page, just relabeled).
 export default function ProfessionalHome({ user, userData, setUserData, activeTab, setActiveTab, onNavigate, onNavigatePricing }) {
-  const name        = userData?.name || user?.displayName || "Professional"
+  // BUG FIX: userData.name was never a real field (see lib/db.js — the actual
+  // column/mapping is displayName←display_name), so this always fell through
+  // to the literal string "Professional" no matter who was logged in. Fixed
+  // to the same fallback chain App.jsx's header already uses correctly.
+  const name        = userData?.displayName || userData?.name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Professional"
   const initials    = name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()
   const firstName   = name.split(" ")[0]
   const elo         = userData?.eloRating || 1200
@@ -407,6 +411,8 @@ export default function ProfessionalHome({ user, userData, setUserData, activeTa
   const isVerified  = !!(userData?.epfoVerified || userData?.verified)
   const experiences = userData?.experiences || []
   const vaultFiles  = userData?.vaultFiles  || []
+  const coverURL    = userData?.coverPhotoURL || null
+  const photoURL    = userData?.profilePhotoURL || null
 
   const uid = user?.id || user?.uid
   const onSave = useCallback(async updates => {
@@ -463,23 +469,39 @@ export default function ProfessionalHome({ user, userData, setUserData, activeTa
           borderRadius: r28, overflow: "hidden",
           boxShadow: SHD, transition: "all 180ms cubic-bezier(0.16,1,0.3,1)",
         }}>
-          {/* cover */}
-          <div style={{ height: 120, background: `linear-gradient(120deg,#4C1D95,#7C3AED 45%,#A78BFA 80%,#C4B5FD)`, position: "relative" }}>
-            <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 20% 40%,rgba(255,255,255,0.18),transparent 40%),radial-gradient(circle at 80% 20%,rgba(255,255,255,0.12),transparent 30%)" }} />
+          {/* cover — real cover photo if the user has uploaded one (Profile → edit), gradient fallback otherwise */}
+          <div style={{
+            height: 140, position: "relative",
+            background: coverURL
+              ? `url(${coverURL}) center/cover no-repeat`
+              : `linear-gradient(120deg,#4C1D95,#7C3AED 45%,#A78BFA 80%,#C4B5FD)`,
+          }}>
+            {!coverURL && (
+              <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 20% 40%,rgba(255,255,255,0.18),transparent 40%),radial-gradient(circle at 80% 20%,rgba(255,255,255,0.12),transparent 30%)" }} />
+            )}
+            <button onClick={() => onNavigate("aura")} style={{
+              position: "absolute", right: 14, bottom: 14,
+              background: "rgba(0,0,0,0.4)", color: "#fff", border: "none",
+              borderRadius: r999, padding: "6px 12px", fontSize: 11, fontWeight: 700,
+              cursor: "pointer", fontFamily: BODY, backdropFilter: "blur(6px)",
+            }}>📷 {coverURL ? "Change cover" : "Add cover photo"}</button>
           </div>
 
           <div style={{ padding: "0 24px 24px" }}>
             {/* avatar + identity row */}
             <div style={{ display: "flex", alignItems: "flex-end", gap: 18, marginTop: -44, marginBottom: 16, flexWrap: "wrap" }}>
-              {/* avatar */}
+              {/* avatar — real profile photo if set, initials fallback otherwise */}
               <div style={{
                 width: 88, height: 88, borderRadius: 22, flexShrink: 0,
-                background: `linear-gradient(135deg,${P},#A78BFA)`,
+                background: photoURL ? `#fff` : `linear-gradient(135deg,${P},#A78BFA)`,
                 border: "3px solid #fff",
                 boxShadow: `0 8px 24px ${P}30`,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontFamily: SERIF, fontSize: 32, fontWeight: 800, color: "#fff",
-              }}>{initials}</div>
+                overflow: "hidden",
+              }}>
+                {photoURL ? <img src={photoURL} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initials}
+              </div>
 
               {/* name block */}
               <div style={{ paddingBottom: 4, flex: 1, minWidth: 180 }}>
