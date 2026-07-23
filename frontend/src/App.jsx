@@ -36,6 +36,7 @@ const ProfessionalHome   = lazy(() => import("./pages/ProfessionalHome"))
 const ExecutiveHome      = lazy(() => import("./pages/ExecutiveHome"))
 const StartupWorkspace   = lazy(() => import("./pages/StartupWorkspace"))
 const ExecutiveFeed      = lazy(() => import("./pages/ExecutiveFeed"))
+const ExecutiveComingSoon = lazy(() => import("./pages/ExecutiveComingSoon"))
 // ── Professional pages ────────────────────────────────────────────────────────
 const Forge              = lazy(() => import("./pages/Forge"))
 const Orbit              = lazy(() => import("./pages/Orbit"))
@@ -912,6 +913,25 @@ function App() {
     // "Challenges" nav removed — engineering domain challenges now live inside Arena → Common Challenges (stream-filtered)
   ]
 
+  // Sprint 5 of EXECUTIVE_TECHNICAL_BLUEPRINT.md §14 / EXECUTIVE_PATH_INFORMATION_ARCHITECTURE.md:
+  // the full 10-module Founder OS IA. BottomNav carries only the 5 highest-frequency
+  // items (Home/Startup/Funding/Network/Copilot); this scrollable header carries all
+  // ten so every module has a real destination — Funding/Growth/Communities/Events/
+  // Marketplace/Analytics/AI-Copilot render an honest "not built yet" state
+  // (ExecutiveComingSoon) rather than being unreachable or faked.
+  const AUTHORITY_HEADER_NAV = [
+    { id: "home",        label: "Home",        page: "executiveHome",    prefix: "⌂" },
+    { id: "startup",     label: "Startup",     page: "startupworkspace", prefix: "◆" },
+    { id: "funding",     label: "Funding",     page: "funding",          prefix: "$" },
+    { id: "growth",      label: "Growth",      page: "growth",           prefix: "↗" },
+    { id: "network",     label: "Network",     page: "execnetwork",      prefix: "◎" },
+    { id: "communities", label: "Communities", page: "communities",      prefix: "◫" },
+    { id: "events",      label: "Events",      page: "events",           prefix: "▤" },
+    { id: "marketplace", label: "Marketplace", page: "marketplace",      prefix: "▣" },
+    { id: "analytics",   label: "Analytics",   page: "analytics",        prefix: "▲" },
+    { id: "aicopilot",   label: "AI Copilot",  page: "aicopilot",        prefix: "✦" },
+  ]
+
   return (
     <div style={{ background: "var(--cap-bg-page)", minHeight: "100vh" }}>
       <style>{`
@@ -935,9 +955,9 @@ function App() {
           Capabilio <span style={{ color: navAccent, fontStyle: "italic" }}>AI</span>
         </span>
 
-        {navPath === "student" && (
+        {(navPath === "student" || navPath === "authority") && (
           <nav style={{ display: "flex", alignItems: "center", gap: 2, flex: 1, justifyContent: "flex-start", marginLeft: 8, overflowX: "auto" }}>
-            {STUDENT_HEADER_NAV.map(item => {
+            {(navPath === "student" ? STUDENT_HEADER_NAV : AUTHORITY_HEADER_NAV).map(item => {
               const active = activeNavItem === item.id || currentPage === item.page
               return (
                 <button key={item.id} className="cap-nav-item"
@@ -1085,6 +1105,13 @@ function App() {
           {currentPage === "authority" && <AuthorityProfile user={user} userData={{ ...userData, uid: user?.id }} setUserData={setUserData} onNavigate={setCurrentPage} />}
           {currentPage === "startupworkspace" && <StartupWorkspace user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
           {currentPage === "executivefeed" && <ExecutiveFeed user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
+          {currentPage === "funding"      && <ExecutiveComingSoon module="funding" />}
+          {currentPage === "growth"       && <ExecutiveComingSoon module="growth" />}
+          {currentPage === "communities"  && <ExecutiveComingSoon module="communities" />}
+          {currentPage === "events"       && <ExecutiveComingSoon module="events" />}
+          {currentPage === "marketplace"  && <ExecutiveComingSoon module="marketplace" />}
+          {currentPage === "analytics"    && <ExecutiveComingSoon module="analytics" />}
+          {currentPage === "aicopilot"    && <ExecutiveComingSoon module="aicopilot" />}
           {currentPage === "skillstudio" && <SkillStudio user={user} userData={userData} />}
           {currentPage === "launchpad"   && <Launchpad   user={user} userData={userData} />}
           {currentPage === "pricing"     && <Pricing     user={user} userData={userData} setUserData={setUserData} onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }} />}

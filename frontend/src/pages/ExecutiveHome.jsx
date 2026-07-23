@@ -15,12 +15,13 @@ import { EXEC_COLORS as C, Card, Label, SectionHead, EmptyState } from "../compo
 const POST_CATEGORIES = ["Insight", "Milestone", "Announcement", "Ask"]
 const CATEGORY_ICON = { Insight: "💡", Milestone: "🚀", Announcement: "📢", Ask: "🤝" }
 
+// Sprint 5: Funding, Marketplace, and Executive Analytics now each have their
+// own real nav destination (an honest ExecutiveComingSoon state) — listing them
+// again here would be redundant. This roadmap grid only carries modules that
+// don't have a nav slot at all yet.
 const ROADMAP_MODULES = [
   { icon: "📡", title: "Venture Intelligence",   desc: "Market and competitor signal, on demand. Needs its own data design — not started." },
-  { icon: "💰", title: "Funding Hub",            desc: "Round tracking and investor interest. Highest scrutiny — will not ship with any invented numbers." },
   { icon: "🤝", title: "Partner Hub",            desc: "Partnership pipeline. May reuse the existing (currently unused) org_opportunities table." },
-  { icon: "🛍️", title: "Marketplace",            desc: "Scope not yet defined." },
-  { icon: "📊", title: "Executive Analytics",    desc: "Will aggregate real feed + network numbers once there's enough activity to show." },
   { icon: "🎨", title: "Brand Studio",           desc: "Cover, tagline, brand color for your profile. Smallest lift of the unbuilt modules." },
 ]
 
@@ -303,9 +304,9 @@ export default function ExecutiveHome({ user, userData, onNavigate }) {
         {[
           { icon: "🧭", label: "Startup Workspace",   page: "startupworkspace" },
           { icon: "📰", label: "Executive Feed",      page: "executivefeed" },
-          { icon: "⏰", label: "Time Market (Jobs)", page: "timemarket" },
-          { icon: "🎙️", label: "Signal Rooms",       page: "signalrooms" },
+          { icon: "💰", label: "Funding Hub",         page: "funding" },
           { icon: "🌐", label: "Network",             page: "execnetwork" },
+          { icon: "◫",  label: "Communities",         page: "communities" },
           { icon: "✦",  label: "My Profile",          page: "authority" },
         ].map(a => (
           <button key={a.page} onClick={() => onNavigate?.(a.page)}

@@ -20,12 +20,18 @@ const NAV_BY_PATH = {
     { id: "orbit",     label: "Orbit",     page: "orbit",            icon: OrbitIcon     },
     { id: "community", label: "Community", page: "nexus",            icon: CommunityIcon },
   ],
+  // Sprint 5 of EXECUTIVE_TECHNICAL_BLUEPRINT.md §14 / EXECUTIVE_PATH_INFORMATION_ARCHITECTURE.md:
+  // bottom nav only fits ~5 thumb-reach items, so it carries the 5 highest-frequency
+  // actions. The full 10-item Founder OS IA (Home/Startup/Funding/Growth/Network/
+  // Communities/Events/Marketplace/Analytics/AI Copilot) lives in the scrollable
+  // AUTHORITY_HEADER_NAV at the top of the screen (App.jsx) — same split already
+  // used for the student path (STUDENT_HEADER_NAV top + a different BottomNav set).
   authority: [
-    { id: "home",       label: "Home",        page: "executiveHome", icon: HomeIcon    },
-    { id: "timemarket", label: "Time Market", page: "timemarket",    icon: TimeIcon    },
-    { id: "signal",     label: "Signal",      page: "signalrooms",   icon: SignalIcon  },
-    { id: "network",    label: "Network",     page: "execnetwork",   icon: NetworkIcon },
-    { id: "profile",    label: "Profile",     page: "authority",     icon: AuraIcon    },
+    { id: "home",     label: "Home",     page: "executiveHome",   icon: HomeIcon     },
+    { id: "startup",  label: "Startup",  page: "startupworkspace", icon: StartupIcon },
+    { id: "funding",  label: "Funding",  page: "funding",          icon: FundingIcon },
+    { id: "network",  label: "Network",  page: "execnetwork",      icon: NetworkIcon },
+    { id: "copilot",  label: "Copilot",  page: "aicopilot",        icon: CopilotIcon },
   ],
   institution: [
     { id: "home",     label: "Home",         page: "orgHome",     icon: HomeIcon    },
@@ -122,6 +128,32 @@ function NetworkIcon({ active, color }) {
       <circle cx="19" cy="19" r="2"/>
       <line x1="12" y1="7" x2="5"  y2="17"/>
       <line x1="12" y1="7" x2="19" y2="17"/>
+    </svg>
+  )
+}
+function StartupIcon({ active, color }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#A8A29E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z"/>
+      <path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z"/>
+      <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
+      <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
+    </svg>
+  )
+}
+function FundingIcon({ active, color }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#A8A29E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="1" x2="12" y2="23"/>
+      <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+    </svg>
+  )
+}
+function CopilotIcon({ active, color }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? color : "none"} stroke={active ? color : "#A8A29E"} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2l1.8 5.4L19 9l-5.2 1.6L12 16l-1.8-5.4L5 9l5.2-1.6L12 2z"/>
+      <path d="M19 15l.7 2.1L22 18l-2.3.9L19 21l-.7-2.1L16 18l2.3-.9L19 15z"/>
     </svg>
   )
 }
