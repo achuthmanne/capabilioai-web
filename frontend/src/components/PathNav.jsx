@@ -19,14 +19,15 @@ const NAV = {
     { id: "launchpad",   label: "Launchpad",    page: "launchpad",   icon: LaunchIcon      },
     { id: "aura",        label: "Aura",         page: "aura",        icon: AuraIcon        },
   ],
-  // Professional Path redesign — real 8-module IA (Home/Orbit/Forge/Launchpad/
-  // Pulse/Connect/Profile/Settings). Bottom bar carries the highest-frequency
-  // items; the full IA (incl. Settings) lives in PROFESSIONAL_HEADER_NAV in
-  // App.jsx, same dual-nav pattern used for Authority (Sprint 5).
+  // Professional Path redesign v2 — 7-module IA (Home/Career/Skills/Launchpad/
+  // Pulse/Connect/Profile). Not currently rendered (App.jsx hides PathNav for
+  // navPath==="professional" — the header nav is the single nav) but kept in
+  // sync in case the bottom bar is ever re-enabled. "Career" = former Orbit
+  // page (page id "orbit" unchanged); "Skills" is the new skill/weekly-check hub.
   professional: [
     { id: "home",       label: "Home",      page: "professionalHome", icon: HomeIcon      },
-    { id: "orbit",      label: "Orbit",     page: "orbit",      icon: OrbitIcon     },
-    { id: "forge",      label: "Forge",     page: "forge",      icon: ForgeIcon     },
+    { id: "career",     label: "Career",    page: "orbit",      icon: OrbitIcon     },
+    { id: "skills",     label: "Skills",    page: "skills",     icon: SkillStudioIcon },
     { id: "launchpad",  label: "Launchpad", page: "launchpad",  icon: LaunchIcon    },
     { id: "pulse",      label: "Pulse",     page: "pulse",      icon: PulseIcon     },
     { id: "nexus",      label: "Connect",   page: "nexus",      icon: CommunityIcon },

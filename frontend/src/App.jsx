@@ -43,6 +43,7 @@ const ExecutiveAnalytics  = lazy(() => import("./pages/ExecutiveAnalytics"))
 const Forge              = lazy(() => import("./pages/Forge"))
 const Orbit              = lazy(() => import("./pages/Orbit"))
 const WeeklyCareerCheck  = lazy(() => import("./pages/WeeklyCareerCheck"))
+const Skills             = lazy(() => import("./pages/Skills"))
 // ── Executive pages ───────────────────────────────────────────────────────────
 const SignalRooms        = lazy(() => import("./pages/SignalRooms"))
 const ExecutiveNetwork   = lazy(() => import("./pages/ExecutiveNetwork"))
@@ -924,21 +925,20 @@ function App() {
   // ten so every module has a real destination — Funding/Growth/Communities/Events/
   // Marketplace/Analytics/AI-Copilot render an honest "not built yet" state
   // (ExecutiveComingSoon) rather than being unreachable or faked.
-  // Professional Path redesign — full 8-module IA as requested: Home, Orbit,
-  // Forge, Launchpad, Pulse, Connect, Profile, Settings. PathNav's bottom bar
-  // carries the 7 highest-frequency (no Settings); this scrollable header
-  // carries the complete set so Settings has a real destination too — it
-  // opens Profile (Aura) on its "settings" tab, which was already wired but
-  // previously unreachable from any nav.
+  // Professional Path redesign v2 — 7-module IA per updated spec. Orbit is no
+  // longer a standalone nav destination: its dashboard (OrbitDash) is now
+  // embedded directly in Home, and its Timeline/Verification/Compensation/
+  // Readiness tabs are reached via "Career" (still page id "orbit" internally
+  // — only the nav label changed, no route rename needed). Forge folded out
+  // of top-level nav; Settings remains reachable via Profile's Settings tab.
   const PROFESSIONAL_HEADER_NAV = [
-    { id: "home",       label: "Home",       page: "professionalHome", prefix: "⌂" },
-    { id: "orbit",      label: "Orbit",      page: "orbit",            prefix: "◎" },
-    { id: "forge",      label: "Forge",      page: "forge",            prefix: "⚒" },
-    { id: "launchpad",  label: "Launchpad",  page: "launchpad",        prefix: "🚀" },
-    { id: "pulse",      label: "Pulse",      page: "pulse",            prefix: "⚡" },
-    { id: "nexus",      label: "Connect",    page: "nexus",            prefix: "◈" },
-    { id: "aura",       label: "Profile",    page: "aura",             prefix: "✦" },
-    { id: "settings",   label: "Settings",   page: "aura", tab: "settings", prefix: "⚙" },
+    { id: "home",      label: "Home",      page: "professionalHome", prefix: "🏠" },
+    { id: "career",    label: "Career",    page: "orbit",            prefix: "📈" },
+    { id: "skills",    label: "Skills",    page: "skills",           prefix: "🧠" },
+    { id: "launchpad", label: "Launchpad", page: "launchpad",        prefix: "🚀" },
+    { id: "pulse",     label: "Pulse",     page: "pulse",            prefix: "📰" },
+    { id: "nexus",     label: "Connect",   page: "nexus",            prefix: "🤝" },
+    { id: "aura",      label: "Profile",   page: "aura",             prefix: "👤" },
   ]
 
   const AUTHORITY_HEADER_NAV = [
@@ -1105,7 +1105,8 @@ function App() {
         {/* Suspense: lazy page chunks load on first navigation — PageLoader shows briefly */}
         <Suspense fallback={<PageLoader />}>
           {currentPage === "studentHome"      && <StudentHome      user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
-          {currentPage === "professionalHome" && <ProfessionalHome user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} onNavigatePricing={() => { setCurrentPage("pricing"); setActiveNavItem("") }} />}
+          {currentPage === "professionalHome" && <ProfessionalHome user={user} userData={userData} setUserData={setUserData} activeTab={activeTab} setActiveTab={setActiveTab} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} onNavigatePricing={() => { setCurrentPage("pricing"); setActiveNavItem("") }} />}
+          {currentPage === "skills" && <Skills user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
           {currentPage === "executiveHome"    && <ExecutiveHome    user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
           {["orgHome","orgIntel","orgTasks","orgPeople","orgSettings","orgCommunity","orgGroups","orgCohorts","orgEvents","orgOpportunities","orgOutcomes"].includes(currentPage) && (
             <InstitutionOS user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />

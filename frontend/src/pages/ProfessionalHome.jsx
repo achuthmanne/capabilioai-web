@@ -6,8 +6,10 @@
  *   • 'DM Mono' for all numbers, labels, badges
  *   • #8B5CF6 purple accent, #FAFAF8 stat cells, 28px card radius
  */
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { weeklyCheckApi } from "../lib/api"
+import { userDoc } from "../lib/db"
+import { OrbitDash } from "./Orbit"
 
 // ─── Design tokens — mirrors landing page exactly ──────────────────────────────
 const P   = "#8B5CF6"   // purple accent
@@ -391,9 +393,11 @@ function ActionGaps({ userData, onNavigate }) {
 }
 
 // ─── Root component ───────────────────────────────────────────────────────────
-export default function ProfessionalHome({ user, userData, onNavigate, onNavigatePricing }) {
-  const [subTab, setSubTab] = useState("overview")
-
+// Home is now the single command-center view for the Professional path — the
+// old Orbit "Overview" dashboard (OrbitDash) is embedded directly below, and
+// deep-dive tabs (Timeline/Verification/Compensation/Readiness) live on the
+// "Career" nav item (same underlying Orbit.jsx page, just relabeled).
+export default function ProfessionalHome({ user, userData, setUserData, activeTab, setActiveTab, onNavigate, onNavigatePricing }) {
   const name        = userData?.name || user?.displayName || "Professional"
   const initials    = name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()
   const firstName   = name.split(" ")[0]
@@ -404,7 +408,29 @@ export default function ProfessionalHome({ user, userData, onNavigate, onNavigat
   const experiences = userData?.experiences || []
   const vaultFiles  = userData?.vaultFiles  || []
 
-  const SUB_TABS = ["overview", "timeline", "vault", "readiness"]
+  const uid = user?.id || user?.uid
+  const onSave = useCallback(async updates => {
+    if (!uid) return
+    try {
+      await userDoc.update(uid, updates)
+      if (setUserData) setUserData(p => ({ ...p, ...updates }))
+    } catch (e) { console.error(e) }
+  }, [uid, setUserData])
+
+  // OrbitDash's card actions call onNav with either a real page ("forge",
+  // "launchpad", etc.) or one of Career's internal tabs ("timeline","vault",
+  // "comp","readiness" — "orbit" is the legacy id for the now-removed
+  // Overview tab, treated as "timeline"). Internal tabs route to the "orbit"
+  // page (nav label "Career") on the right tab; everything else navigates directly.
+  const CAREER_TABS = ["orbit", "timeline", "vault", "comp", "readiness"]
+  const onDashNav = useCallback(target => {
+    if (CAREER_TABS.includes(target)) {
+      setActiveTab?.(target === "orbit" ? "timeline" : target)
+      onNavigate("orbit")
+    } else {
+      onNavigate(target)
+    }
+  }, [onNavigate, setActiveTab])
 
   return (
     <div style={{
@@ -483,16 +509,7 @@ export default function ProfessionalHome({ user, userData, onNavigate, onNavigat
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 18 }}>
               <StatCell label="Market Value" value="—" sub="Add timeline to unlock" color={INK} />
               <StatCell label="Layoff Shield" value={isVerified ? "Active" : "—"} sub={isVerified ? "Employment verified" : "Verify to unlock"} color={isVerified ? "#16A34A" : INK} />
-              <StatCell label="Career Velocity" value={experiences.length > 0 ? "+ELO" : "—"} sub="Based on Orbit signals" color={P} />
-            </div>
-
-            {/* sub-tabs */}
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {SUB_TABS.map(t => (
-                <button key={t} className={`ph-sub-tab${subTab === t ? " on" : ""}`} onClick={() => setSubTab(t)}>
-                  {t.charAt(0).toUpperCase() + t.slice(1)}
-                </button>
-              ))}
+              <StatCell label="Career Velocity" value={experiences.length > 0 ? "+ELO" : "—"} sub="Based on Career signals" color={P} />
             </div>
           </div>
         </div>
@@ -501,190 +518,51 @@ export default function ProfessionalHome({ user, userData, onNavigate, onNavigat
       {/* ── Body content ───────────────────────────────────────────────────── */}
       <div style={{ padding: "18px 24px 60px" }}>
 
-        {/* OVERVIEW ─────────────────────────────────────────────────────────── */}
-        {subTab === "overview" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1.1fr .9fr", gap: 18 }}>
+        {/* Weekly Career Check entry point */}
+        <div style={{ marginBottom: 18 }}>
+          <WeeklyCheckCard onNavigate={onNavigate} />
+        </div>
 
-            {/* Left col */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+        {/* Embedded Career dashboard — formerly the standalone Orbit page's
+            "Overview" tab. Career Health Score + 4 ELO cards + comp/gap/
+            recruiter/risk/health/action/ROI + Elite row, all real. */}
+        <div style={{ marginBottom: 18 }}>
+          <OrbitDash ud={userData} user={user} onSave={onSave} onNav={onDashNav} onPricing={onNavigatePricing} />
+        </div>
 
-              {/* Weekly Career Check entry point */}
-              <WeeklyCheckCard onNavigate={onNavigate} />
-
-              {/* Career timeline card */}
-              <Card purple>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
-                  <div>
-                    <MonoLabel>Career timeline</MonoLabel>
-                    <div style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: INK }}>Employment history</div>
-                    <div style={{ fontSize: 12, color: MUT, marginTop: 3, fontFamily: BODY }}>One source of truth — confirmed once, powers profile, Orbit, and matching.</div>
-                  </div>
-                  <Btn primary small onClick={() => onNavigate("aura")}>+ Add entry</Btn>
-                </div>
-                <CareerTimeline experiences={experiences} onNavigate={onNavigate} />
-              </Card>
-
-              {/* Skill half-life */}
-              <Card>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
-                  <div>
-                    <MonoLabel>Skill half-life radar</MonoLabel>
-                    <div style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: INK }}>Freshness signals</div>
-                  </div>
-                  <Btn onClick={() => onNavigate("orbit")} small>Open Orbit →</Btn>
-                </div>
-                <SkillHalfLife userData={userData} />
-              </Card>
-            </div>
-
-            {/* Right col */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-
-              {/* Orbit scores */}
-              <Card>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
-                  <div>
-                    <MonoLabel>Orbit intelligence</MonoLabel>
-                    <div style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: INK }}>Career scores</div>
-                  </div>
-                  <Btn primary small onClick={() => onNavigate("orbit")}>Full Orbit →</Btn>
-                </div>
-                <OrbitScores elo={elo} userData={userData} />
-
-                {/* module pills */}
-                <div style={{ marginTop: 18 }}>
-                  <MonoLabel>Your modules</MonoLabel>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {[
-                      { label: "Orbit",     color: P          },
-                      { label: "Forge",     color: "#FF5701"  },
-                      { label: "Vault",     color: "#3B82F6"  },
-                      { label: "Pulse",     color: "#16A34A"  },
-                      { label: "Assess",    color: "#D97706"  },
-                      { label: "Launchpad", color: "#8B5CF6"  },
-                    ].map((m, i) => (
-                      <Badge key={i} color={m.color}>{m.label}</Badge>
-                    ))}
-                  </div>
-                </div>
-              </Card>
-
-              {/* Action gaps */}
-              <Card>
-                <div style={{ marginBottom: 18 }}>
-                  <MonoLabel>Action items</MonoLabel>
-                  <div style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: INK }}>Profile gaps</div>
-                  <div style={{ fontSize: 12, color: MUT, marginTop: 3, fontFamily: BODY }}>Resolve these to improve career scores.</div>
-                </div>
-                <ActionGaps userData={userData} onNavigate={onNavigate} />
-              </Card>
-
-              {/* Quick nav to other paths */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                {[
-                  { icon: "⚡", label: "Weekly Assess", page: "aura",      color: "#D97706" },
-                  { icon: "🔧", label: "Forge Repair",  page: "forge",     color: "#FF5701" },
-                  { icon: "📡", label: "Pulse Feed",    page: "pulse",     color: "#16A34A" },
-                  { icon: "🚀", label: "Job matching",  page: "launchpad", color: "#3B82F6" },
-                ].map((q, i) => (
-                  <div key={i} onClick={() => onNavigate(q.page)} className="ph-action-card" style={{
-                    padding: "14px 16px", background: CELL,
-                    border: `1px solid ${BDR}`, borderRadius: r18,
-                    cursor: "pointer", transition: "all 180ms cubic-bezier(0.16,1,0.3,1)",
-                  }}>
-                    <div style={{ width: 36, height: 36, background: `${q.color}12`, border: `1px solid ${q.color}22`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, marginBottom: 10 }}>{q.icon}</div>
-                    <div style={{ fontFamily: MONO, fontSize: 10, fontWeight: 800, color: q.color, letterSpacing: "0.1em", textTransform: "uppercase" }}>{q.label}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TIMELINE ─────────────────────────────────────────────────────────── */}
-        {subTab === "timeline" && (
-          <Card purple>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
-              <div>
-                <MonoLabel>Career timeline</MonoLabel>
-                <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 700, color: INK }}>Employment history</div>
-                <div style={{ fontSize: 12, color: MUT, marginTop: 4, fontFamily: BODY }}>Canonical source — powers profile display, verification, Orbit, and matching.</div>
-              </div>
-              <Btn primary onClick={() => onNavigate("aura")}>+ Add entry</Btn>
-            </div>
-            <CareerTimeline experiences={experiences} onNavigate={onNavigate} />
-            {!experiences.length && (
-              <div style={{ padding: "14px 0 0" }}>
-                <div style={{ padding: "11px 14px", borderRadius: r12, border: "1px solid rgba(59,130,246,0.16)", background: "#EFF6FF", fontSize: 12, color: "#1D4ED8", lineHeight: 1.6, fontFamily: BODY }}>
-                  <strong>Tip:</strong> Upload your resume to Vault first — AI will draft timeline entries you confirm in one click.
-                </div>
-              </div>
-            )}
-          </Card>
-        )}
-
-        {/* VAULT ────────────────────────────────────────────────────────────── */}
-        {subTab === "vault" && (
+        <div style={{ display: "grid", gridTemplateColumns: "1.1fr .9fr", gap: 18, marginBottom: 18 }}>
+          {/* Action gaps */}
           <Card>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
-              <div>
-                <MonoLabel>Vault</MonoLabel>
-                <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 700, color: INK }}>Documents & proofs</div>
-                <div style={{ fontSize: 12, color: MUT, marginTop: 4, fontFamily: BODY }}>Upload resumes, offer letters, and certificates. AI parses them into structured timeline fields.</div>
-              </div>
-              <Btn primary onClick={() => onNavigate("aura")}>+ Upload document</Btn>
+            <div style={{ marginBottom: 18 }}>
+              <MonoLabel>Action items</MonoLabel>
+              <div style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: INK }}>Profile gaps</div>
+              <div style={{ fontSize: 12, color: MUT, marginTop: 3, fontFamily: BODY }}>Resolve these to improve career scores.</div>
             </div>
-            <VaultRows files={vaultFiles} onNavigate={onNavigate} />
+            <ActionGaps userData={userData} onNavigate={onNavigate} />
           </Card>
-        )}
 
-        {/* READINESS ────────────────────────────────────────────────────────── */}
-        {subTab === "readiness" && (
-          <div style={{ display: "grid", gap: 18 }}>
-            <Card purple>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
-                <div>
-                  <MonoLabel>Orbit intelligence</MonoLabel>
-                  <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 700, color: INK }}>Career readiness scores</div>
-                  <div style={{ fontSize: 12, color: MUT, marginTop: 4, fontFamily: BODY }}>Every score has a reason and a next action — open full Orbit for diagnostics.</div>
-                </div>
-                <Btn primary onClick={() => onNavigate("orbit")}>Open Orbit →</Btn>
+          {/* Quick nav to the rest of the 7-module IA */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {[
+              { icon: "📈", label: "Career",    page: "orbit",     color: P         },
+              { icon: "🧠", label: "Skills",    page: "skills",    color: "#D97706" },
+              { icon: "📰", label: "Pulse",     page: "pulse",     color: "#16A34A" },
+              { icon: "🚀", label: "Launchpad", page: "launchpad", color: "#3B82F6" },
+            ].map((q, i) => (
+              <div key={i} onClick={() => onNavigate(q.page)} className="ph-action-card" style={{
+                padding: "14px 16px", background: CELL,
+                border: `1px solid ${BDR}`, borderRadius: r18,
+                cursor: "pointer", transition: "all 180ms cubic-bezier(0.16,1,0.3,1)",
+              }}>
+                <div style={{ width: 36, height: 36, background: `${q.color}12`, border: `1px solid ${q.color}22`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, marginBottom: 10 }}>{q.icon}</div>
+                <div style={{ fontFamily: MONO, fontSize: 10, fontWeight: 800, color: q.color, letterSpacing: "0.1em", textTransform: "uppercase" }}>{q.label}</div>
               </div>
-              <OrbitScores elo={elo} userData={userData} />
-            </Card>
-
-            <Card>
-              <div style={{ marginBottom: 18 }}>
-                <MonoLabel>Action items</MonoLabel>
-                <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 700, color: INK }}>Profile gaps to resolve</div>
-              </div>
-              <ActionGaps userData={userData} onNavigate={onNavigate} />
-            </Card>
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14 }}>
-              {[
-                { cap: "Role mapping",     title: "Weekly assessment",  desc: "Hard MCQ-only role mastery engine. Timed, recurring, tied to Orbit decay.",         btn: "Start assessment", page: "aura",      color: "#D97706" },
-                { cap: "Proof repair",     title: "Forge repair tasks", desc: "Weak MCQ clusters generate repair tasks. Back claims with evidence and projects.",   btn: "Open Forge",       page: "forge",     color: "#FF5701" },
-                { cap: "Switch readiness", title: "Launchpad matching", desc: "Jobs read the same timeline and assessment signals for accurate role matching.",       btn: "Browse jobs",      page: "launchpad", color: "#3B82F6" },
-              ].map((c, i) => (
-                <div key={i} style={{ padding: 20, background: SURF, border: `1px solid ${BDR}`, borderRadius: r22, boxShadow: SHD2, transition: "all 180ms cubic-bezier(0.16,1,0.3,1)" }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = `${c.color}26`; e.currentTarget.style.transform = "translateY(-2px)" }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = BDR; e.currentTarget.style.transform = "translateY(0)" }}>
-                  <div style={{ width: 42, height: 42, background: `${c.color}12`, border: `1px solid ${c.color}22`, borderRadius: r12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, marginBottom: 14 }}>
-                    {i === 0 ? "⚡" : i === 1 ? "🔧" : "🚀"}
-                  </div>
-                  <MonoLabel color={c.color}>{c.cap}</MonoLabel>
-                  <div style={{ fontFamily: SERIF, fontSize: 17, fontWeight: 700, color: INK, marginBottom: 8 }}>{c.title}</div>
-                  <div style={{ fontSize: 12, color: MUT, lineHeight: 1.7, fontFamily: BODY, marginBottom: 14 }}>{c.desc}</div>
-                  <Btn small onClick={() => onNavigate(c.page)}>{c.btn} →</Btn>
-                </div>
-              ))}
-            </div>
+            ))}
           </div>
-        )}
+        </div>
 
         {/* ── Upgrade / Pro banner ─────────────────────────────────────────── */}
-        {isFreePlan && subTab === "overview" && (
+        {isFreePlan && (
           <div style={{ marginTop: 18, padding: "22px 24px", borderRadius: r22, background: `linear-gradient(135deg,#4C1D95,#6D28D9)`, position: "relative", overflow: "hidden" }}>
             <div style={{ position: "absolute", top: -40, right: -40, width: 160, height: 160, background: "rgba(255,255,255,0.04)", borderRadius: "50%" }} />
             <div style={{ fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.55)", letterSpacing: "0.14em", textTransform: "uppercase", fontFamily: MONO, marginBottom: 8 }}>Free plan</div>
@@ -710,7 +588,7 @@ export default function ProfessionalHome({ user, userData, onNavigate, onNavigat
             </div>
           </div>
         )}
-        {!isFreePlan && subTab === "overview" && (
+        {!isFreePlan && (
           <div style={{ marginTop: 18, padding: "14px 18px", background: "#F0FDF4", border: "1px solid rgba(22,163,74,0.18)", borderRadius: r14, display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ fontSize: 20 }}>✅</span>
             <div>

@@ -157,8 +157,11 @@ function Inp({label,value,onChange,placeholder,type="text",mono=false}){
 }
 
 // ─── Tab Bar ──────────────────────────────────────────────────────────────────
+// "Overview" (id:"orbit") tab removed — that dashboard now lives embedded in
+// Home (ProfessionalHome.jsx imports OrbitDash directly). This page is now
+// reached via the "Career" nav item: identity, timeline, employment,
+// compensation, reputation.
 const TABS=[
-  {id:"orbit",        label:"Overview",     icon:"◎"},
   {id:"timeline",     label:"Timeline",     icon:"📋"},
   {id:"vault",        label:"Verification", icon:"🔐"},
   {id:"comp",         label:"Compensation", icon:"💰"},
@@ -1126,7 +1129,7 @@ function ReadinessTab({ud,user,onSave,onNav}){
 // ─── Root Export ──────────────────────────────────────────────────────────────
 export default function Orbit({user,userData,setUserData,activeTab,setActiveTab,onNavigate,onNavigatePricing}){
   const[saving,setSaving]=useState(false)
-  const[localTab,setLocalTab]=useState("orbit")
+  const[localTab,setLocalTab]=useState("timeline")
 
   const uid=user?.id||user?.uid
 
@@ -1146,17 +1149,23 @@ export default function Orbit({user,userData,setUserData,activeTab,setActiveTab,
   const setTab=setActiveTab||setLocalTab
 
   const handleNav=t=>{
-    if(["forge","launchpad","pulse","nexus","aura","weeklycheck"].includes(t))onNavigate(t)
+    if(["forge","launchpad","pulse","nexus","aura","weeklycheck","professionalHome"].includes(t))onNavigate(t)
     else setTab(t)
   }
+  // Legacy safety net: "orbit"/Overview tab was removed from this page (it now
+  // lives embedded in Home) — if anything still requests it, land on Timeline.
+  const effectiveTab = tab==="orbit" ? "timeline" : tab
 
   return<div style={{background:DS.bg,flex:1,minHeight:0,overflowY:"auto",fontFamily:DS.body}}>
     <style>{G}</style>
-    <TabBar active={tab} setActive={setTab} sig={sig}/>
-    {tab==="orbit"    &&<OrbitDash       ud={userData} user={user} onSave={onSave} onNav={handleNav} onPricing={onNavigatePricing}/>}
-    {tab==="timeline" &&<TimelineTab     ud={userData} user={user} onSave={onSave}/>}
+    <TabBar active={effectiveTab} setActive={setTab} sig={sig}/>
+    {effectiveTab==="timeline" &&<TimelineTab     ud={userData} user={user} onSave={onSave}/>}
     {tab==="vault"    &&<VaultTab        ud={userData} user={user} onSave={onSave}/>}
     {tab==="comp"     &&<CompTab         ud={userData} user={user} onSave={onSave} onNav={handleNav} onPricing={onNavigatePricing}/>}
     {tab==="readiness"&&<ReadinessTab    ud={userData} user={user} onSave={onSave} onNav={handleNav}/>}
   </div>
 }
+
+// Embedded directly into Home (ProfessionalHome.jsx) — the former Orbit
+// "Overview" dashboard. Self-contained (computes its own signals/plan).
+export { OrbitDash }
