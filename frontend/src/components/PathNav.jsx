@@ -27,12 +27,16 @@ const NAV = {
     { id: "nexus",      label: "Nexus",     page: "nexus",      icon: CommunityIcon },
     { id: "aura",       label: "Profile",   page: "aura",       icon: AuraIcon      },
   ],
+  // Sprint 5 of EXECUTIVE_TECHNICAL_BLUEPRINT.md §14 / EXECUTIVE_PATH_INFORMATION_ARCHITECTURE.md.
+  // This is the real bottom tab bar (BottomNav.jsx is dead code, never imported —
+  // App.jsx renders <PathNav> instead). Carries the 5 highest-frequency actions;
+  // the full 10-module IA lives in AUTHORITY_HEADER_NAV at the top of App.jsx.
   authority: [
-    { id: "home",       label: "Home",         page: "executiveHome", icon: HomeIcon    },
-    { id: "timemarket", label: "Time Market",  page: "timemarket",    icon: TimeIcon    },
-    { id: "signal",     label: "Signal Rooms", page: "signalrooms",   icon: SignalIcon  },
-    { id: "network",    label: "Network",      page: "execnetwork",   icon: NetworkIcon },
-    { id: "profile",    label: "Profile",      page: "aura",          icon: AuraIcon    },
+    { id: "home",     label: "Home",     page: "executiveHome",    icon: HomeIcon    },
+    { id: "startup",  label: "Startup",  page: "startupworkspace", icon: StartupIcon },
+    { id: "funding",  label: "Funding",  page: "funding",          icon: FundingIcon },
+    { id: "network",  label: "Network",  page: "execnetwork",      icon: NetworkIcon },
+    { id: "profile",  label: "Profile",  page: "authority",        icon: AuraIcon    },
   ],
   institution: [
     { id: "home",     label: "Home",         page: "orgHome",     icon: HomeIcon    },
@@ -86,6 +90,12 @@ function SignalIcon({ active, color }) {
 }
 function NetworkIcon({ active, color }) {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#A8A29E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><line x1="12" y1="7" x2="5" y2="17"/><line x1="12" y1="7" x2="19" y2="17"/></svg>
+}
+function StartupIcon({ active, color }) {
+  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#A8A29E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+}
+function FundingIcon({ active, color }) {
+  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#A8A29E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
 }
 function IntelIcon({ active, color }) {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={active ? color : "#A8A29E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
