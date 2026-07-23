@@ -34,6 +34,7 @@ const Pricing            = lazy(() => import("./pages/Pricing"))
 const StudentHome        = lazy(() => import("./pages/StudentHome"))
 const ProfessionalHome   = lazy(() => import("./pages/ProfessionalHome"))
 const ExecutiveHome      = lazy(() => import("./pages/ExecutiveHome"))
+const StartupWorkspace   = lazy(() => import("./pages/StartupWorkspace"))
 // ── Professional pages ────────────────────────────────────────────────────────
 const Forge              = lazy(() => import("./pages/Forge"))
 const Orbit              = lazy(() => import("./pages/Orbit"))
@@ -1081,6 +1082,7 @@ function App() {
           {currentPage === "arena"     && <Arena user={user} userData={userData} setUserData={setUserData} onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }} onNavigatePricing={() => setCurrentPage("pricing")} />}
           {currentPage === "pulse"     && <Pulse user={user} userData={userData} />}
           {currentPage === "authority" && <AuthorityProfile user={user} userData={{ ...userData, uid: user?.id }} setUserData={setUserData} onNavigate={setCurrentPage} />}
+          {currentPage === "startupworkspace" && <StartupWorkspace user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
           {currentPage === "skillstudio" && <SkillStudio user={user} userData={userData} />}
           {currentPage === "launchpad"   && <Launchpad   user={user} userData={userData} />}
           {currentPage === "pricing"     && <Pricing     user={user} userData={userData} setUserData={setUserData} onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }} />}

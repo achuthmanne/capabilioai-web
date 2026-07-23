@@ -16,8 +16,6 @@ const POST_CATEGORIES = ["Insight", "Milestone", "Announcement", "Ask"]
 const CATEGORY_ICON = { Insight: "💡", Milestone: "🚀", Announcement: "📢", Ask: "🤝" }
 
 const ROADMAP_MODULES = [
-  { icon: "🧭", title: "Startup Workspace",     desc: "One place for your startup's identity, team, and links. Needs a dedicated table — not started." },
-  { icon: "💡", title: "Idea Lab",               desc: "Private space to shape ideas before they become a startup. Not started." },
   { icon: "📡", title: "Venture Intelligence",   desc: "Market and competitor signal, on demand. Needs its own data design — not started." },
   { icon: "💰", title: "Funding Hub",            desc: "Round tracking and investor interest. Highest scrutiny — will not ship with any invented numbers." },
   { icon: "🤝", title: "Partner Hub",            desc: "Partnership pipeline. May reuse the existing (currently unused) org_opportunities table." },
@@ -303,6 +301,7 @@ export default function ExecutiveHome({ user, userData, onNavigate }) {
       {/* Quick nav */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 16 }}>
         {[
+          { icon: "🧭", label: "Startup Workspace",   page: "startupworkspace" },
           { icon: "⏰", label: "Time Market (Jobs)", page: "timemarket" },
           { icon: "🎙️", label: "Signal Rooms",       page: "signalrooms" },
           { icon: "🌐", label: "Network",             page: "execnetwork" },
