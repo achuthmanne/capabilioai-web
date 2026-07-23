@@ -306,7 +306,7 @@ export default function ExecutiveHome({ user, userData, onNavigate }) {
           { icon: "⏰", label: "Time Market (Jobs)", page: "timemarket" },
           { icon: "🎙️", label: "Signal Rooms",       page: "signalrooms" },
           { icon: "🌐", label: "Network",             page: "execnetwork" },
-          { icon: "✦",  label: "My Profile",          page: "aura" },
+          { icon: "✦",  label: "My Profile",          page: "authority" },
         ].map(a => (
           <button key={a.page} onClick={() => onNavigate?.(a.page)}
             style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: C.ink2 }}
