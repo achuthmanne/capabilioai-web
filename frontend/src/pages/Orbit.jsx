@@ -652,7 +652,13 @@ function ResumeModal({show,onClose,user,ud,onSave}){
       // surface whatever detail is actually there.
       let d;try{d=JSON.parse(text)}catch{throw new Error(res.ok?"Invalid response from server":`Server error ${res.status}`)}
       if(!res.ok||d.error)throw new Error(d.error||`Server error ${res.status}`)
-      setParsed(d);setStage("review")
+      setParsed(d)
+      // BUG FIX: the backend can return a valid 200 with every field empty
+      // (a silent AI-extraction miss, not an actually blank resume) — this
+      // used to render the same green "Extraction complete" banner as a real
+      // success. d._empty (set server-side) flags that case explicitly.
+      if(d._empty) setErr("Couldn't automatically pull details from this file — the text came through but nothing usable was extracted. Please review and add entries manually below.")
+      setStage("review")
     }catch(e){
       const fallback={experiences:[],skills:[],projects:[],certifications:[],summary:"",_fallback:true,_error:e.message}
       setParsed(fallback)
@@ -694,7 +700,9 @@ function ResumeModal({show,onClose,user,ud,onSave}){
     </div>}
     {stage==="parsing"&&<div style={{textAlign:"center",padding:"40px"}}><Spin size={36}/><div style={{fontFamily:DS.display,fontSize:15,fontWeight:700,color:DS.ink,marginTop:14}}>Parsing resume…</div></div>}
     {stage==="review"&&parsed&&<div>
-      <div style={{padding:"9px 13px",background:DS.gBg,border:`1px solid ${DS.gBd}`,borderRadius:DS.r,fontSize:12,color:DS.green,marginBottom:14}}>✓ Extraction complete. Review before saving.</div>
+      {/* BUG FIX: this used to render unconditionally, so a silent all-zeros
+          extraction (parsed._empty) looked identical to a real success. */}
+      {!err&&<div style={{padding:"9px 13px",background:DS.gBg,border:`1px solid ${DS.gBd}`,borderRadius:DS.r,fontSize:12,color:DS.green,marginBottom:14}}>✓ Extraction complete. Review before saving.</div>}
       {[{l:"Experience entries",c:parsed.experiences?.length||0,i:"🏢"},{l:"Skills extracted",c:parsed.skills?.length||0,i:"⚡"},{l:"Projects found",c:parsed.projects?.length||0,i:"🔨"},{l:"Certifications",c:parsed.certifications?.length||0,i:"📜"}].map((s,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:11,padding:"9px 13px",background:DS.surface2,border:`1px solid ${DS.border}`,borderRadius:DS.r,marginBottom:7}}><span style={{fontSize:17}}>{s.i}</span><span style={{flex:1,fontSize:13,fontWeight:600,color:DS.ink}}>{s.l}</span><Tag color={s.c>0?DS.green:DS.ink4} bg={s.c>0?DS.gBg:DS.surface2} border={s.c>0?DS.gBd:DS.border}>{s.c} found</Tag></div>)}
       {err&&<div style={{padding:"9px 13px",background:DS.rBg,border:`1px solid ${DS.rBd}`,borderRadius:DS.r,fontSize:12,color:DS.red,marginBottom:11}}>⚠️ {err}</div>}
       <div style={{display:"flex",gap:9,marginTop:14}}><Btn onClick={reset} variant="ghost" style={{flex:1}}>Re-upload</Btn><Btn onClick={save} full style={{flex:2}}>Save as Draft Entries →</Btn></div>

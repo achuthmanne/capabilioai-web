@@ -229,7 +229,17 @@ CRITICAL: Scan the whole document for an education/academic section (often the L
 
     // Parse the Groq output
     let p = {}
-    if (raw) try { p = JSON.parse(raw) } catch {}
+    if (raw) {
+      try { p = JSON.parse(raw) }
+      catch (e) {
+        // Previously swallowed silently — the request would then return a
+        // fully-empty-but-200 response with zero indication anything went
+        // wrong. Logging the actual (truncated) model output here is the
+        // only way to diagnose "everything came back 0" reports without
+        // reproducing them locally.
+        console.error("[parse-resume] JSON.parse(raw) failed:", e.message, "| raw (first 500 chars):", String(raw).slice(0, 500))
+      }
+    }
 
     // Separate project entries from experience entries
     const allExp = p.experience || []
@@ -239,16 +249,33 @@ CRITICAL: Scan the whole document for an education/academic section (often the L
       techStack: e.skills||[], url: ""
     }))
 
+    const finalExperiences   = expEntries.map((e, i) => _toExp(e, i))
+    const finalSkills        = p.skills || []
+    const finalProjects      = [...(p.projects||[]), ...projFromExp]
+    const finalCertifications= p.certifications || []
+
+    // If we had plenty of real resume text but ended up with nothing usable,
+    // that's a silent extraction failure, not a genuinely blank resume —
+    // surface it so the frontend doesn't show a false "Extraction complete"
+    // success banner over an all-zeros result.
+    const looksEmpty = !p.name && !finalSkills.length && !finalExperiences.length &&
+                        !finalProjects.length && !finalCertifications.length
+    if (looksEmpty && text.trim().length >= 30) {
+      console.warn("[parse-resume] extraction produced nothing despite", text.length,
+        "chars of source text — raw model output (first 500 chars):", String(raw).slice(0, 500))
+    }
+
     return res.json({
-      experiences: expEntries.map((e, i) => _toExp(e, i)),
-      skills: p.skills || [],
-      projects: [...(p.projects||[]), ...projFromExp],
+      experiences: finalExperiences,
+      skills: finalSkills,
+      projects: finalProjects,
       education: (p.education||[]).map(_toEdu),
       academicIdentity: _toAcademicIdentity(p.academicIdentity),
       achievements: (p.achievements||[]).map(_toAchievement).filter(a => a.title),
-      certifications: p.certifications || [],
+      certifications: finalCertifications,
       summary: p.summary || "",
       name: p.name || "", _source: text.trim().length >= 30 ? "groq" : "pdf-empty",
+      _empty: looksEmpty && text.trim().length >= 30,
     })
 
   } catch (e) { console.error("[parse-resume]", e.message); res.status(500).json({ error: e.message }) }
