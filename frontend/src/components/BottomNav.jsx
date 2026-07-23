@@ -25,7 +25,7 @@ const NAV_BY_PATH = {
     { id: "timemarket", label: "Time Market", page: "timemarket",    icon: TimeIcon    },
     { id: "signal",     label: "Signal",      page: "signalrooms",   icon: SignalIcon  },
     { id: "network",    label: "Network",     page: "execnetwork",   icon: NetworkIcon },
-    { id: "profile",    label: "Profile",     page: "aura",          icon: AuraIcon    },
+    { id: "profile",    label: "Profile",     page: "authority",     icon: AuraIcon    },
   ],
   institution: [
     { id: "home",     label: "Home",         page: "orgHome",     icon: HomeIcon    },
