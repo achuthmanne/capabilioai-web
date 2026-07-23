@@ -734,7 +734,10 @@ function App() {
 
   const HOME_PAGE = {
     student:      "studentHome",
-    professional: "orbit",
+    // Professional Path redesign: Home is now a real, distinct landing module
+    // (per the 8-module IA — Home/Orbit/Forge/Launchpad/Pulse/Connect/Profile/
+    // Settings) instead of dropping users straight onto Orbit.
+    professional: "professionalHome",
     authority:    "executiveHome",
     institution:  "orgHome",
     recruiter:    "recruiterHome",
@@ -753,8 +756,7 @@ function App() {
     if (userData?.path && onboardingDone) {
       const home = navPath === "student" ? "aura" : (HOME_PAGE[navPath] || "studentHome")
       setCurrentPage(home)
-      const navId = navPath === "professional" ? "orbit" : "home"
-      setActiveNavItem(navId)
+      setActiveNavItem("home")
     }
   }, [userData?.path, onboardingDone]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -882,7 +884,7 @@ function App() {
           setOnboardingDone(true)
           const home = confirmedPath === "student" ? "aura" : (HOME_PAGE[confirmedPath] || "studentHome")
           setCurrentPage(home)
-          setActiveNavItem(confirmedPath === "professional" ? "orbit" : "home")
+          setActiveNavItem("home")
         }}
         onBack={() => { setUser(null); setOnboardingDone(false) }}
       />
@@ -922,6 +924,23 @@ function App() {
   // ten so every module has a real destination — Funding/Growth/Communities/Events/
   // Marketplace/Analytics/AI-Copilot render an honest "not built yet" state
   // (ExecutiveComingSoon) rather than being unreachable or faked.
+  // Professional Path redesign — full 8-module IA as requested: Home, Orbit,
+  // Forge, Launchpad, Pulse, Connect, Profile, Settings. PathNav's bottom bar
+  // carries the 7 highest-frequency (no Settings); this scrollable header
+  // carries the complete set so Settings has a real destination too — it
+  // opens Profile (Aura) on its "settings" tab, which was already wired but
+  // previously unreachable from any nav.
+  const PROFESSIONAL_HEADER_NAV = [
+    { id: "home",       label: "Home",       page: "professionalHome", prefix: "⌂" },
+    { id: "orbit",      label: "Orbit",      page: "orbit",            prefix: "◎" },
+    { id: "forge",      label: "Forge",      page: "forge",            prefix: "⚒" },
+    { id: "launchpad",  label: "Launchpad",  page: "launchpad",        prefix: "🚀" },
+    { id: "pulse",      label: "Pulse",      page: "pulse",            prefix: "⚡" },
+    { id: "nexus",      label: "Connect",    page: "nexus",            prefix: "◈" },
+    { id: "aura",       label: "Profile",    page: "aura",             prefix: "✦" },
+    { id: "settings",   label: "Settings",   page: "aura", tab: "settings", prefix: "⚙" },
+  ]
+
   const AUTHORITY_HEADER_NAV = [
     { id: "home",        label: "Home",        page: "executiveHome",    prefix: "⌂" },
     { id: "startup",     label: "Startup",     page: "startupworkspace", prefix: "◆" },
@@ -958,13 +977,13 @@ function App() {
           Capabilio <span style={{ color: navAccent, fontStyle: "italic" }}>AI</span>
         </span>
 
-        {(navPath === "student" || navPath === "authority") && (
+        {(navPath === "student" || navPath === "authority" || navPath === "professional") && (
           <nav style={{ display: "flex", alignItems: "center", gap: 2, flex: 1, justifyContent: "flex-start", marginLeft: 8, overflowX: "auto" }}>
-            {(navPath === "student" ? STUDENT_HEADER_NAV : AUTHORITY_HEADER_NAV).map(item => {
-              const active = activeNavItem === item.id || currentPage === item.page
+            {({ student: STUDENT_HEADER_NAV, authority: AUTHORITY_HEADER_NAV, professional: PROFESSIONAL_HEADER_NAV }[navPath]).map(item => {
+              const active = activeNavItem === item.id || (currentPage === item.page && (!item.tab || activeTab === item.tab))
               return (
                 <button key={item.id} className="cap-nav-item"
-                  onClick={() => handleBottomNavTap(item.id, item.page)}
+                  onClick={() => handleBottomNavTap(item.id, item.page, item.tab)}
                   style={{
                     display: "inline-flex", alignItems: "center", gap: 5,
                     padding: "6px 12px", borderRadius: 8, border: "none",

@@ -404,15 +404,6 @@ export default function ProfessionalHome({ user, userData, onNavigate, onNavigat
   const experiences = userData?.experiences || []
   const vaultFiles  = userData?.vaultFiles  || []
 
-  // Top nav: Profile is "home" (active), others route out
-  const TOP_TABS = [
-    { label: "Profile",   active: true,  page: null        },
-    { label: "Orbit",     active: false, page: "orbit"     },
-    { label: "Pulse",     active: false, page: "pulse"     },
-    { label: "Assess",    active: false, page: "aura"      },
-    { label: "Forge",     active: false, page: "forge"     },
-    { label: "Launchpad", active: false, page: "launchpad" },
-  ]
   const SUB_TABS = ["overview", "timeline", "vault", "readiness"]
 
   return (
@@ -433,31 +424,10 @@ export default function ProfessionalHome({ user, userData, onNavigate, onNavigat
         .ph-card-hover:hover { border-color: rgba(139,92,246,0.22) !important; transform: translateY(-2px); }
       `}</style>
 
-      {/* ── Sticky top nav ─────────────────────────────────────────────────── */}
-      <div style={{
-        position: "sticky", top: 0, zIndex: 25,
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-        gap: 12, padding: "12px 24px",
-        background: "rgba(250,250,250,0.92)", backdropFilter: "blur(18px)",
-        borderBottom: `1px solid ${BDR}`,
-        flexWrap: "wrap",
-      }}>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {TOP_TABS.map(t => (
-            <button key={t.label} className={`ph-nav-tab${t.active ? " active" : ""}`} onClick={() => !t.active && t.page && onNavigate(t.page)}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <div style={{ background: `${P}0F`, border: `1.5px solid ${P}30`, borderRadius: r14, padding: "8px 14px", textAlign: "center" }}>
-            <span style={{ fontFamily: MONO, fontSize: 14, fontWeight: 800, color: P }}>{elo.toLocaleString()}</span>
-            <span style={{ fontFamily: MONO, fontSize: 9, color: P, marginLeft: 6, textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700 }}>ELO</span>
-          </div>
-          <div style={{ background: SURF, border: `1px solid ${BDR}`, borderRadius: r14, padding: "8px 14px", fontFamily: MONO, fontSize: 12, fontWeight: 800, color: INK }}>
-            {firstName}
-          </div>
-        </div>
+      {/* ── Page title strip (global nav already carries Home/Orbit/Forge/etc) ── */}
+      <div style={{ padding: "20px 24px 0" }}>
+        <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: P, fontFamily: MONO }}>Professional Path · Home</div>
+        <div style={{ fontFamily: SERIF, fontSize: 26, fontWeight: 800, color: INK, marginTop: 4 }}>Welcome back, {firstName}</div>
       </div>
 
       {/* ── Hero card ──────────────────────────────────────────────────────── */}

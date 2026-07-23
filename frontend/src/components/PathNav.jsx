@@ -19,12 +19,17 @@ const NAV = {
     { id: "launchpad",   label: "Launchpad",    page: "launchpad",   icon: LaunchIcon      },
     { id: "aura",        label: "Aura",         page: "aura",        icon: AuraIcon        },
   ],
+  // Professional Path redesign — real 8-module IA (Home/Orbit/Forge/Launchpad/
+  // Pulse/Connect/Profile/Settings). Bottom bar carries the highest-frequency
+  // items; the full IA (incl. Settings) lives in PROFESSIONAL_HEADER_NAV in
+  // App.jsx, same dual-nav pattern used for Authority (Sprint 5).
   professional: [
+    { id: "home",       label: "Home",      page: "professionalHome", icon: HomeIcon      },
     { id: "orbit",      label: "Orbit",     page: "orbit",      icon: OrbitIcon     },
     { id: "forge",      label: "Forge",     page: "forge",      icon: ForgeIcon     },
     { id: "launchpad",  label: "Launchpad", page: "launchpad",  icon: LaunchIcon    },
     { id: "pulse",      label: "Pulse",     page: "pulse",      icon: PulseIcon     },
-    { id: "nexus",      label: "Nexus",     page: "nexus",      icon: CommunityIcon },
+    { id: "nexus",      label: "Connect",   page: "nexus",      icon: CommunityIcon },
     { id: "aura",       label: "Profile",   page: "aura",       icon: AuraIcon      },
   ],
   // Sprint 5 of EXECUTIVE_TECHNICAL_BLUEPRINT.md §14 / EXECUTIVE_PATH_INFORMATION_ARCHITECTURE.md.
