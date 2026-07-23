@@ -18,11 +18,6 @@ const MODULES = {
     title: "Funding Hub",
     sub: "Investor CRM, Pitch Room, Deal Room, and Fundraising Pipeline are fully designed in FUNDING_HUB_DESIGN_SPEC.md, but no investor_matches, deal, or cap-table tables exist yet — nothing fabricated shown here in the meantime.",
   },
-  growth: {
-    icon: "◉",
-    title: "Growth",
-    sub: "Sales, Marketing, Retention, and Expansion views are planned, but revenue/marketing data isn't tracked anywhere yet. Customer data already lives in Startup → Customers — that's the real source until Growth has its own model.",
-  },
   communities: {
     icon: "◫",
     title: "Communities",
@@ -37,11 +32,6 @@ const MODULES = {
     icon: "◪",
     title: "Marketplace",
     sub: "Service marketplace (advisors, agencies, tools) is designed in ECOSYSTEM_LAYER_DESIGN_SPEC.md §4 — not built yet. Hiring/roles already live in Startup → Hiring, which is real.",
-  },
-  analytics: {
-    icon: "◈",
-    title: "Executive Analytics",
-    sub: "Cross-startup analytics are designed in IDENTITY_INTELLIGENCE_LAYER_DESIGN_SPEC.md §3 — needs Growth and Funding data to exist first, since analytics can't summarize numbers that aren't tracked yet.",
   },
   aicopilot: {
     icon: "✦",

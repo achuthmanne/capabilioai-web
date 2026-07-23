@@ -37,6 +37,8 @@ const ExecutiveHome      = lazy(() => import("./pages/ExecutiveHome"))
 const StartupWorkspace   = lazy(() => import("./pages/StartupWorkspace"))
 const ExecutiveFeed      = lazy(() => import("./pages/ExecutiveFeed"))
 const ExecutiveComingSoon = lazy(() => import("./pages/ExecutiveComingSoon"))
+const Growth              = lazy(() => import("./pages/Growth"))
+const ExecutiveAnalytics  = lazy(() => import("./pages/ExecutiveAnalytics"))
 // ── Professional pages ────────────────────────────────────────────────────────
 const Forge              = lazy(() => import("./pages/Forge"))
 const Orbit              = lazy(() => import("./pages/Orbit"))
@@ -1106,11 +1108,11 @@ function App() {
           {currentPage === "startupworkspace" && <StartupWorkspace user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
           {currentPage === "executivefeed" && <ExecutiveFeed user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
           {currentPage === "funding"      && <ExecutiveComingSoon module="funding" />}
-          {currentPage === "growth"       && <ExecutiveComingSoon module="growth" />}
+          {currentPage === "growth"       && <Growth user={user} userData={userData} />}
           {currentPage === "communities"  && <ExecutiveComingSoon module="communities" />}
           {currentPage === "events"       && <ExecutiveComingSoon module="events" />}
           {currentPage === "marketplace"  && <ExecutiveComingSoon module="marketplace" />}
-          {currentPage === "analytics"    && <ExecutiveComingSoon module="analytics" />}
+          {currentPage === "analytics"    && <ExecutiveAnalytics user={user} userData={userData} />}
           {currentPage === "aicopilot"    && <ExecutiveComingSoon module="aicopilot" />}
           {currentPage === "skillstudio" && <SkillStudio user={user} userData={userData} />}
           {currentPage === "launchpad"   && <Launchpad   user={user} userData={userData} />}
