@@ -7,7 +7,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { supabase } from "../lib/supabase"
 import { getSkillModule } from "../config/skillModules"
-import { resolveArenaKey } from "../config/roleConfig"
+import { resolveArenaKey, getRoleConfig } from "../config/roleConfig"
 
 const API = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
 
@@ -1125,7 +1125,7 @@ export default function SkillStudio({ user, userData }) {
   const [activeSkill, setActiveSkill]   = useState(null)
   const fetchedRef = useRef(null)
 
-  const jobTitle    = userData?.keyword || userData?.job_role || userData?.target_role || "Software Engineer"
+  const jobTitle    = getRoleConfig(userData).label
   const domainKey   = resolveDomainKey(jobTitle)
   const domainColor = DOMAIN_COLOR[domainKey] || DOMAIN_COLOR.default
   const domainIcon  = DOMAIN_ICON[domainKey]  || DOMAIN_ICON.default

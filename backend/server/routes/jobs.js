@@ -111,29 +111,84 @@ router.get("/jobs/list", async (req, res) => {
     query += " India"
   }
 
+  // ── Stage 1: JSearch (live listings) ─────────────────────────────────────
+  const key = process.env.RAPIDAPI_KEY
+  if (key && key !== "your_rapidapi_key_here") {
+    try {
+      const data = await jsearchFetch("/search", {
+        query,
+        page:      String(page),
+        num_pages: "1",
+        country:   "in",
+      })
+
+      const jobs = (data.data || []).map(mapJob)
+
+      const filtered = work_mode
+        ? jobs.filter(j => j.work_mode === work_mode)
+        : jobs
+
+      if (filtered.length > 0) {
+        return res.json({
+          jobs:  filtered,
+          total: data.status === "OK" ? (data.data?.length ?? filtered.length) * 3 : filtered.length,
+          page:  Number(page),
+          source: "jsearch",
+        })
+      }
+    } catch (e) {
+      console.warn("[jobs/list] JSearch failed, falling back to DB:", e.message)
+    }
+  }
+
+  // ── Stage 2: Supabase jobs table (seeded fallback) ────────────────────────
   try {
-    const data = await jsearchFetch("/search", {
-      query,
-      page:      String(page),
-      num_pages: "1",
-      country:   "in",
-    })
+    const { supabaseAdmin } = await import("../lib/supabase.js")
+    const searchLower = search.toLowerCase()
 
-    const jobs = (data.data || []).map(mapJob)
+    let dbQuery = supabaseAdmin
+      .from("jobs")
+      .select("*")
+      .eq("is_active", true)
+      .order("posted_at", { ascending: false })
+      .range((Number(page) - 1) * 20, Number(page) * 20 - 1)
 
-    // Client-side work_mode filter (JSearch doesn't filter strictly)
-    const filtered = work_mode
-      ? jobs.filter(j => j.work_mode === work_mode)
-      : jobs
+    if (search) {
+      // Keyword filter against title, company, jd_summary
+      dbQuery = dbQuery.or(`title.ilike.%${search}%,jd_summary.ilike.%${search}%,company.ilike.%${search}%`)
+    }
+    if (work_mode) dbQuery = dbQuery.eq("work_mode", work_mode)
+    if (job_type)  dbQuery = dbQuery.eq("job_type",  job_type)
 
-    return res.json({
-      jobs:  filtered,
-      total: data.status === "OK" ? (data.data?.length ?? filtered.length) * 3 : filtered.length,
-      page:  Number(page),
-    })
+    const { data: rows, error, count } = await dbQuery
+
+    if (error) throw error
+
+    const jobs = (rows || []).map(r => ({
+      id:               r.id,
+      title:            r.title,
+      company:          r.company,
+      company_logo:     r.company_logo || null,
+      location:         r.location,
+      work_mode:        r.work_mode,
+      job_type:         r.job_type || "full-time",
+      salary_min:       r.salary_min,
+      salary_max:       r.salary_max,
+      salary_currency:  r.salary_currency || "INR",
+      is_verified:      r.is_verified,
+      apply_url:        r.external_url,
+      posted_at:        r.posted_at,
+      jd_summary:       r.jd_summary,
+      essential_skills: r.essential_skills || [],
+      technologies:     r.technologies || [],
+      match_score:      null,
+      source:           r.source || "Capabilio",
+    }))
+
+    return res.json({ jobs, total: count ?? jobs.length, page: Number(page), source: "db" })
   } catch (e) {
-    console.error("[jobs/list]", e.message)
-    return res.status(500).json({ error: e.message })
+    console.error("[jobs/list] DB fallback failed:", e.message)
+    return res.status(500).json({ error: "Job listings temporarily unavailable", jobs: [], total: 0 })
   }
 })
 

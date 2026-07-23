@@ -12,8 +12,36 @@ import { exec }                            from "child_process"
 import { writeFile, unlink, mkdtemp, rm }   from "fs/promises"
 import { tmpdir }                          from "os"
 import { join }                            from "path"
+import jwt                                  from "jsonwebtoken"
+import { compileCircuitMission, isCircuitDomain } from "../lib/arena/missionCompiler.js"
 
 const router = Router()
+
+// ── P0-5: server-owned ELO for the /review path ──────────────────────────────
+// Mirrors the formula in grading-worker.js / arenaV2.js (single source of truth).
+const CHALLENGE_ELO = { Easy: 800, Medium: 1100, Hard: 1400, Expert: 1700 }
+function computeReviewEloDelta({ userElo, difficulty, score, timeTakenSecs = 0, estimatedSecs = 0 }) {
+  const challengeElo = CHALLENGE_ELO[difficulty] || 1100
+  const expected     = 1 / (1 + Math.pow(10, (challengeElo - userElo) / 400))
+  const actual       = Math.max(0, Math.min(1, score / 100))
+  const K            = userElo < 800 ? 48 : userElo < 1100 ? 36 : userElo < 1400 ? 28 : 20
+  const timeRatio    = estimatedSecs > 0 ? timeTakenSecs / estimatedSecs : 1
+  const timeBonus    = timeRatio < 0.5 ? 1.10 : timeRatio < 0.75 ? 1.05 : 1.00
+  let   delta        = Math.round(K * (actual - expected) * timeBonus)
+  if (actual >= 0.7 && delta < 3) delta = 3
+  if (delta < -30) delta = -30
+  return delta
+}
+// Optional auth — returns the user id if a valid Supabase JWT is present, else null.
+// (Non-breaking: the endpoint still returns the review when no/!valid token; it just
+//  can't do the authoritative ELO write. Callers should send the bearer token.)
+function optionalUid(req) {
+  const token = (req.headers.authorization || "").replace("Bearer ", "").trim()
+  const secret = process.env.SUPABASE_JWT_SECRET
+  if (!token || !secret) return null
+  try { return jwt.verify(token, secret, { algorithms: ["HS256"] }).sub || null }
+  catch { return null }
+}
 
 // ── Execution semaphore ───────────────────────────────────────────────────────
 // Caps concurrent child_process.exec calls at 40.
@@ -165,6 +193,22 @@ router.post("/daily", async (req, res) => {
   const eloGain  = eloMin + Math.floor(Math.random() * (eloMax - eloMin))
   const difficulty = diff.split("-")[0]
 
+  // ── Structured-workstation path: Mission Compiler ─────────────────────────────
+  // Circuit Lab (ECE) missions are COMPILED from a parameterized template library
+  // — pick template → randomize parameters → derive a consistent target →
+  // validate against the real DC solver → return a complete `simulation` payload.
+  // This fixes the empty "requires a simulation field" Circuit Lab (the LLM path
+  // never emits simulation data). LLM remains the fallback. See lib/arena/missionCompiler.js.
+  if (isCircuitDomain(domainKey, keyword)) {
+    try {
+      const mission = compileCircuitMission({ difficulty, eloGain })
+      console.log(`[arena/daily] compiled circuit mission for ${keyword} (deterministic)`)
+      return res.json({ tasks: [mission] })
+    } catch (compileErr) {
+      console.warn(`[arena/daily] circuit compile failed (${compileErr.message}) — falling back to LLM`)
+    }
+  }
+
   // ── Attempt 1: Gemini 2.5 Flash ──────────────────────────────────────────────
   try {
     const mission = await geminiGenerateMission({
@@ -283,6 +327,40 @@ Return JSON: {"score":${passRate !== null ? passRate : "<0-100>"},"grade":"<A+|A
       ], { max_tokens: 700, json: true })
       try { return JSON.parse(raw) } catch { return {} }
     })
+
+    // ── P0-5: authoritative, server-owned ELO write ─────────────────────────
+    // ELO is computed and written HERE (service_role), from the server-graded
+    // score and the user's REAL current ELO read from the DB — never from the
+    // client-supplied eloRating, and never written by the browser. Requires a
+    // valid bearer token; the client no longer writes profiles.elo_rating.
+    const uid = optionalUid(req)
+    if (uid && review && typeof review.score !== "undefined") {
+      try {
+        const { supabase: sb } = await import("../lib/supabase.js")
+        const db = sb()
+        const { data: prof } = await db.from("profiles").select("elo_rating").eq("id", uid).single()
+        const userElo = prof?.elo_rating || elo || 800
+        const score   = Math.max(0, Math.min(100, Number(review.score) || 0))
+        const estMins = challenge.timeLimit || challenge.estimated_mins || challenge.estimatedMins || 30
+        const delta   = computeReviewEloDelta({
+          userElo,
+          difficulty:    challenge.difficulty || "Medium",
+          score,
+          timeTakenSecs: behavioral.timeOnTaskSecs || 0,
+          estimatedSecs: estMins * 60,
+        })
+        const today = new Date().toISOString().slice(0, 10)
+        const { data: applied } = await db.rpc("apply_arena_result", { p_uid: uid, p_elo_delta: delta, p_today: today })
+        const row = Array.isArray(applied) ? applied[0] : applied
+        review.eloDelta       = delta
+        review.newElo         = row?.elo_rating ?? (userElo + delta)
+        review.newStreak      = row?.arena_streak ?? null
+        review.arenaCompleted = row?.arena_completed ?? null
+      } catch (eloErr) {
+        console.warn("[arena/review] ELO write skipped:", eloErr.message)
+      }
+    }
+
     return res.json(review)
   } catch (e) { console.error("[arena/review]", e.message); res.status(500).json({ error: e.message }) }
 })

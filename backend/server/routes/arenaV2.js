@@ -313,8 +313,13 @@ router.get("/challenges/:id/jobs/:job_id", requireAuth, async (req, res) => {
     const job = await getJobStatus(job_id)
     if (!job) return res.status(404).json({ error: "Job not found" })
 
-    // Security: only the submitting user can poll their own job
-    // (job record has user_id set at enqueue time)
+    // Security: only the submitting user can poll their own job.
+    // (Previously this ownership check was described in a comment but not enforced —
+    //  any authenticated user could read another user's job result/code by job id.)
+    if (job.user_id && job.user_id !== userId) {
+      return res.status(404).json({ error: "Job not found" })
+    }
+
     res.setHeader("Cache-Control", "no-store")
     return res.json({
       job_id:       job.id,

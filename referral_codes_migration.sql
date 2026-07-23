@@ -29,18 +29,18 @@ CREATE POLICY "Service role full access" ON public.referral_codes
 CREATE OR REPLACE FUNCTION generate_referral_code()
 RETURNS TEXT LANGUAGE plpgsql AS $$
 DECLARE
-  chars TEXT := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';  -- no 0/O/1/I (ambiguous)
-  code  TEXT := '';
-  i     INT;
+  chars    TEXT := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';  -- no 0/O/1/I (ambiguous)
+  new_code TEXT := '';
+  i        INT;
 BEGIN
   LOOP
-    code := '';
+    new_code := '';
     FOR i IN 1..8 LOOP
-      code := code || substr(chars, floor(random() * length(chars) + 1)::int, 1);
+      new_code := new_code || substr(chars, floor(random() * length(chars) + 1)::int, 1);
     END LOOP;
-    EXIT WHEN NOT EXISTS (SELECT 1 FROM public.referral_codes WHERE referral_codes.code = code);
+    EXIT WHEN NOT EXISTS (SELECT 1 FROM public.referral_codes rc WHERE rc.code = new_code);
   END LOOP;
-  RETURN code;
+  RETURN new_code;
 END;
 $$;
 

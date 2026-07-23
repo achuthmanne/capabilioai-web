@@ -42,6 +42,7 @@ const ExecutiveAnalytics  = lazy(() => import("./pages/ExecutiveAnalytics"))
 // ── Professional pages ────────────────────────────────────────────────────────
 const Forge              = lazy(() => import("./pages/Forge"))
 const Orbit              = lazy(() => import("./pages/Orbit"))
+const WeeklyCareerCheck  = lazy(() => import("./pages/WeeklyCareerCheck"))
 // ── Executive pages ───────────────────────────────────────────────────────────
 const SignalRooms        = lazy(() => import("./pages/SignalRooms"))
 const ExecutiveNetwork   = lazy(() => import("./pages/ExecutiveNetwork"))
@@ -1094,6 +1095,10 @@ function App() {
               activeTab={activeTab} setActiveTab={setActiveTab}
               onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }}
               onNavigatePricing={() => { setCurrentPage("pricing"); setActiveNavItem("") }} />
+          )}
+
+          {currentPage === "weeklycheck" && (
+            <WeeklyCareerCheck user={user} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />
           )}
 
           {currentPage === "aura" && (

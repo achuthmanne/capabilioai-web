@@ -140,6 +140,17 @@ export const skillsApi = {
 }
 
 // ══════════════════════════════════════════
+// WEEKLY CAREER CHECK ("Weekly Refresh Engine")
+// UI must never call this "assessment" — see weeklyPulse.js header.
+// ══════════════════════════════════════════
+export const weeklyCheckApi = {
+  current:  ()               => request("GET", "/pro/weekly/current"),
+  generate: ()               => request("POST", "/pro/weekly/generate"),
+  answer:   (pulseId, data)  => request("POST", `/pro/weekly/${pulseId}/answer`, data),
+  complete: (pulseId)        => request("POST", `/pro/weekly/${pulseId}/complete`),
+}
+
+// ══════════════════════════════════════════
 // FORGE
 // ══════════════════════════════════════════
 export const forgeApi = {

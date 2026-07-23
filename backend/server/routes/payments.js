@@ -49,12 +49,37 @@ router.post("/create-order", async (req, res) => {
 })
 
 // ─── 20. Verify Payment ───────────────────────────────────────────────────────
+// SECURITY: entitlement is derived from the SERVER-CREATED Razorpay order (its
+// notes.planId / notes.uid, stamped in create-order) and the actual captured
+// payment amount — NEVER from client-supplied planId/uid. The HMAC signature only
+// proves the order/payment pair is genuine; it does not bind the plan or amount,
+// so without this cross-check a user could pay for the cheapest plan and claim the
+// most expensive one, or replay one payment to upgrade arbitrary accounts.
 router.post("/verify-payment", async (req, res) => {
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, planId, uid } = req.body
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body
   try {
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ success:false, error:"Missing payment fields" })
+    }
+    // 1. Signature — proves Razorpay generated this order/payment pair
     const expected = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET||"").update(`${razorpay_order_id}|${razorpay_payment_id}`).digest("hex")
     if (expected !== razorpay_signature) return res.status(400).json({ success:false, error:"Invalid payment signature" })
-    if (uid) await supabase().from("profiles").update({ subscription:planId, subscription_cycle_start:new Date().toISOString(), razorpay_payment_id, razorpay_order_id, updated_at:new Date().toISOString() }).eq("id", uid)
+
+    // 2. Re-fetch the order server-side — plan + user come from notes we set ourselves
+    const order  = await razorpay().orders.fetch(razorpay_order_id)
+    const planId = order?.notes?.planId
+    const uid    = order?.notes?.uid
+    const plan   = PLAN_PRICES[planId]
+    if (!plan || !uid) return res.status(400).json({ success:false, error:"Order is not bound to a plan/user" })
+
+    // 3. Confirm the money actually captured for THIS order at the expected amount
+    const payment = await razorpay().payments.fetch(razorpay_payment_id)
+    if (payment?.order_id !== razorpay_order_id)   return res.status(400).json({ success:false, error:"Payment/order mismatch" })
+    if (!["captured","authorized"].includes(payment?.status)) return res.status(400).json({ success:false, error:"Payment not completed" })
+    if (Number(payment?.amount) !== Number(plan.amount))       return res.status(400).json({ success:false, error:"Amount does not match plan price" })
+
+    // 4. Grant — bound to the order's user + plan; idempotent (re-verify re-grants same plan).
+    await supabase().from("profiles").update({ subscription:planId, subscription_cycle_start:new Date().toISOString(), razorpay_payment_id, razorpay_order_id, updated_at:new Date().toISOString() }).eq("id", uid)
     return res.json({ success:true, planId, paymentId:razorpay_payment_id })
   } catch (e) { console.error("[verify-payment]", e.message); res.status(500).json({ success:false, error:e.message }) }
 })
@@ -71,16 +96,29 @@ router.post("/theme/create-order", async (req, res) => {
 
 // ─── 22. Theme Verify Payment ─────────────────────────────────────────────────
 router.post("/theme/verify-payment", async (req, res) => {
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, uid, themeId, packThemeIds } = req.body
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, themeId, packThemeIds } = req.body
   try {
+    // Signature check
     const expected = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET||"").update(`${razorpay_order_id}|${razorpay_payment_id}`).digest("hex")
     if (expected !== razorpay_signature) return res.status(400).json({ success:false, error:"Invalid signature" })
-    if (uid) {
-      const { data: prof } = await supabase().from("profiles").select("purchased_themes").eq("id", uid).single()
-      const existing  = prof?.purchased_themes || {}
-      const newThemes = packThemeIds?.length ? packThemeIds.reduce((a,id)=>({...a,[id]:true}),existing) : {...existing,[themeId]:true}
-      await supabase().from("profiles").update({ purchased_themes:newThemes, updated_at:new Date().toISOString() }).eq("id", uid)
-    }
+
+    // Bind uid to the server-created order (notes.uid), not the request body.
+    const order = await razorpay().orders.fetch(razorpay_order_id)
+    const uid   = order?.notes?.uid
+    if (!uid) return res.status(400).json({ success:false, error:"Order is not bound to a user" })
+
+    // Require a genuinely captured payment for this order at the ordered amount.
+    // NOTE (P1): theme order amount is still chosen client-side in /theme/create-order;
+    // move theme prices to a server-side map so users cannot underpay for cosmetics.
+    const payment = await razorpay().payments.fetch(razorpay_payment_id)
+    if (payment?.order_id !== razorpay_order_id) return res.status(400).json({ success:false, error:"Payment/order mismatch" })
+    if (!["captured","authorized"].includes(payment?.status)) return res.status(400).json({ success:false, error:"Payment not completed" })
+    if (Number(payment?.amount) !== Number(order?.amount))     return res.status(400).json({ success:false, error:"Amount mismatch" })
+
+    const { data: prof } = await supabase().from("profiles").select("purchased_themes").eq("id", uid).single()
+    const existing  = prof?.purchased_themes || {}
+    const newThemes = packThemeIds?.length ? packThemeIds.reduce((a,id)=>({...a,[id]:true}),existing) : {...existing,[themeId]:true}
+    await supabase().from("profiles").update({ purchased_themes:newThemes, updated_at:new Date().toISOString() }).eq("id", uid)
     return res.json({ success:true, themeId, packThemeIds })
   } catch (e) { console.error("[theme/verify-payment]", e.message); res.status(500).json({ success:false, error:e.message }) }
 })

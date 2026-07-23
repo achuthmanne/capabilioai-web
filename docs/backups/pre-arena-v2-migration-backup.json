@@ -1,0 +1,154 @@
+{
+  "takenAt": "2026-07-17T19:57:28.216Z",
+  "project": "eybchcqwbizjmzyrviri (capabilio)",
+  "reason": "pre-Arena-V2-migration snapshot (001_schema.sql + 002_admin_flag.sql)",
+  "tables": {
+    "profiles": {
+      "error": "TypeError: fetch failed"
+    },
+    "skill_assessments": {
+      "error": "TypeError: fetch failed"
+    },
+    "arena_submissions": {
+      "error": "TypeError: fetch failed"
+    },
+    "arena_missions": {
+      "error": "TypeError: fetch failed"
+    },
+    "arena_leaderboard": {
+      "error": "TypeError: fetch failed"
+    },
+    "pulse_posts": {
+      "error": "TypeError: fetch failed"
+    },
+    "jobs": {
+      "error": "TypeError: fetch failed"
+    },
+    "job_applications": {
+      "error": "TypeError: fetch failed"
+    },
+    "company_ratings": {
+      "error": "TypeError: fetch failed"
+    },
+    "problems": {
+      "error": "TypeError: fetch failed"
+    },
+    "arena_history": {
+      "error": "TypeError: fetch failed"
+    },
+    "post_interactions": {
+      "error": "TypeError: fetch failed"
+    },
+    "post_comments": {
+      "error": "TypeError: fetch failed"
+    },
+    "connections": {
+      "error": "TypeError: fetch failed"
+    },
+    "follows": {
+      "error": "TypeError: fetch failed"
+    },
+    "notifications": {
+      "error": "TypeError: fetch failed"
+    },
+    "role_profiles": {
+      "error": "TypeError: fetch failed"
+    },
+    "skills": {
+      "error": "TypeError: fetch failed"
+    },
+    "user_skill_scores": {
+      "error": "TypeError: fetch failed"
+    },
+    "studio_modules": {
+      "error": "TypeError: fetch failed"
+    },
+    "module_progress": {
+      "error": "TypeError: fetch failed"
+    },
+    "proof_artifacts": {
+      "error": "TypeError: fetch failed"
+    },
+    "skill_recommendations": {
+      "error": "TypeError: fetch failed"
+    },
+    "learning_events": {
+      "error": "TypeError: fetch failed"
+    },
+    "weak_topic_signals": {
+      "error": "TypeError: fetch failed"
+    },
+    "domain_intelligence": {
+      "error": "TypeError: fetch failed"
+    },
+    "career_timeline": {
+      "error": "TypeError: fetch failed"
+    },
+    "user_skills": {
+      "error": "TypeError: fetch failed"
+    },
+    "skill_endorsements": {
+      "error": "TypeError: fetch failed"
+    },
+    "companies": {
+      "error": "TypeError: fetch failed"
+    },
+    "career_events": {
+      "error": "TypeError: fetch failed"
+    },
+    "path_transitions": {
+      "error": "TypeError: fetch failed"
+    },
+    "professional_elo_history": {
+      "error": "TypeError: fetch failed"
+    },
+    "copilot_usage": {
+      "error": "TypeError: fetch failed"
+    },
+    "copilot_conversations": {
+      "error": "TypeError: fetch failed"
+    },
+    "copilot_sessions": {
+      "error": "TypeError: fetch failed"
+    },
+    "vault_documents": {
+      "error": "TypeError: fetch failed"
+    },
+    "org_members": {
+      "error": "TypeError: fetch failed"
+    },
+    "org_tasks": {
+      "error": "TypeError: fetch failed"
+    },
+    "org_events": {
+      "error": "TypeError: fetch failed"
+    },
+    "org_opportunities": {
+      "error": "TypeError: fetch failed"
+    },
+    "org_audit_log": {
+      "error": "TypeError: fetch failed"
+    },
+    "employment_history": {
+      "error": "TypeError: fetch failed"
+    },
+    "integrity_warnings": {
+      "error": "TypeError: fetch failed"
+    },
+    "arena_grading_jobs": {
+      "error": "TypeError: fetch failed"
+    },
+    "leaderboard_cache": {
+      "error": "TypeError: fetch failed"
+    },
+    "referral_codes": {
+      "error": "TypeError: fetch failed"
+    },
+    "streak_events": {
+      "error": "TypeError: fetch failed"
+    },
+    "career_tracks": {
+      "error": "TypeError: fetch failed"
+    }
+  }
+}

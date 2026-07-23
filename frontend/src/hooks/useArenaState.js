@@ -4,6 +4,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react"
 import { supabase } from "../lib/supabase"
+import { profileRealtime } from "../lib/realtimeSingletons"
 
 const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
 const todayStr = () => new Date().toISOString().slice(0, 10)
@@ -67,7 +68,7 @@ export function useArenaState() {
   const [completed, setCompleted] = useState([])
   const [loadingSlots, setLoadingSlots] = useState(false)
 
-  const profileChannelRef = useRef(null)
+  const profileUnsubRef = useRef(null)
 
   // ── Auth + profile listener ──────────────────────────────────────────────
   useEffect(() => {
@@ -75,14 +76,14 @@ export function useArenaState() {
       const u = session?.user || null
       if (u) {
         setUser(u)
-        if (profileChannelRef.current) supabase.removeChannel(profileChannelRef.current)
+        // Unsubscribe previous uid's callback if user switches
+        if (profileUnsubRef.current) profileUnsubRef.current()
 
-        profileChannelRef.current = supabase
-          .channel(`arenastate-profile-${u.id}`)
-          .on("postgres_changes", { event: "*", schema: "public", table: "profiles", filter: `id=eq.${u.id}` },
-            (payload) => { if (payload.new) { setUserData(payload.new); setLoading(false); setInitialized(true) } }
-          )
-          .subscribe()
+        // Shared singleton — no extra Supabase channel created if another hook
+        // is already watching this uid's profiles row.
+        profileUnsubRef.current = profileRealtime.subscribe(u.id, (row) => {
+          setUserData(row); setLoading(false); setInitialized(true)
+        })
 
         const { data } = await supabase.from("profiles").select("*").eq("id", u.id).single()
         if (data) setUserData(data)
@@ -94,7 +95,7 @@ export function useArenaState() {
     })
     return () => {
       subscription.unsubscribe()
-      if (profileChannelRef.current) supabase.removeChannel(profileChannelRef.current)
+      if (profileUnsubRef.current) profileUnsubRef.current()
     }
   }, [])
 
@@ -141,14 +142,7 @@ export function useArenaState() {
     setCompleted(prev => [{ ...task, completed: true, completedAt: now, feedback: submissionData?.feedback }, ...prev])
 
     try {
-      const currentElo = Number(userData?.elo_rating || 800)
-      const newElo     = Math.max(400, currentElo + eloDelta)
-      const lastDate   = userData?.last_arena_date || ""
-      const yesterday  = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
-      const today      = todayStr()
-      const newStreak  = lastDate === today ? (userData?.arena_streak || 1) : lastDate === yesterday ? (userData?.arena_streak || 0) + 1 : 1
-
-      // Save submission
+      // Save submission record (log only — not the authoritative ELO).
       await supabase.from("arena_submissions").insert({
         user_id: user.id,
         task_id: task?.slotId || task?.id || task?.title,
@@ -161,15 +155,9 @@ export function useArenaState() {
         category: task?.category || "",
       })
 
-      // Update profile — snake_case only (toCompat in userDoc.subscribe handles read-side aliases)
-      await supabase.from("profiles").update({
-        elo_rating:       newElo,
-        arena_completed:  (userData?.arena_completed || userData?.arenaCompleted || 0) + 1,
-        arena_streak:     newStreak,
-        arena_last_active: new Date().toISOString(),
-        last_arena_day:   today,
-        updated_at:       new Date().toISOString(),
-      }).eq("id", user.id)
+      // P0-5: profile ELO / streak / arena_completed are written SERVER-SIDE by
+      // /api/arena/review (authoritative, service_role). The client no longer
+      // writes profiles.elo_rating — that removes the client-authored-ELO hole.
 
       // Update cache
       const keyword = userData?.keyword || userData?.job_role || "Software Development"

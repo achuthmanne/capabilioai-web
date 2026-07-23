@@ -97,7 +97,7 @@ export async function archiveGrading(msgId) {
 export async function getJobStatus(jobId) {
   const { data, error } = await supabaseAdmin
     .from("arena_grading_jobs")
-    .select("id, status, result, error_msg, created_at, completed_at")
+    .select("id, user_id, status, result, error_msg, created_at, completed_at")
     .eq("id", jobId)
     .single()
 

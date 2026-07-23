@@ -271,7 +271,9 @@ export default function Pricing({ user, userData, setUserData, onBack }) {
             body: JSON.stringify({ ...paymentData, planId, uid }),
           })
           if (!verifyRes.ok) throw new Error("Payment verification failed.")
-          await userDoc.update(uid, { subscription: planId })
+          // Subscription is granted server-side by /verify-payment (bound to the Razorpay
+          // order + captured amount). The client no longer writes `subscription` directly —
+          // that column is server-only (DB trigger enforces it). Reflect it locally for UX.
           if (setUserData) setUserData(prev => ({ ...prev, subscription: planId }))
           setUpgraded(planId)
           setUpgrading(null)

@@ -6,6 +6,8 @@
  */
 import { useState, useCallback, useRef } from "react"
 import { userDoc } from "../lib/db"
+import { vaultApi } from "../lib/api"
+import { getRoleConfig } from "../config/roleConfig"
 
 const API = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
 
@@ -257,7 +259,7 @@ function EloCard({name,icon,score,trend,confidence,color,cBg,cBd,desc,drivers=[]
 function CompCard({ud,sig,locked,onUpgrade}){
   if(locked) return <LockedCard title="Compensation Intelligence" desc="See your market band, underpayment detection, and negotiation scripts." requiredPlan="orbit_pro" onUpgrade={onUpgrade}><div style={{padding:"20px",background:DS.surface,border:`1px solid ${DS.border}`,borderRadius:DS.r2,height:240}}><SL color={DS.teal}>💰 Compensation Intelligence</SL></div></LockedCard>
   const[modal,setModal]=useState(false)
-  const yoe=sig.meta.yoe,role=ud?.targetRole||ud?.currentRole||"Software Engineer",loc=ud?.location||"Bangalore"
+  const yoe=sig.meta.yoe,role=ud?.targetRole||ud?.currentRole||getRoleConfig(ud).label,loc=ud?.location||"Bangalore"
   const base=800000+yoe*150000,lo=Math.round(base*.82),hi=Math.round(base*1.38),mid=Math.round((lo+hi)/2)
   const cur=ud?.currentCTC?parseInt(ud.currentCTC)*100000:null,delta=cur?cur-mid:null
   const switchGain=Math.round(mid*.28),raiseReady=sig.market.score>1100&&sig.proof.score>700
@@ -301,7 +303,7 @@ function CompCard({ud,sig,locked,onUpgrade}){
 function GapCard({ud,sig,locked,onUpgrade,onNav}){
   if(locked) return <LockedCard title="Market Gap Analysis" desc="Identify skill gaps, fit score vs your target role, and a personalised fix plan." requiredPlan="orbit_pro" onUpgrade={onUpgrade}><div style={{padding:"20px",background:DS.surface,border:`1px solid ${DS.border}`,borderRadius:DS.r2,height:240}}><SL color={DS.amber}>🎯 Market Gap Analysis</SL></div></LockedCard>
   const[modal,setModal]=useState(false)
-  const role=ud?.targetRole||ud?.currentRole||"Software Engineer"
+  const role=ud?.targetRole||ud?.currentRole||getRoleConfig(ud).label
   const gaps=[
     {sev:"high",  item:"Employment Verification", impact:"Unverified history reduces trust score 40%.", fix:"Verify via EPFO/UAN in Profile → Vault",     navTarget:"aura"},
     {sev:"high",  item:"Impact Language",          impact:"Profile lacks quantified outcomes (%, ₹, scale).", fix:"Add measurable outcomes in Profile → Career & Vault", navTarget:"aura"},
@@ -744,10 +746,10 @@ function VaultTab({ud,user,onSave}){
   const upload=async f=>{
     setUploading(true)
     try{
-      const form=new FormData();form.append("file",f);form.append("uid",uid)
-      const res=await fetch(`${API}/api/vault/upload`,{method:"POST",body:form})
-      let d={url:null}
-      if(res.ok){try{d=await res.json()}catch{}}
+      // PC-1 fix: use the authed vault API — correct route (/api/pro/vault/upload) +
+      // Bearer token. The old raw fetch hit /api/vault/upload (404) with no auth (401).
+      // vaultApi.upload throws on non-2xx, so failures now fall to the catch below.
+      const d = await vaultApi.upload(f, "document")
       const nf={name:f.name,url:d.url||null,size:f.size,type:f.type,uploadedAt:new Date().toISOString()}
       await onSave({vaultFiles:[...files,nf]})
     }catch(e){

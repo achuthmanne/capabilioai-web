@@ -4,6 +4,7 @@
  */
 import { useState, useEffect, useCallback } from "react"
 import { supabase } from "../lib/supabase"
+import { profileRealtime } from "../lib/realtimeSingletons"
 import { profileApi, epfoApi, nexusApi, jobsApi, recruiterApi, interviewApi, forgeApi, orbitApi, intelApi } from "../lib/api"
 
 const T = {
@@ -103,12 +104,11 @@ export default function OrbitDashboard({user,userData,setUserData,onNavigate}){
 
   useEffect(()=>{
     if(!uid)return
-    const ch=supabase.channel(`orbit-${uid}`)
-      .on("postgres_changes",{event:"UPDATE",schema:"public",table:"profiles",filter:`id=eq.${uid}`},payload=>{
-        setProfile(p=>({...p,...payload.new}))
-        if(setUserData)setUserData(d=>({...d,...payload.new}))
-      }).subscribe()
-    return()=>supabase.removeChannel(ch)
+    const unsub = profileRealtime.subscribe(uid, (row) => {
+      setProfile(p=>({...p,...row}))
+      if(setUserData)setUserData(d=>({...d,...row}))
+    })
+    return()=>unsub()
   },[uid])
 
   const p=profile||userData||{}

@@ -6,7 +6,8 @@
  *   • 'DM Mono' for all numbers, labels, badges
  *   • #8B5CF6 purple accent, #FAFAF8 stat cells, 28px card radius
  */
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { weeklyCheckApi } from "../lib/api"
 
 // ─── Design tokens — mirrors landing page exactly ──────────────────────────────
 const P   = "#8B5CF6"   // purple accent
@@ -120,6 +121,54 @@ function Btn({ children, onClick, primary, outline, small, style = {} }) {
     <button onClick={onClick} style={{ ...base, background: `${P}10`, border: `1px solid ${P}26`, color: P, ...style }}>{children}</button>
   )
 }
+
+// ─── Section: Weekly Career Check entry point ─────────────────────────────────
+// Never say "assessment" here — see WeeklyCareerCheck.jsx / weeklyPulse.js.
+function WeeklyCheckCard({ onNavigate }) {
+  const [state, setState] = useState("loading") // loading | none | due | in_progress | done | error
+
+  useEffect(() => {
+    let cancelled = false
+    weeklyCheckApi.current()
+      .then(res => {
+        if (cancelled) return
+        if (!res.available) { setState("none"); return }
+        if (res.pulse.status === "completed") setState("done")
+        else if (res.pulse.status === "in_progress") setState("in_progress")
+        else setState("due")
+      })
+      .catch(() => !cancelled && setState("error"))
+    return () => { cancelled = true }
+  }, [])
+
+  if (state === "loading" || state === "error") return null // fail quiet on Home — not critical path
+
+  const copy = {
+    none:        { title: "Set up your Weekly Career Check", desc: "Add a few skills to your profile and this'll come alive — a 5-minute check-in that keeps your skill scores current.", cta: "Add skills", page: "orbit", color: MUT },
+    due:         { title: "This week's Career Check is ready", desc: "5 quick scenario questions based on your skills. Takes about a minute.", cta: "Start check-in", page: "weeklycheck", color: P },
+    in_progress: { title: "Pick up where you left off", desc: "You started this week's Career Check — a couple questions left.", cta: "Continue", page: "weeklycheck", color: "#D97706" },
+    done:        { title: "This week's Career Check is done", desc: "Nice — your skill confidence signals are current. Next check-in opens next week.", cta: "View skills", page: "orbit", color: GOOD_ALIAS },
+  }[state]
+
+  return (
+    <div className="ph-card-hover" style={{
+      padding: "18px 20px", background: SURF, border: `1.5px solid ${state === "done" ? "rgba(22,163,74,0.2)" : `${copy.color}30`}`,
+      borderRadius: r18, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap",
+      transition: "all 180ms cubic-bezier(0.16,1,0.3,1)",
+    }}>
+      <div style={{ width: 42, height: 42, borderRadius: 12, background: `${copy.color}12`, border: `1px solid ${copy.color}26`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19, flexShrink: 0 }}>
+        {state === "done" ? "✅" : state === "in_progress" ? "⏳" : "⚡"}
+      </div>
+      <div style={{ flex: 1, minWidth: 180 }}>
+        <MonoLabel color={copy.color}>Weekly Career Check</MonoLabel>
+        <div style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 700, color: INK, marginBottom: 3 }}>{copy.title}</div>
+        <div style={{ fontSize: 12, color: MUT, lineHeight: 1.6, fontFamily: BODY }}>{copy.desc}</div>
+      </div>
+      <Btn primary={state !== "done"} outline={state === "done"} onClick={() => onNavigate(copy.page)}>{copy.cta} →</Btn>
+    </div>
+  )
+}
+const GOOD_ALIAS = "#16A34A"
 
 // ─── Section: Career Timeline ─────────────────────────────────────────────────
 function CareerTimeline({ experiences, onNavigate }) {
@@ -488,6 +537,9 @@ export default function ProfessionalHome({ user, userData, onNavigate, onNavigat
 
             {/* Left col */}
             <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+
+              {/* Weekly Career Check entry point */}
+              <WeeklyCheckCard onNavigate={onNavigate} />
 
               {/* Career timeline card */}
               <Card purple>

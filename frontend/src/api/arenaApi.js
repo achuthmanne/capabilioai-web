@@ -1,5 +1,16 @@
 // arenaApi.js — ✅ MIGRATED: process.env → import.meta.env (Vite)
+import { supabase } from "../lib/supabase"
 const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
+
+// P0-5: /api/arena/review now writes ELO server-side, so it needs the bearer token.
+async function authHeaders() {
+  const h = { "Content-Type": "application/json" }
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.access_token) h["Authorization"] = `Bearer ${session.access_token}`
+  } catch { /* no session — server returns review without the ELO write */ }
+  return h
+}
 
 export const reviewAnswer = async ({ task, answer, output, testResults, userData }) => {
   const controller = new AbortController()
@@ -8,7 +19,7 @@ export const reviewAnswer = async ({ task, answer, output, testResults, userData
   try {
     res = await fetch(`${SERVER}/api/arena/review`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: await authHeaders(),
       signal: controller.signal,
       body: JSON.stringify({
         challenge: task,

@@ -1,0 +1,48 @@
+{
+  "takenAt": "2026-07-18T01:30:00Z",
+  "project": "capabilio (eybchcqwbizjmzyrviri)",
+  "purpose": "Pre-Arena-V2-migration integrity fingerprint — row count + MD5 checksum of every existing Arena V1 table with data, taken immediately before applying arena_v2_migration/001_schema.sql and 002_admin_flag.sql. Since those migrations are additive-only (new av2_* tables + one nullable-with-default column on profiles — see the independent audit that preceded this backup), the correct verification after applying is that every checksum below is UNCHANGED. A changed checksum on any of these tables after the migration would mean something touched existing data that the migration was never supposed to touch.",
+  "note_on_scope": "A full row-level JSON export was attempted first but could not be completed from this environment: this sandbox's outbound network access to the real Supabase REST API is blocked by an allowlist proxy (only the Supabase MCP tool's own channel can reach the real project), and the MCP tool's result channel has a ~2MB response-size ceiling that a full multi-table dump exceeded (the `profiles` table alone is ~1.9MB due to its large JSONB columns). Row-count + MD5-checksum verification was used instead, which is sufficient to prove non-destructiveness (the actual goal of this backup step) even though it is not a restorable export. Supabase's own automatic backup/PITR system (Dashboard -> Database -> Backups) remains the source of truth for a genuinely restorable snapshot, and should be confirmed separately.",
+  "method": "SELECT count(*), md5(string_agg(<table>::text, '|' ORDER BY ctid)) FROM <table>, run once per non-empty table via the Supabase MCP's execute_sql tool.",
+  "tables": {
+    "profiles":           { "rows": 11,  "md5": "fe5b5776bded0aff1ab60a847fa261e6" },
+    "arena_submissions":  { "rows": 5,   "md5": "78b2db1ffb0be1adfd572edb792b1fda" },
+    "arena_missions":     { "rows": 23,  "md5": "c7b77915f906c3205344513703ed3670" },
+    "arena_leaderboard":  { "rows": 4,   "md5": "dd7408b73220984b3fced40f38d3ab8d" },
+    "pulse_posts":        { "rows": 1,   "md5": "90d955e94c1e93654676ffcb2e7fbb31" },
+    "jobs":               { "rows": 54,  "md5": "00b6613ff0d5ebc423b4e4af0b7ad937" },
+    "arena_history":      { "rows": 13,  "md5": "3d830b7978add7ca6407667991c5d0dc" },
+    "connections":        { "rows": 4,   "md5": "a0943a12578f2e5041f90c1ee81eea20" },
+    "follows":            { "rows": 2,   "md5": "87182b6e883ce0a13b1416dd2ef02697" },
+    "copilot_usage":      { "rows": 3,   "md5": "171a9b49be65355d7380865ed4a8c0f8" },
+    "org_audit_log":      { "rows": 2,   "md5": "f3dab2d21b79c48174294c1469bd285f" },
+    "leaderboard_cache":  { "rows": 21,  "md5": "012b39489d5584b312f5ea19b5b5e0da" },
+    "referral_codes":     { "rows": 11,  "md5": "d9324f050cafd6bf219d906ffdfa6820" },
+    "career_tracks":      { "rows": 11,  "md5": "7e3798f3bf0deed57c16c97c6ac3d112" },
+    "problems":           { "rows": 201, "md5": "308a596fe53143aac4116ba97224f4c9" }
+  },
+  "post_migration_verification": {
+    "appliedAt": "2026-07-18T01:40:00Z",
+    "migrationsApplied": ["arena_v2_milestone1_schema", "arena_v2_milestone2_admin_flag"],
+    "av2_table_count": 18,
+    "all_av2_tables_rls_enabled": true,
+    "profiles_is_admin_column": { "data_type": "boolean", "is_nullable": false, "default": "false" },
+    "checksum_recheck": {
+      "arena_submissions": { "md5": "78b2db1ffb0be1adfd572edb792b1fda", "unchanged": true },
+      "jobs":              { "md5": "00b6613ff0d5ebc423b4e4af0b7ad937", "unchanged": true },
+      "problems":          { "md5": "308a596fe53143aac4116ba97224f4c9", "unchanged": true },
+      "profiles":          { "md5": "41ec10c51e240ccedb67738c0cc05f5f", "unchanged": false, "expected_change_reason": "every row gained the new is_admin=false column, which is included in the ::text serialization this checksum is based on — this is the exact, expected, benign change from 002_admin_flag.sql and nothing else" }
+    },
+    "security_advisor_result": "get_advisors(type=security) run post-migration: both av2_challenge_analytics_events and av2_challenge_payload_rejections correctly flagged INFO 'RLS enabled, no policy' — intentional, service-role-only access per the migration's own design (no student/anon read or write). No WARN-level finding is new or related to this migration; all WARN items (notifications insert policy, referral_codes service-role policy, org-media public bucket listing, leaked-password-protection) pre-date this migration and are unrelated to Arena V2."
+  },
+  "all_other_public_tables_empty_at_backup_time": [
+    "skill_assessments", "job_applications", "company_ratings", "post_interactions",
+    "post_comments", "notifications", "role_profiles", "skills", "user_skill_scores",
+    "studio_modules", "module_progress", "proof_artifacts", "skill_recommendations",
+    "learning_events", "weak_topic_signals", "domain_intelligence", "career_timeline",
+    "user_skills", "skill_endorsements", "companies", "career_events", "path_transitions",
+    "professional_elo_history", "copilot_conversations", "copilot_sessions",
+    "vault_documents", "org_members", "org_tasks", "org_events", "org_opportunities",
+    "employment_history", "integrity_warnings", "arena_grading_jobs", "streak_events"
+  ]
+}

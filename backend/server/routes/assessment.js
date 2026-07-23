@@ -452,4 +452,34 @@ Return ONLY this JSON:
   } catch (e) { console.error("[analyse-professional-profile]", e.message); res.status(500).json({ error: e.message }) }
 })
 
+// ─── 6. Resolve Role by Intent ── Groq fast (AI intent matching for typeahead) ──
+// Called by the frontend RoleSearchPicker when ≥4 chars typed but local score < 60.
+// Receives { query: string, roles: [{id, label, stream, keywords}] }
+// Returns  { roleIds: string[] }  — ordered by relevance, max 4 IDs
+router.post("/resolve-role", async (req, res) => {
+  const { query = "", roles = [] } = req.body
+  if (!query || !roles.length) return res.json({ roleIds: [] })
+
+  try {
+    const roleList = roles.map(r => `${r.id}: ${r.label} (${r.stream}) — ${(r.keywords || []).join(", ")}`).join("\n")
+    const prompt = `You are a career-role matching engine. Given a student's search query, return the top matching role IDs.
+
+Search query: "${query}"
+
+Available roles (id: label (stream) — keywords):
+${roleList}
+
+Return ONLY a JSON object with a single key "roleIds" containing an array of up to 4 matching role IDs, ordered from most to least relevant. No markdown, no explanation.`
+
+    const raw = await groq(prompt, { model: GROQ_FAST, maxTokens: 80, temperature: 0.1 })
+    const cleaned = raw.replace(/```json|```/g, "").trim()
+    const parsed = JSON.parse(cleaned)
+    const ids = (parsed.roleIds || []).filter(id => roles.some(r => r.id === id)).slice(0, 4)
+    return res.json({ roleIds: ids })
+  } catch (e) {
+    console.error("[resolve-role]", e.message)
+    return res.json({ roleIds: [] }) // graceful fallback — client uses local results
+  }
+})
+
 export default router

@@ -90,7 +90,7 @@ async function processJob(payload) {
   }
 
   const finalScore  = is_timed_out ? Math.min(30, aiReview?.score || 0) : (aiReview?.score || 0)
-  const { delta, newElo } = computeEloUpdate({
+  const { delta, newElo: newEloSnapshot } = computeEloUpdate({
     userElo,
     difficulty:    challenge.difficulty,
     score:         finalScore,
@@ -147,21 +147,39 @@ async function processJob(payload) {
     .catch(() => ({ data: null }))
   const resolvedAttemptId = histRow?.id || null
 
-  // ── Critical write: profile ELO ─────────────────────────────────────────────
-  const todayDate  = today()
-  const lastDate   = userProfile?.last_arena_date || ""
-  const yesterday  = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
-  const newStreak  = lastDate === todayDate
-    ? (userProfile?.arena_streak || 1)
-    : lastDate === yesterday ? (userProfile?.arena_streak || 0) + 1 : 1
-
-  await supabaseAdmin.from("profiles").update({
-    elo_rating:        newElo,
-    arena_completed:   (userProfile?.arena_completed || 0) + 1,
-    arena_streak:      newStreak,
-    last_arena_date:   todayDate,
-    arena_last_active: new Date().toISOString(),
-  }).eq("id", userId).catch(() => {})
+  // ── Critical write: profile ELO — ATOMIC (race-free) ────────────────────────
+  // Previously this read arena_completed/arena_streak/elo from a submit-time snapshot
+  // and wrote absolute values, so two concurrent submissions (cluster mode, or a user
+  // submitting again before the first job finishes) both read the same stale value and
+  // the second clobbered the first (lost ELO/count). apply_arena_result applies the
+  // delta + streak + completed count in a single UPDATE…RETURNING, so concurrent jobs
+  // compose instead of overwriting. Returns the authoritative post-update values.
+  const todayDate = today()
+  let newElo    = newEloSnapshot   // fallback if the RPC is unavailable
+  let newStreak = 1
+  const { data: applied, error: applyErr } = await supabaseAdmin.rpc("apply_arena_result", {
+    p_uid:       userId,
+    p_elo_delta: delta,
+    p_today:     todayDate,
+  })
+  if (!applyErr) {
+    const row = Array.isArray(applied) ? applied[0] : applied
+    if (row) { newElo = row.elo_rating; newStreak = row.arena_streak }
+  } else {
+    console.warn("[worker] apply_arena_result failed, falling back to direct update:", applyErr.message)
+    const lastDate  = userProfile?.last_arena_date || ""
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+    newStreak = lastDate === todayDate
+      ? (userProfile?.arena_streak || 1)
+      : lastDate === yesterday ? (userProfile?.arena_streak || 0) + 1 : 1
+    await supabaseAdmin.from("profiles").update({
+      elo_rating:        newElo,
+      arena_completed:   (userProfile?.arena_completed || 0) + 1,
+      arena_streak:      newStreak,
+      last_arena_date:   todayDate,
+      arena_last_active: new Date().toISOString(),
+    }).eq("id", userId).catch(() => {})
+  }
 
   // ── Fire-and-forget: non-critical background writes ──────────────────────────
   Promise.all([

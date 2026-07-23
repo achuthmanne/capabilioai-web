@@ -20,6 +20,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { supabase } from "../lib/supabase"
+import { arenaHistoryRealtime } from "../lib/realtimeSingletons"
 import { arenaDb, userDoc } from "../lib/db"
 import { createClient } from "@supabase/supabase-js"
 
@@ -2110,17 +2111,12 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
     fetchCompleted()
 
     // Real-time: mark as solved instantly when INSERT fires
-    const channel = supabase
-      .channel(`completed-${uid}`)
-      .on("postgres_changes",
-        { event: "INSERT", schema: "public", table: "arena_history", filter: `user_id=eq.${uid}` },
-        (payload) => {
-          const taskId = payload.new?.task_id
-          if (taskId) setCompletedIds(prev => new Set([...prev, String(taskId)]))
-        })
-      .subscribe()
+    const unsub = arenaHistoryRealtime.subscribe(uid, (payload) => {
+      const taskId = payload.new?.task_id
+      if (taskId) setCompletedIds(prev => new Set([...prev, String(taskId)]))
+    })
 
-    return () => supabase.removeChannel(channel)
+    return () => unsub()
   }, [uid])
 
   // ── When challenge selected, set starter code + reset integrity refs ────────
@@ -2289,9 +2285,11 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
     try {
       const challengeType = language === "SQL" ? "sql" : "dsa"
       const keyword       = language === "SQL" ? "SQL & Databases" : "Data Structures & Algorithms"
+      // P0-5: send bearer token so the server can do the authoritative ELO write.
+      const { data: { session: _rvSess } } = await supabase.auth.getSession()
       const res = await fetch(`${SERVER}/api/arena/review`, {
         method:  "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(_rvSess?.access_token ? { Authorization: `Bearer ${_rvSess.access_token}` } : {}) },
         body: JSON.stringify({
           challenge:     selectedChallenge,
           answer:        code,
