@@ -1,15 +1,19 @@
 /**
  * StartupWorkspace.jsx — the center of the Executive Path.
  *
- * Sprint 2 of EXECUTIVE_TECHNICAL_BLUEPRINT.md §14: real Idea Lab
- * (create/list/promote/archive/delete) + real Startup Timeline, wired to
- * the startups/startup_ideas/startup_milestones tables created this sprint.
- * Team, Hiring, Customers, Documents, Venture Intelligence have no backing
- * tables yet (see STARTUP_WORKSPACE_DESIGN_SPEC.md §0.2) and render as
- * honest "Coming soon" states rather than fabricated screens.
+ * Sprint 2: real Idea Lab (create/list/promote/archive/delete) + real
+ * Startup Timeline, wired to startups/startup_ideas/startup_milestones.
+ * Sprint 3 (EXECUTIVE_TECHNICAL_BLUEPRINT.md §14): real Team
+ * (startup_team_members), real Customers (startup_customers), and real
+ * Hiring/Documents as scoped views over the *existing* jobs/vault_documents
+ * tables (startup_id column added, not a parallel system) per
+ * STARTUP_WORKSPACE_DESIGN_SPEC.md §11/§12.
+ * Venture Intelligence still has no backing tables (needs the Review Cycle
+ * system first) and stays an honest "not built" state.
  */
 import { useState, useEffect, useCallback } from "react"
 import { supabase } from "../lib/supabase"
+import { vaultApi } from "../lib/api"
 import { EXEC_COLORS as C, Card, Label, SectionHead, EmptyState, StatusPill } from "../components/ExecutiveUI"
 
 const LIFECYCLE_STAGES = [
@@ -87,6 +91,64 @@ function useStartupMilestones(startupId) {
   return { data, loading, reload: load }
 }
 
+function useTeamMembers(startupId) {
+  const [data, setData]       = useState([])
+  const [loading, setLoading] = useState(true)
+  const load = useCallback(async () => {
+    if (!startupId) { setData([]); setLoading(false); return }
+    setLoading(true)
+    const { data: rows } = await supabase
+      .from("startup_team_members").select("*").eq("startup_id", startupId).neq("status", "removed")
+      .order("invited_at", { ascending: false })
+    setData(rows || []); setLoading(false)
+  }, [startupId])
+  useEffect(() => { load() }, [load])
+  return { data, loading, reload: load }
+}
+
+function useStartupCustomers(startupId) {
+  const [data, setData]       = useState([])
+  const [loading, setLoading] = useState(true)
+  const load = useCallback(async () => {
+    if (!startupId) { setData([]); setLoading(false); return }
+    setLoading(true)
+    const { data: rows } = await supabase
+      .from("startup_customers").select("*").eq("startup_id", startupId).is("deleted_at", null)
+      .order("created_at", { ascending: false })
+    setData(rows || []); setLoading(false)
+  }, [startupId])
+  useEffect(() => { load() }, [load])
+  return { data, loading, reload: load }
+}
+
+function useStartupJobs(startupId) {
+  const [data, setData]       = useState([])
+  const [loading, setLoading] = useState(true)
+  const load = useCallback(async () => {
+    if (!startupId) { setData([]); setLoading(false); return }
+    setLoading(true)
+    const { data: rows } = await supabase
+      .from("jobs").select("*").eq("startup_id", startupId)
+      .order("posted_at", { ascending: false })
+    setData(rows || []); setLoading(false)
+  }, [startupId])
+  useEffect(() => { load() }, [load])
+  return { data, loading, reload: load }
+}
+
+function useStartupDocuments(startupId) {
+  const [data, setData]       = useState([])
+  const [loading, setLoading] = useState(true)
+  const load = useCallback(async () => {
+    if (!startupId) { setData([]); setLoading(false); return }
+    setLoading(true)
+    try { setData((await vaultApi.list(startupId)) || []) } catch (e) { console.error(e) }
+    setLoading(false)
+  }, [startupId])
+  useEffect(() => { load() }, [load])
+  return { data, loading, reload: load }
+}
+
 // ─── Create / Edit Idea form ──────────────────────────────────────────────────
 
 const IDEA_FIELDS = [
@@ -150,6 +212,101 @@ function IdeaForm({ initial, onClose, onSave }) {
   )
 }
 
+// ─── Small shared modal shell + form field helpers ───────────────────────────
+
+function ModalShell({ title, onClose, children, onSubmit, submitLabel, submitDisabled, submitting }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(26,26,24,0.5)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <div style={{ width: "100%", maxWidth: 460, background: "#FFFFFF", border: `1px solid ${C.border}`, borderRadius: 20, overflow: "hidden" }}>
+        <div style={{ padding: "18px 22px", borderBottom: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ fontSize: 15, fontWeight: 800, color: C.ink }}>{title}</div>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: C.ink3, fontSize: 20, cursor: "pointer" }}>×</button>
+        </div>
+        <div style={{ padding: "18px 22px" }}>{children}</div>
+        <div style={{ padding: "14px 22px", borderTop: `1px solid ${C.border}` }}>
+          <button onClick={onSubmit} disabled={submitDisabled || submitting}
+            style={{ width: "100%", padding: 13, background: submitDisabled ? "#F3F1EC" : C.gold, border: "none", borderRadius: 12, color: submitDisabled ? C.ink3 : "#fff", fontSize: 13, fontWeight: 800, cursor: submitDisabled ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
+            {submitting ? "Saving..." : submitLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const fieldStyle = { width: "100%", padding: "10px 14px", background: "#F9F8F6", border: `1.5px solid ${C.border}`, borderRadius: 10, color: C.ink, fontSize: 13, fontFamily: "'DM Sans', sans-serif", outline: "none", boxSizing: "border-box", marginBottom: 12 }
+function Field({ label, children }) {
+  return <div><div style={{ fontSize: 11, fontWeight: 700, color: C.ink3, marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>{children}</div>
+}
+
+function InviteTeamModal({ onClose, onSave }) {
+  const [email, setEmail] = useState("")
+  const [role, setRole] = useState("employee")
+  const [permission, setPermission] = useState("viewer")
+  const [saving, setSaving] = useState(false)
+  return (
+    <ModalShell title="Add a team member" onClose={onClose} submitLabel="Add" submitDisabled={!email.trim()} submitting={saving}
+      onSubmit={async () => { setSaving(true); await onSave({ email: email.trim(), role, permission }); setSaving(false); onClose() }}>
+      <Field label="Email"><input style={fieldStyle} value={email} onChange={e => setEmail(e.target.value)} placeholder="name@company.com" /></Field>
+      <Field label="Role">
+        <select style={fieldStyle} value={role} onChange={e => setRole(e.target.value)}>
+          {["co_founder","employee","advisor","mentor","board_member"].map(r => <option key={r} value={r}>{r.replace("_"," ")}</option>)}
+        </select>
+      </Field>
+      <Field label="Permission">
+        <select style={{ ...fieldStyle, marginBottom: 0 }} value={permission} onChange={e => setPermission(e.target.value)}>
+          {["admin","editor","viewer"].map(p => <option key={p} value={p}>{p}</option>)}
+        </select>
+      </Field>
+      <div style={{ fontSize: 11, color: C.ink3, marginTop: 10, lineHeight: 1.6 }}>This records real membership state now — sending an actual invite email isn't wired up yet, so let them know directly for the moment.</div>
+    </ModalShell>
+  )
+}
+
+function AddCustomerModal({ onClose, onSave }) {
+  const [name, setName] = useState("")
+  const [stage, setStage] = useState("lead")
+  const [value, setValue] = useState("")
+  const [saving, setSaving] = useState(false)
+  return (
+    <ModalShell title="Add a customer" onClose={onClose} submitLabel="Add" submitDisabled={!name.trim()} submitting={saving}
+      onSubmit={async () => { setSaving(true); await onSave({ name: name.trim(), stage, value: value ? Number(value) : null }); setSaving(false); onClose() }}>
+      <Field label="Name"><input style={fieldStyle} value={name} onChange={e => setName(e.target.value)} placeholder="Company or contact name" /></Field>
+      <Field label="Stage">
+        <select style={fieldStyle} value={stage} onChange={e => setStage(e.target.value)}>
+          {["lead","meeting","contract","customer"].map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+      </Field>
+      <Field label="Deal value (optional)"><input style={{ ...fieldStyle, marginBottom: 0 }} value={value} onChange={e => setValue(e.target.value)} placeholder="₹" type="number" /></Field>
+    </ModalShell>
+  )
+}
+
+function PostRoleModal({ onClose, onSave }) {
+  const [title, setTitle] = useState("")
+  const [jobType, setJobType] = useState("full_time")
+  const [workMode, setWorkMode] = useState("remote")
+  const [description, setDescription] = useState("")
+  const [saving, setSaving] = useState(false)
+  return (
+    <ModalShell title="Post a role" onClose={onClose} submitLabel="Post" submitDisabled={!title.trim()} submitting={saving}
+      onSubmit={async () => { setSaving(true); await onSave({ title: title.trim(), job_type: jobType, work_mode: workMode, jd_text: description.trim() }); setSaving(false); onClose() }}>
+      <Field label="Title"><input style={fieldStyle} value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Founding Engineer" /></Field>
+      <Field label="Type">
+        <select style={fieldStyle} value={jobType} onChange={e => setJobType(e.target.value)}>
+          {["full_time","part_time","internship","contract"].map(t => <option key={t} value={t}>{t.replace("_"," ")}</option>)}
+        </select>
+      </Field>
+      <Field label="Work mode">
+        <select style={fieldStyle} value={workMode} onChange={e => setWorkMode(e.target.value)}>
+          {["remote","hybrid","onsite"].map(m => <option key={m} value={m}>{m}</option>)}
+        </select>
+      </Field>
+      <Field label="Description"><textarea style={{ ...fieldStyle, marginBottom: 0, resize: "vertical" }} rows={4} value={description} onChange={e => setDescription(e.target.value)} /></Field>
+    </ModalShell>
+  )
+}
+
 // ─── Main component ──────────────────────────────────────────────────────────
 
 export default function StartupWorkspace({ user, userData, onNavigate }) {
@@ -158,12 +315,61 @@ export default function StartupWorkspace({ user, userData, onNavigate }) {
   const [showIdeaForm, setShowIdeaForm] = useState(false)
   const [editingIdea, setEditingIdea] = useState(null)
   const [activeStartupId, setActiveStartupId] = useState(null)
+  const [showInvite, setShowInvite] = useState(false)
+  const [showAddCustomer, setShowAddCustomer] = useState(false)
+  const [showPostRole, setShowPostRole] = useState(false)
+  const [uploading, setUploading] = useState(false)
 
   const startups = useStartups(founderId)
   const ideas    = useStartupIdeas(founderId)
 
   const activeStartup = startups.data.find(s => s.id === activeStartupId) || startups.data[0] || null
   const milestones = useStartupMilestones(activeStartup?.id)
+  const team       = useTeamMembers(activeStartup?.id)
+  const customers  = useStartupCustomers(activeStartup?.id)
+  const jobs       = useStartupJobs(activeStartup?.id)
+  const documents  = useStartupDocuments(activeStartup?.id)
+
+  const founderName = userData?.display_name || userData?.name || user?.displayName || "You"
+
+  const inviteMember = async ({ email, role, permission }) => {
+    await supabase.from("startup_team_members").insert({
+      startup_id: activeStartup.id, invited_email: email, role,
+      permission_level: permission, invited_by: founderId, status: "pending",
+    })
+    await team.reload()
+  }
+  const removeMember = async (m) => {
+    await supabase.from("startup_team_members").update({ status: "removed" }).eq("id", m.id)
+    await team.reload()
+  }
+
+  const addCustomer = async ({ name, stage, value }) => {
+    await supabase.from("startup_customers").insert({ startup_id: activeStartup.id, name, stage, value, created_by: founderId })
+    await customers.reload()
+  }
+  const advanceCustomer = async (c) => {
+    const order = ["lead","meeting","contract","customer"]
+    const next = order[Math.min(order.indexOf(c.stage) + 1, order.length - 1)]
+    await supabase.from("startup_customers").update({ stage: next }).eq("id", c.id)
+    await customers.reload()
+  }
+
+  const postRole = async ({ title, job_type, work_mode, jd_text }) => {
+    await supabase.from("jobs").insert({
+      startup_id: activeStartup.id, title, job_type, work_mode, jd_text,
+      company: activeStartup.name, is_active: true, active: true, posted_at: new Date().toISOString(),
+    })
+    await jobs.reload()
+  }
+
+  const uploadDocument = async (file) => {
+    if (!file || !activeStartup) return
+    setUploading(true)
+    try { await vaultApi.upload(file, "startup_document", [], false, activeStartup.id) } catch (e) { console.error(e) }
+    setUploading(false)
+    await documents.reload()
+  }
 
   const saveIdea = async (form) => {
     if (editingIdea) {
@@ -212,6 +418,9 @@ export default function StartupWorkspace({ user, userData, onNavigate }) {
       {showIdeaForm && (
         <IdeaForm initial={editingIdea} onClose={() => { setShowIdeaForm(false); setEditingIdea(null) }} onSave={saveIdea} />
       )}
+      {showInvite && <InviteTeamModal onClose={() => setShowInvite(false)} onSave={inviteMember} />}
+      {showAddCustomer && <AddCustomerModal onClose={() => setShowAddCustomer(false)} onSave={addCustomer} />}
+      {showPostRole && <PostRoleModal onClose={() => setShowPostRole(false)} onSave={postRole} />}
 
       <div style={{ marginBottom: 18 }}>
         <p style={{ fontSize: 13, color: C.ink3, margin: 0, fontWeight: 500 }}>Startup Workspace</p>
@@ -345,10 +554,110 @@ export default function StartupWorkspace({ user, userData, onNavigate }) {
         )
       )}
 
-      {/* Not-yet-built modules — honest, not faked, per every design spec's rule */}
-      {["team", "hiring", "customers", "documents"].includes(tab) && (
-        <EmptyState icon="🧭" title={`${WORKSPACE_TABS.find(t => t.id === tab)?.label} isn't built yet`}
-          sub="This module's schema is spec'd in STARTUP_WORKSPACE_DESIGN_SPEC.md but no table exists yet — it's queued for a later sprint, not shown here as a placeholder with fake rows." />
+      {/* TEAM */}
+      {tab === "team" && (
+        !activeStartup ? (
+          <EmptyState icon="🧭" title="No startup yet" sub="Promote an idea from Idea Lab first." action="Go to Idea Lab" onAction={() => setTab("idealab")} />
+        ) : (
+          <div>
+            <SectionHead title="Team" action="+ Add member" onAction={() => setShowInvite(true)} />
+            <Card style={{ marginBottom: 10, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>{founderName}</div>
+                <div style={{ fontSize: 11, color: C.ink3 }}>Founder</div>
+              </div>
+              <StatusPill tone="positive">Owner</StatusPill>
+            </Card>
+            {team.data.length === 0 ? (
+              <EmptyState icon="👥" title="No other team members yet" sub="Add a co-founder, employee, advisor, mentor, or board member." />
+            ) : team.data.map(m => (
+              <Card key={m.id} style={{ marginBottom: 8, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>{m.invited_email || m.user_id}</div>
+                  <div style={{ fontSize: 11, color: C.ink3 }}>{m.role.replace("_", " ")} · {m.permission_level}</div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <StatusPill tone={m.status === "active" ? "positive" : "warning"}>{m.status}</StatusPill>
+                  <button onClick={() => removeMember(m)} style={{ padding: "5px 10px", background: C.redL, border: "none", borderRadius: 8, color: C.red, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Remove</button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )
+      )}
+
+      {/* HIRING — reuses the real jobs table, scoped by startup_id */}
+      {tab === "hiring" && (
+        !activeStartup ? (
+          <EmptyState icon="🧭" title="No startup yet" sub="Promote an idea from Idea Lab first." action="Go to Idea Lab" onAction={() => setTab("idealab")} />
+        ) : (
+          <div>
+            <SectionHead title="Hiring" action="+ Post a Role" onAction={() => setShowPostRole(true)} />
+            {jobs.data.length === 0 ? (
+              <EmptyState icon="💼" title="No open roles yet" sub="Roles you post here appear on the real Capabilio jobs board, scoped to your startup." action="Post a Role" onAction={() => setShowPostRole(true)} />
+            ) : jobs.data.map(j => (
+              <Card key={j.id} style={{ marginBottom: 8, padding: "12px 16px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: C.ink }}>{j.title}</div>
+                    <div style={{ fontSize: 11, color: C.ink3, marginTop: 2 }}>{j.job_type?.replace("_", " ")} · {j.work_mode}</div>
+                  </div>
+                  <StatusPill tone={j.is_active ? "positive" : "neutral"}>{j.is_active ? "Open" : "Closed"}</StatusPill>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )
+      )}
+
+      {/* CUSTOMERS */}
+      {tab === "customers" && (
+        !activeStartup ? (
+          <EmptyState icon="🧭" title="No startup yet" sub="Promote an idea from Idea Lab first." action="Go to Idea Lab" onAction={() => setTab("idealab")} />
+        ) : (
+          <div>
+            <SectionHead title="Customers" action="+ Add Customer" onAction={() => setShowAddCustomer(true)} />
+            {customers.data.length === 0 ? (
+              <EmptyState icon="📈" title="No customers logged yet" action="Add Customer" onAction={() => setShowAddCustomer(true)} />
+            ) : customers.data.map(c => (
+              <Card key={c.id} style={{ marginBottom: 8, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>{c.name}</div>
+                  {c.value != null && <div style={{ fontSize: 11, color: C.ink3, marginTop: 2 }}>₹{Number(c.value).toLocaleString("en-IN")}</div>}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <StatusPill tone={c.stage === "customer" ? "positive" : "info"}>{c.stage}</StatusPill>
+                  {c.stage !== "customer" && (
+                    <button onClick={() => advanceCustomer(c)} style={{ padding: "5px 10px", background: C.goldL, border: `1px solid ${C.goldB}`, borderRadius: 8, color: C.goldD, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Advance →</button>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )
+      )}
+
+      {/* DOCUMENTS — reuses the real vault_documents table, scoped by startup_id */}
+      {tab === "documents" && (
+        !activeStartup ? (
+          <EmptyState icon="🧭" title="No startup yet" sub="Promote an idea from Idea Lab first." action="Go to Idea Lab" onAction={() => setTab("idealab")} />
+        ) : (
+          <div>
+            <SectionHead title="Documents" />
+            <label style={{ display: "block", marginBottom: 14, padding: "14px 16px", background: "#F9F8F6", border: `2px dashed ${C.border}`, borderRadius: 12, textAlign: "center", fontSize: 12.5, fontWeight: 700, color: C.ink3, cursor: "pointer" }}>
+              {uploading ? "Uploading..." : "Click to upload a document"}
+              <input type="file" style={{ display: "none" }} disabled={uploading} onChange={e => e.target.files?.[0] && uploadDocument(e.target.files[0])} />
+            </label>
+            {documents.data.length === 0 ? (
+              <EmptyState icon="📁" title="No documents yet" />
+            ) : documents.data.map(d => (
+              <Card key={d.id} style={{ marginBottom: 8, padding: "12px 16px" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>{d.file_name}</div>
+                <div style={{ fontSize: 11, color: C.ink3, marginTop: 2 }}>{d.doc_type} · {new Date(d.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</div>
+              </Card>
+            ))}
+          </div>
+        )
       )}
     </div>
   )

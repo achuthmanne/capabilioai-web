@@ -176,11 +176,15 @@ const VAULT_BUCKET = "vault-documents"
 
 router.get("/pro/vault", requireAuth, async (req, res) => {
   try {
-    const { data, error } = await supabaseAdmin
+    let q = supabaseAdmin
       .from("vault_documents")
       .select("*")
       .eq("user_id", req.user.id)
       .order("created_at", { ascending: false })
+    // Optional Startup Workspace scoping — additive, existing personal-vault
+    // callers that don't pass startup_id keep seeing all their own documents.
+    if (req.query.startup_id) q = q.eq("startup_id", req.query.startup_id)
+    const { data, error } = await q
     if (error) throw error
     res.json(data || [])
   } catch (e) { res.status(500).json({ error: e.message }) }
@@ -195,6 +199,11 @@ router.post("/pro/vault/upload", requireAuth, upload.single("file"), async (req,
     const docType  = req.body.doc_type || "other"
     const tags     = req.body.tags ? JSON.parse(req.body.tags) : []
     const isPrivate = req.body.is_private === "true"
+    // Optional Startup Workspace scoping — additive; existing personal-vault
+    // callers that don't send these fields are unaffected (both columns
+    // nullable, per the startup_workspace_sprint3 migration).
+    const startupId = req.body.startup_id || null
+    const folder     = req.body.folder || null
     const ext      = file.originalname.split(".").pop() || "bin"
     const path     = `${uid}/${docType}/${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_")}`
 
@@ -214,6 +223,8 @@ router.post("/pro/vault/upload", requireAuth, upload.single("file"), async (req,
         mime_type:    file.mimetype,
         tags,
         is_private:   isPrivate,
+        startup_id:   startupId,
+        folder,
         activity_log: [{ action: "uploaded", at: new Date().toISOString() }],
       })
       .select()

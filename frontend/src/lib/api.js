@@ -110,13 +110,15 @@ export const timelineApi = {
 // VAULT
 // ══════════════════════════════════════════
 export const vaultApi = {
-  list:   () => request("GET", "/pro/vault"),
-  upload: (file, docType, tags = [], isPrivate = false) => {
+  list:   (startupId) => request("GET", `/pro/vault${startupId ? `?startup_id=${startupId}` : ""}`),
+  upload: (file, docType, tags = [], isPrivate = false, startupId = null, folder = null) => {
     const fd = new FormData()
     fd.append("file", file)
     fd.append("doc_type", docType)
     fd.append("tags", JSON.stringify(tags))
     fd.append("is_private", String(isPrivate))
+    if (startupId) fd.append("startup_id", startupId)
+    if (folder) fd.append("folder", folder)
     return upload("/pro/vault/upload", fd)
   },
   getUrl:  (id) => request("GET", `/pro/vault/${id}/url`),
