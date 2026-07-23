@@ -189,12 +189,16 @@ export default function ExecutiveHome({ user, userData, onNavigate }) {
         </h1>
       </div>
 
-      {/* Ask Capi */}
-      <Card style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 14, background: C.goldL, border: `1px solid ${C.goldB}` }}>
+      {/* AI Copilot — the generic "Ask Capi" chat widget is intentionally not
+          mounted on the Executive path (App.jsx excludes navPath === "authority").
+          This card points to the dedicated AI Copilot module instead, which is
+          honest about being pre-briefing-engine (Sprint 6) rather than implying
+          a chat bubble that no longer exists here. */}
+      <Card onClick={() => onNavigate?.("aicopilot")} style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 14, background: C.goldL, border: `1px solid ${C.goldB}`, cursor: "pointer" }}>
         <div style={{ fontSize: 22 }}>✦</div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>Ask Capi</div>
-          <div style={{ fontSize: 12, color: C.ink3 }}>Your AI assistant is available from the chat button in the corner — ask it anything about your profile or the platform.</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>AI Copilot</div>
+          <div style={{ fontSize: 12, color: C.ink3 }}>Proactive founder briefings are on the way — open AI Copilot for status on what's built.</div>
         </div>
       </Card>
 

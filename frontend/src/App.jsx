@@ -1130,7 +1130,11 @@ function App() {
         </Suspense>
       </div>
 
-      {user && navPath !== "institution" && <CopilotWidget user={user} userData={userData} />}
+      {/* Excluded from authority/executive path: that path has its own dedicated
+          AI Copilot nav module (ExecutiveComingSoon "aicopilot" today, the
+          proactive founder-briefing engine in Sprint 6) rather than the
+          generic career-Q&A widget used by student/professional. */}
+      {user && navPath !== "institution" && navPath !== "authority" && <CopilotWidget user={user} userData={userData} />}
 
       <Analytics />
       <SpeedInsights />
