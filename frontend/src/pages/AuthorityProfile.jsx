@@ -1,8 +1,59 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 
 import { userDoc } from '../lib/db'
+import { supabase } from '../lib/supabase'
 const userDoc_safe      = (uid, updates) => userDoc.update(uid, updates).catch(e => console.warn('save:', e.message))
 const userDoc_subscribe = (uid, cb) => userDoc.subscribe(uid, cb)
+
+// ─── Real data hooks (replaces the previous Firestore doc()/updateDoc() calls,
+// which referenced functions never imported into this Supabase app and threw
+// ReferenceError on every Follow / Create Post / Booking Request click) ─────
+
+function useProfilePosts(profileUid) {
+  const [posts, setPosts]     = useState([])
+  const [loading, setLoading] = useState(true)
+  const load = useCallback(async () => {
+    if (!profileUid) { setLoading(false); return }
+    setLoading(true)
+    const { data } = await supabase
+      .from("org_events").select("*").eq("org_id", profileUid).eq("type", "post")
+      .order("created_at", { ascending: false })
+    setPosts(data || [])
+    setLoading(false)
+  }, [profileUid])
+  useEffect(() => { load() }, [load])
+  return { posts, loading, reload: load }
+}
+
+function useFollowState(profileUid, viewerUid) {
+  const [isFollowing, setIsFollowing]     = useState(false)
+  const [followerCount, setFollowerCount] = useState(0)
+  const load = useCallback(async () => {
+    if (!profileUid) return
+    const { count } = await supabase
+      .from("follows").select("id", { count: "exact", head: true }).eq("following_id", profileUid)
+    setFollowerCount(count || 0)
+    if (viewerUid && viewerUid !== profileUid) {
+      const { data } = await supabase
+        .from("follows").select("id").eq("follower_id", viewerUid).eq("following_id", profileUid).maybeSingle()
+      setIsFollowing(!!data)
+    }
+  }, [profileUid, viewerUid])
+  useEffect(() => { load() }, [load])
+
+  const toggleFollow = async () => {
+    if (!viewerUid || viewerUid === profileUid) return
+    if (isFollowing) {
+      await supabase.from("follows").delete().eq("follower_id", viewerUid).eq("following_id", profileUid)
+      setIsFollowing(false); setFollowerCount(c => Math.max(0, c - 1))
+    } else {
+      await supabase.from("follows").insert({ follower_id: viewerUid, following_id: profileUid })
+      setIsFollowing(true); setFollowerCount(c => c + 1)
+    }
+  }
+
+  return { isFollowing, followerCount, toggleFollow }
+}
 
 // ─── DESIGN TOKENS (matches Aura.jsx) ────────────────────────────────────────
 const T = {
@@ -73,23 +124,21 @@ function VerifiedBadge({ userData }) {
 
 // ─── POST CARD ────────────────────────────────────────────────────────────────
 function PostCard({ post }) {
+  // post is a real org_events row: category (was "type"), description (was
+  // "content"), created_at (was "createdAt"). No tags column exists on
+  // org_events, so the old post.tags rendering is dropped rather than faked.
   const typeColors={knowledge:T.indigo,journey:T.purple,lesson:T.amber,challenge:T.green,announcement:T.amber,resource:T.blue}
   const typeLabels={knowledge:"💡 Knowledge",journey:"🚀 Journey",lesson:"📚 Lesson",challenge:"⚔️ Challenge",announcement:"📢 Announcement",resource:"🧩 Resource"}
-  const col=typeColors[post.type]||T.indigo
-  const lbl=typeLabels[post.type]||"💡 Knowledge"
+  const col=typeColors[post.category]||T.indigo
+  const lbl=typeLabels[post.category]||"💡 Knowledge"
   return (
     <Card style={{marginBottom:12}}>
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,flexWrap:"wrap"}}>
         <Badge color={col} bg={col+"15"}>{lbl}</Badge>
-        <span style={{fontSize:11,color:T.ink4,marginLeft:"auto"}}>{new Date(post.createdAt).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}</span>
+        <span style={{fontSize:11,color:T.ink4,marginLeft:"auto"}}>{new Date(post.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}</span>
       </div>
       <h3 style={{fontSize:16,fontWeight:800,color:T.ink,marginBottom:8,lineHeight:1.4}}>{post.title}</h3>
-      <p style={{fontSize:13,color:T.ink2,lineHeight:1.75,margin:"0 0 12px"}}>{post.content}</p>
-      {post.tags?.length>0&&(
-        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-          {post.tags.map((tag,i)=><span key={i} style={{fontSize:10,color:T.ink4,background:T.cream2,border:`1px solid ${T.border}`,borderRadius:20,padding:"2px 8px"}}>#{tag}</span>)}
-        </div>
-      )}
+      <p style={{fontSize:13,color:T.ink2,lineHeight:1.75,margin:"0 0 12px"}}>{post.description}</p>
     </Card>
   )
 }
@@ -165,7 +214,17 @@ function BookingModal({ type, authorName, authorUid, requesterUid, requesterName
     if(!msg.trim()||sending) return
     setSending(true)
     try {
-      await updateDoc(doc(db,"users",authorUid),{bookingRequests:arrayUnion({type,from:requesterUid,fromName:requesterName,message:msg.trim(),sentAt:new Date().toISOString(),status:"pending"})})
+      // Real request, via the connections table (no bookings table exists yet —
+      // per FUNDING_HUB_DESIGN_SPEC.md's "never fabricate a table that isn't
+      // there" rule, this rides on the real connections/request primitive
+      // rather than writing to a Firestore array that was never real).
+      const { error } = await supabase.from("connections").insert({
+        requester_id: requesterUid,
+        addressee_id: authorUid,
+        status: "pending",
+        message: `[${type}] ${msg.trim()}`,
+      })
+      if (error) throw error
       setSent(true)
     } catch(e){console.error("Booking error:",e.message)}
     setSending(false)
@@ -301,15 +360,16 @@ const SKILL_COLORS = ["#3D4EAC","#1A7A4A","#E67E22","#8E44AD","#E74C3C","#16A085
 
 // ─── MAIN AUTHORITY PROFILE ───────────────────────────────────────────────────
 export default function AuthorityProfile({ user, userData, setUserData, onNavigate }) {
-  const [posts, setPosts]               = useState(userData?.posts||[])
+  const viewerUid = user?.id || user?.uid
+  const profileUid = userData?.uid || userData?.id
+  const { posts, reload: reloadPosts }        = useProfilePosts(profileUid)
+  const { isFollowing, followerCount, toggleFollow } = useFollowState(profileUid, viewerUid)
   const [showVerifyModal, setShowVerifyModal] = useState(false)
   const [bookingType, setBookingType]   = useState(null)
   const [activeTab, setActiveTab]       = useState("posts")
   const [showCreate, setShowCreate]     = useState(false)
-  const [isFollowing, setIsFollowing]   = useState(false)
-  const [followerCount, setFollowerCount] = useState((userData?.followers||[]).length)
 
-  const isOwner = user?.uid && userData?.uid === user.uid
+  const isOwner = viewerUid && profileUid === viewerUid
   const authorityType = userData?.authorityType||"Authority"
   const domain = userData?.keyword||userData?.domain||""
   const openTo = userData?.openTo||{}
@@ -320,24 +380,23 @@ export default function AuthorityProfile({ user, userData, setUserData, onNaviga
   const showElo = !meta.isInstitution&&(meta.profileTrack!=="org"||authorityType==="Professor/Researcher"||authorityType==="Industry Expert")
   const primaryVerificationCTA = !meta.verified||(openTo.mentorship&&!meta.mentorVerified)
 
-  useEffect(()=>{
-    if(user?.uid&&userData?.followers) setIsFollowing(userData.followers.includes(user.uid))
-  },[user?.uid,userData?.followers])
-
-  const handleFollow = async () => {
-    if(!user?.uid||isOwner) return
-    const ref=doc(db,"users",userData.uid)
-    if(isFollowing){await updateDoc(ref,{followers:arrayRemove(user.uid)});setIsFollowing(false);setFollowerCount(c=>c-1)}
-    else{await updateDoc(ref,{followers:arrayUnion(user.uid)});setIsFollowing(true);setFollowerCount(c=>c+1)}
-  }
+  const handleFollow = toggleFollow
 
   const handlePost = async (postData) => {
-    if(!user?.uid) return
-    const ref=doc(db,"users",user.uid)
-    const newPosts=[{id:Date.now().toString(),...postData},...posts]
-    await updateDoc(ref,{posts:newPosts})
-    setPosts(newPosts)
-    if(setUserData) setUserData(d=>({...d,posts:newPosts}))
+    if(!viewerUid) return
+    // Real write to org_events — the same table/pattern already backing
+    // ExecutiveHome's Executive Feed and InstitutionOS's Community posts,
+    // rather than a Firestore users/{uid}.posts array that was never real.
+    const { error } = await supabase.from("org_events").insert({
+      org_id: viewerUid,
+      type: "post",
+      category: postData.type,
+      title: postData.title,
+      description: postData.content,
+      created_by: viewerUid,
+    })
+    if (error) { console.error("Post error:", error.message); return }
+    await reloadPosts()
   }
 
   const TABS = [
@@ -356,7 +415,7 @@ export default function AuthorityProfile({ user, userData, setUserData, onNaviga
         @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
       `}</style>
 
-      {bookingType&&<BookingModal type={bookingType} authorName={userData?.displayName||"Authority"} authorUid={userData?.uid||""} requesterUid={user?.uid||""} requesterName={user?.displayName||"User"} onClose={()=>setBookingType(null)}/>}
+      {bookingType&&<BookingModal type={bookingType} authorName={userData?.displayName||userData?.name||"Authority"} authorUid={profileUid||""} requesterUid={viewerUid||""} requesterName={user?.displayName||"User"} onClose={()=>setBookingType(null)}/>}
       {showVerifyModal&&<VerificationModal onClose={()=>setShowVerifyModal(false)} onNavigateArena={()=>{setShowVerifyModal(false);onNavigate?.("arena")}} authorityType={authorityType} userData={userData}/>}
       {showCreate&&<CreatePostModal onClose={()=>setShowCreate(false)} onPost={handlePost} authorityType={authorityType}/>}
 

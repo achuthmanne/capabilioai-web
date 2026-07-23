@@ -10,25 +10,7 @@
  */
 import { useState, useEffect, useCallback } from "react"
 import { supabase } from "../lib/supabase"
-
-const C = {
-  gold:    "#F59E0B",
-  goldD:   "#D97706",
-  goldL:   "rgba(245,158,11,0.12)",
-  goldB:   "rgba(245,158,11,0.28)",
-  ink:     "#1A1714",
-  ink2:    "#475569",
-  ink3:    "#A8A29E",
-  ink4:    "#6B6560",
-  border:  "rgba(0,0,0,0.06)",
-  surface: "#FFFFFF",
-  green:   "#10B981",
-  greenL:  "rgba(16,185,129,0.12)",
-  blue:    "#3B82F6",
-  blueL:   "rgba(59,130,246,0.12)",
-  red:     "#F43F5E",
-  redL:    "rgba(244,63,94,0.10)",
-}
+import { EXEC_COLORS as C, Card, Label, SectionHead, EmptyState } from "../components/ExecutiveUI"
 
 const POST_CATEGORIES = ["Insight", "Milestone", "Announcement", "Ask"]
 const CATEGORY_ICON = { Insight: "💡", Milestone: "🚀", Announcement: "📢", Ask: "🤝" }
@@ -43,50 +25,6 @@ const ROADMAP_MODULES = [
   { icon: "📊", title: "Executive Analytics",    desc: "Will aggregate real feed + network numbers once there's enough activity to show." },
   { icon: "🎨", title: "Brand Studio",           desc: "Cover, tagline, brand color for your profile. Smallest lift of the unbuilt modules." },
 ]
-
-function Card({ children, style = {}, onClick }) {
-  return (
-    <div onClick={onClick} style={{
-      background: C.surface, border: `1px solid ${C.border}`,
-      borderRadius: 16, padding: 20,
-      boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-      ...style,
-    }}>{children}</div>
-  )
-}
-
-function Label({ children, color = C.gold, bg = C.goldL }) {
-  return (
-    <span style={{
-      display: "inline-flex", alignItems: "center",
-      padding: "3px 10px", borderRadius: 100,
-      background: bg, color, fontSize: 11, fontWeight: 700,
-      fontFamily: "'DM Mono', monospace", letterSpacing: "0.06em",
-      textTransform: "uppercase",
-    }}>{children}</span>
-  )
-}
-
-function SectionHead({ title, action, onAction }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: C.ink2 }}>{title}</div>
-      {action && (
-        <button onClick={onAction} style={{ fontSize: 12, color: C.goldD, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>{action}</button>
-      )}
-    </div>
-  )
-}
-
-function EmptyState({ icon = "✦", title, sub }) {
-  return (
-    <Card style={{ textAlign: "center", padding: "28px 20px" }}>
-      <div style={{ fontSize: 28, marginBottom: 8, opacity: 0.6 }}>{icon}</div>
-      <div style={{ fontSize: 13, fontWeight: 700, color: C.ink2, marginBottom: 4 }}>{title}</div>
-      {sub && <div style={{ fontSize: 12, color: C.ink3, lineHeight: 1.6 }}>{sub}</div>}
-    </Card>
-  )
-}
 
 // ─── Data hooks (all real Supabase queries) ─────────────────────────────────
 

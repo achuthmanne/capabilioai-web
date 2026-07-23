@@ -1,0 +1,29 @@
+name: CI
+
+# Sprint 0 of EXECUTIVE_TECHNICAL_BLUEPRINT.md §10 — no CI existed before this.
+# Kept intentionally small: build must pass and the one existing real test
+# suite must pass. Lint runs but does not block merges yet, since the
+# existing codebase predates the ESLint config added alongside this workflow
+# and would otherwise surface a large pre-existing backlog unrelated to any
+# single PR. Tighten this (make lint blocking) once that backlog is triaged.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - run: npm run build
+      - run: npm run test:arena-v2
+      - name: Lint (non-blocking)
+        run: npm run lint || true
