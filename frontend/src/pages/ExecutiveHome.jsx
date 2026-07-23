@@ -302,6 +302,7 @@ export default function ExecutiveHome({ user, userData, onNavigate }) {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 16 }}>
         {[
           { icon: "🧭", label: "Startup Workspace",   page: "startupworkspace" },
+          { icon: "📰", label: "Executive Feed",      page: "executivefeed" },
           { icon: "⏰", label: "Time Market (Jobs)", page: "timemarket" },
           { icon: "🎙️", label: "Signal Rooms",       page: "signalrooms" },
           { icon: "🌐", label: "Network",             page: "execnetwork" },
