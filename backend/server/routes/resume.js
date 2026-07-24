@@ -156,7 +156,15 @@ CRITICAL RULES FOR roleSkills:
         // the document (skills, certifications) still parsed fine. That's why certs came
         // through from a resume upload but education didn't.
         { role:"user",   content:`Parse this professional resume. Include separate projects array for any project entries. Return JSON: ${PROF_SCHEMA}\n\nResume:\n${text.slice(0,12000)}` },
-      ], { model:GROQ_FAST, max_tokens:2500, json:true, temperature:0.2 })
+      // BUG FIX: max_tokens:2500 was too tight for PROF_SCHEMA's size (nested
+      // experience/roleSkills/projects/achievements/academicIdentity arrays) —
+      // confirmed in production: Groq returned 400 json_validate_failed
+      // ("Failed to generate JSON") because generation was cut off mid-object
+      // before closing all the braces, i.e. token-budget truncation, not a
+      // prompt-quality issue. Raised to 4096 (GROQ_FAST/llama-3.1-8b-instant
+      // supports well above this for completions) to give a full resume's
+      // worth of structured output room to finish.
+      ], { model:GROQ_FAST, max_tokens:4096, json:true, temperature:0.2 })
       // BUG FIX (2026-07-20): temperature was defaulting to 0.7 (groq.js's
       // default, tuned for creative tasks) for what is a deterministic
       // structured-extraction task. Confirmed in production: the identical
@@ -191,8 +199,27 @@ CRITICAL RULES FOR roleSkills:
         }
       } catch (e) { /* raw wasn't valid JSON at all — the normal parse below already handles this */ }
       } catch (e) {
-        console.warn("[parse-resume] Groq extraction failed, falling back:", e.message)
-        raw = null
+        // One targeted retry specifically for the truncation signature
+        // (json_validate_failed / "Failed to generate JSON") with a larger
+        // token budget still, in case even 4096 wasn't enough for an
+        // unusually dense resume — cheap insurance, only fires on this one
+        // known failure mode rather than retrying on every kind of error.
+        const isTruncation = /json_validate_failed|Failed to generate JSON/i.test(e.message || "")
+        if (isTruncation) {
+          console.warn("[parse-resume] Groq truncated at 4096 tokens, retrying once at 6144:", e.message)
+          try {
+            raw = await groq([
+              { role:"system", content:`Resume parser. Return ONLY valid JSON matching the schema exactly, no markdown, no extra text. Be CONCISE in descriptions/responsibilities to ensure the JSON completes fully within the token budget — truncated output is worse than brief output.` },
+              { role:"user", content:`Parse this professional resume. Include separate projects array for any project entries. Return JSON: ${PROF_SCHEMA}\n\nResume:\n${text.slice(0,12000)}` },
+            ], { model:GROQ_FAST, max_tokens:6144, json:true, temperature:0.2 })
+          } catch (e2) {
+            console.warn("[parse-resume] Groq retry also failed, falling back:", e2.message)
+            raw = null
+          }
+        } else {
+          console.warn("[parse-resume] Groq extraction failed, falling back:", e.message)
+          raw = null
+        }
       }
     }
 
