@@ -2809,6 +2809,26 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
   const activeTab    = activeTabProp    !== undefined ? activeTabProp    : _localTab
   const setActiveTab = setActiveTabProp !== undefined ? setActiveTabProp : _setLocalTab
 
+  // BUG FIX: activeTabProp is a single GLOBAL tab-state value owned by App.jsx
+  // (useState("dashboard")), shared across every page that accepts activeTab/
+  // setActiveTab (Aura, Orbit, ProfessionalHome...) and never reset per path.
+  // Because it's always defined, `activeTab` above always resolved to
+  // whatever that shared global happened to be — "dashboard" the first time
+  // Profile is opened in a session — completely bypassing the path-aware
+  // `defaultTab` fallback right above it, which was written correctly but
+  // never actually reachable. That's why Arena-heavy dashboard content (ELO
+  // Rating History, Career Momentum, Portfolio Command Center's Arena
+  // Activity — all part of the student-only "dashboard" tab) kept showing up
+  // for professional users despite the tab bar itself being correctly
+  // redesigned to only offer Career & Vault / Skills / AI Interview. Self-heal
+  // any stale/global tab value that isn't one of this path's own real tabs.
+  const PROFESSIONAL_TAB_IDS = new Set(["vault", "pro-skills", "interview"])
+  useEffect(() => {
+    if (propUserData?.path === "professional" && setActiveTabProp && !PROFESSIONAL_TAB_IDS.has(activeTab)) {
+      setActiveTabProp("vault")
+    }
+  }, [propUserData?.path, activeTab])
+
   const [userData, setLocalUserData]    = useState(propUserData||null)
   const [loading, setLoading]           = useState(!propUserData)
   const [vaultFiles, setVaultFiles]     = useState(propUserData?.vaultFiles||[])
