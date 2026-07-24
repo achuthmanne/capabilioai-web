@@ -406,7 +406,10 @@ export default function ProfessionalHome({ user, userData, setUserData, activeTa
   const initials    = name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()
   const firstName   = name.split(" ")[0]
   const elo         = userData?.eloRating || 1200
-  const role        = userData?.keyword || userData?.targetRole || "Professional"
+  // headline is the resume-derived professional title (e.g. "Senior Data Analyst"),
+  // the freshest real signal about who this person is — prefer it over the
+  // onboarding-time keyword/targetRole fallbacks, which go stale.
+  const role        = userData?.headline || userData?.keyword || userData?.targetRole || "Professional"
   const isFreePlan  = !userData?.subscription || userData?.subscription === "free"
   const isVerified  = !!(userData?.epfoVerified || userData?.verified)
   const experiences = userData?.experiences || []

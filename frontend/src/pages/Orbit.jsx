@@ -6,7 +6,7 @@
  */
 import { useState, useCallback, useRef, useEffect } from "react"
 import { userDoc } from "../lib/db"
-import { vaultApi, weeklyCheckApi } from "../lib/api"
+import { vaultApi, weeklyCheckApi, skillsApi } from "../lib/api"
 import { getRoleConfig } from "../config/roleConfig"
 
 const API = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
@@ -675,6 +675,14 @@ function ResumeModal({show,onClose,user,ud,onSave}){
       if(parsed?.summary)u.profileSummary=parsed.summary
       if(parsed?.projects?.length)u.resumeProjects=parsed.projects
       if(parsed?.certifications?.length)u.certifications=parsed.certifications
+      // BUG FIX: parsed.title (the resume's professional title, e.g. "Senior Data
+      // Analyst") was extracted by the backend but silently discarded here — nothing
+      // ever wrote it anywhere, so Home/Pulse always showed the generic path label
+      // instead of the user's real title. `headline` is a real profiles column
+      // already read by Pulse.jsx and ProfessionalHome.jsx — only set it if the
+      // resume actually found one, and don't clobber a headline the user already
+      // wrote by hand in Profile.
+      if(parsed?.title&&!ud?.headline)u.headline=parsed.title
       u.lastResumeUpload=new Date().toISOString()
       // Add resume file to vaultFiles so it appears in Career & Vault simple vault
       if(file){
@@ -682,7 +690,20 @@ function ResumeModal({show,onClose,user,ud,onSave}){
         const existing=(ud?.vaultFiles||[]).filter(f=>!(f.category==="Resume"&&f.name===file.name))
         u.vaultFiles=[vaultEntry,...existing]
       }
-      await onSave(u);setStage("done")
+      await onSave(u)
+      // BUG FIX: resume skills were only ever written to profiles.skills (a flat
+      // JSONB array used by Launchpad job-matching and the Aura chip count) — the
+      // real Skill Graph (user_skills table, what the Skills page and its radar
+      // actually read) never received them, so "Skills" always looked empty even
+      // after a successful resume import. Bulk-upsert is additive/idempotent
+      // (upserts on user_id+slug) so re-importing the same resume just refreshes
+      // scores rather than duplicating rows. Non-fatal if it fails — the profile
+      // save above already succeeded and shouldn't be rolled back for this.
+      if(parsed?.skills?.length){
+        try{await skillsApi.bulkUpsert(parsed.skills,"resume")}
+        catch(e){console.error("[resume] skill graph sync failed:",e.message)}
+      }
+      setStage("done")
     }catch(e){setErr("Save failed. Retry.");setStage("review")}
   }
   const reset=()=>{setStage("upload");setFile(null);setParsed(null);setErr("")}

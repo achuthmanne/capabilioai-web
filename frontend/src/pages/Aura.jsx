@@ -20,7 +20,7 @@ import CareerVideoGenerator from "./CareerVideoGenerator"
 import CareerTimelinePro from "../components/CareerTimeline"
 import VaultManagerPro   from "../components/VaultManager"
 import SkillGraphPro     from "../components/SkillGraphView"
-import { interviewApi }  from "../lib/api"
+import { interviewApi, skillsApi }  from "../lib/api"
 import SettingsPanel from "./SettingsPanel"
 
 // ─── DESIGN TOKENS — Glassmorphic Cosmos dark theme ─────────────────────────
@@ -3151,6 +3151,13 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
       // Certificates — merged (existing + new resume-sourced, deduped above)
       updates.certificates = mergedCerts
 
+      // BUG FIX: extractData.title (the resume's professional title) was parsed
+      // but never saved anywhere from this upload path either — same gap as the
+      // Career page's resume importer. `headline` is a real profiles column read
+      // by Home and Pulse; only set it if empty so we never overwrite something
+      // the user typed by hand.
+      if (extractData.title && !userData?.headline) updates.headline = extractData.title
+
       // save() now returns whether the DB write actually succeeded — only reflect
       // "done" (and only close the upload panel) if it really landed. Previously
       // this always proceeded to show ✅ and update local React state regardless
@@ -3163,6 +3170,18 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
         if(resumeFileInputRef.current) resumeFileInputRef.current.value=""
         return
       }
+      // BUG FIX: this upload path built `resumeSkillsList` and only ever fed it
+      // into the legacy profiles.skill_graph JSONB blob (guarded to first-import
+      // only, see updatedSkillGraph above) — never into user_skills, the table
+      // the real Skill Graph/Skills-page radar reads. Bulk-upsert is additive and
+      // idempotent (upserts on user_id+slug), so this is safe to fire on every
+      // resume upload, not just the first. Non-fatal: the profile save already
+      // succeeded above, so a sync failure here shouldn't roll that back.
+      if (resumeSkillsList.length > 0) {
+        skillsApi.bulkUpsert(resumeSkillsList, "resume")
+          .catch(err => console.error("[resume] skill graph sync failed:", err.message))
+      }
+
       setExperiences(mergedExperiences)
       setVaultFiles(updatedVault)
       const count=newExps.length+(newProjects.length>0?newProjects.length:0)
