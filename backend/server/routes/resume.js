@@ -6,7 +6,7 @@
 import { Router }        from "express"
 import multer            from "multer"
 import { createRequire } from "module"
-import { groq, GROQ_FAST }            from "../lib/groq.js"
+import { groq, GROQ_FAST, GROQ_BIG }  from "../lib/groq.js"
 import { gemini, geminiExtractImage } from "../lib/gemini.js"
 
 const router = Router()
@@ -156,15 +156,18 @@ CRITICAL RULES FOR roleSkills:
         // the document (skills, certifications) still parsed fine. That's why certs came
         // through from a resume upload but education didn't.
         { role:"user",   content:`Parse this professional resume. Include separate projects array for any project entries. Return JSON: ${PROF_SCHEMA}\n\nResume:\n${text.slice(0,12000)}` },
-      // BUG FIX: max_tokens:2500 was too tight for PROF_SCHEMA's size (nested
-      // experience/roleSkills/projects/achievements/academicIdentity arrays) —
-      // confirmed in production: Groq returned 400 json_validate_failed
-      // ("Failed to generate JSON") because generation was cut off mid-object
-      // before closing all the braces, i.e. token-budget truncation, not a
-      // prompt-quality issue. Raised to 4096 (GROQ_FAST/llama-3.1-8b-instant
-      // supports well above this for completions) to give a full resume's
-      // worth of structured output room to finish.
-      ], { model:GROQ_FAST, max_tokens:4096, json:true, temperature:0.2 })
+      // BUG FIX (revised): raising max_tokens (2500→4096) did NOT fix this —
+      // confirmed in production the failure was json_validate_failed at 4096
+      // too, with no TPM/size error, meaning it's not a token-budget problem.
+      // GROQ_FAST (llama-3.1-8b-instant) is a small/fast model that's
+      // genuinely unreliable at producing valid JSON for PROF_SCHEMA's
+      // complexity (deeply nested experience/roleSkills/projects/achievements/
+      // academicIdentity). Switched to GROQ_BIG (llama-3.3-70b-versatile) —
+      // far more reliable at complex structured JSON, and on a separate quota
+      // from GROQ_FAST so it isn't affected by that model's tight TPM limit.
+      // groq.js's own FALLBACK_CHAIN already retries on GROQ_FAST if GROQ_BIG
+      // is itself rate-limited, so this doesn't reduce resilience.
+      ], { model:GROQ_BIG, max_tokens:3000, json:true, temperature:0.2 })
       // BUG FIX (2026-07-20): temperature was defaulting to 0.7 (groq.js's
       // default, tuned for creative tasks) for what is a deterministic
       // structured-extraction task. Confirmed in production: the identical
@@ -206,12 +209,16 @@ CRITICAL RULES FOR roleSkills:
         // known failure mode rather than retrying on every kind of error.
         const isTruncation = /json_validate_failed|Failed to generate JSON/i.test(e.message || "")
         if (isTruncation) {
-          console.warn("[parse-resume] Groq truncated at 4096 tokens, retrying once at 6144:", e.message)
+          // Stay on GROQ_BIG (the root cause was model capability, not token
+          // budget — confirmed by the 4096-token attempt failing with no
+          // size/TPM error). Keep max_tokens modest so this retry can't itself
+          // trip a TPM ceiling; ask for conciseness instead of more room.
+          console.warn("[parse-resume] GROQ_BIG produced invalid JSON, retrying once with a conciseness nudge:", e.message)
           try {
             raw = await groq([
-              { role:"system", content:`Resume parser. Return ONLY valid JSON matching the schema exactly, no markdown, no extra text. Be CONCISE in descriptions/responsibilities to ensure the JSON completes fully within the token budget — truncated output is worse than brief output.` },
+              { role:"system", content:`Resume parser. Return ONLY valid JSON matching the schema exactly, no markdown, no extra text. Be CONCISE in descriptions/responsibilities — prioritize returning complete, valid JSON over verbose detail.` },
               { role:"user", content:`Parse this professional resume. Include separate projects array for any project entries. Return JSON: ${PROF_SCHEMA}\n\nResume:\n${text.slice(0,12000)}` },
-            ], { model:GROQ_FAST, max_tokens:6144, json:true, temperature:0.2 })
+            ], { model:GROQ_BIG, max_tokens:3500, json:true, temperature:0.2 })
           } catch (e2) {
             console.warn("[parse-resume] Groq retry also failed, falling back:", e2.message)
             raw = null

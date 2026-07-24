@@ -28,7 +28,12 @@ async function callGroq(model, messages, { max_tokens, temperature, json }) {
   })
   if (!res.ok) {
     const err = await res.text()
-    const error = new Error(`Groq ${res.status}: ${err.slice(0, 200)}`)
+    // BUG FIX: this was slicing to 200 chars, which cut error bodies off
+    // mid-field — specifically hid the `failed_generation` field Groq sends
+    // back on json_validate_failed errors, which is the one piece of data
+    // that would show WHY the model's JSON was invalid. Widened to 2000 so
+    // callers/logs can actually see it next time this happens.
+    const error = new Error(`Groq ${res.status}: ${err.slice(0, 2000)}`)
     error.status = res.status
     throw error
   }
