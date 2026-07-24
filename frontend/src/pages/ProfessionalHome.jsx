@@ -10,6 +10,7 @@ import { useEffect, useState, useCallback } from "react"
 import { weeklyCheckApi } from "../lib/api"
 import { userDoc } from "../lib/db"
 import { OrbitDash } from "./Orbit"
+import { OutcomeCard, SectionErrorBoundary } from "../components/careeros/CareerOSUI"
 
 // ─── Design tokens — mirrors landing page exactly ──────────────────────────────
 const P   = "#8B5CF6"   // purple accent
@@ -78,16 +79,6 @@ function Card({ children, style = {}, purple = false }) {
       boxShadow: purple ? SHD : SHD2,
       ...style,
     }}>{children}</div>
-  )
-}
-
-function StatCell({ label, value, sub, color = INK }) {
-  return (
-    <div style={{ background: CELL, border: `1px solid rgba(17,24,39,0.06)`, borderRadius: r14, padding: "12px 10px", textAlign: "center" }}>
-      <div style={{ fontFamily: MONO, fontSize: 18, fontWeight: 800, color, marginBottom: 3, lineHeight: 1.1 }}>{value}</div>
-      <div style={{ fontSize: 9, color: MUT, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: MONO }}>{label}</div>
-      {sub && <div style={{ fontSize: 10, color: MUT, marginTop: 3, fontFamily: BODY }}>{sub}</div>}
-    </div>
   )
 }
 
@@ -392,6 +383,60 @@ function ActionGaps({ userData, onNavigate }) {
   )
 }
 
+// ─── Outcome-first home signals ────────────────────────────────────────────────
+// Career OS Non-negotiable Rule #1 (docs/career-os-implementation-plan.md):
+// no bare "Market Value" / "Layoff Shield" / "Career Velocity" / raw ELO
+// number ships to this page. Every one of those raw internal signals is
+// replaced below with a plain-language outcome + drivers + basis, computed
+// only from real fields already on userData — nothing here is fabricated.
+function buildOutcomeSignals(userData, elo, onNavigate) {
+  const exps        = userData?.experiences || []
+  const vault        = userData?.vaultFiles || []
+  const hasExp       = exps.length > 0
+  const hasVault     = vault.length > 0
+  const hasVerif     = !!(userData?.epfoVerified || userData?.verified)
+  const hasSummary   = !!userData?.summary
+  const hasTarget    = !!userData?.targetRole
+  const strengthCount = [hasVault, hasExp, hasSummary].filter(Boolean).length
+
+  const momentum = {
+    label: "Career momentum",
+    outcome: hasExp && hasTarget ? "Building steadily" : hasExp ? "Getting started" : "Not yet tracked",
+    drivers: [
+      hasExp ? `${exps.length} career ${exps.length === 1 ? "entry" : "entries"} on record` : "No career entries added yet — upload a resume to get started",
+      hasTarget ? `Target role set: ${userData.targetRole}` : "No target role set yet",
+    ],
+    basis: "Your career timeline and target role",
+    tone: hasExp && hasTarget ? "good" : hasExp ? "info" : "neutral",
+    cta: !hasExp ? { label: "Add your first entry", onClick: () => onNavigate("orbit") } : undefined,
+  }
+
+  const trust = {
+    label: "Employment trust",
+    outcome: hasVerif ? "Verified" : "Not yet verified",
+    drivers: [
+      hasVerif ? "Your employment has been verified (EPFO/UAN cross-match)" : "Verifying employment increases recruiter trust",
+    ],
+    basis: "Employment verification status",
+    tone: hasVerif ? "good" : "warn",
+    cta: !hasVerif ? { label: "Verify employment", onClick: () => onNavigate("aura") } : undefined,
+  }
+
+  const strength = {
+    label: "Profile strength",
+    outcome: strengthCount >= 3 ? "Strong" : strengthCount >= 1 ? "Building" : "Just started",
+    drivers: [
+      hasVault ? `${vault.length} document${vault.length === 1 ? "" : "s"} in Vault` : "No documents uploaded yet",
+      hasSummary ? "Profile summary added" : "No profile summary yet",
+    ],
+    basis: "Vault documents and profile completeness",
+    tone: strengthCount >= 3 ? "good" : strengthCount >= 1 ? "info" : "neutral",
+    cta: !hasSummary ? { label: "Add a summary", onClick: () => onNavigate("aura") } : undefined,
+  }
+
+  return { momentum, trust, strength }
+}
+
 // ─── Root component ───────────────────────────────────────────────────────────
 // Home is now the single command-center view for the Professional path — the
 // old Orbit "Overview" dashboard (OrbitDash) is embedded directly below, and
@@ -419,6 +464,7 @@ export default function ProfessionalHome({ user, userData, setUserData, activeTa
   const vaultFiles  = userData?.vaultFiles  || []
   const coverURL    = userData?.coverPhotoURL || null
   const photoURL    = userData?.profilePhotoURL || null
+  const outcomeSignals = buildOutcomeSignals(userData, elo, onNavigate)
 
   const uid = user?.id || user?.uid
   const onSave = useCallback(async updates => {
@@ -523,10 +569,10 @@ export default function ProfessionalHome({ user, userData, setUserData, activeTa
                 <div style={{ fontSize: 13, color: MUT, fontFamily: BODY }}>{role} {isVerified && <span style={{ color: "#16A34A", fontWeight: 700 }}>· Verified ✓</span>}</div>
               </div>
 
-              {/* ELO badge */}
-              <div style={{ background: `${P}0F`, border: `1.5px solid ${P}30`, borderRadius: r18, padding: "14px 16px 12px", textAlign: "center", flexShrink: 0 }}>
-                <div style={{ fontFamily: MONO, fontSize: 30, fontWeight: 800, color: P, lineHeight: 1 }}>{elo.toLocaleString()}</div>
-                <div style={{ fontSize: 9, color: P, letterSpacing: "0.12em", marginTop: 5, textTransform: "uppercase", fontFamily: MONO, fontWeight: 800 }}>ELO Score</div>
+              {/* Career momentum — outcome-first, no bare ELO number (see buildOutcomeSignals) */}
+              <div style={{ background: `${P}0F`, border: `1.5px solid ${P}30`, borderRadius: r18, padding: "14px 16px 12px", textAlign: "center", flexShrink: 0, maxWidth: 180 }}>
+                <div style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 800, color: P, lineHeight: 1.2 }}>{outcomeSignals.momentum.outcome}</div>
+                <div style={{ fontSize: 9, color: P, letterSpacing: "0.12em", marginTop: 5, textTransform: "uppercase", fontFamily: MONO, fontWeight: 800 }}>Career momentum</div>
               </div>
             </div>
 
@@ -539,11 +585,15 @@ export default function ProfessionalHome({ user, userData, setUserData, activeTa
               {isFreePlan && <Badge color={MUT} bg="#FAF7F2">Free plan</Badge>}
             </div>
 
-            {/* 3-col stats */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 18 }}>
-              <StatCell label="Market Value" value="—" sub="Add timeline to unlock" color={INK} />
-              <StatCell label="Layoff Shield" value={isVerified ? "Active" : "—"} sub={isVerified ? "Employment verified" : "Verify to unlock"} color={isVerified ? "#16A34A" : INK} />
-              <StatCell label="Career Velocity" value={experiences.length > 0 ? "+ELO" : "—"} sub="Based on Career signals" color={P} />
+            {/* Outcome-first signals — replaces the old raw Market Value / Layoff
+                Shield / Career Velocity labels (Career OS Non-negotiable Rule #1:
+                no unexplained internal score ships to a Professional Path
+                screen). Each card states a plain-language outcome with its
+                drivers and evidence basis — see buildOutcomeSignals() above. */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10, marginBottom: 18 }}>
+              <SectionErrorBoundary name="home-outcome-momentum"><OutcomeCard {...outcomeSignals.momentum} /></SectionErrorBoundary>
+              <SectionErrorBoundary name="home-outcome-trust"><OutcomeCard {...outcomeSignals.trust} /></SectionErrorBoundary>
+              <SectionErrorBoundary name="home-outcome-strength"><OutcomeCard {...outcomeSignals.strength} /></SectionErrorBoundary>
             </div>
           </div>
         </div>
@@ -554,28 +604,32 @@ export default function ProfessionalHome({ user, userData, setUserData, activeTa
 
         {/* Weekly Career Check entry point */}
         <div style={{ marginBottom: 18 }}>
-          <WeeklyCheckCard onNavigate={onNavigate} />
+          <SectionErrorBoundary name="home-weekly-check"><WeeklyCheckCard onNavigate={onNavigate} /></SectionErrorBoundary>
         </div>
 
         {/* Embedded Career dashboard — formerly the standalone Orbit page's
-            "Overview" tab. Career Health Score + 4 ELO cards + comp/gap/
-            recruiter/risk/health/action/ROI + Elite row, all real. */}
+            "Overview" tab. Wrapped so a failure here can't blank the rest of
+            Home (Workstream 0-E error containment). */}
         <div style={{ marginBottom: 18 }}>
-          <OrbitDash ud={userData} user={user} onSave={onSave} onNav={onDashNav} onPricing={onNavigatePricing} />
+          <SectionErrorBoundary name="home-orbit-dash">
+            <OrbitDash ud={userData} user={user} onSave={onSave} onNav={onDashNav} onPricing={onNavigatePricing} />
+          </SectionErrorBoundary>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1.1fr .9fr", gap: 18, marginBottom: 18 }}>
           {/* Action gaps */}
-          <Card>
-            <div style={{ marginBottom: 18 }}>
-              <MonoLabel>Action items</MonoLabel>
-              <div style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: INK }}>Profile gaps</div>
-              <div style={{ fontSize: 12, color: MUT, marginTop: 3, fontFamily: BODY }}>Resolve these to improve career scores.</div>
-            </div>
-            <ActionGaps userData={userData} onNavigate={onNavigate} />
-          </Card>
+          <SectionErrorBoundary name="home-action-gaps">
+            <Card>
+              <div style={{ marginBottom: 18 }}>
+                <MonoLabel>Action items</MonoLabel>
+                <div style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: INK }}>Profile gaps</div>
+                <div style={{ fontSize: 12, color: MUT, marginTop: 3, fontFamily: BODY }}>Resolve these to improve career scores.</div>
+              </div>
+              <ActionGaps userData={userData} onNavigate={onNavigate} />
+            </Card>
+          </SectionErrorBoundary>
 
-          {/* Quick nav to the rest of the 7-module IA */}
+          {/* Quick nav to the rest of the module IA */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             {[
               { icon: "📈", label: "Career",    page: "orbit",     color: P         },

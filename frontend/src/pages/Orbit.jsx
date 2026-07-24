@@ -1185,9 +1185,32 @@ function ReadinessTab({ud,user,onSave,onNav}){
 }
 
 // ─── Root Export ──────────────────────────────────────────────────────────────
-export default function Orbit({user,userData,setUserData,activeTab,setActiveTab,onNavigate,onNavigatePricing}){
+// Career OS Workstream 0 (docs/career-os-implementation-plan.md §B): every
+// module now owns its own tab state locally. A single global activeTab used
+// to live in App.jsx and get shared across Aura/Orbit/ProfessionalHome,
+// which meant a stale tab id from one page (e.g. Profile's "pro-skills")
+// could land here and match none of Orbit's own tab ids, rendering a blank
+// body under a live TabBar. The `activeTab`/`setActiveTab` props below are
+// now treated as a one-shot deep-link *request* only (e.g. Home's onDashNav
+// asking Career to open directly on "comp") — consumed once, then ignored.
+const ORBIT_TAB_IDS = new Set(["timeline","vault","comp","readiness"])
+
+export default function Orbit({user,userData,setUserData,activeTab:initialTabProp,setActiveTab:setActiveTabProp,onNavigate,onNavigatePricing}){
   const[saving,setSaving]=useState(false)
-  const[localTab,setLocalTab]=useState("timeline")
+  const[tab,setLocalTab]=useState(
+    (initialTabProp && ORBIT_TAB_IDS.has(initialTabProp)) ? initialTabProp : "timeline"
+  )
+  const setTab=setLocalTab // local-only from here on; never writes back to App.jsx's shared state
+
+  // Consume a fresh one-shot deep-link request without re-subscribing to the
+  // shared prop afterward (so it can't stomp on the user's own tab clicks).
+  const consumedInitialTab=useRef(initialTabProp)
+  useEffect(()=>{
+    if(initialTabProp && initialTabProp!==consumedInitialTab.current && ORBIT_TAB_IDS.has(initialTabProp)){
+      setLocalTab(initialTabProp)
+    }
+    consumedInitialTab.current=initialTabProp
+  },[initialTabProp])
 
   const uid=user?.id||user?.uid
 
@@ -1203,8 +1226,6 @@ export default function Orbit({user,userData,setUserData,activeTab,setActiveTab,
   },[uid,setUserData])
 
   const sig=computeSignals(userData)
-  const tab=activeTab||localTab
-  const setTab=setActiveTab||setLocalTab
 
   const handleNav=t=>{
     if(["forge","launchpad","pulse","nexus","aura","weeklycheck","professionalHome"].includes(t))onNavigate(t)

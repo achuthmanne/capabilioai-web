@@ -4,6 +4,7 @@ import { SpeedInsights } from "@vercel/speed-insights/react"
 import { supabase } from "./lib/supabase"
 import { userDoc } from "./lib/db"
 import { Analytics as PH, identifyUser, resetAnalytics } from "./lib/analytics"
+import { FLAGS } from "./config/featureFlags"
 
 import PathNav     from "./components/PathNav"
 import { PageLoader } from "./components/CapUI"
@@ -932,12 +933,25 @@ function App() {
   // — only the nav label changed, no route rename needed). Forge folded out
   // of top-level nav; Settings remains reachable via Profile's Settings tab.
   // Career and Skills were removed as separate top-level nav items — Profile
-  // (Aura.jsx) already has equivalent, more complete tabs (Career & Vault,
-  // Skill Graph Pro, Skill Gaps), so the standalone pages were pure duplication.
-  // The underlying "orbit"/"skills" page routes still exist and are still used
-  // as internal deep-link targets (Home's dashboard embed, gap-card CTAs, the
-  // weekly Career Check flow) — only the persistent nav entries are gone.
-  const PROFESSIONAL_HEADER_NAV = [
+  // Career OS Workstream 0 nav split (docs/career-os-implementation-plan.md
+  // §A, behind the career_os_nav flag): Career and Skills return to the
+  // top-level nav as standalone modules (Orbit.jsx / Skills.jsx — both
+  // already real, already working pages, previously reachable only as deep
+  // links from Profile/Home). Company is defined here but gated behind its
+  // own flag (career_os_company, off by default) — it's added to the array
+  // only once the real module ships in Workstream 5, so users never see a
+  // nav entry pointing at an unbuilt page.
+  const PROFESSIONAL_HEADER_NAV = FLAGS.career_os_nav ? [
+    { id: "home",      label: "Home",      page: "professionalHome", prefix: "🏠" },
+    { id: "orbit",     label: "Career",    page: "orbit",            prefix: "📈" },
+    { id: "skills",    label: "Skills",    page: "skills",           prefix: "🧠" },
+    { id: "launchpad", label: "Launchpad", page: "launchpad",        prefix: "🚀" },
+    { id: "pulse",     label: "Pulse",     page: "pulse",            prefix: "📰" },
+    { id: "nexus",     label: "Connect",   page: "nexus",            prefix: "🤝" },
+    ...(FLAGS.career_os_company ? [{ id: "company", label: "Company", page: "company", prefix: "🏢" }] : []),
+    { id: "aura",      label: "Profile",   page: "aura",             prefix: "👤" },
+  ] : [
+    // Pre-Career-OS nav (instant rollback path if career_os_nav is disabled).
     { id: "home",      label: "Home",      page: "professionalHome", prefix: "🏠" },
     { id: "launchpad", label: "Launchpad", page: "launchpad",        prefix: "🚀" },
     { id: "pulse",     label: "Pulse",     page: "pulse",            prefix: "📰" },

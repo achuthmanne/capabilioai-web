@@ -2800,34 +2800,40 @@ function StudentTestimonialsPanel({ testimonials, onSave }) {
 }
 
 // ─── MAIN AURA COMPONENT ─────────────────────────────────────────────────────
-export default function Aura({ user, activeTab: activeTabProp, setActiveTab: setActiveTabProp, onNavigate, onNavigatePricing, userData: propUserData, setUserData }) {
-  // Aura is now self-contained: it owns the tab state and renders its own tab bar.
-  // Props are accepted for backwards compat (e.g. deep-link to a specific tab).
-  // Professionals land on "vault" (Career Timeline) not the student Dashboard
-  const defaultTab = (propUserData?.path === "professional") ? "vault" : (activeTabProp || "dashboard")
-  const [_localTab, _setLocalTab] = useState(defaultTab)
-  const activeTab    = activeTabProp    !== undefined ? activeTabProp    : _localTab
-  const setActiveTab = setActiveTabProp !== undefined ? setActiveTabProp : _setLocalTab
+// Career OS Workstream 0 (docs/career-os-implementation-plan.md §B): Aura now
+// owns its tab state fully locally, same fix applied to Orbit.jsx. A single
+// global activeTab used to live in App.jsx, shared across every page that
+// accepted activeTab/setActiveTab — that's what caused student-only
+// "dashboard" content (ELO Rating History, Arena Activity) to leak onto the
+// professional Profile page, and is the same class of bug that would blank
+// Career's body if a stale tab id from Profile arrived there instead. The
+// activeTab/setActiveTab props are now a one-shot deep-link *request* only.
+const STUDENT_TAB_IDS      = new Set(["dashboard", "vault", "skillgraph", "interview", "skillgap"])
+const PROFESSIONAL_TAB_IDS = new Set(["vault", "pro-skills", "interview"])
 
-  // BUG FIX: activeTabProp is a single GLOBAL tab-state value owned by App.jsx
-  // (useState("dashboard")), shared across every page that accepts activeTab/
-  // setActiveTab (Aura, Orbit, ProfessionalHome...) and never reset per path.
-  // Because it's always defined, `activeTab` above always resolved to
-  // whatever that shared global happened to be — "dashboard" the first time
-  // Profile is opened in a session — completely bypassing the path-aware
-  // `defaultTab` fallback right above it, which was written correctly but
-  // never actually reachable. That's why Arena-heavy dashboard content (ELO
-  // Rating History, Career Momentum, Portfolio Command Center's Arena
-  // Activity — all part of the student-only "dashboard" tab) kept showing up
-  // for professional users despite the tab bar itself being correctly
-  // redesigned to only offer Career & Vault / Skills / AI Interview. Self-heal
-  // any stale/global tab value that isn't one of this path's own real tabs.
-  const PROFESSIONAL_TAB_IDS = new Set(["vault", "pro-skills", "interview"])
+export default function Aura({ user, activeTab: initialTabProp, setActiveTab: setActiveTabProp, onNavigate, onNavigatePricing, userData: propUserData, setUserData }) {
+  const validTabIds = propUserData?.path === "professional" ? PROFESSIONAL_TAB_IDS : STUDENT_TAB_IDS
+  const defaultTab  = propUserData?.path === "professional" ? "vault" : "dashboard"
+  const [activeTab, setActiveTab] = useState(
+    (initialTabProp && validTabIds.has(initialTabProp)) ? initialTabProp : defaultTab
+  )
+
+  // Consume a fresh one-shot deep-link request without re-subscribing to the
+  // shared prop afterward (so it can't stomp on the user's own tab clicks).
+  const consumedInitialTab = useRef(initialTabProp)
   useEffect(() => {
-    if (propUserData?.path === "professional" && setActiveTabProp && !PROFESSIONAL_TAB_IDS.has(activeTab)) {
-      setActiveTabProp("vault")
+    if (initialTabProp && initialTabProp !== consumedInitialTab.current && validTabIds.has(initialTabProp)) {
+      setActiveTab(initialTabProp)
     }
-  }, [propUserData?.path, activeTab])
+    consumedInitialTab.current = initialTabProp
+  }, [initialTabProp])
+
+  // Self-heal: if the path changes mid-session (rare, but cheap to guard) and
+  // the current tab isn't valid for the new path, land on that path's default
+  // instead of rendering blank.
+  useEffect(() => {
+    if (!validTabIds.has(activeTab)) setActiveTab(defaultTab)
+  }, [propUserData?.path]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const [userData, setLocalUserData]    = useState(propUserData||null)
   const [loading, setLoading]           = useState(!propUserData)

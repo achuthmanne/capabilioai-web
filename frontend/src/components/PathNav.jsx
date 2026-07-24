@@ -19,16 +19,18 @@ const NAV = {
     { id: "launchpad",   label: "Launchpad",    page: "launchpad",   icon: LaunchIcon      },
     { id: "aura",        label: "Aura",         page: "aura",        icon: AuraIcon        },
   ],
-  // Professional Path redesign v3 — 5-module IA (Home/Launchpad/Pulse/Connect/
-  // Profile). Not currently rendered (App.jsx hides PathNav for
-  // navPath==="professional" — the header nav is the single nav) but kept in
-  // sync in case the bottom bar is ever re-enabled. Career and Skills were
-  // dropped as separate nav destinations (2026-07-24) — Profile (Aura.jsx)
-  // already has equivalent Career & Vault / Skill Graph Pro / Skill Gaps tabs,
-  // so standalone nav entries for "orbit"/"skills" were pure duplication. Those
-  // page routes still exist as internal deep-link targets, just not in nav.
+  // Career OS Workstream 0 nav (docs/career-os-implementation-plan.md §A).
+  // Not currently rendered (App.jsx hides PathNav for navPath==="professional"
+  // — PROFESSIONAL_HEADER_NAV in App.jsx is the real, flag-aware nav) but kept
+  // in sync in case the bottom bar is ever re-enabled. Career and Skills are
+  // back as standalone top-level destinations as of the Career OS redesign —
+  // this list does not itself read the career_os_nav/career_os_company flags
+  // since it's dead code today; if this bar is ever re-enabled, wire it to
+  // FLAGS the same way App.jsx's PROFESSIONAL_HEADER_NAV does first.
   professional: [
     { id: "home",       label: "Home",      page: "professionalHome", icon: HomeIcon      },
+    { id: "orbit",      label: "Career",    page: "orbit",      icon: LaunchIcon    },
+    { id: "skills",     label: "Skills",    page: "skills",     icon: SkillStudioIcon },
     { id: "launchpad",  label: "Launchpad", page: "launchpad",  icon: LaunchIcon    },
     { id: "pulse",      label: "Pulse",     page: "pulse",      icon: PulseIcon     },
     { id: "nexus",      label: "Connect",   page: "nexus",      icon: CommunityIcon },
