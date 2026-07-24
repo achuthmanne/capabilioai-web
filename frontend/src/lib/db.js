@@ -48,6 +48,13 @@ const CAMEL_TO_SNAKE = {
   resumeProjects:       'resume_projects',
   resumeFileName:       'resume_file_name',
   resumeUploadedAt:     'resume_uploaded_at',
+  // BUG FIX: targetRole was never mapped here at all, so writing
+  // userDoc.update({ targetRole }) silently tried (and failed) to write a
+  // literal "targetRole" column that doesn't exist — the real column is
+  // target_role. SettingsPanel.jsx was working around this by sending both
+  // keys itself. This is the real mapping so every other caller (resume
+  // import, Skill Gap Analysis) works without needing that workaround.
+  targetRole:           'target_role',
   // Career data — camelCase aliases to snake_case columns
   certificates:         'certifications',      // DB column is certifications
   testimonials:         'testimonials',        // passthrough (column added via migration)
@@ -169,6 +176,10 @@ const toCompat = (data) => {
     subscriptionCycleStart: data.subscription_cycle_start || data.subscriptionCycleStart || null,
     lastResumeUpload:     data.last_resume_upload   || data.lastResumeUpload    || null,
     resumeUploadedAt:     data.resume_uploaded_at   || data.resumeUploadedAt    || null,
+    // BUG FIX: see CAMEL_TO_SNAKE note above — target_role was never aliased
+    // back to targetRole on read, so every component reading userData.targetRole
+    // (Home hero, Skill Gap Analysis, Orbit gap cards) always saw undefined.
+    targetRole:           data.target_role          || data.targetRole          || null,
   }
 }
 

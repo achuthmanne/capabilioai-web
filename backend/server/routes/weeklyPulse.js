@@ -131,10 +131,16 @@ Return ONLY valid JSON, no prose, matching exactly:
 async function buildPulseForWeek(uid, weekOf) {
   const [{ data: skills }, { data: profile }] = await Promise.all([
     supabaseAdmin.from("user_skills").select("*").eq("user_id", uid),
-    supabaseAdmin.from("profiles").select("target_role,keyword,current_job_role").eq("id", uid).single(),
+    supabaseAdmin.from("profiles").select("target_role,keyword,current_job_role,experiences").eq("id", uid).single(),
   ])
 
-  const role = profile?.target_role || profile?.current_job_role || profile?.keyword || "Professional"
+  // Same fallback chain as skillGraph.js's gaps route: prefer the explicit
+  // target_role (resume-derived or manually set), then legacy fields, then
+  // fall back to the current/most-recent experience title before "Professional".
+  const wpExps = Array.isArray(profile?.experiences) ? profile.experiences : []
+  const wpCurrentExp = wpExps.find(e => e?.isCurrent || e?.current) || wpExps[0]
+  const role = profile?.target_role || profile?.current_job_role || profile?.keyword
+    || wpCurrentExp?.role || wpCurrentExp?.title || "Professional"
 
   let roleContext = ""
   try {

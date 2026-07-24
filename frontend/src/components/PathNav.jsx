@@ -19,15 +19,16 @@ const NAV = {
     { id: "launchpad",   label: "Launchpad",    page: "launchpad",   icon: LaunchIcon      },
     { id: "aura",        label: "Aura",         page: "aura",        icon: AuraIcon        },
   ],
-  // Professional Path redesign v2 — 7-module IA (Home/Career/Skills/Launchpad/
-  // Pulse/Connect/Profile). Not currently rendered (App.jsx hides PathNav for
+  // Professional Path redesign v3 — 5-module IA (Home/Launchpad/Pulse/Connect/
+  // Profile). Not currently rendered (App.jsx hides PathNav for
   // navPath==="professional" — the header nav is the single nav) but kept in
-  // sync in case the bottom bar is ever re-enabled. "Career" = former Orbit
-  // page (page id "orbit" unchanged); "Skills" is the new skill/weekly-check hub.
+  // sync in case the bottom bar is ever re-enabled. Career and Skills were
+  // dropped as separate nav destinations (2026-07-24) — Profile (Aura.jsx)
+  // already has equivalent Career & Vault / Skill Graph Pro / Skill Gaps tabs,
+  // so standalone nav entries for "orbit"/"skills" were pure duplication. Those
+  // page routes still exist as internal deep-link targets, just not in nav.
   professional: [
     { id: "home",       label: "Home",      page: "professionalHome", icon: HomeIcon      },
-    { id: "career",     label: "Career",    page: "orbit",      icon: OrbitIcon     },
-    { id: "skills",     label: "Skills",    page: "skills",     icon: SkillStudioIcon },
     { id: "launchpad",  label: "Launchpad", page: "launchpad",  icon: LaunchIcon    },
     { id: "pulse",      label: "Pulse",     page: "pulse",      icon: PulseIcon     },
     { id: "nexus",      label: "Connect",   page: "nexus",      icon: CommunityIcon },

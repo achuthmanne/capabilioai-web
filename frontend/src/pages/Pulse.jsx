@@ -140,7 +140,15 @@ function ProfileSidebar({ user, userData }) {
           </div>
         </div>
         <div style={{ fontFamily:T.serif, fontSize:15, fontWeight:800, color:T.ink, marginBottom:2 }}>{name}</div>
-        <div style={{ fontSize:12, color:T.ink2, lineHeight:1.4, marginBottom:10 }}>{userData?.headline || (path === "professional" ? "Software Professional" : `${path.charAt(0).toUpperCase()}${path.slice(1)} · Capabilio`)}</div>
+        <div style={{ fontSize:12, color:T.ink2, lineHeight:1.4, marginBottom:10 }}>{(() => {
+          // Same fallback chain as ProfessionalHome.jsx: headline (resume title)
+          // first, then current/most-recent experience title — covers users who
+          // uploaded a resume before headline auto-derivation existed and haven't
+          // re-uploaded since — before falling back to the generic path label.
+          const currentExp = (userData?.experiences || []).find(e => e?.isCurrent || e?.current) || (userData?.experiences || [])[0]
+          return userData?.headline || currentExp?.role || currentExp?.title
+            || (path === "professional" ? "Software Professional" : `${path.charAt(0).toUpperCase()}${path.slice(1)} · Capabilio`)
+        })()}</div>
 
         {/* ELO badge */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 0", borderTop:`1px solid ${T.border}`, marginBottom:4 }}>

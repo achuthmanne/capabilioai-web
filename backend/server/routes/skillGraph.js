@@ -314,7 +314,14 @@ router.get("/pro/skills/gaps", requireAuth, async (req, res) => {
       supabaseAdmin.from("profiles").select("target_role,keyword,experiences").eq("id", uid).single(),
     ])
 
-    const role = target_role || profile?.target_role || profile?.keyword || "Professional"
+    // Fall back to the most recent experience's title before giving up to the
+    // generic "Professional" — covers users who uploaded a resume before
+    // target_role auto-derivation existed (2026-07-24) and haven't re-uploaded
+    // since, so their experiences[] already has a real title sitting unused.
+    const exps = Array.isArray(profile?.experiences) ? profile.experiences : []
+    const currentExp = exps.find(e => e?.isCurrent || e?.current) || exps[0]
+    const role = target_role || profile?.target_role || profile?.keyword
+      || currentExp?.role || currentExp?.title || "Professional"
     const mySkillNames = (userSkills || []).map(s => s.name.toLowerCase())
 
     // Use AI to compute gaps

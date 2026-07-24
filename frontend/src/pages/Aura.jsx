@@ -3157,6 +3157,10 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
       // by Home and Pulse; only set it if empty so we never overwrite something
       // the user typed by hand.
       if (extractData.title && !userData?.headline) updates.headline = extractData.title
+      // Auto-derive target role from the resume — same reasoning as headline
+      // above: the user already told us what they do, Skill Gap Analysis and
+      // the weekly Career Check shouldn't make them type it again separately.
+      if (extractData.title && !userData?.targetRole) updates.targetRole = extractData.title
 
       // save() now returns whether the DB write actually succeeded — only reflect
       // "done" (and only close the upload panel) if it really landed. Previously

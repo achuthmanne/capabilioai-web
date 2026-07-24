@@ -163,12 +163,26 @@ export default function SkillGraphView({ user }) {
     } catch(e) { alert(e.message) }
   }
 
-  async function loadGaps() {
+  async function loadGaps(roleOverride) {
     setGapLoading(true)
-    try { setGaps(await skillsApi.getGaps(targetRole||undefined)) }
-    catch(e) { alert(e.message) }
+    try {
+      const res = await skillsApi.getGaps(roleOverride ?? targetRole ?? undefined)
+      setGaps(res)
+      // The backend resolves a role from the profile (target_role from resume,
+      // falling back to keyword) whenever we don't pass one explicitly — surface
+      // whatever it landed on so the user sees *what* was auto-detected and can
+      // still type a different one to explore a hypothetical target, rather than
+      // being forced to know/type their own role before seeing anything at all.
+      if (!targetRole && res?.role) setTargetRole(res.role)
+    }
+    catch(e) { console.error(e) }
     finally { setGapLoading(false) }
   }
+
+  // Auto-run on mount using the backend's own profile-derived role (resume
+  // target_role → keyword → "Professional") instead of gating this whole
+  // section behind the user manually typing a role first.
+  useEffect(() => { loadGaps() }, [])
 
   const filtered = skills.filter(s => {
     if (filter==="verified" && !["verified","proof_submitted"].includes(s.verification_state)) return false
@@ -215,11 +229,12 @@ export default function SkillGraphView({ user }) {
 
       {/* Gap analysis */}
       <div style={{background:"#fff",border:`1px solid ${T.border}`,borderRadius:14,padding:"16px 18px",marginBottom:20,boxShadow:T.shadow}}>
-        <div style={{fontSize:13,fontWeight:700,color:T.ink,marginBottom:10}}>Skill Gap Analysis</div>
+        <div style={{fontSize:13,fontWeight:700,color:T.ink,marginBottom:2}}>Skill Gap Analysis</div>
+        <div style={{fontSize:11,color:T.ink3,marginBottom:10}}>Auto-detected from your resume — edit to explore a different target role.</div>
         <div style={{display:"flex",gap:8,marginBottom:12}}>
           <input value={targetRole} onChange={e=>setTargetRole(e.target.value)} placeholder="Target role (e.g. Senior Backend Engineer)"
             style={{flex:1,padding:"8px 12px",border:`1px solid ${T.border}`,borderRadius:8,fontSize:13,outline:"none"}}/>
-          <button onClick={loadGaps} disabled={gapLoading} style={{padding:"8px 16px",background:T.indigo,border:"none",borderRadius:8,color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",opacity:gapLoading?0.6:1}}>
+          <button onClick={()=>loadGaps(targetRole)} disabled={gapLoading} style={{padding:"8px 16px",background:T.indigo,border:"none",borderRadius:8,color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",opacity:gapLoading?0.6:1}}>
             {gapLoading?<span style={{display:"inline-block",width:14,height:14,border:"2px solid rgba(255,255,255,.3)",borderTopColor:"#fff",borderRadius:"50%",animation:"spin .7s linear infinite"}}/>:"Analyse →"}
           </button>
         </div>

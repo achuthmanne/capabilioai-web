@@ -683,6 +683,10 @@ function ResumeModal({show,onClose,user,ud,onSave}){
       // resume actually found one, and don't clobber a headline the user already
       // wrote by hand in Profile.
       if(parsed?.title&&!ud?.headline)u.headline=parsed.title
+      // Auto-derive target role from the resume so Skill Gap Analysis and the
+      // weekly Career Check don't force the user to type a role that's already
+      // right there in what they uploaded. Same "don't clobber a manual value" guard.
+      if(parsed?.title&&!ud?.targetRole)u.targetRole=parsed.title
       u.lastResumeUpload=new Date().toISOString()
       // Add resume file to vaultFiles so it appears in Career & Vault simple vault
       if(file){

@@ -931,10 +931,14 @@ function App() {
   // Readiness tabs are reached via "Career" (still page id "orbit" internally
   // — only the nav label changed, no route rename needed). Forge folded out
   // of top-level nav; Settings remains reachable via Profile's Settings tab.
+  // Career and Skills were removed as separate top-level nav items — Profile
+  // (Aura.jsx) already has equivalent, more complete tabs (Career & Vault,
+  // Skill Graph Pro, Skill Gaps), so the standalone pages were pure duplication.
+  // The underlying "orbit"/"skills" page routes still exist and are still used
+  // as internal deep-link targets (Home's dashboard embed, gap-card CTAs, the
+  // weekly Career Check flow) — only the persistent nav entries are gone.
   const PROFESSIONAL_HEADER_NAV = [
     { id: "home",      label: "Home",      page: "professionalHome", prefix: "🏠" },
-    { id: "career",    label: "Career",    page: "orbit",            prefix: "📈" },
-    { id: "skills",    label: "Skills",    page: "skills",           prefix: "🧠" },
     { id: "launchpad", label: "Launchpad", page: "launchpad",        prefix: "🚀" },
     { id: "pulse",     label: "Pulse",     page: "pulse",            prefix: "📰" },
     { id: "nexus",     label: "Connect",   page: "nexus",            prefix: "🤝" },

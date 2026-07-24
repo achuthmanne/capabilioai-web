@@ -407,9 +407,12 @@ export default function ProfessionalHome({ user, userData, setUserData, activeTa
   const firstName   = name.split(" ")[0]
   const elo         = userData?.eloRating || 1200
   // headline is the resume-derived professional title (e.g. "Senior Data Analyst"),
-  // the freshest real signal about who this person is — prefer it over the
-  // onboarding-time keyword/targetRole fallbacks, which go stale.
-  const role        = userData?.headline || userData?.keyword || userData?.targetRole || "Professional"
+  // the freshest real signal about who this person is. Fall back to the
+  // current/most-recent experience title before the generic onboarding-time
+  // keyword/targetRole — covers users who uploaded a resume before headline
+  // auto-derivation existed (2026-07-24) and haven't re-uploaded since.
+  const currentExp  = (userData?.experiences || []).find(e => e?.isCurrent || e?.current) || (userData?.experiences || [])[0]
+  const role        = userData?.headline || currentExp?.role || currentExp?.title || userData?.targetRole || userData?.keyword || "Professional"
   const isFreePlan  = !userData?.subscription || userData?.subscription === "free"
   const isVerified  = !!(userData?.epfoVerified || userData?.verified)
   const experiences = userData?.experiences || []
