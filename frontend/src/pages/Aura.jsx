@@ -3845,7 +3845,12 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
           <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:4}}>
             <h1 style={{fontSize:22,fontWeight:800,color:T.ink,margin:0}}>{userData?.displayName||userData?.display_name||user?.user_metadata?.full_name||user?.user_metadata?.name||user?.email?.split("@")[0]||"Your Name"}</h1>
             <Badge color={eloTier.color} bg={eloTier.color+"15"}>{eloTier.tier}</Badge>
-            {arenaStreak>0&&<Badge color="#E67E22" bg="#FDF3E7">🔥 {arenaStreak}d</Badge>}
+            {/* BUG FIX: this whole header was never gated by path, so
+                Arena-specific badges/stats ("No Arena challenges yet", "0
+                Tasks") showed for professional users who have no reason to
+                ever touch Arena. Gated to path!=="professional" like the rest
+                of the Arena-coupled content removed earlier. */}
+            {path!=="professional"&&arenaStreak>0&&<Badge color="#E67E22" bg="#FDF3E7">🔥 {arenaStreak}d</Badge>}
           </div>
           <div style={{fontSize:12,color:T.ink3,display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
             {keyword
@@ -3853,21 +3858,25 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
               : <span style={{fontWeight:600,color:T.amber,cursor:"pointer"}} onClick={()=>setActiveTab("settings")}>⚠ Set your role in Settings</span>
             }
             {keyword && <span style={{color:T.ink4}}>·</span>}
-            {arenaCompleted > 0
+            {path!=="professional"&&(arenaCompleted > 0
               ? <span style={{color:T.green,fontWeight:600}}>{arenaCompleted} challenge{arenaCompleted>1?"s":""} completed</span>
               : <span style={{color:T.ink4}}>No Arena challenges yet</span>
-            }
-            <span style={{color:T.ink4}}>·</span>
+            )}
+            {path!=="professional"&&<span style={{color:T.ink4}}>·</span>}
             <span>Joined {createdAt}</span>
           </div>
         </div>
         {/* Stats row */}
         <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
-          {[
+          {(path==="professional" ? [
+            {label:"Career Entries",value:experiences.length,color:T.indigo},
+            {label:"Vault Docs",value:vaultFiles.length,color:T.amber},
+            {label:"Certifications",value:(userData?.certifications||[]).length,color:T.green},
+          ] : [
             {label:"ELO",value:eloRating,color:T.indigo},
             {label:"Tasks",value:arenaCompleted,color:T.green},
             {label:"Job Ready",value:jobReadiness+"%",color:T.amber},
-          ].map((s,i)=>(
+          ]).map((s,i)=>(
             <div key={i} style={{textAlign:"center",minWidth:56}}>
               <div style={{fontSize:20,fontWeight:900,color:s.color,lineHeight:1}}>{s.value}</div>
               <div style={{fontSize:10,color:T.ink4,fontWeight:600,textTransform:"uppercase",letterSpacing:0.5,marginTop:2}}>{s.label}</div>

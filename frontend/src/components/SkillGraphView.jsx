@@ -22,14 +22,34 @@ const VER_STATES = {
   historical:       { color:"#9A9A97",bg:"#F4F4F4",  label:"Historical",     icon:"○" },
 }
 
-function SkillCard({ skill, onProof, onRemove, onToggleTarget }) {
+// BUG FIX (2026-07-24): this whole card was written against a field-name
+// shape (skill_name, elo_value, confidence_score, verification_state,
+// category, is_target, last_proof_date) that never matched the real
+// user_skills table (name, level_score, confidence, verified+source,
+// group_type — and no is_target column exists at all). It never crashed
+// before because the Skills tab always had 0 rows to render; the moment
+// real skills started showing up (via the resume-import fixes and the
+// user_skills backfill), `skill.skill_name.slice(...)` on an undefined field
+// threw and took the whole page down to blank. Fixed to the real columns,
+// and dropped the "Target" toggle entirely rather than leave it silently
+// failing — there's no column backing it, so it was fake state either way.
+function deriveVerificationState(skill) {
+  if (skill.verified) return "verified"
+  if (skill.source === "proof_derived") return "proof_submitted"
+  if (skill.source === "manual") return "user_added"
+  if (skill.source === "resume_derived") return "inferred"
+  return "historical"
+}
+
+function SkillCard({ skill, onProof, onRemove }) {
   const [showProof, setShowProof] = useState(false)
   const [proofType, setProofType] = useState("github")
   const [proofUrl, setProofUrl]   = useState("")
   const [proofNotes, setProofNotes] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [imgErr, setImgErr] = useState(false)
-  const ver = VER_STATES[skill.verification_state] || VER_STATES.inferred
+  const ver = VER_STATES[deriveVerificationState(skill)] || VER_STATES.inferred
+  const name = skill.name || "Skill"
 
   async function submitProof() {
     if (!proofUrl.trim()) return
@@ -42,11 +62,11 @@ function SkillCard({ skill, onProof, onRemove, onToggleTarget }) {
     finally { setSubmitting(false) }
   }
 
-  const confidencePct = skill.confidence_score || 50
+  const confidencePct = skill.level_score ?? Math.round((skill.confidence||0)*100) ?? 50
   const barColor = skill.color || T.indigo
 
   return (
-    <div style={{background:"#fff",border:`1px solid ${skill.is_target?"#7C3AED44":T.border}`,borderRadius:14,overflow:"hidden",boxShadow:T.shadow,transition:"all .15s"}}
+    <div style={{background:"#fff",border:`1px solid ${T.border}`,borderRadius:14,overflow:"hidden",boxShadow:T.shadow,transition:"all .15s"}}
       onMouseEnter={e=>e.currentTarget.style.boxShadow="0 6px 24px rgba(26,26,24,0.12)"}
       onMouseLeave={e=>e.currentTarget.style.boxShadow=T.shadow}>
       <div style={{padding:"14px 16px"}}>
@@ -55,17 +75,16 @@ function SkillCard({ skill, onProof, onRemove, onToggleTarget }) {
           <div style={{width:36,height:36,borderRadius:8,background:`${barColor}15`,border:`1px solid ${barColor}25`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
             {skill.icon_url && !imgErr
               ? <img src={skill.icon_url} alt="" style={{width:24,height:24,objectFit:"contain"}} onError={()=>setImgErr(true)}/>
-              : <span style={{fontSize:14,color:barColor}}>{skill.skill_name.slice(0,2)}</span>}
+              : <span style={{fontSize:14,color:barColor}}>{name.slice(0,2)}</span>}
           </div>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{fontSize:13,fontWeight:700,color:T.ink,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{skill.skill_name}</div>
+            <div style={{fontSize:13,fontWeight:700,color:T.ink,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{name}</div>
             <div style={{display:"flex",gap:5,marginTop:2,flexWrap:"wrap"}}>
               <span style={{fontSize:10,background:ver.bg,color:ver.color,padding:"1px 6px",borderRadius:99,fontWeight:600}}>{ver.icon} {ver.label}</span>
-              {skill.is_target && <span style={{fontSize:10,background:"#F4F0FF",color:"#7C3AED",padding:"1px 6px",borderRadius:99,fontWeight:600}}>Target</span>}
-              {!skill.is_current && <span style={{fontSize:10,background:"#F4F4F0",color:T.ink3,padding:"1px 6px",borderRadius:99}}>Historical</span>}
+              {skill.is_current===false && <span style={{fontSize:10,background:"#F4F4F0",color:T.ink3,padding:"1px 6px",borderRadius:99}}>Historical</span>}
             </div>
           </div>
-          <div style={{fontSize:14,fontWeight:700,color:barColor,fontFamily:"'DM Mono',monospace",flexShrink:0}}>{skill.elo_value||500}</div>
+          <div style={{fontSize:14,fontWeight:700,color:barColor,fontFamily:"'DM Mono',monospace",flexShrink:0}}>{skill.level_score ?? 50}</div>
         </div>
 
         {/* Confidence bar */}
@@ -82,11 +101,10 @@ function SkillCard({ skill, onProof, onRemove, onToggleTarget }) {
         {/* Meta */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={{fontSize:11,color:T.ink3}}>
-            {skill.years_used?`${skill.years_used}y experience`:""}{skill.last_proof_date?` · Last proof: ${skill.last_proof_date}`:""}
+            {skill.years_used?`${skill.years_used}y experience`:""}
           </div>
           <div style={{display:"flex",gap:5}}>
             <button onClick={()=>setShowProof(v=>!v)} title="Add proof" style={{padding:"3px 8px",background:T.indigo2,border:"none",borderRadius:6,color:T.indigo,fontSize:11,cursor:"pointer",fontWeight:600}}>+ Proof</button>
-            <button onClick={()=>onToggleTarget(skill.id, !skill.is_target)} title={skill.is_target?"Remove from targets":"Set as target"} style={{padding:"3px 6px",background:"#F4F0FF",border:"none",borderRadius:6,color:"#7C3AED",fontSize:11,cursor:"pointer"}}>🎯</button>
             <button onClick={()=>onRemove(skill.id)} style={{padding:"3px 6px",background:T.red2,border:"none",borderRadius:6,color:T.red,fontSize:11,cursor:"pointer"}}>✕</button>
           </div>
         </div>
@@ -95,7 +113,7 @@ function SkillCard({ skill, onProof, onRemove, onToggleTarget }) {
       {/* Proof submission panel */}
       {showProof && (
         <div style={{borderTop:`1px solid ${T.border}`,padding:"14px 16px",background:"#FAFAF8"}}>
-          <div style={{fontSize:12,fontWeight:700,color:T.ink,marginBottom:10}}>Add proof for {skill.skill_name}</div>
+          <div style={{fontSize:12,fontWeight:700,color:T.ink,marginBottom:10}}>Add proof for {name}</div>
           <select value={proofType} onChange={e=>setProofType(e.target.value)} style={{width:"100%",padding:"8px 10px",border:`1px solid ${T.border}`,borderRadius:8,fontSize:12,marginBottom:8,outline:"none"}}>
             <option value="github">GitHub Repository</option>
             <option value="project">Live Project / URL</option>
@@ -156,13 +174,6 @@ export default function SkillGraphView({ user }) {
     catch(e) { alert(e.message) }
   }
 
-  async function handleToggleTarget(id, isTarget) {
-    try {
-      await skillsApi.update(id, { is_target: isTarget })
-      setSkills(s=>s.map(sk=>sk.id===id?{...sk,is_target:isTarget}:sk))
-    } catch(e) { alert(e.message) }
-  }
-
   async function loadGaps(roleOverride) {
     setGapLoading(true)
     try {
@@ -185,17 +196,17 @@ export default function SkillGraphView({ user }) {
   useEffect(() => { loadGaps() }, [])
 
   const filtered = skills.filter(s => {
-    if (filter==="verified" && !["verified","proof_submitted"].includes(s.verification_state)) return false
-    if (filter==="target" && !s.is_target) return false
-    if (filter==="current" && !s.is_current) return false
-    if (search && !s.skill_name.toLowerCase().includes(search.toLowerCase())) return false
+    if (filter==="verified" && !["verified","proof_submitted"].includes(deriveVerificationState(s))) return false
+    if (filter==="current" && s.is_current===false) return false
+    if (search && !(s.name||"").toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
 
-  // Group by category
+  // Group by category (group_type is the real column — was mistakenly read
+  // as "category" before, which doesn't exist on user_skills)
   const categories = {}
   filtered.forEach(s => {
-    const cat = s.category || "technical"
+    const cat = s.group_type || "core"
     if (!categories[cat]) categories[cat] = []
     categories[cat].push(s)
   })
@@ -208,7 +219,7 @@ export default function SkillGraphView({ user }) {
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <div>
           <div style={{fontSize:16,fontWeight:700,color:T.ink}}>Skill Graph</div>
-          <div style={{fontSize:13,color:T.ink3}}>{skills.length} skills mapped · {skills.filter(s=>["verified","proof_submitted"].includes(s.verification_state)).length} verified</div>
+          <div style={{fontSize:13,color:T.ink3}}>{skills.length} skills mapped · {skills.filter(s=>["verified","proof_submitted"].includes(deriveVerificationState(s))).length} verified</div>
         </div>
         <div style={{display:"flex",gap:8}}>
           <button onClick={()=>skillsApi.enrichIcons().then(()=>load())} style={{padding:"8px 14px",background:"#F4F0FF",border:`1px solid #7C3AED44`,borderRadius:10,color:"#7C3AED",fontSize:12,fontWeight:600,cursor:"pointer"}}>✨ Add Icons</button>
@@ -220,9 +231,12 @@ export default function SkillGraphView({ user }) {
       <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search skills…"
           style={{flex:1,minWidth:160,padding:"8px 12px",border:`1px solid ${T.border}`,borderRadius:8,fontSize:13,outline:"none"}}/>
-        {["all","verified","current","target"].map(f=>(
+        {/* "Target Skills" filter removed — there is no is_target column on
+            user_skills, so it was a filter over state that never actually
+            existed anywhere. */}
+        {["all","verified","current"].map(f=>(
           <button key={f} onClick={()=>setFilter(f)} style={{padding:"7px 14px",background:filter===f?T.indigo:"#FAF7F2",border:`1px solid ${filter===f?T.indigo:T.border}`,borderRadius:8,color:filter===f?"#fff":T.ink3,fontSize:12,fontWeight:filter===f?700:400,cursor:"pointer",textTransform:"capitalize"}}>
-            {f==="all"?"All Skills":f==="verified"?"Verified":f==="current"?"Current":f==="target"?"Target Skills":""}
+            {f==="all"?"All Skills":f==="verified"?"Verified":f==="current"?"Current":""}
           </button>
         ))}
       </div>
@@ -296,11 +310,10 @@ export default function SkillGraphView({ user }) {
         <div key={cat} style={{marginBottom:24}}>
           <div style={{fontSize:11,fontWeight:800,color:T.ink3,letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>{cat.replace(/_/g," ")} ({catSkills.length})</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:12}}>
-            {catSkills.sort((a,b)=>(b.elo_value||0)-(a.elo_value||0)).map(skill=>(
+            {catSkills.sort((a,b)=>(b.level_score||0)-(a.level_score||0)).map(skill=>(
               <SkillCard key={skill.id} skill={skill}
                 onProof={()=>load()}
-                onRemove={handleRemove}
-                onToggleTarget={handleToggleTarget}/>
+                onRemove={handleRemove}/>
             ))}
           </div>
         </div>
