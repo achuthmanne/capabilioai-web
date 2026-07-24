@@ -27,17 +27,49 @@ dotenv.config({ path: resolve(__dirname, "../.env") })
 import cluster from "cluster"
 import { cpus } from "os"
 
-if (cluster.isPrimary && process.env.NODE_ENV === "production") {
-  const numCPUs = cpus().length
-  console.log(`[cluster] Primary ${process.pid} — forking ${numCPUs} workers`)
+const IS_CLUSTER_PRIMARY = cluster.isPrimary && process.env.NODE_ENV === "production"
+
+if (IS_CLUSTER_PRIMARY) {
+  // BUG FIX: os.cpus().length reads the HOST machine's core count, not the
+  // vCPU share actually allocated to this container — on Render that can be
+  // much higher than what you're paying for. Forking that many workers on a
+  // resource-constrained instance is itself a problem; capped at 4.
+  const numCPUs = Math.min(cpus().length, 4)
+  console.log(`[cluster] Primary ${process.pid} — forking ${numCPUs} workers (host reports ${cpus().length} cores, capped at 4)`)
   for (let i = 0; i < numCPUs; i++) cluster.fork()
+
+  // BUG FIX (critical): this handler used to call cluster.fork() unconditionally
+  // on every worker exit, with no rate limit. Combined with the missing early
+  // return below, the primary was ALSO calling app.listen(PORT) directly on the
+  // same port its workers request via cluster's shared-handle IPC — a genuine
+  // EADDRINUSE conflict every restart, which forked a new worker, which hit the
+  // same conflict, forever (see production incident: "bind EADDRINUSE null:10000").
+  // Crash-loop backoff: if workers are dying faster than once every 2s on
+  // average, stop respawning — a live conflict won't resolve itself by retrying,
+  // and an infinite fork loop just burns CPU/log volume without ever recovering.
+  let recentExits = []
   cluster.on("exit", (worker, code, signal) => {
-    console.warn(`[cluster] Worker ${worker.process.pid} died (${signal || code}) — restarting`)
+    console.warn(`[cluster] Worker ${worker.process.pid} died (${signal || code})`)
+    const now = Date.now()
+    recentExits = recentExits.filter(t => now - t < 30000)
+    recentExits.push(now)
+    if (recentExits.length > 15) {
+      console.error(`[cluster] ${recentExits.length} worker deaths in the last 30s — not respawning further. This is a crash loop, not a transient failure; check the error above (commonly EADDRINUSE, a missing required env var, or an uncaught startup exception) rather than restarting again.`)
+      return
+    }
+    console.warn(`[cluster] restarting worker...`)
     cluster.fork()
   })
-  // Primary exits here — all HTTP handled by workers
-  process.exitCode = 0
 }
+// BUG FIX (critical): the primary MUST NOT fall through to the Express/
+// app.listen() setup below — previously nothing stopped it from doing so
+// (process.exitCode only sets the eventual exit code, it does not halt
+// execution), so the primary bound the port directly while its workers
+// simultaneously asked it to share that same port via cluster IPC. The guard
+// on app.listen() further down is the actual fix; IS_CLUSTER_PRIMARY is
+// checked there instead of using process.exit()/return here, because the
+// primary process must stay alive to run the cluster.on("exit") respawn
+// logic above.
 
 // Workers (and dev mode) continue past this point
 import express from "express"
@@ -259,6 +291,14 @@ app.use("/api/org",           orgJoinLinksRoutes)       // join-links (CRUD), jo
 app.use("/api/org",           orgCompanyLinksRoutes)    // company-links (invite w/ real-account matching), received, accept-nda, decline
 
 // ─── Start ────────────────────────────────────────────────────────────────────
+// BUG FIX (critical, see cluster block above): the primary process in a
+// production cluster must never reach this call — only workers (and the
+// single process in dev/non-clustered mode) should bind the port. Before
+// this guard, the primary fell through unconditionally and directly bound
+// PORT itself, which is what caused the "bind EADDRINUSE null:10000"
+// crash loop — its own workers' cluster-IPC bind requests for the same
+// port were racing against a bind the primary had no business making.
+if (!IS_CLUSTER_PRIMARY) {
 app.listen(PORT, () => {
   // Start background grading worker — polls pgmq queue every 2s
   // In cluster mode each worker runs its own poller; pgmq visibility timeout
@@ -285,3 +325,4 @@ app.listen(PORT, () => {
   console.log(`  YouTube     ${process.env.YOUTUBE_API_KEY    ? ok("real videos")                  : warn("AI fallback")}`)
   console.log()
 })
+}
