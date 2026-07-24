@@ -495,10 +495,16 @@ export default function ProfessionalHome({ user, userData, setUserData, activeTa
 
           <div style={{ padding: "0 24px 24px" }}>
             {/* avatar + identity row */}
-            <div style={{ display: "flex", alignItems: "flex-end", gap: 18, marginTop: -44, marginBottom: 16, flexWrap: "wrap" }}>
+            {/* BUG FIX: marginTop:-44 used to sit on this whole row, so the name
+                and ELO badge — not just the avatar — got pulled up into the cover
+                photo and were rendered half-hidden behind it. Only the avatar
+                should overlap the cover; the negative margin now lives on the
+                avatar alone, so name/role/ELO sit safely below it. */}
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 18, marginBottom: 16, flexWrap: "wrap" }}>
               {/* avatar — real profile photo if set, initials fallback otherwise */}
               <div style={{
                 width: 88, height: 88, borderRadius: 22, flexShrink: 0,
+                marginTop: -44,
                 background: photoURL ? `#fff` : `linear-gradient(135deg,${P},#A78BFA)`,
                 border: "3px solid #fff",
                 boxShadow: `0 8px 24px ${P}30`,
