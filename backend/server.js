@@ -165,6 +165,7 @@ import professionalProfileRoutes from "./server/routes/professionalProfile.js"
 import careerTimelineRoutes      from "./server/routes/careerTimeline.js"
 import skillGraphRoutes          from "./server/routes/skillGraph.js"
 import weeklyPulseRoutes         from "./server/routes/weeklyPulse.js"
+import homeV1Routes              from "./server/routes/homeV1.js" // Career OS Workstream 1 — pro/v1/home/*
 import forgeRoutes               from "./server/routes/forge.js"
 import aiInterviewRoutes         from "./server/routes/aiInterview.js"
 import recruiterCommsRoutes      from "./server/routes/recruiterComms.js"
@@ -286,6 +287,7 @@ app.use("/api",              professionalProfileRoutes) // pro/profile, pro/epfo
 app.use("/api",              careerTimelineRoutes)      // pro/timeline, pro/vault
 app.use("/api",              skillGraphRoutes)          // pro/skills
 app.use("/api",              weeklyPulseRoutes)         // pro/weekly — Weekly Career Check
+app.use("/api",              homeV1Routes)              // pro/v1/home — Career OS Workstream 1 priority ranking
 app.use("/api",              forgeRoutes)               // pro/forge
 app.use("/api",              aiInterviewRoutes)         // pro/interview
 app.use("/api",              recruiterCommsRoutes)      // jobs, recruiter/messages, offers

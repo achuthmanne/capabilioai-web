@@ -7,10 +7,11 @@
  *   • #8B5CF6 purple accent, #FAFAF8 stat cells, 28px card radius
  */
 import { useEffect, useState, useCallback } from "react"
-import { weeklyCheckApi } from "../lib/api"
+import { weeklyCheckApi, homeApi } from "../lib/api"
 import { userDoc } from "../lib/db"
 import { OrbitDash } from "./Orbit"
-import { OutcomeCard, SectionErrorBoundary } from "../components/careeros/CareerOSUI"
+import { OutcomeCard, SectionErrorBoundary, LoadingState } from "../components/careeros/CareerOSUI"
+import { FLAGS } from "../config/featureFlags"
 
 // ─── Design tokens — mirrors landing page exactly ──────────────────────────────
 const P   = "#8B5CF6"   // purple accent
@@ -112,6 +113,46 @@ function Btn({ children, onClick, primary, outline, small, style = {} }) {
   )
   return (
     <button onClick={onClick} style={{ ...base, background: `${P}10`, border: `1px solid ${P}26`, color: P, ...style }}>{children}</button>
+  )
+}
+
+// ─── Section: Today's Priority (Career OS Workstream 1) ────────────────────────
+// Exactly one recommendation, computed server-side (backend/server/lib/
+// homePriority.js via GET /pro/v1/home/priority) so the ranking logic isn't
+// duplicated/guessed client-side. Always shows why it matters, the expected
+// outcome, an estimated time, and a single CTA with a direct destination —
+// never a bare score, never more than one card.
+function TodaysPriorityCard({ onNavigateTo }) {
+  const [state, setState] = useState("loading") // loading | ready | error
+  const [priority, setPriority] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    homeApi.getPriority()
+      .then(res => { if (!cancelled) { setPriority(res.priority); setState("ready") } })
+      .catch(() => !cancelled && setState("error"))
+    return () => { cancelled = true }
+  }, [])
+
+  if (state === "loading") return <LoadingState label="Finding today's priority…" />
+  if (state === "error" || !priority) {
+    return (
+      <div style={{ fontSize: 12, color: MUT, fontFamily: BODY, padding: "8px 0" }}>
+        Couldn&apos;t load today&apos;s priority right now — the rest of Home is unaffected.
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ background: SURF, border: `1.5px solid ${P}30`, borderRadius: r18, padding: "18px 20px" }}>
+      <MonoLabel color={P}>Today&apos;s priority</MonoLabel>
+      <div style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 800, color: INK, marginBottom: 6 }}>{priority.title}</div>
+      <div style={{ fontSize: 12, color: INK2, lineHeight: 1.6, fontFamily: BODY, marginBottom: 6 }}>{priority.whyItMatters}</div>
+      <div style={{ fontSize: 11, color: MUT, fontFamily: BODY, marginBottom: 14 }}>
+        Outcome: {priority.expectedOutcome}{priority.estimatedMinutes > 0 ? ` · ~${priority.estimatedMinutes} min` : ""}
+      </div>
+      <Btn primary onClick={() => onNavigateTo(priority.ctaTarget)}>{priority.ctaLabel} &rarr;</Btn>
+    </div>
   )
 }
 
@@ -490,6 +531,15 @@ export default function ProfessionalHome({ user, userData, setUserData, activeTa
     }
   }, [onNavigate, setActiveTab])
 
+  // Today's Priority CTAs target { page, tab? } — tab is a one-shot deep-link
+  // request consumed once by Aura/Orbit's local tab state (Workstream 0 fix),
+  // so this generalizes onDashNav's pattern to any destination page/tab.
+  const navigateToPriority = useCallback(({ page, tab } = {}) => {
+    if (!page) return
+    if (tab) setActiveTab?.(tab)
+    onNavigate(page)
+  }, [onNavigate, setActiveTab])
+
   return (
     <div style={{
       flex: 1, minHeight: 0, overflowY: "auto",
@@ -601,6 +651,15 @@ export default function ProfessionalHome({ user, userData, setUserData, activeTa
 
       {/* ── Body content ───────────────────────────────────────────────────── */}
       <div style={{ padding: "18px 24px 60px" }}>
+
+        {/* Today's Priority — Career OS Workstream 1, behind career_os_home flag */}
+        {FLAGS.career_os_home && (
+          <div style={{ marginBottom: 18 }}>
+            <SectionErrorBoundary name="home-todays-priority">
+              <TodaysPriorityCard onNavigateTo={navigateToPriority} />
+            </SectionErrorBoundary>
+          </div>
+        )}
 
         {/* Weekly Career Check entry point */}
         <div style={{ marginBottom: 18 }}>

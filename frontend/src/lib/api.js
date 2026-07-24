@@ -151,6 +151,13 @@ export const weeklyCheckApi = {
 }
 
 // ══════════════════════════════════════════
+// HOME (Career OS Workstream 1 — /pro/v1/home/*)
+// ══════════════════════════════════════════
+export const homeApi = {
+  getPriority: () => request("GET", "/pro/v1/home/priority"),
+}
+
+// ══════════════════════════════════════════
 // FORGE
 // ══════════════════════════════════════════
 export const forgeApi = {

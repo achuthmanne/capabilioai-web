@@ -133,7 +133,21 @@ shipped. Updated at the end of every workstream, not written once and left stale
 
 ---
 
-## 2. File-Level Change Plan (Workstream 0 — this pass)
+## 2. File-Level Change Plan
+
+### Workstream 1 (this pass)
+
+| File | Change |
+|---|---|
+| `backend/server/lib/homePriority.js` (new) | Pure priority-ranking function, §5a. |
+| `backend/server/lib/homePriority.test.js` (new) | 9 `node:test` cases. |
+| `backend/server/routes/homeV1.js` (new) | `GET /api/pro/v1/home/priority`. |
+| `backend/server.js` | Mounts `homeV1Routes` alongside existing `/api` routers. |
+| `frontend/src/lib/api.js` | `homeApi.getPriority()`. |
+| `frontend/src/pages/ProfessionalHome.jsx` | `TodaysPriorityCard` + `navigateToPriority`, flag-gated, error-boundary-wrapped. |
+| `frontend/src/config/featureFlags.js` | `career_os_home` default → `true`. |
+
+### Workstream 0
 
 | File | Change |
 |---|---|
@@ -177,8 +191,8 @@ Implemented in `frontend/src/config/featureFlags.js`, env-overridable via
 
 | Flag | Default | Turns on in |
 |---|---|---|
-| `career_os_nav` | **on** | Workstream 0 (this pass) |
-| `career_os_home` | off | Workstream 1 |
+| `career_os_nav` | **on** | Workstream 0 |
+| `career_os_home` | **on** | Workstream 1 (this pass) — Today's Priority only; other Home sections land in later workstreams |
 | `career_os_company` | off | Workstream 5 |
 | `career_os_company_reviews` | off | Workstream 6 |
 | `career_os_mentor_marketplace` | off | Workstream 4 |
@@ -258,6 +272,150 @@ backend surface (not needed yet — no new backend routes shipped this pass).
 
 ---
 
+## 5a. Workstream 1 — Completed (Home command center: Today's Priority)
+
+**Scope shipped:**
+- `backend/server/lib/homePriority.js` — pure, dependency-free
+  `computeTodayPriority(ctx)` scoring function implementing the required
+  tier order (privacy/security → time-sensitive opportunities → Weekly Skill
+  Pulse due → verification/profile gaps → promotion/compensation → mentor →
+  company review). Only tiers 3 (Skill Pulse) and 4 (verification/profile
+  gaps) currently ever produce a candidate — tiers 1/2/5/6/7 have zero real
+  per-user backing data in this codebase today (no security-nudge tracking,
+  no opportunity-matching engine, no promotion/compensation module, no
+  mentor tables, no company-review tables), so the function deliberately
+  emits nothing for them rather than a fabricated candidate. An activation
+  candidate (upload resume) always wins if the user has no resume/timeline
+  at all, since nothing else can be computed without one. If literally no
+  candidate applies, an honest "You're all caught up" state is returned —
+  never a filler action invented to occupy the slot.
+- `backend/server/lib/homePriority.test.js` — 9 `node:test` cases covering
+  tier ordering, the activation gate, the honest empty/caught-up state, and
+  a full-contract check (every response has title/why/outcome/minutes/cta/
+  target) run against every scenario.
+- `backend/server/routes/homeV1.js` — `GET /api/pro/v1/home/priority`
+  (`requireAuth`-protected), read-only: fetches `profiles`
+  (target_role/keyword/experiences/vault_files/epfo_verified/verified/
+  summary), a `user_skills` count, and this week's `weekly_pulses` row, maps
+  them into the pure function's `ctx`, returns `{ priority }`. Deliberately
+  never triggers pulse generation as a side effect of a Home page load — if
+  no pulse row exists yet for the week, that's treated as `weeklyPulseStatus:
+  "none"` (no tier-3 candidate), not a background AI call.
+- Mounted in `backend/server.js` as `/api` + `/pro/v1/home/priority`,
+  alongside the existing unversioned `/pro/*` routes (no existing route
+  touched).
+- `frontend/src/lib/api.js` — `homeApi.getPriority()`.
+- `frontend/src/pages/ProfessionalHome.jsx` — `TodaysPriorityCard` (loading/
+  error/ready states, single card, shows title/why-it-matters/expected-
+  outcome/estimated-minutes/CTA), wired via a new `navigateToPriority({page,
+  tab})` helper that reuses the same one-shot deep-link mechanism
+  `onDashNav` already used (Workstream 0's local-tab-state fix) generalized
+  to any destination, not just Career. Rendered behind `FLAGS.career_os_home`
+  and wrapped in `SectionErrorBoundary` (Workstream 0's error-containment
+  primitive) so a failed priority fetch can't blank the rest of Home.
+- `frontend/src/config/featureFlags.js` — `career_os_home` default flipped
+  to `true` (Today's Priority is real and shipping); comment updated to
+  note the remaining Home sections (Promotion Readiness, Salary Position,
+  Company Status, Mentor Area) are separate, not-yet-built pieces that will
+  get their own gating as they land in Workstreams 2/4/5.
+
+**Migrations applied:** none — this workstream only reads existing tables
+(`profiles`, `user_skills`, `weekly_pulses`); no schema change needed.
+
+**Endpoints created:** `GET /api/pro/v1/home/priority` (new, versioned,
+additive — no existing endpoint modified).
+
+**Tests run:**
+- `node --test backend/server/lib/homePriority.test.js` — 9/9 pass.
+- `node --check` on `backend/server.js`, `homeV1.js`, `homePriority.js` —
+  all parse cleanly.
+- `eslint` on every changed/new file — zero new errors (confirmed the 5
+  errors/8 warnings reported for `ProfessionalHome.jsx` all sit in
+  pre-existing dead code — `OrbitScores`/`SkillHalfLife`, both unused
+  helpers untouched by this workstream — and a pre-existing escape-character
+  line, none in `TodaysPriorityCard`/`navigateToPriority`).
+- `vite build` — succeeds, no new warnings.
+- Manual trace: verified the priority tier ordering by hand against the
+  `homePriority.test.js` fixtures (verification gap before target-role gap
+  before skills gap before summary gap, all beneath Skill-Pulse-due, all
+  beneath the activation gate) — matches the required order exactly.
+
+**Known limitations:**
+- Tiers 1 (privacy/security), 2 (opportunities), 5 (promotion/compensation),
+  6 (mentor), 7 (company review) are correctly unimplemented pass-throughs
+  today — they will start producing real candidates only once their owning
+  workstream (2/4/5/6/7) ships real per-user data. Do not backfill these
+  with placeholder logic ahead of that.
+- No frontend component test runner exists in this repo (same limitation
+  noted in Workstream 0) — `TodaysPriorityCard`'s loading/error/ready states
+  were verified by code inspection against the same patterns as the
+  existing `WeeklyCheckCard`, not by an automated component test.
+
+**Rollback instructions:**
+- Set `VITE_FF_CAREER_OS_HOME=false` and redeploy the frontend — Today's
+  Priority disappears from Home instantly, everything else on Home is
+  unaffected (it's independently flagged and error-boundary-wrapped).
+- The backend endpoint can stay mounted even with the flag off (it's inert
+  if nothing calls it) or be unmounted by removing the two lines in
+  `backend/server.js` if a full rollback of the route itself is ever needed.
+- No DB changes were made, so no DB rollback applies.
+
+---
+
+## 5b. Workstream 2 — Architecture Decision (approved, not yet implemented)
+
+Recorded ahead of implementation so Workstream 1 (and anything else touching
+career data in the meantime) builds against the right target.
+
+**Decision:** `career_events` is the canonical, append-only professional
+career-event ledger. `career_timeline` becomes legacy read-model/compat only
+— no new writes, not the long-term source of truth, existing data preserved.
+
+**Rules locked in:**
+1. `career_events` is the only canonical chronological source for: employment
+   starts/exits, title/role changes, promotions, achievements, verified
+   projects/proof milestones, certifications, skill-confidence milestones,
+   Weekly Skill Pulse milestones, mentor approval/milestones, opportunity
+   transitions, and company-review lifecycle events (where safe/private).
+2. `career_timeline`: no new writes, not source of truth, all existing data
+   preserved, idempotent backfill into `career_events` planned with an
+   explicit source reference retained on migrated rows.
+3. No duplicated truth: `experiences`, `proof_objects`, `certifications`,
+   `achievements` (future), and other specialist tables stay authoritative
+   for their own domain detail. `career_events` stores a normalized event
+   reference + display snapshot only. Every row carries at minimum: `id`,
+   `user_id`, `event_type`, `occurred_at`, `source_type`, `source_id`,
+   `evidence_source`, `verification_status`, `visibility`, `payload`,
+   `created_at`, `updated_at`, `deleted_at`. Uniqueness/idempotency enforced
+   on `(user_id, source_type, source_id, event_type)` where applicable.
+4. One server-side unified timeline endpoint serves both Career Timeline and
+   Career Replay — frontend never combines tables itself. Cursor pagination,
+   chronological sort, filters, evidence-source labels, visibility rules
+   (private/employer-visible/public-portfolio) enforced server-side.
+5. Historical data: audit exact schema/data in both tables, additive/
+   reversible/staging-tested migration scripts, no legacy deletion, produce
+   a reconciliation report (total legacy records, migrated, skipped,
+   duplicates, failures) before this workstream is considered done.
+6. Required tests before Workstream 2 ships: idempotent backfill (running it
+   twice produces zero duplicate rows), no duplicate event creation from
+   normal app writes, correct visibility enforcement, evidence-source
+   rendering, timeline ordering, Career Replay rendering, owner-only vs.
+   consent-based employer visibility.
+
+**Open item carried over from the Workstream 0 audit (§1.4-1):** the actual
+current schema of both `career_timeline` (real, currently empty in prod —
+`careerTimeline.js`/`CareerTimeline.jsx`) and `career_events` (real, richer:
+verification_status/level, elo_delta, visibility, tags, timeline_category —
+owner/consumer not yet identified) needs a full column-level audit as the
+*first* concrete step of Workstream 2, before any backfill script is written
+against assumed shapes.
+
+**Status:** decision approved and recorded. No migration, no backfill
+script, and no new endpoint written yet — implementation starts when
+Workstream 2 is picked up next.
+
+---
+
 ## 6. Test Plan (applies going forward, per workstream)
 
 - **Lint**: `npm run lint` — must be zero new errors introduced (existing
@@ -294,11 +452,15 @@ backend surface (not needed yet — no new backend routes shipped this pass).
 
 ## 8. Implementation Order (tracking against the blueprint)
 
-1. **Workstream 0 — Safe Foundation** — ✅ complete (this pass, §5).
-2. **Workstream 1 — Home as Career Command Center** — not started.
-3. **Workstream 2 — Career module** — not started. Blocked on resolving the
-   `career_timeline` vs `career_events` reconciliation question (§1.4-1)
-   before any new Career table is added.
+1. **Workstream 0 — Safe Foundation** — ✅ complete (§5).
+2. **Workstream 1 — Home as Career Command Center** — ✅ Today's Priority
+   complete (§5a). Remaining Home sections (Promotion Readiness, Salary
+   Position, Company Status, Mentor Area) depend on Workstream 2/4/5 tables
+   and are not yet built — correctly deferred, not stubbed.
+3. **Workstream 2 — Career module** — architecture decided and recorded
+   (§5b): `career_events` canonical, `career_timeline` legacy read-only.
+   Implementation not started. First step when picked up: full column-level
+   audit of both tables' real data (§1.4-1) before writing any backfill script.
 4. **Workstream 3 — Skills + Weekly Skill Pulse V2** — not started.
 5. **Workstream 4 — Connect + Mentor Marketplace** — not started. Requires
    full table rebuild (§1.4-2), not a patch.
@@ -311,6 +473,6 @@ backend surface (not needed yet — no new backend routes shipped this pass).
    ongoing implicitly (RLS already enabled repo-wide); `consent`/`audit_log`
    tables should land ahead of Workstream 4, per §3.
 
-Next up: Workstream 1 (Home command-center sections), which can proceed
-without waiting on the career-record reconciliation question since it reads
-existing data rather than introducing new Career tables.
+Next up: Workstream 2 (Career module) — starting with the column-level audit
+of `career_timeline` vs `career_events` (§1.4-1, §5b), then the additive
+migration/backfill plan and the unified timeline endpoint.

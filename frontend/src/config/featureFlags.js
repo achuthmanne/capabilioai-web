@@ -26,9 +26,13 @@ export const FLAGS = {
   // state fix). Real, implemented, on by default.
   career_os_nav: envFlag("CAREER_OS_NAV", true),
 
-  // Workstream 1 — Home command-center sections (Promotion Readiness, Salary
-  // Position, Company Status, Mentor Area, etc.). Off until built.
-  career_os_home: envFlag("CAREER_OS_HOME", false),
+  // Workstream 1 — Home command-center sections. Today's Priority (server-
+  // computed, GET /pro/v1/home/priority) ships real this workstream; the
+  // remaining Home sections (Promotion Readiness, Salary Position, Company
+  // Status, Mentor Area) depend on Workstream 2/4/5 tables and are not yet
+  // gated by this flag individually — they'll get their own checks as they
+  // land, same pattern as Today's Priority.
+  career_os_home: envFlag("CAREER_OS_HOME", true),
 
   // Workstream 5 — Company module. Off until real company-link data model +
   // routes exist; keeps the nav item hidden rather than shipping a dead page.
