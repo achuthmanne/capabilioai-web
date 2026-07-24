@@ -18,7 +18,6 @@ import CareerVideoGenerator from "./CareerVideoGenerator"
 // Portfolio themes removed — single universal design
 // ── Professional Path: API-connected components ───────────────────────────────
 import CareerTimelinePro from "../components/CareerTimeline"
-import VaultManagerPro   from "../components/VaultManager"
 import SkillGraphPro     from "../components/SkillGraphView"
 import { interviewApi, skillsApi }  from "../lib/api"
 import SettingsPanel from "./SettingsPanel"
@@ -3913,13 +3912,19 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
       {/* ── Internal Aura tab bar ─────────────────────────────── */}
       <div style={{position:"sticky",top:0,zIndex:80,background:"rgba(255,255,255,0.97)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:"1px solid rgba(0,0,0,0.05)",overflowX:"auto",display:"flex",alignItems:"stretch",boxShadow:"0 4px 16px rgba(0,0,0,0.4)",scrollbarWidth:"none"}}>
         {(path === "professional" ? [
-          // Professionals: profile management only — intelligence lives in Orbit
+          // Professionals: profile management only — intelligence lives in Orbit.
+          // REDESIGNED (2026-07-24): this used to be 6 tabs with real duplication —
+          // "Vault" (pro-vault) was a bare VaultManagerPro that Career & Vault
+          // already renders inline (upload, files grid, EPFO, certs, education);
+          // "Skills" (the old skillgraph tab) and "Skill Gaps" (skillgap) were both
+          // Arena-coupled ("Complete Forge & Arena tasks to earn verified scores",
+          // arena-derived gap scoring) and duplicated what "Skill Graph Pro"
+          // already does on the real user_skills table, Arena-free, with its own
+          // built-in gap analysis. Removing all three leaves one clean set with
+          // no dead ends for a user who has never touched Arena.
           {id:"vault",        label:"Career & Vault",   icon:"◫"},
-          {id:"pro-vault",    label:"Vault",             icon:"🗄️"},
-          {id:"skillgraph",   label:"Skills",            icon:"↗"},
-          {id:"pro-skills",   label:"Skill Graph Pro",   icon:"🧠"},
+          {id:"pro-skills",   label:"Skills",            icon:"🧠"},
           {id:"interview",    label:"AI Interview",      icon:"□"},
-          {id:"skillgap",     label:"Skill Gaps",        icon:"⚡"},
         ] : [
           // Students + others: full tab set
           {id:"dashboard",  label:"Dashboard",    icon:"▦"},
@@ -5474,6 +5479,48 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
             {/* ── Profile header: photo, cover, name, portfolio link ── */}
             <ProfileHeader/>
 
+            {/* ── Recruiter Readiness Score — new (2026-07-24), replaces the
+                Arena-coupled dashboard/resilience content professionals never
+                had a reason to see. Composite of real, already-present profile
+                signals only — no ELO, no Arena, nothing fabricated. */}
+            {(() => {
+              const checks = [
+                { label: "Resume uploaded",     done: !!(userData?.resumeFileName || vaultFiles.some(f=>f.category==="Resume")), weight: 20 },
+                { label: "Career timeline",     done: experiences.length > 0,                    weight: 20 },
+                { label: "Target role set",     done: !!userData?.targetRole,                    weight: 15 },
+                { label: "Skills mapped",       done: (userData?.skills||[]).length > 0,         weight: 15 },
+                { label: "Profile summary",     done: !!userData?.profileSummary,                weight: 10 },
+                { label: "Certifications",      done: (userData?.certifications||[]).length > 0, weight: 10 },
+                { label: "Employment verified", done: !!userData?.epfoVerified,                  weight: 10 },
+              ]
+              const score = checks.reduce((sum,c)=>sum+(c.done?c.weight:0),0)
+              const missing = checks.filter(c=>!c.done)
+              return (
+                <Card style={{marginBottom:20, background:"linear-gradient(135deg,#FAF7F2,#fff)"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:16}}>
+                    <div style={{flex:1,minWidth:220}}>
+                      <SectionLabel color={T.indigo}>Recruiter Readiness</SectionLabel>
+                      <div style={{fontSize:13,color:T.ink3,marginTop:4,lineHeight:1.5}}>
+                        How complete your profile looks to a recruiter viewing your portfolio — based on what's actually filled in.
+                      </div>
+                    </div>
+                    <div style={{textAlign:"center",flexShrink:0}}>
+                      <div style={{fontFamily:"'DM Mono',monospace",fontSize:34,fontWeight:800,color:score>=80?T.green:score>=50?T.amber:T.red}}>
+                        {score}<span style={{fontSize:14,color:T.ink4}}>/100</span>
+                      </div>
+                    </div>
+                  </div>
+                  {missing.length>0 && (
+                    <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:14}}>
+                      {missing.map((c,i)=>(
+                        <span key={i} style={{fontSize:11,padding:"5px 10px",borderRadius:99,background:T.amber2,color:T.amber,fontWeight:600}}>+{c.weight} · {c.label}</span>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              )
+            })()}
+
             {/* Portfolio link + share */}
             <Card style={{marginBottom:20}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
@@ -5675,13 +5722,6 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
 
         {/* ═══════════ VOUCHER TAB ═══════════ */}
         {activeTab==="voucher"&&<SkillVoucherPanel user={user} userData={userData}/>}
-
-        {/* ═══════════ PRO VAULT TAB ═══════════ */}
-        {activeTab==="pro-vault"&&(
-          <div style={{animation:"fadeUp .3s ease both"}}>
-            <VaultManagerPro user={user}/>
-          </div>
-        )}
 
         {/* ═══════════ PRO SKILL GRAPH TAB ═══════════ */}
         {activeTab==="pro-skills"&&(
