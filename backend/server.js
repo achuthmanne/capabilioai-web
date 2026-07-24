@@ -27,7 +27,18 @@ dotenv.config({ path: resolve(__dirname, "../.env") })
 import cluster from "cluster"
 import { cpus } from "os"
 
-const IS_CLUSTER_PRIMARY = cluster.isPrimary && process.env.NODE_ENV === "production"
+// PRODUCTION INCIDENT (this deploy): even after guarding app.listen() to
+// workers-only and capping the worker count, the crash-loop continued —
+// this time from a bind conflict BETWEEN workers themselves
+// (node:internal/cluster/child, not the primary), meaning Node's cluster
+// module isn't reliably handling port hand-off in Render's container
+// networking. Rather than keep patching cluster internals we don't fully
+// control, clustering is now opt-in only (ENABLE_CLUSTER=true) and OFF by
+// default. Render scales by running multiple independent service instances,
+// not by forking workers inside one process — intra-process clustering buys
+// nothing on this platform except this exact failure mode. Single-process
+// is simpler and was proven stable before clustering was added.
+const IS_CLUSTER_PRIMARY = cluster.isPrimary && process.env.NODE_ENV === "production" && process.env.ENABLE_CLUSTER === "true"
 
 if (IS_CLUSTER_PRIMARY) {
   // BUG FIX: os.cpus().length reads the HOST machine's core count, not the
