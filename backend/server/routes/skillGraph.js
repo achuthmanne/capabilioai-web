@@ -133,6 +133,35 @@ function levelFromScore(score) {
 
 function safeGroupType(v) { return GROUP_TYPES.includes(v) ? v : "core" }
 
+// Shared row-shaping for bulk-import, used by both the explicit bulk-upsert
+// endpoint and the GET-time backfill below — kept in one place so they can't
+// drift into two different row shapes for the same source data.
+function toBulkRows(uid, skills, source = "resume") {
+  const isResume = source === "resume"
+  return skills.map(s => {
+    const name = typeof s === "string" ? s : s.skill_name || s.name || ""
+    if (!name) return null
+    const slug = makeSlug(name)
+    const meta = enrichSkill(name)
+    const levelScore = isResume ? 50 : 70
+    return {
+      user_id:      uid,
+      name,
+      slug,
+      group_type:   "core",
+      icon_url:     meta.icon_url,
+      color:        meta.color,
+      level:        levelFromScore(levelScore),
+      level_score:  levelScore,
+      confidence:   levelScore / 100,
+      verified:     false,
+      source:       isResume ? "resume_derived" : "manual",
+      is_current:   true,
+      updated_at:   new Date().toISOString(),
+    }
+  }).filter(Boolean)
+}
+
 // ── GET skills ────────────────────────────────────────────────────────────────
 router.get("/pro/skills", requireAuth, async (req, res) => {
   try {
@@ -142,6 +171,27 @@ router.get("/pro/skills", requireAuth, async (req, res) => {
       .eq("user_id", req.user.id)
       .order("level_score", { ascending: false })
     if (error) throw error
+
+    // Self-healing backfill: users who uploaded a resume before skillsApi.
+    // bulkUpsert() was wired into the upload paths (2026-07-24) have real
+    // skills sitting in profiles.skills (a flat JSONB array, still written by
+    // both resume-upload paths) but zero rows here — the Skills page reads only
+    // this table, so their real data was invisible. Only runs when this table
+    // is genuinely empty for the user, so it can't clobber anything they've
+    // since edited/removed here.
+    if (!data || data.length === 0) {
+      const { data: profile } = await supabaseAdmin.from("profiles").select("skills").eq("id", req.user.id).single()
+      const legacySkills = Array.isArray(profile?.skills) ? profile.skills.filter(Boolean) : []
+      if (legacySkills.length > 0) {
+        const rows = toBulkRows(req.user.id, legacySkills, "resume")
+        const { data: inserted, error: insErr } = await supabaseAdmin
+          .from(TABLE).upsert(rows, { onConflict: "user_id,slug", ignoreDuplicates: false }).select()
+        if (!insErr && inserted?.length) {
+          return res.json(inserted.sort((a, b) => (b.level_score || 0) - (a.level_score || 0)))
+        }
+      }
+    }
+
     res.json(data || [])
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
@@ -193,29 +243,7 @@ router.post("/pro/skills/bulk", requireAuth, async (req, res) => {
     if (!Array.isArray(skills) || !skills.length)
       return res.status(400).json({ error: "skills array required" })
 
-    const isResume = source === "resume"
-    const rows = skills.map(s => {
-      const name = typeof s === "string" ? s : s.skill_name || s.name || ""
-      if (!name) return null
-      const slug = makeSlug(name)
-      const meta = enrichSkill(name)
-      const levelScore = isResume ? 50 : 70
-      return {
-        user_id:      uid,
-        name,
-        slug,
-        group_type:   "core",
-        icon_url:     meta.icon_url,
-        color:        meta.color,
-        level:        levelFromScore(levelScore),
-        level_score:  levelScore,
-        confidence:   levelScore / 100,
-        verified:     false,
-        source:       isResume ? "resume_derived" : "manual",
-        is_current:   true,
-        updated_at:   new Date().toISOString(),
-      }
-    }).filter(Boolean)
+    const rows = toBulkRows(uid, skills, source)
 
     const { data, error } = await supabaseAdmin
       .from(TABLE)
@@ -324,8 +352,24 @@ router.get("/pro/skills/gaps", requireAuth, async (req, res) => {
       || currentExp?.role || currentExp?.title || "Professional"
     const mySkillNames = (userSkills || []).map(s => s.name.toLowerCase())
 
-    // Use AI to compute gaps
-    const prompt = `Given target role: "${role}"
+    // BUG FIX: with zero real skills on file, the prompt below still asked the
+    // model to produce a "strong_match"/"missing_critical" breakdown — it would
+    // comply by generating generic, role-typical-sounding content that *looks*
+    // personalized but reflects nothing about this specific user (AI output
+    // used as if it were derived from real data it didn't actually have).
+    // Short-circuit with an honest "nothing to compare yet" response instead —
+    // this is a fixed, deterministic case, not something to hand to the model.
+    let gaps
+    if (mySkillNames.length === 0) {
+      gaps = {
+        missing_critical: [], missing_nice_to_have: [], strong_match: [],
+        gap_score: 0, match_score: 0,
+        top_recommendation: "Add your skills (or upload a resume) to get a gap analysis based on what you actually know — there's nothing to compare against yet.",
+        insufficient_data: true,
+      }
+    } else {
+      // Use AI to compute gaps
+      const prompt = `Given target role: "${role}"
 My current skills: ${mySkillNames.slice(0, 30).join(", ")}
 
 Return JSON:
@@ -339,11 +383,11 @@ Return JSON:
 }
 Return only valid JSON.`
 
-    let gaps = {}
-    try {
-      const raw = await groq([{ role: "user", content: prompt }], { model: GROQ_FAST, max_tokens: 500, json: true })
-      gaps = JSON.parse(raw)
-    } catch { gaps = { missing_critical: [], missing_nice_to_have: [], strong_match: mySkillNames.slice(0, 5), gap_score: 30, match_score: 70 } }
+      try {
+        const raw = await groq([{ role: "user", content: prompt }], { model: GROQ_FAST, max_tokens: 500, json: true })
+        gaps = JSON.parse(raw)
+      } catch { gaps = { missing_critical: [], missing_nice_to_have: [], strong_match: mySkillNames.slice(0, 5), gap_score: 30, match_score: 70 } }
+    }
 
     res.json({ role, user_skills: userSkills || [], gaps })
   } catch (e) { res.status(500).json({ error: e.message }) }

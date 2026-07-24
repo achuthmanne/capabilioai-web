@@ -674,7 +674,28 @@ function ResumeModal({show,onClose,user,ud,onSave}){
       if(parsed?.skills?.length)u.skills=parsed.skills
       if(parsed?.summary)u.profileSummary=parsed.summary
       if(parsed?.projects?.length)u.resumeProjects=parsed.projects
-      if(parsed?.certifications?.length)u.certifications=parsed.certifications
+      // BUG FIX: this saved parsed.certifications as raw strings, but Career &
+      // Vault's StudentCertificatesPanel/CertBadge expect {name, verificationStatus,
+      // ...} objects — a plain string has no .name, so the UI fell back to a
+      // generic "Certificate" label no matter what the resume actually said.
+      // Match Aura.jsx's upload-path shape exactly, and mark these self-claimed
+      // (not verified) — verificationStatus only ever flips server-side, via the
+      // real /api/verify/certification-file check, never from resume text alone.
+      if(parsed?.certifications?.length){
+        const existingCertNames=new Set((ud?.certifications||[]).map(c=>(typeof c==="string"?c:c?.name||"").toLowerCase().trim()).filter(Boolean))
+        u.certifications=[
+          ...(ud?.certifications||[]),
+          ...parsed.certifications.filter(Boolean).map(c=>typeof c==="string"?{name:c}:c)
+            .filter(c=>c.name&&!existingCertNames.has(c.name.toLowerCase().trim()))
+            .map(c=>({name:c.name,issuer:c.issuer||"",date:c.date||"",credentialId:c.credentialId||"",url:c.url||"",skills:[],verificationStatus:"self-claimed",verificationSource:"Resume",_source:"resume"})),
+        ]
+      }
+      // BUG FIX: parsed.education was extracted by the backend (institution/
+      // degree/field/year) but never saved anywhere from this upload path —
+      // confirmed via production data: a real user's education stayed [] despite
+      // their resume having a degree listed. Aura.jsx's separate upload path
+      // already did this correctly; this brings the Career page path in line.
+      if(parsed?.education?.length)u.education=[...(ud?.education||[]),...parsed.education]
       // BUG FIX: parsed.title (the resume's professional title, e.g. "Senior Data
       // Analyst") was extracted by the backend but silently discarded here — nothing
       // ever wrote it anywhere, so Home/Pulse always showed the generic path label

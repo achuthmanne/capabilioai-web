@@ -5447,7 +5447,11 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
 
             {/* ── Certificates & Training ───────────────────────────────── */}
             <StudentCertificatesPanel
-              certs={userData?.certificates||[]}
+              // Normalise legacy resume-imported certs that were saved as plain
+              // strings (pre-fix Career-page uploads) into proper objects so
+              // they show their real name instead of falling back to a generic
+              // "Certificate" label, and so verificationStatus exists to check.
+              certs={(userData?.certificates||[]).map(c=>typeof c==="string"?{name:c,verificationStatus:"self-claimed",_source:"resume"}:c)}
               onSave={async(certs)=>{ await save({certificates:certs}); if(setUserData) setUserData(p=>({...p,certificates:certs})) }}
             />
 
@@ -5636,7 +5640,11 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
 
             {/* ── Certificates & Training ───────────────────────────────── */}
             <StudentCertificatesPanel
-              certs={userData?.certificates||[]}
+              // Normalise legacy resume-imported certs that were saved as plain
+              // strings (pre-fix Career-page uploads) into proper objects so
+              // they show their real name instead of falling back to a generic
+              // "Certificate" label, and so verificationStatus exists to check.
+              certs={(userData?.certificates||[]).map(c=>typeof c==="string"?{name:c,verificationStatus:"self-claimed",_source:"resume"}:c)}
               onSave={async(certs)=>{ await save({certificates:certs}); if(setUserData) setUserData(p=>({...p,certificates:certs})) }}
             />
 
@@ -5650,11 +5658,20 @@ export default function Aura({ user, activeTab: activeTabProp, setActiveTab: set
             <Card style={{marginBottom:20,border:`1.5px solid rgba(26,122,74,0.15)`}}>
               <SectionLabel color={T.green}>🛡️ Identity & Employment Verification</SectionLabel>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginTop:12}}>
-                {[
-                  {icon:"🏢",label:"EPFO",sub:"Employment via UAN",done:userData?.epfoVerified,color:T.green,bg:T.green2},
-                  {icon:"🎓",label:"DigiLocker",sub:"Education certificates",done:userData?.educationVerified,color:T.amber,bg:T.amber2},
-                  {icon:"🏆",label:"Certs",sub:`${(userData?.certifications||[]).length} verified`,done:(userData?.certifications||[]).length>0,color:T.indigo,bg:T.indigo3},
-                ].map((v,i)=>(
+                {(() => {
+                  // BUG FIX: this used to treat "any certification record exists"
+                  // as "verified" — showing "✓ Verified" here even for certs
+                  // literally tagged "SELF-CLAIMED" in the list right above.
+                  // verificationStatus only ever becomes "verified" server-side,
+                  // via the real /api/verify/certification-file check — count only that.
+                  const allCerts = userData?.certifications || []
+                  const verifiedCerts = allCerts.filter(c => (typeof c === "object" ? c?.verificationStatus : null) === "verified")
+                  return [
+                    {icon:"🏢",label:"EPFO",sub:"Employment via UAN",done:userData?.epfoVerified,color:T.green,bg:T.green2},
+                    {icon:"🎓",label:"DigiLocker",sub:"Education certificates",done:userData?.educationVerified,color:T.amber,bg:T.amber2},
+                    {icon:"🏆",label:"Certs",sub:verifiedCerts.length>0?`${verifiedCerts.length} of ${allCerts.length} verified`:(allCerts.length>0?`${allCerts.length} pending verification`:"None added"),done:verifiedCerts.length>0,color:T.indigo,bg:T.indigo3},
+                  ]
+                })().map((v,i)=>(
                   <div key={i} style={{background:v.done?v.bg:T.cream,border:`1.5px solid ${v.done?v.color+"30":T.border}`,borderRadius:12,padding:"14px",textAlign:"center"}}>
                     <div style={{fontSize:22,marginBottom:8}}>{v.icon}</div>
                     <div style={{fontSize:13,fontWeight:700,color:T.ink,marginBottom:3}}>{v.label}</div>
