@@ -327,6 +327,12 @@ router.get("/nexus/search", optionalAuth, async (req, res) => {
     let query = supabaseAdmin.from("profiles")
       .select("id,name,display_name,username,headline,keyword,elo_rating,profile_photo_url,current_company,current_role_title,verification_state,is_mentor,path,years_of_experience", { count: "exact" })
       .neq("path", "institution")
+      // Career OS Tranche 3: enforce the Privacy section's "Appear in
+      // Capabilio search" toggle (profiles.searchable, default true) here —
+      // this is the actual live search surface it was always meant to
+      // control (see career_os_ws0_privacy_toggle_columns migration; the
+      // toggle previously wrote to a nonexistent column and did nothing).
+      .eq("searchable", true)
       .range(offset, offset + parseInt(limit) - 1)
 
     if (q) query = query.or(`name.ilike.%${q}%,display_name.ilike.%${q}%,username.ilike.%${q}%,headline.ilike.%${q}%,current_company.ilike.%${q}%,keyword.ilike.%${q}%`)

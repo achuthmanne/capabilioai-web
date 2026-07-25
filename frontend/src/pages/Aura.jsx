@@ -18,7 +18,6 @@ import CareerVideoGenerator from "./CareerVideoGenerator"
 // Portfolio themes removed — single universal design
 // ── Professional Path: API-connected components ───────────────────────────────
 import CareerTimelinePro from "../components/CareerTimeline"
-import SkillGraphPro     from "../components/SkillGraphView"
 import { interviewApi, skillsApi }  from "../lib/api"
 import SettingsPanel from "./SettingsPanel"
 
@@ -1054,7 +1053,7 @@ function SkillVoucherPanel({ user, userData }) {
 }
 
 // ─── AI INTERVIEW PANEL ───────────────────────────────────────────────────────
-function AIInterviewPanel({ user, userData, save, setUserData, onNavigatePricing }) {
+export function AIInterviewPanel({ user, userData, save, setUserData, onNavigatePricing }) {
   const [phase, setPhase] = useState("intro")
   const [stream, setStream] = useState(null)
   const [cameraOn, setCameraOn] = useState(false)
@@ -2808,8 +2807,38 @@ function StudentTestimonialsPanel({ testimonials, onSave }) {
 // professional Profile page, and is the same class of bug that would blank
 // Career's body if a stale tab id from Profile arrived there instead. The
 // activeTab/setActiveTab props are now a one-shot deep-link *request* only.
-const STUDENT_TAB_IDS      = new Set(["dashboard", "vault", "skillgraph", "interview", "skillgap"])
-const PROFESSIONAL_TAB_IDS = new Set(["vault", "pro-skills", "interview"])
+// "settings" and "monthreport" are included even though neither has a visible
+// tab-bar button. "settings" is reached via a one-shot deep link — App.jsx's
+// profile-menu "Settings" entry sets initialTabProp="settings" before
+// switching currentPage to Aura. It was missing from these sets, which
+// silently broke that deep link: Aura's initial-tab guard rejected "settings"
+// as invalid and fell back to the default tab instead (2026-07-24 fix).
+// "monthreport" has no live entry point anywhere in the app right now (its
+// only references are an unused Header.jsx component) — kept in
+// STUDENT_TAB_IDS for the same reason (so the deep-link guard doesn't
+// silently fall back if it's ever wired up for students).
+//
+// REMOVED from PROFESSIONAL_TAB_IDS (2026-07-25, Professional Path re-scope
+// pass): MonthlyReportPanel (below) renders raw eloRating, an ELO tier
+// ("Rookie"..."Elite"), and "Complete Arena tasks" copy sourced from
+// arenaHistory/eloHistory — entirely student/Arena-coupled content that
+// directly violates the "no raw ELO on professional-facing surfaces" rule.
+// It was unreachable in practice (no professional nav entry points to it —
+// see Header.jsx comment), but leaving it in PROFESSIONAL_TAB_IDS meant any
+// future deep link to "monthreport" for a professional user would have
+// rendered raw ELO. Profile is also being re-scoped to
+// identity/documents/privacy/account-only content, and a monthly
+// ELO/Arena report doesn't belong there regardless of the ELO issue.
+// REMOVED "interview" from PROFESSIONAL_TAB_IDS (2026-07-25, Tranche 1 nav
+// boundary pass): AIInterviewPanel is skill-practice/interview-prep content,
+// not identity/documents/privacy/account — it doesn't belong in a Profile
+// that's being narrowed to that scope. It's now exported from this file and
+// mounted as Launchpad's "Interview Prep" tab instead (see Launchpad.jsx),
+// reusing the exact same component/props contract rather than duplicating
+// it. Left in STUDENT_TAB_IDS/the student tab bar below — untouched, out of
+// scope for the professional-path re-scope.
+const STUDENT_TAB_IDS      = new Set(["dashboard", "vault", "skillgraph", "interview", "skillgap", "resilience", "fingerprint", "voucher", "monthreport", "settings"])
+const PROFESSIONAL_TAB_IDS = new Set(["vault", "settings"])
 
 export default function Aura({ user, activeTab: initialTabProp, setActiveTab: setActiveTabProp, onNavigate, onNavigatePricing, userData: propUserData, setUserData }) {
   const validTabIds = propUserData?.path === "professional" ? PROFESSIONAL_TAB_IDS : STUDENT_TAB_IDS
@@ -3947,7 +3976,9 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
       {/* ── Internal Aura tab bar ─────────────────────────────── */}
       <div style={{position:"sticky",top:0,zIndex:80,background:"rgba(255,255,255,0.97)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:"1px solid rgba(0,0,0,0.05)",overflowX:"auto",display:"flex",alignItems:"stretch",boxShadow:"0 4px 16px rgba(0,0,0,0.4)",scrollbarWidth:"none"}}>
         {(path === "professional" ? [
-          // Professionals: profile management only — intelligence lives in Orbit.
+          // Professionals: profile management only — Career and Skills
+          // intelligence live in their own standalone modules (Orbit.jsx /
+          // Skills.jsx, both reachable from top-level nav).
           // REDESIGNED (2026-07-24): this used to be 6 tabs with real duplication —
           // "Vault" (pro-vault) was a bare VaultManagerPro that Career & Vault
           // already renders inline (upload, files grid, EPFO, certs, education);
@@ -3957,9 +3988,17 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
           // already does on the real user_skills table, Arena-free, with its own
           // built-in gap analysis. Removing all three leaves one clean set with
           // no dead ends for a user who has never touched Arena.
-          {id:"vault",        label:"Career & Vault",   icon:"◫"},
-          {id:"pro-skills",   label:"Skills",            icon:"🧠"},
-          {id:"interview",    label:"AI Interview",      icon:"□"},
+          // FOLLOW-UP (2026-07-24): the remaining "Career & Vault" and "Skills"
+          // (pro-skills) tabs were themselves still duplicated — Orbit.jsx now
+          // owns Career Timeline/verification-signal content and Skills.jsx
+          // wraps the exact same SkillGraphView component this tab rendered
+          // (previously imported here as SkillGraphPro). "Skills" is removed outright;
+          // this tab is renamed "Vault" and scoped to documents/verification
+          // only, which has no home in Orbit or Skills yet.
+          // "AI Interview" removed from this bar 2026-07-25 (Tranche 1) —
+          // moved to Launchpad ("Interview Prep" tab), see PROFESSIONAL_TAB_IDS
+          // comment above.
+          {id:"vault",        label:"Vault",             icon:"◫"},
         ] : [
           // Students + others: full tab set
           {id:"dashboard",  label:"Dashboard",    icon:"▦"},
@@ -5588,46 +5627,13 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
               </div>
             </Card>
 
-            {/* ── Career Timeline ── */}
-            <Card style={{marginBottom:20, overflow:"hidden"}}>
-              {/* Section header with landing-page treatment */}
-              <div style={{
-                margin:"-20px -20px 20px -20px",
-                padding:"18px 20px 16px",
-                background:"linear-gradient(135deg, #F4F0FF 0%, #EEF0FB 100%)",
-                borderBottom:`1.5px solid rgba(61,78,172,0.10)`
-              }}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
-                  <div>
-                    <div style={{fontFamily:"'DM Mono',monospace",fontSize:10,fontWeight:800,color:T.indigo,letterSpacing:"0.14em",textTransform:"uppercase",marginBottom:5}}>🏢 Experience</div>
-                    <div style={{fontFamily:"'DM Sans',serif",fontSize:22,fontWeight:700,color:T.ink,lineHeight:1.2}}>Career Timeline</div>
-                  </div>
-                  <div style={{display:"flex",gap:8}}>
-                    <button onClick={()=>resumeFileInputRef.current?.click()} disabled={resumeUploading}
-                      style={{padding:"8px 16px",background:"rgba(255,255,255,0.8)",border:`1.5px solid rgba(61,78,172,0.2)`,
-                        borderRadius:9,color:T.indigo,fontSize:12,fontWeight:700,
-                        cursor:resumeUploading?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:6,
-                        fontFamily:"'DM Mono',monospace",letterSpacing:"0.04em"}}>
-                      {resumeUploading?<><div style={{width:11,height:11,border:`2px solid ${T.indigo}`,borderTopColor:"transparent",borderRadius:"50%",animation:"spin .8s linear infinite"}}/>Parsing…</>:"📄 RESUME"}
-                    </button>
-                    <button onClick={()=>{setEditingIdx(null);setShowExpModal(true)}}
-                      style={{padding:"8px 16px",background:T.indigo,border:"none",borderRadius:9,
-                        color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",
-                        fontFamily:"'DM Mono',monospace",letterSpacing:"0.04em",
-                        boxShadow:`0 4px 14px rgba(61,78,172,0.25)`}}>
-                      + ADD
-                    </button>
-                  </div>
-                </div>
-              </div>
-              {resumeStatus&&<div style={{fontSize:11,marginBottom:12,color:resumeStatus.startsWith("✅")?T.green:resumeStatus.startsWith("❌")?T.red:T.ink3,fontWeight:500}}>{resumeStatus}</div>}
-              <CareerTimeline
-                experiences={experiences}
-                onAdd={()=>{setEditingIdx(null);setShowExpModal(true)}}
-                onEdit={(idx)=>{setEditingIdx(idx);setShowExpModal(true)}}
-                onDelete={deleteExperience}
-              />
-            </Card>
+            {/* Career Timeline (add/edit work history) was removed from here
+                (2026-07-24, Career OS Workstream 0 follow-up) — it duplicated
+                Orbit's own "Career Timeline" tab (Orbit.jsx TimelineTab), which
+                edits this exact same userData.experiences field. Career history
+                management now lives only in Orbit → Career Timeline; this tab
+                stays scoped to genuinely Profile content (documents, vault
+                files, verification) that has no home in Orbit or Skills. */}
 
             {/* ── Verification & Documents below ── */}
             <div style={{marginBottom:24}}>
@@ -5775,19 +5781,24 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
         {/* ═══════════ VOUCHER TAB ═══════════ */}
         {activeTab==="voucher"&&<SkillVoucherPanel user={user} userData={userData}/>}
 
-        {/* ═══════════ PRO SKILL GRAPH TAB ═══════════ */}
-        {activeTab==="pro-skills"&&(
-          <div style={{animation:"fadeUp .3s ease both"}}>
-            <SkillGraphPro user={user}/>
-          </div>
-        )}
+        {/* "pro-skills" (Skill Graph) tab removed 2026-07-24 — it rendered the
+            exact same SkillGraphView component (previously imported above as
+            SkillGraphPro) that Skills.jsx, the standalone Skills module, now
+            owns as a top-level nav destination. Full duplication, no unique
+            content lost. */}
 
-        {activeTab==="interview"&&(
+        {/* student-only — professionals reach the same component via
+            Launchpad's "Interview Prep" tab now (see PROFESSIONAL_TAB_IDS
+            comment above); "interview" is no longer in PROFESSIONAL_TAB_IDS
+            so this can't be reached for path==="professional" via deep link
+            either, but the explicit guard documents the intent. */}
+        {activeTab==="interview"&&path!=="professional"&&(
           <AIInterviewPanel user={user} userData={userData} onNavigate={onNavigate} onNavigatePricing={onNavigatePricing} save={save} setUserData={setUserData}/>
         )}
 
-        {/* ═══════════ MONTH REPORT TAB ═══════════ */}
-        {activeTab==="monthreport"&&(
+        {/* ═══════════ MONTH REPORT TAB (student only — see PROFESSIONAL_TAB_IDS
+            comment above; MonthlyReportPanel is raw-ELO/Arena content) ═══════ */}
+        {activeTab==="monthreport"&&path!=="professional"&&(
           <MonthlyReportPanel userData={userData} skillGraph={skillGraph} eloHistory={eloHistory} eloRating={eloRating} keyword={keyword} arenaCompleted={arenaCompleted} user={user}/>
         )}
 

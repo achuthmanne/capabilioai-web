@@ -7,6 +7,7 @@ import {
   buildSystemPrompt,
   buildPolicyPrompt,
   buildContextPrompt,
+  buildGroundingNote,
   buildConversationMessages,
   hasDrift,
   qualityCheck,
@@ -72,7 +73,7 @@ function TypingDots({ label }) {
 }
 
 // ── Message bubble ───────────────────────────────────────────
-function Bubble({ role, content, isBlocked }) {
+function Bubble({ role, content, isBlocked, groundingNote }) {
   const isUser = role === "user"
   return (
     <div style={{
@@ -81,22 +82,34 @@ function Bubble({ role, content, isBlocked }) {
       marginBottom: 12,
     }}>
       {!isUser && <CapiAvatar size={26} />}
-      <div style={{
-        maxWidth: "80%",
-        padding: "9px 13px",
-        borderRadius: isUser ? "16px 16px 4px 16px" : "4px 16px 16px 16px",
-        background: isUser
-          ? "linear-gradient(135deg, #FF5701 0%, #FF8C42 100%)"
-          : isBlocked ? "#FFF5F5" : "#FAF7F2",
-        border: isBlocked ? "1px solid #FECACA" : isUser ? "none" : "1px solid #F3F4F6",
-        color: isUser ? "#fff" : "#1A1714",
-        fontSize: 13, lineHeight: 1.55,
-        fontFamily: "'DM Sans', sans-serif",
-        boxShadow: isUser ? "0 2px 8px rgba(255,87,1,0.2)" : "none",
-        whiteSpace: "pre-wrap",
-        wordBreak: "break-word",
-      }}>
-        {content}
+      <div style={{ maxWidth: "80%" }}>
+        <div style={{
+          padding: "9px 13px",
+          borderRadius: isUser ? "16px 16px 4px 16px" : "4px 16px 16px 16px",
+          background: isUser
+            ? "linear-gradient(135deg, #FF5701 0%, #FF8C42 100%)"
+            : isBlocked ? "#FFF5F5" : "#FAF7F2",
+          border: isBlocked ? "1px solid #FECACA" : isUser ? "none" : "1px solid #F3F4F6",
+          color: isUser ? "#fff" : "#1A1714",
+          fontSize: 13, lineHeight: 1.55,
+          fontFamily: "'DM Sans', sans-serif",
+          boxShadow: isUser ? "0 2px 8px rgba(255,87,1,0.2)" : "none",
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
+        }}>
+          {content}
+        </div>
+        {/* CAREER OS TRANCHE 5: honest grounding strip — reflects the real
+            profile fields that were actually included in this answer's
+            context, not a model self-report. */}
+        {!isUser && !isBlocked && groundingNote && (
+          <div style={{
+            fontSize: 10.5, color: "#9C9488", marginTop: 4, paddingLeft: 2,
+            fontFamily: "'DM Sans', sans-serif",
+          }}>
+            {groundingNote}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -159,7 +172,7 @@ export default function CopilotWidget({ user, userData }) {
 
   // Set suggestion chips from profile
   useEffect(() => {
-    if (userData) setChips(getSuggestionChips(userData))
+    if (userData) setChips(getSuggestionChips({ ...userData, path_status: userData?.path || "student" }))
   }, [userData])
 
   // Scroll to bottom on new messages
@@ -269,12 +282,29 @@ export default function CopilotWidget({ user, userData }) {
         return
       }
 
+      // CAREER OS TRANCHE 5 FIX: the real path field on userData is `.path`
+      // (set in App.jsx: `const p = userData?.path || "student"`, checked
+      // against "professional"/"authority"/"institution" throughout the app).
+      // `.pathStatus`/`.path_status` are NOT real fields anywhere in this
+      // codebase (confirmed via grep) — reading them here would have always
+      // silently fallen back to "student", meaning every path-aware fix in
+      // this file would never actually fire for real professional users.
+      const path = userData?.path || "student"
+
       // 1b. Coach-intent pilot: "what should I do next" style questions go
       // through the MCP-backed /api/copilot/coach endpoint (real ELO/role/
       // weak-skills data via tool calls) instead of the direct-Groq path.
       // Falls through to the normal Groq flow below on ANY failure — this
       // must never be able to break the existing chat experience.
-      if (isCoachIntent(msg)) {
+      //
+      // CAREER OS TRANCHE 5: this endpoint's only tools (recommendNextChallenge,
+      // getCurrentElo, getCurrentRole, getWeakSkills) are Arena/student-scoped —
+      // getCurrentElo returns a raw ELO number and getWeakSkills is sourced from
+      // Arena submissions. There is no professional-path equivalent yet, so
+      // professional users must never be routed here (would both leak raw ELO
+      // and recommend Arena challenges that don't apply to them). They fall
+      // straight through to the Groq path below, which is now path-aware.
+      if (isCoachIntent(msg) && path !== "professional") {
         try {
           const { data: { session } } = await supabase.auth.getSession()
           const jwt = session?.access_token
@@ -288,11 +318,20 @@ export default function CopilotWidget({ user, userData }) {
             if (res.ok) {
               const d = await res.json()
               if (d.text) {
-                setMessages(prev => [...prev, { role: "assistant", content: d.text }])
+                // This path calls real MCP tools server-side (current ELO,
+                // role, weak skills, next-challenge recommendation) — the
+                // grounding note here reflects that real tool use, not a
+                // model self-report.
+                setMessages(prev => [...prev, {
+                  role: "assistant",
+                  content: d.text,
+                  groundingNote: "Based on: your live Arena ELO, role, and weak-skill signals (via Capabilio tools).",
+                }])
                 setLoading(false)
                 await incrementUsage()
                 setChips(getSuggestionChips({
                   ...userData,
+                  path_status: path,
                   blended_elo: userData?.blended_elo || userData?.eloRating,
                 }))
                 return
@@ -308,12 +347,12 @@ export default function CopilotWidget({ user, userData }) {
 
       // 2. Build prompts
       const systemP  = buildSystemPrompt()
-      const policyP  = buildPolicyPrompt(tier)
+      const policyP  = buildPolicyPrompt(tier, path)
       const contextP = buildContextPrompt({
         name:          userData?.name || userData?.displayName || user?.user_metadata?.full_name,
         job_role:      userData?.jobRole || userData?.job_role,
         domain:        userData?.domain,
-        path_status:   userData?.pathStatus || userData?.path_status || "student",
+        path_status:   path,
         plan:          tier,
         subscription:  tier,
         blended_elo:   userData?.blended_elo || userData?.eloRating || 600,
@@ -382,7 +421,11 @@ export default function CopilotWidget({ user, userData }) {
         }
       }
 
-      setMessages(prev => [...prev, { role: "assistant", content: finalText }])
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: finalText,
+        groundingNote: buildGroundingNote({ ...userData, pathStatus: path }),
+      }])
       setStreamText("")
 
       // 7. Increment usage
@@ -391,6 +434,7 @@ export default function CopilotWidget({ user, userData }) {
       // 8. Refresh chips
       setChips(getSuggestionChips({
         ...userData,
+        path_status: path,
         blended_elo: userData?.blended_elo || userData?.eloRating,
       }))
 
@@ -514,7 +558,9 @@ export default function CopilotWidget({ user, userData }) {
                     fontFamily: "'DM Sans', sans-serif", maxWidth: "80%",
                   }}>
                     Hi {userData?.name?.split(" ")[0] || "there"}! I know your Capabilio profile.
-                    Ask me anything about your career — skills, jobs, ELO, interviews, and more.
+                    {userData?.path === "professional"
+                      ? " Ask me anything about your career — skills, jobs, interviews, and more."
+                      : " Ask me anything about your career — skills, jobs, ELO, interviews, and more."}
                   </div>
                 </div>
 
@@ -529,7 +575,7 @@ export default function CopilotWidget({ user, userData }) {
 
             {/* Conversation */}
             {messages.map((m, i) => (
-              <Bubble key={i} role={m.role} content={m.content} isBlocked={m.isBlocked} />
+              <Bubble key={i} role={m.role} content={m.content} isBlocked={m.isBlocked} groundingNote={m.groundingNote} />
             ))}
 
             {/* Streaming token */}

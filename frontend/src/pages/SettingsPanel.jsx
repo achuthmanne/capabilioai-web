@@ -239,15 +239,23 @@ function Toggle({ value, onChange, label, desc, disabled=false }) {
   )
 }
 
-function SaveBtn({ onClick, saved, loading }) {
+// BUG FIX (2026-07-25, Career OS Tranche 3): every section's handleSave used
+// to call save(patch) and unconditionally show "✓ Saved" right after,
+// without checking the return value — save() (userDoc.update) returns false
+// on a real DB write failure rather than throwing, so a rejected write (e.g.
+// the searchable/certVisible/vaultVisible column-mismatch bug fixed in this
+// same pass) still showed a success state with the data never actually
+// persisted. `error` is optional and additive — sections that don't pass it
+// keep their exact previous behavior.
+function SaveBtn({ onClick, saved, loading, error }) {
   return (
     <button onClick={onClick} disabled={loading} style={{
-      padding:"10px 24px", background: saved ? T.green : T.indigo,
+      padding:"10px 24px", background: error ? T.red : saved ? T.green : T.indigo,
       border:"none", borderRadius:9, color:"#fff",
       fontSize:13, fontWeight:700, cursor: loading?"wait":"pointer",
       transition:"background 0.25s", display:"flex", alignItems:"center", gap:7,
     }}>
-      {loading ? "Saving…" : saved ? "✓ Saved" : "Save Changes"}
+      {loading ? "Saving…" : error ? "⚠ Save failed — try again" : saved ? "✓ Saved" : "Save Changes"}
     </button>
   )
 }
@@ -580,15 +588,18 @@ function PrivacySection({ userData, save, setUserData, path }) {
   const [searchable, setSearchable] = useState(userData?.searchable !== false)
   const [analyticsOn, setAnalyticsOn] = useState(userData?.analyticsEnabled !== false)
   const [saved, setSaved] = useState(false)
+  const [error, setError] = useState(false)
   const [loading, setLoading] = useState(false)
 
   const toggle = (id) => setVis(v => ({ ...v, [id]: !(v[id] !== false) }))
 
   const handleSave = async () => {
     setLoading(true)
+    setError(false)
     try {
       const patch = { pageVisibility: vis, searchable, analyticsEnabled: analyticsOn }
-      if (save) await save(patch)
+      const ok = save ? await save(patch) : true
+      if (ok === false) { setError(true); setTimeout(() => setError(false), 3500); return }
       if (setUserData) setUserData(d => ({ ...d, ...patch }))
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
@@ -636,9 +647,10 @@ function PrivacySection({ userData, save, setUserData, path }) {
       </div>
 
       <InfoBox icon="ℹ️" text="Aura Dashboard itself is always private to you. The toggles above control your public-facing pages only." />
+      <InfoBox icon="🔒" text="Search visibility is enforced server-side in Connect search results — turning this off actually removes you from other users' search, not just hides a UI toggle." />
 
       <div style={{ marginTop:20, display:"flex", justifyContent:"flex-end" }}>
-        <SaveBtn onClick={handleSave} saved={saved} loading={loading} />
+        <SaveBtn onClick={handleSave} saved={saved} error={error} loading={loading} />
       </div>
     </div>
   )
@@ -655,11 +667,13 @@ function ProofSection({ userData, save, setUserData }) {
   const [certVisible, setCertVisible] = useState(userData?.certVisible !== false)
   const [vaultVisible, setVaultVisible] = useState(userData?.vaultVisible !== false)
   const [saved, setSaved] = useState(false)
+  const [error, setError] = useState(false)
   const [loading, setLoading] = useState(false)
   const f = (k) => (v) => setForm(p => ({ ...p, [k]: v }))
 
   const handleSave = async () => {
     setLoading(true)
+    setError(false)
     try {
       const patch = {
         ...form,
@@ -668,7 +682,8 @@ function ProofSection({ userData, save, setUserData }) {
         certVisible,
         vaultVisible,
       }
-      if (save) await save(patch)
+      const ok = save ? await save(patch) : true
+      if (ok === false) { setError(true); setTimeout(() => setError(false), 3500); return }
       if (setUserData) setUserData(d => ({ ...d, ...patch }))
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
@@ -719,9 +734,10 @@ function ProofSection({ userData, save, setUserData }) {
           desc="Display your Vault files and projects on your public Portfolio"
         />
       </div>
+      <InfoBox icon="🔒" text="Enforced server-side on non-owner profile reads (GET /api/pro/profile/:uid) — turning these off actually removes the data from the response, not just hides it in the UI." />
 
       <div style={{ marginTop:20, display:"flex", justifyContent:"flex-end" }}>
-        <SaveBtn onClick={handleSave} saved={saved} loading={loading} />
+        <SaveBtn onClick={handleSave} saved={saved} error={error} loading={loading} />
       </div>
     </div>
   )
@@ -1916,18 +1932,34 @@ function ContextPanel({ userData, activeSection }) {
         </div>
       </Card>
 
-      {/* ELO + Tier */}
+      {/* Standing — Arena/ELO tier is a student-path concept (chess-style
+          rating tied to daily missions). Professional/authority users don't
+          engage with Arena the same way, so showing a bare "ELO 800" number
+          here with no translation doesn't mean anything to them (Career OS
+          Non-negotiable Rule #1: no bare score number ships without a
+          plain-language translation). Student path keeps the full tier +
+          number; professional/authority get the tier label only, framed as a
+          plain sentence, no raw figure. */}
       <Card>
         <div style={{ fontSize:11, fontWeight:800, color:T.ink3, textTransform:"uppercase", letterSpacing:1.5, marginBottom:10 }}>
           Your Standing
         </div>
-        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
-          <span style={{ fontSize:24 }}>{tier.icon}</span>
-          <div>
-            <div style={{ fontSize:15, fontWeight:800, color:tier.color }}>{tier.label}</div>
-            <div style={{ fontSize:11, color:T.ink4 }}>ELO {userData?.eloRating || 500}</div>
+        {(userData?.path === "professional" || userData?.path === "authority") ? (
+          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+            <span style={{ fontSize:24 }}>{tier.icon}</span>
+            <div style={{ fontSize:12, color:T.ink3, lineHeight:1.5 }}>
+              Your Arena skill tier is <strong style={{ color:tier.color }}>{tier.label}</strong>{userData?.eloRating ? " — recorded from your completed challenges." : ", based on your baseline assessment."}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+            <span style={{ fontSize:24 }}>{tier.icon}</span>
+            <div>
+              <div style={{ fontSize:15, fontWeight:800, color:tier.color }}>{tier.label}</div>
+              <div style={{ fontSize:11, color:T.ink4 }}>ELO {userData?.eloRating || 500}</div>
+            </div>
+          </div>
+        )}
         <div style={{
           display:"inline-flex", alignItems:"center", gap:6, padding:"5px 10px",
           background:pm.bg, borderRadius:20,

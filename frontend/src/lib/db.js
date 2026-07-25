@@ -90,6 +90,16 @@ const CAMEL_TO_SNAKE = {
   epfoVerified:         null,
   epfoData:             null,
   uan:                  null,
+  // BUG FIX (2026-07-25, Career OS Tranche 3): SettingsPanel's Privacy and
+  // Proof & Portfolio sections have been sending these 4 keys since they
+  // were built, but none had a matching column — every save silently failed
+  // in full (see career_os_ws0_privacy_toggle_columns migration). Real
+  // columns now exist; map the two that need snake_case translation
+  // (searchable is already a valid single-word column name, no mapping
+  // needed — falls through the `else` branch in toSnake unchanged).
+  analyticsEnabled:     'analytics_enabled',
+  certVisible:           'cert_visible',
+  vaultVisible:          'vault_visible',
 }
 
 /**
@@ -180,6 +190,12 @@ const toCompat = (data) => {
     // back to targetRole on read, so every component reading userData.targetRole
     // (Home hero, Skill Gap Analysis, Orbit gap cards) always saw undefined.
     targetRole:           data.target_role          || data.targetRole          || null,
+    // Privacy/consent toggles (Career OS Tranche 3) — real columns now,
+    // default true (visible) matches the pre-existing frontend assumption.
+    searchable:           data.searchable        ?? true,
+    analyticsEnabled:     data.analytics_enabled ?? true,
+    certVisible:          data.cert_visible      ?? true,
+    vaultVisible:         data.vault_visible     ?? true,
   }
 }
 

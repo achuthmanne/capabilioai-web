@@ -3,8 +3,9 @@
  * 3-column layout: Profile sidebar | Feed | Trending/Suggestions sidebar
  */
 import { useState, useEffect, useCallback, useRef } from "react"
-import { pulseApi, nexusApi } from "../lib/api"
+import { pulseApi, nexusApi, professionalEloApi } from "../lib/api"
 import { getRoleConfig } from "../config/roleConfig"
+import { FLAGS } from "../config/featureFlags"
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const T = {
@@ -121,12 +122,46 @@ function timeAgo(d) {
   return `${Math.floor(s/86400)}d`
 }
 
+// Plain-language translation of the internal ELO-style rating — Career OS
+// Non-negotiable Rule #1 (see ProfessionalHome.jsx/Orbit.jsx): no bare score
+// number ships to a professional-facing screen without translation. This
+// sidebar used to show "Your ELO rating: 1000" as a bare mono number; that's
+// exactly the pattern the rule forbids (2026-07-24 fix).
+const SKILL_TIER_PHRASES = [
+  { min: 0,    label: "Just getting started" },
+  { min: 600,  label: "Building momentum" },
+  { min: 800,  label: "Solid progress" },
+  { min: 1000, label: "Strong performer" },
+  { min: 1200, label: "Advanced" },
+  { min: 1500, label: "Top tier" },
+]
+const skillTierPhrase = elo => [...SKILL_TIER_PHRASES].reverse().find(t => elo >= t.min)?.label || "Just getting started"
+
 // ─── Left sidebar ─────────────────────────────────────────────────────────────
 function ProfileSidebar({ user, userData }) {
   const name    = userData?.name || userData?.displayName || user?.user_metadata?.full_name || "You"
-  const elo     = userData?.eloRating || 1000
   const path    = userData?.path || "professional"
   const initials = name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()
+
+  // Tranche A (2026-07-25): this sidebar used to source its "Skill
+  // assessment" phrase from userData.eloRating — the Arena-challenge score.
+  // Professional Path has no Arena nav item, so for professional users that
+  // number never moves off its default; it's a stale, non-representative
+  // stat masquerading as a skill signal. When the real Professional ELO
+  // track is on, use it (it's the one score that's actually assessment-
+  // performance-driven for this user); otherwise keep the previous Arena-elo
+  // fallback so behavior for students/other paths is untouched.
+  const [proElo, setProElo] = useState(null)
+  useEffect(() => {
+    let cancelled = false
+    if (path === "professional" && FLAGS.career_os_professional_elo) {
+      professionalEloApi.status().then(r => { if (!cancelled) setProElo(r) }).catch(() => {})
+    }
+    return () => { cancelled = true }
+  }, [path])
+
+  const usingProElo = path === "professional" && FLAGS.career_os_professional_elo && proElo?.elo != null
+  const elo = usingProElo ? proElo.elo : (userData?.eloRating || 1000)
 
   return (
     <Card>
@@ -150,10 +185,12 @@ function ProfileSidebar({ user, userData }) {
             || (path === "professional" ? "Software Professional" : `${path.charAt(0).toUpperCase()}${path.slice(1)} · Capabilio`)
         })()}</div>
 
-        {/* ELO badge */}
+        {/* Skill assessment — plain-language tier, not the bare internal score.
+            When sourced from the real Professional ELO track, label it as
+            such so it's never mistaken for a generic/static number. */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 0", borderTop:`1px solid ${T.border}`, marginBottom:4 }}>
-          <span style={{ fontSize:12, color:T.ink3 }}>Your ELO rating</span>
-          <span style={{ fontFamily:T.mono, fontSize:12, fontWeight:700, color:T.indigo }}>{elo.toLocaleString()}</span>
+          <span style={{ fontSize:12, color:T.ink3 }}>{usingProElo ? "Professional ELO" : "Skill assessment"}</span>
+          <span style={{ fontSize:12, fontWeight:700, color:T.indigo }}>{skillTierPhrase(elo)}</span>
         </div>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 0", borderTop:`1px solid ${T.border}` }}>
           <span style={{ fontSize:12, color:T.ink3 }}>Recruiter visibility</span>
@@ -165,7 +202,7 @@ function ProfileSidebar({ user, userData }) {
       <div style={{ borderTop:`1px solid ${T.border}`, padding:"8px 0" }}>
         {[
           { icon:"⚒", label:"Forge — complete a mission" },
-          { icon:"◎", label:"Orbit — check your ELO"   },
+          { icon:"◎", label:"Orbit — check your career score" },
           { icon:"⊞", label:"Launchpad — browse jobs"  },
         ].map((l,i) => (
           <div key={i} className="pbtn" style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 16px", cursor:"pointer" }}>
@@ -269,7 +306,7 @@ function RightSidebar({ user, domain = "Tech", role = "Professional" }) {
                 <div style={{ fontSize:13, fontWeight:700, color:T.ink, marginBottom:1 }}>{s.name}</div>
                 <div style={{ fontSize:11, color:T.ink2, marginBottom:4 }}>{s.headline}</div>
                 <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                  <span style={{ fontFamily:T.mono, fontSize:10, fontWeight:700, color:T.indigo }}>ELO {s.elo}</span>
+                  <span style={{ fontFamily:T.mono, fontSize:10, fontWeight:700, color:T.indigo }}>{skillTierPhrase(s.elo)}</span>
                   <button style={{ padding:"4px 12px", background:"transparent", border:`1.5px solid ${T.indigo}`, borderRadius:99, fontSize:11, fontWeight:700, color:T.indigo, cursor:"pointer" }}>+ Connect</button>
                 </div>
               </div>

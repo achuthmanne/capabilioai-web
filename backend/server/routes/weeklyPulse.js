@@ -29,6 +29,8 @@ import { Router } from "express"
 import { supabaseAdmin } from "../lib/supabase.js"
 import { groq, GROQ_FAST } from "../lib/groq.js"
 import { requireAuth } from "../lib/auth.js"
+import { computeAllConfidenceChanges } from "../lib/skillPulseV2/confidenceFeedback.js"
+import { applyPulseCompletionToElo, applyPendingDecay } from "../lib/professionalElo/eloEngine.js"
 
 const router = Router()
 
@@ -208,6 +210,13 @@ router.get("/pro/weekly/current", requireAuth, async (req, res) => {
     const uid = req.user.id
     const weekOf = currentWeekOf()
 
+    // Lazy inactivity-decay check (product rule 5/6) — no scheduler exists
+    // in this codebase, so this is the on-demand equivalent: every time the
+    // user opens their weekly check-in, apply any bounded ELO decay that's
+    // become due since their last pulse. A no-op most of the time. Must
+    // never block the pulse the user came here for.
+    try { await applyPendingDecay(supabaseAdmin, uid) } catch (e) { console.error("[weeklyPulse:decay]", e.message) }
+
     let { data: pulse } = await supabaseAdmin
       .from("weekly_pulses").select("*").eq("user_id", uid).eq("week_of", weekOf).maybeSingle()
 
@@ -323,34 +332,75 @@ router.post("/pro/weekly/:pulseId/complete", requireAuth, async (req, res) => {
     // Confidence feedback — capped nudge only, per product constraint that
     // quiz performance must never dominate the skill confidence model.
     // Total movement per skill this pulse is capped at +/-15 on level_score,
-    // split evenly across however many questions touched that skill.
-    const bySkill = new Map()
-    for (const q of questions || []) {
-      if (!q.skill_id) continue
-      const a = answerByQ.get(q.id)
-      if (!a) continue
-      const arr = bySkill.get(q.skill_id) || []
-      arr.push(a.is_correct)
-      bySkill.set(q.skill_id, arr)
-    }
+    // split evenly across however many questions touched that skill. Uses
+    // the same tested, pure bounded-math module the v2 flow uses
+    // (backend/server/lib/skillPulseV2/confidenceFeedback.js) so both flows
+    // apply identical, auditable math — this is a same-formula refactor, not
+    // a behavior change (see skillPulseV2.test.js for the formula's tests).
+    const answersBySkill = (questions || [])
+      .filter(q => q.skill_id && answerByQ.has(q.id))
+      .map(q => ({ skillId: q.skill_id, questionId: q.id, isCorrect: answerByQ.get(q.id).is_correct }))
+
+    const skillIds = [...new Set(answersBySkill.map(a => a.skillId))]
+    const { data: skillRows } = skillIds.length
+      ? await supabaseAdmin.from("user_skills").select("id,name,level_score").in("id", skillIds)
+      : { data: [] }
+    const skillById = new Map((skillRows || []).map(s => [s.id, s]))
+    const previousLevelScoreBySkillId = Object.fromEntries(
+      (skillRows || []).map(s => [s.id, s.level_score ?? 50])
+    )
+
+    const changes = computeAllConfidenceChanges(answersBySkill, previousLevelScoreBySkillId)
 
     const feedback = []
-    for (const [skillId, results] of bySkill.entries()) {
-      const correct = results.filter(Boolean).length
-      const total = results.length
-      const ratio = correct / total // 0..1
-      const delta = Math.round((ratio - 0.5) * 2 * 15) // -15..+15
-      if (delta === 0) continue
-
-      const { data: skill } = await supabaseAdmin.from("user_skills").select("level_score").eq("id", skillId).single()
-      if (!skill) continue
-      const newScore = Math.max(0, Math.min(100, (skill.level_score || 50) + delta))
+    const skillsRefreshed = []   // Part D: "skills refreshed" — moved up
+    const skillsToRevisit = []   // Part D: "skills to revisit" — moved down or unchanged after a weak showing
+    for (const change of changes) {
+      if (change.cappedDelta === 0) continue
       await supabaseAdmin.from("user_skills").update({
-        level_score: newScore,
-        confidence: newScore / 100,
+        level_score: change.newLevelScore,
+        confidence: change.newLevelScore / 100,
         updated_at: new Date().toISOString(),
-      }).eq("id", skillId)
-      feedback.push({ skill_id: skillId, delta, new_level_score: newScore })
+      }).eq("id", change.skillId)
+
+      // Backward-compatible field names (unchanged from the pre-refactor
+      // shape) plus additive fields the v2 results screen (and, optionally,
+      // a future v1 results polish) can use.
+      feedback.push({
+        skill_id: change.skillId, delta: change.cappedDelta, new_level_score: change.newLevelScore,
+        skill_name: skillById.get(change.skillId)?.name || null,
+        explanation: change.explanation, // visible bounded math, Part D requirement
+      })
+      const named = { skill_id: change.skillId, skill_name: skillById.get(change.skillId)?.name || null, delta: change.cappedDelta }
+      if (change.cappedDelta > 0) skillsRefreshed.push(named)
+      else skillsToRevisit.push(named)
+    }
+
+    // Professional ELO — PRODUCT DECISION 2026-07-25: ELO moves from real
+    // Skill Pulse performance only (see eloEngine.js header for why this is
+    // a separate track from the profile-completeness-driven ELO fields on
+    // `profiles`). Uses the exact same correct/incorrect answer data
+    // confidence-feedback just used above, so both updates come from one
+    // real, already-recorded outcome — never fabricated, never triggered by
+    // anything else in this file.
+    let eloResult = null
+    try {
+      const answered = (questions || [])
+        .filter(q => answerByQ.has(q.id))
+        .map(q => ({ isCorrect: answerByQ.get(q.id).is_correct, difficulty: q.difficulty }))
+      eloResult = await applyPulseCompletionToElo(supabaseAdmin, {
+        userId: uid,
+        pulseId,
+        answered,
+        correctCount,
+        questionCount: (questions || []).length,
+        skillsRefreshed,
+        skillsToRevisit,
+      })
+    } catch (eloErr) {
+      // Professional ELO is additive — a failure here must never block the
+      // pulse-completion response the user is waiting on.
+      console.error("[weeklyPulse:elo]", eloErr.message)
     }
 
     res.json({
@@ -358,8 +408,20 @@ router.post("/pro/weekly/:pulseId/complete", requireAuth, async (req, res) => {
       correct_count: correctCount,
       question_count: (questions || []).length,
       feedback,
+      skills_refreshed: skillsRefreshed,
+      skills_to_revisit: skillsToRevisit,
+      professional_elo: eloResult, // { oldElo, newElo, delta, reason, affectedSkills, nextAction } or null on failure
+      // Mentor suggestions intentionally omitted — Career OS Workstream 3
+      // audit confirmed no real mentor-matching data exists yet
+      // (mentor_profiles/bookings tables don't exist), and the product rule
+      // is "mentor suggestions only where real mentor data exists." An
+      // absent field here is the honest behavior, not an oversight.
     })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
+// Exported for reuse by skillPulseV2.js (Workstream 3) — the v2 flow needs
+// to fall back to the exact same v1 generation logic when coverage is
+// insufficient, rather than re-implementing a second copy of it.
+export { currentWeekOf, dueAtFor, buildPulseForWeek }
 export default router

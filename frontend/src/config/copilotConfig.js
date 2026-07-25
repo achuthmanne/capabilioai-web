@@ -189,7 +189,7 @@ Never apologize excessively.
 Never be sycophantic.`
 }
 
-export function buildPolicyPrompt(tier) {
+export function buildPolicyPrompt(tier, path = "student") {
   const basePolicy = `SCOPE POLICY — STRICT:
 
 You ONLY answer questions about:
@@ -219,7 +219,27 @@ Do not give detailed analysis, multi-step plans, or deep strategic advice.
 Give one clear, actionable insight and stop.
 End with: "Upgrade to Pro for deeper analysis."`
 
-  return tier === "free" ? basePolicy + freeTierAddition : basePolicy
+  // CAREER OS TRANCHE 5: professional-path users must never see a raw ELO
+  // number or Arena-challenge framing — the platform's product rule is
+  // "no raw ELO on professional-facing surfaces." The context prompt already
+  // omits the numeric ELO for this path (see buildContextPrompt); this
+  // instructs the model itself not to introduce one, and not to push
+  // Arena/challenge content that doesn't exist for professionals.
+  const professionalAddition = `
+
+ADDITIONAL RESTRICTION — PROFESSIONAL PATH:
+This user is on the Professional Path, not the student/Arena path.
+Never state or imply a numeric ELO, rating, or score — describe skill
+strength only in plain language (e.g. "developing", "strong", "a gap area").
+Do not recommend Arena challenges, coding challenges, or "boost your ELO"
+style actions — they don't apply here. Instead, point to real professional
+surfaces: Weekly Skill Pulse, the Skills module, verified employment/EPFO
+proof, or the Company module. If you don't have enough real data to answer
+confidently, say so plainly instead of guessing.`
+
+  let policy = tier === "free" ? basePolicy + freeTierAddition : basePolicy
+  if (path === "professional") policy += professionalAddition
+  return policy
 }
 
 export function buildContextPrompt(userData) {
@@ -229,6 +249,8 @@ export function buildContextPrompt(userData) {
     skills = [], timeline = {}, career_events = [],
     arena_tasks = [], completeness_score,
   } = userData
+
+  const isProfessional = path_status === "professional"
 
   const topSkills = (skills.core || []).slice(0, 5)
     .map(s => `  - ${s.name} (${s.level || "unrated"})`)
@@ -253,14 +275,36 @@ export function buildContextPrompt(userData) {
   const eloTier     = getEloTier(blended_elo)
   const missingNote = getMissingFields(userData)
 
+  // TRANCHE 1 FINAL CANONICAL CLEANUP (2026-07-25): the earlier Tranche 5
+  // line said "no numeric score shown to professionals" — that rule was
+  // REVERSED by the 2026-07-25 product decision: professionals now have a
+  // real, visible, assessment-driven Professional ELO (Skills tab). What
+  // must NOT be presented as a professional's score is the old Arena/
+  // profile-derived `blended_elo` this function receives — so the
+  // professional line points Capi at the real Professional ELO surface
+  // instead of either quoting the wrong number or denying a score exists.
+  // Student path keeps the exact prior numeric line unchanged.
+  const skillLine = isProfessional
+    ? `Skill Level:    ${eloTier} — the user's real numeric score is their Professional ELO, shown on the Skills tab; it moves only from Weekly Skill Pulse performance. Do not quote any other number as their "ELO".`
+    : `ELO Rating:     ${blended_elo || 600} (${eloTier})`
+
+  const arenaBlock = isProfessional
+    ? ""
+    : `
+
+Arena Performance:
+  Challenges completed: ${arenaCount}
+  Average score: ${avgScore || "N/A"}
+  Strongest domain: ${topDomain || "Not enough data"}`
+
   return `USER PROFILE CONTEXT:
 
 Name:           ${name || "User"}
 Role:           ${job_role || "Not specified"}
 Domain:         ${domain || "Not specified"}
 Career Path:    ${path_status || "student"}
-ELO Rating:     ${blended_elo || 600} (${eloTier})
-Aura Score:     ${aura_score || 0}
+${skillLine}
+Aura Score:     ${aura_score || 0} (profile-strength/completeness signal — NOT a skill score, never present it as one)
 Plan:           ${plan || subscription || "free"}
 
 Core Skills (top 5):
@@ -270,12 +314,7 @@ Recent Projects:
 ${recentProjects}
 
 Verified Employment:
-${verifiedJobs}
-
-Arena Performance:
-  Challenges completed: ${arenaCount}
-  Average score: ${avgScore || "N/A"}
-  Strongest domain: ${topDomain || "Not enough data"}
+${verifiedJobs}${arenaBlock}
 
 Profile Completeness: ${completeness_score || 0}%
 ${missingNote ? `Missing: ${missingNote}` : "Profile looks complete."}
@@ -291,6 +330,27 @@ function getEloTier(elo) {
   if (elo < 1000) return "Proficient"
   if (elo < 1200) return "Advanced"
   return "Expert"
+}
+
+// CAREER OS TRANCHE 5: honest "what real data went into this answer" note.
+// This does NOT ask the model to self-report what it used (which risks
+// fabrication) — it reflects exactly the fields we actually included in the
+// context prompt above, so it is true regardless of how the model responded.
+export function buildGroundingNote(userData = {}) {
+  const parts = []
+  const skillCount = (userData.skills?.length ?? userData.skills?.core?.length) || 0
+  if (skillCount > 0) parts.push(`${skillCount} tracked skill${skillCount === 1 ? "" : "s"}`)
+  const role = userData?.jobRole || userData?.job_role
+  if (role) parts.push(`target role "${role}"`)
+  const projectCount = userData?.projects?.length || 0
+  if (projectCount > 0) parts.push(`${projectCount} project${projectCount === 1 ? "" : "s"}`)
+  const path = userData?.pathStatus || userData?.path_status
+  if (path === "professional") {
+    const verifiedCount = (userData?.careerEvents || []).filter(e => e.verification_level >= 3).length
+    if (verifiedCount > 0) parts.push(`${verifiedCount} verified employment record${verifiedCount === 1 ? "" : "s"}`)
+  }
+  if (parts.length === 0) return "Based on: limited profile data — add skills and role details for more specific answers."
+  return `Based on: ${parts.join(", ")} from your profile.`
 }
 
 function getTopDomain(tasks) {
@@ -373,8 +433,15 @@ export function getSuggestionChips(userData) {
   if ((userData.aura_score || 0) < 50)
     chips.push("How do I improve my Aura score?")
 
-  if ((userData.blended_elo || 600) < 700)
+  // CAREER OS TRANCHE 5: "boost my ELO"/Arena-challenge framing is
+  // student-path only — professional users don't see Arena content or raw
+  // ELO, so give them a Weekly Pulse/Skills equivalent instead.
+  if (userData.path_status === "professional") {
+    if ((userData.blended_elo || 600) < 700)
+      chips.push("What should I focus on to strengthen my skills?")
+  } else if ((userData.blended_elo || 600) < 700) {
     chips.push("Which challenges boost my ELO fastest?")
+  }
 
   if (!userData.uan_verified && userData.path_status === "professional")
     chips.push("How do I verify my employment?")

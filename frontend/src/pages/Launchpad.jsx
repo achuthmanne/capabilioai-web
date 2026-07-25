@@ -4,6 +4,9 @@
  */
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { jobsApi, skillsApi } from "../lib/api"
+import { userDoc } from "../lib/db"
+import { AIInterviewPanel } from "./Aura"
+import { SectionErrorBoundary } from "../components/careeros/CareerOSUI"
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
 const T = {
@@ -776,14 +779,16 @@ function ReadinessHeroStrip({ userData, total, newCount }) {
             {newCount > 0 ? `${newCount} new matches since your last visit` : `${total.toLocaleString()} opportunities matched to your profile`}
           </div>
           <div style={{ fontSize: 12, color: "#3D3935" }}>
+            {/* Profile readiness % already factors in skill assessment score
+                (elo) below — showing that internal score again as a bare
+                "ELO 1450" number here would be exactly the unexplained-score
+                pattern Career OS Rule #1 forbids (2026-07-24 fix: removed). */}
             Profile readiness: <span style={{ fontWeight: 800, color: readiness >= 70 ? "#6EE7B7" : readiness >= 50 ? "#FCD34D" : "#FCA5A5" }}>{readiness}%</span>
-            {elo ? <span style={{ marginLeft: 12 }}>ELO <span style={{ fontWeight: 700 }}>{elo.toLocaleString()}</span></span> : null}
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <HeroStat value={total} label="roles" />
           {skills > 0 && <HeroStat value={skills} label="skills" />}
-          {elo > 0 && <HeroStat value={elo} label="ELO" />}
         </div>
       </div>
     </div>
@@ -835,9 +840,26 @@ function getProfileKeyword(userData) {
   return parts.slice(0, 2).join(" ")   // e.g. "DevOps Docker"
 }
 
-export default function Launchpad({ user, userData }) {
+export default function Launchpad({ user, userData, onNavigatePricing }) {
   // Auto-seed search with the user's domain keyword so only relevant jobs show
   const profileKeyword = useMemo(() => getProfileKeyword(userData), [userData])
+
+  // ── Local userData mirror + save wrapper, for the "Interview Prep" tab
+  // (AIInterviewPanel, moved here from Aura.jsx 2026-07-25, Tranche 1) ──
+  // Launchpad doesn't otherwise own a write path to userData — App.jsx
+  // passes userData read-only. Mirrors Aura.jsx's own save() wrapper
+  // exactly (same userDoc.update contract, same don't-apply-on-failure
+  // fix) rather than inventing a second pattern.
+  const [localUserData, setLocalUserData] = useState(userData || null)
+  useEffect(() => { setLocalUserData(userData || null) }, [userData])
+  const saveUserData = useCallback(async (updates) => {
+    try {
+      const ok = await userDoc.update(user?.id || user?.uid, updates)
+      if (!ok) { console.error("[Launchpad] save failed — DB write rejected, not applying to local state:", Object.keys(updates)); return false }
+      setLocalUserData(d => ({ ...d, ...updates }))
+      return true
+    } catch (e) { console.warn(e); return false }
+  }, [user])
 
   const [jobs,         setJobs]         = useState([])
   const [loading,      setLoading]      = useState(true)
@@ -920,9 +942,10 @@ export default function Launchpad({ user, userData }) {
   , [jobs, matchCache])
 
   const tabs = [
-    { id: "browse",  label: "Browse Jobs",                count: null },
-    { id: "applied", label: "Applied",                    count: appliedIds.size || null },
-    { id: "saved",   label: "Saved",                      count: savedIds.size || null },
+    { id: "browse",    label: "Browse Jobs",   count: null },
+    { id: "applied",   label: "Applied",       count: appliedIds.size || null },
+    { id: "saved",     label: "Saved",         count: savedIds.size || null },
+    { id: "interview", label: "Interview Prep", count: null },
   ]
 
   const WORK_MODES = [
@@ -1076,6 +1099,16 @@ export default function Launchpad({ user, userData }) {
         )}
 
         {/* APPLIED TAB */}
+        {/* INTERVIEW PREP TAB — AIInterviewPanel, moved from Profile 2026-07-25
+            (Tranche 1): interview practice is Launchpad/job-readiness
+            content, not identity/documents/privacy/account. Reuses the
+            component and its existing plan-quota/save contract unchanged. */}
+        {activeTab === "interview" && (
+          <SectionErrorBoundary name="launchpad-interview-prep">
+            <AIInterviewPanel user={user} userData={localUserData} save={saveUserData} setUserData={setLocalUserData} onNavigatePricing={onNavigatePricing} />
+          </SectionErrorBoundary>
+        )}
+
         {activeTab === "applied" && <ApplicationsView applications={applications} />}
 
         {/* SAVED TAB */}

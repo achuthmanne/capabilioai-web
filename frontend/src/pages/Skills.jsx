@@ -8,9 +8,11 @@
  * Never call the weekly check-in "assessment" — product naming rule.
  */
 import { useEffect, useState, useMemo } from "react"
-import { weeklyCheckApi, skillsApi } from "../lib/api"
+import { weeklyCheckApi, skillsApi, professionalEloApi } from "../lib/api"
 import SkillGraphView from "../components/SkillGraphView"
 import { DOMAIN_CONFIG } from "../config/skillGroups"
+import { SectionErrorBoundary } from "../components/careeros/CareerOSUI"
+import { FLAGS } from "../config/featureFlags"
 
 const P    = "#8B5CF6"
 const INK  = "#1A1714"
@@ -154,6 +156,118 @@ function RadarChart({ axes, size = 260 }) {
   )
 }
 
+// ── Skill Decay ────────────────────────────────────────────────────────────
+// Surfaces backend/server/lib/skillPulseV2/decay.js's real Fresh/Aging/At
+// Risk/Decayed model via GET /pro/weekly/v2/decay-states (not gated behind
+// any flag — see that route's comment: decay state is a read of real,
+// already-recorded signals, independent of v1/v2 pulse flow). Each skill
+// shows its state PLUS the exact driving signal (or "no signal on record"),
+// never a bare bucket — matches the product rule the backend already
+// enforces. If the fetch fails or returns nothing, this section renders
+// nothing rather than fabricating placeholder skill-decay data.
+const DECAY_COLORS = {
+  fresh:   { bg: "#ECFDF5", fg: "#16A34A", label: "Fresh" },
+  aging:   { bg: "#FFFBEB", fg: "#D97706", label: "Aging" },
+  at_risk: { bg: "#FFF1F0", fg: "#DC2626", label: "At Risk" },
+  decayed: { bg: "#F3F4F6", fg: "#6B7280", label: "Decayed" },
+}
+
+function SkillDecayCard({ skills, loading, error }) {
+  if (loading || error || !skills || skills.length === 0) return null
+
+  const order = { at_risk: 0, decayed: 1, aging: 2, fresh: 3 }
+  const sorted = [...skills].sort((a, b) => (order[a.decay_state] ?? 9) - (order[b.decay_state] ?? 9))
+
+  return (
+    <div style={{ background: SURF, border: `1px solid ${BDR}`, borderRadius: 20, padding: 24, marginBottom: 24 }}>
+      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: P, fontFamily: MONO }}>Skill Decay</div>
+      <div style={{ fontSize: 12, color: MUT, marginTop: 4, marginBottom: 16 }}>
+        How current each skill is, based on real activity — Weekly Pulse answers, verified proof, certifications, and verified skill events. Never just a score.
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {sorted.map(s => {
+          const c = DECAY_COLORS[s.decay_state] || DECAY_COLORS.decayed
+          return (
+            <div key={s.skill_id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 14px", borderRadius: 12, background: BG, flexWrap: "wrap" }}>
+              <div style={{ minWidth: 120 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: INK }}>{s.name}</div>
+                <div style={{ fontSize: 11, color: MUT, marginTop: 2 }}>
+                  {s.driver ? s.driver.label : "No relevant signal on record yet"}
+                  {s.weeks_since_signal != null ? ` · ${s.weeks_since_signal}w ago` : ""}
+                </div>
+              </div>
+              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: c.fg, background: c.bg, borderRadius: 999, padding: "4px 10px", fontFamily: MONO, flexShrink: 0 }}>
+                {c.label}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ── Professional ELO — product decision 2026-07-25 ─────────────────────────
+// UI RULE: never show a naked, unexplained ELO number. Every render of this
+// card includes the number AND why it's there — the reason, which skills
+// were affected, and what to do next. Real, assessment-performance-driven
+// (backend/server/lib/professionalElo/eloEngine.js) — never moves from
+// profile edits, resume imports, company linking, or certificate import.
+function ProfessionalEloCard({ data, loading, error }) {
+  if (loading) return null
+  if (error) {
+    return (
+      <div style={{ background: SURF, border: `1px solid ${BDR}`, borderRadius: 20, padding: 24, marginBottom: 24 }}>
+        <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: P, fontFamily: MONO }}>Professional ELO</div>
+        <div style={{ fontSize: 12, color: MUT, marginTop: 8 }}>Couldn't load your Professional ELO right now — try again shortly.</div>
+      </div>
+    )
+  }
+  if (!data) return null
+
+  const { elo, latest_change: change } = data
+  const deltaColor = !change ? MUT : change.delta > 0 ? "#16A34A" : change.delta < 0 ? "#DC2626" : MUT
+  const deltaLabel = !change ? null : `${change.delta > 0 ? "+" : ""}${change.delta}`
+
+  return (
+    <div style={{ background: SURF, border: `1px solid ${BDR}`, borderRadius: 20, padding: 24, marginBottom: 24 }}>
+      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: P, fontFamily: MONO }}>Professional ELO</div>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
+        <div style={{ fontFamily: SERIF, fontSize: 36, fontWeight: 800, color: INK }}>{elo}</div>
+        {deltaLabel && (
+          <span style={{ fontSize: 12, fontWeight: 800, color: deltaColor, fontFamily: MONO }}>{deltaLabel}</span>
+        )}
+      </div>
+
+      {/* Why it changed — required, never omitted */}
+      <div style={{ fontSize: 12, color: MUT, marginTop: 8, lineHeight: 1.6 }}>
+        {change ? change.reason : "No Skill Pulse activity yet — complete this week's check-in to start your Professional ELO."}
+      </div>
+
+      {/* Which skills were affected */}
+      {change?.affected_skills?.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
+          {change.affected_skills.map((s, i) => (
+            <span key={i} style={{
+              fontSize: 11, fontWeight: 700, color: s.delta >= 0 ? "#16A34A" : "#DC2626",
+              background: s.delta >= 0 ? "#F0FDF4" : "#FEF2F2", borderRadius: 999, padding: "3px 10px",
+            }}>
+              {s.skill_name || "Skill"} {s.delta >= 0 ? "+" : ""}{s.delta}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Next recommended action — required, never omitted */}
+      {change?.next_action && (
+        <div style={{ fontSize: 12, color: INK, marginTop: 14, padding: "10px 14px", borderRadius: 12, background: BG, fontWeight: 600 }}>
+          → {change.next_action}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SkillReadinessCard({ skills }) {
   const { axes, overall } = useSkillReadiness(skills)
   if (!skills.length) return null
@@ -192,6 +306,12 @@ function SkillReadinessCard({ skills }) {
 export default function Skills({ user, userData, onNavigate }) {
   const [skills, setSkills] = useState([])
   const [loading, setLoading] = useState(true)
+  const [decaySkills, setDecaySkills] = useState(null)
+  const [decayLoading, setDecayLoading] = useState(true)
+  const [decayError, setDecayError] = useState(false)
+  const [eloData, setEloData] = useState(null)
+  const [eloLoading, setEloLoading] = useState(true)
+  const [eloError, setEloError] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -199,6 +319,25 @@ export default function Skills({ user, userData, onNavigate }) {
       .then(data => { if (!cancelled) setSkills(data || []) })
       .catch(() => {})
       .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    if (!FLAGS.career_os_professional_elo) { setEloLoading(false); return }
+    let cancelled = false
+    professionalEloApi.status()
+      .then(res => { if (!cancelled) setEloData(res) })
+      .catch(() => { if (!cancelled) setEloError(true) })
+      .finally(() => { if (!cancelled) setEloLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    weeklyCheckApi.v2DecayStates()
+      .then(res => { if (!cancelled) setDecaySkills(res?.skills || []) })
+      .catch(() => { if (!cancelled) setDecayError(true) })
+      .finally(() => { if (!cancelled) setDecayLoading(false) })
     return () => { cancelled = true }
   }, [])
 
@@ -210,13 +349,31 @@ export default function Skills({ user, userData, onNavigate }) {
         <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: P, fontFamily: MONO }}>Professional Path · Skills</div>
         <div style={{ fontFamily: SERIF, fontSize: 26, fontWeight: 800, color: INK, marginTop: 4, marginBottom: 18 }}>Skill Pulse, decay, and learning</div>
 
-        <WeeklyPulseBanner onNavigate={onNavigate} />
+        {FLAGS.career_os_professional_elo && (
+          <SectionErrorBoundary name="skills-professional-elo">
+            <ProfessionalEloCard data={eloData} loading={eloLoading} error={eloError} />
+          </SectionErrorBoundary>
+        )}
 
-        {!loading && <SkillReadinessCard skills={skills} />}
+        <SectionErrorBoundary name="skills-weekly-pulse-banner">
+          <WeeklyPulseBanner onNavigate={onNavigate} />
+        </SectionErrorBoundary>
 
-        <div style={{ background: SURF, border: `1px solid ${BDR}`, borderRadius: 20, padding: 4, marginBottom: 40 }}>
-          <SkillGraphView user={user} />
-        </div>
+        {!loading && (
+          <SectionErrorBoundary name="skills-readiness-card">
+            <SkillReadinessCard skills={skills} />
+          </SectionErrorBoundary>
+        )}
+
+        <SectionErrorBoundary name="skills-decay-card">
+          <SkillDecayCard skills={decaySkills} loading={decayLoading} error={decayError} />
+        </SectionErrorBoundary>
+
+        <SectionErrorBoundary name="skills-skill-graph">
+          <div style={{ background: SURF, border: `1px solid ${BDR}`, borderRadius: 20, padding: 4, marginBottom: 40 }}>
+            <SkillGraphView user={user} />
+          </div>
+        </SectionErrorBoundary>
       </div>
     </div>
   )

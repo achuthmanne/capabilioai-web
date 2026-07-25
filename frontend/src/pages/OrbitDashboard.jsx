@@ -1,6 +1,19 @@
 /**
  * OrbitDashboard.jsx — Capabilio Professional Intelligence Cockpit (Aura)
- * Full production-ready dashboard with dynamic data from DB.
+ *
+ * ⚠️ DEAD CODE — DO NOT MOUNT ON THE PROFESSIONAL PATH (Tranche 1 final
+ * canonical cleanup, 2026-07-25). This file is imported nowhere (verified:
+ * zero import sites in frontend/src). It computes client-side
+ * profile-derived pseudo-ELO numbers (roleElo/mktElo/proofElo/mobElo from
+ * computeSignals below, plus raw elo_rating/aura_score reads) and renders
+ * them as if they were scores — which now directly violates the standing
+ * product rule that the assessment-driven Professional ELO
+ * (backend/server/lib/professionalElo/eloEngine.js, Skills.jsx card) is the
+ * ONLY canonical visible skill-truth score for professionals. Kept (not
+ * deleted) per the same convention as mentorHub.js — reference only, until
+ * a follow-up cleanup commit removes it. A regression test
+ * (backend/server/routes/__tests__/professionalEloCanonical.test.js)
+ * asserts this file stays unimported.
  */
 import { useState, useEffect, useCallback } from "react"
 import { supabase } from "../lib/supabase"
@@ -377,11 +390,11 @@ export default function OrbitDashboard({user,userData,setUserData,onNavigate}){
         <Card>
           <SectionTitle icon="🎤" color={T.blue}>AI INTERVIEW</SectionTitle>
           {interviews.length===0?(
-            <div style={{textAlign:"center",padding:"16px 0"}}><div style={{fontSize:13,color:T.ink3,marginBottom:12}}>No interviews yet.</div><button onClick={()=>onNavigate("aura")} style={{padding:"8px 16px",background:`${T.blue}22`,border:`1px solid ${T.blue}44`,borderRadius:8,color:T.blue,fontSize:12,fontWeight:700,cursor:"pointer"}}>Start Interview</button></div>
+            <div style={{textAlign:"center",padding:"16px 0"}}><div style={{fontSize:13,color:T.ink3,marginBottom:12}}>No interviews yet.</div><button onClick={()=>onNavigate("launchpad")} style={{padding:"8px 16px",background:`${T.blue}22`,border:`1px solid ${T.blue}44`,borderRadius:8,color:T.blue,fontSize:12,fontWeight:700,cursor:"pointer"}}>Start Interview</button></div>
           ):(
             <>
               <div style={{textAlign:"center",padding:"8px 0 12px"}}><div style={{fontSize:36,fontWeight:800,color:lastIv?.overall_score>=75?T.green:lastIv?.overall_score>=50?T.amber:T.red,fontFamily:T.mono}}>{lastIv?.overall_score??"-"}<span style={{fontSize:14,color:T.ink3}}>/100</span></div><div style={{fontSize:11,color:T.ink3,marginTop:2}}>Last score</div></div>
-              <button onClick={()=>onNavigate("aura")} style={{width:"100%",padding:"8px",background:`${T.blue}22`,border:`1px solid ${T.blue}44`,borderRadius:8,color:T.blue,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:T.mono}}>NEW INTERVIEW →</button>
+              <button onClick={()=>onNavigate("launchpad")} style={{width:"100%",padding:"8px",background:`${T.blue}22`,border:`1px solid ${T.blue}44`,borderRadius:8,color:T.blue,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:T.mono}}>NEW INTERVIEW →</button>
             </>
           )}
         </Card>

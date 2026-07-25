@@ -7,7 +7,7 @@
  *   • #8B5CF6 purple accent, #FAFAF8 stat cells, 28px card radius
  */
 import { useEffect, useState, useCallback } from "react"
-import { weeklyCheckApi, homeApi } from "../lib/api"
+import { weeklyCheckApi, homeApi, companyApi } from "../lib/api"
 import { userDoc } from "../lib/db"
 import { OrbitDash } from "./Orbit"
 import { OutcomeCard, SectionErrorBoundary, LoadingState } from "../components/careeros/CareerOSUI"
@@ -204,6 +204,75 @@ function WeeklyCheckCard({ onNavigate }) {
 }
 const GOOD_ALIAS = "#16A34A"
 
+// ─── Section: Company Status (Career OS Workstream 5, behind career_os_company
+// flag — gated the same way TodaysPriorityCard is gated by career_os_home
+// above: the whole block just doesn't render when the flag is off, no
+// "not available yet" placeholder needed since the nav item itself is
+// hidden by the same flag in App.jsx). Reads GET /pro/v1/company/me — the
+// same endpoint Company.jsx uses — and reuses the backend-computed
+// company_link_state_sentence field directly rather than re-deriving the
+// enum-to-sentence mapping on the client (see linkStateSentence() in
+// backend/server/routes/company.js, the single source of truth for that
+// copy; Company.jsx's OverviewTab does the same thing). Deliberately does
+// NOT show review windows / manager check-in nudges — there's no review-
+// cycle or manager-check-in data model yet, so that content would be
+// fabricated. That's staged, future work per the Company module's rollout.
+function CompanyStatusCard({ onNavigate }) {
+  const [state, setState] = useState("loading") // loading | not_linked | linked | error
+  const [me, setMe] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    companyApi.me()
+      .then(res => {
+        if (cancelled) return
+        setMe(res)
+        setState(res.company_id ? "linked" : "not_linked")
+      })
+      .catch(() => !cancelled && setState("error"))
+    return () => { cancelled = true }
+  }, [])
+
+  if (state === "loading" || state === "error") return null // fail quiet on Home — not critical path
+
+  if (state === "not_linked") {
+    return (
+      <div className="ph-card-hover" style={{
+        padding: "18px 20px", background: SURF, border: `1.5px solid ${BDR}`,
+        borderRadius: r18, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap",
+        transition: "all 180ms cubic-bezier(0.16,1,0.3,1)",
+      }}>
+        <div style={{ width: 42, height: 42, borderRadius: 12, background: `${P}12`, border: `1px solid ${P}26`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19, flexShrink: 0 }}>🏢</div>
+        <div style={{ flex: 1, minWidth: 180 }}>
+          <MonoLabel color={P}>Company</MonoLabel>
+          <div style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 700, color: INK, marginBottom: 3 }}>Link your current employer</div>
+          <div style={{ fontSize: 12, color: MUT, lineHeight: 1.6, fontFamily: BODY }}>Link your current employer to unlock company-specific insights.</div>
+        </div>
+        <Btn primary onClick={() => onNavigate("company")}>Link company →</Btn>
+      </div>
+    )
+  }
+
+  const { company, company_link_state_sentence } = me || {}
+  return (
+    <div className="ph-card-hover" style={{
+      padding: "18px 20px", background: SURF, border: `1.5px solid ${BDR}`,
+      borderRadius: r18, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap",
+      transition: "all 180ms cubic-bezier(0.16,1,0.3,1)",
+    }}>
+      <div style={{ width: 42, height: 42, borderRadius: 12, background: `${P}12`, border: `1px solid ${P}26`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+        {company?.logo_url ? <img src={company.logo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "🏢"}
+      </div>
+      <div style={{ flex: 1, minWidth: 180 }}>
+        <MonoLabel color={P}>Company</MonoLabel>
+        <div style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 700, color: INK, marginBottom: 3 }}>{company?.name || "Your company"}</div>
+        <div style={{ fontSize: 12, color: MUT, lineHeight: 1.6, fontFamily: BODY }}>{company_link_state_sentence}</div>
+      </div>
+      <Btn outline onClick={() => onNavigate("company")}>View company →</Btn>
+    </div>
+  )
+}
+
 // ─── Section: Career Timeline ─────────────────────────────────────────────────
 function CareerTimeline({ experiences, onNavigate }) {
   const exps = experiences || []
@@ -380,6 +449,8 @@ function SkillHalfLife({ userData }) {
 }
 
 // ─── Section: Action gap cards ────────────────────────────────────────────────
+// onNavigate here is navigateToPriority-shaped — accepts { page, tab } so a
+// gap card can deep-link straight to a specific tab, not just a bare page.
 function ActionGaps({ userData, onNavigate }) {
   const hasVerif   = !!(userData?.epfoVerified || userData?.verified)
   const hasTarget  = !!userData?.targetRole
@@ -392,7 +463,10 @@ function ActionGaps({ userData, onNavigate }) {
   if (!hasTarget)  gaps.push({ cap: "Signal gap",      title: "Target role not set",             desc: "Set a target role so Orbit can tune skill decay and weekly assessments correctly.",  icon: "🎯", impact: "warn", page: "orbit",    btn: "Set target" })
   if (!hasVault)   gaps.push({ cap: "Evidence gap",    title: "No resume uploaded",              desc: "Upload your resume to Vault — AI will parse it into your career timeline in seconds.", icon: "📄", impact: "info", page: "aura",     btn: "Open Vault" })
   if (!hasSummary) gaps.push({ cap: "Visibility gap",  title: "Profile summary missing",        desc: "A strong summary increases role fit score and recruiter profile views 3×.",           icon: "✍️", impact: "warn", page: "aura",     btn: "Add summary" })
-  if (!hasExp)     gaps.push({ cap: "Profile gap",     title: "Timeline empty",                 desc: "Add career entries so your profile is visible to recruiters and Orbit can score it.",  icon: "📋", impact: "warn", page: "aura",     btn: "Add experience" })
+  // Career Timeline (add/edit experience entries) now lives in Orbit → Career
+  // Timeline, not Profile — Aura's professional Vault tab dropped its own
+  // duplicate Career Timeline widget (2026-07-24). Deep-link straight there.
+  if (!hasExp)     gaps.push({ cap: "Profile gap",     title: "Timeline empty",                 desc: "Add career entries so your profile is visible to recruiters and Orbit can score it.",  icon: "📋", impact: "warn", page: "orbit",    tab: "timeline", btn: "Add experience" })
 
   if (!gaps.length) {
     return (
@@ -415,7 +489,7 @@ function ActionGaps({ userData, onNavigate }) {
             <div style={{ fontSize: 12, color: MUT, lineHeight: 1.6, fontFamily: BODY, marginBottom: 10 }}>{g.desc}</div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <StatusChip type={g.impact}>{g.impact === "bad" ? "High impact" : g.impact === "warn" ? "Medium" : "Actionable"}</StatusChip>
-              <Btn small onClick={() => onNavigate(g.page)}>{g.btn} →</Btn>
+              <Btn small onClick={() => onNavigate({ page: g.page, tab: g.tab })}>{g.btn} →</Btn>
             </div>
           </div>
         </div>
@@ -666,6 +740,15 @@ export default function ProfessionalHome({ user, userData, setUserData, activeTa
           <SectionErrorBoundary name="home-weekly-check"><WeeklyCheckCard onNavigate={onNavigate} /></SectionErrorBoundary>
         </div>
 
+        {/* Company Status — Career OS Workstream 5, behind career_os_company flag */}
+        {FLAGS.career_os_company && (
+          <div style={{ marginBottom: 18 }}>
+            <SectionErrorBoundary name="home-company-status">
+              <CompanyStatusCard onNavigate={onNavigate} />
+            </SectionErrorBoundary>
+          </div>
+        )}
+
         {/* Embedded Career dashboard — formerly the standalone Orbit page's
             "Overview" tab. Wrapped so a failure here can't blank the rest of
             Home (Workstream 0-E error containment). */}
@@ -684,7 +767,7 @@ export default function ProfessionalHome({ user, userData, setUserData, activeTa
                 <div style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: INK }}>Profile gaps</div>
                 <div style={{ fontSize: 12, color: MUT, marginTop: 3, fontFamily: BODY }}>Resolve these to improve career scores.</div>
               </div>
-              <ActionGaps userData={userData} onNavigate={onNavigate} />
+              <ActionGaps userData={userData} onNavigate={navigateToPriority} />
             </Card>
           </SectionErrorBoundary>
 
@@ -696,11 +779,19 @@ export default function ProfessionalHome({ user, userData, setUserData, activeTa
               { icon: "📰", label: "Pulse",     page: "pulse",     color: "#16A34A" },
               { icon: "🚀", label: "Launchpad", page: "launchpad", color: "#3B82F6" },
             ].map((q, i) => (
-              <div key={i} onClick={() => onNavigate(q.page)} className="ph-action-card" style={{
-                padding: "14px 16px", background: CELL,
-                border: `1px solid ${BDR}`, borderRadius: r18,
-                cursor: "pointer", transition: "all 180ms cubic-bezier(0.16,1,0.3,1)",
-              }}>
+              <div
+                key={i}
+                role="button"
+                tabIndex={0}
+                aria-label={`Go to ${q.label}`}
+                onClick={() => onNavigate(q.page)}
+                onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onNavigate(q.page) } }}
+                className="ph-action-card"
+                style={{
+                  padding: "14px 16px", background: CELL,
+                  border: `1px solid ${BDR}`, borderRadius: r18,
+                  cursor: "pointer", transition: "all 180ms cubic-bezier(0.16,1,0.3,1)",
+                }}>
                 <div style={{ width: 36, height: 36, background: `${q.color}12`, border: `1px solid ${q.color}22`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, marginBottom: 10 }}>{q.icon}</div>
                 <div style={{ fontFamily: MONO, fontSize: 10, fontWeight: 800, color: q.color, letterSpacing: "0.1em", textTransform: "uppercase" }}>{q.label}</div>
               </div>

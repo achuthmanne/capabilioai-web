@@ -10,8 +10,22 @@
  * Mobile-first: one question at a time, big tap targets, immediate feedback,
  * short — designed to be finished in under a minute on a phone.
  */
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { weeklyCheckApi } from "../lib/api"
+
+// Keyboard support (Career OS Workstream 3, Part D): arrows navigate,
+// 1-4 select an option, Enter submits/advances. Mirrors
+// backend/server/lib/skillPulseV2/pulseProgress.js's mapKeyToIntent — kept
+// as a small local copy since frontend (Vite) and backend (Node) build
+// separately and can't share a module across that boundary directly.
+function mapKeyToIntent(key, optionCount) {
+  if (key === "Enter") return { type: "submit" }
+  if (key === "ArrowRight") return { type: "next" }
+  if (key === "ArrowLeft") return { type: "prev" }
+  const n = Number(key)
+  if (Number.isInteger(n) && n >= 1 && n <= optionCount) return { type: "select", optionIndex: n - 1 }
+  return null
+}
 
 const P    = "#8B5CF6"
 const INK  = "#1A1714"
@@ -37,8 +51,11 @@ function Spinner() {
 }
 
 function ProgressDots({ total, current }) {
+  // Purely decorative — the actual "Question N of total" text lives right
+  // below this in real DOM text, so hide the dots from screen readers
+  // instead of announcing a row of unlabeled divs (Tranche E, 2026-07-25).
   return (
-    <div style={{ display: "flex", gap: 6, justifyContent: "center", marginBottom: 18 }}>
+    <div aria-hidden="true" style={{ display: "flex", gap: 6, justifyContent: "center", marginBottom: 18 }}>
       {Array.from({ length: total }).map((_, i) => (
         <div key={i} style={{
           width: i === current ? 22 : 8, height: 8, borderRadius: 999,
@@ -65,6 +82,15 @@ export default function WeeklyCareerCheck({ user, onNavigate }) {
   async function load() {
     setState("loading")
     try {
+      // Career OS Workstream 3: always go through the coverage-gated v2
+      // generate endpoint first (idempotent — returns the existing pulse for
+      // this week if one's already there). The server decides v1 vs v2
+      // here; if the user's domain doesn't have approved question-bank
+      // coverage yet (true for every real user today), it transparently
+      // builds the same 5-question v1 flow this page has always shown — no
+      // behavior change for anyone until real bank content exists.
+      try { await weeklyCheckApi.v2Generate() } catch { /* honest empty state (no skills yet) surfaces via current() below */ }
+
       const res = await weeklyCheckApi.current()
       if (!res.available) { setState("unavailable"); return }
       setPulse(res.pulse)
@@ -72,6 +98,11 @@ export default function WeeklyCareerCheck({ user, onNavigate }) {
       const firstUnanswered = (res.questions || []).findIndex(q => !q.answered)
       if (res.pulse.status === "completed" || firstUnanswered === -1) {
         setState("done")
+        // Reloading a pulse that finished in a prior session only has the
+        // tally, not the full skills_refreshed/skills_to_revisit breakdown
+        // (that's returned once, at complete() time, by design — it's not
+        // persisted separately). That's fine: the summary still shows the
+        // honest score; the richer breakdown only shows right after finishing.
         setSummary({ correct: res.pulse.correct_count, total: res.pulse.question_count })
       } else {
         setIdx(firstUnanswered)
@@ -121,7 +152,11 @@ export default function WeeklyCareerCheck({ user, onNavigate }) {
       setState("loading")
       try {
         const res = await weeklyCheckApi.complete(pulse.id)
-        setSummary({ correct: res.correct_count, total: res.question_count })
+        setSummary({
+          correct: res.correct_count, total: res.question_count,
+          skillsRefreshed: res.skills_refreshed || [],
+          skillsToRevisit: res.skills_to_revisit || [],
+        })
         setState("done")
       } catch (e) {
         setErrorMsg(e.message || "Couldn't finish this week's Career Check")
@@ -132,6 +167,36 @@ export default function WeeklyCareerCheck({ user, onNavigate }) {
 
   const q = questions[idx]
 
+  // Keyboard support (Career OS Workstream 3, Part D): 1-4 select an option,
+  // Enter submits the answer (when active) or advances (when showing
+  // feedback), arrows step between options. Only wired up during the
+  // active/feedback question states — everywhere else keyboard input falls
+  // through to normal browser behavior.
+  const handleKey = useCallback((e) => {
+    if (state !== "active" && state !== "feedback") return
+    const intent = mapKeyToIntent(e.key, q?.options?.length || 0)
+    if (!intent) return
+    e.preventDefault()
+    if (state === "active") {
+      if (intent.type === "select") setSelected(q.options[intent.optionIndex]?.id)
+      else if (intent.type === "submit") submitAnswer()
+      else if (intent.type === "next" || intent.type === "prev") {
+        const dir = intent.type === "next" ? 1 : -1
+        const curIdx = (q.options || []).findIndex(o => o.id === selected)
+        const nextIdx = Math.max(0, Math.min((q.options || []).length - 1, (curIdx === -1 ? 0 : curIdx) + dir))
+        setSelected(q.options[nextIdx]?.id)
+      }
+    } else if (state === "feedback" && intent.type === "submit") {
+      next()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, q, selected])
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKey)
+    return () => window.removeEventListener("keydown", handleKey)
+  }, [handleKey])
+
   return (
     <div style={{
       flex: 1, minHeight: 0, overflowY: "auto",
@@ -141,7 +206,8 @@ export default function WeeklyCareerCheck({ user, onNavigate }) {
     }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');
-        .wcc-option { width: 100%; text-align: left; padding: 16px 18px; border-radius: 16px; border: 1.5px solid ${BDR}; background: ${SURF}; cursor: pointer; font-family: ${BODY}; font-size: 14px; color: ${INK2}; transition: all 150ms; margin-bottom: 10px; }
+        .wcc-option { position: relative; width: 100%; text-align: left; padding: 16px 18px; border-radius: 16px; border: 1.5px solid ${BDR}; background: ${SURF}; cursor: pointer; font-family: ${BODY}; font-size: 14px; color: ${INK2}; transition: all 150ms; margin-bottom: 10px; }
+        .wcc-option:focus-visible { outline: 2px solid ${P}; outline-offset: 2px; }
         .wcc-option:hover { border-color: ${P}55; }
         .wcc-option.picked { border-color: ${P}; background: ${P}0D; color: ${INK}; font-weight: 600; }
         .wcc-option.correct { border-color: ${GOOD}; background: #F0FDF4; color: ${GOOD}; font-weight: 700; }
@@ -155,7 +221,7 @@ export default function WeeklyCareerCheck({ user, onNavigate }) {
             <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: P, fontFamily: MONO }}>Weekly Career Check</div>
             <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 800, color: INK, marginTop: 4 }}>5-minute refresh</div>
           </div>
-          <button onClick={() => onNavigate?.("orbit")} style={{ background: "none", border: "none", color: MUT, fontSize: 20, cursor: "pointer" }}>✕</button>
+          <button onClick={() => onNavigate?.("orbit")} aria-label="Close and return to Orbit" style={{ background: "none", border: "none", color: MUT, fontSize: 20, cursor: "pointer" }}>✕</button>
         </div>
 
         {state === "loading" && <Spinner />}
@@ -202,12 +268,13 @@ export default function WeeklyCareerCheck({ user, onNavigate }) {
               {q.prompt}
             </div>
 
-            <div>
+            <div aria-label={`Answer options for question ${idx + 1}`}>
               {(q.options || []).map(opt => {
                 let cls = "wcc-option"
+                let srSuffix = ""
                 if (state === "feedback") {
-                  if (opt.id === lastResult?.correct_option_id) cls += " correct"
-                  else if (opt.id === selected) cls += " wrong"
+                  if (opt.id === lastResult?.correct_option_id) { cls += " correct"; srSuffix = " (correct answer)" }
+                  else if (opt.id === selected) { cls += " wrong"; srSuffix = " (your answer, incorrect)" }
                 } else if (opt.id === selected) cls += " picked"
                 return (
                   <button
@@ -215,8 +282,10 @@ export default function WeeklyCareerCheck({ user, onNavigate }) {
                     className={cls}
                     disabled={state === "feedback"}
                     onClick={() => setSelected(opt.id)}
+                    aria-pressed={state === "active" ? opt.id === selected : undefined}
                   >
                     {opt.text}
+                    {srSuffix && <span style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0,0,0,0)" }}>{srSuffix}</span>}
                   </button>
                 )
               })}
@@ -238,7 +307,7 @@ export default function WeeklyCareerCheck({ user, onNavigate }) {
 
             {state === "feedback" && (
               <div style={{ marginTop: 12 }}>
-                <div style={{
+                <div role="status" aria-live="polite" style={{
                   padding: "12px 14px", borderRadius: 14, marginBottom: 14,
                   background: lastResult?.is_correct ? "#F0FDF4" : "#FEF2F2",
                   border: `1px solid ${lastResult?.is_correct ? "rgba(22,163,74,0.2)" : "rgba(220,38,38,0.2)"}`,
@@ -264,6 +333,32 @@ export default function WeeklyCareerCheck({ user, onNavigate }) {
             <div style={{ fontSize: 12, color: MUT, marginBottom: 20, lineHeight: 1.6 }}>
               This nudges a few skill confidence scores — it's one signal among several, not the whole picture.
             </div>
+
+            {/* Career OS Workstream 3, Part D results requirements: skills
+                refreshed, skills to revisit, with visible bounded math
+                (never just a final number) — renders only when the
+                complete() response actually included this breakdown. */}
+            {!!(summary.skillsRefreshed?.length) && (
+              <div style={{ textAlign: "left", marginBottom: 14 }}>
+                <div style={{ fontSize: 10, fontWeight: 800, color: GOOD, letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: MONO, marginBottom: 8 }}>Skills refreshed</div>
+                {summary.skillsRefreshed.map(s => (
+                  <div key={s.skill_id} style={{ fontSize: 12, color: INK2, marginBottom: 4 }}>
+                    {s.skill_name || "Skill"} <span style={{ color: GOOD, fontWeight: 700 }}>+{s.delta}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {!!(summary.skillsToRevisit?.length) && (
+              <div style={{ textAlign: "left", marginBottom: 14 }}>
+                <div style={{ fontSize: 10, fontWeight: 800, color: MUT, letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: MONO, marginBottom: 8 }}>Skills to revisit</div>
+                {summary.skillsToRevisit.map(s => (
+                  <div key={s.skill_id} style={{ fontSize: 12, color: INK2, marginBottom: 4 }}>
+                    {s.skill_name || "Skill"} <span style={{ color: BAD, fontWeight: 700 }}>{s.delta}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <button onClick={() => onNavigate?.("orbit")} style={{ background: P, color: "#fff", border: "none", borderRadius: 14, padding: "12px 20px", fontWeight: 800, cursor: "pointer", fontSize: 12, fontFamily: MONO, letterSpacing: "0.04em", textTransform: "uppercase", width: "100%", marginBottom: 10 }}>
               See updated skill scores →
             </button>

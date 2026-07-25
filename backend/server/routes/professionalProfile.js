@@ -81,7 +81,15 @@ router.get("/pro/profile/:uid", async (req, res) => {
       viewer = user
     }
     if (viewer?.id !== uid) {
+      // NOTE: epfo_uan/phone/subscription_order_id are not real columns on
+      // profiles (grepped the schema — no match under any naming
+      // convention), so these three deletes have always been no-ops. Left
+      // as-is; not touched in this pass. The two real, live consent toggles
+      // below (Career OS Tranche 3, career_os_ws0_privacy_toggle_columns
+      // migration) are the actual enforcement this route needed.
       delete data.epfo_uan; delete data.phone; delete data.subscription_order_id
+      if (data.cert_visible === false) delete data.certifications
+      if (data.vault_visible === false) delete data.vault_files
     }
     res.json(data)
   } catch (e) { res.status(500).json({ error: e.message }) }

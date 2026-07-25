@@ -166,10 +166,25 @@ import careerTimelineRoutes      from "./server/routes/careerTimeline.js"
 import skillGraphRoutes          from "./server/routes/skillGraph.js"
 import weeklyPulseRoutes         from "./server/routes/weeklyPulse.js"
 import homeV1Routes              from "./server/routes/homeV1.js" // Career OS Workstream 1 — pro/v1/home/*
+import careerEventsV1Routes      from "./server/routes/careerEventsV1.js" // Career OS Workstream 2 — pro/v1/career/timeline
+import skillPulseV2Routes        from "./server/routes/skillPulseV2.js"  // Career OS Workstream 3 — pro/weekly/v2 (coverage-gated, falls back to v1)
+import questionBankAdminRoutes   from "./server/routes/questionBankAdmin.js" // Career OS Workstream 3 content-ops — admin/question-bank (internal, requireAdmin-gated)
 import forgeRoutes               from "./server/routes/forge.js"
 import aiInterviewRoutes         from "./server/routes/aiInterview.js"
 import recruiterCommsRoutes      from "./server/routes/recruiterComms.js"
-import mentorHubRoutes           from "./server/routes/mentorHub.js"
+// mentorHub.js is DEAD CODE — it queries mentor_profiles/mentor_bookings/
+// mentor_payouts tables that did not exist when it was written, and calls
+// supabaseAdmin.raw() (not a real method). Zero call sites in frontend/src
+// (mentorApi in frontend/src/lib/api.js is defined but never imported).
+// Its mount below is commented out (not deleted — kept for reference until
+// a follow-up cleanup commit removes the file entirely). The real mentor
+// marketplace is Career OS Workstream 4, mounted further down as
+// mentorMarketplaceRoutes / mentorMarketplaceAdminRoutes /
+// mentorMarketplaceWebhookRoutes at /api/pro/v1/mentor/*.
+// import mentorHubRoutes           from "./server/routes/mentorHub.js"
+import mentorMarketplaceRoutes        from "./server/routes/mentorMarketplace.js"        // Career OS Workstream 4 — /api/pro/v1/mentor/*, MENTOR_MARKETPLACE_V1_ENABLED-gated
+import mentorMarketplaceAdminRoutes   from "./server/routes/mentorMarketplaceAdmin.js"   // Career OS Workstream 4 — /api/admin/mentor/*, requireAdmin + flag-gated
+import mentorMarketplaceWebhookRoutes from "./server/routes/mentorMarketplaceWebhook.js" // Career OS Workstream 4 — Razorpay webhook, needs raw body (mounted separately below)
 import pulseNexusRoutes          from "./server/routes/pulseNexus.js"
 import orbitPlansRoutes          from "./server/routes/orbitPlans.js"
 import hardwareChallengesRoutes  from "./server/routes/hardwareChallenges.js"
@@ -179,6 +194,12 @@ import collegeRoutes             from "./server/routes/college.js"      // Colle
 import orgVerificationRoutes     from "./server/routes/orgVerification.js" // Institution OS bugfix — server-side profiles.verificationStatus write (PC-7 compliant)
 import orgJoinLinksRoutes        from "./server/routes/orgJoinLinks.js"    // Self-serve student join links — org_members, replaces one-by-one admin invite for ~1000-student rosters
 import orgCompanyLinksRoutes     from "./server/routes/orgCompanyLinks.js" // Talent Network <-> real company org account linkage + NDA workflow
+import companyRoutes             from "./server/routes/company.js"        // Career OS Workstream 5 — /api/pro/v1/company/*, COMPANY_MODULE_V1_ENABLED-gated (404s while off)
+import portfolioPublicRoutes     from "./server/routes/portfolioPublic.js" // Career OS Tranche 6 Priority 6A — /api/portfolio/lookup/:id, narrow field-whitelisted replacement for Portfolio.jsx's old client-side select("*") reads
+import opsDashboardRoutes        from "./server/routes/opsDashboard.js"    // Career OS Tranche 11 — /api/admin/ops/dashboard, requireAdmin-gated read-only monitoring snapshot
+import { opsMetricsMiddleware }  from "./server/lib/opsMetrics.js"         // Career OS Tranche 11 — in-process request error-rate/latency recorder
+import professionalEloRoutes     from "./server/routes/professionalElo.js" // Professional ELO (2026-07-25 product decision) — pro/elo/professional status+history
+import subscriptionWebhookRoutes from "./server/routes/subscriptionWebhook.js" // Tranche C (2026-07-25) — /api/webhooks/razorpay/subscription, needs raw body (mounted separately below)
 import { startGradingWorker }    from "./server/lib/grading-worker.js"
 
 // ─── App setup ────────────────────────────────────────────────────────────────
@@ -223,6 +244,26 @@ app.use(cors({
 // skips re-parsing a body that's already been parsed, so this is safe layering.
 app.use("/api/college/institutions", express.json({ limit: "4mb" }))
 
+// Mentor Marketplace Razorpay webhook — MUST be mounted with express.raw()
+// scoped to exactly this path, BEFORE the global express.json() below.
+// HMAC signature verification (webhook.js's verifyWebhookSignature) needs
+// the exact raw request bytes Razorpay signed; express.json() would parse
+// and re-serialize the body, changing the bytes and breaking verification.
+// Because this app.use() runs before the global express.json() call, and
+// Express body parsers are no-ops on a body express.json() didn't touch
+// (same "skip already-parsed" layering already used for the college.js 4mb
+// override above), this is safe — no other route's body parsing changes.
+app.use("/api/pro/v1/mentor/webhook/razorpay", express.raw({ type: "application/json" }))
+app.use("/api",              mentorMarketplaceWebhookRoutes) // pro/v1/mentor/webhook/razorpay — raw body, see above
+
+// Subscription/plan Razorpay webhook (Tranche C, 2026-07-25) — same raw-body
+// requirement and same reasoning as the mentor webhook above. This is a
+// safety net for the ALREADY-LIVE /api/create-order + /api/verify-payment
+// flow, which previously had no server-side recovery path if a client never
+// completed /verify-payment after Razorpay actually captured the payment.
+app.use("/api/webhooks/razorpay/subscription", express.raw({ type: "application/json" }))
+app.use("/api",              subscriptionWebhookRoutes) // webhooks/razorpay/subscription — raw body, see above
+
 // 512kb global limit — prevents large-body DDOS. Routes that genuinely need
 // more (PDF upload, resume extract) override locally with express.json({limit:"4mb"})
 app.use(express.json({ limit: "512kb" }))
@@ -242,6 +283,12 @@ app.use((req, res, next) => {
   res.on("close",   () => clearTimeout(timer))
   next()
 })
+
+// ─── Ops metrics — Career OS Tranche 11 ────────────────────────────────────────
+// Lightweight in-process request/error/latency recorder, read by
+// /api/admin/ops/dashboard (opsDashboard.js). Not a new monitoring platform —
+// see opsMetrics.js header for exactly what this is and its honest limits.
+app.use(opsMetricsMiddleware)
 
 // ─── Health ───────────────────────────────────────────────────────────────────
 app.get("/",       (_, res) => res.json({ status: "ok", service: "Capabilio Server", version: "3.0.0", arena: "15 roles · 14 workspaces · full proof pipeline" }))
@@ -270,6 +317,8 @@ app.use("/api/av2/challenges", arenaV2DeliveryRoutes) // Arena V2 rebuild, Miles
 app.use("/api/av2/submissions", arenaV2SubmissionRoutes) // Arena V2 rebuild, Milestone 8 — Submission API: POST / (submit an attempt, get back a graded Feedback DTO)
 app.use("/api/av2/portfolio",   arenaV2PortfolioRoutes)  // Arena V2 rebuild, Milestone 10 — Portfolio & Recruiter Evidence API
 app.use("/api/proofs",          proofsRoutes)            // Portfolio redesign — public Engineering Proofs API (no auth: portfolios are public pages)
+app.use("/api",                 portfolioPublicRoutes)    // Career OS Tranche 6 Priority 6A — portfolio/lookup/:identifier (no auth required; optional bearer for owner/session-fallback matching)
+app.use("/api/admin/ops",       opsDashboardRoutes)       // Career OS Tranche 11 — admin/ops/dashboard, requireAdmin-gated (dedicated namespace — see opsDashboard.js header for why NOT bare "/api/admin", same routing-shadow lesson as questionBankAdmin.js)
 app.use("/api/education",       educationRoutes)         // Education redesign Phase 1 — academic identity (education_profile) + achievements (proof_objects)
 app.use("/api/verification",    verificationRoutes)      // Trust & Verification Center Phase 1 — provider registry, hash-chained audit log
 app.use("/api/skill-studio", skillStudioRoutes)  // lesson, learning-path, youtube, resources
@@ -287,11 +336,24 @@ app.use("/api",              professionalProfileRoutes) // pro/profile, pro/epfo
 app.use("/api",              careerTimelineRoutes)      // pro/timeline, pro/vault
 app.use("/api",              skillGraphRoutes)          // pro/skills
 app.use("/api",              weeklyPulseRoutes)         // pro/weekly — Weekly Career Check
+app.use("/api",              professionalEloRoutes)     // pro/elo/professional — Professional ELO status+history (2026-07-25 product decision)
 app.use("/api",              homeV1Routes)              // pro/v1/home — Career OS Workstream 1 priority ranking
+app.use("/api",              careerEventsV1Routes)      // pro/v1/career/timeline — Career OS Workstream 2 unified timeline
+app.use("/api",              skillPulseV2Routes)        // pro/weekly/v2 — Career OS Workstream 3 (coverage-gated, falls back to v1)
+// 2026-07-24 ROUTING FIX: previously mounted at bare "/api", which let this
+// router's match-all requireAuth+requireAdmin middleware intercept every
+// request under /api handled by routers mounted after it (forge,
+// aiInterview, recruiterComms, pulseNexus, orbitPlans, hardwareChallenges,
+// mentor marketplace, etc.), wrongly 403'ing non-admin authenticated users
+// on unrelated endpoints. Now mounted at its own dedicated namespace — see
+// routes/questionBankAdmin.js header comment for the full root-cause writeup.
+app.use("/api/admin/question-bank", questionBankAdminRoutes) // admin/question-bank — internal content-ops workflow, requireAdmin-gated
 app.use("/api",              forgeRoutes)               // pro/forge
 app.use("/api",              aiInterviewRoutes)         // pro/interview
 app.use("/api",              recruiterCommsRoutes)      // jobs, recruiter/messages, offers
-app.use("/api",              mentorHubRoutes)           // mentors, mentors/bookings
+// app.use("/api",              mentorHubRoutes)         // DEAD CODE — see import comment above. Unmounted, not deleted.
+app.use("/api/pro/v1/mentor", mentorMarketplaceRoutes)  // Career OS Workstream 4 — mentor marketplace user-facing API (flag-gated)
+app.use("/api",               mentorMarketplaceAdminRoutes) // Career OS Workstream 4 — admin/mentor/* (requireAdmin + flag-gated)
 app.use("/api",              pulseNexusRoutes)          // pulse/feed, pulse/market-insights (Gemini Search), nexus/*
 app.use("/api",              orbitPlansRoutes)          // orbit/plans, intel/report
 app.use("/api",              hardwareChallengesRoutes)  // hardware/challenges, hardware/my-attempts
@@ -302,6 +364,7 @@ app.use("/api/college",       collegeRoutes)            // institutions/:id/{ros
 app.use("/api/org",           orgVerificationRoutes)    // verify-email — server-side PC-7-compliant write to profiles.verificationStatus
 app.use("/api/org",           orgJoinLinksRoutes)       // join-links (CRUD), join/:token (resolve + claim) — self-serve student onboarding
 app.use("/api/org",           orgCompanyLinksRoutes)    // company-links (invite w/ real-account matching), received, accept-nda, decline
+app.use("/api/pro/v1/company", companyRoutes)           // Career OS Workstream 5 — Company module user-facing API (flag-gated, 404s while off)
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 // BUG FIX (critical, see cluster block above): the primary process in a

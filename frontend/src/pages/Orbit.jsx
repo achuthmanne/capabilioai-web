@@ -1,13 +1,17 @@
 /**
  * Orbit.jsx — Professional Career Intelligence OS
  * Tab: Orbit (ELO dashboard)
- * Career Timeline and Vault are in Profile → Career & Vault / Vault tabs
+ * Career Timeline now lives here (Career → Timeline tab); document/verification
+ * Vault content is in Profile → Vault (renamed from "Career & Vault" 2026-07-24
+ * once Career Timeline moved fully to this module, to remove the duplication).
  * Supabase-native: uses userDoc.update() from lib/db
  */
 import { useState, useCallback, useRef, useEffect } from "react"
 import { userDoc } from "../lib/db"
-import { vaultApi, weeklyCheckApi, skillsApi } from "../lib/api"
+import { vaultApi, weeklyCheckApi, skillsApi, careerEventsApi, companyApi } from "../lib/api"
 import { getRoleConfig } from "../config/roleConfig"
+import { SectionErrorBoundary, EvidenceSourceBadge, OutcomeCard } from "../components/careeros/CareerOSUI"
+import { FLAGS } from "../config/featureFlags"
 
 const API = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
 
@@ -141,10 +145,10 @@ function Modal({show,onClose,title,children,width=580}){
   if(!show)return null
   return<div style={{position:"fixed",inset:0,zIndex:9000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
     <div style={{position:"absolute",inset:0,background:"rgba(15,15,14,.5)",backdropFilter:"blur(6px)"}} onClick={onClose}/>
-    <div style={{position:"relative",width:"100%",maxWidth:width,background:DS.surface,borderRadius:DS.r3,boxShadow:DS.sh3,overflow:"hidden",animation:"slideUp .25s ease",maxHeight:"90vh",display:"flex",flexDirection:"column"}}>
+    <div role="dialog" aria-modal="true" aria-label={typeof title === "string" ? title : "Dialog"} style={{position:"relative",width:"100%",maxWidth:width,background:DS.surface,borderRadius:DS.r3,boxShadow:DS.sh3,overflow:"hidden",animation:"slideUp .25s ease",maxHeight:"90vh",display:"flex",flexDirection:"column"}}>
       <div style={{padding:"18px 24px",borderBottom:`1px solid ${DS.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
         <div style={{fontFamily:DS.display,fontSize:17,fontWeight:800,color:DS.ink}}>{title}</div>
-        <button onClick={onClose} style={{width:30,height:30,borderRadius:8,border:`1px solid ${DS.border}`,background:DS.surface2,color:DS.ink3,fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",outline:"none"}}>×</button>
+        <button onClick={onClose} aria-label="Close dialog" style={{width:30,height:30,borderRadius:8,border:`1px solid ${DS.border}`,background:DS.surface2,color:DS.ink3,fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",outline:"none"}}>×</button>
       </div>
       <div style={{padding:"22px",overflowY:"auto"}}>{children}</div>
     </div>
@@ -161,11 +165,27 @@ function Inp({label,value,onChange,placeholder,type="text",mono=false}){
 // Home (ProfessionalHome.jsx imports OrbitDash directly). This page is now
 // reached via the "Career" nav item: identity, timeline, employment,
 // compensation, reputation.
+// Career OS Workstream 2 tab set (docs/career-os-implementation-plan.md,
+// Deliverable 2). IDs are additive/relabeled, never renamed out from under
+// existing callers: "timeline" keeps its original id (the employment-record
+// editor, now labeled "Employment" since that's what it actually does) so
+// every existing onNav("timeline")/CAREER_TABS reference elsewhere keeps
+// working untouched; the new career_events-backed chronological read view
+// gets a fresh id ("career_events") rather than reusing "timeline". "vault"
+// and "readiness" keep their ids and content, relabeled only. Company
+// Reviews is intentionally not a tab at all yet — its privacy architecture
+// (k-anonymity aggregation) doesn't exist until Workstream 6.
 const TABS=[
-  {id:"timeline",     label:"Timeline",     icon:"📋"},
-  {id:"vault",        label:"Verification", icon:"🔐"},
-  {id:"comp",         label:"Compensation", icon:"💰"},
-  {id:"readiness",    label:"Readiness",    icon:"🎯"},
+  {id:"overview",      label:"Overview",     icon:"🧭"},
+  {id:"career_events",   label:"Timeline",     icon:"📜"},
+  {id:"timeline",      label:"Employment",   icon:"🏢"},
+  {id:"vault",         label:"Verification", icon:"🔐"},
+  {id:"promotions",    label:"Promotions",   icon:"📈"},
+  {id:"achievements",  label:"Achievements", icon:"🏆"},
+  {id:"comp",          label:"Compensation", icon:"💰"},
+  {id:"readiness",     label:"Career Health",icon:"🎯"},
+  {id:"reputation",    label:"Reputation",   icon:"⭐"},
+  {id:"replay",        label:"Career Replay",icon:"🎬"},
 ]
 function TabBar({active,setActive,sig}){
   const avg=sig?Math.round((sig.role.score+sig.market.score+sig.proof.score+sig.mobility.score)/4):null
@@ -257,6 +277,14 @@ function LockedCard({ children, title, desc, requiredPlan="orbit_pro", onUpgrade
 }
 
 // ─── Score Card ───────────────────────────────────────────────────────────────
+// Card name kept internal-only (still literally called EloCard elsewhere in
+// this file) — but per Career OS Non-negotiable Rule #1, no bare internal
+// score number ships to a professional-facing screen without a plain-language
+// translation. This used to headline the raw 800-1800+ scale number in giant
+// mono type; the plain-language band ("Strong"/"Growing"/etc, from
+// scoreLabel()) is now the primary text, with the raw number demoted to a
+// small secondary readout next to it for users who want the exact figure
+// (2026-07-24 fix).
 function EloCard({name,icon,score,trend,confidence,color,cBg,cBd,desc,drivers=[],drags=[],action,actionLabel,onAction}){
   const[open,setOpen]=useState(false)
   const{label}=scoreLabel(score)
@@ -266,10 +294,13 @@ function EloCard({name,icon,score,trend,confidence,color,cBg,cBd,desc,drivers=[]
     <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:10}}>
       <div>
         <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:3}}><span style={{fontSize:15}}>{icon}</span><span style={{fontSize:12,fontWeight:700,color:DS.ink3}}>{name}</span></div>
-        <div style={{fontFamily:DS.mono,fontSize:27,fontWeight:700,color,lineHeight:1}}>{score}</div>
-        <div style={{display:"flex",alignItems:"center",gap:7,marginTop:5}}><Trend trend={trend}/><Tag color={color} bg={cBg} border={cBd}>{label}</Tag></div>
+        <div style={{display:"flex",alignItems:"baseline",gap:7}}>
+          <div style={{fontFamily:DS.display,fontSize:20,fontWeight:800,color,lineHeight:1}}>{label}</div>
+          <div style={{fontFamily:DS.mono,fontSize:12,fontWeight:600,color:DS.ink4,lineHeight:1}}>{score}/1800</div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:7,marginTop:5}}><Trend trend={trend}/><Tag color={confidence==="High"?DS.green:confidence==="Medium"?DS.amber:DS.red}>{confidence} confidence</Tag></div>
       </div>
-      <Ring score={score} color={color} size={58}/>
+      <Ring score={score} max={1800} color={color} size={58} label={label}/>
     </div>
     <Bar value={score} max={2000} color={color} h={4} style={{marginBottom:9}}/>
     <div style={{fontSize:11,color:DS.ink3,marginBottom:8}}><span style={{fontWeight:600,color:DS.ink4}}>Confidence: </span><span style={{color:confidence==="High"?DS.green:confidence==="Medium"?DS.amber:DS.red,fontWeight:700}}>{confidence}</span><span style={{color:DS.ink4}}> · {desc}</span></div>
@@ -346,10 +377,10 @@ function GapCard({ud,sig,locked,onUpgrade,onNav}){
   const role=ud?.targetRole||ud?.currentRole||getRoleConfig(ud).label
   const gaps=[
     {sev:"high",  item:"Employment Verification", impact:"Unverified history reduces trust score 40%.", fix:"Verify via EPFO/UAN in Profile → Vault",     navTarget:"aura"},
-    {sev:"high",  item:"Impact Language",          impact:"Profile lacks quantified outcomes (%, ₹, scale).", fix:"Add measurable outcomes in Profile → Career & Vault", navTarget:"aura"},
+    {sev:"high",  item:"Impact Language",          impact:"Profile lacks quantified outcomes (%, ₹, scale).", fix:"Add measurable outcomes in Profile → Vault", navTarget:"aura"},
     {sev:"medium",item:"Cloud Skills (AWS/GCP)",   impact:"Requested in 78% of target role JDs.",   fix:"Add cloud skills in Forge → Proof Forge",    navTarget:"forge"},
     {sev:"medium",item:"System Design Proof",       impact:"Required for Senior+ roles.",             fix:"Add a Systems Design project in Profile → Vault", navTarget:"aura"},
-    {sev:"low",   item:"Leadership Evidence",       impact:"No team lead or mentorship proof.",       fix:"Document leadership in Profile → Career & Vault", navTarget:"aura"},
+    {sev:"low",   item:"Leadership Evidence",       impact:"No team lead or mentorship proof.",       fix:"Document leadership in Profile → Vault", navTarget:"aura"},
     {sev:"low",   item:"TypeScript / Modern Stack", impact:"Growing demand, low substitution cost.",  fix:"Add to skill graph in Forge",                 navTarget:"forge"},
   ]
   const hi=gaps.filter(g=>g.sev==="high").length
@@ -418,7 +449,9 @@ function RiskCard({sig,onLayoff}){
   const res=Math.round((sig.mobility.score/2000)*100)
   return<Card style={{borderTop:`3px solid ${rc}`}}>
     <SL color={rc}>🛡 Career Resilience</SL>
-    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:9}}><div><div style={{fontFamily:DS.mono,fontSize:17,fontWeight:700,color:rc}}>Layoff Risk: {risk}</div><div style={{fontSize:11,color:DS.ink3,marginTop:1}}>Career Mobility {sig.mobility.score} · {res}% resilience</div></div><Ring score={res} max={100} color={rc} size={50} label="RES"/></div>
+    {/* Bare "Career Mobility {score}" raw number removed (2026-07-24) —
+        {res}% resilience already says the same thing in plain language. */}
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:9}}><div><div style={{fontFamily:DS.mono,fontSize:17,fontWeight:700,color:rc}}>Layoff Risk: {risk}</div><div style={{fontSize:11,color:DS.ink3,marginTop:1}}>{res}% career resilience</div></div><Ring score={res} max={100} color={rc} size={50} label="RES"/></div>
     <Bar value={res} color={rc} h={4} style={{marginBottom:11}}/>
     <div style={{padding:"8px 11px",background:risk==="High"?DS.rBg:risk==="Medium"?DS.aBg:DS.gBg,border:`1px solid ${risk==="High"?DS.rBd:risk==="Medium"?DS.aBd:DS.gBd}`,borderRadius:DS.r,fontSize:11,color:rc,marginBottom:10}}>{risk==="High"?"⚠️ Low mobility. A layoff today means a 4–8 month search.":risk==="Medium"?"⚡ Moderate resilience. Improve proof and skills.":"✓ Well-positioned to transition within 60 days."}</div>
     <Btn onClick={onLayoff} variant="danger" full>Activate Layoff Mode →</Btn>
@@ -448,7 +481,12 @@ function HealthCard({sig,onNav}){
     <Bar value={pct} color={pc} h={5} style={{marginBottom:12}}/>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:1,marginBottom:10}}>
       {checks.map((c,i)=>(
-        <div key={i} onClick={!c.done?()=>onNav&&onNav(c.tab):undefined}
+        <div key={i}
+          role={!c.done ? "button" : undefined}
+          tabIndex={!c.done ? 0 : undefined}
+          aria-label={!c.done ? `Complete: ${c.l}` : undefined}
+          onClick={!c.done?()=>onNav&&onNav(c.tab):undefined}
+          onKeyDown={!c.done?(e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();onNav&&onNav(c.tab)}}):undefined}
           style={{display:"flex",alignItems:"center",gap:6,padding:"5px 4px",borderRadius:6,cursor:c.done?"default":"pointer",transition:"background .12s"}}
           onMouseEnter={e=>{if(!c.done)e.currentTarget.style.background=DS.surface2}}
           onMouseLeave={e=>{e.currentTarget.style.background="transparent"}}>
@@ -709,7 +747,7 @@ function ResumeModal({show,onClose,user,ud,onSave}){
       // right there in what they uploaded. Same "don't clobber a manual value" guard.
       if(parsed?.title&&!ud?.targetRole)u.targetRole=parsed.title
       u.lastResumeUpload=new Date().toISOString()
-      // Add resume file to vaultFiles so it appears in Career & Vault simple vault
+      // Add resume file to vaultFiles so it appears in Profile → Vault
       if(file){
         const vaultEntry={id:Date.now().toString(),name:file.name,category:"Resume",size:file.size,url:null,uploadedAt:new Date().toISOString(),_source:"resume"}
         const existing=(ud?.vaultFiles||[]).filter(f=>!(f.category==="Resume"&&f.name===file.name))
@@ -736,7 +774,11 @@ function ResumeModal({show,onClose,user,ud,onSave}){
   return<Modal show={show} onClose={()=>{reset();onClose()}} title="Import Resume" width={600}>
     {stage==="upload"&&<div>
       <div style={{marginBottom:18}}>
-        <div onClick={()=>ref.current?.click()} style={{border:`2px dashed ${DS.primary}`,borderRadius:DS.r2,padding:"34px 22px",textAlign:"center",cursor:"pointer",background:DS.pBg}} onDragOver={e=>{e.preventDefault()}} onDrop={e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f)handle(f)}}>
+        <div
+          role="button" tabIndex={0} aria-label="Browse for a resume file to upload"
+          onClick={()=>ref.current?.click()}
+          onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();ref.current?.click()}}}
+          style={{border:`2px dashed ${DS.primary}`,borderRadius:DS.r2,padding:"34px 22px",textAlign:"center",cursor:"pointer",background:DS.pBg}} onDragOver={e=>{e.preventDefault()}} onDrop={e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f)handle(f)}}>
           <div style={{fontSize:30,marginBottom:7}}>📄</div><div style={{fontSize:13,fontWeight:700,color:DS.primary}}>Drop PDF or DOCX here, or click to browse</div><div style={{fontSize:11,color:DS.ink4,marginTop:3}}>Extracts employment, skills, projects, and summary automatically</div>
         </div>
         <input ref={ref} type="file" accept=".pdf,.docx" style={{display:"none"}} onChange={e=>{const f=e.target.files[0];if(f)handle(f)}}/>
@@ -754,12 +796,41 @@ function ResumeModal({show,onClose,user,ud,onSave}){
       <div style={{display:"flex",gap:9,marginTop:14}}><Btn onClick={reset} variant="ghost" style={{flex:1}}>Re-upload</Btn><Btn onClick={save} full style={{flex:2}}>Save as Draft Entries →</Btn></div>
     </div>}
     {stage==="saving"&&<div style={{textAlign:"center",padding:"40px"}}><Spin size={36}/><div style={{fontSize:13,fontWeight:600,color:DS.ink,marginTop:13}}>Saving to profile…</div></div>}
-    {stage==="done"&&<div style={{textAlign:"center",padding:"30px"}}><div style={{fontSize:38,marginBottom:11}}>✓</div><div style={{fontFamily:DS.display,fontSize:17,fontWeight:800,color:DS.green}}>Profile updated successfully</div><div style={{fontSize:12,color:DS.ink3,marginTop:7,marginBottom:18}}>Experience and skills saved. View them in your Profile → Career & Vault tab.</div><Btn onClick={()=>{reset();onClose()}} variant="success">Done ✓</Btn></div>}
+    {stage==="done"&&<div style={{textAlign:"center",padding:"30px"}}><div style={{fontSize:38,marginBottom:11}}>✓</div><div style={{fontFamily:DS.display,fontSize:17,fontWeight:800,color:DS.green}}>Profile updated successfully</div><div style={{fontSize:12,color:DS.ink3,marginTop:7,marginBottom:18}}>Experience saved to your Career Timeline here; certifications, education, and projects are in Profile → Vault.</div><Btn onClick={()=>{reset();onClose()}} variant="success">Done ✓</Btn></div>}
   </Modal>
 }
 
 // ─── Timeline Tab ─────────────────────────────────────────────────────────────
-function TimelineTab({ud,user,onSave}){
+// ── Link-employer nudge (Career OS Workstream 5 follow-through) ──────────
+// Cross-links Career's real employment history to the real Company module
+// instead of rebuilding company search/link here. Shown only when: the flag
+// is on, the caller has at least one current (isCurrent) employment entry,
+// and profiles.company_id is genuinely unset (companyApi.me(), not a guess
+// from the free-text `experiences` field — jobs.company/experiences.company
+// stay free-text per the WS5 compatibility plan, never auto-linked). Fails
+// quiet (renders nothing) on load error, same pattern as Home's
+// CompanyStatusCard — this is a nudge, not a required step.
+function LinkEmployerNudge({hasCurrentEmployer,onNavigate}){
+  const[state,setState]=useState("loading") // loading | not_linked | linked | error
+  useEffect(()=>{
+    if(!FLAGS.career_os_company||!hasCurrentEmployer){setState("skip");return}
+    let cancelled=false
+    companyApi.me()
+      .then(res=>{ if(!cancelled) setState(res?.company_id?"linked":"not_linked") })
+      .catch(()=>{ if(!cancelled) setState("error") })
+    return ()=>{cancelled=true}
+  },[hasCurrentEmployer])
+
+  if(state!=="not_linked") return null
+  return (
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap",padding:"12px 16px",background:DS.pBg||"rgba(99,102,241,0.06)",border:`1px solid ${DS.pBd||DS.border}`,borderRadius:DS.r,marginBottom:16}}>
+      <div style={{fontSize:12,color:DS.ink2}}>Is your current employer on Capabilio? Link it to unlock company-specific insights.</div>
+      <button onClick={()=>onNavigate&&onNavigate("company")} style={{padding:"6px 14px",background:DS.primary,border:"none",borderRadius:DS.r,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>Link company →</button>
+    </div>
+  )
+}
+
+function TimelineTab({ud,user,onSave,onNavigate}){
   const[showAdd,setShowAdd]=useState(false)
   const[edit,setEdit]=useState(null)
   const[saving,setSaving]=useState(false)
@@ -795,6 +866,7 @@ function TimelineTab({ud,user,onSave}){
       <div><div style={{fontFamily:DS.display,fontSize:20,fontWeight:800,color:DS.ink}}>Career Timeline</div><div style={{fontSize:13,color:DS.ink3,marginTop:1}}>{exps.length} entries · {exps.filter(e=>e.verificationStatus==="verified").length} verified</div></div>
       <Btn onClick={()=>{setForm(blank);setEdit(null);setShowAdd(true)}}>+ Add Entry</Btn>
     </div>
+    <LinkEmployerNudge hasCurrentEmployer={exps.some(e=>e.isCurrent)} onNavigate={onNavigate}/>
     {exps.length===0?<Empty icon="🏢" title="No employment history yet" body="Add your work history manually or import via resume ingestion." action={<Btn onClick={()=>setShowAdd(true)}>Add First Entry</Btn>}/>:
     exps.map((e,i)=><div key={i} style={{position:"relative",paddingLeft:30,marginBottom:18}}>
       <div style={{position:"absolute",left:9,top:0,bottom:-18,width:2,background:i<exps.length-1?DS.border2:"transparent"}}/>
@@ -1013,20 +1085,43 @@ function OrbitDash({ud,user,onSave,onNav,onPricing}){
       <Btn onClick={()=>setShowResume(true)}>Import Resume →</Btn>
     </div>}
 
-    {/* Career Health Panel */}
+    {/* Career Health Panel — headline number demoted to secondary and the
+        plain-language band promoted to primary (2026-07-24 fix, same
+        treatment as EloCard below): a bare "1053" with no explanation is
+        exactly the score-with-no-translation pattern Career OS Rule #1
+        forbids, and this panel duplicated the 4 ELO cards' own numbers with
+        no plain-language framing at all. */}
     <Card style={{marginBottom:18,padding:"15px 20px"}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:14}}>
         <div>
-          <div style={{fontSize:10,fontWeight:700,color:DS.ink4,letterSpacing:2.2,fontFamily:DS.mono,textTransform:"uppercase"}}>Career Health Score</div>
-          <div style={{fontFamily:DS.mono,fontSize:30,fontWeight:700,color:DS.primary,lineHeight:1.1}}>{avg}</div>
+          <div style={{fontSize:10,fontWeight:700,color:DS.ink4,letterSpacing:2.2,fontFamily:DS.mono,textTransform:"uppercase"}}>Career Health</div>
+          <div style={{display:"flex",alignItems:"baseline",gap:8}}>
+            <div style={{fontFamily:DS.display,fontSize:22,fontWeight:800,color:DS.primary,lineHeight:1.1}}>{scoreLabel(avg).label}</div>
+            <div style={{fontFamily:DS.mono,fontSize:12,fontWeight:600,color:DS.ink4}}>{avg}/1800</div>
+          </div>
           <div style={{fontSize:10,color:DS.ink4,marginTop:2,fontFamily:DS.mono}}>
             {avg<800?"Build skills & verify employment to grow":avg<1000?"Add proof & verifications to progress":avg<1200?"Broaden skills & add project evidence":avg<1500?"Add leadership & impact signals":"Elite · market-leading profile"}
+          </div>
+          {/* Tranche A (2026-07-25): this score and the four cards below it
+              are profile-completeness / recruiter-facing signals (resume
+              depth, verification, target-role clarity) — they move when you
+              edit your profile, by design. They are deliberately NOT the
+              same thing as your Professional ELO (Skills tab), which only
+              moves from real Weekly Skill Pulse assessment performance. This
+              note exists so the two scores are never mistaken for each
+              other. */}
+          <div style={{fontSize:10,color:DS.ink4,marginTop:6,maxWidth:360,lineHeight:1.5}}>
+            Profile-strength signal, not a skill-truth score — see <b>Skills → Professional ELO</b> for your assessment-driven rating.
           </div>
         </div>
         <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
           {[{l:"Role Fit",s:sig.role.score,c:DS.primary,tab:"forge"},{l:"Market",s:sig.market.score,c:DS.blue,tab:"orbit"},{l:"Proof",s:sig.proof.score,c:DS.purple,tab:"vault"},{l:"Mobility",s:sig.mobility.score,c:DS.green,tab:"forge"}].map((x,i)=>(
-            <div key={i} style={{textAlign:"center",cursor:"pointer"}} onClick={()=>onNav(x.tab)}>
-              <div style={{fontFamily:DS.mono,fontSize:17,fontWeight:700,color:x.c}}>{x.s}</div>
+            <div key={i}
+              role="button" tabIndex={0} aria-label={`View ${x.l}`}
+              onClick={()=>onNav(x.tab)}
+              onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();onNav(x.tab)}}}
+              style={{textAlign:"center",cursor:"pointer"}}>
+              <div style={{fontFamily:DS.display,fontSize:13,fontWeight:800,color:x.c}}>{scoreLabel(x.s).label}</div>
               <div style={{fontSize:9,fontWeight:700,color:DS.ink4,textTransform:"uppercase",letterSpacing:1,fontFamily:DS.mono}}>{x.l}</div>
               <div style={{fontSize:9,color:DS.ink4,marginTop:1}}>→ view</div>
             </div>
@@ -1193,12 +1288,170 @@ function ReadinessTab({ud,user,onSave,onNav}){
 // body under a live TabBar. The `activeTab`/`setActiveTab` props below are
 // now treated as a one-shot deep-link *request* only (e.g. Home's onDashNav
 // asking Career to open directly on "comp") — consumed once, then ignored.
-const ORBIT_TAB_IDS = new Set(["timeline","vault","comp","readiness"])
+// ─── Career OS Workstream 2 — new tabs ─────────────────────────────────────────
+function ComingNextTab({icon,title,body}){
+  return<div style={{maxWidth:640,margin:"0 auto",padding:"48px 24px"}}><Empty icon={icon} title={`${title} — coming next`} body={body}/></div>
+}
+
+// Overview — outcome-first summary (Career OS Non-negotiable Rule #1: no bare
+// ELO/score numbers here, only the same plain-language confidence bands
+// computeSignals() already produces, translated into sentences + drivers).
+function OverviewTab({ud, sig, onNav}){
+  const [recent, setRecent] = useState({state:"loading", events:[]})
+
+  useEffect(()=>{
+    let cancelled=false
+    careerEventsApi.getTimeline({limit:3})
+      .then(res=>{ if(!cancelled) setRecent({state:"ready", events:res.events||[]}) })
+      .catch(()=>!cancelled && setRecent({state:"error", events:[]}))
+    return ()=>{cancelled=true}
+  },[])
+
+  const m = sig.meta
+  const bandTone = c => c==="High" ? "good" : c==="Medium" ? "info" : "neutral"
+
+  const cards = [
+    { label:"Role fit",        outcome:sig.role.confidence==="High"?"Strong fit":sig.role.confidence==="Medium"?"Reasonable fit":"Early stage",
+      drivers:[`${m.yoe} year${m.yoe===1?"":"s"} of experience on record`, `${m.verified} verified employment ${m.verified===1?"entry":"entries"}`],
+      basis:"Experience, skills, and verification on your profile", tone:bandTone(sig.role.confidence) },
+    { label:"Market standing", outcome:sig.market.confidence==="High"?"Competitive":"Building",
+      drivers:[`${m.skills} skills mapped`, m.hasTarget?`Target role set`:"No target role set yet"],
+      basis:"Skill breadth and target-role alignment", tone:bandTone(sig.market.confidence) },
+    { label:"Proof strength",  outcome:sig.proof.confidence==="High"?"Well-evidenced":"Needs evidence",
+      drivers:[m.hasUAN?"Employment verified (UAN)":"Employment not yet verified", m.hasVault?"Documents in Vault":"No documents uploaded"],
+      basis:"Verification and document evidence", tone:bandTone(sig.proof.confidence) },
+    { label:"Mobility readiness", outcome:sig.mobility.confidence==="High"?"Ready to move":"Building readiness",
+      drivers:[m.hasTarget?"Target role set":"Set a target role to improve this", m.hasSummary?"Profile summary added":"No profile summary yet"],
+      basis:"Target-role clarity and profile completeness", tone:bandTone(sig.mobility.confidence) },
+  ]
+
+  return<div style={{maxWidth:820,margin:"0 auto",padding:"24px"}}>
+    <div style={{marginBottom:18}}>
+      <div style={{fontFamily:DS.display,fontSize:20,fontWeight:800,color:DS.ink}}>Career Overview</div>
+      <div style={{fontSize:13,color:DS.ink3,marginTop:1}}>{ud?.targetRole ? `Target role: ${ud.targetRole}` : "No target role set — set one to sharpen every signal below."}</div>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:12,marginBottom:22}}>
+      {cards.map((c,i)=><OutcomeCard key={i} {...c}/>)}
+    </div>
+    <Card>
+      <SL>Recent milestones</SL>
+      {recent.state==="loading" && <div style={{fontSize:12,color:DS.ink4}}>Loading…</div>}
+      {recent.state==="error" && <div style={{fontSize:12,color:DS.red}}>Couldn&apos;t load recent milestones right now.</div>}
+      {recent.state==="ready" && recent.events.length===0 && <div style={{fontSize:12,color:DS.ink3}}>No milestones yet — they&apos;ll appear here as your employment, certifications, and other career events sync in.</div>}
+      {recent.state==="ready" && recent.events.map(e=>(
+        <div key={e.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${DS.border}`,gap:10}}>
+          <div style={{minWidth:0}}>
+            <div style={{fontSize:13,fontWeight:600,color:DS.ink}}>{e.title || e.event_type}</div>
+            <div style={{fontSize:11,color:DS.ink4}}>{e.occurred_at ? new Date(e.occurred_at).toLocaleDateString() : ""}</div>
+          </div>
+          <EvidenceSourceBadge source={e.evidence_source}/>
+        </div>
+      ))}
+      <button onClick={()=>onNav("career_events")} style={{marginTop:10,background:"none",border:"none",color:DS.primary,fontSize:12,fontWeight:700,cursor:"pointer"}}>View full timeline →</button>
+    </Card>
+  </div>
+}
+
+// Timeline (v2) — the single canonical read view, backed entirely by
+// GET /api/pro/v1/career/timeline (Career OS Workstream 2). Never combines
+// tables itself; every field it renders comes straight from that response.
+function CareerEventsTimelineTab(){
+  const [state, setState] = useState("loading") // loading | ready | empty | error
+  const [events, setEvents] = useState([])
+  const [cursor, setCursor] = useState(null)
+  const [loadingMore, setLoadingMore] = useState(false)
+
+  const load = useCallback((afterCursor)=>{
+    const setter = afterCursor ? setLoadingMore : setState
+    setter(afterCursor ? true : "loading")
+    careerEventsApi.getTimeline({ cursor: afterCursor, limit: 20 })
+      .then(res=>{
+        setEvents(prev => afterCursor ? [...prev, ...(res.events||[])] : (res.events||[]))
+        setCursor(res.pagination?.nextCursor || null)
+        if (!afterCursor) setState((res.events||[]).length ? "ready" : "empty")
+        if (afterCursor) setLoadingMore(false)
+      })
+      .catch(()=>{ if (afterCursor) setLoadingMore(false); else setState("error") })
+  },[])
+
+  useEffect(()=>{ load(null) },[load])
+
+  if(state==="loading") return<div style={{maxWidth:720,margin:"0 auto",padding:"48px 24px",textAlign:"center",color:DS.ink4,fontSize:13}}>Loading your timeline…</div>
+  if(state==="error") return<div style={{maxWidth:720,margin:"0 auto",padding:"48px 24px"}}><Empty icon="⚠️" title="Couldn't load your timeline" body="Something went wrong loading your career timeline. Try reopening this tab."/></div>
+  if(state==="empty") return<div style={{maxWidth:720,margin:"0 auto",padding:"48px 24px"}}><Empty icon="📜" title="Your timeline is empty" body="Add employment entries or upload your resume — verified milestones will appear here automatically as your career data syncs in."/></div>
+
+  return<div style={{maxWidth:720,margin:"0 auto",padding:"24px"}}>
+    <div style={{marginBottom:18}}>
+      <div style={{fontFamily:DS.display,fontSize:20,fontWeight:800,color:DS.ink}}>Timeline</div>
+      <div style={{fontSize:13,color:DS.ink3,marginTop:1}}>{events.length} milestone{events.length===1?"":"s"}</div>
+    </div>
+    {events.map((e,i)=><div key={e.id} style={{position:"relative",paddingLeft:30,marginBottom:16}}>
+      <div style={{position:"absolute",left:9,top:0,bottom:-16,width:2,background:i<events.length-1?DS.border2:"transparent"}}/>
+      <div style={{position:"absolute",left:3,top:9,width:13,height:13,borderRadius:"50%",background:e.verification_status==="verified"?DS.green:DS.border2,border:`2px solid ${DS.surface}`}}/>
+      <Card>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,marginBottom:6}}>
+          <div>
+            <div style={{fontFamily:DS.display,fontSize:14,fontWeight:800,color:DS.ink}}>{e.title || e.event_type}</div>
+            <div style={{fontSize:11,color:DS.ink4,marginTop:1}}>{e.occurred_at ? new Date(e.occurred_at).toLocaleDateString() : ""}</div>
+          </div>
+          <EvidenceSourceBadge source={e.evidence_source}/>
+        </div>
+        {e.summary && <div style={{fontSize:12,color:DS.ink3,lineHeight:1.6}}>{e.summary}</div>}
+      </Card>
+    </div>)}
+    {cursor && <Btn variant="ghost" full onClick={()=>load(cursor)} loading={loadingMore}>Load more</Btn>}
+  </div>
+}
+
+// Career Replay — same canonical endpoint, a chronological (oldest-first)
+// visual read of it. Not a second data model (Workstream 2 requirement).
+function CareerReplayTab(){
+  const [state, setState] = useState("loading")
+  const [events, setEvents] = useState([])
+
+  useEffect(()=>{
+    let cancelled=false
+    careerEventsApi.getTimeline({limit:50})
+      .then(res=>{
+        if(cancelled) return
+        const list=(res.events||[]).slice().reverse() // oldest first — a replay reads forward through time
+        setEvents(list)
+        setState(list.length ? "ready" : "empty")
+      })
+      .catch(()=>!cancelled && setState("error"))
+    return ()=>{cancelled=true}
+  },[])
+
+  if(state==="loading") return<div style={{maxWidth:640,margin:"0 auto",padding:"48px 24px",textAlign:"center",color:DS.ink4,fontSize:13}}>Loading your Career Replay…</div>
+  if(state==="error") return<div style={{maxWidth:640,margin:"0 auto",padding:"48px 24px"}}><Empty icon="⚠️" title="Couldn't load Career Replay" body="Something went wrong. Try reopening this tab."/></div>
+  if(state==="empty") return<div style={{maxWidth:640,margin:"0 auto",padding:"48px 24px"}}><Empty icon="🎬" title="Nothing to replay yet" body="Career Replay tells your story once you have employment history, certifications, or other milestones on your timeline."/></div>
+
+  return<div style={{maxWidth:640,margin:"0 auto",padding:"24px"}}>
+    <div style={{marginBottom:22,textAlign:"center"}}>
+      <div style={{fontFamily:DS.display,fontSize:22,fontWeight:800,color:DS.ink}}>Your Career Replay</div>
+      <div style={{fontSize:13,color:DS.ink3,marginTop:4}}>{events.length} moments, in order</div>
+    </div>
+    {events.map((e,i)=><div key={e.id} style={{display:"flex",gap:16,marginBottom:22}}>
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",flexShrink:0}}>
+        <div style={{width:34,height:34,borderRadius:"50%",background:DS.pBg,border:`2px solid ${DS.primary}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>{i+1}</div>
+        {i<events.length-1 && <div style={{flex:1,width:2,background:DS.border2,marginTop:4}}/>}
+      </div>
+      <div style={{flex:1,paddingBottom:6}}>
+        <div style={{fontSize:11,color:DS.ink4,marginBottom:3}}>{e.occurred_at ? new Date(e.occurred_at).toLocaleDateString(undefined,{month:"long",year:"numeric"}) : ""}</div>
+        <div style={{fontFamily:DS.display,fontSize:16,fontWeight:800,color:DS.ink,marginBottom:4}}>{e.title || e.event_type}</div>
+        {e.summary && <div style={{fontSize:13,color:DS.ink3,lineHeight:1.6,marginBottom:6}}>{e.summary}</div>}
+        <EvidenceSourceBadge source={e.evidence_source}/>
+      </div>
+    </div>)}
+  </div>
+}
+
+const ORBIT_TAB_IDS = new Set(["overview","career_events","timeline","vault","promotions","achievements","comp","readiness","reputation","replay"])
 
 export default function Orbit({user,userData,setUserData,activeTab:initialTabProp,setActiveTab:setActiveTabProp,onNavigate,onNavigatePricing}){
   const[saving,setSaving]=useState(false)
   const[tab,setLocalTab]=useState(
-    (initialTabProp && ORBIT_TAB_IDS.has(initialTabProp)) ? initialTabProp : "timeline"
+    (initialTabProp && ORBIT_TAB_IDS.has(initialTabProp)) ? initialTabProp : "overview"
   )
   const setTab=setLocalTab // local-only from here on; never writes back to App.jsx's shared state
 
@@ -1231,17 +1484,23 @@ export default function Orbit({user,userData,setUserData,activeTab:initialTabPro
     if(["forge","launchpad","pulse","nexus","aura","weeklycheck","professionalHome"].includes(t))onNavigate(t)
     else setTab(t)
   }
-  // Legacy safety net: "orbit"/Overview tab was removed from this page (it now
-  // lives embedded in Home) — if anything still requests it, land on Timeline.
-  const effectiveTab = tab==="orbit" ? "timeline" : tab
+  // Legacy safety net: the old "orbit"/Overview id now maps to the real
+  // "overview" tab (Career OS Workstream 2) instead of Timeline.
+  const effectiveTab = tab==="orbit" ? "overview" : tab
 
   return<div style={{background:DS.bg,flex:1,minHeight:0,overflowY:"auto",fontFamily:DS.body}}>
     <style>{G}</style>
     <TabBar active={effectiveTab} setActive={setTab} sig={sig}/>
-    {effectiveTab==="timeline" &&<TimelineTab     ud={userData} user={user} onSave={onSave}/>}
-    {tab==="vault"    &&<VaultTab        ud={userData} user={user} onSave={onSave}/>}
-    {tab==="comp"     &&<CompTab         ud={userData} user={user} onSave={onSave} onNav={handleNav} onPricing={onNavigatePricing}/>}
-    {tab==="readiness"&&<ReadinessTab    ud={userData} user={user} onSave={onSave} onNav={handleNav}/>}
+    {effectiveTab==="overview"     &&<SectionErrorBoundary name="career-overview"><OverviewTab ud={userData} sig={sig} onNav={handleNav}/></SectionErrorBoundary>}
+    {effectiveTab==="career_events"&&<SectionErrorBoundary name="career-timeline-v2"><CareerEventsTimelineTab /></SectionErrorBoundary>}
+    {effectiveTab==="timeline"     &&<SectionErrorBoundary name="career-employment"><TimelineTab ud={userData} user={user} onSave={onSave} onNavigate={onNavigate}/></SectionErrorBoundary>}
+    {tab==="vault"                 &&<SectionErrorBoundary name="career-verification"><VaultTab ud={userData} user={user} onSave={onSave}/></SectionErrorBoundary>}
+    {tab==="promotions"            &&<SectionErrorBoundary name="career-promotions"><ComingNextTab icon="📈" title="Promotions" body="Target-role competency mapping, evidence gaps, and a readiness trend will appear here once the Promotions module ships (Workstream 2 follow-up)." /></SectionErrorBoundary>}
+    {tab==="achievements"          &&<SectionErrorBoundary name="career-achievements"><ComingNextTab icon="🏆" title="Achievements" body="Structured problem/action/result/proof entries will appear here once the Achievements module ships." /></SectionErrorBoundary>}
+    {tab==="comp"                  &&<SectionErrorBoundary name="career-compensation"><CompTab ud={userData} user={user} onSave={onSave} onNav={handleNav} onPricing={onNavigatePricing}/></SectionErrorBoundary>}
+    {tab==="readiness"             &&<SectionErrorBoundary name="career-health"><ReadinessTab ud={userData} user={user} onSave={onSave} onNav={handleNav}/></SectionErrorBoundary>}
+    {tab==="reputation"            &&<SectionErrorBoundary name="career-reputation"><ComingNextTab icon="⭐" title="Reputation" body="Verified-skill, verified-employment, and portfolio-completeness aggregates will appear here once the Reputation module ships." /></SectionErrorBoundary>}
+    {tab==="replay"                &&<SectionErrorBoundary name="career-replay"><CareerReplayTab /></SectionErrorBoundary>}
   </div>
 }
 

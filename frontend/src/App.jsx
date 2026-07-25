@@ -51,9 +51,13 @@ const ExecutiveNetwork   = lazy(() => import("./pages/ExecutiveNetwork"))
 // ── Organisation pages ────────────────────────────────────────────────────────
 const InstitutionOS      = lazy(() => import("./pages/InstitutionOS"))
 // ── Recruiter pages ───────────────────────────────────────────────────────────
+const Company             = lazy(() => import("./pages/Company"))
 const RecruiterDashboard = lazy(() => import("./pages/RecruiterDashboard"))
 const HiringPipeline     = lazy(() => import("./pages/HiringPipeline"))
 const JobPostings        = lazy(() => import("./pages/JobPostings"))
+// ── Internal-only admin tools — never in nav, reached by direct URL only ──
+const AdminQuestionBank  = lazy(() => import("./pages/AdminQuestionBank"))
+const AdminOpsDashboard  = lazy(() => import("./pages/AdminOpsDashboard"))
 
 const API = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
 
@@ -771,6 +775,31 @@ function App() {
     return <CareerPicker user={user} />
   }
 
+  // Internal-only, no nav entry — access control is server-side
+  // (requireAuth + requireAdmin on every backend/server/routes/
+  // questionBankAdmin.js route this page calls). See AdminQuestionBank.jsx
+  // header for why this exists (Career OS Tranche 4).
+  if (window.location.pathname === "/admin/question-bank") {
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <AdminQuestionBank user={user} />
+      </Suspense>
+    )
+  }
+
+  // Internal-only, no nav entry — access control is server-side
+  // (requireAuth + requireAdmin on backend/server/routes/opsDashboard.js).
+  // See AdminOpsDashboard.jsx header for why this exists (Career OS
+  // Tranche D, 2026-07-25) — the ops snapshot API existed since Tranche 11
+  // but had no frontend, so it was only reachable via curl/Postman.
+  if (window.location.pathname === "/admin/ops-dashboard") {
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <AdminOpsDashboard user={user} />
+      </Suspense>
+    )
+  }
+
   if (window.location.pathname.startsWith("/join/")) {
     const inviteCode = window.location.pathname.replace("/join/", "").split("/")[0]
     return (
@@ -1125,6 +1154,7 @@ function App() {
           {currentPage === "studentHome"      && <StudentHome      user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
           {currentPage === "professionalHome" && <ProfessionalHome user={user} userData={userData} setUserData={setUserData} activeTab={activeTab} setActiveTab={setActiveTab} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} onNavigatePricing={() => { setCurrentPage("pricing"); setActiveNavItem("") }} />}
           {currentPage === "skills" && <Skills user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
+          {currentPage === "company" && <Company user={user} />}
           {currentPage === "executiveHome"    && <ExecutiveHome    user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
           {["orgHome","orgIntel","orgTasks","orgPeople","orgSettings","orgCommunity","orgGroups","orgCohorts","orgEvents","orgOpportunities","orgOutcomes"].includes(currentPage) && (
             <InstitutionOS user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />
@@ -1160,7 +1190,7 @@ function App() {
           {currentPage === "analytics"    && <ExecutiveAnalytics user={user} userData={userData} />}
           {currentPage === "aicopilot"    && <ExecutiveComingSoon module="aicopilot" />}
           {currentPage === "skillstudio" && <SkillStudio user={user} userData={userData} />}
-          {currentPage === "launchpad"   && <Launchpad   user={user} userData={userData} />}
+          {currentPage === "launchpad"   && <Launchpad   user={user} userData={userData} onNavigatePricing={() => { setCurrentPage("pricing"); setActiveNavItem("") }} />}
           {currentPage === "pricing"     && <Pricing     user={user} userData={userData} setUserData={setUserData} onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }} />}
 
           {currentPage === "forge"       && <Forge          user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}

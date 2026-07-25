@@ -13,7 +13,7 @@ async function getToken() {
 
 async function request(method, path, body = null, opts = {}) {
   const token = await getToken()
-  const headers = { "Content-Type": "application/json" }
+  const headers = { "Content-Type": "application/json", ...(opts.headers || {}) }
   if (token) headers["Authorization"] = `Bearer ${token}`
 
   const config = { method, headers }
@@ -24,7 +24,10 @@ async function request(method, path, body = null, opts = {}) {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
-    throw new Error(err.error || err.message || `Request failed: ${res.status}`)
+    const error = new Error(err.error || err.message || `Request failed: ${res.status}`)
+    error.status = res.status
+    error.data = err // full parsed error body (e.g. company/create's 409 { error, company }) for callers that need more than .message
+    throw error
   }
   return res.json()
 }
@@ -144,10 +147,47 @@ export const skillsApi = {
 // UI must never call this "assessment" — see weeklyPulse.js header.
 // ══════════════════════════════════════════
 export const weeklyCheckApi = {
-  current:  ()               => request("GET", "/pro/weekly/current"),
-  generate: ()               => request("POST", "/pro/weekly/generate"),
-  answer:   (pulseId, data)  => request("POST", `/pro/weekly/${pulseId}/answer`, data),
-  complete: (pulseId)        => request("POST", `/pro/weekly/${pulseId}/complete`),
+  current:    ()               => request("GET", "/pro/weekly/current"),
+  generate:   ()               => request("POST", "/pro/weekly/generate"),
+  answer:     (pulseId, data)  => request("POST", `/pro/weekly/${pulseId}/answer`, data),
+  complete:   (pulseId)        => request("POST", `/pro/weekly/${pulseId}/complete`),
+  // Career OS Workstream 3 — coverage-gated v2 (15-question bank flow).
+  // Always safe to call: server-side decides v1 vs v2 and falls back
+  // automatically when coverage is insufficient — status() never writes.
+  v2Status:   ()               => request("GET", "/pro/weekly/v2/status"),
+  v2Generate: ()               => request("POST", "/pro/weekly/v2/generate"),
+  v2DecayStates: ()            => request("GET", "/pro/weekly/v2/decay-states"),
+}
+
+// ══════════════════════════════════════════
+// QUESTION BANK ADMIN (Career OS Tranche 4 — internal-only review UI)
+// Every route requires requireAuth + requireAdmin server-side
+// (backend/server/routes/questionBankAdmin.js) — this client has no
+// separate admin check of its own; a non-admin calling any of these just
+// gets a 403/401 from the API, same defense-in-depth pattern used
+// throughout this codebase (real gate is always server-side).
+// ══════════════════════════════════════════
+export const questionBankAdminApi = {
+  list:            (params = {}) => request("GET", `/admin/question-bank${toQuery(params)}`),
+  coverage:        () => request("GET", "/admin/question-bank/coverage"),
+  get:             (id) => request("GET", `/admin/question-bank/${id}`),
+  submitForReview: (id) => request("POST", `/admin/question-bank/${id}/submit-for-review`),
+  bulkSubmitForReview: (payload) => request("POST", `/admin/question-bank/bulk-submit-for-review`, payload),
+  approve:         (id) => request("POST", `/admin/question-bank/${id}/approve`),
+  reject:          (id, reason) => request("POST", `/admin/question-bank/${id}/reject`, { reason }),
+}
+
+// ══════════════════════════════════════════
+// OPS DASHBOARD (Career OS Tranche 11 / Tranche D — /api/admin/ops/*)
+// ══════════════════════════════════════════
+export const opsDashboardApi = {
+  get: () => request("GET", "/admin/ops/dashboard"),
+}
+
+function toQuery(params) {
+  const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== "")
+  if (!entries.length) return ""
+  return "?" + entries.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join("&")
 }
 
 // ══════════════════════════════════════════
@@ -155,6 +195,23 @@ export const weeklyCheckApi = {
 // ══════════════════════════════════════════
 export const homeApi = {
   getPriority: () => request("GET", "/pro/v1/home/priority"),
+}
+
+// ══════════════════════════════════════════
+// CAREER EVENTS — unified timeline (Career OS Workstream 2 — /pro/v1/career/*)
+// The only endpoint Career Timeline / Career Replay may read from — never
+// combine profiles/experiences/career_timeline directly in the frontend.
+// ══════════════════════════════════════════
+export const careerEventsApi = {
+  getTimeline: ({ cursor, limit, eventType, visibility } = {}) => {
+    const params = new URLSearchParams()
+    if (cursor) params.set("cursor", cursor)
+    if (limit) params.set("limit", String(limit))
+    if (eventType) params.set("event_type", eventType)
+    if (visibility) params.set("visibility", visibility)
+    const qs = params.toString()
+    return request("GET", `/pro/v1/career/timeline${qs ? `?${qs}` : ""}`)
+  },
 }
 
 // ══════════════════════════════════════════
@@ -329,4 +386,39 @@ export const resumeApi = {
     return upload("/extract-pdf", fd)
   },
   parseLinkedin: (url) => request("POST", "/extract-linkedin", { url }),
+}
+
+// ══════════════════════════════════════════
+// COMPANY MODULE — Career OS Workstream 5 (scoped pass)
+// Backend-gated by COMPANY_MODULE_V1_ENABLED (404 while off); frontend also
+// gates whether these are ever called via FLAGS.career_os_company — see
+// frontend/src/pages/Company.jsx.
+// ══════════════════════════════════════════
+function newIdempotencyKey() {
+  // crypto.randomUUID is available in all evergreen browsers this app
+  // targets; no extra dependency needed for a client-generated request id.
+  return (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`)
+}
+
+export const companyApi = {
+  search:       (q) => request("GET", `/pro/v1/company/search?q=${encodeURIComponent(q || "")}`),
+  me:           () => request("GET", "/pro/v1/company/me"),
+  get:          (id) => request("GET", `/pro/v1/company/${id}`),
+  link:         (companyId) => request("POST", "/pro/v1/company/me/link", { company_id: companyId }, { headers: { "Idempotency-Key": newIdempotencyKey() } }),
+  create:       ({ name, domain, sector } = {}) => request("POST", "/pro/v1/company/create", { name, domain, sector }, { headers: { "Idempotency-Key": newIdempotencyKey() } }),
+  setVisibility: (companyVisibilityPublic) => request("PATCH", "/pro/v1/company/me/visibility", { company_visibility_public: companyVisibilityPublic }),
+}
+
+// CAREER OS TRANCHE 6 / PRIORITY 6A: narrow, field-whitelisted portfolio
+// lookup — replaces Portfolio.jsx's old direct client-side
+// supabase.from("profiles").select("*") reads (see portfolioPublic.js for
+// why: select("*") on a public/verified profile leaked email + uan_number).
+export const portfolioApi = {
+  lookup: (identifier) => request("GET", `/portfolio/lookup/${encodeURIComponent(identifier)}`),
+}
+
+// Professional ELO (product decision 2026-07-25) — real assessment-
+// performance-driven rating track, separate from profile-completeness ELO.
+export const professionalEloApi = {
+  status: () => request("GET", "/pro/elo/professional"),
 }

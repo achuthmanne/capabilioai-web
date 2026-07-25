@@ -12,6 +12,7 @@ import { useEffect, useState, useRef } from "react"
 import { getPortfolioConfig, ARCHETYPES } from "../config/portfolioArchetypes"
 import { userDoc } from "../lib/db"
 import { supabase } from "../lib/supabase"
+import { portfolioApi } from "../lib/api"
 import EngineeringProofsPanel from "../components/EngineeringProofsPanel"
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -1234,12 +1235,22 @@ function PerformanceSummary({ ud, skills, tasks, interviews, accent }) {
   return (
     <Card accent={accent||C.blue}>
       <SectionTitle icon="📊" title="Performance Summary" accent={accent||C.blue}
-        sub="ELO rating, challenge scores, and growth trajectory"/>
+        sub="Arena rating, challenge scores, and growth trajectory"/>
 
       {/* Score metrics — large dark metric cards */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
         {[
-          {icon:"⚡",label:"ELO Rating", value:ud.eloRating,sub:tier.label,     color:tier.color,  bar:Math.min((ud.eloRating/1500)*100,100)},
+          // Tranche A (2026-07-25): renamed "ELO Rating" -> "Arena Rating" so
+          // this Arena-challenge-execution score is never confused with the
+          // separate, assessment-driven Professional ELO (Skills.jsx). When
+          // a profile has zero Arena challenges (true for most professional
+          // users, since Arena isn't in the Professional nav), this used to
+          // still show a static default (400) with a filled progress bar as
+          // if it were a real, earned score — a naked/misleading number with
+          // no evidence behind it. Now it honestly shows "Not started".
+          tasks.length>0
+            ? {icon:"⚡",label:"Arena Rating", value:ud.eloRating,sub:tier.label,     color:tier.color,  bar:Math.min((ud.eloRating/1500)*100,100)}
+            : {icon:"⚡",label:"Arena Rating", value:"—",sub:"Not started",color:C.ink4,bar:0},
           {icon:"🎯",label:"Avg Score",  value:`${avgScore}/100`,sub:`${passRate}% pass rate`,color:scoreColor(avgScore),bar:avgScore},
           {icon:"🏆",label:"Best Score", value:best>0?`${best}/100`:"–",sub:best>=90?"Excellent":best>=80?"Strong":best>=60?"Good":"No data",color:scoreColor(best),bar:best},
         ].map((m,i)=>(
@@ -1283,8 +1294,10 @@ function PerformanceSummary({ ud, skills, tasks, interviews, accent }) {
         ))}
       </div>
 
-      {/* ELO progress to next tier */}
-      {tierNext && (
+      {/* ELO progress to next tier — only meaningful once the user has an
+          actual Arena track record (Tranche A: no progress bar toward a
+          "next tier" for a score that has never moved). */}
+      {tierNext && tasks.length>0 && (
         <div style={{padding:"16px 18px",background:C.surface2,borderRadius:14,border:`1px solid ${C.border2}`}}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:10,alignItems:"center"}}>
             <span style={{fontSize:13,fontWeight:700,color:tier.color}}>● {tier.label} · {ud.eloRating}</span>
@@ -1380,88 +1393,26 @@ export default function Portfolio({ username: usernameProp }) {
     setLoading(true); setError("")
     try {
       const raw   = username.trim()
-      const lower = raw.toLowerCase()
       const mkSlug = s => (s||"").toLowerCase().trim()
         .replace(/[^a-z0-9]/g,"-").replace(/-+/g,"-").replace(/^-|-$/g,"")
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)
 
-      let row = null
-
-      // Fetch auth session once upfront — used for name fallback and ownership check
+      // Fetch auth session once upfront — used for name fallback only now.
+      // CAREER OS TRANCHE 6 / PRIORITY 6A: the actual profile row lookup
+      // (previously 6 direct supabase.from("profiles").select("*") calls
+      // right here) now happens server-side via portfolioApi.lookup(), which
+      // returns only a whitelisted, portfolio-safe field set — never a raw
+      // "*" row. See backend/server/routes/portfolioPublic.js for why this
+      // mattered: select("*") on this table exposed email + uan_number to
+      // any authenticated viewer of any verified profile.
       const { data:{ session: authSession } } = await supabase.auth.getSession()
       const authMeta = authSession?.user?.user_metadata || {}
 
-      // 0. UUID in URL — direct ID lookup (most reliable, used when no username set)
-      if(isUUID) {
-        const {data:byId} = await supabase.from("profiles").select("*").eq("id", raw).maybeSingle()
-        if(byId) row = byId
-      }
-
-      // 1. Exact username column match
-      if(!row) {
-        const {data:byUser} = await supabase.from("profiles").select("*")
-          .eq("username", lower).maybeSingle()
-        if(byUser) row = byUser
-      }
-
-      // 2. display_name slug match  ("venkata-kopuri" → search "venkata kopuri")
-      if(!row) {
-        const nameQuery = lower.replace(/-/g," ")
-        const {data:byName,error:nameErr} = await supabase.from("profiles").select("*")
-          .ilike("display_name", `%${nameQuery}%`).limit(20)
-        if(!nameErr && byName?.length) {
-          row = byName.find(p => mkSlug(p.display_name||"") === lower)
-               || (byName.length === 1 ? byName[0] : null)
-        }
-      }
-
-      // 3. Also try each word individually (handles partial name matches)
-      if(!row) {
-        const words = lower.split("-").filter(w => w.length > 2)
-        for(const word of words) {
-          const {data:w} = await supabase.from("profiles").select("*")
-            .ilike("display_name", `%${word}%`).limit(30)
-          if(w?.length) {
-            const match = w.find(p => mkSlug(p.display_name||"") === lower)
-            if(match) { row = match; break }
-          }
-        }
-      }
-
-      // 4. Auth session fallback — covers camelCase-only profiles
-      if(!row && authSession?.user?.id) {
-        const {data:bySession} = await supabase.from("profiles").select("*")
-          .eq("id", authSession.user.id).maybeSingle()
-        if(bySession) {
-          const allNames = [
-            bySession.display_name, bySession.displayName,
-            bySession.username, bySession.name,
-            authMeta.full_name, authMeta.name, authMeta.display_name,
-          ].filter(Boolean)
-          const slugs = allNames.map(mkSlug)
-          const firstWord = lower.split("-")[0]
-          const nameMatch = slugs.some(s => s === lower)
-            || allNames.some(n => (n||"").toLowerCase().startsWith(firstWord))
-          if(nameMatch || lower === authSession.user.id) row = bySession
-        }
-      }
-
-      // 5. Last resort — session user's own portfolio
-      if(!row && authSession?.user?.id) {
-        const {data:mine} = await supabase.from("profiles").select("*")
-          .eq("id", authSession.user.id).maybeSingle()
-        if(mine) {
-          const email = mine.email || authSession.user.email || ""
-          const emailUser = mkSlug(email.split("@")[0])
-          const possibleSlugs = [
-            mkSlug(mine.display_name||""), mkSlug(mine.displayName||""),
-            mkSlug(mine.username||""), emailUser, mine.id,
-            mkSlug(authMeta.full_name||""), mkSlug(authMeta.name||""),
-          ].filter(Boolean)
-          if(possibleSlugs.some(s => lower.includes(s.slice(0,5)) || s.includes(lower.slice(0,5)))) {
-            row = mine
-          }
-        }
+      let row = null
+      try {
+        const res = await portfolioApi.lookup(raw)
+        row = res?.profile || null
+      } catch {
+        row = null
       }
 
       if(!row) {
@@ -1896,19 +1847,26 @@ export default function Portfolio({ username: usernameProp }) {
                     <Avatar name={ud.displayName} url={ud.avatarUrl} size={212} fontSize={64}/>
                   </div>
                 </div>
-                {/* Tier badge */}
-                <div style={{
-                  position:"absolute",bottom:8,left:"50%",transform:"translateX(-50%)",
-                  background:tier.color,color:"#fff",fontSize:10,fontWeight:900,
-                  padding:"5px 16px",borderRadius:99,whiteSpace:"nowrap",
-                  border:"2px solid rgba(0,0,0,0.5)",
-                  boxShadow:`0 4px 16px ${tier.color}60`,letterSpacing:1,textTransform:"uppercase",
-                }}>
-                  ⚡ {tier.label}
-                </div>
+                {/* Tier badge — Tranche A: a "Building" tier badge on a
+                    profile with zero Arena challenges is a naked, unearned
+                    label (Arena isn't even in the Professional nav, so most
+                    professional users have never touched it). Only show the
+                    tier once there's real challenge history behind it. */}
+                {tasks.length>0 && (
+                  <div style={{
+                    position:"absolute",bottom:8,left:"50%",transform:"translateX(-50%)",
+                    background:tier.color,color:"#fff",fontSize:10,fontWeight:900,
+                    padding:"5px 16px",borderRadius:99,whiteSpace:"nowrap",
+                    border:"2px solid rgba(0,0,0,0.5)",
+                    boxShadow:`0 4px 16px ${tier.color}60`,letterSpacing:1,textTransform:"uppercase",
+                  }}>
+                    ⚡ {tier.label}
+                  </div>
+                )}
               </div>
 
-              {/* Floating ELO card */}
+              {/* Floating Arena card — same rule: no score/tier shown until
+                  the user has actually completed an Arena challenge. */}
               <div style={{
                 background:"rgba(255,255,255,0.06)",
                 backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",
@@ -1920,14 +1878,22 @@ export default function Portfolio({ username: usernameProp }) {
               }}>
                 <div style={{fontSize:10,fontWeight:800,color:"rgba(255,255,255,0.35)",
                   textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>Arena Rating</div>
-                <div style={{fontSize:32,fontWeight:900,color:aConfig?.palette?.accent||C.purple,
-                  fontFamily:"'DM Mono',monospace",lineHeight:1,
-                  textShadow:`0 0 30px ${aConfig?.palette?.accent||C.purple}80`}}>
-                  {ud.eloRating}
-                </div>
-                <div style={{fontSize:11,color:tier.color,fontWeight:700,marginTop:4}}>
-                  {tier.label} Tier
-                </div>
+                {tasks.length>0 ? (
+                  <>
+                    <div style={{fontSize:32,fontWeight:900,color:aConfig?.palette?.accent||C.purple,
+                      fontFamily:"'DM Mono',monospace",lineHeight:1,
+                      textShadow:`0 0 30px ${aConfig?.palette?.accent||C.purple}80`}}>
+                      {ud.eloRating}
+                    </div>
+                    <div style={{fontSize:11,color:tier.color,fontWeight:700,marginTop:4}}>
+                      {tier.label} Tier
+                    </div>
+                  </>
+                ) : (
+                  <div style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.4)",marginTop:2}}>
+                    Not started
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -2075,7 +2041,7 @@ export default function Portfolio({ username: usernameProp }) {
                   </span>
                   <span style={{fontSize:11,color:C.ink4}}>•</span>
                   <span style={{fontSize:11,color:C.ink3,fontFamily:"'DM Mono',monospace"}}>
-                    ELO {ud.eloRating}
+                    Arena {ud.eloRating}
                   </span>
                   <div style={{
                     marginLeft:"auto",fontSize:10,color:C.ink4,fontStyle:"italic",

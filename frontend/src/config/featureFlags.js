@@ -55,6 +55,29 @@ export const FLAGS = {
   // bank). Off until the question_bank table has approved coverage; current
   // 5-question weeklyPulse.js keeps running unaffected either way.
   career_os_skill_pulse_v2: envFlag("CAREER_OS_SKILL_PULSE_V2", false),
+
+  // Workstream 4 — Mentor Marketplace v1 (real implementation: reservation
+  // model, idempotency, Razorpay webhook, reconciliation, admin-triggered
+  // payout batches). Schema + RLS + RPCs are applied in production, but this
+  // flag stays OFF until all 9 release gates in
+  // docs/mentor-marketplace-ws4-design-proposal.md (v2) §9 are cleared —
+  // several are only unit-tested in-sandbox, not live/integration-verified
+  // (no real Razorpay Test Mode account here). See
+  // docs/career-os-implementation-plan.md for the honest per-gate status.
+  // Mirrors the same VITE_FF_<NAME> override convention as every flag above.
+  // (career_os_mentor_marketplace above predates this workstream and stays
+  // as-is; mentor_marketplace_v1 is the flag this workstream's routes and
+  // backend actually check.)
+  mentor_marketplace_v1: envFlag("MENTOR_MARKETPLACE_V1", false),
+
+  // Professional ELO — product decision 2026-07-25: professional users get a
+  // visible, real, assessment-performance-driven ELO (separate track from
+  // the older profile-completeness-driven ELO fields — see
+  // backend/server/lib/professionalElo/eloEngine.js). Backend is real and
+  // tested; off by default here for the same reason every other Career OS
+  // surface in this codebase ships flag-off first — a live number newly
+  // shown to real users should be turned on deliberately, not by default.
+  career_os_professional_elo: envFlag("CAREER_OS_PROFESSIONAL_ELO", false),
 }
 
 export function isEnabled(flag) {
