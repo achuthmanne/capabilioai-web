@@ -319,10 +319,14 @@ export const pulseApi = {
     return request("GET", `/pulse/saved?${qs}`)
   },
   // AI market insights + tech news via Gemini Search (server-cached 2hr per domain)
-  marketInsights: (domain = "Tech", role = "Professional") => {
-    const qs = new URLSearchParams({ domain, role }).toString()
+  marketInsights: (domain = "Tech", role = "Professional", skills = []) => {
+    const params = { domain, role }
+    if (skills?.length) params.skills = skills.slice(0, 8).join(",")
+    const qs = new URLSearchParams(params).toString()
     return request("GET", `/pulse/market-insights?${qs}`)
   },
+  // Real tech-tag frequency from recent posts — replaces hardcoded hashtags.
+  trendingTags: (limit = 8) => request("GET", `/pulse/trending-tags?limit=${limit}`),
 }
 
 // ══════════════════════════════════════════

@@ -21,6 +21,7 @@
  *   GET  /api/nexus/notifications  — notifications
  *   POST /api/nexus/notifications/read — mark read
  *   GET  /api/pulse/market-insights   — AI market trends + tech news (Gemini Search)
+ *   GET  /api/pulse/trending-tags     — real tech_tags counts from recent posts
  */
 import { Router }     from "express"
 import { supabaseAdmin } from "../lib/supabase.js"
@@ -60,16 +61,33 @@ function optionalAuth(req, res, next) {
 router.get("/pulse/market-insights", optionalAuth, async (req, res) => {
   const domain = (req.query.domain || "technology").toLowerCase().trim()
   const role   = req.query.role   || "Professional"
+  // Pulse redesign (2026-07-26): accept the user's own top skills so the
+  // generated report is grounded in what THIS person actually knows, not
+  // just their domain/role label — "a backend engineer with Go + gRPC
+  // skills" gets a different (more specific) report than a generic
+  // "Backend" domain query. Capped at 8 to keep the prompt bounded.
+  // NOT part of the cache key (see below) — only used to steer the prompt.
+  const skills = (req.query.skills || "").split(",").map(s => s.trim()).filter(Boolean).slice(0, 8)
 
-  // Return cached result if still fresh
-  const cached = insightsCache.get(domain)
+  // Cache key is domain-only (not skills/role) — this is a deliberate trade,
+  // not an oversight: caching per (domain × role × skills) combination would
+  // fragment the cache across near-infinite keys and burn Gemini/Groq quota
+  // on every distinct user instead of sharing one fetch per domain per 2h.
+  // The frontend compensates for this by re-ranking/highlighting the shared
+  // report's items against the user's own skills client-side (see
+  // Pulse.jsx) rather than requesting a uniquely personalized report here.
+  const cacheKey = domain
+  const cached = insightsCache.get(cacheKey)
   if (cached && cached.expiresAt > Date.now()) {
     return res.json({ ...cached.data, cached: true })
   }
 
+  const hasGemini = process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== "your_gemini_key_here"
+
   try {
     const prompt = `You are a tech career market analyst for the Indian IT industry.
 Provide a concise market intelligence report for: "${role}" / "${domain}" domain.
+${skills.length ? `The audience's specific skills are: ${skills.join(", ")}. Where relevant, call out which trends/skills connect directly to these.` : ""}
 
 Include:
 1. Top 3 trending technologies RIGHT NOW in Indian tech companies (2025)
@@ -89,8 +107,6 @@ Format as JSON:
 }`
 
     let text
-    const hasGemini = process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== "your_gemini_key_here"
-
     if (hasGemini) {
       try {
         ;({ text } = await geminiSearch(prompt, { maxTokens: 2000 }))
@@ -100,7 +116,11 @@ Format as JSON:
       }
     }
 
-    // Groq fallback — no live search but still generates plausible structured data
+    // Groq fallback — no live Google Search grounding, just an LLM estimate.
+    // Honesty requirement (2026-07-26 Pulse redesign): the frontend must
+    // never label this "Live" — the `source` field below tells it which
+    // case this is so it can say "AI-estimated" instead of implying a real
+    // search happened.
     if (!text) {
       const completion = await Promise.race([
         groq.chat.completions.create({
@@ -121,17 +141,66 @@ Format as JSON:
     const match = text.match(/```json\s*([\s\S]*?)```/) || text.match(/(\{[\s\S]*\})/)
     const data  = JSON.parse(match ? (match[1] || match[0]) : text)
 
-    const payload = { domain, role, ...data, generatedAt: new Date().toISOString() }
-    insightsCache.set(domain, { data: payload, expiresAt: Date.now() + CACHE_TTL_MS })
+    const payload = {
+      domain, role, ...data,
+      // Real, computed count (not a fabricated number) — the frontend used
+      // to show a static hardcoded "open roles" figure per domain; this is
+      // the honest replacement: however many companies the report actually
+      // named.
+      companies_hiring_count: Array.isArray(data.hiring_companies) ? data.hiring_companies.length : 0,
+      source: hasGemini ? "live_search" : "ai_estimate",
+      generatedAt: new Date().toISOString(),
+    }
+    insightsCache.set(cacheKey, { data: payload, expiresAt: Date.now() + CACHE_TTL_MS })
 
-    console.log(`[pulse/market-insights] Generated for "${domain}"`)
+    console.log(`[pulse/market-insights] Generated for "${domain}" (source=${payload.source})`)
     return res.json(payload)
   } catch (e) {
     console.error("[pulse/market-insights]", e.message)
     // Return stale cache if available rather than a hard error
     if (cached) return res.json({ ...cached.data, cached: true, stale: true })
-    // Last resort: empty but valid response so UI doesn't crash
-    return res.json({ domain, role, trending_techs: [], hiring_companies: [], skills: { rising: [], declining: [] }, news: [], market_outlook: "Stable", outlook_reason: "Data temporarily unavailable.", generatedAt: new Date().toISOString(), _error: true })
+    // Last resort: empty but valid response, explicitly flagged as
+    // unavailable so the frontend shows an honest empty state instead of
+    // any fallback content.
+    return res.json({ domain, role, trending_techs: [], hiring_companies: [], skills: { rising: [], declining: [] }, news: [], market_outlook: null, outlook_reason: null, companies_hiring_count: 0, source: "unavailable", generatedAt: new Date().toISOString(), _error: true })
+  }
+})
+
+// ── Trending tech tags (real aggregation, not hardcoded hashtags) ──────────
+// Pulse redesign (2026-07-26): replaces the frontend's hardcoded
+// "#OpenAI / #SystemDesign / ..." list with an actual count of tech_tags
+// used across recent real posts. Honest empty array if there isn't enough
+// post activity yet — never backfilled with placeholder tags.
+router.get("/pulse/trending-tags", optionalAuth, async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 8, 20)
+    // Bound the scan to the most recent public posts rather than the whole
+    // table — trending should reflect recent activity, and this keeps the
+    // query cheap regardless of how large pulse_posts grows.
+    const { data: posts, error } = await supabaseAdmin
+      .from("pulse_posts")
+      .select("tech_tags")
+      .eq("visibility", "public")
+      .eq("is_moderated", false)
+      .order("created_at", { ascending: false })
+      .limit(500)
+    if (error) throw error
+
+    const counts = new Map()
+    for (const p of posts || []) {
+      for (const tag of (p.tech_tags || [])) {
+        const key = tag.startsWith("#") ? tag : `#${tag}`
+        counts.set(key, (counts.get(key) || 0) + 1)
+      }
+    }
+    const tags = [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .map(([tag, count]) => ({ tag, count }))
+
+    res.json({ tags, sampledPosts: (posts || []).length, generatedAt: new Date().toISOString() })
+  } catch (e) {
+    res.status(500).json({ error: e.message, tags: [] })
   }
 })
 

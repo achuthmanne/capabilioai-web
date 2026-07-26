@@ -3,7 +3,7 @@
  * 3-column layout: Profile sidebar | Feed | Trending/Suggestions sidebar
  */
 import { useState, useEffect, useCallback, useRef } from "react"
-import { pulseApi, nexusApi, professionalEloApi } from "../lib/api"
+import { pulseApi, nexusApi, professionalEloApi, skillsApi } from "../lib/api"
 import { getRoleConfig } from "../config/roleConfig"
 import { FLAGS } from "../config/featureFlags"
 
@@ -42,30 +42,14 @@ const G = `
 `
 
 // ─── Static data ──────────────────────────────────────────────────────────────
-const TECH_NEWS = [
-  { cat:"AI",     title:"OpenAI releases o3 with advanced reasoning benchmarks",     source:"TechCrunch", time:"2h ago",  color:T.indigo },
-  { cat:"Hiring", title:"India tech hiring up 18% YoY — backend & ML roles lead",   source:"Economic Times", time:"4h ago",  color:T.green  },
-  { cat:"AI",     title:"Google DeepMind AlphaFold 3 predicts drug interactions",    source:"Nature",     time:"6h ago",  color:T.indigo },
-  { cat:"Dev",    title:"TypeScript 5.5 ships with inferred type predicates",        source:"Dev.to",     time:"8h ago",  color:T.amber  },
-  { cat:"Hiring", title:"Bengaluru startups see 3× spike in senior IC roles",       source:"Entrackr",   time:"10h ago", color:T.green  },
-  { cat:"AI",     title:"Anthropic raises $4B — Claude 3.5 beats GPT-4 enterprise", source:"Reuters",    time:"1d ago",  color:T.indigo },
-  { cat:"Dev",    title:"Node.js 22 LTS released with experimental WebSocket API",  source:"InfoQ",      time:"1d ago",  color:T.amber  },
-  { cat:"AI",     title:"Meta releases Llama 3.2 with vision capabilities",         source:"VentureBeat",time:"2d ago",  color:T.indigo },
-]
-
-const TRENDING = [
-  { tag:"#OpenAI",        posts:"14,832 posts" },
-  { tag:"#SystemDesign",  posts:"8,241 posts"  },
-  { tag:"#ReactJS",       posts:"6,104 posts"  },
-  { tag:"#CareerSwitch",  posts:"5,390 posts"  },
-  { tag:"#AIJobs",        posts:"4,722 posts"  },
-]
-
-const SUGGESTIONS = [
-  { name:"Priya Sharma",     headline:"Senior SDE @ Google",           initials:"PS", elo:1640, color:"#4285F4" },
-  { name:"Rahul Menon",      headline:"Staff Engineer @ Flipkart",      initials:"RM", elo:1520, color:"#FF5701" },
-  { name:"Anita Desai",      headline:"Principal PM @ PhonePe",         initials:"AD", elo:1480, color:"#6D28D9" },
-]
+// Pulse redesign (2026-07-26): the old TECH_NEWS / TRENDING / SUGGESTIONS
+// hardcoded arrays were removed entirely — see RightSidebar below, which now
+// sources news from pulseApi.marketInsights (real, Gemini/Groq-backed),
+// trending topics from pulseApi.trendingTags (real tech_tags counts from
+// pulse_posts), and "People you may know" from pulseApi.builders (real
+// Supabase profiles ranked by elo_rating). Any of these can legitimately be
+// empty — that's rendered as an honest empty state, never backfilled with
+// placeholder content.
 
 const POST_TYPES = [
   { id:"text",        icon:"📝", label:"Post"        },
@@ -192,82 +176,136 @@ function ProfileSidebar({ user, userData }) {
           <span style={{ fontSize:12, color:T.ink3 }}>{usingProElo ? "Professional ELO" : "Skill assessment"}</span>
           <span style={{ fontSize:12, fontWeight:700, color:T.indigo }}>{skillTierPhrase(elo)}</span>
         </div>
+        {/* Real, not hardcoded (2026-07-26 Pulse redesign) — this used to
+            always read "Recruiter visibility: Active" regardless of the
+            user's actual privacy setting. profiles.searchable is the real
+            "Appear in Capabilio search" toggle (see nexus/search route and
+            the Profile → Privacy panel that writes it) — reflect it
+            honestly instead of a hardcoded claim. */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 0", borderTop:`1px solid ${T.border}` }}>
-          <span style={{ fontSize:12, color:T.ink3 }}>Recruiter visibility</span>
-          <span style={{ fontSize:12, fontWeight:600, color:T.green }}>Active</span>
+          <span style={{ fontSize:12, color:T.ink3 }}>Search visibility</span>
+          <span style={{ fontSize:12, fontWeight:600, color: userData?.searchable === false ? T.ink3 : T.green }}>
+            {userData?.searchable === false ? "Private" : "Visible"}
+          </span>
         </div>
-      </div>
-
-      {/* Quick links */}
-      <div style={{ borderTop:`1px solid ${T.border}`, padding:"8px 0" }}>
-        {[
-          { icon:"⚒", label:"Forge — complete a mission" },
-          { icon:"◎", label:"Orbit — check your career score" },
-          { icon:"⊞", label:"Launchpad — browse jobs"  },
-        ].map((l,i) => (
-          <div key={i} className="pbtn" style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 16px", cursor:"pointer" }}>
-            <span style={{ fontSize:14 }}>{l.icon}</span>
-            <span style={{ fontSize:13, color:T.ink2, fontWeight:500 }}>{l.label}</span>
-          </div>
-        ))}
       </div>
     </Card>
   )
 }
 
 // ─── Right sidebar ────────────────────────────────────────────────────────────
-function RightSidebar({ user, domain = "Tech", role = "Professional" }) {
+// Pulse redesign (2026-07-26): every section here is now backed by a real
+// API call — no static arrays, no seeded people. Each section has its own
+// honest loading/empty/error state rather than falling back to placeholder
+// content when live data isn't available.
+const AVATAR_COLORS = ["#4285F4","#FF5701","#6D28D9","#0891B2","#059669","#D97706","#DC2626","#0369A1"]
+const colorForPerson = (id) => AVATAR_COLORS[(id ? String(id).charCodeAt(0) : 0) % AVATAR_COLORS.length]
+
+function RightSidebar({ user, domain = "Tech", role = "Professional", skills = [] }) {
   const [newsExpanded, setNewsExpanded] = useState(false)
-  const [liveNews,     setLiveNews]     = useState(null)   // null = not yet loaded
+  const [liveNews,     setLiveNews]     = useState(null)   // null = not yet loaded / unavailable
   const [newsLoading,  setNewsLoading]  = useState(true)
 
-  // Fetch live news once per domain (server caches 2hr)
+  const [tagsLoading, setTagsLoading] = useState(true)
+  const [tags,        setTags]        = useState([])
+
+  const [people,        setPeople]        = useState([])
+  const [peopleLoading, setPeopleLoading] = useState(true)
+  const [peopleError,   setPeopleError]   = useState(false)
+  const [connectState,  setConnectState]  = useState({}) // uid -> "sending"|"sent"
+
+  // Fetch live news once per domain (server caches 2hr, personalized further by skills)
   useEffect(() => {
     setNewsLoading(true)
-    pulseApi.marketInsights(domain, role)
-      .then(data => { setLiveNews(data); setNewsLoading(false) })
+    pulseApi.marketInsights(domain, role, skills)
+      .then(data => { setLiveNews(data?._error ? null : data); setNewsLoading(false) })
       .catch(() => { setLiveNews(null); setNewsLoading(false) })
-  }, [domain, role])
+  }, [domain, role, JSON.stringify(skills)])
 
-  // Map live news items → display shape; fall back to static TECH_NEWS
-  const CAT_COLORS = { Hiring: T.green, AI: T.indigo, Dev: T.amber, News: T.indigo, Release: T.amber }
-  const newsItems = liveNews?.news?.length
-    ? liveNews.news.map(n => ({
-        cat:    n.headline?.toLowerCase().includes("hiring") ? "Hiring" : "News",
-        title:  n.headline,
-        source: "Live",
-        time:   n.date || "today",
-        color:  CAT_COLORS["News"],
-      }))
-    : TECH_NEWS
+  // Real trending tags — aggregated server-side from actual recent posts.
+  useEffect(() => {
+    setTagsLoading(true)
+    pulseApi.trendingTags(6)
+      .then(data => { setTags(data?.tags || []); setTagsLoading(false) })
+      .catch(() => { setTags([]); setTagsLoading(false) })
+  }, [])
 
-  const visibleNews = newsExpanded ? newsItems : newsItems.slice(0, 4)
+  // Real people, ELO-ranked, domain-filtered — reuses the existing
+  // /pulse/builders endpoint (already real: queries `profiles`, orders by
+  // elo_rating, excludes the current user). This is the "People you may
+  // know" replacement.
+  useEffect(() => {
+    setPeopleLoading(true); setPeopleError(false)
+    pulseApi.builders(domain, 1000, 4)
+      .then(data => { setPeople(Array.isArray(data) ? data : []); setPeopleLoading(false) })
+      .catch(() => { setPeopleError(true); setPeopleLoading(false) })
+  }, [domain])
+
+  const connect = async (uid, name) => {
+    setConnectState(s => ({ ...s, [uid]: "sending" }))
+    try {
+      await nexusApi.connect(uid, `Hi ${name}, let's connect on Capabilio!`)
+      setConnectState(s => ({ ...s, [uid]: "sent" }))
+    } catch (e) {
+      // 409 = already sent — treat as success, same as elsewhere in Pulse
+      setConnectState(s => ({ ...s, [uid]: (e.message||"").includes("409") ? "sent" : null }))
+    }
+  }
+
+  // Highlight/re-rank real news items against the user's own skills
+  // (client-side, no extra AI call — see market-insights route comment on
+  // why the cache is domain-only, not per-user). This is how "why it
+  // matters to you" gets satisfied without fragmenting the shared cache.
+  const skillsLower = (skills || []).map(s => s.toLowerCase())
+  const matchesSkills = (text) => skillsLower.some(s => s && text?.toLowerCase().includes(s))
+
+  const newsItems = (liveNews?.news || []).map(n => ({
+    title: n.headline, time: n.date || "recently", why: n.summary,
+    matched: matchesSkills(n.headline) || matchesSkills(n.summary),
+  }))
+  const trendingTechs = (liveNews?.trending_techs || []).map(t => ({
+    name: t.name, reason: t.reason, demand: t.demand,
+    matched: matchesSkills(t.name),
+  }))
+  // Sort so skill-matching items lead — real content, just reordered.
+  newsItems.sort((a,b) => (b.matched - a.matched))
+  trendingTechs.sort((a,b) => (b.matched - a.matched))
+
+  const combinedFeed = [...trendingTechs.map(t => ({ kind:"tech", ...t })), ...newsItems.map(n => ({ kind:"news", ...n }))]
+  const visibleNews = newsExpanded ? combinedFeed : combinedFeed.slice(0, 4)
+  const isHonestlyEmpty = !newsLoading && combinedFeed.length === 0
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-      {/* Trending topics */}
+      {/* Trending topics — real tech_tags counts from recent posts */}
       <Card>
         <div style={{ padding:"12px 16px 4px" }}>
           <div style={{ fontFamily:T.serif, fontSize:14, fontWeight:800, color:T.ink, marginBottom:12 }}>Trending in tech</div>
-          {TRENDING.map((t,i) => (
-            <div key={i} className="pbtn" style={{ padding:"6px 0", cursor:"pointer", borderBottom: i<TRENDING.length-1?`1px solid ${T.border}`:"none" }}>
+          {tagsLoading && <div style={{ fontSize:12, color:T.ink3, paddingBottom:8 }}>Loading…</div>}
+          {!tagsLoading && tags.length === 0 && (
+            <div style={{ fontSize:12, color:T.ink3, paddingBottom:8 }}>No trending topics yet — tag your posts with #hashtags to help this fill in.</div>
+          )}
+          {!tagsLoading && tags.map((t,i) => (
+            <div key={i} className="pbtn" style={{ padding:"6px 0", cursor:"pointer", borderBottom: i<tags.length-1?`1px solid ${T.border}`:"none" }}>
               <div style={{ fontSize:13, fontWeight:700, color:T.ink }}>{t.tag}</div>
-              <div style={{ fontSize:11, color:T.ink3, marginTop:1 }}>{t.posts}</div>
+              <div style={{ fontSize:11, color:T.ink3, marginTop:1 }}>{t.count} post{t.count===1?"":"s"}</div>
             </div>
           ))}
         </div>
       </Card>
 
-      {/* Tech & AI News — live via Gemini Search, static fallback */}
+      {/* Tech & AI News — live via Gemini Search (or an honestly-labeled AI
+          estimate when Gemini is unavailable), re-ranked against the user's
+          own skills. No static fallback content. */}
       <Card>
         <div style={{ padding:"12px 16px 0", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div>
-            <div style={{ fontFamily:T.serif, fontSize:14, fontWeight:800, color:T.ink, marginBottom:2 }}>Tech & AI News</div>
+            <div style={{ fontFamily:T.serif, fontSize:14, fontWeight:800, color:T.ink, marginBottom:2 }}>Tech & AI News · {domain}</div>
             <div style={{ fontSize:11, color:T.ink3, marginBottom:12 }}>
-              {newsLoading ? "Loading live news…" : liveNews ? "Live · Updated every 2h" : "Curated for professionals"}
+              {newsLoading ? "Loading live news…" : liveNews?.source === "live_search" ? "Live · Updated every 2h" : liveNews?.source === "ai_estimate" ? "AI-estimated (live search unavailable)" : "Not available right now"}
             </div>
           </div>
-          {liveNews && <span style={{ fontSize:9, fontWeight:800, color:T.green, letterSpacing:"0.06em", background:T.green+"18", padding:"2px 7px", borderRadius:99 }}>LIVE</span>}
+          {liveNews?.source === "live_search" && <span style={{ fontSize:9, fontWeight:800, color:T.green, letterSpacing:"0.06em", background:T.green+"18", padding:"2px 7px", borderRadius:99 }}>LIVE</span>}
         </div>
         {newsLoading
           ? [0,1,2,3].map(i => (
@@ -276,42 +314,62 @@ function RightSidebar({ user, domain = "Tech", role = "Professional" }) {
                 <div style={{ height:9, background:"#F3F4F6", borderRadius:4, width:"50%" }}/>
               </div>
             ))
-          : visibleNews.map((n,i) => (
-              <div key={i} className="pbtn" style={{ padding:"8px 16px", cursor:"pointer", borderTop: i>0?`1px solid ${T.border}`:"none", display:"flex", gap:10 }}>
-                <span style={{ display:"inline-block", padding:"2px 6px", background:(n.color||T.indigo)+"15", color:n.color||T.indigo, borderRadius:99, fontSize:9, fontWeight:800, fontFamily:T.mono, letterSpacing:"0.06em", flexShrink:0, height:"fit-content", marginTop:2 }}>{n.cat}</span>
+          : isHonestlyEmpty
+            ? <div style={{ padding:"16px", fontSize:12, color:T.ink3 }}>No live technical news available for {domain} right now — check back shortly.</div>
+            : visibleNews.map((n,i) => (
+              <div key={i} className="pbtn" style={{ padding:"8px 16px", cursor:"default", borderTop: i>0?`1px solid ${T.border}`:"none", display:"flex", gap:10 }}>
+                <span style={{ display:"inline-block", padding:"2px 6px", background:(n.matched?T.green:T.indigo)+"15", color:n.matched?T.green:T.indigo, borderRadius:99, fontSize:9, fontWeight:800, fontFamily:T.mono, letterSpacing:"0.06em", flexShrink:0, height:"fit-content", marginTop:2 }}>
+                  {n.kind==="tech" ? "TREND" : "NEWS"}
+                </span>
                 <div>
-                  <div style={{ fontSize:12, fontWeight:600, color:T.ink, lineHeight:1.4, marginBottom:2 }}>{n.title}</div>
-                  <div style={{ fontSize:11, color:T.ink3 }}>{n.source} · {n.time}</div>
+                  <div style={{ fontSize:12, fontWeight:600, color:T.ink, lineHeight:1.4, marginBottom:2 }}>{n.name || n.title}</div>
+                  <div style={{ fontSize:11, color:T.ink3 }}>{n.reason || n.why}</div>
+                  {n.matched && <div style={{ fontSize:10, color:T.green, fontWeight:700, marginTop:2 }}>Matches your skills</div>}
                 </div>
               </div>
             ))
         }
-        {!newsLoading && newsItems.length > 4 && (
+        {!newsLoading && combinedFeed.length > 4 && (
           <button onClick={() => setNewsExpanded(e=>!e)} style={{ width:"100%", padding:"10px 16px", background:"transparent", border:"none", borderTop:`1px solid ${T.border}`, fontSize:12, color:T.indigo, fontWeight:600, cursor:"pointer", textAlign:"left" }}>
-            {newsExpanded ? "Show less ↑" : `Show ${newsItems.length - 4} more ↓`}
+            {newsExpanded ? "Show less ↑" : `Show ${combinedFeed.length - 4} more ↓`}
           </button>
         )}
       </Card>
 
-      {/* People you may know */}
+      {/* People you may know — real Supabase profiles, ranked by ELO
+          (pulse/builders — already domain-filtered, excludes self). */}
       <Card>
         <div style={{ padding:"12px 16px 4px" }}>
           <div style={{ fontFamily:T.serif, fontSize:14, fontWeight:800, color:T.ink, marginBottom:12 }}>People you may know</div>
-          {SUGGESTIONS.map((s,i) => (
-            <div key={i} style={{ display:"flex", gap:10, alignItems:"flex-start", padding:"8px 0", borderTop: i>0?`1px solid ${T.border}`:"none" }}>
-              <div style={{ width:40, height:40, borderRadius:"50%", background:s.color, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                <span style={{ fontFamily:T.serif, fontSize:14, fontWeight:700, color:"#fff" }}>{s.initials}</span>
-              </div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontSize:13, fontWeight:700, color:T.ink, marginBottom:1 }}>{s.name}</div>
-                <div style={{ fontSize:11, color:T.ink2, marginBottom:4 }}>{s.headline}</div>
-                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                  <span style={{ fontFamily:T.mono, fontSize:10, fontWeight:700, color:T.indigo }}>{skillTierPhrase(s.elo)}</span>
-                  <button style={{ padding:"4px 12px", background:"transparent", border:`1.5px solid ${T.indigo}`, borderRadius:99, fontSize:11, fontWeight:700, color:T.indigo, cursor:"pointer" }}>+ Connect</button>
+          {peopleLoading && <div style={{ fontSize:12, color:T.ink3, paddingBottom:8 }}>Loading…</div>}
+          {!peopleLoading && peopleError && <div style={{ fontSize:12, color:T.ink3, paddingBottom:8 }}>Couldn&apos;t load suggestions right now.</div>}
+          {!peopleLoading && !peopleError && people.length === 0 && (
+            <div style={{ fontSize:12, color:T.ink3, paddingBottom:8 }}>No other professionals in {domain} yet — check back as more people join.</div>
+          )}
+          {!peopleLoading && !peopleError && people.map((p,i) => {
+            const name = p.display_name || p.name || "Professional"
+            const uid = p.id
+            const state = connectState[uid]
+            return (
+              <div key={uid||i} style={{ display:"flex", gap:10, alignItems:"flex-start", padding:"8px 0", borderTop: i>0?`1px solid ${T.border}`:"none" }}>
+                <div style={{ width:40, height:40, borderRadius:"50%", background:colorForPerson(uid), display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  <span style={{ fontFamily:T.serif, fontSize:14, fontWeight:700, color:"#fff" }}>{name[0]?.toUpperCase()||"?"}</span>
+                </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:13, fontWeight:700, color:T.ink, marginBottom:1 }}>{name}</div>
+                  <div style={{ fontSize:11, color:T.ink2, marginBottom:4 }}>{p.keyword || p.path || "Capabilio member"}</div>
+                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                    <span style={{ fontFamily:T.mono, fontSize:10, fontWeight:700, color:T.indigo }}>{skillTierPhrase(p.elo_rating||0)}</span>
+                    <button
+                      onClick={()=>state==="sent"||state==="sending"?null:connect(uid,name)}
+                      style={{ padding:"4px 12px", background:state==="sent"?"#F0FDF4":"transparent", border:`1.5px solid ${state==="sent"?"#BBF7D0":T.indigo}`, borderRadius:99, fontSize:11, fontWeight:700, color:state==="sent"?"#15803D":T.indigo, cursor:state?"default":"pointer" }}>
+                      {state==="sending"?"Sending…":state==="sent"?"✓ Sent":"+ Connect"}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </Card>
     </div>
@@ -691,72 +749,12 @@ function SearchBar({ value, onChange }) {
 // ─── Main Pulse page ──────────────────────────────────────────────────────────
 // ─── Student Pulse — tech-first, role-aware community feed ──────────────────
 
-const ROLE_NEWS = {
-  "Data Analyst":      [
-    { cat:"Market",  title:"Data Analyst roles in India grew 42% YoY — SQL & Python lead demand", source:"LinkedIn Insights", time:"2h ago", color:"#0A66C2" },
-    { cat:"Tool",    title:"DuckDB 1.0 released — runs analytical queries 10× faster than SQLite", source:"DuckDB Blog", time:"5h ago", color:"#E67E22" },
-    { cat:"Hiring",  title:"TCS, Infosys, and Wipro open 3,200+ data analyst roles for freshers", source:"Naukri", time:"8h ago", color:"#27AE60" },
-    { cat:"Learn",   title:"Google's free Data Analytics Certificate now accepted by 150+ Indian firms", source:"Coursera", time:"1d ago", color:"#9B59B6" },
-    { cat:"Tool",    title:"Power BI Feb update: Copilot now auto-generates DAX formulas", source:"Microsoft Blog", time:"1d ago", color:"#0078D4" },
-    { cat:"Career",  title:"Average fresher DA salary in Bangalore hits ₹5.8 LPA in 2026", source:"AmbitionBox", time:"2d ago", color:"#E74C3C" },
-  ],
-  "Full-Stack": [
-    { cat:"Release", title:"Next.js 15.3 ships with Turbopack stable and new server actions", source:"Vercel Blog", time:"1h ago", color:"#000" },
-    { cat:"Tool",    title:"Bun 1.2 now 30% faster than Node.js for HTTP servers in benchmarks", source:"Bun.sh", time:"4h ago", color:"#E67E22" },
-    { cat:"Hiring",  title:"Startup ecosystem adding 8,000+ full-stack roles across Bengaluru, Hyderabad", source:"The Ken", time:"7h ago", color:"#27AE60" },
-    { cat:"Learn",   title:"React Query v6 announced — removes boilerplate by 40%", source:"TkDodo Blog", time:"12h ago", color:"#61DAFB" },
-    { cat:"Career",  title:"Full-stack median CTC for freshers: ₹6.2 LPA in product companies", source:"Levels.fyi India", time:"1d ago", color:"#9B59B6" },
-  ],
-  "default": [
-    { cat:"AI",      title:"OpenAI releases o3 with advanced reasoning benchmarks", source:"TechCrunch", time:"2h ago", color:"#0A66C2" },
-    { cat:"Hiring",  title:"India tech hiring up 18% YoY — backend & ML roles lead", source:"Economic Times", time:"4h ago", color:"#27AE60" },
-    { cat:"Release", title:"TypeScript 5.5 ships with inferred type predicates", source:"Dev.to", time:"8h ago", color:"#E67E22" },
-    { cat:"AI",      title:"Google DeepMind AlphaFold 3 predicts drug interactions", source:"Nature", time:"12h ago", color:"#0A66C2" },
-    { cat:"Hiring",  title:"Bengaluru startups see 3× spike in senior IC roles", source:"Entrackr", time:"1d ago", color:"#27AE60" },
-    { cat:"Release", title:"Node.js 22 LTS released with experimental WebSocket API", source:"InfoQ", time:"1d ago", color:"#68A063" },
-  ],
-}
-
-const GITHUB_REPOS = {
-  "Data Analyst": [
-    { name:"practical-sql", author:"anthonydebarros", stars:"8.4k", lang:"SQL", desc:"Practical SQL book — real-world queries for data analysts", color:"#E97820" },
-    { name:"pandas-exercises", author:"guipsamora", stars:"12.1k", lang:"Python", desc:"100 exercises to master Pandas for data analysis", color:"#3572A5" },
-    { name:"awesome-datascience", author:"academic", stars:"23k", lang:"Jupyter", desc:"Curated learning resources, tools, and datasets for data science", color:"#DA5B0B" },
-    { name:"mode-analytics/sql-tutorial", author:"mode", stars:"5.2k", lang:"SQL", desc:"Interactive SQL tutorial used by 500k+ learners", color:"#E97820" },
-  ],
-  "Full-Stack": [
-    { name:"roadmap.sh", author:"kamranahmedse", stars:"290k", lang:"TypeScript", desc:"Interactive developer roadmaps — full-stack learning path", color:"#3178C6" },
-    { name:"realworld", author:"gothinkster", stars:"78k", lang:"Multiple", desc:"Fullstack exemplary apps — same spec, 30+ frameworks", color:"#F1E05A" },
-    { name:"system-design-primer", author:"donnemartin", stars:"270k", lang:"Python", desc:"System design concepts for tech interviews", color:"#3572A5" },
-    { name:"javascript-algorithms", author:"trekhleb", stars:"184k", lang:"JavaScript", desc:"Algorithms and data structures in JavaScript with explanations", color:"#F7DF1E" },
-  ],
-  "default": [
-    { name:"build-your-own-x", author:"codecrafters", stars:"310k", lang:"Multiple", desc:"Learn by rebuilding your favourite technologies from scratch", color:"#555" },
-    { name:"free-programming-books", author:"EbookFoundation", stars:"340k", lang:"Multiple", desc:"Free learning resources for every programming language", color:"#27AE60" },
-    { name:"public-apis", author:"public-apis", stars:"305k", lang:"Python", desc:"Collective list of free APIs for building projects", color:"#E74C3C" },
-    { name:"project-based-learning", author:"practical-tutorials", stars:"210k", lang:"Multiple", desc:"Curated list of tutorials to build real-world projects", color:"#9B59B6" },
-  ],
-}
-
-const COMMUNITIES = [
-  { name:"r/learnprogramming", members:"3.8M", icon:"🟠", desc:"Ask anything — beginners always welcome. Daily help threads.", badge:"Most Active", badgeColor:"#FF4500" },
-  { name:"r/cscareerquestions", members:"876k", icon:"🟠", desc:"Campus placements, resume reviews, interview experiences in India.", badge:"Interviews", badgeColor:"#FF6D00" },
-  { name:"Dev.to Community", members:"1.2M", icon:"⬛", desc:"Write articles, share projects, get feedback from working devs.", badge:"Beginner Friendly", badgeColor:"#3D3D3D" },
-  { name:"Hashnode", members:"600k", icon:"🟦", desc:"Technical blogging platform — great for building your public profile.", badge:"Portfolio Boost", badgeColor:"#2962FF" },
-  { name:"GitHub Discussions", members:"100M+", icon:"⚫", desc:"Project-level discussions — contribute to open source.", badge:"Open Source", badgeColor:"#1B1F23" },
-  { name:"Discord: Reactiflux", members:"220k", icon:"💙", desc:"Real-time help from React / JS experts. Active 24/7.", badge:"Live Chat", badgeColor:"#5865F2" },
-]
-
-const TRENDING_TOPICS = [
-  { tag:"#SQL", posts:"18,240", hot:true  },
-  { tag:"#Python", posts:"14,832", hot:true  },
-  { tag:"#CampusPlacement", posts:"9,100", hot:true  },
-  { tag:"#SystemDesign", posts:"8,241", hot:false },
-  { tag:"#ReactJS", posts:"6,104", hot:false },
-  { tag:"#DataScience", posts:"5,890", hot:false },
-  { tag:"#OpenSource", posts:"4,722", hot:false },
-  { tag:"#100DaysOfCode", posts:"4,200", hot:false },
-]
+// Pulse redesign (2026-07-26): the old ROLE_NEWS / GITHUB_REPOS /
+// COMMUNITIES / TRENDING_TOPICS hardcoded blocks that used to live here were
+// dead code — grepping this file confirmed none of them were ever rendered
+// anywhere in StudentPulse's JSX. Removed rather than wired up, since the
+// live equivalents (market insights, trending tags, ELO-matched builders)
+// already exist below and are real.
 
 function StudentPulse({ user, userData }) {
   const roleConf    = getRoleConfig(userData)
@@ -857,6 +855,16 @@ function StudentPulse({ user, userData }) {
   const [marketInsights, setMarketInsights] = useState(null)
   const [insightsLoading, setInsightsLoading] = useState(true)
 
+  // Real skills (2026-07-26 redesign) — same source as the professional
+  // Pulse and Skills.jsx: user_skills, not a userData shortcut. Used to
+  // personalize the market-insights prompt beyond just domain/role.
+  const [mySkills, setMySkills] = useState([])
+  useEffect(() => {
+    skillsApi.list()
+      .then(list => setMySkills((list || []).map(s => s.name || s.skill_name).filter(Boolean).slice(0, 8)))
+      .catch(() => setMySkills([]))
+  }, [])
+
   // Load sidebar data + market insights when domain changes
   useEffect(() => {
     pulseApi.builders(domain, elo, 6).then(setBuilders).catch(() => setBuilders([]))
@@ -870,12 +878,14 @@ function StudentPulse({ user, userData }) {
       setMyFollowers(accepted.filter(c => c.addressee_id === user?.id)
         .map(c => ({ ...c.requester, connId: c.id })))
     }).catch(() => {})
-    // Market insights — server-cached 2hr, falls back to static data if unavailable
+    // Market insights — server-cached 2hr, personalized by domain/role/skills.
+    // No static fallback (2026-07-26): if the route reports `_error`, treat
+    // it as unavailable rather than showing anything.
     setInsightsLoading(true)
-    pulseApi.marketInsights(domain.toLowerCase(), userData?.job_role || userData?.target_role || domain)
-      .then(data => { setMarketInsights(data); setInsightsLoading(false) })
+    pulseApi.marketInsights(domain.toLowerCase(), userData?.job_role || userData?.target_role || domain, mySkills)
+      .then(data => { setMarketInsights(data?._error ? null : data); setInsightsLoading(false) })
       .catch(() => { setMarketInsights(null); setInsightsLoading(false) })
-  }, [domain, elo]) // eslint-disable-line
+  }, [domain, elo, JSON.stringify(mySkills)]) // eslint-disable-line
 
   // ── Network: load followers/following & suggested users ─────────────────────
   const loadMyNetwork = async () => {
@@ -1103,37 +1113,30 @@ function StudentPulse({ user, userData }) {
     text:     { label: "POST",     color: "#6B6560", bg: "#F3F4F6" },
   }
 
-  // ── Static fallbacks (used until live data loads, or if API unavailable) ──────
-  const STATIC_DOMAIN_STATS = {
-    "Data Analyst":     { hiring:"+35%", salary:"₹7L",  openRoles:"3,840", trending:"dbt, Snowflake" },
-    "Full-Stack":       { hiring:"+28%", salary:"₹9L",  openRoles:"7,200", trending:"Next.js 15, Bun" },
-    "Frontend":         { hiring:"+22%", salary:"₹8L",  openRoles:"5,400", trending:"React 19, Tailwind" },
-    "Backend":          { hiring:"+31%", salary:"₹9.5L",openRoles:"6,100", trending:"Go, gRPC" },
-    "DevOps":           { hiring:"+40%", salary:"₹12L", openRoles:"2,900", trending:"K8s 1.30, Cilium" },
-    "Machine Learning": { hiring:"+52%", salary:"₹14L", openRoles:"4,200", trending:"LLM APIs, RAG" },
-  }
-  const staticStats  = STATIC_DOMAIN_STATS[domain] || { hiring:"+18%", salary:"₹9L", openRoles:"7,840", trending:"AI, TypeScript" }
+  // Domain picker choices — just labels for the switcher, not fake stats.
+  const DOMAIN_CHOICES = ["Data Analyst", "Full-Stack", "Frontend", "Backend", "DevOps", "Machine Learning"]
 
-  // Live stats from Gemini Search — fall back to static if not yet loaded
-  const liveHiring   = marketInsights?.hiring_companies?.[0]?.salary_lpa ? `${marketInsights.hiring_companies[0].salary_lpa}` : null
-  const liveTrending = marketInsights?.trending_techs?.slice(0,2).map(t => t.name).join(", ") || null
+  // Honest stats (2026-07-26 redesign) — every value here is either real
+  // (computed from the live market-insights response) or an explicit "—"/
+  // "Not available yet" placeholder. The old version always showed a
+  // hardcoded per-domain percentage/salary/role-count under a "LIVE" badge
+  // regardless of whether any of it was real; that's exactly the dummy-data
+  // pattern this redesign removes.
   const stats = {
-    hiring:    marketInsights?.market_outlook === "Growing" ? "+Live" : staticStats.hiring,
-    salary:    liveHiring   || staticStats.salary,
-    openRoles: staticStats.openRoles,
-    trending:  liveTrending || staticStats.trending,
+    hiring:     marketInsights?.market_outlook || (insightsLoading ? "…" : "Not available"),
+    // Real count of companies the report actually named — not a fabricated
+    // "7,840 open roles" figure.
+    openRoles:  marketInsights ? `${marketInsights.companies_hiring_count ?? 0} companies` : (insightsLoading ? "…" : "—"),
+    salary:     marketInsights?.hiring_companies?.[0]?.salary_lpa || (insightsLoading ? "…" : "Not available yet"),
+    trending:   marketInsights?.trending_techs?.slice(0,2).map(t => t.name).join(", ") || (insightsLoading ? "…" : "Not available yet"),
   }
 
-  const STATIC_TRENDING_TAGS = {
-    "Data Analyst":     ["#SQL","#Python","#Pandas","#dbt","#Snowflake","#Tableau"],
-    "Full-Stack":       ["#ReactJS","#NodeJS","#SystemDesign","#TypeScript","#NextJS"],
-    "Machine Learning": ["#Python","#LLMs","#RAG","#LangChain","#PyTorch","#MLOps"],
-    "default":          ["#SystemDesign","#OpenSource","#100DaysOfCode","#LeetCode","#AI"],
-  }
-  // Use live rising skills as tags if available, else static
+  // Rising skills — only ever real data from the live report. If the report
+  // has no rising-skills list yet, show an honest empty note instead of a
+  // static per-domain hashtag list masquerading as "rising skills".
   const trendingTags = marketInsights?.skills?.rising?.length
     ? marketInsights.skills.rising.slice(0, 6).map(s => s.startsWith("#") ? s : `#${s}`)
-    : (STATIC_TRENDING_TAGS[domain] || STATIC_TRENDING_TAGS["default"])
+    : []
 
   const AVATAR_COLORS = ["#FF5701","#6D28D9","#0891B2","#059669","#D97706","#7C3AED","#DC2626","#0369A1"]
   const colorForId = (id) => AVATAR_COLORS[(id?.charCodeAt(0) || 0) % AVATAR_COLORS.length]
@@ -1164,7 +1167,7 @@ function StudentPulse({ user, userData }) {
         <div onClick={()=>setShowDomainPicker(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center"}}>
           <div onClick={e=>e.stopPropagation()} style={{background:"#FFFFFF",borderRadius:16,padding:24,width:340,boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
             <div style={{fontSize:14,fontWeight:700,color:P.ink,marginBottom:16}}>Switch Domain Filter</div>
-            {Object.keys(STATIC_DOMAIN_STATS).map(d=>(
+            {DOMAIN_CHOICES.map(d=>(
               <button key={d} onClick={()=>setShowDomainPicker(false)}
                 style={{display:"block",width:"100%",padding:"10px 14px",marginBottom:6,borderRadius:8,border:`1.5px solid ${domain===d?P.accent+"40":P.border}`,background:domain===d?P.accent2:"#fff",color:domain===d?P.accent:P.ink2,fontSize:13,fontWeight:domain===d?700:500,textAlign:"left",cursor:"pointer"}}>
                 {d} {domain===d&&"✓"}
@@ -1197,12 +1200,18 @@ function StudentPulse({ user, userData }) {
           </div>
         </div>
 
-        {/* ── Domain stats bar ── */}
+        {/* ── Domain stats bar — real fields only (2026-07-26 redesign).
+              The old "ACTIVE PROJECTS" stat referenced stats.projects, which
+              was never defined anywhere in this file — it silently rendered
+              blank on every load. Removed rather than backfilled with a
+              fake number. */}
         <div style={{background:"linear-gradient(135deg,#1a1a2e,#16213e)",borderRadius:P.r,padding:"10px 18px",marginBottom:16,display:"flex",alignItems:"center",gap:6,overflowX:"auto",animation:"fadeUp 0.35s ease both"}}>
-          <span style={{fontSize:10,fontWeight:800,color:"rgba(255,255,255,0.5)",letterSpacing:"0.12em",textTransform:"uppercase",whiteSpace:"nowrap",marginRight:8}}>LIVE DOMAIN PULSE</span>
-          <span style={{fontSize:11,color:"rgba(255,255,255,0.4)",marginRight:8,whiteSpace:"nowrap"}}>Real-time signals for <span style={{color:P.accent,fontWeight:700}}>{domain}</span></span>
+          <span style={{fontSize:10,fontWeight:800,color:"rgba(255,255,255,0.5)",letterSpacing:"0.12em",textTransform:"uppercase",whiteSpace:"nowrap",marginRight:8}}>{marketInsights ? "LIVE DOMAIN PULSE" : "DOMAIN PULSE"}</span>
+          <span style={{fontSize:11,color:"rgba(255,255,255,0.4)",marginRight:8,whiteSpace:"nowrap"}}>
+            {marketInsights ? <>Real-time signals for <span style={{color:P.accent,fontWeight:700}}>{domain}</span></> : insightsLoading ? "Loading signals…" : `No live signals for ${domain} yet`}
+          </span>
           <div style={{flex:1}}/>
-          {[{label:"HIRING VELOCITY",value:stats.hiring,color:"#34D399"},{label:"ACTIVE PROJECTS",value:stats.projects,color:"#60A5FA"},{label:"AVG SALARY",value:stats.salary,color:"#FBBF24"},{label:"OPEN ROLES",value:stats.openRoles,color:"#F472B6"}].map((s,i)=>(
+          {[{label:"MARKET OUTLOOK",value:stats.hiring,color:"#34D399"},{label:"AVG SALARY",value:stats.salary,color:"#FBBF24"},{label:"COMPANIES HIRING",value:stats.openRoles,color:"#F472B6"}].map((s,i)=>(
             <div key={i} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"2px 16px",borderLeft:"1px solid rgba(0,0,0,0.05)",flexShrink:0}}>
               <span style={{fontSize:15,fontWeight:800,color:s.color,fontFamily:"'DM Mono',monospace"}}>{s.value}</span>
               <span style={{fontSize:9,color:"rgba(255,255,255,0.4)",fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",marginTop:1}}>{s.label}</span>
@@ -1803,7 +1812,7 @@ function StudentPulse({ user, userData }) {
                     ))}
                   </div>
                 : <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
-                    {[{l:"HIRING",v:stats.hiring,c:"#34D399"},{l:"OPEN ROLES",v:stats.openRoles,c:P.ink2},{l:"AVG SALARY",v:stats.salary,c:P.ink2},{l:"TRENDING",v:stats.trending,c:P.accent}].map((s,i)=>(
+                    {[{l:"OUTLOOK",v:stats.hiring,c:"#34D399"},{l:"COMPANIES HIRING",v:stats.openRoles,c:P.ink2},{l:"AVG SALARY",v:stats.salary,c:P.ink2},{l:"TRENDING",v:stats.trending,c:P.accent}].map((s,i)=>(
                       <div key={i} style={{padding:"8px 10px",background:"rgba(0,0,0,0.02)",borderRadius:8}}>
                         <div style={{fontSize:9,color:P.ink4,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:2}}>{s.l}</div>
                         <div style={{fontSize:11,fontWeight:800,color:s.c,fontFamily:"'DM Mono',monospace",overflow:"hidden",wordBreak:"break-word",lineHeight:1.3}}>{s.v}</div>
@@ -1820,8 +1829,13 @@ function StudentPulse({ user, userData }) {
               )}
 
               <div style={{fontSize:10,fontWeight:700,color:P.ink4,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:6}}>
-                {marketInsights ? "RISING SKILLS" : "TRENDING THIS WEEK"}
+                RISING SKILLS
               </div>
+              {trendingTags.length === 0 && (
+                <div style={{fontSize:11,color:P.ink4,marginBottom:4}}>
+                  {insightsLoading ? "Loading…" : "No rising-skills data available for this domain yet."}
+                </div>
+              )}
               <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
                 {trendingTags.map((t,i)=>(
                   <button key={i} className="pb" onClick={()=>setSortTab("signal")}
@@ -1936,6 +1950,16 @@ export default function Pulse({ user, userData }) {
   const [hasMore,    setHasMore]    = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
 
+  // Real skills, for personalizing the news feed (2026-07-26 Pulse
+  // redesign) — same data source Skills.jsx uses, not a userData shortcut,
+  // since skills live in user_skills, not on the profile row.
+  const [mySkills, setMySkills] = useState([])
+  useEffect(() => {
+    skillsApi.list()
+      .then(list => setMySkills((list || []).map(s => s.name || s.skill_name).filter(Boolean).slice(0, 8)))
+      .catch(() => setMySkills([]))
+  }, [])
+
   const load = useCallback(async (pg=1, append=false) => {
     setLoading(true); setOffline(false)
     try {
@@ -2003,7 +2027,7 @@ export default function Pulse({ user, userData }) {
 
           {/* ── Right sidebar ── */}
           <div style={{ position:"sticky", top:72 }}>
-            <RightSidebar user={user} domain={getRoleConfig(userData).label} role={getRoleConfig(userData).label}/>
+            <RightSidebar user={user} domain={getRoleConfig(userData).label} role={getRoleConfig(userData).label} skills={mySkills}/>
           </div>
 
         </div>
