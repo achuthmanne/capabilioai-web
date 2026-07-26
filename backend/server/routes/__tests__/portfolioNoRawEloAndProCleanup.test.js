@@ -56,6 +56,21 @@ describe("Portfolio.jsx — no raw ELO number, professional path gated off Arena
     assert.ok(/tier\.label\} tier/.test(archetypesSrc), "archetype summaries should fall back to the qualitative tier label")
   })
 
+  test("AI-Assigned Professional Identity card doesn't reference Arena for professionals (2026-07-26 fix)", () => {
+    // Regression for user report: the card's "What this means" copy said
+    // "analyzed your Arena scores" and its "Your level" badge showed the
+    // Arena ELO tier (e.g. "Mid · Proficient") even for professionals, who
+    // have no Arena challenges at all — confusing and not recruiter-useful.
+    assert.ok(portfolioSrc.includes("isPro"), "identity card must branch on isPro")
+    assert.ok(
+      /isPro\s*\?\s*"Capabilio's AI analyzed your real skills, work experience, and Weekly Skill Pulse assessments/.test(portfolioSrc),
+      "professional branch of the explanation text must not mention Arena"
+    )
+    assert.ok(portfolioSrc.includes("getProStage"), "professional path must use a real, Arena-independent career-stage function")
+    assert.ok(portfolioSrc.includes("Career stage:"), "professional path must show a career-stage label instead of an Arena tier")
+    assert.ok(portfolioSrc.includes("Employment Verified"), "professional path should surface real verification signals here")
+  })
+
   test("professional path (isPro) gates off Arena-only Performance Summary / Activity Heatmap", () => {
     assert.ok(/\{!isPro\s*&&\s*\(/.test(portfolioSrc) || /!isPro && tasks\.length>0&&/.test(portfolioSrc),
       "Performance Summary / Activity Heatmap must be conditioned on !isPro")

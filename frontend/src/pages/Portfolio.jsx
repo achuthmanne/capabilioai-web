@@ -244,6 +244,21 @@ const ELO_TIERS = [
   { min:1500, max:9999, label:"Elite",       color:"#DC2626" },
 ]
 const getTier = elo => ELO_TIERS.find(t => elo >= t.min && elo < t.max) || ELO_TIERS[0]
+
+// Professional-path career stage label (2026-07-26) — deliberately decoupled
+// from the Arena ELO tier system above. Professionals have no Arena
+// challenges, so ELO_TIERS/getTier() would either show a fabricated default
+// (untouched profiles get a static elo_rating=800 -> "Proficient", implying
+// earned performance that never happened) or reference "Arena", which
+// doesn't exist on this path. This is driven only by a real, self-reported-
+// but-verifiable field (years of experience), never a game-style score.
+const PRO_STAGE = [
+  { min:0, label:"Emerging Professional" },
+  { min:1, label:"Early-Career" },
+  { min:4, label:"Mid-Career" },
+  { min:8, label:"Senior" },
+]
+const getProStage = years => [...PRO_STAGE].reverse().find(s => (years||0) >= s.min) || PRO_STAGE[0]
 // CSS clamp helper for responsive font sizes
 const clamp = (minPx, vw, maxPx) => `clamp(${minPx}px, ${vw}vw, ${maxPx}px)`
 
@@ -2025,7 +2040,9 @@ export default function Portfolio({ username: usernameProp }) {
                     background:"rgba(0,0,0,0.2)",borderRadius:10,
                     padding:"10px 14px",border:`1px solid rgba(255,255,255,0.06)`,
                   }}>
-                    💡 <strong style={{color:C.ink}}>What this means:</strong> Capabilio's AI analyzed your Arena scores, skill graph, and challenge history to assign you this role persona. Recruiters use it to instantly understand your specialization — like a professional headline, but backed by real performance data.
+                    💡 <strong style={{color:C.ink}}>What this means:</strong> {isPro
+                      ? "Capabilio's AI analyzed your real skills, work experience, and Weekly Skill Pulse assessments to assign this professional persona. Recruiters use it to instantly understand your specialization — like a headline, but backed by verified signals instead of a self-written bio."
+                      : "Capabilio's AI analyzed your Arena scores, skill graph, and challenge history to assign you this role persona. Recruiters use it to instantly understand your specialization — like a professional headline, but backed by real performance data."}
                   </div>
                 </div>
               </div>
@@ -2054,33 +2071,58 @@ export default function Portfolio({ username: usernameProp }) {
                     ))}
                   </div>
                 </div>
-                <div style={{
-                  display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",
-                  background:"rgba(255,255,255,0.04)",borderRadius:12,
-                  padding:"10px 14px",border:"1px solid rgba(255,255,255,0.07)",
-                }}>
-                  <span style={{fontSize:11,color:C.ink3,fontWeight:600}}>Your level:</span>
-                  <span style={{
-                    fontSize:12,fontWeight:900,textTransform:"capitalize",
-                    color:seniority==="senior"?C.purple:seniority==="mid"?C.blue:C.amber,
-                  }}>
-                    {seniority} · {tier.label}
-                  </span>
-                  {!isPro && (
-                    <>
-                      <span style={{fontSize:11,color:C.ink4}}>•</span>
-                      <span style={{fontSize:11,color:C.ink3,fontFamily:"'DM Mono',monospace"}}>
-                        {tier.label} tier
-                      </span>
-                    </>
-                  )}
+                {isPro ? (
+                  // Professional path: career-stage + live verification badges,
+                  // built entirely from real signals (years of experience, UAN/
+                  // employment verification, verified certifications) — no
+                  // Arena reference, no ELO tier, nothing fabricated.
                   <div style={{
-                    marginLeft:"auto",fontSize:10,color:C.ink4,fontStyle:"italic",
-                    maxWidth:180,lineHeight:1.5,
+                    display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",
+                    background:"rgba(255,255,255,0.04)",borderRadius:12,
+                    padding:"10px 14px",border:"1px solid rgba(255,255,255,0.07)",
                   }}>
-                    {isPro ? "Complete more Weekly Skill Pulse check-ins to strengthen this signal" : "Complete more Arena challenges to level up your archetype"}
+                    <span style={{fontSize:11,color:C.ink3,fontWeight:600}}>Career stage:</span>
+                    <span style={{fontSize:12,fontWeight:900,color:aConfig?.palette?.accent||C.blue}}>
+                      {getProStage(ud.yearsOfExperience).label}
+                    </span>
+                    {ud.uanVerified && (
+                      <span style={{display:"flex",alignItems:"center",gap:4,fontSize:11,fontWeight:800,color:C.green,
+                        background:"rgba(34,197,94,0.12)",border:"1px solid rgba(34,197,94,0.3)",borderRadius:99,padding:"3px 10px"}}>
+                        🔐 Employment Verified
+                      </span>
+                    )}
+                    {ud.verifiedCertsCount>0 && (
+                      <span style={{display:"flex",alignItems:"center",gap:4,fontSize:11,fontWeight:800,color:C.amber,
+                        background:"rgba(245,158,11,0.12)",border:"1px solid rgba(245,158,11,0.3)",borderRadius:99,padding:"3px 10px"}}>
+                        🏅 {ud.verifiedCertsCount} Cert{ud.verifiedCertsCount>1?"s":""} Verified
+                      </span>
+                    )}
+                    <div style={{marginLeft:"auto",fontSize:10,color:C.ink4,fontStyle:"italic",maxWidth:200,lineHeight:1.5}}>
+                      Complete more Weekly Skill Pulse check-ins to strengthen this signal
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div style={{
+                    display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",
+                    background:"rgba(255,255,255,0.04)",borderRadius:12,
+                    padding:"10px 14px",border:"1px solid rgba(255,255,255,0.07)",
+                  }}>
+                    <span style={{fontSize:11,color:C.ink3,fontWeight:600}}>Your level:</span>
+                    <span style={{
+                      fontSize:12,fontWeight:900,textTransform:"capitalize",
+                      color:seniority==="senior"?C.purple:seniority==="mid"?C.blue:C.amber,
+                    }}>
+                      {seniority} · {tier.label}
+                    </span>
+                    <span style={{fontSize:11,color:C.ink4}}>•</span>
+                    <span style={{fontSize:11,color:C.ink3,fontFamily:"'DM Mono',monospace"}}>
+                      {tier.label} tier
+                    </span>
+                    <div style={{marginLeft:"auto",fontSize:10,color:C.ink4,fontStyle:"italic",maxWidth:180,lineHeight:1.5}}>
+                      Complete more Arena challenges to level up your archetype
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
