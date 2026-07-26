@@ -7,11 +7,11 @@
  *
  * Never call the weekly check-in "assessment" — product naming rule.
  */
-import { useEffect, useState, useMemo } from "react"
-import { weeklyCheckApi, skillsApi, professionalEloApi } from "../lib/api"
+import { useEffect, useState, useMemo, useCallback } from "react"
+import { weeklyCheckApi, skillsApi, professionalEloApi, epfoApi, certificationsApi } from "../lib/api"
 import SkillGraphView from "../components/SkillGraphView"
 import { DOMAIN_CONFIG } from "../config/skillGroups"
-import { SectionErrorBoundary, ProfessionalScoreHero } from "../components/careeros/CareerOSUI"
+import { SectionErrorBoundary, ProfessionalScoreHero, VerificationBonusPanel } from "../components/careeros/CareerOSUI"
 import { FLAGS } from "../config/featureFlags"
 
 const P    = "#8B5CF6"
@@ -260,6 +260,8 @@ export default function Skills({ user, userData, onNavigate }) {
   const [eloData, setEloData] = useState(null)
   const [eloLoading, setEloLoading] = useState(true)
   const [eloError, setEloError] = useState(false)
+  const [epfoStatus, setEpfoStatus] = useState(null)
+  const [certifications, setCertifications] = useState([])
 
   useEffect(() => {
     let cancelled = false
@@ -279,6 +281,39 @@ export default function Skills({ user, userData, onNavigate }) {
       .finally(() => { if (!cancelled) setEloLoading(false) })
     return () => { cancelled = true }
   }, [])
+
+  const refreshVerificationBonuses = useCallback(() => {
+    if (!FLAGS.career_os_professional_elo) return
+    epfoApi.status().then(res => setEpfoStatus(res)).catch(() => {})
+    certificationsApi.list().then(res => setCertifications(res?.certifications || [])).catch(() => {})
+    // Bonuses may have changed (e.g. right after an upload triggers a
+    // recompute) — refresh the hero's numbers too.
+    professionalEloApi.status().then(res => setEloData(res)).catch(() => {})
+  }, [])
+
+  useEffect(() => { refreshVerificationBonuses() }, [refreshVerificationBonuses])
+
+  const handleClaimCertification = useCallback(() => {
+    const cert_name = window.prompt("Certificate name (e.g. AWS Certified Solutions Architect – Professional)")
+    if (!cert_name) return
+    certificationsApi.claim(cert_name.trim(), null, null)
+      .then(() => refreshVerificationBonuses())
+      .catch(err => window.alert(err.message || "Couldn't add certification"))
+  }, [refreshVerificationBonuses])
+
+  const handleUploadCertification = useCallback((cert) => {
+    const input = document.createElement("input")
+    input.type = "file"
+    input.accept = "application/pdf,image/*"
+    input.onchange = () => {
+      const file = input.files?.[0]
+      if (!file) return
+      certificationsApi.upload(cert.id, file)
+        .then(() => refreshVerificationBonuses())
+        .catch(err => window.alert(err.message || "Upload failed"))
+    }
+    input.click()
+  }, [refreshVerificationBonuses])
 
   useEffect(() => {
     let cancelled = false
@@ -300,6 +335,20 @@ export default function Skills({ user, userData, onNavigate }) {
         {FLAGS.career_os_professional_elo && (
           <SectionErrorBoundary name="skills-professional-elo">
             <ProfessionalScoreHero data={eloData} loading={eloLoading} error={eloError} onTakeAction={() => onNavigate?.("pulse")} />
+          </SectionErrorBoundary>
+        )}
+
+        {FLAGS.career_os_professional_elo && (
+          <SectionErrorBoundary name="skills-verification-bonus-panel">
+            <VerificationBonusPanel
+              epfoStatus={epfoStatus}
+              certifications={certifications}
+              experienceBonusElo={eloData?.experience_bonus_elo || 0}
+              certBonusElo={eloData?.cert_bonus_elo || 0}
+              onStartEpfo={() => onNavigate?.("career")}
+              onClaimCertification={handleClaimCertification}
+              onUploadCertification={handleUploadCertification}
+            />
           </SectionErrorBoundary>
         )}
 

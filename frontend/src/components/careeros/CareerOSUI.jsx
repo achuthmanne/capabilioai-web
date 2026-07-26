@@ -171,8 +171,14 @@ export function ProfessionalScoreHero({ data, loading, error, onTakeAction }) {
   }
   if (!data) return null
 
-  const { elo, latest_change: change } = data
+  const { elo, latest_change: change, experience_bonus_elo, cert_bonus_elo, overall_elo } = data
   const hasHistory = !!change
+  // Skill Rating v2 (2026-07-26): bonuses are optional on the response shape
+  // (older callers / cached data may omit them) — only render the breakdown
+  // row when the backend actually sent bonus fields, never fabricate zeros
+  // as if they were real values.
+  const hasBonusData = experience_bonus_elo !== undefined && cert_bonus_elo !== undefined
+  const displayScore = overall_elo ?? elo
   const deltaColor = !hasHistory ? T.mut : change.delta > 0 ? T.good : change.delta < 0 ? T.bad : T.mut
   const deltaLabel = !hasHistory ? null : `${change.delta > 0 ? "+" : ""}${change.delta} this week`
 
@@ -198,7 +204,7 @@ export function ProfessionalScoreHero({ data, loading, error, onTakeAction }) {
             Professional ELO &middot; your skill-truth score
           </div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginTop: 8, flexWrap: "wrap" }}>
-            <div style={{ fontFamily: T.serif, fontSize: 44, fontWeight: 800, color: T.ink, lineHeight: 1 }}>{elo}</div>
+            <div style={{ fontFamily: T.serif, fontSize: 44, fontWeight: 800, color: T.ink, lineHeight: 1 }}>{displayScore}</div>
             {deltaLabel && <span style={{ fontSize: 13, fontWeight: 800, color: deltaColor, fontFamily: T.mono }}>{deltaLabel}</span>}
             <span style={{
               fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 999,
@@ -208,6 +214,16 @@ export function ProfessionalScoreHero({ data, loading, error, onTakeAction }) {
               {freshness.label}
             </span>
           </div>
+          {/* Skill Rating v2 breakdown — only rendered when the backend sent
+              real bonus figures; both bonuses are 0 until independently
+              verified, so this is never a fabricated number. */}
+          {hasBonusData && (experience_bonus_elo > 0 || cert_bonus_elo > 0) && (
+            <div style={{ display: "flex", gap: 14, marginTop: 8, fontSize: 11, fontFamily: T.mono, color: T.mut }}>
+              <span>Assessment {elo}</span>
+              {experience_bonus_elo > 0 && <span style={{ color: T.good }}>+{experience_bonus_elo} verified experience</span>}
+              {cert_bonus_elo > 0 && <span style={{ color: T.good }}>+{cert_bonus_elo} verified certifications</span>}
+            </div>
+          )}
         </div>
       </div>
 
@@ -255,6 +271,116 @@ export function ProfessionalScoreHero({ data, loading, error, onTakeAction }) {
           }}>Start this week&apos;s check-in &rarr;</button>
         )
       )}
+    </div>
+  )
+}
+
+// ─── VerificationBonusPanel ───────────────────────────────────────────────────
+// Skill Rating v2 (2026-07-26) — makes the trust-gating rule visible: claimed
+// experience/certifications never move the score until independently
+// verified. Renders the exact required states/copy (see
+// docs/elo-engine-v2-architecture.md §B): claimed, pending_verification,
+// verified, rejected, suspended. Data is passed in, not fetched — callers
+// wire epfoStatus from GET /api/pro/epfo/status and certifications from
+// GET /api/pro/certifications.
+const VERIFICATION_COPY = {
+  claimed:              { label: "Unlocks after verification",                         color: T.mut  },
+  in_progress:          { label: "Pending EPFO verification",                          color: T.warn },
+  pending_verification: { label: "Pending certificate verification",                   color: T.warn },
+  verified:             { label: "Verified and included in your Skill Rating",         color: T.good },
+  rejected:             { label: "Verification failed",                                color: T.bad  },
+  suspended:            { label: "Verification suspended — contact support",           color: T.bad  },
+  not_started:          { label: "Not started",                                        color: T.mut  },
+}
+
+export function VerificationBonusPanel({
+  epfoStatus,         // { verification_status } from GET /api/pro/epfo/status, or null
+  certifications = [], // rows from GET /api/pro/certifications
+  experienceBonusElo = 0,
+  certBonusElo = 0,
+  onStartEpfo,
+  onClaimCertification,
+  onUploadCertification,
+}) {
+  const epfoState = epfoStatus?.verification_status || "not_started"
+  const epfoCopy = VERIFICATION_COPY[epfoState] || VERIFICATION_COPY.claimed
+
+  return (
+    <div style={{ background: T.surf, border: `1px solid ${T.bdr}`, borderRadius: 18, padding: "18px 20px", marginBottom: 18 }}>
+      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: T.purple, fontFamily: T.mono, marginBottom: 12 }}>
+        Verified bonuses &middot; Skill Rating
+      </div>
+
+      {/* Experience / EPFO */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "10px 0", borderBottom: `1px solid ${T.bdr}` }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: T.ink, fontFamily: T.body }}>Verified experience</div>
+          <div style={{ fontSize: 11.5, color: epfoCopy.color, marginTop: 3, fontFamily: T.body }}>{epfoCopy.label}</div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontFamily: T.mono, fontWeight: 800, fontSize: 15, color: experienceBonusElo > 0 ? T.good : T.mut }}>
+            {experienceBonusElo > 0 ? `+${experienceBonusElo}` : "+0"}
+          </span>
+          {epfoState === "not_started" && onStartEpfo && (
+            <button onClick={onStartEpfo} style={{
+              border: "none", cursor: "pointer", fontFamily: T.mono, fontWeight: 800,
+              borderRadius: 10, padding: "7px 12px", fontSize: 10, textTransform: "uppercase",
+              background: T.purple, color: "#fff",
+            }}>Verify EPFO/UAN</button>
+          )}
+        </div>
+      </div>
+
+      {/* Certifications */}
+      <div style={{ padding: "10px 0 0" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: T.ink, fontFamily: T.body }}>Verified certifications</div>
+          <span style={{ fontFamily: T.mono, fontWeight: 800, fontSize: 15, color: certBonusElo > 0 ? T.good : T.mut }}>
+            {certBonusElo > 0 ? `+${certBonusElo}` : "+0"}
+          </span>
+        </div>
+
+        {certifications.length === 0 ? (
+          <div style={{ fontSize: 12, color: T.mut, marginTop: 8, fontFamily: T.body }}>
+            No certifications on file yet.{" "}
+            {onClaimCertification && (
+              <button onClick={onClaimCertification} style={{
+                border: "none", background: "none", color: T.purple, cursor: "pointer",
+                fontFamily: T.body, fontWeight: 700, fontSize: 12, padding: 0, textDecoration: "underline",
+              }}>Add a certification</button>
+            )}
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+            {certifications.map(cert => {
+              const copy = VERIFICATION_COPY[cert.verification_status] || VERIFICATION_COPY.claimed
+              return (
+                <div key={cert.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <div>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, color: T.ink, fontFamily: T.body }}>{cert.cert_name}</div>
+                    <div style={{ fontSize: 11, color: copy.color, fontFamily: T.body }}>
+                      {cert.verification_status === "rejected" && cert.rejected_reason ? cert.rejected_reason : copy.label}
+                    </div>
+                  </div>
+                  {cert.verification_status === "claimed" && onUploadCertification && (
+                    <button onClick={() => onUploadCertification(cert)} style={{
+                      border: `1px solid ${T.purple}40`, background: "transparent", cursor: "pointer",
+                      color: T.purple, fontFamily: T.mono, fontWeight: 800, borderRadius: 8,
+                      padding: "5px 10px", fontSize: 10, textTransform: "uppercase",
+                    }}>Upload proof</button>
+                  )}
+                </div>
+              )
+            })}
+            {onClaimCertification && (
+              <button onClick={onClaimCertification} style={{
+                alignSelf: "flex-start", border: "none", background: "none", color: T.purple, cursor: "pointer",
+                fontFamily: T.body, fontWeight: 700, fontSize: 12, padding: 0, marginTop: 4, textDecoration: "underline",
+              }}>Add another certification</button>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

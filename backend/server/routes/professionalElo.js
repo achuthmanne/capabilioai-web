@@ -18,9 +18,13 @@
 import { Router } from "express"
 import { supabaseAdmin } from "../lib/supabase.js"
 import { requireAuth } from "../lib/auth.js"
-import { getOrCreateEloState, applyPendingDecay, STARTING_ELO } from "../lib/professionalElo/eloEngine.js"
+import { getOrCreateEloState, applyPendingDecay, STARTING_ELO, MIN_ELO, MAX_ELO } from "../lib/professionalElo/eloEngine.js"
 
 const router = Router()
+
+function clampElo(v) {
+  return Math.max(MIN_ELO, Math.min(MAX_ELO, Math.round(v)))
+}
 
 router.get("/pro/elo/professional", requireAuth, async (req, res) => {
   try {
@@ -38,8 +42,20 @@ router.get("/pro/elo/professional", requireAuth, async (req, res) => {
 
     const latest = (events || [])[0] || null
 
+    // Skill Rating v2: overall = assessment-driven capability elo + bounded,
+    // verification-gated experience/cert modifiers. Combined ONLY at read
+    // time — the underlying columns stay separate so pulse-completion/decay
+    // logic above never has to know about bonuses, and bonuses never have to
+    // know about pulse logic. See verifiedBonuses.js.
+    const experienceBonus = state.experience_bonus_elo || 0
+    const certBonus = state.cert_bonus_elo || 0
+    const overallElo = clampElo(state.elo + experienceBonus + certBonus)
+
     res.json({
       elo: state.elo,
+      experience_bonus_elo: experienceBonus,
+      cert_bonus_elo: certBonus,
+      overall_elo: overallElo,
       starting_elo: STARTING_ELO,
       last_assessment_at: state.last_assessment_at,
       latest_change: latest ? {

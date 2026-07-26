@@ -426,3 +426,13 @@ export const portfolioApi = {
 export const professionalEloApi = {
   status: () => request("GET", "/pro/elo/professional"),
 }
+
+// Skill Rating v2 (2026-07-26) — verification-gated certification bonus.
+export const certificationsApi = {
+  list: () => request("GET", "/pro/certifications"),
+  claim: (cert_name, cert_type, issuer) => request("POST", "/pro/certifications", { cert_name, cert_type, issuer }),
+  upload: (id, file) => {
+    const fd = new FormData(); fd.append("file", file)
+    return upload(`/pro/certifications/${id}/upload`, fd)
+  },
+}

@@ -199,6 +199,7 @@ import portfolioPublicRoutes     from "./server/routes/portfolioPublic.js" // Ca
 import opsDashboardRoutes        from "./server/routes/opsDashboard.js"    // Career OS Tranche 11 — /api/admin/ops/dashboard, requireAdmin-gated read-only monitoring snapshot
 import { opsMetricsMiddleware }  from "./server/lib/opsMetrics.js"         // Career OS Tranche 11 — in-process request error-rate/latency recorder
 import professionalEloRoutes     from "./server/routes/professionalElo.js" // Professional ELO (2026-07-25 product decision) — pro/elo/professional status+history
+import professionalCertificationsRoutes from "./server/routes/professionalCertifications.js" // Skill Rating v2 (2026-07-26) — pro/certifications claim+verify, gates cert_bonus_elo
 import subscriptionWebhookRoutes from "./server/routes/subscriptionWebhook.js" // Tranche C (2026-07-25) — /api/webhooks/razorpay/subscription, needs raw body (mounted separately below)
 import { startGradingWorker }    from "./server/lib/grading-worker.js"
 
@@ -337,6 +338,7 @@ app.use("/api",              careerTimelineRoutes)      // pro/timeline, pro/vau
 app.use("/api",              skillGraphRoutes)          // pro/skills
 app.use("/api",              weeklyPulseRoutes)         // pro/weekly — Weekly Career Check
 app.use("/api",              professionalEloRoutes)     // pro/elo/professional — Professional ELO status+history (2026-07-25 product decision)
+app.use("/api",              professionalCertificationsRoutes) // pro/certifications — Skill Rating v2 verification-gated cert bonus (2026-07-26)
 app.use("/api",              homeV1Routes)              // pro/v1/home — Career OS Workstream 1 priority ranking
 app.use("/api",              careerEventsV1Routes)      // pro/v1/career/timeline — Career OS Workstream 2 unified timeline
 app.use("/api",              skillPulseV2Routes)        // pro/weekly/v2 — Career OS Workstream 3 (coverage-gated, falls back to v1)

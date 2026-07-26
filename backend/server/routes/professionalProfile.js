@@ -13,13 +13,27 @@ import multer      from "multer"
 import { supabaseAdmin } from "../lib/supabase.js"
 import { groq, GROQ_FAST } from "../lib/groq.js"
 import { requireAuth } from "../lib/auth.js"
+import { recomputeExperienceBonus } from "../lib/professionalElo/verifiedBonuses.js"
 
 const router = Router()
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } })
 
 // ── Auth middleware ───────────────────────────────────────────────────────────
 
-// ── Recompute ELO signals ─────────────────────────────────────────────────────
+// ── DEPRECATED — legacy profile-completeness pseudo-ELO (Skill Rating v2) ────
+// computeEloSignals() and everything it writes (profiles.role_elo/market_elo/
+// proof_elo/mobility_elo/aura_score/profile_completeness) is FROZEN as of
+// 2026-07-26. This is a legacy, profile-completeness-driven signal — it is
+// NOT the Professional Skill Rating and must never be relabeled as such in
+// any UI. It is kept (not deleted) only because existing surfaces may still
+// read these columns for backward compatibility; no new code should write to
+// them, and this file must NEVER import or call anything from
+// backend/server/lib/professionalElo/verifiedBonuses.js's bonus-mutation
+// path except through the one explicit call in the EPFO-verified branch
+// below (recomputeExperienceBonus), which writes to a completely separate
+// column (professional_elo_state.experience_bonus_elo), never to these
+// legacy `profiles` columns. See docs/elo-engine-v2-architecture.md §D.
+// Regression test: backend/server/lib/professionalElo/__tests__/isolation.test.js
 function computeEloSignals(profile) {
   const skills       = profile.skill_graph || []
   const exps         = profile.experiences || []
@@ -230,12 +244,26 @@ router.post("/pro/epfo/submit", requireAuth, async (req, res) => {
 
           const { data: p } = await supabaseAdmin.from("profiles").select("*").eq("id", uid).single()
           if (p) {
+            // Legacy pseudo-ELO write — frozen/deprecated, kept only for
+            // backward compatibility with any surface still reading these
+            // columns. See the DEPRECATED comment at the top of this file.
             const sig = computeEloSignals(p)
             await supabaseAdmin.from("profiles").update({
               role_elo: sig.roleElo, market_elo: sig.marketElo,
               proof_elo: sig.proofElo, mobility_elo: sig.mobilityElo,
               aura_score: sig.auraScore, profile_completeness: sig.profileCompleteness,
             }).eq("id", uid)
+          }
+
+          // Skill Rating v2 — the ONLY real trust-gated write triggered by
+          // EPFO verification succeeding. Recomputes (never increments) the
+          // bounded experience_bonus_elo modifier on professional_elo_state.
+          // Safe to call on every EPFO status recheck/webhook retry — it is
+          // a pure function of current verified state (see verifiedBonuses.js).
+          try {
+            await recomputeExperienceBonus(supabaseAdmin, uid)
+          } catch (bonusErr) {
+            console.error("[epfo async] experience bonus recompute failed", bonusErr.message)
           }
         }
       } catch (err) { console.error("[epfo async]", err.message) }
@@ -260,6 +288,19 @@ router.get("/pro/epfo/status", requireAuth, async (req, res) => {
       .limit(1)
       .single()
     if (error) return res.json({ status: "not_started" })
+
+    // Also covers verification that happened via the separate Eko/UAN edge
+    // function (supabase/functions/verify-uan), which writes epf_records
+    // directly and never passes through the /epfo/submit handler above —
+    // recompute is idempotent, so this is a safe no-op if nothing changed.
+    if (data.verification_status === "verified") {
+      try {
+        await recomputeExperienceBonus(supabaseAdmin, req.user.id)
+      } catch (bonusErr) {
+        console.error("[epfo status] experience bonus recompute failed", bonusErr.message)
+      }
+    }
+
     res.json(data)
   } catch (e) { res.status(500).json({ error: e.message }) }
 })

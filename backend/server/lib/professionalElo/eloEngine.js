@@ -36,9 +36,16 @@
  *     push ELO below MIN_ELO.
  */
 
-export const STARTING_ELO = 1000
+// v2 trust-gating update (2026-07-26, docs/elo-engine-v2-architecture.md):
+// base raised to 800 (professional baseline) and ceiling raised to 2400 to
+// leave room for the new bounded experience/cert modifiers (max +150/+80,
+// see verifiedBonuses.js) on top of assessment-driven capability. Existing
+// professional_elo_state rows are untouched by this constant change — only
+// NEW rows (first-time professional users) get 800; nobody's already-stored
+// ELO retroactively shifts.
+export const STARTING_ELO = 800
 export const MIN_ELO = 400
-export const MAX_ELO = 2000
+export const MAX_ELO = 2400
 
 const MAX_PULSE_DELTA = 40
 const PER_QUESTION_BASE = 4 // before difficulty scaling
