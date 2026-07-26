@@ -18,7 +18,7 @@ import CareerVideoGenerator from "./CareerVideoGenerator"
 // Portfolio themes removed — single universal design
 // ── Professional Path: API-connected components ───────────────────────────────
 import CareerTimelinePro from "../components/CareerTimeline"
-import { interviewApi, skillsApi }  from "../lib/api"
+import { interviewApi, skillsApi, profileApi, professionalEloApi, weeklyCheckApi }  from "../lib/api"
 import SettingsPanel from "./SettingsPanel"
 
 // ─── DESIGN TOKENS — Glassmorphic Cosmos dark theme ─────────────────────────
@@ -87,6 +87,166 @@ function SectionLabel({ children, color = T.indigo }) {
       marginBottom:4, display:"flex", alignItems:"center", gap:6 }}>
       {children}
     </div>
+  )
+}
+
+// ─── Profile Summary (2026-07-26) ────────────────────────────────────────────
+// Auto-generates a recruiter-facing summary from the user's real skills/
+// experience/domain (POST /api/pro/profile/summary/generate — Groq, grounded
+// only in what's actually on the profile), with a manual edit option that
+// always wins until the user explicitly asks to regenerate again. Never
+// silently overwrites a hand-written summary in the background.
+function ProfileSummaryCard({ userData, onSave }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(userData?.profileSummary || "")
+  const [generating, setGenerating] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [errorMsg, setErrorMsg] = useState("")
+
+  const handleGenerate = async () => {
+    setGenerating(true); setErrorMsg("")
+    try {
+      const res = await profileApi.generateSummary()
+      setDraft(res.summary)
+      await onSave({ profileSummary: res.summary })
+      setEditing(false)
+    } catch (e) {
+      setErrorMsg(e.message || "Couldn't generate a summary right now.")
+    } finally { setGenerating(false) }
+  }
+
+  const handleSaveManual = async () => {
+    setSaving(true); setErrorMsg("")
+    try {
+      await profileApi.saveSummary(draft)
+      await onSave({ profileSummary: draft })
+      setEditing(false)
+    } catch (e) {
+      setErrorMsg(e.message || "Couldn't save your summary right now.")
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <Card style={{ marginBottom: 20 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+        <div>
+          <SectionLabel color={T.indigo}>Profile Summary</SectionLabel>
+          <div style={{ fontSize: 13, color: T.ink3, marginTop: 4, lineHeight: 1.5 }}>
+            What recruiters read first — auto-written from your real skills and experience, or write your own.
+          </div>
+        </div>
+        {!editing && (
+          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+            <button onClick={handleGenerate} disabled={generating} style={{
+              padding: "7px 14px", background: T.indigo, border: "none", borderRadius: 9,
+              color: "#fff", fontSize: 12, fontWeight: 700, cursor: generating ? "default" : "pointer", opacity: generating ? 0.6 : 1,
+            }}>
+              {generating ? "Generating…" : userData?.profileSummary ? "Regenerate" : "Auto-generate"}
+            </button>
+            <button onClick={() => { setDraft(userData?.profileSummary || ""); setEditing(true) }} style={{
+              padding: "7px 14px", background: "#fff", border: `1px solid ${T.border}`, borderRadius: 9,
+              color: T.ink2, fontSize: 12, fontWeight: 700, cursor: "pointer",
+            }}>
+              Edit
+            </button>
+          </div>
+        )}
+      </div>
+
+      {errorMsg && <div style={{ fontSize: 12, color: T.red, marginTop: 10 }}>{errorMsg}</div>}
+
+      {editing ? (
+        <div style={{ marginTop: 14 }}>
+          <textarea
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            maxLength={1000}
+            rows={4}
+            style={{ width: "100%", padding: "10px 12px", border: `1px solid ${T.border}`, borderRadius: 10, fontSize: 13, color: T.ink, lineHeight: 1.6, fontFamily: "inherit", resize: "vertical" }}
+            placeholder="Write a short summary of your experience and skills..."
+          />
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            <button onClick={handleSaveManual} disabled={saving} style={{
+              padding: "7px 16px", background: T.indigo, border: "none", borderRadius: 9,
+              color: "#fff", fontSize: 12, fontWeight: 700, cursor: saving ? "default" : "pointer", opacity: saving ? 0.6 : 1,
+            }}>
+              {saving ? "Saving…" : "Save"}
+            </button>
+            <button onClick={() => setEditing(false)} style={{
+              padding: "7px 16px", background: "#fff", border: `1px solid ${T.border}`, borderRadius: 9,
+              color: T.ink3, fontSize: 12, fontWeight: 700, cursor: "pointer",
+            }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ marginTop: 14, fontSize: 13.5, color: T.ink2, lineHeight: 1.7 }}>
+          {userData?.profileSummary || <span style={{ color: T.ink4, fontStyle: "italic" }}>No summary yet — auto-generate one from your profile, or write your own.</span>}
+        </div>
+      )}
+    </Card>
+  )
+}
+
+// ─── Skill Rating History (2026-07-26) ───────────────────────────────────────
+// Real, backend-persisted history: professional_elo_events (via GET
+// /api/pro/elo/professional's `history`) combined with the more detailed
+// per-test breakdown from GET /api/pro/weekly/history (score, skill areas,
+// suspicious flags). Honest empty/error states, no placeholder rows.
+function SkillRatingHistoryCard() {
+  const [eloData, setEloData] = useState(null)
+  const [testHistory, setTestHistory] = useState({ state: "loading", history: [] })
+
+  useEffect(() => {
+    let cancelled = false
+    professionalEloApi.status().then(res => { if (!cancelled) setEloData(res) }).catch(() => {})
+    weeklyCheckApi.history(15)
+      .then(res => { if (!cancelled) setTestHistory({ state: "ready", history: res?.history || [] }) })
+      .catch(() => { if (!cancelled) setTestHistory({ state: "error", history: [] }) })
+    return () => { cancelled = true }
+  }, [])
+
+  return (
+    <Card style={{ marginBottom: 20 }}>
+      <SectionLabel color={T.indigo}>Skill Rating History</SectionLabel>
+      <div style={{ fontSize: 13, color: T.ink3, marginTop: 4, marginBottom: 14, lineHeight: 1.5 }}>
+        Every real Weekly Skill Pulse result and how it moved your Skill Rating.
+      </div>
+
+      {eloData && (
+        <div style={{ display: "flex", gap: 16, marginBottom: 14, fontSize: 12, color: T.ink3, flexWrap: "wrap" }}>
+          <span>Assessment <strong style={{ color: T.ink }}>{eloData.elo}</strong></span>
+          {eloData.experience_bonus_elo > 0 && <span style={{ color: T.green }}>+{eloData.experience_bonus_elo} verified experience</span>}
+          {eloData.cert_bonus_elo > 0 && <span style={{ color: T.green }}>+{eloData.cert_bonus_elo} verified certs</span>}
+        </div>
+      )}
+
+      {testHistory.state === "error" && <div style={{ fontSize: 12, color: T.red }}>Couldn't load your history right now.</div>}
+      {testHistory.state === "ready" && testHistory.history.length === 0 && (
+        <div style={{ fontSize: 12, color: T.ink4 }}>No completed Skill Pulse check-ins yet.</div>
+      )}
+      {testHistory.state === "ready" && testHistory.history.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {testHistory.history.map(h => {
+            const pct = h.score.total > 0 ? Math.round((h.score.correct / h.score.total) * 100) : 0
+            const eloColor = h.elo_delta > 0 ? T.green : h.elo_delta < 0 ? T.red : T.ink4
+            return (
+              <div key={h.pulse_id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "9px 12px", borderRadius: 10, background: "#FAF9F7", flexWrap: "wrap" }}>
+                <div style={{ minWidth: 130 }}>
+                  <div style={{ fontWeight: 700, fontSize: 12.5, color: T.ink }}>
+                    {h.completed_at ? new Date(h.completed_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+                  </div>
+                  <div style={{ fontSize: 11, color: T.ink4 }}>{h.skill_areas.slice(0, 2).join(", ") || "General"}</div>
+                </div>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: T.ink }}>{h.score.correct}/{h.score.total} <span style={{ color: T.ink4, fontWeight: 500 }}>({pct}%)</span></div>
+                {h.elo_delta !== null && <div style={{ fontSize: 12, fontWeight: 800, color: eloColor }}>{h.elo_delta > 0 ? "+" : ""}{h.elo_delta}</div>}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </Card>
   )
 }
 
@@ -5556,6 +5716,14 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
 
             {/* ── Profile header: photo, cover, name, portfolio link ── */}
             <ProfileHeader/>
+
+            {/* ── Profile Summary (2026-07-26) — auto-generated from real
+                skills/experience, editable, never silently overwritten. ── */}
+            <ProfileSummaryCard userData={userData} onSave={onSave}/>
+
+            {/* ── Skill Rating History (2026-07-26) — real Weekly Skill
+                Pulse results + ELO impact, not a static/fabricated log. ── */}
+            <SkillRatingHistoryCard/>
 
             {/* ── Recruiter Readiness Score — new (2026-07-24), replaces the
                 Arena-coupled dashboard/resilience content professionals never

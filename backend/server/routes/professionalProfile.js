@@ -7,6 +7,8 @@
  * GET  /api/pro/epfo/status     — get verification status
  * POST /api/pro/visibility      — update visibility mode
  * POST /api/pro/elo/recompute   — recompute all ELO signals
+ * POST /api/pro/profile/summary/generate — AI-generate a summary from real skills/experience
+ * POST /api/pro/profile/summary          — manual summary save
  */
 import { Router } from "express"
 import multer      from "multer"
@@ -302,6 +304,64 @@ router.get("/pro/epfo/status", requireAuth, async (req, res) => {
     }
 
     res.json(data)
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// ── Profile Summary — auto-generate from real profile data ────────────────────
+// POST /api/pro/profile/summary/generate (2026-07-26)
+// Builds a 2-4 sentence recruiter-facing summary from the user's OWN real
+// skills/experience/domain/headline — never invents credentials not present
+// on the profile. Writes to profiles.profile_summary (same field the user
+// can also hand-edit) — this is a user-triggered regenerate, not a silent
+// background job, so a manual edit is never overwritten without the user
+// explicitly asking for a fresh one.
+router.post("/pro/profile/summary/generate", requireAuth, async (req, res) => {
+  try {
+    const uid = req.user.id
+    const { data: profile } = await supabaseAdmin.from("profiles").select("*").eq("id", uid).single()
+    if (!profile) return res.status(404).json({ error: "Profile not found" })
+
+    const skills = (profile.skill_graph || profile.skills || []).map(s => (typeof s === "string" ? s : s.name)).filter(Boolean).slice(0, 12)
+    const experiences = profile.experiences || []
+    const topExp = experiences[0] || {}
+    const yearsExp = profile.years_of_experience || null
+    const domain = profile.keyword || profile.target_role || topExp.title || topExp.role || null
+
+    if (skills.length === 0 && experiences.length === 0 && !domain) {
+      return res.status(400).json({ error: "Add some skills or experience first — there's nothing real to summarize yet." })
+    }
+
+    const prompt = `Write a first-person professional summary (2-4 sentences, no headers, no bullet points, no markdown) for a job-seeking professional's portfolio, based ONLY on these real facts — do not invent anything not listed:
+- Current/target role or domain: ${domain || "not specified"}
+- Years of experience: ${yearsExp || "not specified"}
+- Most recent role: ${topExp.title || topExp.role || "not specified"}${topExp.company ? ` at ${topExp.company}` : ""}
+- Skills: ${skills.length ? skills.join(", ") : "not specified"}
+
+Tone: confident, concrete, recruiter-facing — no generic filler like "hardworking team player." Return ONLY the summary text, nothing else.`
+
+    let generated = ""
+    try {
+      generated = (await groq([{ role: "user", content: prompt }], { model: GROQ_FAST, max_tokens: 220, temperature: 0.5 })).trim()
+    } catch (aiErr) {
+      return res.status(502).json({ error: "Couldn't generate a summary right now — try again shortly." })
+    }
+    if (!generated) return res.status(502).json({ error: "Couldn't generate a summary right now — try again shortly." })
+
+    await supabaseAdmin.from("profiles").update({ profile_summary: generated }).eq("id", uid)
+
+    res.json({ success: true, summary: generated })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// Manual save — the "user has an option to update as well" half of this
+// feature. Simple direct write, no AI involved, always available.
+router.post("/pro/profile/summary", requireAuth, async (req, res) => {
+  try {
+    const { summary } = req.body
+    if (typeof summary !== "string") return res.status(400).json({ error: "summary is required" })
+    if (summary.length > 1000) return res.status(400).json({ error: "Summary must be under 1000 characters" })
+    await supabaseAdmin.from("profiles").update({ profile_summary: summary }).eq("id", req.user.id)
+    res.json({ success: true, summary })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 

@@ -57,6 +57,8 @@ export const profileApi = {
   },
   setVisibility: (mode) => request("POST", "/pro/visibility", { mode }),
   recomputeElo:  ()     => request("POST", "/pro/elo/recompute"),
+  generateSummary: () => request("POST", "/pro/profile/summary/generate"),
+  saveSummary:     (summary) => request("POST", "/pro/profile/summary", { summary }),
 }
 
 // ══════════════════════════════════════════

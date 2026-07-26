@@ -17,7 +17,6 @@ import EngineeringProofsPanel from "../components/EngineeringProofsPanel"
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   Radar, ResponsiveContainer, Tooltip,
-  LineChart, Line, XAxis, YAxis, Area, AreaChart,
 } from "recharts"
 
 // ─── Design tokens — GenZ premium dark ───────────────────────────────────────
@@ -1235,22 +1234,16 @@ function PerformanceSummary({ ud, skills, tasks, interviews, accent }) {
   return (
     <Card accent={accent||C.blue}>
       <SectionTitle icon="📊" title="Performance Summary" accent={accent||C.blue}
-        sub="Arena rating, challenge scores, and growth trajectory"/>
+        sub="Arena tier, challenge scores, and growth trajectory"/>
 
-      {/* Score metrics — large dark metric cards */}
+      {/* Score metrics — large dark metric cards. Product rule (2026-07-26):
+          no raw ELO number anywhere in portfolios for either path — the tier
+          label (qualitative) still communicates standing without a digit. */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
         {[
-          // Tranche A (2026-07-25): renamed "ELO Rating" -> "Arena Rating" so
-          // this Arena-challenge-execution score is never confused with the
-          // separate, assessment-driven Professional ELO (Skills.jsx). When
-          // a profile has zero Arena challenges (true for most professional
-          // users, since Arena isn't in the Professional nav), this used to
-          // still show a static default (400) with a filled progress bar as
-          // if it were a real, earned score — a naked/misleading number with
-          // no evidence behind it. Now it honestly shows "Not started".
           tasks.length>0
-            ? {icon:"⚡",label:"Arena Rating", value:ud.eloRating,sub:tier.label,     color:tier.color,  bar:Math.min((ud.eloRating/1500)*100,100)}
-            : {icon:"⚡",label:"Arena Rating", value:"—",sub:"Not started",color:C.ink4,bar:0},
+            ? {icon:"⚡",label:"Arena Tier", value:tier.label,sub:`${Math.round(tierProg)}% to next tier`, color:tier.color,  bar:Math.min(((ud.eloRating-tier.min)/Math.max(1,(tier.max||ud.eloRating+1)-tier.min))*100,100)}
+            : {icon:"⚡",label:"Arena Tier", value:"—",sub:"Not started",color:C.ink4,bar:0},
           {icon:"🎯",label:"Avg Score",  value:`${avgScore}/100`,sub:`${passRate}% pass rate`,color:scoreColor(avgScore),bar:avgScore},
           {icon:"🏆",label:"Best Score", value:best>0?`${best}/100`:"–",sub:best>=90?"Excellent":best>=80?"Strong":best>=60?"Good":"No data",color:scoreColor(best),bar:best},
         ].map((m,i)=>(
@@ -1294,14 +1287,15 @@ function PerformanceSummary({ ud, skills, tasks, interviews, accent }) {
         ))}
       </div>
 
-      {/* ELO progress to next tier — only meaningful once the user has an
+      {/* Tier progress to next tier — only meaningful once the user has an
           actual Arena track record (Tranche A: no progress bar toward a
-          "next tier" for a score that has never moved). */}
+          "next tier" for a score that has never moved). No raw ELO number
+          shown (product rule, 2026-07-26) — tier labels only. */}
       {tierNext && tasks.length>0 && (
         <div style={{padding:"16px 18px",background:C.surface2,borderRadius:14,border:`1px solid ${C.border2}`}}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:10,alignItems:"center"}}>
-            <span style={{fontSize:13,fontWeight:700,color:tier.color}}>● {tier.label} · {ud.eloRating}</span>
-            <span style={{fontSize:12,color:C.ink4}}>{tierNext.min-ud.eloRating} ELO to <strong style={{color:tierNext.color}}>{tierNext.label}</strong></span>
+            <span style={{fontSize:13,fontWeight:700,color:tier.color}}>● {tier.label}</span>
+            <span style={{fontSize:12,color:C.ink4}}>Next tier: <strong style={{color:tierNext.color}}>{tierNext.label}</strong></span>
           </div>
           <div style={{height:8,background:"rgba(255,255,255,0.06)",borderRadius:99,overflow:"hidden"}}>
             <div style={{height:"100%",width:`${tierProg}%`,
@@ -1364,8 +1358,9 @@ export default function Portfolio({ username: usernameProp }) {
     const domain    = ud.keyword || "technology"
     const pathLabel = ud.path === "authority" ? "expert" : ud.path || "professional"
 
-    // Sentence 1 — identity + tier
-    let s1 = `${name} is a ${tier.label.toLowerCase()} ${pathLabel} in ${domain} with an ELO rating of ${ud.eloRating}, placing them in the ${tier.label} tier on Capabilio.`
+    // Sentence 1 — identity + tier (no raw ELO number — product rule, 2026-07-26:
+    // portfolios never show a bare ELO score to either students or professionals)
+    let s1 = `${name} is a ${tier.label.toLowerCase()} ${pathLabel} in ${domain}, placing them in the ${tier.label} tier on Capabilio.`
 
     // Sentence 2 — performance record
     if(tasks.length === 0) {
@@ -1454,6 +1449,11 @@ export default function Portfolio({ username: usernameProp }) {
         portfolioUrl:  row.portfolioUrl  ||row.portfolio_url   ||"",
         websiteUrl:    row.websiteUrl    ||row.website_url     ||"",
         jobRole:       row.keyword       ||row.job_role        ||"",
+        // Professional-path recruiter signals (2026-07-26) — real,
+        // verification-gated facts only, never a raw ELO number.
+        uanVerified:           !!row.uan_verified,
+        yearsOfExperience:     row.years_of_experience ?? null,
+        verifiedCertsCount:    row.verified_certifications_count ?? null,
       }
 
       const rawSkillGraph = ud.skillGraph || []
@@ -1865,36 +1865,56 @@ export default function Portfolio({ username: usernameProp }) {
                 )}
               </div>
 
-              {/* Floating Arena card — same rule: no score/tier shown until
-                  the user has actually completed an Arena challenge. */}
-              <div style={{
-                background:"rgba(255,255,255,0.06)",
-                backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",
-                border:`1px solid rgba(255,255,255,0.12)`,
-                borderTop:`2px solid ${aConfig?.palette?.accent||C.purple}`,
-                borderRadius:16,padding:"14px 24px",textAlign:"center",
-                boxShadow:`0 8px 32px rgba(0,0,0,0.4),0 0 0 1px rgba(255,255,255,0.04)`,
-                minWidth:180,
-              }}>
-                <div style={{fontSize:10,fontWeight:800,color:"rgba(255,255,255,0.35)",
-                  textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>Arena Rating</div>
-                {tasks.length>0 ? (
-                  <>
-                    <div style={{fontSize:32,fontWeight:900,color:aConfig?.palette?.accent||C.purple,
-                      fontFamily:"'DM Mono',monospace",lineHeight:1,
-                      textShadow:`0 0 30px ${aConfig?.palette?.accent||C.purple}80`}}>
-                      {ud.eloRating}
-                    </div>
-                    <div style={{fontSize:11,color:tier.color,fontWeight:700,marginTop:4}}>
+              {/* Floating credibility card — Arena Rating for students/
+                  Arena-track users (never a bare digit — no score/tier shown
+                  until an Arena challenge has actually been completed);
+                  Professional Verification for the professional path (real
+                  verification-gated facts, never a raw ELO number, per
+                  product rule). */}
+              {!isPro ? (
+                <div style={{
+                  background:"rgba(255,255,255,0.06)",
+                  backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",
+                  border:`1px solid rgba(255,255,255,0.12)`,
+                  borderTop:`2px solid ${aConfig?.palette?.accent||C.purple}`,
+                  borderRadius:16,padding:"14px 24px",textAlign:"center",
+                  boxShadow:`0 8px 32px rgba(0,0,0,0.4),0 0 0 1px rgba(255,255,255,0.04)`,
+                  minWidth:180,
+                }}>
+                  <div style={{fontSize:10,fontWeight:800,color:"rgba(255,255,255,0.35)",
+                    textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>Arena Rating</div>
+                  {tasks.length>0 ? (
+                    <div style={{fontSize:13,fontWeight:700,color:tier.color,marginTop:2}}>
                       {tier.label} Tier
                     </div>
-                  </>
-                ) : (
-                  <div style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.4)",marginTop:2}}>
-                    Not started
+                  ) : (
+                    <div style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.4)",marginTop:2}}>
+                      Not started
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{
+                  background:"rgba(255,255,255,0.06)",
+                  backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",
+                  border:`1px solid rgba(255,255,255,0.12)`,
+                  borderTop:`2px solid ${aConfig?.palette?.accent||C.blue}`,
+                  borderRadius:16,padding:"14px 24px",textAlign:"center",
+                  boxShadow:`0 8px 32px rgba(0,0,0,0.4),0 0 0 1px rgba(255,255,255,0.04)`,
+                  minWidth:180,
+                }}>
+                  <div style={{fontSize:10,fontWeight:800,color:"rgba(255,255,255,0.35)",
+                    textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>Verification</div>
+                  <div style={{fontSize:13,fontWeight:800,color:ud.uanVerified?C.green:"rgba(255,255,255,0.4)"}}>
+                    {ud.uanVerified ? "✓ Employment Verified" : "Not yet verified"}
                   </div>
-                )}
-              </div>
+                  {ud.verifiedCertsCount>0 && (
+                    <div style={{fontSize:11,color:C.amber,fontWeight:700,marginTop:4}}>
+                      {ud.verifiedCertsCount} verified cert{ud.verifiedCertsCount===1?"":"s"}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1908,14 +1928,21 @@ export default function Portfolio({ username: usernameProp }) {
           padding:"20px 40px",
         }}>
           <div style={{maxWidth:1100,margin:"0 auto",display:"flex",gap:10,flexWrap:"wrap",justifyContent:"center"}}>
-            <StatChip icon="✅" value={tasks.length} label="Challenges" color={C.green}/>
-            <StatChip icon="🔥" value={ud.arenaStreak||0} label="Day Streak" color={C.amber}/>
+            {/* Arena/challenge-specific stats — not relevant to the
+                professional path (no Arena challenges or day-streak concept
+                there); professionals get a different, recruiter-relevant set
+                below instead of these always showing "0". */}
+            {!isPro && <StatChip icon="✅" value={tasks.length} label="Challenges" color={C.green}/>}
+            {!isPro && <StatChip icon="🔥" value={ud.arenaStreak||0} label="Day Streak" color={C.amber}/>}
             {interviews.length>0&&<StatChip icon="🎤" value={interviews.length} label="Interviews" color={C.purple}/>}
             {skills.length>0&&<StatChip icon="🧠" value={`${Math.round(skills.reduce((s,k)=>s+k.percentage,0)/skills.length)}%`} label="Avg Skill" color={C.teal}/>}
-            {avgScore>0&&<StatChip icon="📊" value={`${avgScore}`} label="Avg Score" color={aConfig?.palette?.accent||C.blue}/>}
+            {!isPro && avgScore>0&&<StatChip icon="📊" value={`${avgScore}`} label="Avg Score" color={aConfig?.palette?.accent||C.blue}/>}
             {ud.resumeProjects?.length>0&&<StatChip icon="📂" value={ud.resumeProjects.length} label="Projects" color={C.teal}/>}
             {ud.certificates?.length>0&&<StatChip icon="🏅" value={ud.certificates.length} label="Certs" color={C.amber}/>}
-            {ud.jobReadiness>0&&<StatChip icon="🚀" value={`${ud.jobReadiness}%`} label="Job Ready" color={C.blue2}/>}
+            {isPro && ud.verifiedCertsCount>0 && <StatChip icon="✅" value={ud.verifiedCertsCount} label="Verified Certs" color={C.green}/>}
+            {isPro && ud.yearsOfExperience>0 && <StatChip icon="💼" value={`${ud.yearsOfExperience}y`} label="Experience" color={C.blue}/>}
+            {isPro && ud.uanVerified && <StatChip icon="🔐" value="✓" label="Employment Verified" color={C.green}/>}
+            {!isPro && ud.jobReadiness>0&&<StatChip icon="🚀" value={`${ud.jobReadiness}%`} label="Job Ready" color={C.blue2}/>}
           </div>
         </div>
       </div>
@@ -2039,15 +2066,19 @@ export default function Portfolio({ username: usernameProp }) {
                   }}>
                     {seniority} · {tier.label}
                   </span>
-                  <span style={{fontSize:11,color:C.ink4}}>•</span>
-                  <span style={{fontSize:11,color:C.ink3,fontFamily:"'DM Mono',monospace"}}>
-                    Arena {ud.eloRating}
-                  </span>
+                  {!isPro && (
+                    <>
+                      <span style={{fontSize:11,color:C.ink4}}>•</span>
+                      <span style={{fontSize:11,color:C.ink3,fontFamily:"'DM Mono',monospace"}}>
+                        {tier.label} tier
+                      </span>
+                    </>
+                  )}
                   <div style={{
                     marginLeft:"auto",fontSize:10,color:C.ink4,fontStyle:"italic",
                     maxWidth:180,lineHeight:1.5,
                   }}>
-                    Complete more Arena challenges to level up your archetype
+                    {isPro ? "Complete more Weekly Skill Pulse check-ins to strengthen this signal" : "Complete more Arena challenges to level up your archetype"}
                   </div>
                 </div>
               </div>
@@ -2055,17 +2086,66 @@ export default function Portfolio({ username: usernameProp }) {
           </div>
         )}
 
-        {/* ══ PERFORMANCE SUMMARY ═════════════════════════════════════════════ */}
-        <div ref={refs.summary} className="ps">
-          <PerformanceSummary
-            ud={ud} skills={skills} tasks={tasks}
-            interviews={interviews}
-            accent={aConfig?.palette?.accent}
-          />
-        </div>
+        {/* ══ PERFORMANCE SUMMARY (Arena-specific — students/Arena-track only,
+              per product rule: professionals don't have Arena challenges) ══ */}
+        {!isPro && (
+          <div ref={refs.summary} className="ps">
+            <PerformanceSummary
+              ud={ud} skills={skills} tasks={tasks}
+              interviews={interviews}
+              accent={aConfig?.palette?.accent}
+            />
+          </div>
+        )}
 
-        {/* ══ ACTIVITY HEATMAP ════════════════════════════════════════════════ */}
-        {tasks.length>0&&(
+        {/* ══ PROFESSIONAL CREDIBILITY (professional path only) ══════════════
+            Recruiter-relevant, real, verification-gated signals — no raw ELO
+            number anywhere (product rule applies to both paths). Replaces
+            the Arena-specific Performance Summary/Challenges/Streak content
+            that doesn't apply to professionals. */}
+        {isPro && (
+          <div ref={refs.summary} className="ps">
+            <Card accent={aConfig?.palette?.accent||C.blue}>
+              <SectionTitle icon="✅" title="Verified Credibility" accent={aConfig?.palette?.accent||C.blue}
+                sub="Real, verification-gated signals recruiters can trust — not self-reported"/>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginBottom:16}}>
+                <div style={{padding:"16px 14px",background:C.surface2,borderRadius:14,border:`1px solid ${C.border2}`,textAlign:"center"}}>
+                  <div style={{fontSize:20,marginBottom:6}}>🔐</div>
+                  <div style={{fontSize:14,fontWeight:800,color:ud.uanVerified?C.green:C.ink4}}>{ud.uanVerified?"Verified":"Not yet"}</div>
+                  <div style={{fontSize:10,color:C.ink4,fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginTop:4}}>Employment (EPFO/UAN)</div>
+                </div>
+                <div style={{padding:"16px 14px",background:C.surface2,borderRadius:14,border:`1px solid ${C.border2}`,textAlign:"center"}}>
+                  <div style={{fontSize:20,marginBottom:6}}>🏅</div>
+                  <div style={{fontSize:20,fontWeight:900,color:C.amber,fontFamily:"'DM Mono',monospace"}}>{ud.verifiedCertsCount||0}</div>
+                  <div style={{fontSize:10,color:C.ink4,fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginTop:4}}>Verified Certifications</div>
+                </div>
+                {ud.yearsOfExperience>0 && (
+                  <div style={{padding:"16px 14px",background:C.surface2,borderRadius:14,border:`1px solid ${C.border2}`,textAlign:"center"}}>
+                    <div style={{fontSize:20,marginBottom:6}}>💼</div>
+                    <div style={{fontSize:20,fontWeight:900,color:C.blue,fontFamily:"'DM Mono',monospace"}}>{ud.yearsOfExperience}y</div>
+                    <div style={{fontSize:10,color:C.ink4,fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginTop:4}}>Experience</div>
+                  </div>
+                )}
+                {skills.length>0 && (
+                  <div style={{padding:"16px 14px",background:C.surface2,borderRadius:14,border:`1px solid ${C.border2}`,textAlign:"center"}}>
+                    <div style={{fontSize:20,marginBottom:6}}>🧠</div>
+                    <div style={{fontSize:20,fontWeight:900,color:C.teal,fontFamily:"'DM Mono',monospace"}}>{Math.round(skills.reduce((s,k)=>s+k.percentage,0)/skills.length)}%</div>
+                    <div style={{fontSize:10,color:C.ink4,fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginTop:4}}>Avg Skill Confidence</div>
+                  </div>
+                )}
+              </div>
+              {(ud.uanVerified || ud.verifiedCertsCount>0) && (
+                <div style={{padding:"10px 14px",background:C.surface2,borderRadius:10,border:`1px solid ${C.border2}`,fontSize:12,color:C.ink3}}>
+                  💡 Everything above is independently verified — {ud.uanVerified?"employment cross-matched via EPFO/UAN":""}{ud.uanVerified&&ud.verifiedCertsCount>0?" and ":""}{ud.verifiedCertsCount>0?"certifications confirmed via document verification":""}. Nothing here is self-reported.
+                </div>
+              )}
+            </Card>
+          </div>
+        )}
+
+        {/* ══ ACTIVITY HEATMAP (Arena challenge activity — not applicable to
+              the professional path, which has no Arena challenges) ═══════ */}
+        {!isPro && tasks.length>0&&(
           <div ref={refs.activity} className="ps">
             <Card accent={C.amber}>
               <SectionTitle icon="📅" title="Activity & Streak Consistency" accent={C.amber}
@@ -2075,46 +2155,11 @@ export default function Portfolio({ username: usernameProp }) {
           </div>
         )}
 
-        {/* ══ ELO JOURNEY SPARKLINE (all archetypes) ══════════════════════════ */}
-        {tasks.length>=2&&(()=>{
-          const sorted=[...tasks].sort((a,b)=>new Date(a.completedAt)-new Date(b.completedAt))
-          let runningElo=Math.max(400,ud.eloRating-sorted.reduce((s,t)=>s+(t.eloDelta||0),0))
-          const eloData=sorted.map((t,i)=>{
-            runningElo=runningElo+(t.eloDelta||0)
-            return { i:i+1, elo:runningElo, label:fmt(t.completedAt) }
-          })
-          const accent=aConfig?.palette?.accent||C.blue
-          const minElo=Math.min(...eloData.map(d=>d.elo))-20
-          const maxElo=Math.max(...eloData.map(d=>d.elo))+20
-          return (
-            <div className="ps">
-              <Card accent={accent}>
-                <SectionTitle icon="📈" title="ELO Journey" accent={accent}
-                  sub={`From ${eloData[0]?.elo} → ${ud.eloRating} ELO across ${tasks.length} challenges`}/>
-                <ResponsiveContainer width="100%" height={180}>
-                  <AreaChart data={eloData} margin={{top:8,right:12,left:-10,bottom:0}}>
-                    <defs>
-                      <linearGradient id="eloGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={accent} stopOpacity={0.25}/>
-                        <stop offset="95%" stopColor={accent} stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <XAxis dataKey="i" tick={{fill:C.ink4,fontSize:10}} tickLine={false} axisLine={false}
-                      label={{value:"Challenge #",position:"insideBottom",fill:C.ink4,fontSize:10,offset:-2}}/>
-                    <YAxis domain={[minElo,maxElo]} tick={{fill:C.ink4,fontSize:10}} tickLine={false} axisLine={false}/>
-                    <Tooltip
-                      contentStyle={{background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:10,fontSize:12,color:C.ink}}
-                      formatter={(v)=>[`${v} ELO`,"Rating"]}
-                      labelFormatter={i=>`Challenge #${i}`}
-                    />
-                    <Area type="monotone" dataKey="elo" stroke={accent} strokeWidth={2.5}
-                      fill="url(#eloGrad)" dot={false} activeDot={{r:5,fill:accent,strokeWidth:0}}/>
-                  </AreaChart>
-                </ResponsiveContainer>
-              </Card>
-            </div>
-          )
-        })()}
+        {/* ELO Journey sparkline removed (2026-07-26) — plotted a raw ELO
+            number over time, which violates the product rule that portfolios
+            never show a bare ELO score to either students or professionals.
+            The qualitative tier badge in the hero above still communicates
+            standing without a number. */}
 
         {/* ══ SKILLS ══════════════════════════════════════════════════════════ */}
         {skills.length>0&&(

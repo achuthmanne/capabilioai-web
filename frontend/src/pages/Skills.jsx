@@ -96,6 +96,8 @@ function domainForSkill(name) {
   return null
 }
 
+const SKILL_AXIS_COLORS = ["#8B5CF6", "#16A34A", "#D97706", "#2563EB", "#DC2626", "#0D9488", "#DB2777", "#65A30D"]
+
 function useSkillReadiness(skills) {
   return useMemo(() => {
     const buckets = {}
@@ -106,9 +108,29 @@ function useSkillReadiness(skills) {
       buckets[key].total += (s.level_score || 0)
       buckets[key].count += 1
     }
-    const axes = Object.values(buckets)
+    let axes = Object.values(buckets)
       .map(b => ({ ...b, avg: Math.round(b.total / b.count) }))
       .sort((a, b) => b.count - a.count)
+
+    // Real limitation, honestly worked around (not faked): resume-imported
+    // skills mostly land in one or two domain buckets (or "Other"), so
+    // fewer than 3 distinct domains is common — that used to mean no radar
+    // at all. Rather than require domain diversity the parser can't
+    // reliably infer, fall back to per-SKILL axes (top individual skills by
+    // level_score) so anyone with 3+ real skills gets a real, data-backed
+    // radar — every axis is still a real skill and a real score, just not
+    // grouped by domain.
+    if (axes.length < 3 && skills.length >= 3) {
+      axes = [...skills]
+        .sort((a, b) => (b.level_score || 0) - (a.level_score || 0))
+        .slice(0, 8)
+        .map((s, i) => ({
+          key: s.id, label: s.name?.length > 10 ? `${s.name.slice(0, 10)}…` : s.name,
+          color: SKILL_AXIS_COLORS[i % SKILL_AXIS_COLORS.length],
+          avg: Math.round(s.level_score || 0), count: 1,
+        }))
+    }
+
     const overall = skills.length
       ? Math.round(skills.reduce((sum, s) => sum + (s.level_score || 0), 0) / skills.length)
       : 0

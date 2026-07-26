@@ -105,6 +105,12 @@ function toPortfolioSafeFields(row, { includeCerts }) {
     website_url:        row.website_url ?? null,
     job_role:           row.job_role ?? null,
     verified:           !!row.verified,
+    // Professional-path recruiter signals (2026-07-26) — real, verification-
+    // gated facts only. No raw ELO number is ever included in this
+    // whitelist by design (product rule: portfolios never show a bare ELO
+    // score to either students or professionals).
+    uan_verified:            !!row.uan_verified,
+    years_of_experience:     row.years_of_experience ?? null,
   }
 }
 
@@ -217,7 +223,24 @@ router.get("/portfolio/lookup/:identifier", async (req, res) => {
 
     const includeCerts = isOwner || row.cert_visible !== false
 
-    res.json({ profile: toPortfolioSafeFields(row, { includeCerts }) })
+    const safe = toPortfolioSafeFields(row, { includeCerts })
+
+    // Verified certifications count (Skill Rating v2) — a real, verification-
+    // gated count, not the unstructured self-reported `certificates` list.
+    // Only counted, never named/detailed here, to keep this endpoint's
+    // response narrow like everything else in this whitelist.
+    if (includeCerts && row.path === "professional") {
+      const { data: certs } = await supabaseAdmin
+        .from("professional_certifications")
+        .select("id")
+        .eq("user_id", row.id)
+        .eq("verification_status", "verified")
+      safe.verified_certifications_count = (certs || []).length
+    } else {
+      safe.verified_certifications_count = null
+    }
+
+    res.json({ profile: safe })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }

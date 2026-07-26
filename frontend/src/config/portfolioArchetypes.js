@@ -185,7 +185,7 @@ export const ARCHETYPE_CONFIG = {
       const yoeStr = yoe ? `${yoe} year${yoe > 1 ? "s" : ""} of` : ""
       const topSkills = (ud.skill_graph || []).slice(0, 3).map(s => s.label || s.skill).join(", ")
       const role = ud.keyword || "Frontend Developer"
-      return `${yoeStr ? yoeStr + " " : ""}${role} · ${tier.label} ELO ${ud.eloRating}${topSkills ? ` · ${topSkills}` : ""}${tasks > 0 ? ` · ${tasks} Arena challenges` : ""}`
+      return `${yoeStr ? yoeStr + " " : ""}${role} · ${tier.label} tier${topSkills ? ` · ${topSkills}` : ""}${tasks > 0 ? ` · ${tasks} Arena challenges` : ""}`
     },
 
     heroTagline:     "Crafting interfaces that users trust",
@@ -257,7 +257,7 @@ export const ARCHETYPE_CONFIG = {
       const role = ud.keyword || "Backend Engineer"
       const elo = ud.eloRating
       const topSkills = (ud.skill_graph || []).slice(0, 3).map(s => s.label || s.skill).join(", ")
-      return `${role} · ${tier.label} ELO ${elo}${topSkills ? ` · ${topSkills}` : ""}${tasks > 0 ? ` · ${tasks} backend challenges` : ""}`
+      return `${role} · ${tier.label} tier${topSkills ? ` · ${topSkills}` : ""}${tasks > 0 ? ` · ${tasks} backend challenges` : ""}`
     },
 
     heroTagline:     "Systems that scale. Code that survives.",
@@ -330,7 +330,7 @@ export const ARCHETYPE_CONFIG = {
     recruiterSummary: (ud, tier, tasks) => {
       const role = ud.keyword || "DevOps Engineer"
       const elo = ud.eloRating
-      return `${role} · ${tier.label} ELO ${elo}${tasks > 0 ? ` · ${tasks} infrastructure challenges` : ""}`
+      return `${role} · ${tier.label} tier${tasks > 0 ? ` · ${tasks} infrastructure challenges` : ""}`
     },
 
     heroTagline:     "Zero downtime. Infinite scale. Total observability.",
@@ -404,7 +404,7 @@ export const ARCHETYPE_CONFIG = {
       const role = ud.keyword || "Data Analyst"
       const elo = ud.eloRating
       const topSkills = (ud.skill_graph || []).slice(0, 3).map(s => s.label || s.skill).join(", ")
-      return `${role} · ${tier.label} ELO ${elo}${topSkills ? ` · ${topSkills}` : ""}${tasks > 0 ? ` · ${tasks} data challenges` : ""}`
+      return `${role} · ${tier.label} tier${topSkills ? ` · ${topSkills}` : ""}${tasks > 0 ? ` · ${tasks} data challenges` : ""}`
     },
 
     heroTagline:     "Turning numbers into decisions.",
@@ -474,7 +474,7 @@ export const ARCHETYPE_CONFIG = {
     recruiterSummary: (ud, tier, tasks) => {
       const role = ud.keyword || "UX Designer"
       const elo = ud.eloRating
-      return `${role} · ${tier.label} ELO ${elo}${tasks > 0 ? ` · ${tasks} design challenges` : ""}`
+      return `${role} · ${tier.label} tier${tasks > 0 ? ` · ${tasks} design challenges` : ""}`
     },
 
     heroTagline:     "Designing the gap between intent and experience.",
@@ -541,7 +541,7 @@ export const ARCHETYPE_CONFIG = {
     recruiterSummary: (ud, tier, tasks) => {
       const role = ud.keyword || "Product Manager"
       const elo = ud.eloRating
-      return `${role} · ${tier.label} ELO ${elo}${tasks > 0 ? ` · ${tasks} product challenges` : ""}`
+      return `${role} · ${tier.label} tier${tasks > 0 ? ` · ${tasks} product challenges` : ""}`
     },
 
     heroTagline:     "Outcomes, not outputs.",
@@ -680,7 +680,7 @@ export const ARCHETYPE_CONFIG = {
       const role = ud.keyword || "Software Developer"
       const elo = ud.eloRating
       const streak = ud.arenaStreak || 0
-      return `Fresher ${role} · ${tier.label} ELO ${elo}${tasks > 0 ? ` · ${tasks} challenges completed` : ""}${streak >= 5 ? ` · ${streak}-day streak` : ""}`
+      return `Fresher ${role} · ${tier.label} tier${tasks > 0 ? ` · ${tasks} challenges completed` : ""}${streak >= 5 ? ` · ${streak}-day streak` : ""}`
     },
 
     heroTagline:     "Proving skills, one challenge at a time.",
@@ -748,7 +748,7 @@ export const ARCHETYPE_CONFIG = {
       const role = ud.keyword || "Full Stack Developer"
       const elo = ud.eloRating
       const topSkills = (ud.skill_graph || []).slice(0, 3).map(s => s.label || s.skill).join(", ")
-      return `${role} · ${tier.label} ELO ${elo}${topSkills ? ` · ${topSkills}` : ""}${tasks > 0 ? ` · ${tasks} Arena challenges` : ""}`
+      return `${role} · ${tier.label} tier${topSkills ? ` · ${topSkills}` : ""}${tasks > 0 ? ` · ${tasks} Arena challenges` : ""}`
     },
 
     heroTagline:     "From idea to production — end to end.",
@@ -814,7 +814,7 @@ export const ARCHETYPE_CONFIG = {
     recruiterSummary: (ud, tier, tasks) => {
       const role = ud.keyword || "Mobile Developer"
       const elo = ud.eloRating
-      return `${role} · ${tier.label} ELO ${elo}${tasks > 0 ? ` · ${tasks} challenges` : ""}`
+      return `${role} · ${tier.label} tier${tasks > 0 ? ` · ${tasks} challenges` : ""}`
     },
 
     heroTagline:     "Building apps people actually open.",
@@ -884,7 +884,7 @@ export const ARCHETYPE_CONFIG = {
     recruiterSummary: (ud, tier, tasks) => {
       const role = ud.keyword || ud.job_role || "Engineer"
       const elo = ud.eloRating
-      return `${role} · ${tier.label} ELO ${elo}${tasks > 0 ? ` · ${tasks} engineering challenges` : ""}`
+      return `${role} · ${tier.label} tier${tasks > 0 ? ` · ${tasks} engineering challenges` : ""}`
     },
 
     heroTagline:     "Engineering solutions that work in the real world.",
@@ -954,7 +954,7 @@ export const ARCHETYPE_CONFIG = {
     recruiterSummary: (ud, tier, tasks) => {
       const role = ud.keyword || ud.job_role || "Professional"
       const elo = ud.eloRating
-      return `${role} · ${tier.label} ELO ${elo}${tasks > 0 ? ` · ${tasks} domain challenges` : ""}`
+      return `${role} · ${tier.label} tier${tasks > 0 ? ` · ${tasks} domain challenges` : ""}`
     },
 
     heroTagline:     "Domain expertise backed by measurable outcomes.",
