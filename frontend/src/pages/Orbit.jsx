@@ -420,7 +420,7 @@ function RecruiterCard({ud,sig,onNav}){
     {l:"Employment verified",  done:sig.meta.verified>0,  tab:"vault",    weight:35},
     {l:"Skills documented (5+)",done:sig.meta.skills>=5,  tab:"forge",    weight:25},
     {l:"Profile summary written",done:sig.meta.hasSummary,tab:"timeline", weight:20},
-    {l:"Target role set",      done:sig.meta.hasTarget,   tab:"orbit",    weight:20},
+    {l:"EPFO/UAN verified",    done:sig.meta.hasUAN,      tab:"vault",    weight:20},
   ]
   const vis=checks.reduce((a,c)=>a+(c.done?c.weight:0),0)
   const sc=vis>=80?DS.green:vis>=50?DS.amber:DS.red
@@ -470,7 +470,6 @@ function HealthCard({sig,onNav}){
     {l:"Employment history",  done:sig.meta.expsCount>0, tab:"timeline"},
     {l:"5+ skills documented",done:sig.meta.skills>=5,   tab:"forge"},
     {l:"Employment verified", done:sig.meta.verified>0,  tab:"aura"},
-    {l:"Target role set",     done:sig.meta.hasTarget,   tab:"orbit"},
     {l:"Projects / proof",    done:sig.meta.hasProj,     tab:"aura"},
     {l:"Certifications",      done:sig.meta.hasCerts,    tab:"aura"},
     {l:"Vault documents",     done:sig.meta.hasVault,    tab:"aura"},
@@ -511,7 +510,6 @@ function ActionCard({sig,ud,onNav}){
   if(!sig.meta.hasUAN)acts.push({icon:"🔐",title:"Verify employment via EPFO/UAN",roi:"Boosts Proof Strength significantly, unlocks recruiter trust badge",tab:"vault",imp:"critical"})
   if(!sig.meta.hasSummary)acts.push({icon:"✍️",title:"Write your professional summary",roi:"Improves Role Fit Score and recruiter visibility 3×",tab:"timeline",imp:"high"})
   if(sig.meta.skills<8)acts.push({icon:"⚡",title:`Document ${8-sig.meta.skills} more verified skills`,roi:"Improves Market Standing per skill, boosts comp band ~8%",tab:"forge",imp:"high"})
-  if(!sig.meta.hasTarget)acts.push({icon:"🎯",title:"Set your target role",roi:"Enables accurate market gap analysis and comp benchmarking",tab:"orbit",imp:"medium"})
   acts.push({icon:"💰",title:"Update current CTC for comp benchmarking",roi:"Reveals underpayment gaps, enables negotiation guidance",tab:"orbit",imp:"medium"})
   const top=acts[0]
   return<Card style={{borderTop:`3px solid ${DS.primary}`,background:`linear-gradient(135deg,${DS.pBg} 0%,${DS.surface} 100%)`}}>
@@ -527,7 +525,7 @@ function ActionCard({sig,ud,onNav}){
 
 // ─── ROI Card ─────────────────────────────────────────────────────────────────
 function ROICard({sig}){
-  const items=[{a:"Complete employment verification",u:120000,t:"negotiation leverage"},{a:"Add 3 more verified skills",u:80000,t:"comp band improvement"},{a:"Set target role + optimise profile",u:200000,t:"switch gain increase"},{a:"Complete profile to 100%",u:150000,t:"recruiter match improvement"}]
+  const items=[{a:"Complete employment verification",u:120000,t:"negotiation leverage"},{a:"Add 3 more verified skills",u:80000,t:"comp band improvement"},{a:"Add a verified certification",u:200000,t:"switch gain increase"},{a:"Complete profile to 100%",u:150000,t:"recruiter match improvement"}]
   const total=items.reduce((a,b)=>a+b.u,0)
   const f=n=>n>=100000?`₹${(n/100000).toFixed(0)}L`:`₹${n.toLocaleString("en-IN")}`
   return<Card style={{borderTop:`3px solid ${DS.green}`}}>
@@ -646,7 +644,7 @@ function LayoffMode({ud,sig,onClose}){
   const yoe=sig.meta.yoe,f=n=>n>=100000?`₹${(n/100000).toFixed(0)}L`:`₹${n.toLocaleString("en-IN")}`
   const base=600000+yoe*100000
   const steps=[
-    {title:"Emergency Checklist",icon:"⚡",items:[{done:sig.meta.hasVault,l:"Resume in Vault — latest version",a:"Upload to Vault"},{done:sig.meta.verified>0,l:"Employment verification active",a:"Verify via EPFO"},{done:sig.meta.hasSummary,l:"Profile summary current",a:"Update Summary"},{done:sig.meta.hasTarget,l:"Target role clearly defined",a:"Set Target Role"},{done:sig.meta.skills>=8,l:"8+ skills documented",a:"Add in Forge"}]},
+    {title:"Emergency Checklist",icon:"⚡",items:[{done:sig.meta.hasVault,l:"Resume in Vault — latest version",a:"Upload to Vault"},{done:sig.meta.verified>0,l:"Employment verification active",a:"Verify via EPFO"},{done:sig.meta.hasSummary,l:"Profile summary current",a:"Update Summary"},{done:sig.meta.skills>=8,l:"8+ skills documented",a:"Add in Forge"}]},
     {title:"Fastest-Switch Roles",icon:"🔀",roles:[{r:"Senior Software Engineer",m:92,ctc:`${f(base*1.1)}–${f(base*1.4)}`,why:"Core skills map directly",t:"2–4 weeks"},{r:"Technical Lead",m:78,ctc:`${f(base*1.2)}–${f(base*1.5)}`,why:"Seniority signals align",t:"4–6 weeks"},{r:"Solutions Architect",m:65,ctc:`${f(base*1.3)}–${f(base*1.7)}`,why:"Fill one proof gap first",t:"6–8 weeks"}]},
     {title:"30-Day Recovery Plan",icon:"🗺",plan:[{w:"Week 1",t:"Complete checklist, verify employment, upload resume to Vault"},{w:"Week 2",t:"Apply to 5 matched roles on Launchpad, activate recruiter visibility"},{w:"Week 3",t:"Complete 2 Switch Forge tasks, book a mentor session on Nexus"},{w:"Week 4",t:"Follow up on applications, negotiate using Compensation Intelligence"}]}
   ]
@@ -1009,7 +1007,6 @@ function OrbitDash({ud,user,onSave,onNav,onPricing,hideHero=false}){
   const[showResume,setShowResume]=useState(false)
   const[showLayoff,setShowLayoff]=useState(false)
   const[editing,setEditing]=useState(false)
-  const[tRole,setTRole]=useState(ud?.targetRole||"")
   const[ctc,setCtc]=useState(ud?.currentCTC||"")
   const[savingMeta,setSavingMeta]=useState(false)
   const sig=computeSignals(ud)
@@ -1036,7 +1033,7 @@ function OrbitDash({ud,user,onSave,onNav,onPricing,hideHero=false}){
     return()=>{cancelled=true}
   },[])
 
-  const saveMeta=async()=>{setSavingMeta(true);await onSave({targetRole:tRole,currentCTC:ctc});setSavingMeta(false);setEditing(false)}
+  const saveMeta=async()=>{setSavingMeta(true);await onSave({currentCTC:ctc});setSavingMeta(false);setEditing(false)}
   const goUpgrade=()=>onPricing&&onPricing()
 
   const CARDS=[
@@ -1047,9 +1044,9 @@ function OrbitDash({ud,user,onSave,onNav,onPricing,hideHero=false}){
       action:"Write your professional summary and add 5 verified skills for the fastest Role Fit Score improvement."},
     {name:"Market Standing",icon:"📈",key:"market",color:DS.blue,cBg:DS.blBg,cBd:DS.blBd,desc:"How competitive you are in the current market",
       actionLabel:"View Gap Report →",actionTab:"orbit",
-      drivers:[sig.meta.skills>=8&&"Strong skill profile (8+ skills)",sig.meta.yoe>4&&"Senior experience band",sig.meta.hasTarget&&"Target role defined"].filter(Boolean),
-      drags:[!sig.meta.hasTarget&&"Target role not set",sig.meta.skills<8&&"Below 8 skills",sig.meta.yoe<2&&"Below market seniority threshold"].filter(Boolean),
-      action:"Set your target role and document 10+ skills for maximum Market Standing accuracy."},
+      drivers:[sig.meta.skills>=8&&"Strong skill profile (8+ skills)",sig.meta.yoe>4&&"Senior experience band"].filter(Boolean),
+      drags:[sig.meta.skills<8&&"Below 8 skills",sig.meta.yoe<2&&"Below market seniority threshold"].filter(Boolean),
+      action:"Document 10+ skills for maximum Market Standing accuracy."},
     {name:"Proof Strength",icon:"🔐",key:"proof",color:DS.purple,cBg:DS.purBg,cBd:DS.purBd,desc:"Verified evidence that backs your claims",
       actionLabel:"Go to Verification →",actionTab:"vault",
       drivers:[sig.meta.hasUAN&&"EPFO/UAN verified",sig.meta.verified>0&&"Employer verification complete",sig.meta.hasVault&&"Documents in Vault",sig.meta.hasCerts&&"Certifications listed"].filter(Boolean),
@@ -1057,9 +1054,9 @@ function OrbitDash({ud,user,onSave,onNav,onPricing,hideHero=false}){
       action:"Complete EPFO/UAN verification in the Verification tab for the single biggest Proof Strength gain."},
     {name:"Career Mobility",icon:"🔀",key:"mobility",color:DS.green,cBg:DS.gBg,cBd:DS.gBd,desc:"Readiness to switch, negotiate, or recover",
       actionLabel:"Plan Switch →",actionTab:"forge",
-      drivers:[sig.meta.verified>0&&"Verified employment history",sig.meta.hasTarget&&"Clear target role set",sig.meta.yoe>3&&"Sufficient seniority for lateral moves"].filter(Boolean),
-      drags:[!sig.meta.hasTarget&&"No target role",!sig.meta.hasSummary&&"Missing summary weakens mobility",sig.meta.verified===0&&"Unverified history limits switch leverage"].filter(Boolean),
-      action:"Define your target role and complete employment verification to unlock full Career Mobility."},
+      drivers:[sig.meta.verified>0&&"Verified employment history",sig.meta.yoe>3&&"Sufficient seniority for lateral moves"].filter(Boolean),
+      drags:[!sig.meta.hasSummary&&"Missing summary weakens mobility",sig.meta.verified===0&&"Unverified history limits switch leverage"].filter(Boolean),
+      action:"Complete employment verification to unlock full Career Mobility."},
   ]
 
   return<div style={{maxWidth:1200,margin:"0 auto",padding:"24px",animation:"fadeUp .3s ease"}}>
@@ -1091,11 +1088,13 @@ function OrbitDash({ud,user,onSave,onNav,onPricing,hideHero=false}){
     {/* Settings */}
     {editing&&<Card style={{marginBottom:18,animation:"fadeUp .2s ease"}}>
       <SL>⚙ Career Settings</SL>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:11,marginBottom:12}}>
-        <Inp label="Target Role" value={tRole} onChange={setTRole} placeholder="e.g. Senior Product Manager"/>
+      <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:11,marginBottom:12}}>
         <Inp label="Current CTC (Lakhs p.a.)" value={ctc} onChange={setCtc} placeholder="e.g. 18" type="number"/>
         <div style={{display:"flex",alignItems:"flex-end"}}><Btn onClick={saveMeta} loading={savingMeta} full>Save</Btn></div>
       </div>
+      {/* Role is auto-derived from the resume/profile (see resume import,
+          Career OS task #37) — no manual "Target Role" prompt on the
+          professional path anymore. */}
       {/* Subscription management */}
       <div style={{paddingTop:12,borderTop:`1px solid ${DS.border}`}}>
         <SL>💳 Subscription</SL>
@@ -1271,7 +1270,6 @@ function ReadinessTab({ud,user,onSave,onNav}){
       {l:"Professional summary written",done:sig.meta.hasSummary,action:"forge",hint:"A clear 3–5 sentence narrative is the #1 recruiter read"},
       {l:"Employment history documented",done:sig.meta.expsCount>0,action:"timeline",hint:"At least one complete employment entry needed"},
       {l:"5+ skills documented",done:sig.meta.skills>=5,action:"forge",hint:"Minimum threshold for market matching algorithms"},
-      {l:"Target role set",done:sig.meta.hasTarget,action:"orbit",hint:"Anchors all market gap and comp benchmarking"},
     ]},
     {cat:"Verification",items:[
       {l:"Employment verified (EPFO/UAN)",done:sig.meta.hasUAN,action:"vault",hint:"Single highest-impact verification action available"},
@@ -1362,20 +1360,20 @@ function OverviewTab({ud, sig, onNav}){
       drivers:[`${m.yoe} year${m.yoe===1?"":"s"} of experience on record`, `${m.verified} verified employment ${m.verified===1?"entry":"entries"}`],
       basis:"Experience, skills, and verification on your profile", tone:bandTone(sig.role.confidence) },
     { label:"Market standing", outcome:sig.market.confidence==="High"?"Competitive":"Building",
-      drivers:[`${m.skills} skills mapped`, m.hasTarget?`Target role set`:"No target role set yet"],
-      basis:"Skill breadth and target-role alignment", tone:bandTone(sig.market.confidence) },
+      drivers:[`${m.skills} skills mapped`],
+      basis:"Skill breadth", tone:bandTone(sig.market.confidence) },
     { label:"Proof strength",  outcome:sig.proof.confidence==="High"?"Well-evidenced":"Needs evidence",
       drivers:[m.hasUAN?"Employment verified (UAN)":"Employment not yet verified", m.hasVault?"Documents in Vault":"No documents uploaded"],
       basis:"Verification and document evidence", tone:bandTone(sig.proof.confidence) },
     { label:"Mobility readiness", outcome:sig.mobility.confidence==="High"?"Ready to move":"Building readiness",
-      drivers:[m.hasTarget?"Target role set":"Set a target role to improve this", m.hasSummary?"Profile summary added":"No profile summary yet"],
-      basis:"Target-role clarity and profile completeness", tone:bandTone(sig.mobility.confidence) },
+      drivers:[m.hasSummary?"Profile summary added":"No profile summary yet"],
+      basis:"Profile completeness", tone:bandTone(sig.mobility.confidence) },
   ]
 
   return<div style={{maxWidth:820,margin:"0 auto",padding:"24px"}}>
     <div style={{marginBottom:18}}>
       <div style={{fontFamily:DS.display,fontSize:20,fontWeight:800,color:DS.ink}}>Career Overview</div>
-      <div style={{fontSize:13,color:DS.ink3,marginTop:1}}>{ud?.targetRole ? `Target role: ${ud.targetRole}` : "No target role set — set one to sharpen every signal below."}</div>
+      <div style={{fontSize:13,color:DS.ink3,marginTop:1}}>Skill and verification signals below, based on your real profile activity.</div>
     </div>
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:12,marginBottom:22}}>
       {cards.map((c,i)=><OutcomeCard key={i} {...c}/>)}

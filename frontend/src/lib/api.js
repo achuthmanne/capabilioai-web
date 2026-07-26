@@ -157,6 +157,10 @@ export const weeklyCheckApi = {
   v2Status:   ()               => request("GET", "/pro/weekly/v2/status"),
   v2Generate: ()               => request("POST", "/pro/weekly/v2/generate"),
   v2DecayStates: ()            => request("GET", "/pro/weekly/v2/decay-states"),
+  // Timer + anti-cheat (2026-07-26) — real, backend-persisted signals.
+  flagSuspicious: (pulseId, type) => request("POST", `/pro/weekly/${pulseId}/flag-suspicious`, { type }),
+  timeout:        (pulseId, questionId) => request("POST", `/pro/weekly/${pulseId}/timeout`, { question_id: questionId }),
+  history:        (limit = 20) => request("GET", `/pro/weekly/history?limit=${limit}`),
 }
 
 // ══════════════════════════════════════════

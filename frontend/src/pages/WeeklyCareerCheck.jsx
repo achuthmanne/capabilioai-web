@@ -27,6 +27,8 @@ function mapKeyToIntent(key, optionCount) {
   return null
 }
 
+const QUESTION_SECONDS = 45 // realistic lockdown scope: visible countdown + auto-lock, not OS-level enforcement
+
 const P    = "#8B5CF6"
 const INK  = "#1A1714"
 const INK2 = "#3D3935"
@@ -76,8 +78,86 @@ export default function WeeklyCareerCheck({ user, onNavigate }) {
   const [lastResult, setLastResult] = useState(null)
   const [summary, setSummary]     = useState(null)
   const [errorMsg, setErrorMsg]   = useState("")
+  const [secondsLeft, setSecondsLeft] = useState(QUESTION_SECONDS)
+  const [timedOut, setTimedOut]   = useState(false)
 
   useEffect(() => { load() }, [])
+
+  // ── 45s-per-question timer (product requirement) ───────────────────────────
+  // Realistic scope: a visible countdown that auto-locks the question at
+  // zero. This cannot and does not claim to prevent someone from looking up
+  // an answer off-screen — see the anti-cheat event logging below for what
+  // IS realistically detectable from the browser.
+  useEffect(() => {
+    if (state !== "active") return
+    setSecondsLeft(QUESTION_SECONDS)
+    setTimedOut(false)
+    const interval = setInterval(() => {
+      setSecondsLeft(s => {
+        if (s <= 1) {
+          clearInterval(interval)
+          handleTimeout()
+          return 0
+        }
+        return s - 1
+      })
+    }, 1000)
+    return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, idx])
+
+  async function handleTimeout() {
+    if (!pulse || !questions[idx]) return
+    setTimedOut(true)
+    try {
+      const res = await weeklyCheckApi.timeout(pulse.id, questions[idx].id)
+      setLastResult(res)
+      setState("feedback")
+    } catch (e) {
+      // Even if the timeout call fails, still advance the user rather than
+      // stranding them on a dead countdown.
+      setLastResult({ is_correct: false, explanation: "Time's up for this question." })
+      setState("feedback")
+    }
+  }
+
+  // ── Anti-cheat event logging (2026-07-26) ───────────────────────────────────
+  // Realistic, honestly-scoped browser-level protections: block copy/paste/
+  // cut/right-click and discourage text selection on the question surface,
+  // and log (not silently ignore) tab-switch/window-blur as suspicious
+  // activity persisted server-side. This does NOT and CANNOT prevent
+  // screenshots or a second device — that limitation is real and stated here
+  // rather than pretended away.
+  const logSuspicious = useCallback((type) => {
+    if (!pulse?.id) return
+    weeklyCheckApi.flagSuspicious(pulse.id, type).catch(() => {})
+  }, [pulse])
+
+  useEffect(() => {
+    if (state !== "active" && state !== "feedback") return
+    const block = (e) => { e.preventDefault(); return false }
+    const onCopy = (e) => { block(e); logSuspicious("copy_attempt") }
+    const onPaste = (e) => { block(e); logSuspicious("paste_attempt") }
+    const onCut = (e) => { block(e); logSuspicious("cut_attempt") }
+    const onContextMenu = (e) => { block(e); logSuspicious("context_menu") }
+    const onVisibility = () => { if (document.hidden) logSuspicious("visibility_hidden") }
+    const onBlur = () => logSuspicious("tab_blur")
+
+    document.addEventListener("copy", onCopy)
+    document.addEventListener("paste", onPaste)
+    document.addEventListener("cut", onCut)
+    document.addEventListener("contextmenu", onContextMenu)
+    document.addEventListener("visibilitychange", onVisibility)
+    window.addEventListener("blur", onBlur)
+    return () => {
+      document.removeEventListener("copy", onCopy)
+      document.removeEventListener("paste", onPaste)
+      document.removeEventListener("cut", onCut)
+      document.removeEventListener("contextmenu", onContextMenu)
+      document.removeEventListener("visibilitychange", onVisibility)
+      window.removeEventListener("blur", onBlur)
+    }
+  }, [state, logSuspicious])
 
   async function load() {
     setState("loading")
@@ -156,6 +236,7 @@ export default function WeeklyCareerCheck({ user, onNavigate }) {
           correct: res.correct_count, total: res.question_count,
           skillsRefreshed: res.skills_refreshed || [],
           skillsToRevisit: res.skills_to_revisit || [],
+          professionalElo: res.professional_elo || null,
         })
         setState("done")
       } catch (e) {
@@ -212,6 +293,8 @@ export default function WeeklyCareerCheck({ user, onNavigate }) {
         .wcc-option.picked { border-color: ${P}; background: ${P}0D; color: ${INK}; font-weight: 600; }
         .wcc-option.correct { border-color: ${GOOD}; background: #F0FDF4; color: ${GOOD}; font-weight: 700; }
         .wcc-option.wrong { border-color: ${BAD}; background: #FEF2F2; color: ${BAD}; font-weight: 700; }
+        .wcc-lockdown { user-select: none; -webkit-user-select: none; }
+        .wcc-lockdown * { user-select: none; -webkit-user-select: none; }
       `}</style>
 
       <div style={{ width: "100%", maxWidth: 460, padding: "28px 20px 60px" }}>
@@ -259,10 +342,21 @@ export default function WeeklyCareerCheck({ user, onNavigate }) {
         )}
 
         {(state === "active" || state === "feedback") && q && (
-          <div style={{ background: SURF, border: `1px solid ${BDR}`, borderRadius: 20, padding: 22 }}>
+          <div className="wcc-lockdown" style={{ background: SURF, border: `1px solid ${BDR}`, borderRadius: 20, padding: 22 }}>
             <ProgressDots total={questions.length} current={idx} />
-            <div style={{ fontSize: 10, fontWeight: 800, color: MUT, letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: MONO, marginBottom: 8 }}>
-              Question {idx + 1} of {questions.length}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: MUT, letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: MONO }}>
+                Question {idx + 1} of {questions.length}
+              </div>
+              {state === "active" && (
+                <div aria-live="polite" style={{
+                  fontFamily: MONO, fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: 999,
+                  color: secondsLeft <= 10 ? BAD : P, background: secondsLeft <= 10 ? "#FEF2F2" : `${P}10`,
+                  border: `1px solid ${secondsLeft <= 10 ? "rgba(220,38,38,0.25)" : `${P}25`}`,
+                }}>
+                  ⏱ {secondsLeft}s
+                </div>
+              )}
             </div>
             <div style={{ fontFamily: SERIF, fontSize: 17, fontWeight: 700, color: INK, lineHeight: 1.5, marginBottom: 18 }}>
               {q.prompt}
@@ -313,7 +407,7 @@ export default function WeeklyCareerCheck({ user, onNavigate }) {
                   border: `1px solid ${lastResult?.is_correct ? "rgba(22,163,74,0.2)" : "rgba(220,38,38,0.2)"}`,
                 }}>
                   <div style={{ fontWeight: 800, fontSize: 12, color: lastResult?.is_correct ? GOOD : BAD, marginBottom: 4 }}>
-                    {lastResult?.is_correct ? "Correct" : "Not quite"}
+                    {timedOut ? "Time's up — locked as incorrect" : lastResult?.is_correct ? "Correct" : "Not quite"}
                   </div>
                   <div style={{ fontSize: 12, color: INK2, lineHeight: 1.6 }}>{lastResult?.explanation}</div>
                 </div>
@@ -356,6 +450,23 @@ export default function WeeklyCareerCheck({ user, onNavigate }) {
                     {s.skill_name || "Skill"} <span style={{ color: BAD, fontWeight: 700 }}>{s.delta}</span>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Professional ELO delta from THIS check-in — this is the exact
+                number that previously moved silently on the backend with no
+                visible confirmation on this screen. Shown honestly in both
+                directions (can go up or down), never hidden when negative. */}
+            {summary.professionalElo && summary.professionalElo.delta !== 0 && (
+              <div style={{
+                textAlign: "left", marginBottom: 14, padding: "10px 14px", borderRadius: 14,
+                background: summary.professionalElo.delta > 0 ? "#F0FDF4" : "#FEF2F2",
+                border: `1px solid ${summary.professionalElo.delta > 0 ? "rgba(22,163,74,0.2)" : "rgba(220,38,38,0.2)"}`,
+              }}>
+                <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: MONO, color: summary.professionalElo.delta > 0 ? GOOD : BAD, marginBottom: 4 }}>
+                  Professional ELO {summary.professionalElo.delta > 0 ? "+" : ""}{summary.professionalElo.delta}
+                </div>
+                <div style={{ fontSize: 12, color: INK2 }}>{summary.professionalElo.reason}</div>
               </div>
             )}
 

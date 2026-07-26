@@ -420,6 +420,131 @@ router.post("/pro/weekly/:pulseId/complete", requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
+// ── Anti-cheat event logging (2026-07-26) ────────────────────────────────────
+// Realistic scope, stated honestly: a browser app cannot prevent screenshots
+// or fully block a determined user from leaving the tab. What this DOES do:
+// record real, timestamped suspicious-activity signals server-side
+// (tab/window blur, visibility change, copy/paste/context-menu attempts,
+// question timeouts) so they're visible in Skill Test History and can factor
+// into trust decisions later — never a client-only, discardable log.
+const SUSPICIOUS_EVENT_TYPES = new Set([
+  "tab_blur", "visibility_hidden", "copy_attempt", "paste_attempt", "cut_attempt", "context_menu", "timeout",
+])
+const MAX_SUSPICIOUS_EVENTS_PER_PULSE = 200 // bounds row growth against a hostile client hammering this endpoint
+
+router.post("/pro/weekly/:pulseId/flag-suspicious", requireAuth, async (req, res) => {
+  try {
+    const uid = req.user.id
+    const { pulseId } = req.params
+    const { type } = req.body
+    if (!SUSPICIOUS_EVENT_TYPES.has(type)) return res.status(400).json({ error: "Invalid event type" })
+
+    const { data: pulse } = await supabaseAdmin.from("weekly_pulses").select("id,user_id,suspicious_events").eq("id", pulseId).single()
+    if (!pulse || pulse.user_id !== uid) return res.status(403).json({ error: "Forbidden" })
+
+    const existing = Array.isArray(pulse.suspicious_events) ? pulse.suspicious_events : []
+    if (existing.length >= MAX_SUSPICIOUS_EVENTS_PER_PULSE) return res.json({ success: true, throttled: true })
+
+    const updated = [...existing, { type, at: new Date().toISOString() }]
+    await supabaseAdmin.from("weekly_pulses").update({ suspicious_events: updated }).eq("id", pulseId)
+
+    res.json({ success: true, count: updated.length })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// Timeout auto-lock: called when the 45s-per-question timer hits zero with no
+// answer selected. Records is_correct=false (a real, persisted outcome — not
+// just a frontend visual state) and increments timed_out_count, then behaves
+// exactly like a submitted wrong answer for confidence-feedback/ELO purposes
+// once /complete runs.
+router.post("/pro/weekly/:pulseId/timeout", requireAuth, async (req, res) => {
+  try {
+    const uid = req.user.id
+    const { pulseId } = req.params
+    const { question_id } = req.body
+    if (!question_id) return res.status(400).json({ error: "question_id is required" })
+
+    const { data: pulse } = await supabaseAdmin.from("weekly_pulses").select("id,user_id,timed_out_count").eq("id", pulseId).single()
+    if (!pulse || pulse.user_id !== uid) return res.status(403).json({ error: "Forbidden" })
+
+    const { data: question } = await supabaseAdmin.from("weekly_questions").select("*").eq("id", question_id).eq("pulse_id", pulseId).single()
+    if (!question) return res.status(404).json({ error: "Question not found" })
+
+    // Idempotent: if this question already has a real answer row (e.g. a
+    // race between a late click and the timer), don't overwrite it with a
+    // synthetic timeout one — check first rather than blindly upserting.
+    const { data: existingAnswer } = await supabaseAdmin.from("weekly_answers").select("id").eq("user_id", uid).eq("question_id", question_id).maybeSingle()
+    if (existingAnswer) return res.json({ success: true, idempotent: true })
+
+    await supabaseAdmin.from("weekly_answers").upsert({
+      user_id: uid, question_id, selected_option_id: null, is_correct: false, timed_out: true,
+    }, { onConflict: "question_id,user_id" })
+    await supabaseAdmin.from("weekly_pulses").update({ timed_out_count: (pulse.timed_out_count || 0) + 1 }).eq("id", pulseId)
+
+    res.json({ success: true, is_correct: false, correct_option_id: question.correct_option_id, explanation: question.explanation, timed_out: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// ── Skill Test History ───────────────────────────────────────────────────────
+// Real, backend-persisted history (product rule #6): past pulses with score,
+// skill areas touched, ELO delta (joined from professional_elo_events by
+// pulse_id, which eloEngine.js already stamps on every pulse-completion
+// event), and suspicious-activity flags. No dummy rows — empty array if the
+// user has never completed a pulse.
+router.get("/pro/weekly/history", requireAuth, async (req, res) => {
+  try {
+    const uid = req.user.id
+    const limit = Math.min(Number(req.query.limit) || 20, 50)
+
+    const { data: pulses, error } = await supabaseAdmin
+      .from("weekly_pulses")
+      .select("id,status,correct_count,question_count,completed_at,created_at,suspicious_events,timed_out_count")
+      .eq("user_id", uid)
+      .eq("status", "completed")
+      .order("completed_at", { ascending: false })
+      .limit(limit)
+    if (error) return res.status(500).json({ error: error.message })
+
+    const pulseIds = (pulses || []).map(p => p.id)
+
+    const [{ data: questions }, { data: eloEvents }] = await Promise.all([
+      pulseIds.length
+        ? supabaseAdmin.from("weekly_questions").select("id,pulse_id,skill_id").in("pulse_id", pulseIds)
+        : Promise.resolve({ data: [] }),
+      pulseIds.length
+        ? supabaseAdmin.from("professional_elo_events").select("pulse_id,delta,reason").eq("user_id", uid).in("pulse_id", pulseIds)
+        : Promise.resolve({ data: [] }),
+    ])
+
+    const skillIdsByPulse = new Map()
+    for (const q of questions || []) {
+      if (!q.skill_id) continue
+      const arr = skillIdsByPulse.get(q.pulse_id) || new Set()
+      arr.add(q.skill_id)
+      skillIdsByPulse.set(q.pulse_id, arr)
+    }
+    const allSkillIds = [...new Set((questions || []).map(q => q.skill_id).filter(Boolean))]
+    const { data: skillRows } = allSkillIds.length
+      ? await supabaseAdmin.from("user_skills").select("id,name").in("id", allSkillIds)
+      : { data: [] }
+    const skillNameById = new Map((skillRows || []).map(s => [s.id, s.name]))
+
+    const eloByPulse = new Map((eloEvents || []).map(e => [e.pulse_id, e]))
+
+    const history = (pulses || []).map(p => ({
+      pulse_id: p.id,
+      completed_at: p.completed_at,
+      score: { correct: p.correct_count, total: p.question_count },
+      skill_areas: [...(skillIdsByPulse.get(p.id) || [])].map(id => skillNameById.get(id)).filter(Boolean),
+      elo_delta: eloByPulse.get(p.id)?.delta ?? null,
+      timed_out_count: p.timed_out_count || 0,
+      suspicious_events: p.suspicious_events || [],
+    }))
+
+    res.json({ history })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
 // Exported for reuse by skillPulseV2.js (Workstream 3) — the v2 flow needs
 // to fall back to the exact same v1 generation logic when coverage is
 // insufficient, rather than re-implementing a second copy of it.

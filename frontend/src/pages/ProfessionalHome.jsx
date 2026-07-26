@@ -453,14 +453,12 @@ function SkillHalfLife({ userData }) {
 // gap card can deep-link straight to a specific tab, not just a bare page.
 function ActionGaps({ userData, onNavigate }) {
   const hasVerif   = !!(userData?.epfoVerified || userData?.verified)
-  const hasTarget  = !!userData?.targetRole
   const hasVault   = (userData?.vaultFiles || []).length > 0
   const hasExp     = (userData?.experiences || []).length > 0
   const hasSummary = !!userData?.summary
 
   const gaps = []
   if (!hasVerif)   gaps.push({ cap: "Critical gap",    title: "Employment verification missing", desc: "EPFO/UAN cross-match increases recruiter trust and unlocks proof strength score.", icon: "🔐", impact: "bad",  page: "aura",     btn: "Verify now" })
-  if (!hasTarget)  gaps.push({ cap: "Signal gap",      title: "Target role not set",             desc: "Set a target role so Orbit can tune skill decay and weekly assessments correctly.",  icon: "🎯", impact: "warn", page: "orbit",    btn: "Set target" })
   if (!hasVault)   gaps.push({ cap: "Evidence gap",    title: "No resume uploaded",              desc: "Upload your resume to Vault — AI will parse it into your career timeline in seconds.", icon: "📄", impact: "info", page: "aura",     btn: "Open Vault" })
   if (!hasSummary) gaps.push({ cap: "Visibility gap",  title: "Profile summary missing",        desc: "A strong summary increases role fit score and recruiter profile views 3×.",           icon: "✍️", impact: "warn", page: "aura",     btn: "Add summary" })
   // Career Timeline (add/edit experience entries) now lives in Orbit → Career
@@ -498,6 +496,43 @@ function ActionGaps({ userData, onNavigate }) {
   )
 }
 
+// ─── Advanced Professional Insight ──────────────────────────────────────────────
+// Replaces the old static Career/Skills/Pulse/Launchpad quick-nav card grid.
+// Built from real GET /api/pro/elo/professional data already fetched by this
+// page (eloData) — a live, verification-aware signal (bounded experience/
+// cert bonuses, Skill Rating v2) instead of duplicate navigation buttons.
+// Honest empty state: renders nothing actionable-looking until there's real
+// data to show, never a fabricated insight.
+function AdvancedProfessionalInsight({ eloData, onNavigate }) {
+  if (!eloData) return null
+
+  const experienceBonus = eloData.experience_bonus_elo || 0
+  const certBonus = eloData.cert_bonus_elo || 0
+  const hasAnyBonus = experienceBonus > 0 || certBonus > 0
+  const overall = eloData.overall_elo ?? eloData.elo
+
+  return (
+    <div style={{
+      padding: "16px 18px", background: `linear-gradient(135deg, ${P}08 0%, ${SURF} 60%)`,
+      border: `1px solid ${PBDR}`, borderRadius: r18, display: "flex", flexDirection: "column", gap: 10,
+    }}>
+      <MonoLabel color={P}>Advanced insight · Skill Rating</MonoLabel>
+      <div style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 800, color: INK }}>
+        {overall} overall
+        {hasAnyBonus && <span style={{ fontSize: 12, fontWeight: 700, color: "#16A34A", marginLeft: 8, fontFamily: MONO }}>
+          {experienceBonus > 0 ? `+${experienceBonus} exp` : ""}{experienceBonus > 0 && certBonus > 0 ? " · " : ""}{certBonus > 0 ? `+${certBonus} certs` : ""}
+        </span>}
+      </div>
+      <div style={{ fontSize: 12, color: MUT, lineHeight: 1.6, fontFamily: BODY }}>
+        {hasAnyBonus
+          ? "Your Skill Rating includes independently verified experience and certification bonuses — bounded and gated, never self-reported."
+          : "Verify your EPFO/UAN employment or a certification to unlock bounded, verification-gated bonuses on top of your assessment-driven score."}
+      </div>
+      <Btn small onClick={() => onNavigate("skills")}>View full breakdown →</Btn>
+    </div>
+  )
+}
+
 // ─── Outcome-first home signals ────────────────────────────────────────────────
 // Career OS Non-negotiable Rule #1 (docs/career-os-implementation-plan.md):
 // no bare "Market Value" / "Layoff Shield" / "Career Velocity" / raw ELO
@@ -511,18 +546,17 @@ function buildOutcomeSignals(userData, elo, onNavigate) {
   const hasVault     = vault.length > 0
   const hasVerif     = !!(userData?.epfoVerified || userData?.verified)
   const hasSummary   = !!userData?.summary
-  const hasTarget    = !!userData?.targetRole
   const strengthCount = [hasVault, hasExp, hasSummary].filter(Boolean).length
 
   const momentum = {
     label: "Career momentum",
-    outcome: hasExp && hasTarget ? "Building steadily" : hasExp ? "Getting started" : "Not yet tracked",
+    outcome: hasExp && hasSummary ? "Building steadily" : hasExp ? "Getting started" : "Not yet tracked",
     drivers: [
       hasExp ? `${exps.length} career ${exps.length === 1 ? "entry" : "entries"} on record` : "No career entries added yet — upload a resume to get started",
-      hasTarget ? `Target role set: ${userData.targetRole}` : "No target role set yet",
+      hasSummary ? "Profile summary added" : "No profile summary yet",
     ],
-    basis: "Your career timeline and target role",
-    tone: hasExp && hasTarget ? "good" : hasExp ? "info" : "neutral",
+    basis: "Your career timeline and profile summary",
+    tone: hasExp && hasSummary ? "good" : hasExp ? "info" : "neutral",
     cta: !hasExp ? { label: "Add your first entry", onClick: () => onNavigate("orbit") } : undefined,
   }
 
@@ -801,32 +835,16 @@ export default function ProfessionalHome({ user, userData, setUserData, activeTa
             </Card>
           </SectionErrorBoundary>
 
-          {/* Quick nav to the rest of the module IA */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            {[
-              { icon: "📈", label: "Career",    page: "orbit",     color: P         },
-              { icon: "🧠", label: "Skills",    page: "skills",    color: "#D97706" },
-              { icon: "📰", label: "Pulse",     page: "pulse",     color: "#16A34A" },
-              { icon: "🚀", label: "Launchpad", page: "launchpad", color: "#3B82F6" },
-            ].map((q, i) => (
-              <div
-                key={i}
-                role="button"
-                tabIndex={0}
-                aria-label={`Go to ${q.label}`}
-                onClick={() => onNavigate(q.page)}
-                onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onNavigate(q.page) } }}
-                className="ph-action-card"
-                style={{
-                  padding: "14px 16px", background: CELL,
-                  border: `1px solid ${BDR}`, borderRadius: r18,
-                  cursor: "pointer", transition: "all 180ms cubic-bezier(0.16,1,0.3,1)",
-                }}>
-                <div style={{ width: 36, height: 36, background: `${q.color}12`, border: `1px solid ${q.color}22`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, marginBottom: 10 }}>{q.icon}</div>
-                <div style={{ fontFamily: MONO, fontSize: 10, fontWeight: 800, color: q.color, letterSpacing: "0.1em", textTransform: "uppercase" }}>{q.label}</div>
-              </div>
-            ))}
-          </div>
+          {/* Advanced professional insight — replaces the old Career/Skills/
+              Pulse/Launchpad quick-nav card grid (those modules are still
+              reachable from the main nav; this slot is now a real,
+              backend-driven insight instead of duplicate navigation).
+              Built entirely from data already fetched on this page (eloData,
+              GET /api/pro/elo/professional) — no fabricated numbers, and it
+              honestly renders nothing until real data exists. */}
+          <SectionErrorBoundary name="home-advanced-insight">
+            <AdvancedProfessionalInsight eloData={eloData} onNavigate={onNavigate} />
+          </SectionErrorBoundary>
         </div>
 
         {/* ── Upgrade / Pro banner ─────────────────────────────────────────── */}

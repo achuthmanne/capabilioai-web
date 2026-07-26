@@ -172,6 +172,64 @@ const DECAY_COLORS = {
   decayed: { bg: "#F3F4F6", fg: "#6B7280", label: "Decayed" },
 }
 
+// Skill Test History (2026-07-26) — real, backend-persisted history of past
+// Weekly Skill Pulse check-ins: date, score, skill areas touched, ELO delta
+// (from professional_elo_events, joined server-side by pulse_id), and any
+// suspicious-activity flags logged during the test. Honest empty/error
+// states — no placeholder rows.
+function SkillTestHistory({ state, history }) {
+  if (state === "loading") return null // avoid a flash of an empty section on first paint
+  return (
+    <div style={{ background: SURF, border: `1px solid ${BDR}`, borderRadius: 20, padding: 24, marginBottom: 24 }}>
+      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: P, fontFamily: MONO }}>Skill Test History</div>
+      <div style={{ fontSize: 12, color: MUT, marginTop: 4, marginBottom: 16 }}>
+        Past Weekly Skill Pulse check-ins — score, skill areas, and ELO impact from each real result.
+      </div>
+
+      {state === "error" && <div style={{ fontSize: 12, color: "#DC2626" }}>Couldn't load your test history right now.</div>}
+
+      {state === "ready" && history.length === 0 && (
+        <div style={{ fontSize: 12, color: MUT }}>No completed check-ins yet — finish this week's Skill Pulse to start building history.</div>
+      )}
+
+      {state === "ready" && history.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {history.map(h => {
+            const pct = h.score.total > 0 ? Math.round((h.score.correct / h.score.total) * 100) : 0
+            const eloColor = h.elo_delta > 0 ? "#16A34A" : h.elo_delta < 0 ? "#DC2626" : MUT
+            return (
+              <div key={h.pulse_id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 14px", borderRadius: 12, background: BG, flexWrap: "wrap" }}>
+                <div style={{ minWidth: 140 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: INK }}>
+                    {h.completed_at ? new Date(h.completed_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+                  </div>
+                  <div style={{ fontSize: 11, color: MUT, marginTop: 2 }}>
+                    {h.skill_areas.length > 0 ? h.skill_areas.slice(0, 3).join(", ") : "General"}
+                  </div>
+                </div>
+                <div style={{ fontFamily: MONO, fontSize: 13, fontWeight: 700, color: INK }}>{h.score.correct}/{h.score.total} <span style={{ color: MUT, fontWeight: 500 }}>({pct}%)</span></div>
+                {h.elo_delta !== null && (
+                  <div style={{ fontFamily: MONO, fontSize: 12, fontWeight: 800, color: eloColor }}>{h.elo_delta > 0 ? "+" : ""}{h.elo_delta} ELO</div>
+                )}
+                {h.timed_out_count > 0 && (
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "#D97706", background: "#FFFBEB", border: "1px solid rgba(217,119,6,0.25)", borderRadius: 999, padding: "2px 8px" }}>
+                    {h.timed_out_count} timed out
+                  </span>
+                )}
+                {h.suspicious_events.length > 0 && (
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "#DC2626", background: "#FEF2F2", border: "1px solid rgba(220,38,38,0.2)", borderRadius: 999, padding: "2px 8px" }}>
+                    ⚠ {h.suspicious_events.length} flagged event{h.suspicious_events.length === 1 ? "" : "s"}
+                  </span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SkillDecayCard({ skills, loading, error }) {
   if (loading || error || !skills || skills.length === 0) return null
 
@@ -262,6 +320,7 @@ export default function Skills({ user, userData, onNavigate }) {
   const [eloError, setEloError] = useState(false)
   const [epfoStatus, setEpfoStatus] = useState(null)
   const [certifications, setCertifications] = useState([])
+  const [testHistory, setTestHistory] = useState({ state: "loading", history: [] })
 
   useEffect(() => {
     let cancelled = false
@@ -292,6 +351,14 @@ export default function Skills({ user, userData, onNavigate }) {
   }, [])
 
   useEffect(() => { refreshVerificationBonuses() }, [refreshVerificationBonuses])
+
+  useEffect(() => {
+    let cancelled = false
+    weeklyCheckApi.history(20)
+      .then(res => { if (!cancelled) setTestHistory({ state: "ready", history: res?.history || [] }) })
+      .catch(() => { if (!cancelled) setTestHistory({ state: "error", history: [] }) })
+    return () => { cancelled = true }
+  }, [])
 
   const handleClaimCertification = useCallback(() => {
     const cert_name = window.prompt("Certificate name (e.g. AWS Certified Solutions Architect – Professional)")
@@ -364,6 +431,10 @@ export default function Skills({ user, userData, onNavigate }) {
 
         <SectionErrorBoundary name="skills-decay-card">
           <SkillDecayCard skills={decaySkills} loading={decayLoading} error={decayError} />
+        </SectionErrorBoundary>
+
+        <SectionErrorBoundary name="skills-test-history">
+          <SkillTestHistory state={testHistory.state} history={testHistory.history} />
         </SectionErrorBoundary>
 
         <SectionErrorBoundary name="skills-skill-graph">
