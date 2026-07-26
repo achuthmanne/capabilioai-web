@@ -758,6 +758,37 @@ function App() {
     return "student"
   })()
 
+  // Professional path nav ELO badge (2026-07-26 fix): this badge used to
+  // read userData.eloRating (profiles.elo_rating) unconditionally for every
+  // path — that's the LEGACY, profile-completeness/Arena-linked ELO field,
+  // completely disconnected from the real, verification-gated Professional
+  // Skill Rating track (professional_elo_state / eloEngine.js /
+  // GET /api/pro/elo/professional). That disconnect is exactly why a
+  // completed Weekly Skill Pulse could show "-13 ELO" in Skill Test History
+  // while this badge never moved — the two numbers were never the same
+  // number. Fetched here (not lower down in Skills.jsx alone) so it updates
+  // the persistent top-nav badge on every page, not just Skills.
+  //
+  // Student/Authority/Institution/Recruiter paths are UNCHANGED — they keep
+  // reading userData.eloRating exactly as before (real Arena rating for
+  // students; not touched by this fix; see "Keep student Arena logic
+  // intact" standing rule).
+  const [proNavElo, setProNavElo] = useState(null)
+  useEffect(() => {
+    if (navPath !== "professional") { setProNavElo(null); return }
+    let cancelled = false
+    import("./lib/api").then(({ professionalEloApi }) => {
+      professionalEloApi.status()
+        .then(res => { if (!cancelled) setProNavElo(res) })
+        .catch(() => { if (!cancelled) setProNavElo(null) })
+    })
+    return () => { cancelled = true }
+    // Re-fetch whenever the user navigates — cheap read, and it's the
+    // simplest reliable way to reflect a just-completed Weekly Skill Pulse
+    // (or a just-verified EPFO/certification bonus) in the badge without
+    // building a separate global event bus for one number.
+  }, [navPath, currentPage])
+
   useEffect(() => {
     if (userData?.path && onboardingDone) {
       const home = navPath === "student" ? "aura" : (HOME_PAGE[navPath] || "studentHome")
@@ -1050,7 +1081,11 @@ function App() {
         )}
 
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-          {!isAuthority && userData?.eloRating ? (
+          {!isAuthority && navPath === "professional" && proNavElo ? (
+            <div style={{ padding: "4px 10px", background: `${navAccent}10`, border: `1px solid ${navAccent}30`, borderRadius: 100, fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 700, color: navAccent }}>
+              ELO {(proNavElo.overall_elo ?? proNavElo.elo).toLocaleString()}
+            </div>
+          ) : !isAuthority && navPath !== "professional" && userData?.eloRating ? (
             <div style={{ padding: "4px 10px", background: navPath === "student" ? "#FFF1E8" : `${navAccent}10`, border: `1px solid ${navAccent}30`, borderRadius: 100, fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 700, color: navAccent }}>
               ELO {userData.eloRating.toLocaleString()}
             </div>
