@@ -7,10 +7,10 @@
  *   • #8B5CF6 purple accent, #FAFAF8 stat cells, 28px card radius
  */
 import { useEffect, useState, useCallback } from "react"
-import { weeklyCheckApi, homeApi, companyApi } from "../lib/api"
+import { weeklyCheckApi, homeApi, companyApi, professionalEloApi } from "../lib/api"
 import { userDoc } from "../lib/db"
 import { OrbitDash } from "./Orbit"
-import { OutcomeCard, SectionErrorBoundary, LoadingState } from "../components/careeros/CareerOSUI"
+import { OutcomeCard, SectionErrorBoundary, LoadingState, ProfessionalScoreHero } from "../components/careeros/CareerOSUI"
 import { FLAGS } from "../config/featureFlags"
 
 // ─── Design tokens — mirrors landing page exactly ──────────────────────────────
@@ -590,6 +590,23 @@ export default function ProfessionalHome({ user, userData, setUserData, activeTa
     } catch (e) { console.error(e) }
   }, [uid, setUserData])
 
+  // Professional ELO — canonical control-surface headline (2026-07-26 UI
+  // redesign pass). Fetched here, not just inside the embedded OrbitDash
+  // further down the page, so the real skill-truth score is the first thing
+  // a Professional sees on Home, not something buried lower on the page.
+  const [eloData, setEloData] = useState(null)
+  const [eloLoading, setEloLoading] = useState(true)
+  const [eloError, setEloError] = useState(false)
+  useEffect(() => {
+    if (!FLAGS.career_os_professional_elo) { setEloLoading(false); return }
+    let cancelled = false
+    professionalEloApi.status()
+      .then(res => { if (!cancelled) setEloData(res) })
+      .catch(() => { if (!cancelled) setEloError(true) })
+      .finally(() => { if (!cancelled) setEloLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
   // OrbitDash's card actions call onNav with either a real page ("forge",
   // "launchpad", etc.) or one of Career's internal tabs ("timeline","vault",
   // "comp","readiness" — "orbit" is the legacy id for the now-removed
@@ -726,6 +743,19 @@ export default function ProfessionalHome({ user, userData, setUserData, activeTa
       {/* ── Body content ───────────────────────────────────────────────────── */}
       <div style={{ padding: "18px 24px 60px" }}>
 
+        {/* Professional ELO — the canonical control-surface headline
+            (2026-07-26 redesign pass), the very first thing in the body,
+            ahead of Today's Priority / Weekly Check / Company Status /
+            profile-strength diagnostics below. Flag-gated, honest empty
+            state built into ProfessionalScoreHero itself. */}
+        {FLAGS.career_os_professional_elo && (
+          <div style={{ marginBottom: 18 }}>
+            <SectionErrorBoundary name="home-professional-elo-hero">
+              <ProfessionalScoreHero data={eloData} loading={eloLoading} error={eloError} onTakeAction={() => onNavigate?.("pulse")} />
+            </SectionErrorBoundary>
+          </div>
+        )}
+
         {/* Today's Priority — Career OS Workstream 1, behind career_os_home flag */}
         {FLAGS.career_os_home && (
           <div style={{ marginBottom: 18 }}>
@@ -754,7 +784,7 @@ export default function ProfessionalHome({ user, userData, setUserData, activeTa
             Home (Workstream 0-E error containment). */}
         <div style={{ marginBottom: 18 }}>
           <SectionErrorBoundary name="home-orbit-dash">
-            <OrbitDash ud={userData} user={user} onSave={onSave} onNav={onDashNav} onPricing={onNavigatePricing} />
+            <OrbitDash ud={userData} user={user} onSave={onSave} onNav={onDashNav} onPricing={onNavigatePricing} hideHero />
           </SectionErrorBoundary>
         </div>
 

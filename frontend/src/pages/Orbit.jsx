@@ -8,9 +8,9 @@
  */
 import { useState, useCallback, useRef, useEffect } from "react"
 import { userDoc } from "../lib/db"
-import { vaultApi, weeklyCheckApi, skillsApi, careerEventsApi, companyApi } from "../lib/api"
+import { vaultApi, weeklyCheckApi, skillsApi, careerEventsApi, companyApi, professionalEloApi } from "../lib/api"
 import { getRoleConfig } from "../config/roleConfig"
-import { SectionErrorBoundary, EvidenceSourceBadge, OutcomeCard } from "../components/careeros/CareerOSUI"
+import { SectionErrorBoundary, EvidenceSourceBadge, OutcomeCard, ProfessionalScoreHero, SecondaryDiagnosticsPanel } from "../components/careeros/CareerOSUI"
 import { FLAGS } from "../config/featureFlags"
 
 const API = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
@@ -183,7 +183,7 @@ const TABS=[
   {id:"promotions",    label:"Promotions",   icon:"📈"},
   {id:"achievements",  label:"Achievements", icon:"🏆"},
   {id:"comp",          label:"Compensation", icon:"💰"},
-  {id:"readiness",     label:"Career Health",icon:"🎯"},
+  {id:"readiness",     label:"Career Readiness",icon:"🎯"},
   {id:"reputation",    label:"Reputation",   icon:"⭐"},
   {id:"replay",        label:"Career Replay",icon:"🎬"},
 ]
@@ -447,13 +447,18 @@ function RiskCard({sig,onLayoff}){
   const risk=sig.mobility.score<800?"High":sig.mobility.score<1000?"Medium":"Low"
   const rc=risk==="High"?DS.red:risk==="Medium"?DS.amber:DS.green
   const res=Math.round((sig.mobility.score/2000)*100)
+  // Reworded 2026-07-26 (redesign pass): "Layoff Risk: High" as a bold
+  // headline was exactly the alarming, dummy-dashboard framing flagged for
+  // removal — same underlying thresholds, plain-language resilience framing
+  // instead. The real "Activate Layoff Mode" feature is unchanged.
+  const readiness=risk==="High"?"Needs strengthening":risk==="Medium"?"Building":"Strong"
   return<Card style={{borderTop:`3px solid ${rc}`}}>
     <SL color={rc}>🛡 Career Resilience</SL>
     {/* Bare "Career Mobility {score}" raw number removed (2026-07-24) —
         {res}% resilience already says the same thing in plain language. */}
-    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:9}}><div><div style={{fontFamily:DS.mono,fontSize:17,fontWeight:700,color:rc}}>Layoff Risk: {risk}</div><div style={{fontSize:11,color:DS.ink3,marginTop:1}}>{res}% career resilience</div></div><Ring score={res} max={100} color={rc} size={50} label="RES"/></div>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:9}}><div><div style={{fontFamily:DS.mono,fontSize:17,fontWeight:700,color:rc}}>Switch readiness: {readiness}</div><div style={{fontSize:11,color:DS.ink3,marginTop:1}}>{res}% career resilience</div></div><Ring score={res} max={100} color={rc} size={50} label="RES"/></div>
     <Bar value={res} color={rc} h={4} style={{marginBottom:11}}/>
-    <div style={{padding:"8px 11px",background:risk==="High"?DS.rBg:risk==="Medium"?DS.aBg:DS.gBg,border:`1px solid ${risk==="High"?DS.rBd:risk==="Medium"?DS.aBd:DS.gBd}`,borderRadius:DS.r,fontSize:11,color:rc,marginBottom:10}}>{risk==="High"?"⚠️ Low mobility. A layoff today means a 4–8 month search.":risk==="Medium"?"⚡ Moderate resilience. Improve proof and skills.":"✓ Well-positioned to transition within 60 days."}</div>
+    <div style={{padding:"8px 11px",background:risk==="High"?DS.rBg:risk==="Medium"?DS.aBg:DS.gBg,border:`1px solid ${risk==="High"?DS.rBd:risk==="Medium"?DS.aBd:DS.gBd}`,borderRadius:DS.r,fontSize:11,color:rc,marginBottom:10}}>{risk==="High"?"⚠️ Low mobility today — expect a 4–8 month search if you needed to switch now.":risk==="Medium"?"⚡ Moderate resilience. Improve proof and skills.":"✓ Well-positioned to transition within 60 days."}</div>
     <Btn onClick={onLayoff} variant="danger" full>Activate Layoff Mode →</Btn>
   </Card>
 }
@@ -1000,7 +1005,7 @@ function VaultTab({ud,user,onSave}){
 }
 
 // ─── Orbit Dashboard ──────────────────────────────────────────────────────────
-function OrbitDash({ud,user,onSave,onNav,onPricing}){
+function OrbitDash({ud,user,onSave,onNav,onPricing,hideHero=false}){
   const[showResume,setShowResume]=useState(false)
   const[showLayoff,setShowLayoff]=useState(false)
   const[editing,setEditing]=useState(false)
@@ -1011,6 +1016,25 @@ function OrbitDash({ud,user,onSave,onNav,onPricing}){
   const plan=usePlan(ud)
   const hasHistory=sig.meta.expsCount>0||sig.meta.skills>0
   const avg=Math.round((sig.role.score+sig.market.score+sig.proof.score+sig.mobility.score)/4)
+
+  // Professional ELO hero — 2026-07-26 UI redesign pass. This is the
+  // canonical, real, assessment-driven skill-truth score (eloEngine.js);
+  // everything below it (Career Health panel, the 4 profile-strength cards,
+  // Recruiter/Risk/Health) is profile-completeness diagnostics and must not
+  // compete with it for primary visual attention — see
+  // SecondaryDiagnosticsPanel below.
+  const[eloData,setEloData]=useState(null)
+  const[eloLoading,setEloLoading]=useState(true)
+  const[eloError,setEloError]=useState(false)
+  useEffect(()=>{
+    if(!FLAGS.career_os_professional_elo){setEloLoading(false);return}
+    let cancelled=false
+    professionalEloApi.status()
+      .then(res=>{if(!cancelled)setEloData(res)})
+      .catch(()=>{if(!cancelled)setEloError(true)})
+      .finally(()=>{if(!cancelled)setEloLoading(false)})
+    return()=>{cancelled=true}
+  },[])
 
   const saveMeta=async()=>{setSavingMeta(true);await onSave({targetRole:tRole,currentCTC:ctc});setSavingMeta(false);setEditing(false)}
   const goUpgrade=()=>onPricing&&onPricing()
@@ -1050,6 +1074,17 @@ function OrbitDash({ud,user,onSave,onNav,onPricing}){
       </div>
     </div>
 
+    {/* Professional ELO — the canonical control-surface headline, ahead of
+        everything else on this page (2026-07-26 redesign pass). Suppressed
+        via hideHero when embedded on Home, which renders its own copy of
+        this same hero higher up the page (see ProfessionalHome.jsx) — never
+        show the canonical score twice on one screen. */}
+    {FLAGS.career_os_professional_elo&&!hideHero&&(
+      <SectionErrorBoundary name="orbit-professional-elo-hero">
+        <ProfessionalScoreHero data={eloData} loading={eloLoading} error={eloError} onTakeAction={()=>onNav("pulse")}/>
+      </SectionErrorBoundary>
+    )}
+
     {/* Plan Banner */}
     <PlanBanner plan={plan} onUpgrade={goUpgrade}/>
 
@@ -1085,6 +1120,18 @@ function OrbitDash({ud,user,onSave,onNav,onPricing}){
       <Btn onClick={()=>setShowResume(true)}>Import Resume →</Btn>
     </div>}
 
+    <WeeklyCheckBanner onNav={onNav}/>
+
+    {/* Profile-strength diagnostics — demoted to a collapsed secondary panel
+        (2026-07-26 redesign pass). These signals (Career Health / Role Fit /
+        Market Standing / Proof Strength / Career Mobility / Recruiter
+        Visibility / Career Resilience) are real and useful, but they move on
+        profile edits, not on assessment performance — they must never
+        visually compete with the Professional ELO hero above. Kept, not
+        deleted, per product direction: demote diagnostics, don't remove
+        real functionality. */}
+    <SecondaryDiagnosticsPanel title="Profile Signals">
+
     {/* Career Health Panel — headline number demoted to secondary and the
         plain-language band promoted to primary (2026-07-24 fix, same
         treatment as EloCard below): a bare "1053" with no explanation is
@@ -1094,7 +1141,7 @@ function OrbitDash({ud,user,onSave,onNav,onPricing}){
     <Card style={{marginBottom:18,padding:"15px 20px"}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:14}}>
         <div>
-          <div style={{fontSize:10,fontWeight:700,color:DS.ink4,letterSpacing:2.2,fontFamily:DS.mono,textTransform:"uppercase"}}>Career Health</div>
+          <div style={{fontSize:10,fontWeight:700,color:DS.ink4,letterSpacing:2.2,fontFamily:DS.mono,textTransform:"uppercase"}}>Profile Strength (secondary)</div>
           <div style={{display:"flex",alignItems:"baseline",gap:8}}>
             <div style={{fontFamily:DS.display,fontSize:22,fontWeight:800,color:DS.primary,lineHeight:1.1}}>{scoreLabel(avg).label}</div>
             <div style={{fontFamily:DS.mono,fontSize:12,fontWeight:600,color:DS.ink4}}>{avg}/1800</div>
@@ -1136,8 +1183,6 @@ function OrbitDash({ud,user,onSave,onNav,onPricing}){
       </div>
     </Card>
 
-    <WeeklyCheckBanner onNav={onNav}/>
-
     {/* 4 ELO cards — all users */}
     <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:18}}>
       {CARDS.map((c,i)=>(
@@ -1160,6 +1205,8 @@ function OrbitDash({ud,user,onSave,onNav,onPricing}){
       <RiskCard sig={sig} onLayoff={()=>setShowLayoff(true)}/>
       <HealthCard sig={sig} onNav={onNav}/>
     </div>
+
+    </SecondaryDiagnosticsPanel>
 
     {/* Action + ROI */}
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:18}}>

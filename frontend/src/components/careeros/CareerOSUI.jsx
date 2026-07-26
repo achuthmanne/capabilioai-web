@@ -11,7 +11,7 @@
  * Orbit.jsx, ProfessionalHome.jsx, Skills.jsx) so these can be dropped into
  * any of them without a visual seam.
  */
-import { Component } from "react"
+import { Component, useState } from "react"
 
 // ─── Design tokens (matches Aura/Orbit/ProfessionalHome/Skills exactly) ────────
 export const T = {
@@ -136,6 +136,156 @@ export function SkillStatusBadge({ status }) {
     }}>
       {cfg.label}
     </span>
+  )
+}
+
+// ─── ProfessionalScoreHero ───────────────────────────────────────────────────
+// The canonical, single, headline "control surface" for the Professional
+// Path (UI redesign pass, 2026-07-25 — replaces the old Orbit "Career
+// Health"/EloCard grid as the PRIMARY visual anchor on Home and Career).
+// Structurally enforces the product rule set: this is the ONLY component
+// that may headline a professional's real skill-truth score, and every
+// render must answer "what is this / why is it true / what changed / what's
+// next" — no prop for a bare number with nothing else, same contract
+// discipline as OutcomeCard above.
+//
+// Props map directly onto GET /api/pro/elo/professional's response shape
+// (see backend/server/routes/professionalElo.js) — callers pass that
+// response through as-is via the `data` prop; nothing here fetches or
+// invents data.
+export function ProfessionalScoreHero({ data, loading, error, onTakeAction }) {
+  if (loading) {
+    return (
+      <div style={{ background: T.surf, border: `1px solid ${T.bdr}`, borderRadius: 20, padding: "22px 24px", marginBottom: 18 }}>
+        <div style={{ fontSize: 12, color: T.mut, fontFamily: T.mono }}>Loading Professional ELO…</div>
+      </div>
+    )
+  }
+  if (error) {
+    return (
+      <div style={{ background: T.surf, border: `1px solid ${T.bdr}`, borderRadius: 20, padding: "22px 24px", marginBottom: 18 }}>
+        <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: T.purple, fontFamily: T.mono }}>Professional ELO</div>
+        <div style={{ fontSize: 12, color: T.mut, marginTop: 8 }}>Couldn&apos;t load your Professional ELO right now — try again shortly.</div>
+      </div>
+    )
+  }
+  if (!data) return null
+
+  const { elo, latest_change: change } = data
+  const hasHistory = !!change
+  const deltaColor = !hasHistory ? T.mut : change.delta > 0 ? T.good : change.delta < 0 ? T.bad : T.mut
+  const deltaLabel = !hasHistory ? null : `${change.delta > 0 ? "+" : ""}${change.delta} this week`
+
+  // Freshness/decay framing: a 'decay' event_type IS the freshness signal
+  // (see eloEngine.js's applyPendingDecay) — surfaced here as a plain-
+  // language state rather than a raw day-count, matching the no-bare-number
+  // discipline used everywhere else in this file.
+  const isDecayed = change?.event_type === "decay"
+  const freshness = isDecayed
+    ? { label: "Needs a refresh", color: T.warn }
+    : hasHistory
+      ? { label: "Fresh", color: T.good }
+      : { label: "Not yet assessed", color: T.mut }
+
+  return (
+    <div style={{
+      background: `linear-gradient(135deg, ${T.purple}08 0%, ${T.surf} 55%)`,
+      border: `1.5px solid ${T.purple}30`, borderRadius: 22, padding: "24px 26px", marginBottom: 18,
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 14 }}>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: T.purple, fontFamily: T.mono }}>
+            Professional ELO &middot; your skill-truth score
+          </div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginTop: 8, flexWrap: "wrap" }}>
+            <div style={{ fontFamily: T.serif, fontSize: 44, fontWeight: 800, color: T.ink, lineHeight: 1 }}>{elo}</div>
+            {deltaLabel && <span style={{ fontSize: 13, fontWeight: 800, color: deltaColor, fontFamily: T.mono }}>{deltaLabel}</span>}
+            <span style={{
+              fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 999,
+              background: `${freshness.color}12`, color: freshness.color, border: `1px solid ${freshness.color}30`,
+              fontFamily: T.mono, letterSpacing: "0.04em", textTransform: "uppercase",
+            }}>
+              {freshness.label}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Why it's true — required, never a bare number with nothing behind it */}
+      <div style={{ fontSize: 13, color: T.ink2, marginTop: 14, lineHeight: 1.6, fontFamily: T.body, maxWidth: 620 }}>
+        {hasHistory ? change.reason : "No Weekly Skill Pulse activity yet — complete this week's check-in to start your Professional ELO."}
+      </div>
+
+      {/* What changed — which skills moved */}
+      {change?.affected_skills?.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
+          {change.affected_skills.map((s, i) => (
+            <span key={i} style={{
+              fontSize: 11, fontWeight: 700, color: s.delta >= 0 ? T.good : T.bad,
+              background: s.delta >= 0 ? `${T.good}10` : `${T.bad}10`, borderRadius: 999, padding: "3px 10px",
+              border: `1px solid ${s.delta >= 0 ? T.good : T.bad}25`,
+            }}>
+              {s.skill_name || "Skill"} {s.delta >= 0 ? "+" : ""}{s.delta}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* What's next — required, never omitted */}
+      {change?.next_action ? (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap",
+          marginTop: 16, padding: "12px 16px", borderRadius: 14, background: T.surf, border: `1px solid ${T.bdr}`,
+        }}>
+          <div style={{ fontSize: 13, color: T.ink, fontWeight: 600 }}>&rarr; {change.next_action}</div>
+          {onTakeAction && (
+            <button onClick={onTakeAction} style={{
+              border: "none", cursor: "pointer", fontFamily: T.mono, fontWeight: 800,
+              borderRadius: 10, padding: "8px 14px", fontSize: 10, textTransform: "uppercase",
+              background: T.purple, color: "#fff", flexShrink: 0,
+            }}>Take action</button>
+          )}
+        </div>
+      ) : (
+        onTakeAction && (
+          <button onClick={onTakeAction} style={{
+            marginTop: 16, border: "none", cursor: "pointer", fontFamily: T.mono, fontWeight: 800,
+            borderRadius: 12, padding: "10px 18px", fontSize: 11, textTransform: "uppercase",
+            background: T.purple, color: "#fff",
+          }}>Start this week&apos;s check-in &rarr;</button>
+        )
+      )}
+    </div>
+  )
+}
+
+// ─── SecondaryDiagnosticsPanel ───────────────────────────────────────────────
+// Wraps profile-strength/completeness diagnostics (the old "Career Health" /
+// Role Fit / Market Standing / Proof Strength / Career Mobility / Recruiter
+// Visibility / Career Resilience cards) so they are structurally demoted —
+// visually muted, collapsed by default, and explicitly labeled as secondary
+// so they can never compete with ProfessionalScoreHero for attention.
+export function SecondaryDiagnosticsPanel({ children, title = "Profile signals", defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div style={{ marginTop: 22, opacity: 0.92 }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: "flex", alignItems: "center", gap: 8, width: "100%",
+          background: "transparent", border: "none", cursor: "pointer", padding: "10px 2px",
+          borderTop: `1px solid ${T.bdr}`, textAlign: "left",
+        }}
+      >
+        <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: T.mut, fontFamily: T.mono }}>
+          {open ? "▾" : "▸"} {title}
+        </span>
+        <span style={{ fontSize: 10.5, color: T.mut, fontFamily: T.body }}>
+          — profile-strength diagnostics, secondary to your Professional ELO
+        </span>
+      </button>
+      {open && <div style={{ marginTop: 10 }}>{children}</div>}
+    </div>
   )
 }
 

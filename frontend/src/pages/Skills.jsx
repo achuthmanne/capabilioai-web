@@ -11,7 +11,7 @@ import { useEffect, useState, useMemo } from "react"
 import { weeklyCheckApi, skillsApi, professionalEloApi } from "../lib/api"
 import SkillGraphView from "../components/SkillGraphView"
 import { DOMAIN_CONFIG } from "../config/skillGroups"
-import { SectionErrorBoundary } from "../components/careeros/CareerOSUI"
+import { SectionErrorBoundary, ProfessionalScoreHero } from "../components/careeros/CareerOSUI"
 import { FLAGS } from "../config/featureFlags"
 
 const P    = "#8B5CF6"
@@ -208,65 +208,13 @@ function SkillDecayCard({ skills, loading, error }) {
 }
 
 // ── Professional ELO — product decision 2026-07-25 ─────────────────────────
-// UI RULE: never show a naked, unexplained ELO number. Every render of this
-// card includes the number AND why it's there — the reason, which skills
-// were affected, and what to do next. Real, assessment-performance-driven
+// UI RULE: never show a naked, unexplained ELO number. Now rendered via the
+// shared ProfessionalScoreHero (components/careeros/CareerOSUI.jsx) — same
+// component used on Home and Career/Orbit — so there is exactly one canonical
+// hero implementation instead of three near-duplicate local ones (2026-07-26
+// redesign pass). Real, assessment-performance-driven
 // (backend/server/lib/professionalElo/eloEngine.js) — never moves from
 // profile edits, resume imports, company linking, or certificate import.
-function ProfessionalEloCard({ data, loading, error }) {
-  if (loading) return null
-  if (error) {
-    return (
-      <div style={{ background: SURF, border: `1px solid ${BDR}`, borderRadius: 20, padding: 24, marginBottom: 24 }}>
-        <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: P, fontFamily: MONO }}>Professional ELO</div>
-        <div style={{ fontSize: 12, color: MUT, marginTop: 8 }}>Couldn't load your Professional ELO right now — try again shortly.</div>
-      </div>
-    )
-  }
-  if (!data) return null
-
-  const { elo, latest_change: change } = data
-  const deltaColor = !change ? MUT : change.delta > 0 ? "#16A34A" : change.delta < 0 ? "#DC2626" : MUT
-  const deltaLabel = !change ? null : `${change.delta > 0 ? "+" : ""}${change.delta}`
-
-  return (
-    <div style={{ background: SURF, border: `1px solid ${BDR}`, borderRadius: 20, padding: 24, marginBottom: 24 }}>
-      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: P, fontFamily: MONO }}>Professional ELO</div>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
-        <div style={{ fontFamily: SERIF, fontSize: 36, fontWeight: 800, color: INK }}>{elo}</div>
-        {deltaLabel && (
-          <span style={{ fontSize: 12, fontWeight: 800, color: deltaColor, fontFamily: MONO }}>{deltaLabel}</span>
-        )}
-      </div>
-
-      {/* Why it changed — required, never omitted */}
-      <div style={{ fontSize: 12, color: MUT, marginTop: 8, lineHeight: 1.6 }}>
-        {change ? change.reason : "No Skill Pulse activity yet — complete this week's check-in to start your Professional ELO."}
-      </div>
-
-      {/* Which skills were affected */}
-      {change?.affected_skills?.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
-          {change.affected_skills.map((s, i) => (
-            <span key={i} style={{
-              fontSize: 11, fontWeight: 700, color: s.delta >= 0 ? "#16A34A" : "#DC2626",
-              background: s.delta >= 0 ? "#F0FDF4" : "#FEF2F2", borderRadius: 999, padding: "3px 10px",
-            }}>
-              {s.skill_name || "Skill"} {s.delta >= 0 ? "+" : ""}{s.delta}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Next recommended action — required, never omitted */}
-      {change?.next_action && (
-        <div style={{ fontSize: 12, color: INK, marginTop: 14, padding: "10px 14px", borderRadius: 12, background: BG, fontWeight: 600 }}>
-          → {change.next_action}
-        </div>
-      )}
-    </div>
-  )
-}
 
 function SkillReadinessCard({ skills }) {
   const { axes, overall } = useSkillReadiness(skills)
@@ -351,7 +299,7 @@ export default function Skills({ user, userData, onNavigate }) {
 
         {FLAGS.career_os_professional_elo && (
           <SectionErrorBoundary name="skills-professional-elo">
-            <ProfessionalEloCard data={eloData} loading={eloLoading} error={eloError} />
+            <ProfessionalScoreHero data={eloData} loading={eloLoading} error={eloError} onTakeAction={() => onNavigate?.("pulse")} />
           </SectionErrorBoundary>
         )}
 
