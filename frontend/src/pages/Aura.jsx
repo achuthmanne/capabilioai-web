@@ -1213,7 +1213,7 @@ function SkillVoucherPanel({ user, userData }) {
 }
 
 // ─── AI INTERVIEW PANEL ───────────────────────────────────────────────────────
-export function AIInterviewPanel({ user, userData, save, setUserData, onNavigatePricing }) {
+export function AIInterviewPanel({ user, userData, save, setUserData, onNavigate, onNavigatePricing }) {
   const [phase, setPhase] = useState("intro")
   const [stream, setStream] = useState(null)
   const [cameraOn, setCameraOn] = useState(false)
@@ -5719,7 +5719,7 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
 
             {/* ── Profile Summary (2026-07-26) — auto-generated from real
                 skills/experience, editable, never silently overwritten. ── */}
-            <ProfileSummaryCard userData={userData} onSave={onSave}/>
+            <ProfileSummaryCard userData={userData} onSave={save}/>
 
             {/* ── Skill Rating History (2026-07-26) — real Weekly Skill
                 Pulse results + ELO impact, not a static/fabricated log. ── */}
