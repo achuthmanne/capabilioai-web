@@ -10,6 +10,7 @@
  */
 import { useState, useEffect, useCallback } from "react"
 import { supabase } from "../lib/supabase"
+import { execIntroApi } from "../lib/api"
 import { EXEC_COLORS as C, Card, Label, SectionHead, EmptyState } from "../components/ExecutiveUI"
 
 const POST_CATEGORIES = ["Insight", "Milestone", "Announcement", "Ask"]
@@ -77,6 +78,34 @@ function useConnections(userId) {
   }
 
   return { pending, connectionCount, followerCount, loading, respond, reload: load }
+}
+
+// Real, backend-persisted warm-introduction requests (2026-07-26 — Executive
+// Path execution pass). Distinct from useConnections() above (generic
+// connect asks, already real) — an intro request always carries an explicit
+// reason + message. Surfaced here so "someone wants an introduction to you"
+// is a genuine daily-return reason, not just something buried in the Network
+// tab.
+function useIntroRequests(userId) {
+  const [pending, setPending] = useState([])
+  const [loading, setLoading] = useState(true)
+  const load = useCallback(async () => {
+    if (!userId) { setLoading(false); return }
+    setLoading(true)
+    try {
+      const res = await execIntroApi.list("incoming")
+      setPending((res?.requests || []).filter(r => r.status === "pending"))
+    } catch (e) { console.error(e) }
+    setLoading(false)
+  }, [userId])
+  useEffect(() => { load() }, [load])
+
+  const respond = async (id, status) => {
+    await execIntroApi.respond(id, status)
+    load()
+  }
+
+  return { pending, loading, respond, reload: load }
 }
 
 function useOpportunitySignal(domain) {
@@ -156,6 +185,7 @@ export default function ExecutiveHome({ user, userData, onNavigate }) {
 
   const feed   = useExecFeed(userId)
   const net    = useConnections(userId)
+  const intros = useIntroRequests(userId)
   const signal = useOpportunitySignal(domain)
 
   const hour = new Date().getHours()
@@ -164,6 +194,7 @@ export default function ExecutiveHome({ user, userData, onNavigate }) {
   const focusItems = [
     !verified && { icon: "🛡️", text: "Complete verification to unlock trust signals", action: () => onNavigate?.("authority") },
     feed.data.length === 0 && { icon: "✦", text: "Publish your first post to your Executive Feed", action: () => setShowCreate(true) },
+    intros.pending.length > 0 && { icon: "🤝", text: `${intros.pending.length} introduction request${intros.pending.length > 1 ? "s" : ""} asking for your response`, action: () => onNavigate?.("execnetwork") },
     net.pending.length > 0 && { icon: "👥", text: `${net.pending.length} connection request${net.pending.length > 1 ? "s" : ""} waiting on you`, action: () => onNavigate?.("execnetwork") },
   ].filter(Boolean)
 
@@ -267,6 +298,37 @@ export default function ExecutiveHome({ user, userData, onNavigate }) {
           </div>
         )}
       </Card>
+
+      {/* Pending Introductions — real, backend-persisted (exec_intro_requests),
+          distinct from the generic Network connection requests above: each of
+          these carries an explicit reason (funding/mentorship/partnership/
+          hiring/customer/other) + a message, so you know what's being asked
+          before you respond. Card only renders when there's something real to
+          show — no empty/placeholder variant here by design. */}
+      {intros.pending.length > 0 && (
+        <Card style={{ marginBottom: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.ink2 }}>Introduction Requests</div>
+            <span style={{ fontSize: 12, color: C.ink3 }}><b style={{ color: C.ink, fontFamily: "'DM Mono', monospace" }}>{intros.pending.length}</b> waiting</span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {intros.pending.map(r => (
+              <div key={r.id} style={{ padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{r.requester?.display_name || r.requester?.name || "Someone"}</div>
+                    <div style={{ fontSize: 12, color: C.ink3, textTransform: "capitalize" }}>{r.reason} · {r.message}</div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                    <button onClick={() => intros.respond(r.id, "accepted")} style={{ padding: "5px 12px", background: C.greenL, border: "none", borderRadius: 8, color: C.green, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Accept</button>
+                    <button onClick={() => intros.respond(r.id, "declined")} style={{ padding: "5px 12px", background: C.redL, border: "none", borderRadius: 8, color: C.red, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Decline</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Opportunity Radar */}
       <div style={{ marginBottom: 16 }}>

@@ -354,6 +354,18 @@ export const nexusApi = {
 }
 
 // ══════════════════════════════════════════
+// EXECUTIVE PATH — warm introduction requests (real, 2026-07-26)
+// Distinct from nexusApi.connect() (generic connection ask): every intro
+// request carries an explicit reason + message, replacing the previously
+// unbuilt ExecutiveNetwork.jsx "Introductions" tab.
+// ══════════════════════════════════════════
+export const execIntroApi = {
+  request:  (targetId, reason, message) => request("POST", "/exec/intro-requests", { target_id: targetId, reason, message }),
+  list:     (direction = "incoming") => request("GET", `/exec/intro-requests?direction=${direction}`),
+  respond:  (id, status) => request("PATCH", `/exec/intro-requests/${id}`, { status }),
+}
+
+// ══════════════════════════════════════════
 // ORBIT PLANS
 // ══════════════════════════════════════════
 export const orbitApi = {

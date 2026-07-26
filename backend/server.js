@@ -186,6 +186,7 @@ import mentorMarketplaceRoutes        from "./server/routes/mentorMarketplace.js
 import mentorMarketplaceAdminRoutes   from "./server/routes/mentorMarketplaceAdmin.js"   // Career OS Workstream 4 — /api/admin/mentor/*, requireAdmin + flag-gated
 import mentorMarketplaceWebhookRoutes from "./server/routes/mentorMarketplaceWebhook.js" // Career OS Workstream 4 — Razorpay webhook, needs raw body (mounted separately below)
 import pulseNexusRoutes          from "./server/routes/pulseNexus.js"
+import execIntrosRoutes          from "./server/routes/execIntros.js"       // Executive Path — real warm-introduction requests (exec_intro_requests), replaces ExecutiveNetwork.jsx's unbuilt "Introductions" tab
 import orbitPlansRoutes          from "./server/routes/orbitPlans.js"
 import hardwareChallengesRoutes  from "./server/routes/hardwareChallenges.js"
 import copilotCoachRoutes        from "./server/routes/copilotCoach.js" // pilot: tool-augmented Capi coach intent, MCP-backed
@@ -357,6 +358,7 @@ app.use("/api",              recruiterCommsRoutes)      // jobs, recruiter/messa
 app.use("/api/pro/v1/mentor", mentorMarketplaceRoutes)  // Career OS Workstream 4 — mentor marketplace user-facing API (flag-gated)
 app.use("/api",               mentorMarketplaceAdminRoutes) // Career OS Workstream 4 — admin/mentor/* (requireAdmin + flag-gated)
 app.use("/api",              pulseNexusRoutes)          // pulse/feed, pulse/market-insights (Gemini Search), nexus/*
+app.use("/api",              execIntrosRoutes)          // exec/intro-requests — Executive Path warm introductions
 app.use("/api",              orbitPlansRoutes)          // orbit/plans, intel/report
 app.use("/api",              hardwareChallengesRoutes)  // hardware/challenges, hardware/my-attempts
 app.use("/api/copilot",       copilotCoachRoutes)       // coach — pilot MCP tool-use path for Capi's career-coach intent
