@@ -69,6 +69,92 @@ const PATH_META = {
   institution:  { icon: "🏛️", label: "Organisation", color: "#D97706", bg: "#FFF7E8", desc: "Track cohort ELO. Hire verified talent. Automate placements." },
 }
 
+// College / University typeahead for the signup modal's Student path field.
+// Hits the same public GET /api/college-directory/search used by the
+// post-signup Onboarding.jsx flow (see CollegeSearchPicker there) — kept as
+// a separate component here because this file has its own input styling
+// convention (inputStyle/accent) rather than Onboarding.jsx's T theme.
+// Never blocks free text: selecting a suggestion just fills the field,
+// exactly like typing does, so a college missing from the AICTE-derived
+// dataset is still saved as entered.
+function CollegeAutocomplete({ value, setValue, accent, inputStyle, setError }) {
+  const [results, setResults]   = useState([])
+  const [open, setOpen]         = useState(false)
+  const inputRef = useRef(null)
+  const dropRef  = useRef(null)
+  const debounceRef = useRef(null)
+  const reqIdRef = useRef(0)
+
+  useEffect(() => {
+    const handle = e => {
+      if (!dropRef.current?.contains(e.target) && !inputRef.current?.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handle)
+    return () => document.removeEventListener("mousedown", handle)
+  }, [])
+
+  useEffect(() => {
+    const q = (value || "").trim()
+    clearTimeout(debounceRef.current)
+    if (q.length < 2) { setResults([]); return }
+    debounceRef.current = setTimeout(async () => {
+      const myReqId = ++reqIdRef.current
+      try {
+        const res = await fetch(`${API}/api/college-directory/search?q=${encodeURIComponent(q)}&limit=8`, {
+          signal: AbortSignal.timeout(6000),
+        })
+        if (myReqId !== reqIdRef.current) return
+        if (res.ok) {
+          const { colleges } = await res.json()
+          setResults(colleges || [])
+          setOpen(true)
+        }
+      } catch (_) { /* network hiccup — free text still works */ }
+    }, 300)
+    return () => clearTimeout(debounceRef.current)
+  }, [value])
+
+  return (
+    <div style={{ position: "relative" }}>
+      <input
+        ref={inputRef}
+        value={value}
+        onChange={e => { setValue(e.target.value); setError?.("") }}
+        onFocus={e => { e.target.style.borderColor = accent; if (results.length > 0) setOpen(true) }}
+        onBlur={e => { e.target.style.borderColor = "#E8E3DA" }}
+        type="text" placeholder="College / University name" autoComplete="off"
+        style={inputStyle}
+      />
+      {open && results.length > 0 && (
+        <div
+          ref={dropRef}
+          style={{
+            position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0,
+            background: "#FFFFFF", border: "1px solid #E8E3DA", borderRadius: 8,
+            boxShadow: "0 8px 32px rgba(0,0,0,0.13)", zIndex: 1000,
+            overflow: "hidden", maxHeight: 260, overflowY: "auto",
+          }}
+        >
+          {results.map(c => (
+            <div
+              key={c.id}
+              onMouseDown={e => { e.preventDefault(); setValue(c.name); setOpen(false); setResults([]) }}
+              style={{ padding: "10px 14px", cursor: "pointer", borderBottom: "1px solid #F5F5F5", fontSize: 13 }}
+            >
+              <div style={{ fontWeight: 700, color: "#1A1714" }}>{c.name}</div>
+              {(c.district || c.state) && (
+                <div style={{ fontSize: 11, color: "#8A8580", marginTop: 1 }}>
+                  {[c.district, c.state].filter(Boolean).join(", ")}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const COUNTRY_CODES = [
   { dial:"+91",  flag:"🇮🇳", name:"India" },
   { dial:"+1",   flag:"🇺🇸", name:"United States" },
@@ -374,7 +460,7 @@ function AuthModal({ show, onClose, mode, setMode }) {
           {inp(first, setFirst, "text", "First name")}
           {inp(last,  setLast,  "text", "Last name")}
         </div>
-        {inp(college, setCollege, "text", "College / University name")}
+        <CollegeAutocomplete value={college} setValue={setCollege} accent={accent} inputStyle={inputStyle} setError={setError} />
         <select value={branch} onChange={e=>{setBranch(e.target.value);setError("")}}
           style={{ ...inputStyle, color: branch ? "#1A1714" : "#A8A29E" }}
           onFocus={e=>e.target.style.borderColor=accent}
