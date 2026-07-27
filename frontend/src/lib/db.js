@@ -100,6 +100,35 @@ const CAMEL_TO_SNAKE = {
   analyticsEnabled:     'analytics_enabled',
   certVisible:           'cert_visible',
   vaultVisible:          'vault_visible',
+  // BUG FIX (2026-07-27): buildStudentSavePayload (Onboarding.jsx) sends
+  // roleId/roleLabel/roleSlug/roleStream/arenaKey whenever a student picks a
+  // canonical role from RoleSearchPicker — none of these had a mapping here,
+  // so onboarding save always hit PostgREST's "Could not find the 'arenaKey'
+  // column of 'profiles' in the schema cache" (or roleId/roleLabel/etc,
+  // whichever key iterated first) and the whole upsert was rejected (unknown
+  // column fails the ENTIRE request, not just that key), falling through to
+  // userDoc.set()'s core-columns-only fallback on every single onboarding
+  // save. Verified against the live schema (Supabase MCP, public.profiles):
+  // domain_key is a real, existing column already written elsewhere
+  // (Arena.jsx's resolveDomain sync) — arenaKey maps onto it. role_id/
+  // role_label/role_slug/role_stream have no column at all, so they're
+  // dropped (silently, same pattern as resumeSkills above) rather than left
+  // to break every save; add real columns in a migration first if canonical
+  // role tracking is ever needed downstream.
+  //
+  // Same investigation also found college/branch/career_track_slug — sent on
+  // literally every student signup, and actually read back by Arena.jsx for
+  // domain resolution — had no columns either, meaning that data has never
+  // once been persisted and Arena.jsx's branch-based resolution has been a
+  // permanent no-op. Fixed at the schema level (migration
+  // add_profiles_college_branch_career_track_slug, 2026-07-27) rather than
+  // here, since these are already valid snake_case names needing no
+  // camelCase mapping — see CORE_COLS below, now updated to include them.
+  arenaKey:             'domain_key',
+  roleId:               null,
+  roleLabel:             null,
+  roleSlug:              null,
+  roleStream:            null,
 }
 
 /**
@@ -226,9 +255,17 @@ export const userDoc = {
     if (!error) return true
     // If upsert still fails, try with only the guaranteed core columns
     console.warn('Profile upsert failed:', error.message)
+    // NOTE: only list columns confirmed to actually exist on public.profiles
+    // (verified live via Supabase MCP, 2026-07-27) — listing a column that
+    // doesn't exist here defeats the entire purpose of this fallback, since
+    // PostgREST rejects the whole request on ANY unknown column, guaranteed
+    // or not. college/branch/career_track_slug were added via the
+    // add_profiles_college_branch_career_track_slug migration (2026-07-27) —
+    // see CAMEL_TO_SNAKE's note above for why they were missing before that.
     const CORE_COLS = ['id','email','display_name','username','path','keyword',
       'elo_rating','arena_completed','arena_streak','onboarding_complete',
-      'subscription','updated_at']
+      'subscription','updated_at','domain_key','target_role',
+      'college','branch','career_track_slug']
     const core = {}
     for (const k of CORE_COLS) { if (normalised[k] !== undefined) core[k] = normalised[k] }
     const { error: err2 } = await supabase.from('profiles').upsert(core, { onConflict: 'id' })

@@ -14,12 +14,18 @@ import { tmpdir }                          from "os"
 import { join }                            from "path"
 import jwt                                  from "jsonwebtoken"
 import { compileCircuitMission, isCircuitDomain } from "../lib/arena/missionCompiler.js"
+import { supabaseAdmin }                   from "../lib/supabase.js"
 
 const router = Router()
 
 // ── P0-5: server-owned ELO for the /review path ──────────────────────────────
 // Mirrors the formula in grading-worker.js / arenaV2.js (single source of truth).
 const CHALLENGE_ELO = { Easy: 800, Medium: 1100, Hard: 1400, Expert: 1700 }
+// 2026-07-27 P0 fix: same uncapped-positive-delta issue as grading-worker.js's
+// computeEloUpdate (kept in sync with that fix — see the comment there for
+// the full rationale). Hard maxes at +15, Medium +12, Easy +8, going forward
+// only; existing profiles.elo_history is not retroactively recomputed.
+const MAX_POSITIVE_DELTA_BY_DIFFICULTY = { Easy: 8, Medium: 12, Hard: 15, Expert: 18 }
 function computeReviewEloDelta({ userElo, difficulty, score, timeTakenSecs = 0, estimatedSecs = 0 }) {
   const challengeElo = CHALLENGE_ELO[difficulty] || 1100
   const expected     = 1 / (1 + Math.pow(10, (challengeElo - userElo) / 400))
@@ -30,6 +36,8 @@ function computeReviewEloDelta({ userElo, difficulty, score, timeTakenSecs = 0, 
   let   delta        = Math.round(K * (actual - expected) * timeBonus)
   if (actual >= 0.7 && delta < 3) delta = 3
   if (delta < -30) delta = -30
+  const positiveCap = MAX_POSITIVE_DELTA_BY_DIFFICULTY[difficulty] ?? MAX_POSITIVE_DELTA_BY_DIFFICULTY.Medium
+  if (delta > positiveCap) delta = positiveCap
   return delta
 }
 // Optional auth — returns the user id if a valid Supabase JWT is present, else null.
@@ -42,6 +50,62 @@ function optionalUid(req) {
   try { return jwt.verify(token, secret, { algorithms: ["HS256"] }).sub || null }
   catch { return null }
 }
+
+// ── GET /api/arena/skill-graph — 2026-07-27 ───────────────────────────────────
+// Read-only. Since the 2026-07-18 fix (see useArenaMissions.js's "BUG FIX"
+// comment) correctly removed the client-side applySkillUpdates() call that
+// was double-writing ELO via a second, out-of-sync formula, nothing ever
+// replaced it as a *safe, read-only* source for the Aura dashboard's skill
+// radar — profiles.skill_graph (the JSONB blob Aura.jsx reads) has been
+// frozen/stale ever since, even though grading-worker.js has continued to
+// upsert real, per-skill, proof-backed rows into the `skill_graph` TABLE
+// (see grading-worker.js's "Skill graph upsert" background write) on every
+// scored Arena submission. This endpoint exposes that already-live table so
+// Aura.jsx can render a radar that actually reflects completed missions,
+// without reintroducing any write-side race: it performs no writes at all.
+// elo_value (400-2000ish rating scale) is rescaled 0-100 for the radar here
+// rather than in the frontend, so every caller gets the same scale.
+function eloValueToRadarScore(eloValue) {
+  const v = Number(eloValue) || 400
+  return Math.max(0, Math.min(100, Math.round(((v - 400) / 1200) * 100)))
+}
+router.get("/skill-graph", async (req, res) => {
+  try {
+    const authedUid = optionalUid(req)
+    const userId = authedUid || req.query.userId
+    if (!userId) return res.status(401).json({ error: "Missing or invalid auth token / userId" })
+    // If a token WAS presented, it must match the requested userId — never
+    // let a valid token for user A read user B's skill graph via ?userId=.
+    if (authedUid && req.query.userId && req.query.userId !== authedUid) {
+      return res.status(403).json({ error: "Forbidden" })
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from("skill_graph")
+      .select("skill_name, skill_slug, domain, elo_value, last_proof_date, verification_state, updated_at")
+      .eq("user_id", userId)
+      .eq("is_current", true)
+      .order("elo_value", { ascending: false })
+    if (error) throw error
+
+    const skills = (data || []).map(row => ({
+      label:              row.skill_name,
+      skill:              row.skill_name,
+      value:              eloValueToRadarScore(row.elo_value),
+      score:              eloValueToRadarScore(row.elo_value),
+      elo:                row.elo_value,
+      domain:             row.domain,
+      verified:           row.verification_state === "verified",
+      last_proof_date:    row.last_proof_date,
+      updated_at:         row.updated_at,
+      source:             "arena",
+    }))
+    res.json({ skills })
+  } catch (e) {
+    console.error("[arena/skill-graph]", e.message)
+    res.status(500).json({ error: e.message })
+  }
+})
 
 // ── Execution semaphore ───────────────────────────────────────────────────────
 // Caps concurrent child_process.exec calls at 40.
@@ -188,10 +252,24 @@ router.post("/daily", async (req, res) => {
   // Student path: cap difficulty at Medium even if ELO says otherwise
   const rawDiff  = eloRating < 700 ? "Easy" : eloRating < 1000 ? "Medium" : eloRating < 1300 ? "Medium-Hard" : "Hard"
   const diff     = path === "student" && rawDiff === "Hard" ? "Medium-Hard" : rawDiff
-  const eloMin   = Math.round(eloRating * 0.02)
-  const eloMax   = Math.round(eloRating * 0.05)
-  const eloGain  = eloMin + Math.floor(Math.random() * (eloMax - eloMin))
   const difficulty = diff.split("-")[0]
+  // 2026-07-27 P0 fix: this preview badge ("+N ELO" shown before the mission
+  // is even started) used to be `eloRating * 0.02..0.05`, which for a Hard
+  // mission at a low ELO could preview (and the old uncapped formula would
+  // then actually award) 30-45+ points on a single task. The real award is
+  // now hard-capped in computeReviewEloDelta/computeEloUpdate — keep this
+  // preview inside the same ceiling so what's promised on the card is what
+  // the user can actually receive.
+  const ELO_PREVIEW_RANGE_BY_DIFFICULTY = {
+    Easy:   { min: 3,  max: 8  },
+    Medium: { min: 6,  max: 12 },
+    Hard:   { min: 10, max: 15 },
+    Expert: { min: 12, max: 18 },
+  }
+  const previewRange = ELO_PREVIEW_RANGE_BY_DIFFICULTY[difficulty] || ELO_PREVIEW_RANGE_BY_DIFFICULTY.Medium
+  const eloMin   = previewRange.min
+  const eloMax   = previewRange.max
+  const eloGain  = eloMin + Math.floor(Math.random() * (eloMax - eloMin))
 
   // ── Structured-workstation path: Mission Compiler ─────────────────────────────
   // Circuit Lab (ECE) missions are COMPILED from a parameterized template library

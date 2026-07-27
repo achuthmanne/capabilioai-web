@@ -1183,6 +1183,133 @@ function scoreRoleMatch(role, query) {
   return best
 }
 
+// ─── College / University autocomplete ─────────────────────────────
+// Typeahead against GET /api/college-directory/search (public read, no
+// auth — see backend/server/routes/collegeDirectory.js). Deliberately does
+// NOT force a selection: `value`/`onChange` behave exactly like a plain
+// text field (same contract as the old FieldInput it replaces), so a
+// student whose college isn't in the AICTE-derived dataset yet can just
+// keep typing and that free text is what gets saved — no hard block.
+function CollegeSearchPicker({ value, onChange, placeholder }) {
+  const [open, setOpen] = useState(false)
+  const [results, setResults] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [highlighted, setHighlighted] = useState(-1)
+  const inputRef = useRef(null)
+  const dropRef = useRef(null)
+  const debounceRef = useRef(null)
+  const reqIdRef = useRef(0)
+
+  useEffect(() => {
+    const handle = e => {
+      if (!dropRef.current?.contains(e.target) && !inputRef.current?.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handle)
+    return () => document.removeEventListener("mousedown", handle)
+  }, [])
+
+  useEffect(() => {
+    const q = (value || "").trim()
+    clearTimeout(debounceRef.current)
+    if (q.length < 2) { setResults([]); setLoading(false); return }
+    setLoading(true)
+    debounceRef.current = setTimeout(async () => {
+      const myReqId = ++reqIdRef.current
+      try {
+        const res = await fetch(`${SERVER}/api/college-directory/search?q=${encodeURIComponent(q)}&limit=8`, {
+          signal: AbortSignal.timeout(6000),
+        })
+        if (myReqId !== reqIdRef.current) return // stale response — a newer keystroke already fired
+        if (res.ok) {
+          const { colleges } = await res.json()
+          setResults(colleges || [])
+          setOpen(true)
+        }
+      } catch (_) {
+        // Network hiccup or timeout — fail silently, free-text entry still works.
+      } finally {
+        if (myReqId === reqIdRef.current) setLoading(false)
+      }
+    }, 300)
+    return () => clearTimeout(debounceRef.current)
+  }, [value])
+
+  function handleSelect(c) {
+    onChange(c.name)
+    setOpen(false)
+    setResults([])
+  }
+
+  function handleKeyDown(e) {
+    if (!open || results.length === 0) return
+    const max = results.length - 1
+    if (e.key === "ArrowDown") { e.preventDefault(); setHighlighted(h => Math.min(h + 1, max)) }
+    if (e.key === "ArrowUp") { e.preventDefault(); setHighlighted(h => Math.max(h - 1, -1)) }
+    if (e.key === "Enter" && highlighted >= 0) { e.preventDefault(); handleSelect(results[highlighted]) }
+    if (e.key === "Escape") setOpen(false)
+  }
+
+  return (
+    <div style={{ position: "relative" }}>
+      <input
+        ref={inputRef}
+        value={value}
+        onChange={e => { onChange(e.target.value); setHighlighted(-1) }}
+        onKeyDown={handleKeyDown}
+        onFocus={e => { e.target.style.borderColor = `${T.primary}60`; if (results.length > 0) setOpen(true) }}
+        onBlur={e => { e.target.style.borderColor = "#E8E3DA" }}
+        placeholder={placeholder}
+        autoComplete="off"
+        style={{
+          width: "100%", padding: "13px 16px", borderRadius: T.radius,
+          background: "rgba(0,0,0,0.02)", border: "1px solid #E8E3DA",
+          color: T.text, fontSize: 14, fontFamily: T.body, outline: "none",
+          boxSizing: "border-box", transition: "border-color 0.15s",
+        }}
+      />
+      {open && (results.length > 0 || loading) && (
+        <div
+          ref={dropRef}
+          style={{
+            position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0,
+            background: "#FFFFFF", border: "1px solid #E8E3DA",
+            borderRadius: T.radiusLg, boxShadow: "0 8px 32px rgba(0,0,0,0.13)",
+            zIndex: 1000, overflow: "hidden", maxHeight: 280, overflowY: "auto",
+          }}
+        >
+          {results.map((c, i) => (
+            <div
+              key={c.id}
+              onMouseDown={e => { e.preventDefault(); handleSelect(c) }}
+              onMouseEnter={() => setHighlighted(i)}
+              style={{
+                padding: "10px 14px", cursor: "pointer",
+                background: highlighted === i ? "#F8F7FF" : "#FFFFFF",
+                borderBottom: i < results.length - 1 ? "1px solid #F5F5F5" : "none",
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{c.name}</div>
+              {(c.district || c.state) && (
+                <div style={{ fontSize: 11, color: T.muted, marginTop: 1 }}>
+                  {[c.district, c.state].filter(Boolean).join(", ")}
+                </div>
+              )}
+            </div>
+          ))}
+          {loading && results.length === 0 && (
+            <div style={{ padding: "10px 14px", fontSize: 12, color: T.muted }}>Searching…</div>
+          )}
+          {!loading && results.length === 0 && (value || "").trim().length >= 2 && (
+            <div style={{ padding: "10px 14px", fontSize: 12, color: T.muted }}>
+              No match — can't find your college? Just keep typing, we'll save it as entered.
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function RoleSearchPicker({ value, onChange, onRoleSelect, selectedRole }) {
   const [open, setOpen]             = useState(false)
   const [suggestions, setSuggestions] = useState([])
@@ -2490,7 +2617,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
             {/* College + Branch — pre-filled from signup, editable */}
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16 }}>
               <FieldRow label="College / University">
-                <FieldInput value={college} onChange={e=>setCollege(e.target.value)} placeholder="e.g. VIT Vellore" />
+                <CollegeSearchPicker value={college} onChange={setCollege} placeholder="e.g. VIT Vellore" />
               </FieldRow>
               <FieldRow label="Branch / Stream">
                 <FieldSelect value={branch} onChange={e=>setBranch(e.target.value)}>

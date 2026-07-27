@@ -657,6 +657,29 @@ function App() {
     let profileUnsub = null
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // 2026-07-27 P0 fix: Supabase's implicit-flow magic-link/signup redirect
+      // puts access_token/refresh_token/expires_at into the URL hash.
+      // detectSessionInUrl (the createClient() default, see lib/supabase.js)
+      // parses this ONCE to establish the session — but this app never
+      // stripped it from the visible URL afterward. Every later full
+      // reinitialization of the supabase client (a hard navigation, a page
+      // refresh, sometimes just a lazy-loaded page chunk mounting fresh)
+      // re-parses that now-STALE hash and OVERWRITES the current valid
+      // session with the old one. That's exactly what produced the "Session
+      // as retrieved from URL expires in -33359s" console warning and the
+      // cascading 403 (/auth/v1/user) + 406 (profiles select, RLS rejecting
+      // the now-invalid JWT) + "violates foreign key constraint
+      // profiles_id_fkey" (profile write attempted under a session that no
+      // longer resolves to a valid auth.users row) errors seen landing on
+      // Aura straight after the onboarding assessment. This callback firing
+      // at all is the signal that supabase-js has already finished reading
+      // the hash (parsing happens synchronously before the event fires) — so
+      // stripping it here, on every event, is always safe and means it can
+      // never be re-parsed on a later reload.
+      if (window.location.hash.includes("access_token")) {
+        window.history.replaceState(null, "", window.location.pathname + window.location.search)
+      }
+
       const u = session?.user || null
 
       if (u) {

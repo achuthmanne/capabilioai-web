@@ -192,6 +192,7 @@ import hardwareChallengesRoutes  from "./server/routes/hardwareChallenges.js"
 import copilotCoachRoutes        from "./server/routes/copilotCoach.js" // pilot: tool-augmented Capi coach intent, MCP-backed
 import groqProxyRoutes           from "./server/routes/groqProxy.js"    // P0 fix: Capi's Groq calls, moved server-side off the client
 import collegeRoutes             from "./server/routes/college.js"      // College Path — institution-admin operational API (roster, leaderboard, stats, branches, export, placement confirm, ELO ledger)
+import collegeDirectoryRoutes    from "./server/routes/collegeDirectory.js" // Public Indian college/university lookup for onboarding autocomplete — distinct from college.js (institution-admin API)
 import orgVerificationRoutes     from "./server/routes/orgVerification.js" // Institution OS bugfix — server-side profiles.verificationStatus write (PC-7 compliant)
 import orgJoinLinksRoutes        from "./server/routes/orgJoinLinks.js"    // Self-serve student join links — org_members, replaces one-by-one admin invite for ~1000-student rosters
 import orgCompanyLinksRoutes     from "./server/routes/orgCompanyLinks.js" // Talent Network <-> real company org account linkage + NDA workflow
@@ -365,6 +366,7 @@ app.use("/api/copilot",       copilotCoachRoutes)       // coach — pilot MCP t
 app.use("/api/groq",          groqProxyRoutes)          // chat — server-side Groq proxy for Capi's general chat + classifier
 // ── College Path ───────────────────────────────────────────────────────────────
 app.use("/api/college",       collegeRoutes)            // institutions/:id/{roster,students,leaderboard,stats,branches,export,placements/:id/confirm,students/:id/elo-adjustment}
+app.use("/api/college-directory", collegeDirectoryRoutes) // search — public Indian college/university lookup for onboarding autocomplete
 app.use("/api/org",           orgVerificationRoutes)    // verify-email — server-side PC-7-compliant write to profiles.verificationStatus
 app.use("/api/org",           orgJoinLinksRoutes)       // join-links (CRUD), join/:token (resolve + claim) — self-serve student onboarding
 app.use("/api/org",           orgCompanyLinksRoutes)    // company-links (invite w/ real-account matching), received, accept-nda, decline

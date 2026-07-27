@@ -25,6 +25,21 @@ const MAX_RETRIES      = 2        // retry up to 2× before archiving
 // ── ELO formula (mirrors arenaV2.js) ──────────────────────────────────────────
 const CHALLENGE_ELO = { Easy: 800, Medium: 1100, Hard: 1400, Expert: 1700 }
 
+// 2026-07-27 P0 fix: the K-factor × attemptMult × timeBonus formula below has
+// no ceiling on its own — a low-ELO user (e.g. a fresh Rookie at ~520) facing
+// a Hard task has a very low "expected" score, so the logistic curve alone
+// can legitimately swing the raw delta well past 30-40+. That is standard
+// ELO math, but it is NOT the business rule Capabilio wants: a single Hard
+// mission must never be worth more than +15, Medium no more than +12, Easy
+// no more than +8. This cap is applied ONLY to positive deltas — the
+// existing MAX_NEGATIVE_DELTA (-30) floor for penalties/cheating is
+// untouched, and the +3 minimum-passing floor is untouched. Applies to
+// submissions going forward only; existing profiles.elo_history /
+// elo_rating are NOT retroactively recomputed (explicit product decision —
+// see docs/elo-engine-v2-architecture.md if a future backfill is ever
+// scoped).
+const MAX_POSITIVE_DELTA_BY_DIFFICULTY = { Easy: 8, Medium: 12, Hard: 15, Expert: 18 }
+
 function computeEloUpdate({ userElo, difficulty, score, attempts, timeTakenSecs, estimatedSecs }) {
   const challengeElo = CHALLENGE_ELO[difficulty] || 1100
   const expected     = 1 / (1 + Math.pow(10, (challengeElo - userElo) / 400))
@@ -36,6 +51,8 @@ function computeEloUpdate({ userElo, difficulty, score, attempts, timeTakenSecs,
   let   delta        = Math.round(K * (actual - expected) * attemptMult * timeBonus)
   if (actual >= 0.7 && delta < 3) delta = 3
   if (delta < -30) delta = -30
+  const positiveCap = MAX_POSITIVE_DELTA_BY_DIFFICULTY[difficulty] ?? MAX_POSITIVE_DELTA_BY_DIFFICULTY.Medium
+  if (delta > positiveCap) delta = positiveCap
   return { delta, newElo: Math.max(100, userElo + delta) }
 }
 

@@ -8,6 +8,7 @@
 import { Router } from "express"
 import { groq, GROQ_FAST } from "../lib/groq.js"
 import { claude, CLAUDE_HAIKU, CLAUDE_SONNET } from "../lib/claude.js"
+import { getRoleConfig } from "../../../frontend/src/config/roleConfig.js"
 
 const router = Router()
 
@@ -26,124 +27,48 @@ async function claudeOrGroq(messages, { model = CLAUDE_HAIKU, groqMaxTokens = 10
   try { return JSON.parse(raw) } catch { return {} }
 }
 
-// ─── Domain skill map — mirrors Aura.jsx domainSkillsMap exactly ─────────────
-// CRITICAL: category names in MCQs MUST match these exactly so radar aligns.
-const DOMAIN_SKILLS = {
-  // ── IT / CS domains ──────────────────────────────────────────────────────────
-  "Data Analyst":     ["SQL","Python","Data Cleaning","Exploratory Data Analysis","Data Visualization","Statistical Analysis","A/B Testing","Business Intelligence","Funnel Analysis","KPI Reporting","Dashboard Design","Storytelling with Data"],
-  "Full-Stack":       ["React","Node.js","TypeScript","SQL","REST APIs","Authentication","State Management","Testing","System Design","Performance","Deployment","CSS"],
-  "Frontend":         ["React","TypeScript","JavaScript","CSS / Tailwind","HTML","State Management","Web Performance","Accessibility (WCAG)","Testing (Jest/RTL)","Design Systems","API Integration","Responsive Design"],
-  "Backend":          ["Node.js / Express","REST API Design","Authentication (JWT/OAuth)","Caching (Redis)","Message Queues","Database Queries","Rate Limiting","Pagination","Microservices","Testing (Supertest)","Performance","Error Handling"],
-  "DevOps":           ["Docker","Kubernetes","CI/CD Pipelines","Terraform / IaC","Linux & Bash","Monitoring (Prometheus/Grafana)","Helm Charts","SRE Practices","Incident Management","Cloud Platforms","Networking","Security & Secrets"],
-  "DBA":              ["Query Optimisation","Index Strategy","Schema Design","Stored Procedures","Performance Tuning","Backup & Recovery","Replication","Schema Migration","EXPLAIN / Query Plans","PL/SQL / T-SQL","Data Integrity","High Availability"],
-  "Software Developer":["Data Structures","Algorithms","OOP Concepts","System Design","Database Basics","REST APIs","Version Control (Git)","Testing","Problem Solving","Design Patterns","Time Complexity","Debugging"],
-  "Machine Learning": ["Python","NumPy / Pandas","Scikit-learn","Model Evaluation","Feature Engineering","Neural Networks","Data Preprocessing","Statistics","Regression / Classification","Deep Learning Basics","Model Deployment","Experiment Tracking"],
-  "Android Developer":["Kotlin","Java","Android SDK","Jetpack Compose","MVVM Architecture","Room Database","Retrofit","Coroutines","UI/UX Design","Testing","Push Notifications","Play Store Deployment"],
-  "iOS Developer":    ["Swift","Xcode","UIKit","SwiftUI","Core Data","Networking (URLSession)","MVC/MVVM","Auto Layout","Push Notifications","App Store Deployment","Testing (XCTest)","Memory Management"],
-  "Cybersecurity":    ["Network Security","Linux","Ethical Hacking Basics","OWASP Top 10","Cryptography","Firewalls & IDS","Penetration Testing","Vulnerability Assessment","Security Auditing","Incident Response","Compliance (ISO 27001)","SIEM Tools"],
-  "Cloud Engineer":   ["AWS / Azure / GCP","IAM & Security","Compute (EC2/VMs)","Storage (S3/Blob)","Networking (VPC)","Containers (ECS/AKS)","Serverless","Monitoring (CloudWatch)","Infrastructure as Code","Cost Optimisation","Databases","CI/CD"],
+// ─── Domain skills — single source of truth is roleConfig.js's auraSkills ────
+// 2026-07-27 fix: this used to maintain its own hand-written skill-name list
+// per role (a DOMAIN_SKILLS object, ~30 entries), completely separate from
+// roleConfig.js's `auraSkills` — the list Aura.jsx's dashboard radar actually
+// displays. The two lists drifted apart (different wording, different skill
+// counts, some skills in one but not the other), so even a perfect assessment
+// score could never populate several radar axes: the AI-generated quiz's
+// "category" field is constrained to exactly this list (see the generate-mcq
+// prompt below: "category must be one of the exact skill names given"), and
+// those categories never matched what the radar was looking for.
+// This now resolves through getRoleConfig() — the same resolver Aura.jsx,
+// Arena, and SkillStudio already use — so quiz categories and radar labels
+// can't drift apart again; there is exactly one skill-name list per role.
 
-  // ── ECE role-specific domains ─────────────────────────────────────────────────
-  "ECE Embedded":    ["ARM Cortex Architecture","Embedded C / Bare-Metal","RTOS (FreeRTOS / Zephyr)","Device Drivers & HAL","Interrupt Handling","Memory Management (MMU / MPU)","Bootloader & Startup Code","SPI / I2C / UART Protocols","CAN & LIN Bus","Debugging (JTAG / OpenOCD)","Low-Power Design","Firmware Over-the-Air (FOTA)"],
-  "ECE VLSI":        ["Digital Logic Design","Verilog / SystemVerilog","VHDL","RTL Design & Synthesis","Static Timing Analysis","Floorplanning & Placement","Clock Tree Synthesis","DRC / LVS / ERC","UVM Verification","ASIC Design Flow","FPGA Implementation","Low-Power VLSI Techniques"],
-  "ECE Analog Layout": ["Full-Custom IC Layout","Cadence Virtuoso Tools","Analog Circuit Analysis (Op-Amp / Comparator)","Device Matching & Interdigitation","DRC / LVS / ERC Rules","Guard Rings & Shielding","Parasitic Extraction (PEX / RC)","Analog Block Floorplanning","Electromigration Design Rules","ESD Protection Structures","Mixed-Signal Integration","Low-Noise Layout Techniques"],
-  "ECE RF":          ["RF Circuit Design","Transmission Line Theory","Antenna Design & Parameters","Microwave Amplifiers","Filter Design (RF)","S-Parameters & Smith Chart","Impedance Matching","Signal Propagation & Path Loss","Modulation Techniques (AM/FM/QAM)","RF System Link Budget","PCB Layout for RF","Spectrum Analyzer Usage"],
-  "ECE IoT":         ["MQTT & CoAP Protocols","Arduino & Raspberry Pi","Sensor Integration & Calibration","BLE / Zigbee / LoRa","IoT Cloud Platforms (AWS IoT / Azure IoT)","Edge Computing","Embedded C for IoT","Python for IoT","Security in IoT","OTA Firmware Updates","Data Acquisition & Processing","Real-Time Operating Systems"],
-  "ECE Telecom":     ["Digital Communication Systems","Modulation & Demodulation","5G NR Architecture","LTE / 4G Fundamentals","OFDM & Channel Coding","Network Protocols (TCP/IP)","Signal Processing (DSP)","Antenna Arrays & MIMO","RF Link Budget","Optical Fiber Communication","Error Detection & Correction","Wireless Network Planning"],
-  "ECE":             ["Digital Electronics","Analog Circuits","Microcontrollers (ARM/AVR)","Embedded C","Signals & Systems","Communication Systems","RTOS Basics","PCB Design Fundamentals","FPGA & VHDL Basics","Sensors & Interfacing","Wireless Communication","IoT Protocols"],
+// Roles whose skill sets are not code/programming-based — preserves the
+// original question-mix decision (no code_output questions, add numerical/
+// scenario instead) that the old isEngineeringBranch check made per branch,
+// now also driven by the resolved role's `stream` so it still applies when
+// a keyword alone (no branch) resolves to one of these domains.
+const NON_CODE_STREAMS = new Set(["ECE", "EEE", "Mechanical", "Civil", "Pharmacy", "Medical"])
 
-  // ── EEE role-specific domains ─────────────────────────────────────────────────
-  "EEE Power":       ["Power System Analysis","Load Flow Studies","Fault Analysis & Short Circuit","Protection Relays (IDMT / Differential)","SCADA & EMS","Transmission Line Parameters","Transformer Design & Testing","Switchgear & Circuit Breakers","Earthing & Grounding","Power System Stability","Renewable Integration (Solar / Wind)","Smart Grid Concepts"],
-  "EEE Machines":    ["DC Machines (Motor & Generator)","Induction Motors (3-phase)","Synchronous Machines","Transformer Equivalent Circuit","Starting & Speed Control Methods","Losses & Efficiency","Insulation & Thermal Rating","Testing of Electrical Machines","Motor Drive Fundamentals","Generator Protection","Special Machines (BLDC / PMSM)","IE3 / IE4 Efficiency Standards"],
-  "EEE Control":     ["Transfer Functions & Block Diagrams","Stability Analysis (Routh-Hurwitz / Nyquist)","PID Controller Tuning","State Space Representation","Root Locus Technique","Bode & Nyquist Plots","PLC Programming (Ladder / FBD)","Industrial Automation (SCADA / DCS)","Servo & Stepper Motor Control","Feedback Control Systems","Digital Control Systems","Process Control Loops"],
-  "EEE PE":          ["Power Converters (AC-DC / DC-DC)","MOSFET & IGBT Switching","PWM Techniques","Buck / Boost / Buck-Boost Converters","Inverter Design","Motor Drives (VFD)","Battery Management Systems","Inductive Power Transfer","Power Factor Correction","Heat Sink & Thermal Design","EMI / EMC in Power Electronics","SiC / GaN Devices"],
-  "EEE Instrumentation": ["Sensors & Transducers","Signal Conditioning","Data Acquisition Systems (DAQ)","PLC & SCADA Programming","Industrial Protocols (Modbus / Profibus)","Calibration Techniques","Process Control Instruments","Flow / Pressure / Temperature Measurement","Electrical Safety & Hazardous Area","RTD & Thermocouple Selection","Industrial IoT (IIoT)","Control Valve Sizing"],
-  "EEE":             ["Circuit Analysis","Electrical Machines","Power Systems","Control Systems","Power Electronics","Transformers & Transmission","Protection Systems","Renewable Energy Systems","PLC & SCADA Basics","Instrumentation & Measurement","Three-Phase Systems","High Voltage Engineering"],
+// roleConfig.js's branch resolver (_resolveByBranch) doesn't have explicit
+// Pharmacy/MBA branch handling (those students are expected to type a
+// specific job title) — the old BRANCH_DOMAIN_KEY did handle them, so this
+// small map preserves that exact fallback rather than silently losing it.
+const EXTRA_BRANCH_ROLE_ID = { Pharmacy: "pharmacy", MBA: "mba" }
 
-  // ── Civil role-specific domains ───────────────────────────────────────────────
-  "Civil Structural": ["Structural Analysis (Indeterminate)","RC Design (IS 456)","Steel Design (IS 800)","Pre-stressed Concrete","Matrix Methods & Stiffness","Finite Element Basics","Load Calculations (IS 875)","Seismic Design (IS 1893)","Yield Line Theory","Plate Girder Design","Connection Design (Bolted / Welded)","Structural Audit & Retrofitting"],
-  "Civil Geo":        ["Soil Classification & Index Properties","Shear Strength (Mohr-Coulomb)","Consolidation & Settlement","Slope Stability Analysis","Earth Pressure Theories","Foundation Types & Design","Ground Improvement Techniques","Pile Foundation Analysis","Permeability & Seepage","Field & Laboratory Testing","Retaining Wall Design","Liquefaction Assessment"],
-  "Civil Transport":  ["Highway Geometric Design","Pavement Design (IRC)","Traffic Volume Studies","Traffic Signal Design","Intersection & Roundabout Design","Sight Distance Calculations","Pavement Materials & Testing","Transport Planning & Modelling","Road Safety Engineering","Railway Track Design","Urban Road Design","GIS in Transportation"],
-  "Civil Water":      ["Open Channel Flow (Manning's Equation)","Pipe Flow & Hazen-Williams","Hydrology & Rainfall Analysis","Reservoir & Dam Design","Irrigation Systems & Canal Design","Groundwater Hydrology","Wastewater Treatment Design","Water Supply System Design","Flood Routing Methods","Pump Selection & Design","Water Quality Standards","Hydropower Basics"],
-  "Civil Construction":["CPM & PERT Scheduling","Resource Levelling & Crashing","Construction Contracts (FIDIC / NEC)","Estimation & Bill of Quantities","Concrete Mix Design (IS 10262)","Formwork Design & Planning","Construction Equipment Selection","Quality Control on Site","Site Safety (IS 18001)","EHS Management","Building Information Modelling (BIM)","Construction Dispute Resolution"],
-  "Civil":            ["Structural Analysis","Concrete Technology","Soil Mechanics & Foundation","Surveying","Fluid Mechanics (Civil)","Transportation Engineering","Environmental Engineering","Construction Management","Steel Structures","Hydrology & Irrigation","Building Materials","Estimation & Costing"],
-
-  // ── Mechanical role-specific domains ─────────────────────────────────────────
-  "Mech Thermal":     ["Heat Transfer Modes (Conduction / Convection / Radiation)","Fins & Extended Surfaces","Heat Exchangers (LMTD / NTU)","Boilers & Steam Power Plants","Gas Turbine Cycles (Brayton)","Refrigeration Cycles (VCR)","HVAC System Design","Thermodynamic Property Tables","Combustion & Fuels","Numerical Methods in Heat Transfer","Thermal Insulation Design","Energy Audit & Conservation"],
-  "Mech Fluid":       ["Fluid Statics & Pressure","Continuity, Bernoulli & Momentum Equations","Viscous Flow & Boundary Layer","Pipe Flow & Head Losses","Pumps & Turbines (Selection & Curves)","Centrifugal & Axial Fans","Compressible Flow (Mach Number)","CFD Fundamentals (Pre/Post-Processing)","Flow Measurement Devices","Hydraulic Machines","Cavitation & Water Hammer","Piping System Design"],
-  "Mech Manufacturing":["Casting & Solidification","Forging, Rolling & Extrusion","Welding Processes (MIG / TIG / Friction)","Machining (Turning / Milling / Drilling)","CNC Programming (G-Code / M-Code)","Tolerances & Surface Finish (GD&T)","Jig & Fixture Design","Metrology & Quality Control","Lean Manufacturing & Kaizen","SPC & Six Sigma","Injection Moulding","Sheet Metal Processes (Bending / Stamping)"],
-  "Mech Design":      ["Stress & Strain Analysis","Fatigue & Fracture Mechanics","Shafts, Keys & Couplings","Bearings (Rolling & Sliding)","Gears (Spur / Helical / Bevel)","Springs & Clutches","Pressure Vessel Design (ASME)","CAD Modelling (SolidWorks / CATIA)","FEA Fundamentals","Tolerance Stack-Up Analysis","Product Design for Manufacturing (DFM)","Failure Mode & Effect Analysis (FMEA)"],
-  "Mechanical":       ["Thermodynamics","Fluid Mechanics","Strength of Materials","Manufacturing Processes","Machine Design","Heat Transfer","CAD & Engineering Drawing","Kinematics & Dynamics","Industrial Engineering","Material Science","Quality Control & Metrology","Refrigeration & HVAC"],
-
-  // ── Other domains ─────────────────────────────────────────────────────────────
-  "IoT":        ["Embedded C / C++","Arduino & Raspberry Pi","MQTT & CoAP Protocols","Sensor Integration","IoT Cloud Platforms","Network Protocols (BLE, Zigbee, LoRa)","Edge Computing","PCB & Circuit Design","Python for IoT","Data Acquisition & Processing","Security in IoT","Real-Time Operating Systems"],
-  "Pharmacy":   ["Pharmaceutics","Pharmacology","Medicinal Chemistry","Drug Design & Discovery","Clinical Pharmacy","Pharmacokinetics & Pharmacodynamics","Drug Regulatory Affairs","Quality Assurance & GMP","Biopharmaceutics","Hospital & Community Pharmacy","Industrial Pharmacy","Pharmaceutical Analysis"],
-  "MBA":        ["Management Principles","Financial Accounting","Marketing Management","Business Strategy","Operations Management","Human Resource Management","Business Analytics","Financial Management","Entrepreneurship","Business Law & Ethics","Supply Chain Management","Organisational Behaviour"],
-}
-
-// ── Branch → domain key (branch-based fallback when jobTitle keyword misses) ──
-const BRANCH_DOMAIN_KEY = {
-  ECE: "ECE", EEE: "EEE", Mechanical: "Mechanical", Civil: "Civil",
-  IoT: "IoT", Pharmacy: "Pharmacy", MBA: "MBA",
+// Resolves a role by keyword first (the more specific signal), falling back
+// to the student's declared branch only if the keyword didn't resolve to
+// anything more specific than the generic default (Software Engineer) —
+// mirrors the old getDomainSkills(jobTitle, branch) fallback order exactly.
+function resolveAssessmentRole(jobTitle, branch) {
+  const byKeyword = getRoleConfig(jobTitle)
+  if (byKeyword.id !== "swe" || !branch) return byKeyword
+  if (EXTRA_BRANCH_ROLE_ID[branch]) return getRoleConfig(EXTRA_BRANCH_ROLE_ID[branch])
+  const byBranch = getRoleConfig({ branch })
+  return byBranch.id !== "swe" ? byBranch : byKeyword
 }
 
 function getDomainSkills(jobTitle, branch = "") {
-  const k = (jobTitle || "").toLowerCase()
-
-  // ── IT / CS role detection ──────────────────────────────────────────────────
-  if (k.includes("data analyst") || k.includes("analytics")) return DOMAIN_SKILLS["Data Analyst"]
-  if (k.includes("machine learning") || k.includes("ml engineer") || k.includes("ai engineer") || k.includes("deep learning")) return DOMAIN_SKILLS["Machine Learning"]
-  if (k.includes("frontend") || k.includes("front-end") || k.includes("react developer") || k.includes("ui developer")) return DOMAIN_SKILLS["Frontend"]
-  if (k.includes("backend") || k.includes("back-end") || k.includes("api developer")) return DOMAIN_SKILLS["Backend"]
-  if (k.includes("devops") || k.includes("sre") || k.includes("platform engineer") || k.includes("infrastructure")) return DOMAIN_SKILLS["DevOps"]
-  if (k.includes("dba") || k.includes("database admin")) return DOMAIN_SKILLS["DBA"]
-  if (k.includes("android")) return DOMAIN_SKILLS["Android Developer"]
-  if (k.includes("ios") || k.includes("swift developer")) return DOMAIN_SKILLS["iOS Developer"]
-  if (k.includes("cyber") || k.includes("security engineer") || k.includes("ethical hack") || k.includes("penetration")) return DOMAIN_SKILLS["Cybersecurity"]
-  if (k.includes("cloud")) return DOMAIN_SKILLS["Cloud Engineer"]
-  if ((k.includes("full") && k.includes("stack")) || k.includes("software engineer") || k.includes("software developer") || k.includes("swe")) return DOMAIN_SKILLS["Full-Stack"]
-
-  // ── ECE sub-roles (most specific first) ──────────────────────────────────────
-  if (k.includes("analog layout") || k.includes("layout engineer") || k.includes("ic layout") || k.includes("full custom") || k.includes("cadence virtuoso") || k.includes("full-custom ic") || k.includes("analog design engineer")) return DOMAIN_SKILLS["ECE Analog Layout"]
-  if (k.includes("vlsi") || k.includes("asic") || k.includes("rtl") || k.includes("physical design") || k.includes("timing") || k.includes("verilog") || k.includes("vhdl") || k.includes("fpga designer")) return DOMAIN_SKILLS["ECE VLSI"]
-  if (k.includes("embedded") || k.includes("firmware") || k.includes("rtos") || k.includes("bare-metal") || k.includes("device driver") || k.includes("bootloader") || k.includes("microcontroller")) return DOMAIN_SKILLS["ECE Embedded"]
-  if (k.includes("rf engineer") || k.includes("rf design") || k.includes("antenna") || k.includes("microwave") || k.includes("radio frequency")) return DOMAIN_SKILLS["ECE RF"]
-  if (k.includes("telecom") || k.includes("wireless engineer") || k.includes("5g") || k.includes("4g") || k.includes("lte") || k.includes("signal processing engineer")) return DOMAIN_SKILLS["ECE Telecom"]
-  if (k.includes("iot") || k.includes("internet of things")) return DOMAIN_SKILLS["ECE IoT"]
-  if (k.includes("electronics engineer") || k.includes("hardware engineer") || k.includes("pcb") || k.includes("circuit design") || k.includes("ece")) return DOMAIN_SKILLS["ECE"]
-
-  // ── EEE sub-roles ────────────────────────────────────────────────────────────
-  if (k.includes("power system") || k.includes("transmission") || k.includes("distribution engineer") || k.includes("protection engineer") || k.includes("smart grid")) return DOMAIN_SKILLS["EEE Power"]
-  if (k.includes("electrical machine") || k.includes("motor design") || k.includes("transformer design")) return DOMAIN_SKILLS["EEE Machines"]
-  if (k.includes("control system") || k.includes("automation engineer") || k.includes("plc") || k.includes("scada engineer") || k.includes("control engineer")) return DOMAIN_SKILLS["EEE Control"]
-  if (k.includes("power electronics") || k.includes("drives engineer") || k.includes("inverter") || k.includes("vfd")) return DOMAIN_SKILLS["EEE PE"]
-  if (k.includes("instrumentation") || k.includes("measurement engineer") || k.includes("calibration")) return DOMAIN_SKILLS["EEE Instrumentation"]
-  if (k.includes("electrical engineer") || k.includes("eee")) return DOMAIN_SKILLS["EEE"]
-
-  // ── Civil sub-roles ──────────────────────────────────────────────────────────
-  if (k.includes("structural engineer") || k.includes("structural analyst") || k.includes("structural designer")) return DOMAIN_SKILLS["Civil Structural"]
-  if (k.includes("geotechnical") || k.includes("foundation engineer") || k.includes("soil engineer")) return DOMAIN_SKILLS["Civil Geo"]
-  if (k.includes("transport") || k.includes("highway") || k.includes("traffic engineer") || k.includes("pavement")) return DOMAIN_SKILLS["Civil Transport"]
-  if (k.includes("water resource") || k.includes("hydraulic engineer") || k.includes("hydrology") || k.includes("irrigation engineer")) return DOMAIN_SKILLS["Civil Water"]
-  if (k.includes("construction manager") || k.includes("site engineer") || k.includes("quantity surveyor") || k.includes("project engineer")) return DOMAIN_SKILLS["Civil Construction"]
-  if (k.includes("civil engineer") || k.includes("civil")) return DOMAIN_SKILLS["Civil"]
-
-  // ── Mechanical sub-roles ─────────────────────────────────────────────────────
-  if (k.includes("thermal engineer") || k.includes("heat transfer") || k.includes("hvac") || k.includes("refrigeration engineer")) return DOMAIN_SKILLS["Mech Thermal"]
-  if (k.includes("fluid") || k.includes("cfd") || k.includes("piping engineer") || k.includes("hydraulic engineer")) return DOMAIN_SKILLS["Mech Fluid"]
-  if (k.includes("manufacturing") || k.includes("production engineer") || k.includes("cnc") || k.includes("tooling")) return DOMAIN_SKILLS["Mech Manufacturing"]
-  if (k.includes("machine design") || k.includes("product design engineer") || k.includes("mechanical designer") || k.includes("cad engineer")) return DOMAIN_SKILLS["Mech Design"]
-  if (k.includes("mechanical engineer") || k.includes("mechanical")) return DOMAIN_SKILLS["Mechanical"]
-
-  // ── Other professional roles ──────────────────────────────────────────────────
-  if (k.includes("pharmacist") || k.includes("pharmacy") || k.includes("drug formulation")) return DOMAIN_SKILLS["Pharmacy"]
-  if (k.includes("mba") || k.includes("business manager") || k.includes("operations manager") || k.includes("hr manager") || k.includes("marketing manager")) return DOMAIN_SKILLS["MBA"]
-
-  // ── Branch-based fallback — only when keyword is too generic (e.g. just "Engineer") ──
-  if (branch && BRANCH_DOMAIN_KEY[branch]) return DOMAIN_SKILLS[BRANCH_DOMAIN_KEY[branch]]
-
-  // ── Default: generic software developer ─────────────────────────────────────
-  return DOMAIN_SKILLS["Software Developer"]
+  const role = resolveAssessmentRole(jobTitle, branch)
+  return { skills: role.auraSkills || [], stream: role.stream }
 }
 
 // ─── 3. Generate MCQ ── Groq (generation, not user-visible analysis) ──────────
@@ -153,26 +78,16 @@ router.post("/generate-mcq", async (req, res) => {
   // Get the EXACT skills for this domain — these become mandatory question categories
   // branch is the student's enrolled branch (ECE/EEE/Mechanical/Civil/etc.) used as fallback
   // when the jobTitle keyword alone doesn't resolve to a known non-IT domain.
-  const domainSkills = getDomainSkills(jobTitle, branch)
+  const { skills: domainSkills, stream: domainStream } = getDomainSkills(jobTitle, branch)
   // Ensure every domain skill gets at least 1-2 questions for full radar coverage
   const questionsPerSkill = Math.max(1, Math.floor(count / domainSkills.length))
   const extra = count - (questionsPerSkill * domainSkills.length)
 
   // For non-IT/engineering domains, swap code_output for numerical/diagram questions
   const isEngineeringBranch = branch && ["ECE","EEE","Mechanical","Civil","IoT","Pharmacy","MBA"].includes(branch)
-  // Detect engineering domain by keyword match (not just branch) so sub-role maps work too
-  const ENGINEERING_SKILL_SETS = new Set([
-    DOMAIN_SKILLS["ECE Embedded"], DOMAIN_SKILLS["ECE VLSI"], DOMAIN_SKILLS["ECE RF"],
-    DOMAIN_SKILLS["ECE IoT"], DOMAIN_SKILLS["ECE Telecom"], DOMAIN_SKILLS["ECE Analog Layout"],
-    DOMAIN_SKILLS["ECE"], DOMAIN_SKILLS["EEE Power"], DOMAIN_SKILLS["EEE Machines"],
-    DOMAIN_SKILLS["EEE Control"], DOMAIN_SKILLS["EEE PE"], DOMAIN_SKILLS["EEE Instrumentation"],
-    DOMAIN_SKILLS["EEE"], DOMAIN_SKILLS["Civil Structural"], DOMAIN_SKILLS["Civil Geo"],
-    DOMAIN_SKILLS["Civil Transport"], DOMAIN_SKILLS["Civil Water"], DOMAIN_SKILLS["Civil Construction"],
-    DOMAIN_SKILLS["Civil"], DOMAIN_SKILLS["Mech Thermal"], DOMAIN_SKILLS["Mech Fluid"],
-    DOMAIN_SKILLS["Mech Manufacturing"], DOMAIN_SKILLS["Mech Design"], DOMAIN_SKILLS["Mechanical"],
-    DOMAIN_SKILLS["IoT"], DOMAIN_SKILLS["Pharmacy"],
-  ])
-  const isEngineeringRole = isEngineeringBranch || ENGINEERING_SKILL_SETS.has(domainSkills)
+  // Detect engineering domain by the resolved role's stream (not just branch) so
+  // sub-role keyword matches (e.g. "VLSI Engineer" with no branch set) still work.
+  const isEngineeringRole = isEngineeringBranch || NON_CODE_STREAMS.has(domainStream)
   const mix = isEngineeringRole
     ? { mcq: Math.round(count * 0.40), numerical: Math.round(count * 0.25), problem_solving: Math.round(count * 0.20), scenario: Math.round(count * 0.10), fill_blank: Math.round(count * 0.05), code_output: 0 }
     : { mcq: Math.round(count * 0.30), code_output: Math.round(count * 0.25), problem_solving: Math.round(count * 0.20), scenario: Math.round(count * 0.15), fill_blank: Math.round(count * 0.10), numerical: 0 }
@@ -250,10 +165,11 @@ router.post("/generate-mcq", async (req, res) => {
   // No json:true — strict JSON mode causes json_validate_failed on the small model.
   // parseQuestions() handles plain-text JSON, code-fenced JSON, and truncated JSON.
   try {
-    // Detect if this is a non-IT/engineering domain so we can set the right context
-    const nonItDomainKey = branch && BRANCH_DOMAIN_KEY[branch] ? BRANCH_DOMAIN_KEY[branch] : null
-    const isEngineeringDomain = nonItDomainKey && ["ECE","EEE","Mechanical","Civil","IoT"].includes(nonItDomainKey)
-    const isNonItDomain = !!nonItDomainKey
+    // Detect if this is a non-IT/engineering domain so we can set the right context.
+    // (isEngineeringBranch is already computed above from the same branch list this
+    // used to derive via BRANCH_DOMAIN_KEY — kept in sync now that DOMAIN_SKILLS/
+    // BRANCH_DOMAIN_KEY were removed in favor of roleConfig.js's auraSkills.)
+    const isNonItDomain = !!isEngineeringBranch
 
     const raw = await groq([
       {

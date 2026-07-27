@@ -38,7 +38,11 @@ const fetchSlots = async ({ keyword, eloRating, skillGraph, path }) => {
       ...ch,
       slotId: `slot_${i}_${todayStr()}`,
       completed: false,
-      eloReward: ch.eloReward || (ch.difficulty === "Hard" ? 30 : ch.difficulty === "Medium" ? 20 : 15),
+      // 2026-07-27 P0 fix: fallback only fires if the server omits eloReward.
+      // Kept in sync with the backend's MAX_POSITIVE_DELTA_BY_DIFFICULTY cap
+      // (Easy 8 / Medium 12 / Hard 15) so this preview can never promise more
+      // than what the server will actually award.
+      eloReward: ch.eloReward || (ch.difficulty === "Hard" ? 15 : ch.difficulty === "Medium" ? 12 : 8),
     }))
   } catch (err) {
     console.warn("Arena daily fetch failed:", err.message)

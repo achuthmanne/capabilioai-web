@@ -32,6 +32,12 @@ const today = () => new Date().toISOString().slice(0, 10)
 
 // ELO formula (same as frontend — single source of truth in constants)
 const CHALLENGE_ELO = { Easy: 800, Medium: 1100, Hard: 1400, Expert: 1700 }
+// 2026-07-27 P0 fix: this is the fourth copy of the same formula (grading-worker.js,
+// arena-v2/reward-engine/eloFormula.js, routes/arena.js's computeReviewEloDelta, and
+// this one) — all four had the same uncapped-positive-delta issue and are now
+// capped identically. See grading-worker.js's computeEloUpdate for the full
+// rationale. Hard maxes at +15, Medium +12, Easy +8, going forward only.
+const MAX_POSITIVE_DELTA_BY_DIFFICULTY = { Easy: 8, Medium: 12, Hard: 15, Expert: 18 }
 
 function computeEloUpdate({ userElo, difficulty, score, attempts, timeTakenSecs, estimatedSecs }) {
   const challengeElo = CHALLENGE_ELO[difficulty] || 1100
@@ -44,6 +50,8 @@ function computeEloUpdate({ userElo, difficulty, score, attempts, timeTakenSecs,
   let   delta        = Math.round(K * (actual - expected) * attemptMult * timeBonus)
   if (actual >= 0.7 && delta < 3) delta = 3
   if (delta < -30) delta = -30
+  const positiveCap = MAX_POSITIVE_DELTA_BY_DIFFICULTY[difficulty] ?? MAX_POSITIVE_DELTA_BY_DIFFICULTY.Medium
+  if (delta > positiveCap) delta = positiveCap
   return { delta, newElo: Math.max(100, userElo + delta) }
 }
 

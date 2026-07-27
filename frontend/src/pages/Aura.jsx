@@ -3039,6 +3039,14 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
   const [skillGapData, setSkillGapData] = useState(null)
   const [skillGapLoading, setSkillGapLoading] = useState(false)
   const [skillGapError, setSkillGapError] = useState("")
+  // 2026-07-27: live per-skill data from the `skill_graph` TABLE (written by
+  // grading-worker.js on every scored Arena submission — see arena.js's new
+  // GET /api/arena/skill-graph route for why this exists: profiles.skill_graph
+  // stopped updating from Arena missions once the 2026-07-18 fix correctly
+  // removed the client's double-ELO-writing applySkillUpdates() call, and
+  // nothing replaced it as a read source for this dashboard. This is a
+  // read-only fetch — it cannot reintroduce that bug.
+  const [liveArenaSkillGraph, setLiveArenaSkillGraph] = useState([])
   const [resilienceData, setResilienceData] = useState(null)
   const [resilienceLoading, setResLoading] = useState(false)
   const [githubData, setGithubData]     = useState(null)
@@ -3142,6 +3150,28 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
         if (data?.length) setArenaHistRows(data)
       })
   }, [user?.id])
+
+  // ── Live skill radar: pull real per-skill progress from the `skill_graph`
+  // table (written server-side by grading-worker.js on every scored Arena
+  // submission) so the Aura radar updates dynamically as missions/assessments
+  // are completed, instead of only reflecting the stale onboarding-time
+  // profiles.skill_graph blob. Read-only fetch — see arena.js's
+  // GET /api/arena/skill-graph for the full rationale.
+  useEffect(() => {
+    const uid = user?.id || user?.uid
+    if (!uid) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const headers = await vHeaders()
+        const res = await fetch(`${API}/api/arena/skill-graph?userId=${uid}`, { headers })
+        if (!res.ok) return
+        const { skills } = await res.json()
+        if (!cancelled && Array.isArray(skills)) setLiveArenaSkillGraph(skills)
+      } catch { /* non-fatal — radar falls back to profiles.skill_graph */ }
+    })()
+    return () => { cancelled = true }
+  }, [user?.id, arenaHistRows.length])
 
   // Returns true/false so callers that need to know (e.g. resume upload) can
   // show an accurate result instead of assuming success. BUG FIX (2026-07-20):
@@ -3730,7 +3760,28 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
 
   // Derived data — resumeSkills must be declared before skillGraph uses it
   const resumeSkills=userData?.resumeSkills||[]
-  const rawSkillGraph=(userData?.skillGraph||[]).filter(d=>d&&(d.label||d.skill)&&(d.label||d.skill)!=="undefined")
+  const profileSkillGraph=(userData?.skillGraph||[]).filter(d=>d&&(d.label||d.skill)&&(d.label||d.skill)!=="undefined")
+  // Merge in live, dynamically-updating per-skill data from completed Arena
+  // missions (liveArenaSkillGraph, see the fetch effect above) — this is what
+  // makes the radar move after a mission/assessment instead of staying frozen
+  // at onboarding-time values. Live arena data wins per-skill (by label,
+  // case-insensitive) since it's proof-backed and more recent; any skill only
+  // present in the profile blob (e.g. resume-derived, never yet practiced in
+  // Arena) is kept as-is.
+  const rawSkillGraph = (() => {
+    if (!liveArenaSkillGraph.length) return profileSkillGraph
+    const liveByLabel = new Map(liveArenaSkillGraph.map(s => [(s.label || s.skill || "").toLowerCase(), s]))
+    const merged = profileSkillGraph.map(s => {
+      const key = (s.label || s.skill || "").toLowerCase()
+      return liveByLabel.has(key) ? { ...s, ...liveByLabel.get(key) } : s
+    })
+    const mergedKeys = new Set(merged.map(s => (s.label || s.skill || "").toLowerCase()))
+    liveArenaSkillGraph.forEach(s => {
+      const key = (s.label || s.skill || "").toLowerCase()
+      if (!mergedKeys.has(key)) merged.push(s)
+    })
+    return merged
+  })()
   // If all scores are 0 (onboarding analysis fallback), derive initial scores from:
   // - years of experience (more exp → higher base)
   // - whether the skill appears in userData.skills list (present = practised)
@@ -3771,7 +3822,10 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
 
   // ── Dynamic strengths from skillGraph (top scored, >60%) ─────────────────
   // Falls back to stored userData.strengths if no arena history yet
-  const rawSkillGraphForStrengths = (userData?.skillGraph||userData?.skill_graph||[]).filter(s=>s&&(s.label||s.skill))
+  // Uses the already-merged rawSkillGraph (profile blob + live skill_graph
+  // table) so Strengths/Areas-to-improve update from completed missions too,
+  // not just the radar.
+  const rawSkillGraphForStrengths = rawSkillGraph.filter(s=>s&&(s.label||s.skill))
   const dynamicStrengths = rawSkillGraphForStrengths
     .filter(s => (s.value||s.score||0) >= 60)
     .sort((a,b) => (b.value||b.score||0) - (a.value||a.score||0))

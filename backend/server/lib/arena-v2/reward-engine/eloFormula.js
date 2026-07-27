@@ -24,6 +24,16 @@ export const START_ELO = 800
 const ELO_FLOOR = 100
 const MAX_NEGATIVE_DELTA = -30
 const MIN_PASSING_DELTA = 3
+// 2026-07-27 P0 fix (mirrors the same fix in lib/grading-worker.js's
+// computeEloUpdate — kept in sync deliberately even though these two
+// engines stay isolated per this file's LINEAGE note): the logistic
+// expected-score curve has no ceiling of its own, so a low-rated user
+// facing a Hard/Expert Domain Challenge could swing past +30-40 on a single
+// submission. Product rule: Hard maxes at +15, Medium +12, Easy +8. Applies
+// only to positive deltas going forward — MAX_NEGATIVE_DELTA and
+// MIN_PASSING_DELTA below are untouched, and existing av2_elo_ledger rows
+// are not retroactively recomputed.
+export const MAX_POSITIVE_DELTA_BY_DIFFICULTY = { Easy: 8, Medium: 12, Hard: 15, Expert: 18 }
 
 /**
  * @param {{ currentElo: number, difficulty: string, score: number }} input
@@ -44,6 +54,8 @@ export function computeEloDelta({ currentElo, difficulty, score }) {
   // same floor V1 applies.
   if (actual >= 0.7 && delta < MIN_PASSING_DELTA) delta = MIN_PASSING_DELTA
   if (delta < MAX_NEGATIVE_DELTA) delta = MAX_NEGATIVE_DELTA
+  const positiveCap = MAX_POSITIVE_DELTA_BY_DIFFICULTY[difficulty] ?? MAX_POSITIVE_DELTA_BY_DIFFICULTY.Medium
+  if (delta > positiveCap) delta = positiveCap
 
   const newElo = Math.max(ELO_FLOOR, currentElo + delta)
   return { delta, newElo }
