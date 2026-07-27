@@ -2810,7 +2810,20 @@ const STREAM_CARD_CONFIG = {
       desc: "Implement activation functions, loss functions, and training algorithms from scratch — the coding round ML companies actually test.",
       tags: ["🧠 Deep Learning", "⚡ Gradient Descent", "📐 Linear Models", "🌲 Tree Methods", "🔗 Backprop"],
       cta: "Open ML Challenges →", count: null,
-      categories: ["AI_ML"],
+      // 2026-07-27 fix: this used to be ["AI_ML"] — identical to the
+      // COMMON CHALLENGES card's filter — so both cards routed through
+      // ArenaCommonChallenges with the exact same category, landing on
+      // the literal same list under different labels (user-reported bug:
+      // "ML Coding Practice" opened what looked like "Common Challenges").
+      // ARENA_DOMAINS.ml (arenaDomains.js) already has a complete, real
+      // domain workstation for this — Model Trainer / Data Explorer /
+      // Experiment Tracker / Deploy Lab / Eval Suite modules, mission
+      // categories, rubric, context panel — it was simply unreachable
+      // because resolveArenaDomain() had no ML/AI branch until the role-
+      // resolver fix earlier this session. null here (matching ECE's
+      // pattern) routes to the real ArenaDomain workstation instead of
+      // the shared filtered browser.
+      categories: null,
     },
   },
 
