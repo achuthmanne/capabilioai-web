@@ -4217,6 +4217,25 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
           ...(missionSkills.length > 0 ? { skillGraph: updatedGraph } : {}),
         })
 
+        // 2026-07-27 P0 fix: this used to save only ONE short field
+        // (statement || scenario || description, whichever hit first) into
+        // arena_history.scenario — so the Portfolio proof page only ever
+        // showed a 2-sentence fragment of the mission, even though the
+        // live Mission Brief panel above composes scenario + objective +
+        // steps + hints + expected output into the full ~20-sentence brief
+        // the user actually solved. Compose the same full brief here so
+        // the proof record matches what was actually presented — this is
+        // what "complete replay" in the portfolio requires.
+        const missionBrief = [
+          activeMission?.statement || activeMission?.scenario || activeMission?.description || "",
+          activeMission?.objective ? `\n\nObjective: ${activeMission.objective}` : "",
+          Array.isArray(activeMission?.steps) && activeMission.steps.length > 0
+            ? `\n\nSteps:\n${activeMission.steps.map((s, i) => `${i + 1}. ${s}`).join("\n")}` : "",
+          activeMission?.expectedOutput ? `\n\nExpected output: ${activeMission.expectedOutput}` : "",
+          Array.isArray(activeMission?.hints) && activeMission.hints.length > 0
+            ? `\n\nHints:\n${activeMission.hints.map(h => `- ${h}`).join("\n")}` : "",
+        ].join("").trim()
+
         await arenaDb.addSubmission(uid, {
           task_id:          activeMission?.id || activeMission?.slug || domainKey,
           title:            activeMission?.title || "Arena Challenge",
@@ -4226,7 +4245,9 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
           score:            finalScore,
           elo_delta:        eloGain,
           summary:          reviewResult.summary || "",
-          scenario:         activeMission?.statement || activeMission?.scenario || activeMission?.description || "",
+          scenario:         missionBrief,
+          objective:        activeMission?.objective || "",
+          expected_output:  activeMission?.expectedOutput || "",
           submitted_answer: String(code || "").slice(0, 3000),
           feedback:         reviewResult.summary || "",
         })

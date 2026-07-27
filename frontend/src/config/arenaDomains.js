@@ -4,6 +4,7 @@
  * 12 professional domains. Every workstation is generated from this config.
  * Add a domain here → it appears everywhere: landing, workstation, missions, leaderboard.
  */
+import { getRoleConfig } from "./roleConfig.js"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RENDERER TYPES  (formerly called "sandbox types")
@@ -1770,34 +1771,32 @@ export const DOMAIN_ORDER = [
 /**
  * Resolve a user's domain from their keyword / job title string.
  * Returns a domain key from ARENA_DOMAINS.
+ *
+ * FIXED 2026-07-27: this used to be its own hand-rolled substring matcher
+ * (14 branches) that silently fell through to "swe" for anything it didn't
+ * recognize — including "ML / AI Engineer", "Android Developer", "iOS
+ * Developer", "Pharmacy", and "MBA", despite ARENA_DOMAINS already having
+ * "ml"/"android"/"ios"/"pharmacy"/"mba" domain configs (see DOMAIN_ORDER
+ * above) that were simply unreachable from here. Root-caused from a user
+ * report: Aura's dashboard header showed "ML / AI Engineer" (reads
+ * userData.keyword directly) while the Arena page showed "Software
+ * Engineer" for the exact same account (ran the same keyword through this
+ * matcher, which had no ML/AI branch, and defaulted to "swe").
+ *
+ * Same bug shape as the assessment.js skill-taxonomy split fixed earlier
+ * this session — a second, independently-maintained keyword resolver
+ * drifting from the canonical one. Fixed the same way: delegate to
+ * getRoleConfig() (roleConfig.js), which already has a curated
+ * `arenaKey` field per role (44 roles, longest-keyword-first matching,
+ * career_track_slug + branch fallbacks) and is the single source of truth
+ * used everywhere else (Aura workbench name, onboarding assessment,
+ * skill-radar taxonomy). This makes Arena and Aura structurally unable to
+ * diverge again — they resolve the same field through the same function.
  */
 export const resolveArenaDomain = (userData) => {
-  const kw = (
-    userData?.keyword ||
-    userData?.jobTitle ||
-    userData?.role ||
-    userData?.authority ||
-    ""
-  ).toLowerCase()
-
-  if (kw.includes("dba") || kw.includes("database admin"))                             return "dba"
-  if (kw.includes("bi analyst") || kw.includes("business intel") || kw.includes("tableau") || kw.includes("power bi")) return "bi_analyst"
-  if (kw.includes("data engineer") || kw.includes("data eng") || kw.includes("etl") || kw.includes("spark") || kw.includes("airflow")) return "data_engineer"
-  if (kw.includes("data anal") || kw.includes("analytics"))                          return "data"
-  if (kw.includes("sre") || kw.includes("site reliability") || kw.includes("platform eng")) return "sre"
-  if (kw.includes("soc analyst") || kw.includes("incident response") || kw.includes("soc eng")) return "soc"
-  if (kw.includes("qa") || kw.includes("test automation") || kw.includes("quality assurance") || kw.includes("playwright")) return "qa"
-  if (kw.includes("business analyst") || kw.includes("product analyst") || kw.includes("ba ") || kw.includes("bpo")) return "ba_product"
-  if (kw.includes("frontend") || kw.includes("front end") || kw.includes("react dev")) return "frontend"
-  if (kw.includes("backend") || kw.includes("back end") || kw.includes("api dev"))   return "backend"
-  if (kw.includes("full stack") || kw.includes("fullstack"))                          return "fullstack"
-  if (kw.includes("devops"))                                                           return "devops"
-  if (kw.includes("aws") || kw.includes("amazon web"))                               return "aws"
-  if (kw.includes("azure") || kw.includes("microsoft cloud"))                        return "azure"
-  if (kw.includes("cyber") || kw.includes("security") || kw.includes("pentest"))    return "cyber"
-  if (kw.includes("medical") || kw.includes("icd") || kw.includes("cpt"))           return "medical"
-  if (kw.includes("ece") || kw.includes("embedded") || kw.includes("vlsi") || kw.includes("fpga")) return "ece"
-  return "swe"
+  const role = getRoleConfig(userData)
+  const key = role?.arenaKey
+  return (key && ARENA_DOMAINS[key]) ? key : "swe"
 }
 
 /**

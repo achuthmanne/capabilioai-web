@@ -34,6 +34,13 @@ const MIN_PASSING_DELTA = 3
 // MIN_PASSING_DELTA below are untouched, and existing av2_elo_ledger rows
 // are not retroactively recomputed.
 export const MAX_POSITIVE_DELTA_BY_DIFFICULTY = { Easy: 8, Medium: 12, Hard: 15, Expert: 18 }
+// 2026-07-27 P0 fix (mirrors grading-worker.js): a near-empty/trivial
+// submission can still net a small POSITIVE delta purely from ELO
+// expectancy math when the user is far below the challenge's rating —
+// the "expected" win probability is so low that even a token score
+// exceeds it. Gate positive deltas on a minimum quality bar; negative
+// deltas are untouched.
+const MIN_SCORE_FOR_POSITIVE_DELTA = 20
 
 /**
  * @param {{ currentElo: number, difficulty: string, score: number }} input
@@ -49,6 +56,7 @@ export function computeEloDelta({ currentElo, difficulty, score }) {
   const K = currentElo < 800 ? 48 : currentElo < 1100 ? 36 : currentElo < 1400 ? 28 : 20
 
   let delta = Math.round(K * (actual - expected))
+  if (actual * 100 < MIN_SCORE_FOR_POSITIVE_DELTA && delta > 0) delta = 0
   // A genuinely passing attempt (score >= 70) should never net a token
   // +0/+1 against a much stronger opponent rating — carries forward the
   // same floor V1 applies.

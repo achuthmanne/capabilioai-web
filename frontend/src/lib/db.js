@@ -329,7 +329,13 @@ export const arenaDb = {
       title:                data.title   || "Arena Challenge",
       domain:               data.domain  || data.domain_key || "swe",
       difficulty:           data.difficulty || "Medium",
-      scenario:             (data.scenario || "").slice(0, 2000),
+      // Bumped 2026-07-27: 2000 chars was truncating the composed full
+      // mission brief (scenario + objective + steps + hints) Arena.jsx now
+      // sends here — see the "missionBrief" comment at its call site. 8000
+      // comfortably covers a ~20-sentence brief with headroom.
+      scenario:             (data.scenario || "").slice(0, 8000),
+      objective:            (data.objective || "").slice(0, 2000),
+      expected_output:      (data.expected_output || "").slice(0, 2000),
       user_answer:          (data.submitted_answer || data.user_answer || "").slice(0, 3000),
       feedback:             (data.summary || data.feedback || "").slice(0, 1000),
       score:                data.score   || 0,

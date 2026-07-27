@@ -39,6 +39,9 @@ const CHALLENGE_ELO = { Easy: 800, Medium: 1100, Hard: 1400, Expert: 1700 }
 // see docs/elo-engine-v2-architecture.md if a future backfill is ever
 // scoped).
 const MAX_POSITIVE_DELTA_BY_DIFFICULTY = { Easy: 8, Medium: 12, Hard: 15, Expert: 18 }
+// 2026-07-27: minimum score (0-100) a submission must reach before it is
+// allowed to move ELO upward at all — see the fix note at its use site below.
+const MIN_SCORE_FOR_POSITIVE_DELTA = 20
 
 function computeEloUpdate({ userElo, difficulty, score, attempts, timeTakenSecs, estimatedSecs }) {
   const challengeElo = CHALLENGE_ELO[difficulty] || 1100
@@ -49,6 +52,15 @@ function computeEloUpdate({ userElo, difficulty, score, attempts, timeTakenSecs,
   const timeRatio    = estimatedSecs > 0 ? timeTakenSecs / estimatedSecs : 1
   const timeBonus    = timeRatio < 0.5 ? 1.10 : timeRatio < 0.75 ? 1.05 : 1.00
   let   delta        = Math.round(K * (actual - expected) * attemptMult * timeBonus)
+  // 2026-07-27 P0 fix: a near-empty/trivial submission (e.g. 1 character,
+  // fails almost every validation check) could still net a small POSITIVE
+  // delta purely from ELO expectancy math — a low-rated user facing a
+  // much harder challenge has such a low "expected" win probability that
+  // even a ~5-6% score exceeds it, so (actual - expected) > 0. Business
+  // rule: a submission must clear a minimum quality bar before it can
+  // move ELO upward at all, no matter what the curve says. Negative
+  // deltas are untouched — a bad submission still costs ELO as before.
+  if (actual * 100 < MIN_SCORE_FOR_POSITIVE_DELTA && delta > 0) delta = 0
   if (actual >= 0.7 && delta < 3) delta = 3
   if (delta < -30) delta = -30
   const positiveCap = MAX_POSITIVE_DELTA_BY_DIFFICULTY[difficulty] ?? MAX_POSITIVE_DELTA_BY_DIFFICULTY.Medium
@@ -154,7 +166,21 @@ async function processJob(payload) {
       score:            finalScore,
       elo_delta:        delta,
       summary:          feedbackPayload.summary,
-      scenario:         challenge.description || challenge.statement || "",
+      // 2026-07-27: compose the full brief (same shape as Arena.jsx's
+      // client-side addSubmission fix) instead of just one short field —
+      // arena_history.objective/expected_output already existed as columns
+      // but were never populated by this insert.
+      scenario:         [
+        challenge.description || challenge.statement || "",
+        challenge.objective ? `\n\nObjective: ${challenge.objective}` : "",
+        Array.isArray(challenge.steps) && challenge.steps.length > 0
+          ? `\n\nSteps:\n${challenge.steps.map((s, i) => `${i + 1}. ${s}`).join("\n")}` : "",
+        challenge.expectedOutput || challenge.expected_output ? `\n\nExpected output: ${challenge.expectedOutput || challenge.expected_output}` : "",
+        Array.isArray(challenge.hints) && challenge.hints.length > 0
+          ? `\n\nHints:\n${challenge.hints.map(h => `- ${h}`).join("\n")}` : "",
+      ].join("").trim(),
+      objective:        challenge.objective || "",
+      expected_output:  challenge.expectedOutput || challenge.expected_output || "",
       submitted_answer: String(code || "").slice(0, 3000),
       feedback:         feedbackPayload.summary,
       completed_at:     new Date().toISOString(),

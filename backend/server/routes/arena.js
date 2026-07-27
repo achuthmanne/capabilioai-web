@@ -26,6 +26,10 @@ const CHALLENGE_ELO = { Easy: 800, Medium: 1100, Hard: 1400, Expert: 1700 }
 // the full rationale). Hard maxes at +15, Medium +12, Easy +8, going forward
 // only; existing profiles.elo_history is not retroactively recomputed.
 const MAX_POSITIVE_DELTA_BY_DIFFICULTY = { Easy: 8, Medium: 12, Hard: 15, Expert: 18 }
+// 2026-07-27: minimum score (0-100) required before a submission can move
+// ELO upward at all — see grading-worker.js's computeEloUpdate for the
+// full rationale (near-empty submissions exploiting ELO expectancy math).
+const MIN_SCORE_FOR_POSITIVE_DELTA = 20
 function computeReviewEloDelta({ userElo, difficulty, score, timeTakenSecs = 0, estimatedSecs = 0 }) {
   const challengeElo = CHALLENGE_ELO[difficulty] || 1100
   const expected     = 1 / (1 + Math.pow(10, (challengeElo - userElo) / 400))
@@ -34,6 +38,7 @@ function computeReviewEloDelta({ userElo, difficulty, score, timeTakenSecs = 0, 
   const timeRatio    = estimatedSecs > 0 ? timeTakenSecs / estimatedSecs : 1
   const timeBonus    = timeRatio < 0.5 ? 1.10 : timeRatio < 0.75 ? 1.05 : 1.00
   let   delta        = Math.round(K * (actual - expected) * timeBonus)
+  if (actual * 100 < MIN_SCORE_FOR_POSITIVE_DELTA && delta > 0) delta = 0
   if (actual >= 0.7 && delta < 3) delta = 3
   if (delta < -30) delta = -30
   const positiveCap = MAX_POSITIVE_DELTA_BY_DIFFICULTY[difficulty] ?? MAX_POSITIVE_DELTA_BY_DIFFICULTY.Medium
