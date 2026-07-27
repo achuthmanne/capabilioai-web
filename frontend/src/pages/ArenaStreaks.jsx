@@ -468,7 +468,14 @@ export default function ArenaStreaks({ uid, domain, onGoToTasks }) {
     <div style={{
       fontFamily: "'DM Sans',sans-serif",
       background: T.cream,
-      minHeight: "100%",
+      // 2026-07-27 fix: this was minHeight:"100%", which lets the div grow
+      // taller than its parent instead of scrolling — the parent wrapper
+      // in Arena.jsx (the STREAKS TAB container) is `overflow:"hidden"`,
+      // same pattern History/Leaderboard tabs rely on, so an unbounded
+      // child here just clips all overflow invisibly with no scrollbar
+      // anywhere. height:"100%" bounds this div to the parent so its own
+      // overflowY:auto actually engages.
+      height: "100%",
       overflowY: "auto",
       padding: "20px 20px 40px",
     }}>

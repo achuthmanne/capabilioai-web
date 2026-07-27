@@ -4087,20 +4087,42 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
       }
     })
 
-    // ELO gain — timeouts still earn based on score (AI reviewed) so the gain is meaningful.
-    // A student who wrote real code and scored 40+ on timeout shouldn't get the same as blank.
-    // (isPractice is declared at the top of this function now — see BUG FIX note there.)
-
-    // Integrity override: cheated submissions lose ELO (-10 penalty, floored at 0)
+    // ── ELO gain ──────────────────────────────────────────────────────────────
+    // 2026-07-27 P0 fix: this used to be a second, independent, client-side
+    // ELO formula (hardcoded score-threshold table) that ran regardless of
+    // whether /api/arena/review's server-authoritative call above succeeded.
+    // It bypassed the server's computeReviewEloDelta entirely — including
+    // the difficulty-based positive-delta cap and the minimum-score gate
+    // fixed earlier this session — and never touched arena_streak or
+    // streak_events, which is why the Streaks tab stayed permanently empty
+    // even for users who were actively submitting (root-caused from a user
+    // report + direct DB query: elo_rating and arena_completed updated,
+    // arena_streak stayed 0 and last_arena_date stayed null).
+    //
+    // Fixed: policy overrides (practice mode, integrity violation, zero-
+    // effort timeout) are still decided client-side — they're deterministic
+    // and don't require server verification. Everything else uses the
+    // eloDelta/newElo the server already computed AND WROTE TO THE DB via
+    // apply_arena_result — never a client guess. If the authoritative call
+    // was skipped (e.g. too little written to bother grading) or failed
+    // (network/timeout), ELO does not move at all — "no verified score" no
+    // longer defaults to a small positive number.
     const ELO_CHEAT_PENALTY = -10
-    // Zero-effort timeout (starter template never touched) is hard-pinned to
-    // +0 ELO regardless of finalScore — belt-and-suspenders alongside
-    // finalScore already being forced to 0 above, since ELO is the one number
-    // that must never be gameable by simply opening a tab and waiting.
-    const eloGain = isPractice ? 0 : integrity.isCheat ? ELO_CHEAT_PENALTY : isZeroEffortTimeout ? 0 : timedOut
-      ? (finalScore >= 60 ? 8 : finalScore >= 40 ? 4 : netMeaningful >= 5 ? 2 : 0)
-      : (finalScore >= 80 ? 25 : finalScore >= 60 ? 12 : finalScore >= 40 ? 5 : 3)
-    const newElo = Math.max(0, elo + eloGain)
+    const serverEloDelta = typeof aiReview?.eloDelta === "number" ? aiReview.eloDelta : null
+    // True only when the server's authoritative apply_arena_result RPC
+    // actually ran and wrote elo_rating/arena_completed/arena_streak/
+    // last_arena_date to the DB already — the client must not re-write or
+    // re-increment any of those fields in that case (see the userDoc.update
+    // call below), or it double-counts the same submission.
+    const usedServerAuthoritativeElo = serverEloDelta !== null && !integrity.isCheat && !isZeroEffortTimeout
+    const eloGain = isPractice ? 0
+      : integrity.isCheat ? ELO_CHEAT_PENALTY
+      : isZeroEffortTimeout ? 0
+      : usedServerAuthoritativeElo ? serverEloDelta
+      : 0 // authoritative grading unavailable — no unverified ELO movement
+    const newElo = (usedServerAuthoritativeElo && typeof aiReview?.newElo === "number")
+      ? aiReview.newElo
+      : Math.max(0, elo + eloGain)
 
     const gradeFor = s => s >= 90 ? "A+" : s >= 80 ? "A" : s >= 70 ? "B+" : s >= 60 ? "B" : s >= 50 ? "C" : "D"
 
@@ -4223,12 +4245,42 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
             updatedGraph.push({ label: skill, skill, value: finalScore, score: finalScore })
           }
         })
+        // 2026-07-27 fix: when the server's apply_arena_result RPC already
+        // ran (usedServerAuthoritativeElo), it already wrote elo_rating,
+        // arena_completed, arena_streak, AND last_arena_date to the DB in
+        // one atomic update — including this client write would double-
+        // increment arena_completed and race the ELO value against the
+        // server's. Only skillGraph (never touched by the RPC) and
+        // arenaLastActive (harmless, non-scoring) still need a client
+        // write in that case. When the authoritative call didn't run
+        // (practice/cheat/zero-effort/unreachable server), fall back to
+        // the previous client-owned bookkeeping for those low-risk fields
+        // — ELO itself is never client-written in that branch (eloGain=0
+        // for the "unreachable" case, see above).
         await userDoc.update(uid, {
-          eloRating:       newElo,          // toSnake → elo_rating
           arenaLastActive: nowIso,          // toSnake → arena_last_active
-          arenaCompleted:  (userData?.arena_completed || userData?.arenaCompleted || 0) + 1,
+          ...(usedServerAuthoritativeElo ? {} : {
+            eloRating:      newElo,
+            arenaCompleted: (userData?.arena_completed || userData?.arenaCompleted || 0) + 1,
+          }),
           ...(missionSkills.length > 0 ? { skillGraph: updatedGraph } : {}),
         })
+
+        // Sync local React state immediately so the UI (ELO badge, streak
+        // displays) reflects the server-authoritative numbers without
+        // waiting on a Realtime round-trip.
+        if (usedServerAuthoritativeElo) {
+          setElo(newElo)
+          setUserData?.(prev => ({
+            ...prev,
+            eloRating:        newElo,
+            elo_rating:       newElo,
+            arena_streak:     aiReview?.newStreak ?? prev?.arena_streak,
+            arenaStreak:      aiReview?.newStreak ?? prev?.arenaStreak,
+            arena_completed:  aiReview?.arenaCompleted ?? prev?.arena_completed,
+            arenaCompleted:   aiReview?.arenaCompleted ?? prev?.arenaCompleted,
+          }))
+        }
 
         // 2026-07-27 P0 fix: this used to save only ONE short field
         // (statement || scenario || description, whichever hit first) into

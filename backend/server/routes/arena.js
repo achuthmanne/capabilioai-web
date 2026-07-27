@@ -439,6 +439,29 @@ Return JSON: {"score":${passRate !== null ? passRate : "<0-100>"},"grade":"<A+|A
         review.newElo         = row?.elo_rating ?? (userElo + delta)
         review.newStreak      = row?.arena_streak ?? null
         review.arenaCompleted = row?.arena_completed ?? null
+
+        // 2026-07-27 fix: this is the ONLY authoritative ELO-write path for
+        // the live Arena submit flow (Arena.jsx's client-side ELO formula
+        // was removed the same day — see grading-worker.js's identical
+        // upsert for the other, queue-based grading path). streak_events
+        // is what drives the Streaks tab's heatmap + coding/domain streak
+        // counters — apply_arena_result already updates profiles.arena_streak
+        // above, but never touched this table, so the heatmap stayed
+        // permanently empty for every submission going through /review.
+        await db.from("streak_events").upsert({
+          user_id:         uid,
+          event_date:      today,
+          challenge_count: 1,
+          domains:         [challenge.domain || "swe"],
+          elo_gained:      Math.max(0, delta),
+          is_freeze_used:  false,
+          updated_at:      new Date().toISOString(),
+        }, {
+          onConflict:      "user_id,event_date",
+          ignoreDuplicates: false,
+        }).then(({ error }) => {
+          if (error) console.warn("[arena/review] streak_events write failed:", error.message)
+        })
       } catch (eloErr) {
         console.warn("[arena/review] ELO write skipped:", eloErr.message)
       }
