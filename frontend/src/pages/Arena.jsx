@@ -3668,7 +3668,11 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
       ...task,
       id:          task.id || task.slotId || `ai_${(task.title || "mission").toLowerCase().replace(/[^a-z0-9]+/g, "_").slice(0, 40)}`,
       icon:        WORKSTATION_ICONS[ws] || "🎯",
-      category:    task.type || task.tags?.[0] || "General",
+      // task.category (e.g. "Civil"/"EEE"/"Mechanical") is what
+      // EngineeringLabWorkstation's ENGINEERING_DOMAIN_CONFIG lookup keys off —
+      // must win over the human-readable task.type ("Civil Engineering"), or
+      // every engineering_lab mission silently falls back to the ECE tab/unit set.
+      category:    task.category || task.type || task.tags?.[0] || "General",
       skillTags:   task.tags || [],
       tools:       task.tags || [],
       timeLimit:   typeof task.timeLimit === "number" ? `${task.timeLimit} min` : (task.timeLimit || "30 min"),

@@ -7,7 +7,7 @@
 import { Router }                          from "express"
 import { groq, GROQ_FAST }                 from "../lib/groq.js"
 import { gradeSubmission }                 from "../lib/claude.js"
-import { geminiGenerateMission, DOMAIN_CONTEXT } from "../lib/gemini.js"
+import { geminiGenerateMission, resolveDomainContext, getGenModel } from "../lib/gemini.js"
 import { exec }                            from "child_process"
 import { writeFile, unlink, mkdtemp, rm }   from "fs/promises"
 import { tmpdir }                          from "os"
@@ -308,6 +308,14 @@ router.post("/daily", async (req, res) => {
 
   // ── Attempt 2: Groq fallback ──────────────────────────────────────────────────
   try {
+    // Same resolution as the Gemini path — static DOMAIN_CONTEXT, then the
+    // AI-generated/DB-cached manifest, then swe. Previously this block used
+    // DOMAIN_CONTEXT[domainKey] directly and hardcoded "type":"Software
+    // Engineering" / "workstation":"code_editor" in the prompt regardless of
+    // domain — every Groq-fallback mission for a non-swe role was silently
+    // generic, same bug class as the Gemini path had before ctx was threaded through.
+    const ctx = await resolveDomainContext(getGenModel(), domainKey, keyword)
+
     const raw = await groq([
       { role: "system", content: "You generate real-world Arena challenges for an Indian tech career platform. Return ONLY valid JSON — a single object, no array, no markdown." },
       { role: "user",   content:
@@ -316,22 +324,28 @@ Weak areas: ${weakAreas.slice(0,3).join(", ")||"fundamentals"}
 ${path === "student" ? "STUDENT PATH: fresher/entry-level user — keep scope simple and beginner-appropriate, ONE skill only." : ""}
 ${completedMissions.length ? `Avoid repeating these already-completed missions: ${completedMissions.slice(0,10).join(", ")}` : ""}
 
+Primary tools for this role: ${ctx.tools}
+Preferred language/stack: ${ctx.lang}
+
 Use a REAL Indian company (Swiggy, Razorpay, CRED, Zepto, Zomato, PhonePe, Meesho, Flipkart, Paytm, etc.).
 
 CRITICAL: Do NOT include solution steps, algorithm names, or approach hints in any field. Hints must be guiding questions only.
 
 Return ONE JSON object (concise strings):
-{"id":"slug","title":"short task-specific title","company":"Indian co","difficulty":"${difficulty}","type":"Software Engineering","scenario":"1-2 sentences of context only — no solution hints","taskDescription":"what to build only — not how","objective":"1 measurable outcome","workstation":"code_editor","starterCode":"// scaffold only","expectedOutput":"what correct output looks like","eloGain":${eloGain},"timeLimit":${difficulty === "Hard" ? 55 : difficulty === "Medium" ? 30 : 20},"tags":["t1","t2"],"hints":["guiding question 1","guiding question 2"]}` },
+{"id":"slug","title":"short task-specific title","company":"Indian co","difficulty":"${difficulty}","type":"${ctx.type}","scenario":"1-2 sentences of context only — no solution hints","taskDescription":"what to build only — not how","objective":"1 measurable outcome","workstation":"${ctx.workstation}","starterCode":"// scaffold only","expectedOutput":"what correct output looks like","eloGain":${eloGain},"timeLimit":${difficulty === "Hard" ? 55 : difficulty === "Medium" ? 30 : 20},"tags":["t1","t2"],"hints":["guiding question 1","guiding question 2"]}` },
     ], { max_tokens: 1200, json: false })
 
     const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim()
     const obj = JSON.parse(cleaned.slice(cleaned.indexOf("{"), cleaned.lastIndexOf("}") + 1))
     if (!obj?.title) throw new Error("Groq returned invalid mission structure")
 
-    // Always override AI-generated starterCode with our curated template
-    const ctx = DOMAIN_CONTEXT[domainKey] || DOMAIN_CONTEXT.swe
+    // Always override AI-generated starterCode/category with our curated
+    // template — same reliability reasoning as the Gemini path in gemini.js.
     if (ctx?.starterCode) {
       obj.starterCode = ctx.starterCode.replace(/\{company\}/g, obj.company || "Company")
+    }
+    if (ctx?.category) {
+      obj.category = ctx.category
     }
 
     console.log(`[arena/daily] Groq fallback: generated mission for ${keyword} ELO:${eloRating}`)

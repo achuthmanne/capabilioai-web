@@ -6,6 +6,7 @@
 
 import { GoogleGenerativeAI } from "@google/generative-ai"
 import { readFile } from "fs/promises"
+import { getOrCreateDomainManifest } from "./domainManifest.js"
 
 const key = () => {
   const k = process.env.GEMINI_API_KEY
@@ -14,6 +15,10 @@ const key = () => {
 }
 
 const client = () => new GoogleGenerativeAI(key())
+
+// Exposed so callers outside geminiGenerateMission (e.g. arena.js's Groq
+// fallback) can resolve a domain manifest without duplicating client setup.
+export const getGenModel = () => client().getGenerativeModel({ model: GEMINI_FLASH })
 
 // ── Models ─────────────────────────────────────────────────────────────────────
 const GEMINI_FLASH   = "gemini-2.5-flash"        // fast, free tier, supports search + PDF
@@ -469,11 +474,119 @@ export const DOMAIN_CONTEXT = {
     // Scaffold only — no register addresses, no bit names, no solution hints in TODOs
     starterCode: `/* Embedded Systems Challenge: {company} */\n#include <stdint.h>\n#include <stdbool.h>\n\n/* ─── YOUR IMPLEMENTATION ─────────────────────────────────────────────────── */\n\nvoid setup(void) {\n    /* TODO */\n}\n\nvoid run(void) {\n    /* TODO */\n}\n\nint main(void) {\n    setup();\n    run();\n    return 0;\n}\n`,
   },
+  // ── AI / ML ──────────────────────────────────────────────────────────────────
+  ml: {
+    type: "AI / ML Engineering",
+    workstation: "notebook",
+    tools: "Python, pandas, numpy, scikit-learn, matplotlib, model evaluation",
+    lang: "Python",
+    scenarioTypes: [
+      "Build a churn-prediction model for {company} using their customer usage data — engineer features, train a classifier, and evaluate with precision/recall",
+      "Debug a data-leakage issue in {company}'s fraud detection pipeline — the model scores 98% in training but fails badly in production",
+      "{company}'s recommendation model has drifted from 82% to 61% precision over 3 months — diagnose the cause and propose a retraining plan",
+      "Build a feature pipeline for {company}'s pricing model — handle categorical encoding, missing values, and scaling",
+      "Compare 3 classification algorithms for {company}'s lead-scoring model and justify which to deploy, based on precision, recall, and inference latency",
+    ],
+    studentScenarioTypes: [
+      "Load {company}'s customer CSV into a DataFrame and train a simple classifier to predict churn using scikit-learn",
+      "Split {company}'s dataset into train/test sets and calculate the accuracy of a basic logistic regression model",
+      "Clean {company}'s dataset by handling missing values and encoding one categorical column before training a model",
+      "Train a simple decision tree on {company}'s dataset and print the accuracy on the test set",
+      "Plot a confusion matrix for a trained classifier on {company}'s dataset and explain what the numbers mean",
+    ],
+    starterCode: `import pandas as pd\nfrom sklearn.model_selection import train_test_split\nfrom sklearn.metrics import accuracy_score\n\n# ─── LOAD DATA ────────────────────────────────────────────────────────────────\n# In production: df = pd.read_csv('data.csv')\n# For this challenge, data is provided as a dict below\n\ndata = {\n    # TODO: data will be seeded in the challenge context\n}\n\ndf = pd.DataFrame(data)\nprint(df.head())\nprint(df.info())\n\n# ─── SPLIT ────────────────────────────────────────────────────────────────────\n# TODO: separate features (X) and target (y), then train_test_split\n\n# ─── TRAIN ────────────────────────────────────────────────────────────────────\n# TODO: choose and train a model\n\n# ─── EVALUATE ─────────────────────────────────────────────────────────────────\n# TODO: evaluate on the test set\n`,
+  },
+  // ── EEE ──────────────────────────────────────────────────────────────────────
+  eee: {
+    type: "Electrical & Electronics Engineering",
+    workstation: "engineering_lab",
+    category: "EEE",
+    tools: "Circuit analysis, power systems, control theory, MATLAB/Simulink, PLC",
+    lang: "Calculation/Pseudocode",
+    scenarioTypes: [
+      "Design a protection-relay coordination scheme for {company}'s substation feeder — calculate pickup currents and time delays for the overcurrent relays",
+      "{company}'s induction motor is tripping on overload every 40 minutes — analyse the load profile and diagnose the root cause",
+      "Model the transient response of {company}'s power distribution network after a sudden load switch",
+      "Design a PID controller for {company}'s temperature regulation system — tune Kp, Ki, Kd for a 2-second settling time with minimal overshoot",
+      "Calculate the power-factor correction capacitor bank size needed to bring {company}'s facility from 0.75 to 0.95 power factor",
+    ],
+    studentScenarioTypes: [
+      "Calculate the total power drawn by {company}'s 3-phase induction motor, given voltage, current, and power factor",
+      "Find the equivalent resistance of {company}'s series-parallel sensor circuit given 3 resistor values",
+      "Calculate the time constant and cutoff frequency of a simple RC filter used in {company}'s sensor circuit",
+      "Calculate the voltage drop across {company}'s transmission line given resistance, reactance, and load current",
+      "Determine the transformer turns ratio needed to step {company}'s 11kV supply down to 415V",
+    ],
+    starterCode: `/* Electrical Engineering Challenge: {company} */\n\n/* ─── GIVEN PARAMETERS ────────────────────────────────────────────────────── */\n/* Values will be seeded in the challenge context */\n\n/* ─── YOUR CALCULATIONS ───────────────────────────────────────────────────── */\n/* TODO: show your working step by step */\n\n/* ─── RESULT ──────────────────────────────────────────────────────────────── */\n/* TODO: state the final answer with correct units */\n`,
+  },
+  // ── Civil ────────────────────────────────────────────────────────────────────
+  civil: {
+    type: "Civil Engineering",
+    workstation: "engineering_lab",
+    category: "Civil",
+    tools: "Structural analysis, geotechnical design, load calculations, IS codes",
+    lang: "Calculation/Pseudocode",
+    scenarioTypes: [
+      "Design the reinforcement for a simply-supported RCC beam at {company}'s new warehouse — given span, load, and material grade",
+      "{company}'s site survey shows a soil bearing capacity of 120 kN/m² — size the isolated footing for a column carrying 850kN",
+      "A retaining wall at {company}'s site is showing signs of tilting — analyse the likely failure mode and propose a fix",
+      "Design the pavement thickness for {company}'s new access road given traffic load and subgrade CBR value",
+      "Check the stability of a cantilever staircase at {company}'s building against the given load combinations",
+    ],
+    studentScenarioTypes: [
+      "Calculate the total dead load and live load on a simply-supported slab at {company}'s site, given span and thickness",
+      "Calculate the bending moment at mid-span for a simply-supported beam at {company} carrying a uniformly distributed load",
+      "Determine the safe bearing capacity required for a footing at {company} given the column load and factor of safety",
+      "Calculate the quantity of concrete (in cubic metres) needed for a rectangular column at {company} given its dimensions",
+      "Calculate the slope (gradient) of a drainage pipe at {company}'s site given the invert levels and pipe length",
+    ],
+    starterCode: `/* Civil Engineering Challenge: {company} */\n\n/* ─── GIVEN PARAMETERS ────────────────────────────────────────────────────── */\n/* Values will be seeded in the challenge context */\n\n/* ─── YOUR CALCULATIONS ───────────────────────────────────────────────────── */\n/* TODO: show your working step by step, citing the relevant IS code clause */\n\n/* ─── RESULT ──────────────────────────────────────────────────────────────── */\n/* TODO: state the final answer with correct units */\n`,
+  },
+  // ── Mechanical ───────────────────────────────────────────────────────────────
+  mechanical: {
+    type: "Mechanical Engineering",
+    workstation: "engineering_lab",
+    category: "Mechanical",
+    tools: "Thermodynamics, fluid mechanics, machine design, manufacturing, GD&T",
+    lang: "Calculation/Pseudocode",
+    scenarioTypes: [
+      "Design the shaft diameter for {company}'s conveyor drive given torque, material yield strength, and factor of safety",
+      "{company}'s heat exchanger is underperforming — calculate the required heat transfer area given the given flow rates and temperatures",
+      "A gear in {company}'s gearbox is failing prematurely — analyse the likely failure mode from the given stress and cycle data",
+      "Size the pump for {company}'s cooling loop given the required flow rate, head loss, and pipe friction losses",
+      "Optimise the manufacturing tolerance stack-up for {company}'s assembly to meet the required fit without increasing cost",
+    ],
+    studentScenarioTypes: [
+      "Calculate the power required to lift a given load at {company}'s site using a simple pulley system",
+      "Calculate the stress in a mechanical component at {company} given the applied force and cross-sectional area",
+      "Calculate the efficiency of {company}'s engine given input and output work values",
+      "Determine the factor of safety for a mechanical component at {company} given yield strength and applied stress",
+      "Calculate the flow rate through a pipe at {company}'s facility given velocity and cross-sectional area",
+    ],
+    starterCode: `/* Mechanical Engineering Challenge: {company} */\n\n/* ─── GIVEN PARAMETERS ────────────────────────────────────────────────────── */\n/* Values will be seeded in the challenge context */\n\n/* ─── YOUR CALCULATIONS ───────────────────────────────────────────────────── */\n/* TODO: show your working step by step */\n\n/* ─── RESULT ──────────────────────────────────────────────────────────────── */\n/* TODO: state the final answer with correct units */\n`,
+  },
+}
+
+// "embedded" (default ECE branch role) shares the same firmware-focused content as "ece"
+// — both are Electronics & Embedded Systems, just reached via different role paths
+// (ece = analog/VLSI/IoT/RF sub-roles with explicit arenaKey "ece", embedded = the
+// default role _resolveByBranch() picks for a plain "ECE" branch selection).
+DOMAIN_CONTEXT.embedded = DOMAIN_CONTEXT.ece
+
+// Resolves the DOMAIN_CONTEXT-shaped manifest for a domainKey: static map
+// first (fast, reviewed, zero-cost), then the AI-generated/DB-cached manifest
+// for anything outside it, finally falling back to the generic swe template.
+// This is the ONLY place that decides which content template a mission uses —
+// keeping it centralised means the static map and the auto-generated fallback
+// can never disagree about which domain a given key resolves to.
+export async function resolveDomainContext(genModel, domainKey, keyword) {
+  if (DOMAIN_CONTEXT[domainKey]) return DOMAIN_CONTEXT[domainKey]
+  const manifest = await getOrCreateDomainManifest(genModel, domainKey, keyword)
+  return manifest || DOMAIN_CONTEXT.swe
 }
 
 // ── Build a domain-aware prompt ───────────────────────────────────────────────
-function buildDomainPrompt({ domainKey, keyword, difficulty, weakAreas, eloGain, avoidSkills, path, completedMissions, eloRating }) {
-  const ctx = DOMAIN_CONTEXT[domainKey] || DOMAIN_CONTEXT.swe
+function buildDomainPrompt({ ctx, domainKey, keyword, difficulty, weakAreas, eloGain, avoidSkills, path, completedMissions, eloRating }) {
   const isStudent = path === "student"
 
   // Student path: use beginner scenarios; professional path: use advanced ones
@@ -540,6 +653,7 @@ Return a single JSON object:
   "taskDescription": "What to build or fix — observable outcome only, not how to do it",
   "objective": "One measurable success criterion — what does done look like?",
   "workstation": "${ctx.workstation}",
+  "category": "${ctx.category || ctx.type}",
   "starterCode": ${JSON.stringify(starter)},
   "expectedOutput": "What the correct output or behaviour looks like — NOT the approach to get there",
   "eloGain": ${eloGain},
@@ -557,7 +671,12 @@ export async function geminiGenerateMission({ keyword, domainKey, eloRating, dif
     ? `Avoid these recently practised skills (user has done these recently): ${recentSkills.slice(0, 5).join(", ")}.`
     : ""
 
-  const prompt = buildDomainPrompt({ domainKey, keyword, difficulty, weakAreas, eloGain, avoidSkills, path, completedMissions, eloRating })
+  // Resolved ONCE and reused below — static DOMAIN_CONTEXT hit, or the
+  // AI-generated/DB-cached manifest for a domainKey outside that map (see
+  // domainManifest.js), or the generic swe fallback as a last resort.
+  const ctx = await resolveDomainContext(genModel, domainKey, keyword)
+
+  const prompt = buildDomainPrompt({ ctx, domainKey, keyword, difficulty, weakAreas, eloGain, avoidSkills, path, completedMissions, eloRating })
 
   const result = await genModel.generateContent({
     contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -575,9 +694,17 @@ export async function geminiGenerateMission({ keyword, domainKey, eloRating, dif
   // solution hints (numbered steps, register values, pre-written function calls).
   // The ONLY safe approach is to never use the AI-generated starterCode —
   // always substitute our curated template which is guaranteed hint-free.
-  const ctx = DOMAIN_CONTEXT[domainKey] || DOMAIN_CONTEXT.swe
   if (ctx?.starterCode) {
     parsed.starterCode = ctx.starterCode.replace(/\{company\}/g, parsed.company || "Company")
+  }
+  // ── Force category for engineering_lab domains ─────────────────────────────
+  // EngineeringLabWorkstation.jsx picks its tabs/units via
+  // ENGINEERING_DOMAIN_CONFIG[mission.category], falling back to "ECE" if
+  // unset or unrecognised. The AI is unreliable about echoing this field back
+  // exactly (same reasoning as starterCode above), so force it from the
+  // domain manifest rather than trusting the model's output.
+  if (ctx?.category) {
+    parsed.category = ctx.category
   }
 
   return parsed
