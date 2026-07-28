@@ -15,6 +15,7 @@ import { getPlan, interviewsUsedThisMonth, reportsUsedThisMonth } from "../confi
 import { getDomainChallenges } from "../config/domainChallenges"
 import { getRoleConfig, resolveRoleLabel, resolveAuraSkills } from "../config/roleConfig"
 import CareerVideoGenerator from "./CareerVideoGenerator"
+import EchoPitchHero from "./EchoPitchHero"
 // Portfolio themes removed — single universal design
 // ── Professional Path: API-connected components ───────────────────────────────
 import CareerTimelinePro from "../components/CareerTimeline"
@@ -4977,31 +4978,16 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
               )
             })()}
 
-            {/* Personal Brand Video */}
-            <div style={{marginBottom:20}}>
-              <Card style={{borderTop:`3px solid ${T.amber}`,background:"linear-gradient(145deg,#fffbeb,#fff)"}} className="hover-card">
-                <div style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:12}}>
-                  <div style={{width:44,height:44,borderRadius:12,background:"linear-gradient(135deg,#F59E0B,#F97316)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>🎬</div>
-                  <div>
-                    <SectionLabel color={T.amber}>Personal Brand Video</SectionLabel>
-                    <h3 style={{fontSize:16,fontWeight:800,color:T.ink,margin:"2px 0 4px"}}>AI Career Video Generator</h3>
-                    <p style={{fontSize:12,color:T.ink3,lineHeight:1.6,margin:0}}>3D animated intro + skill snapshots + AI voiceover. Export for LinkedIn.</p>
-                  </div>
-                </div>
-                {["🎭 3D animated avatar intro with your name & domain","📸 Skill snapshots with Arena task evidence","🎙️ AI voiceover narrates your story","🏆 ELO growth, Arena performance & experience","📤 Download as WebM for LinkedIn & Twitter"].map((f,i)=>(
-                  <div key={i} style={{display:"flex",alignItems:"center",gap:8,fontSize:12,color:T.ink3,marginBottom:5}}>
-                    <span style={{fontSize:14}}>{f.split(" ")[0]}</span>
-                    <span>{f.split(" ").slice(1).join(" ")}</span>
-                  </div>
-                ))}
-                <button onClick={()=>setShowVideoGenerator(true)}
-                  style={{width:"100%",marginTop:14,padding:"12px",borderRadius:12,border:"none",
-                    background:"linear-gradient(135deg,#F59E0B,#F97316)",color:"#fff",
-                    fontSize:13,fontWeight:800,cursor:"pointer",boxShadow:"0 4px 16px rgba(245,158,11,0.35)"}}>
-                  🎬 Generate My Brand Video
-                </button>
-              </Card>
-            </div>
+            {/* EchoPitch */}
+            <EchoPitchHero
+              userData={userData}
+              skillGraph={skillGraph}
+              completedTasks={(userData?.arenaHistory||[]).slice(0,10).map(h=>({task:{title:h.taskTitle||h.title,difficulty:h.difficulty,category:h.category,skill:h.skill,scenario:h.scenario},submission:{score:h.score,eloGained:h.eloGained||h.eloDelta,summary:h.feedback||h.summary}}))}
+              experiences={experiences}
+              isElite={auraPlan.id==="elite"}
+              onGenerate={()=>setShowVideoGenerator(true)}
+              onNavigatePricing={onNavigatePricing}
+            />
 
             {/* Skill Gap Alert */}
             {skillGapData&&(

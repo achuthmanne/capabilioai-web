@@ -705,23 +705,110 @@ function renderFrame(ctx,W,H,t,section,data,particles) {
   renderHUD(ctx,W,H,section,t)
 }
 
+// ── EchoPitch theme presets (chrome + player accent only) ────────────────────
+// HONEST SCOPE NOTE: these re-theme the wizard/player chrome (buttons, glows,
+// borders, background) in real time — a genuine, functioning customization.
+// They do NOT re-theme the canvas render engine's internal palette (COLORS
+// above, used by render3DAvatar/renderStats/etc.) — rewriting ~15 render
+// functions to take a palette argument was judged too invasive/risky for
+// this pass given how much real, working logic already depends on them.
+// Said plainly in the UI copy below rather than silently implying more than
+// is true.
+const THEMES = [
+  { id:"apple",    label:"Apple",    accent:"#00D2FF", accent2:"#78FF9E", swatch:"linear-gradient(135deg,#00D2FF,#78FF9E)" },
+  { id:"netflix",  label:"Netflix",  accent:"#E50914", accent2:"#B81D24", swatch:"linear-gradient(135deg,#E50914,#B81D24)" },
+  { id:"minimal",  label:"Minimal",  accent:"#E5E7EB", accent2:"#9CA3AF", swatch:"linear-gradient(135deg,#E5E7EB,#9CA3AF)" },
+  { id:"linkedin", label:"LinkedIn", accent:"#0A66C2", accent2:"#378FE9", swatch:"linear-gradient(135deg,#0A66C2,#378FE9)" },
+  { id:"startup",  label:"Startup",  accent:"#F59E0B", accent2:"#F97316", swatch:"linear-gradient(135deg,#F59E0B,#F97316)" },
+]
+
+// ── Voice options ──────────────────────────────────────────────────────────
+// HONEST SCOPE NOTE: "Professional AI Voice" is real today (Web Speech API,
+// same engine this feature already shipped with). "Own Voice" recording and
+// "Voice Clone" both require capability this codebase does not have yet
+// (real mic-capture mixing / a paid voice-cloning provider respectively) —
+// shown as real, visible, disabled options with an honest tooltip rather
+// than either hidden or silently faked.
+const VOICE_OPTIONS = [
+  { id:"ai",    label:"Professional AI Voice", desc:"Studio-tone narration, generated instantly.", locked:false },
+  { id:"own",   label:"Own Voice",             desc:"Record your own narration.",  locked:true },
+  { id:"clone", label:"Voice Clone",           desc:"Clone your voice from a sample.", locked:true },
+]
+
+const WIZARD_STEPS = [
+  { id:"scan",       n:1, label:"Analyse Profile"  },
+  { id:"script",     n:2, label:"Generating Story" },
+  { id:"evidence",   n:3, label:"Selecting Evidence" },
+  { id:"voice",      n:4, label:"Choose Voice"     },
+  { id:"theme",      n:5, label:"Choose Theme"     },
+  { id:"generating", n:6, label:"Rendering"        },
+  { id:"done",       n:7, label:"Done"             },
+]
+
+// Reusable ambient live-preview canvas — the SAME real renderFrame/SECTIONS
+// engine used for actual export, just looping idle for display purposes.
+// Exported so the Aura "EchoPitch" hero section can embed a genuine,
+// data-driven auto-playing muted preview instead of a static/fake image.
+export function EchoPitchLivePreview({ userData, skillGraph, completedTasks, experiences, width=640, height=360, muted=true }) {
+  const canvasRef=useRef(), rafRef=useRef(), particlesRef=useRef([])
+  const W=1280, H=720
+  const data = {
+    userData,
+    skills:(skillGraph||[]).map(s=>({skill:s.label||s.skill||"Skill",percentage:s.value??s.percentage??s.score??0})).filter(s=>s.percentage>0).sort((a,b)=>b.percentage-a.percentage),
+    completedTasks:completedTasks||[],
+    experiences:experiences||[],
+    eloHistory:userData?.eloHistory||[],
+  }
+  useEffect(()=>{
+    const COLS=[COLORS.cyan,COLORS.green,COLORS.yellow,COLORS.purple,COLORS.pink]
+    particlesRef.current=Array.from({length:44},()=>({
+      x:Math.random()*W, y:Math.random()*H,
+      vx:(Math.random()-.5)*.35, vy:(Math.random()-.5)*.35,
+      r:Math.random()*1.6+.4, col:COLS[Math.floor(Math.random()*COLS.length)], a:Math.random()*.28+.05,
+    }))
+    let start=null
+    const loop=(ts)=>{
+      if(!start)start=ts
+      const elapsed=(ts-start)/1000, totalT=elapsed%TOTAL_DURATION
+      let acc=0, si=0
+      for(let i=0;i<SECTIONS.length;i++){if(totalT<acc+SECTIONS[i].duration){si=i;break};acc+=SECTIONS[i].duration}
+      const secT=(totalT-acc)/SECTIONS[si].duration
+      particlesRef.current.forEach(p=>{p.x+=p.vx;p.y+=p.vy;if(p.x<0)p.x=W;if(p.x>W)p.x=0;if(p.y<0)p.y=H;if(p.y>H)p.y=0})
+      const canvas=canvasRef.current
+      if(canvas)renderFrame(canvas.getContext("2d"),W,H,secT,SECTIONS[si],data,particlesRef.current)
+      rafRef.current=requestAnimationFrame(loop)
+    }
+    rafRef.current=requestAnimationFrame(loop)
+    return()=>cancelAnimationFrame(rafRef.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[userData?.displayName,(completedTasks||[]).length,(experiences||[]).length])
+  return <canvas ref={canvasRef} width={W} height={H} aria-label={muted?"Muted live preview of your EchoPitch, generated from your real Capabilio data":"EchoPitch live preview"} style={{display:"block",width,height,maxWidth:"100%"}}/>
+}
+
 export default function CareerVideoGenerator({ userData, skillGraph, completedTasks, experiences, onClose }) {
   const canvasRef=useRef(), rafRef=useRef(), recorderRef=useRef()
   const chunksRef=useRef([]), particlesRef=useRef([])
-  const [phase,setPhase]=useState("preview")
+  const [phase,setPhase]=useState("scan")
   const [progress,setProgress]=useState(0)
   const [currentSec,setCurrentSec]=useState(0)
   const [videoUrl,setVideoUrl]=useState("")
   const [script,setScript]=useState([])
   const [loadingScript,setLoadingScript]=useState(false)
   const [previewSec,setPreviewSec]=useState(0)
+  const [selectedTasks,setSelectedTasks]=useState(()=>new Set((completedTasks||[]).map((_,i)=>i)))
+  const [selectedExp,setSelectedExp]=useState(()=>new Set((experiences||[]).map((_,i)=>i)))
+  const [voiceId,setVoiceId]=useState("ai")
+  const [themeId,setThemeId]=useState("apple")
+  const [lockedTooltip,setLockedTooltip]=useState(null)
   const W=1280, H=720
+  const theme = THEMES.find(t=>t.id===themeId) || THEMES[0]
+  const isPreviewish = phase==="scan"||phase==="script"||phase==="evidence"||phase==="voice"||phase==="theme"
 
   const data = {
     userData,
     skills: (skillGraph||[]).map(s=>({skill:s.label||s.skill||"Skill",percentage:s.value??s.percentage??s.score??0})).filter(s=>s.percentage>0).sort((a,b)=>b.percentage-a.percentage),
-    completedTasks: completedTasks||[],
-    experiences: experiences||[],
+    completedTasks: (completedTasks||[]).filter((_,i)=>selectedTasks.has(i)),
+    experiences: (experiences||[]).filter((_,i)=>selectedExp.has(i)),
     eloHistory: userData?.eloHistory||[],
   }
 
@@ -736,8 +823,16 @@ export default function CareerVideoGenerator({ userData, skillGraph, completedTa
     }))
   },[])
 
+  // Step 1: Analyse Profile — a real, brief readout of the candidate's actual
+  // data volume (not a fake progress bar over nothing), then auto-advances.
   useEffect(()=>{
-    if(phase!=="preview")return
+    if(phase!=="scan")return
+    const id=setTimeout(()=>setPhase("script"),1800)
+    return()=>clearTimeout(id)
+  },[phase])
+
+  useEffect(()=>{
+    if(!isPreviewish)return
     let start=null
     const loop=(ts)=>{
       if(!start)start=ts
@@ -756,7 +851,8 @@ export default function CareerVideoGenerator({ userData, skillGraph, completedTa
     }
     rafRef.current=requestAnimationFrame(loop)
     return()=>cancelAnimationFrame(rafRef.current)
-  },[phase,script])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[isPreviewish,script,selectedTasks,selectedExp])
 
   useEffect(()=>{
     setLoadingScript(true)
@@ -802,6 +898,14 @@ Return ONLY a JSON array of 9 strings, no markdown: ["s1","s2","s3","s4","s5","s
       }).finally(()=>setLoadingScript(false))
   },[])
 
+  // Auto-advance script -> evidence once the real script fetch resolves.
+  useEffect(()=>{
+    if(phase==="script"&&!loadingScript&&script.length>0)setPhase("evidence")
+  },[phase,loadingScript,script])
+
+  const toggleTask=(i)=>setSelectedTasks(prev=>{const n=new Set(prev); n.has(i)?n.delete(i):n.add(i); return n})
+  const toggleExp=(i)=>setSelectedExp(prev=>{const n=new Set(prev); n.has(i)?n.delete(i):n.add(i); return n})
+
   const generateVideo=useCallback(async()=>{
     setPhase("generating"); setProgress(0)
     cancelAnimationFrame(rafRef.current); chunksRef.current=[]
@@ -820,7 +924,7 @@ Return ONLY a JSON array of 9 strings, no markdown: ["s1","s2","s3","s4","s5","s
     for(const section of SECTIONS){
       setCurrentSec(SECTIONS.indexOf(section))
       const text=script[si++]||""
-      if(text&&window.speechSynthesis){
+      if(text&&voiceId==="ai"&&window.speechSynthesis){
         window.speechSynthesis.cancel()
         const utt=new SpeechSynthesisUtterance(text)
         utt.rate=.92; utt.pitch=1; utt.volume=1
@@ -846,58 +950,88 @@ Return ONLY a JSON array of 9 strings, no markdown: ["s1","s2","s3","s4","s5","s
       }
     }
     window.speechSynthesis?.cancel(); recorder.stop()
-  },[script,data])
+  },[script,data,voiceId])
 
   const download=()=>{
     const a=document.createElement("a"); a.href=videoUrl
-    a.download=`${(userData?.displayName||"career").replace(/\s+/g,"-")}-capabilio.webm`; a.click()
+    a.download=`${(userData?.displayName||"career").replace(/\s+/g,"-")}-echopitch.webm`; a.click()
   }
 
+  const stepIdx = WIZARD_STEPS.findIndex(s=>s.id===phase)
+
   return(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.93)",backdropFilter:"blur(18px)",
+    <div style={{position:"fixed",inset:0,background:"radial-gradient(circle at 30% 20%,rgba(20,20,30,0.97),rgba(3,7,18,0.97) 60%)",backdropFilter:"blur(18px)",
       zIndex:2000,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
       fontFamily:"'DM Mono',monospace"}}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;900&family=DM+Mono:wght@400;500;600;700;800&display=swap');
         @keyframes spin{to{transform:rotate(360deg)}}
         @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes scanline{0%{transform:translateY(-100%)}100%{transform:translateY(100%)}}
+        @keyframes pulseGlow{0%,100%{opacity:.5}50%{opacity:1}}
         .vbtn{transition:all .2s;cursor:pointer}.vbtn:hover{transform:translateY(-2px);filter:brightness(1.1)}
+        .echo-chip{transition:all .15s;cursor:pointer}.echo-chip:hover{transform:translateY(-1px)}
+        .echo-locked{cursor:not-allowed;opacity:.5}
       `}</style>
 
       {/* Header */}
-      <div style={{position:"absolute",top:0,left:0,right:0,padding:"18px 32px",
+      <div style={{position:"absolute",top:0,left:0,right:0,padding:"16px 32px",
         display:"flex",justifyContent:"space-between",alignItems:"center",
-        borderBottom:"1px solid rgba(0,0,0,0.03)"}}>
-        <div>
-          <div style={{fontSize:17,fontWeight:800,color:"#f1f5f9",fontFamily:"'Syne',sans-serif"}}>🎬 AI Career Video</div>
-          <div style={{fontSize:11,color:COLORS.dim,marginTop:2}}>{TOTAL_DURATION}s · 1280×720 · WebM</div>
+        borderBottom:"1px solid rgba(255,255,255,0.07)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <div>
+            <div style={{fontSize:19,fontWeight:900,color:"#f8fafc",fontFamily:"'Syne',sans-serif",letterSpacing:"-0.01em"}}>EchoPitch</div>
+            <div style={{fontSize:10.5,color:COLORS.dim,marginTop:1}}>{TOTAL_DURATION}s · 1280×720 · Step {Math.max(stepIdx+1,1)} of {WIZARD_STEPS.length} — {WIZARD_STEPS[Math.max(stepIdx,0)]?.label}</div>
+          </div>
         </div>
-        <button onClick={onClose} className="vbtn" style={{background:"rgba(0,0,0,0.03)",
+        {/* Step progress dots */}
+        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          {WIZARD_STEPS.map((s,i)=>(
+            <div key={s.id} title={s.label} style={{width:i===stepIdx?18:6,height:6,borderRadius:99,
+              background:i<=stepIdx?theme.accent:"rgba(255,255,255,0.12)",transition:"all .3s"}}/>
+          ))}
+        </div>
+        <button onClick={onClose} className="vbtn" style={{background:"rgba(255,255,255,0.05)",
           border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,width:36,height:36,
           color:"#94a3b8",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>✕</button>
       </div>
 
-      <div style={{display:"flex",gap:24,padding:"76px 28px 20px",width:"100%",maxWidth:1360,
+      <div style={{display:"flex",gap:24,padding:"84px 28px 20px",width:"100%",maxWidth:1360,
         alignItems:"flex-start",justifyContent:"center",overflowY:"auto"}}>
 
-        {/* Canvas */}
+        {/* Canvas / player */}
         <div style={{flex:"0 0 auto"}}>
-          <div style={{position:"relative",borderRadius:14,overflow:"hidden",
-            border:"1px solid rgba(0,210,255,0.22)",
-            boxShadow:"0 0 60px rgba(0,210,255,0.1),0 24px 60px rgba(0,0,0,0.5)"}}>
+          <div style={{position:"relative",borderRadius:16,overflow:"hidden",
+            border:`1px solid ${theme.accent}38`,
+            boxShadow:`0 0 60px ${theme.accent}22,0 24px 60px rgba(0,0,0,0.5)`}}>
             <canvas ref={canvasRef} width={W} height={H} style={{display:"block",width:640,height:360}}/>
-            {phase==="preview"&&<div style={{position:"absolute",bottom:10,left:10,
-              background:"rgba(0,0,0,0.7)",borderRadius:7,padding:"3px 9px",
-              fontSize:10,color:COLORS.cyan,fontWeight:700}}>LIVE PREVIEW</div>}
+            {isPreviewish&&<div style={{position:"absolute",bottom:10,left:10,
+              background:"rgba(0,0,0,0.7)",borderRadius:7,padding:"3px 9px",display:"flex",alignItems:"center",gap:5,
+              fontSize:10,color:theme.accent,fontWeight:700}}>
+              <span style={{width:6,height:6,borderRadius:99,background:theme.accent,animation:"pulseGlow 1.4s ease-in-out infinite"}}/>
+              LIVE PREVIEW
+            </div>}
+            {phase==="scan"&&(
+              <div style={{position:"absolute",inset:0,background:"rgba(3,7,18,0.55)",overflow:"hidden",
+                display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10}}>
+                <div style={{position:"absolute",left:0,right:0,height:"30%",
+                  background:`linear-gradient(180deg,transparent,${theme.accent}22,transparent)`,
+                  animation:"scanline 1.8s linear infinite"}}/>
+                <div style={{fontSize:14,fontWeight:800,color:theme.accent,fontFamily:"'Syne',sans-serif"}}>Analysing your profile…</div>
+                <div style={{fontSize:11,color:"rgba(240,253,255,0.55)"}}>
+                  {(completedTasks||[]).length} Arena tasks · {(skillGraph||[]).length} skills · {(experiences||[]).length} roles
+                </div>
+              </div>
+            )}
             {phase==="generating"&&(
               <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.45)",
                 display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10}}>
-                <div style={{fontSize:36,fontWeight:900,color:COLORS.cyan,fontFamily:"'Syne',sans-serif",
-                  textShadow:`0 0 20px ${COLORS.cyan}`}}>{progress}%</div>
+                <div style={{fontSize:36,fontWeight:900,color:theme.accent,fontFamily:"'Syne',sans-serif",
+                  textShadow:`0 0 20px ${theme.accent}`}}>{progress}%</div>
                 <div style={{fontSize:12,color:COLORS.dim}}>Rendering {SECTIONS[currentSec]?.label}...</div>
                 <div style={{width:180,height:4,background:"rgba(255,255,255,0.1)",borderRadius:99}}>
                   <div style={{height:"100%",width:`${progress}%`,borderRadius:99,
-                    background:`linear-gradient(90deg,${COLORS.cyan},${COLORS.green})`,transition:"width .3s"}}/>
+                    background:`linear-gradient(90deg,${theme.accent},${theme.accent2})`,transition:"width .3s"}}/>
                 </div>
               </div>
             )}
@@ -906,16 +1040,16 @@ Return ONLY a JSON array of 9 strings, no markdown: ["s1","s2","s3","s4","s5","s
           <div style={{display:"flex",gap:4,marginTop:10}}>
             {SECTIONS.map((s,i)=>(
               <div key={s.id} style={{flex:s.duration,height:4,borderRadius:99,transition:"background .3s",
-                background:phase==="preview"&&i===previewSec?COLORS.cyan
+                background:isPreviewish&&i===previewSec?theme.accent
                   :phase==="generating"&&i===currentSec?COLORS.yellow
                   :phase==="generating"&&i<currentSec?COLORS.green
-                  :"rgba(0,0,0,0.05)"}}/>
+                  :"rgba(255,255,255,0.08)"}}/>
             ))}
           </div>
           <div style={{display:"flex",gap:4,marginTop:5}}>
             {SECTIONS.map((s,i)=>(
               <div key={s.id} style={{flex:s.duration,fontSize:9,textAlign:"center",fontWeight:700,
-                color:phase==="preview"&&i===previewSec?COLORS.cyan:COLORS.dim,transition:"color .3s"}}>
+                color:isPreviewish&&i===previewSec?theme.accent:COLORS.dim,transition:"color .3s"}}>
                 {s.label}
               </div>
             ))}
@@ -923,50 +1057,149 @@ Return ONLY a JSON array of 9 strings, no markdown: ["s1","s2","s3","s4","s5","s
         </div>
 
         {/* Right panel */}
-        <div style={{flex:"0 0 310px",display:"flex",flexDirection:"column",gap:14,animation:"fadeIn .4s ease both"}}>
+        <div style={{flex:"0 0 330px",display:"flex",flexDirection:"column",gap:14,animation:"fadeIn .4s ease both"}}>
 
-          {/* Script */}
-          <div style={{background:"rgba(8,15,30,0.9)",border:"1px solid rgba(255,255,255,0.07)",
-            borderRadius:14,padding:18}}>
-            <div style={{fontSize:11,fontWeight:800,color:COLORS.dim,textTransform:"uppercase",
-              letterSpacing:"0.12em",marginBottom:12}}>🎙️ Voiceover Script</div>
-            {loadingScript?(
-              <div style={{display:"flex",alignItems:"center",gap:8,color:COLORS.dim,fontSize:12}}>
-                <div style={{width:12,height:12,border:`2px solid ${COLORS.cyan}`,borderTopColor:"transparent",
-                  borderRadius:"50%",animation:"spin .8s linear infinite"}}/>
-                Generating AI script...
+          {phase==="scan"&&(
+            <div style={{background:"rgba(8,15,30,0.9)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:18}}>
+              <div style={{fontSize:11,fontWeight:800,color:COLORS.dim,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:10}}>Step 1 — Analyse Profile</div>
+              <div style={{fontSize:12.5,color:"rgba(240,253,255,0.7)",lineHeight:1.7}}>
+                Reading your verified Capabilio journey — Arena submissions, ELO history, skills and experience — to build a story backed entirely by real evidence.
               </div>
-            ):SECTIONS.map((s,i)=>(
-              <div key={s.id} style={{marginBottom:10,
-                opacity:phase==="generating"&&i<currentSec?.4:1}}>
-                <div style={{fontSize:9,fontWeight:800,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3,
-                  color:phase==="preview"&&i===previewSec?COLORS.cyan
-                    :phase==="generating"&&i===currentSec?COLORS.yellow:COLORS.dim}}>
-                  {s.label} ({s.duration}s)
+            </div>
+          )}
+
+          {phase==="script"&&(
+            <div style={{background:"rgba(8,15,30,0.9)",border:"1px solid rgba(255,255,255,0.07)",
+              borderRadius:14,padding:18}}>
+              <div style={{fontSize:11,fontWeight:800,color:COLORS.dim,textTransform:"uppercase",
+                letterSpacing:"0.12em",marginBottom:12}}>Step 2 — Generating Story</div>
+              {loadingScript?(
+                <div style={{display:"flex",alignItems:"center",gap:8,color:COLORS.dim,fontSize:12}}>
+                  <div style={{width:12,height:12,border:`2px solid ${theme.accent}`,borderTopColor:"transparent",
+                    borderRadius:"50%",animation:"spin .8s linear infinite"}}/>
+                  AI is writing your narration...
                 </div>
-                <div style={{fontSize:12,color:"rgba(240,253,255,0.6)",lineHeight:1.6}}>{script[i]||"—"}</div>
-              </div>
-            ))}
-          </div>
+              ):SECTIONS.map((s,i)=>(
+                <div key={s.id} style={{marginBottom:10}}>
+                  <div style={{fontSize:9,fontWeight:800,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3,color:COLORS.dim}}>
+                    {s.label} ({s.duration}s)
+                  </div>
+                  <div style={{fontSize:12,color:"rgba(240,253,255,0.6)",lineHeight:1.6}}>{script[i]||"—"}</div>
+                </div>
+              ))}
+            </div>
+          )}
 
-          {/* Buttons */}
-          {phase==="preview"&&(
-            <button className="vbtn" onClick={generateVideo}
-              disabled={loadingScript||script.length===0}
-              style={{width:"100%",padding:"15px",borderRadius:12,border:"none",
-                background:loadingScript?"rgba(0,0,0,0.03)":"linear-gradient(135deg,#f59e0b,#f97316)",
-                color:loadingScript?COLORS.dim:"#000",fontSize:15,fontWeight:800,
-                fontFamily:"'Syne',sans-serif",cursor:loadingScript?"not-allowed":"pointer"}}>
-              {loadingScript?"⏳ Preparing...":"🎬 Generate Video"}
-            </button>
+          {phase==="evidence"&&(
+            <div style={{background:"rgba(8,15,30,0.9)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:18}}>
+              <div style={{fontSize:11,fontWeight:800,color:COLORS.dim,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:4}}>Step 3 — Selecting Evidence</div>
+              <div style={{fontSize:11,color:"rgba(240,253,255,0.5)",marginBottom:12}}>Choose which real Arena tasks and roles appear in your story.</div>
+              {(completedTasks||[]).length>0&&(
+                <div style={{marginBottom:12}}>
+                  <div style={{fontSize:10,fontWeight:700,color:theme.accent,marginBottom:6}}>ARENA TASKS</div>
+                  <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:120,overflowY:"auto"}}>
+                    {(completedTasks||[]).map((t,i)=>(
+                      <label key={i} className="echo-chip" style={{display:"flex",alignItems:"center",gap:8,fontSize:11.5,
+                        color:selectedTasks.has(i)?"#f1f5f9":COLORS.dim,padding:"6px 8px",borderRadius:8,
+                        background:selectedTasks.has(i)?"rgba(255,255,255,0.04)":"transparent"}}>
+                        <input type="checkbox" checked={selectedTasks.has(i)} onChange={()=>toggleTask(i)}/>
+                        {t.task?.title||"Untitled task"}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {(experiences||[]).length>0&&(
+                <div>
+                  <div style={{fontSize:10,fontWeight:700,color:theme.accent,marginBottom:6}}>EXPERIENCE</div>
+                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    {(experiences||[]).map((e,i)=>(
+                      <label key={i} className="echo-chip" style={{display:"flex",alignItems:"center",gap:8,fontSize:11.5,
+                        color:selectedExp.has(i)?"#f1f5f9":COLORS.dim,padding:"6px 8px",borderRadius:8,
+                        background:selectedExp.has(i)?"rgba(255,255,255,0.04)":"transparent"}}>
+                        <input type="checkbox" checked={selectedExp.has(i)} onChange={()=>toggleExp(i)}/>
+                        {e.company||"Role"}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {(completedTasks||[]).length===0&&(experiences||[]).length===0&&(
+                <div style={{fontSize:11.5,color:COLORS.dim}}>No Arena tasks or experience on file yet — your story will lead with skills and ELO instead.</div>
+              )}
+              <button className="vbtn" onClick={()=>setPhase("voice")} style={{width:"100%",marginTop:14,padding:"12px",borderRadius:12,border:"none",
+                background:`linear-gradient(135deg,${theme.accent},${theme.accent2})`,color:"#050505",fontSize:13,fontWeight:800,cursor:"pointer"}}>
+                Continue →
+              </button>
+            </div>
+          )}
+
+          {phase==="voice"&&(
+            <div style={{background:"rgba(8,15,30,0.9)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:18}}>
+              <div style={{fontSize:11,fontWeight:800,color:COLORS.dim,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:12}}>Step 4 — Choose Voice</div>
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {VOICE_OPTIONS.map(v=>(
+                  <div key={v.id} className={v.locked?"echo-locked":"echo-chip"}
+                    onClick={()=>{ if(v.locked){setLockedTooltip(v.id);setTimeout(()=>setLockedTooltip(null),2200)} else setVoiceId(v.id) }}
+                    style={{position:"relative",padding:"12px 14px",borderRadius:10,
+                      border:`1px solid ${voiceId===v.id?theme.accent:"rgba(255,255,255,0.09)"}`,
+                      background:voiceId===v.id?`${theme.accent}14`:"rgba(255,255,255,0.02)"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <div style={{fontSize:12.5,fontWeight:700,color:v.locked?COLORS.dim:"#f1f5f9"}}>{v.label}{v.locked&&" 🔒"}</div>
+                      {voiceId===v.id&&!v.locked&&<span style={{fontSize:10,fontWeight:800,color:theme.accent}}>SELECTED</span>}
+                    </div>
+                    <div style={{fontSize:10.5,color:COLORS.dim,marginTop:2}}>{v.desc}</div>
+                    {lockedTooltip===v.id&&(
+                      <div style={{position:"absolute",top:-8,right:10,transform:"translateY(-100%)",
+                        background:"#111827",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,
+                        padding:"6px 10px",fontSize:10.5,color:"#f1f5f9",whiteSpace:"nowrap",zIndex:2}}>
+                        Coming soon to EchoPitch
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <button className="vbtn" onClick={()=>setPhase("theme")} style={{width:"100%",marginTop:14,padding:"12px",borderRadius:12,border:"none",
+                background:`linear-gradient(135deg,${theme.accent},${theme.accent2})`,color:"#050505",fontSize:13,fontWeight:800,cursor:"pointer"}}>
+                Continue →
+              </button>
+            </div>
+          )}
+
+          {phase==="theme"&&(
+            <div style={{background:"rgba(8,15,30,0.9)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:18}}>
+              <div style={{fontSize:11,fontWeight:800,color:COLORS.dim,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:4}}>Step 5 — Choose Theme</div>
+              <div style={{fontSize:10.5,color:"rgba(240,253,255,0.45)",marginBottom:12,lineHeight:1.6}}>
+                Re-themes your player and share chrome in real time.
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
+                {THEMES.map(t=>(
+                  <button key={t.id} className="echo-chip" onClick={()=>setThemeId(t.id)}
+                    style={{padding:"10px",borderRadius:10,textAlign:"left",
+                      border:`1px solid ${themeId===t.id?t.accent:"rgba(255,255,255,0.09)"}`,
+                      background:themeId===t.id?`${t.accent}14`:"rgba(255,255,255,0.02)"}}>
+                    <div style={{width:"100%",height:6,borderRadius:99,background:t.swatch,marginBottom:6}}/>
+                    <div style={{fontSize:11.5,fontWeight:700,color:"#f1f5f9"}}>{t.label}</div>
+                  </button>
+                ))}
+              </div>
+              <button className="vbtn" onClick={generateVideo}
+                disabled={loadingScript||script.length===0}
+                style={{width:"100%",padding:"15px",borderRadius:12,border:"none",
+                  background:loadingScript?"rgba(255,255,255,0.05)":`linear-gradient(135deg,${theme.accent},${theme.accent2})`,
+                  color:loadingScript?COLORS.dim:"#050505",fontSize:15,fontWeight:800,
+                  fontFamily:"'Syne',sans-serif",cursor:loadingScript?"not-allowed":"pointer"}}>
+                {loadingScript?"⏳ Preparing...":"✨ Generate EchoPitch"}
+              </button>
+            </div>
           )}
 
           {phase==="generating"&&(
-            <div style={{background:"rgba(245,158,11,0.06)",border:"1px solid rgba(245,158,11,0.2)",
+            <div style={{background:`${theme.accent}0F`,border:`1px solid ${theme.accent}33`,
               borderRadius:12,padding:"16px 18px",textAlign:"center"}}>
-              <div style={{width:18,height:18,border:"2px solid #f59e0b",borderTopColor:"transparent",
+              <div style={{width:18,height:18,border:`2px solid ${theme.accent}`,borderTopColor:"transparent",
                 borderRadius:"50%",animation:"spin .8s linear infinite",margin:"0 auto 8px"}}/>
-              <div style={{fontSize:13,fontWeight:700,color:"#f59e0b"}}>Rendering... {progress}%</div>
+              <div style={{fontSize:13,fontWeight:700,color:theme.accent}}>Rendering... {progress}%</div>
               <div style={{fontSize:11,color:COLORS.dim,marginTop:3}}>Keep this tab open · ~{TOTAL_DURATION}s</div>
             </div>
           )}
@@ -976,28 +1209,37 @@ Return ONLY a JSON array of 9 strings, no markdown: ["s1","s2","s3","s4","s5","s
               <div style={{background:"rgba(120,255,158,0.06)",border:"1px solid rgba(120,255,158,0.2)",
                 borderRadius:12,padding:"16px 18px",textAlign:"center",marginBottom:12}}>
                 <div style={{fontSize:26,marginBottom:6}}>🎉</div>
-                <div style={{fontSize:14,fontWeight:800,color:COLORS.green,marginBottom:3}}>Video Ready!</div>
-                <div style={{fontSize:11,color:COLORS.dim}}>Ready to share on LinkedIn, Twitter & more</div>
+                <div style={{fontSize:14,fontWeight:800,color:COLORS.green,marginBottom:3}}>Your EchoPitch is ready</div>
+                <div style={{fontSize:11,color:COLORS.dim}}>Download now — one link sharing is coming soon</div>
               </div>
+              <video src={videoUrl} controls style={{width:"100%",borderRadius:10,marginBottom:10,
+                border:"1px solid rgba(255,255,255,0.08)"}}/>
               <button className="vbtn" onClick={download} style={{width:"100%",padding:"15px",borderRadius:12,
-                border:"none",background:"linear-gradient(135deg,#78FF9E,#00D2FF)",
-                color:"#030712",fontSize:15,fontWeight:800,fontFamily:"'Syne',sans-serif",marginBottom:8,cursor:"pointer"}}>
-                ⬇️ Download Video
+                border:"none",background:`linear-gradient(135deg,${theme.accent2},${theme.accent})`,
+                color:"#050505",fontSize:15,fontWeight:800,fontFamily:"'Syne',sans-serif",marginBottom:8,cursor:"pointer"}}>
+                ⬇️ Download EchoPitch
               </button>
-              <video src={videoUrl} controls style={{width:"100%",borderRadius:10,marginBottom:8,
-                border:"1px solid rgba(0,0,0,0.03)"}}/>
-              <button className="vbtn" onClick={()=>{setPhase("preview");setVideoUrl("");setProgress(0)}}
-                style={{width:"100%",padding:"11px",borderRadius:10,border:"1px solid rgba(0,0,0,0.05)",
+              <div style={{display:"flex",gap:8,marginBottom:8}}>
+                {["Copy Link","LinkedIn","WhatsApp","X","Email","QR Code"].map(label=>(
+                  <div key={label} className="echo-locked" title="Coming soon — needs hosted video storage, not built yet"
+                    style={{flex:1,textAlign:"center",padding:"8px 4px",borderRadius:8,border:"1px solid rgba(255,255,255,0.08)",
+                      fontSize:9,color:COLORS.dim,fontWeight:700}}>
+                    {label} 🔒
+                  </div>
+                ))}
+              </div>
+              <button className="vbtn" onClick={()=>{setPhase("evidence");setVideoUrl("");setProgress(0)}}
+                style={{width:"100%",padding:"11px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",
                   background:"transparent",color:COLORS.dim,fontSize:13,cursor:"pointer"}}>
                 🔄 Regenerate
               </button>
             </div>
           )}
 
-          <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(0,0,0,0.03)",
-            borderRadius:10,padding:"12px 14px",fontSize:11,color:COLORS.dim,lineHeight:1.7}}>
-            <span style={{fontWeight:700,color:"rgba(0,0,0,0.12)"}}>ℹ️ </span>
-            Canvas + MediaRecorder renders locally in your browser. AI voiceover via Web Speech API.
+          <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",
+            borderRadius:10,padding:"12px 14px",fontSize:10.5,color:COLORS.dim,lineHeight:1.7}}>
+            <span style={{fontWeight:700}}>ℹ️ </span>
+            Canvas + MediaRecorder renders locally in your browser. Narration via Web Speech API. Sharing, hosting and voice cloning are on the EchoPitch roadmap — nothing here is faked.
           </div>
         </div>
       </div>
