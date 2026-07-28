@@ -5,6 +5,7 @@ import { supabase } from "./lib/supabase"
 import { userDoc } from "./lib/db"
 import { Analytics as PH, identifyUser, resetAnalytics } from "./lib/analytics"
 import { FLAGS } from "./config/featureFlags"
+import { resolveArenaV2PilotPage } from "./arena-v2/arenaV2RoleRouting.js"
 
 import PathNav     from "./components/PathNav"
 import { PageLoader } from "./components/CapUI"
@@ -36,6 +37,26 @@ const ArenaV2BiotechPilot = lazy(() => import("./pages/ArenaV2BiotechPilot"))
 const ArenaV2MedicalBiotechPilot = lazy(() => import("./pages/ArenaV2MedicalBiotechPilot"))
 const ArenaV2ClinicalLabPilot = lazy(() => import("./pages/ArenaV2ClinicalLabPilot"))
 const ArenaV2RecruiterView = lazy(() => import("./pages/ArenaV2RecruiterView"))
+
+// Lookup from resolveArenaV2PilotPage()'s return value to the already-lazy-
+// imported pilot component above — used only by the single "arena" render
+// block below (nav consolidation pass, 2026-07-28) so "Arena" can route a
+// student straight to their role's Arena V2 pilot when one exists, falling
+// back to the legacy <Arena> page otherwise. Deliberately just the 9 roles
+// that have a real, tested Arena V2 domain workstation AND a resolvable
+// arenaKey in roleConfig.js — see arenaV2RoleRouting.js's header comment for
+// why Biotech/MedicalBiotech/ClinicalLab are not in this map yet.
+const ARENA_V2_PILOT_COMPONENTS = {
+  arenaV2MLPilot: ArenaV2MLPilot,
+  arenaV2SoftwarePilot: ArenaV2SoftwarePilot,
+  arenaV2CyberPilot: ArenaV2CyberPilot,
+  arenaV2DevOpsPilot: ArenaV2DevOpsPilot,
+  arenaV2DbaPilot: ArenaV2DbaPilot,
+  arenaV2EcePilot: ArenaV2EcePilot,
+  arenaV2EeePilot: ArenaV2EeePilot,
+  arenaV2CivilPilot: ArenaV2CivilPilot,
+  arenaV2MechanicalPilot: ArenaV2MechanicalPilot,
+}
 const Pulse              = lazy(() => import("./pages/Pulse"))
 const HardwareChallenges = lazy(() => import("./pages/HardwareChallenges"))
 const SkillStudio        = lazy(() => import("./pages/SkillStudio"))
@@ -1098,21 +1119,16 @@ function App() {
   const initials    = (userData?.name || user?.displayName || "U").charAt(0).toUpperCase()
   const displayName = userData?.displayName || userData?.name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User"
 
+  // Nav decluttered 2026-07-28: the twelve "X Pilot (Beta)" entries that had
+  // accumulated here (one appended per Arena V2 domain-workstation phase
+  // across this session) are removed. They were a build-time convenience for
+  // reaching each new av2_* domain workstation directly while it had no real
+  // entry point yet — never an intended permanent nav design. Reaching a
+  // specific Arena V2 pilot by role/domain is Arena's job (see arena.jsx /
+  // arenaDomains.js's resolveArenaDomain), not the global header's.
   const STUDENT_HEADER_NAV = [
     { id: "aura",        label: "Aura",         page: "aura",        prefix: "+" },
     { id: "arena",       label: "Arena",        page: "arena",       prefix: "×" },
-    { id: "arenaV2MLPilot", label: "ML Pilot (Beta)", page: "arenaV2MLPilot", prefix: "🧪" },
-    { id: "arenaV2SoftwarePilot", label: "SWE Pilot (Beta)", page: "arenaV2SoftwarePilot", prefix: "💻" },
-    { id: "arenaV2CyberPilot", label: "Cyber Pilot (Beta)", page: "arenaV2CyberPilot", prefix: "🛡️" },
-    { id: "arenaV2DevOpsPilot", label: "DevOps Pilot (Beta)", page: "arenaV2DevOpsPilot", prefix: "🛠️" },
-    { id: "arenaV2DbaPilot", label: "DBA Pilot (Beta)", page: "arenaV2DbaPilot", prefix: "🗄️" },
-    { id: "arenaV2EcePilot", label: "ECE Pilot (Beta)", page: "arenaV2EcePilot", prefix: "🔌" },
-    { id: "arenaV2EeePilot", label: "EEE Pilot (Beta)", page: "arenaV2EeePilot", prefix: "⚡" },
-    { id: "arenaV2CivilPilot", label: "Civil Pilot (Beta)", page: "arenaV2CivilPilot", prefix: "🏗️" },
-    { id: "arenaV2MechanicalPilot", label: "Mechanical Pilot (Beta)", page: "arenaV2MechanicalPilot", prefix: "⚙️" },
-    { id: "arenaV2BiotechPilot", label: "Biotech Pilot (Beta)", page: "arenaV2BiotechPilot", prefix: "🧬" },
-    { id: "arenaV2MedicalBiotechPilot", label: "Med Biotech Pilot (Beta)", page: "arenaV2MedicalBiotechPilot", prefix: "🩺" },
-    { id: "arenaV2ClinicalLabPilot", label: "Clinical Lab Pilot (Beta)", page: "arenaV2ClinicalLabPilot", prefix: "🧫" },
     { id: "pulse",       label: "Pulse",        page: "pulse",       prefix: "⚡" },
     { id: "skillstudio", label: "Skill Studio", page: "skillstudio",   prefix: "🎓" },
     { id: "launchpad",   label: "Launchpad",    page: "launchpad",     prefix: "🚀" },
@@ -1351,7 +1367,32 @@ function App() {
               userData={userData} setUserData={setUserData} />
           )}
           {currentPage === "nexus"     && <Nexus user={user} userData={userData} setUserData={setUserData} />}
-          {currentPage === "arena"     && <Arena user={user} userData={userData} setUserData={setUserData} onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }} onNavigatePricing={() => setCurrentPage("pricing")} />}
+          {currentPage === "arena" && (() => {
+            // Arena V2-first routing (nav consolidation, 2026-07-28): if this
+            // student's resolved role has a live Arena V2 pilot, land them
+            // there directly instead of the legacy Arena landing page — the
+            // real submission/ELO/skills/recruiter-evidence pipeline is now
+            // the default for the roles that have it. Every role without a
+            // mapped pilot (including Biotech/MedicalBiotech/ClinicalLab,
+            // which have no resolvable arenaKey yet — see
+            // arenaV2RoleRouting.js) falls through to the legacy <Arena>
+            // exactly as before this change, so no one loses access.
+            const pilotPage = resolveArenaV2PilotPage(userData)
+            const PilotComponent = pilotPage && ARENA_V2_PILOT_COMPONENTS[pilotPage]
+            if (PilotComponent) {
+              return (
+                <PilotComponent
+                  user={user}
+                  userData={userData}
+                  onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
+                  onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage(pilotPage); setCurrentPage("arenaV2RecruiterView") }}
+                />
+              )
+            }
+            return (
+              <Arena user={user} userData={userData} setUserData={setUserData} onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }} onNavigatePricing={() => setCurrentPage("pricing")} />
+            )
+          })()}
           {currentPage === "arenaV2MLPilot" && (
             <ArenaV2MLPilot
               user={user}
