@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import EchoPitchDemoPlayer from "./EchoPitchDemoPlayer"
 
 // ─── Design tokens ─────────────────────────────────────────────────────────
 const D = {
@@ -913,6 +914,44 @@ export default function LandingPage({ onGetStarted, onLogin }) {
           : activeFlow==="executive"   ? <div className="lp-grid-3">{EXECUTIVE_FEATURES.map((f,i)=><FeatureCard key={i} item={f}/>)}</div>
           : activeFlow==="institution" ? <div className="lp-grid-3">{INSTITUTION_FEATURES.map((f,i)=><FeatureCard key={i} item={f}/>)}</div>
           : <div className="lp-grid-3">{FEATURES.map((f,i)=><FeatureCard key={i} item={f}/>)}</div>}
+        </div>
+      </section>
+
+      {/* ── ECHOPITCH ─────────────────────────────────────────────────
+          Real, generated video+audio demo (Canvas + Deepgram TTS, the
+          same engine EchoPitch itself uses) — not a static/uploaded
+          video file. No user data is available on this public page, so
+          the demo runs generic product narration with no profile photo
+          (EchoPitchDemoPlayer only draws a portrait when avatarUrl is
+          passed — see its header comment). */}
+      <section style={{ padding:"0 0 88px" }}>
+        <div className="lp-container">
+          <div style={{ background:"radial-gradient(circle at 20% 15%, rgba(0,210,255,0.08), rgba(3,3,8,0) 55%)",
+            border:"1px solid rgba(255,255,255,0.1)", borderRadius:30, padding:"44px 30px",
+            backdropFilter:"blur(24px)", boxShadow:"0 24px 80px rgba(0,0,0,0.5)" }}>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:36, alignItems:"center", justifyContent:"space-between" }}>
+              <div style={{ flex:"1 1 380px", minWidth:280 }}>
+                <span style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"4px 12px", borderRadius:99,
+                  background:"linear-gradient(135deg,#F5C453,#D89B2A)", color:"#1a1408", fontSize:10, fontWeight:900,
+                  letterSpacing:1, marginBottom:14 }}>✦ ELITE EXCLUSIVE</span>
+                <h2 style={{ fontSize:"clamp(30px,5vw,48px)", lineHeight:1.06, color:D.text1, marginBottom:12,
+                  letterSpacing:"-0.04em", fontWeight:800 }}>
+                  Introducing <span style={{ color:"#00D2FF", fontStyle:"italic" }}>EchoPitch</span>
+                </h2>
+                <p style={{ fontSize:15, color:D.text2, maxWidth:520, lineHeight:1.85, marginBottom:18 }}>
+                  A cinematic, narrated video pitch built entirely from your real Capabilio evidence — Arena
+                  missions, ELO growth, and skills. Real AI voiceover, baked into a video you download and share.
+                  Not a template. Not a resume.
+                </p>
+                <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+                  <PrimaryButton onClick={() => openPath(activeFlow,"echopitch-cta")}>BUILD YOUR ECHOPITCH →</PrimaryButton>
+                </div>
+              </div>
+              <div style={{ flex:"1 1 380px", minWidth:280, display:"flex", justifyContent:"center" }}>
+                <EchoPitchDemoPlayer />
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
