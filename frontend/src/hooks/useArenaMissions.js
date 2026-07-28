@@ -20,7 +20,7 @@ const SERVER = SERVER_LOCAL
 
 const todayStr    = () => new Date().toISOString().slice(0, 10)
 const nowMs       = () => Date.now()
-const SLOT_COUNT  = 3
+const SLOT_COUNT  = 6 // matches Elite's arenaTasks:6 in plans.js — was 3, silently clipping Elite
 const COOLDOWN_MS = 24 * 60 * 60 * 1000
 
 function unlockedSlots(userData) {
@@ -245,9 +245,15 @@ export function useArenaMissions() {
       const coverage = await loadSkillCoverage(u.id)
       const userDomain = resolveDomain(ud)
 
+      // 2026-07-28: slots beyond the plan's unlocked count are NOT gated off
+      // here anymore — they're still generated with real AI content so
+      // MissionDesk can render them as blurred upgrade-teaser cards (real
+      // titles, not a placeholder). Plan gating now happens purely in
+      // MissionDesk's render logic (its unlockedCount prop), same split as
+      // useDomainChallengeSlots.js. The free-tier daily-interval cooldown
+      // below still only applies to slots the user can actually act on.
       const checked = raw.map((s, i) => {
-        if (i >= maxSlots) return { ...makeEmptySlot(i), status: "upgrade" }
-        if (freeLocked && getPlan(ud).id === "free") {
+        if (i < maxSlots && freeLocked && getPlan(ud).id === "free") {
           const plan = getPlan(ud)
           const daysLeft = plan.arenaIntervalDays - daysSinceLastArenaTask(ud)
           return { ...makeEmptySlot(i), status: "cooldown", cooldownHrs: Math.ceil(daysLeft * 24), isPlanCooldown: true }

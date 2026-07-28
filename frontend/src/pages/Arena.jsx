@@ -23,7 +23,6 @@ import { supabase } from "../lib/supabase"
 import ArenaStreaks  from "./ArenaStreaks"
 import ArenaCommonChallenges from "./ArenaCommonChallenges"
 import { getDomainChallenges, getDomainCategories } from "../config/domainChallenges"
-import { useDomainChallengeSlots } from "../hooks/useDomainChallengeSlots"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DESIGN TOKENS
@@ -3594,13 +3593,6 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
     setActiveModuleId(domain.defaultModule || modules[0]?.id || null)
   }, [domainKey])   // eslint-disable-line
 
-  // ── Domain challenge slots (smart rotation, 24hr cooldown) ───────────────
-  // 2026-07-28: hook now always generates the full slot pool regardless of
-  // plan — MissionDesk's unlockedCount prop (below) is what actually decides
-  // how many are interactive vs. shown as locked upgrade teasers. See the
-  // hook's own header comment for why this split matters.
-  const domainSlots = useDomainChallengeSlots(effectiveUserData)
-
   // ── Convert local challenge bank object → Arena mission format ────────────
   // _isDomainChallenge = true prevents DSA mis-detection for code-sandbox domain challenges
   const challengeToMission = (challenge) => ({
@@ -3641,9 +3633,59 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
     _isDomainChallenge: true,   // prevents misclassification as DSA on submit
   })
 
-  // Legacy server missions hook (kept for history/leaderboard data)
+  // 2026-07-28: this IS the real mission source now — AI-generated via
+  // /api/arena/daily (Gemini → Groq fallback), skill/ELO-adaptive, and
+  // never repeats a completed title (see useArenaMissions.js's
+  // completed_mission_titles tracking). It was already running on every
+  // page load before this change — just for markCompleted's bookkeeping —
+  // while its own generated slots were discarded and the static
+  // domainSlots array was shown instead. Now it's the actual source.
   const rawMissionsHook = useArenaMissions()
   const markCompleted   = rawMissionsHook?.markCompleted || null
+
+  // ── Workstation → emoji fallback (AI mission payloads don't include an
+  // icon field the way the old static domainChallenges.js entries did) ──
+  const WORKSTATION_ICONS = {
+    notebook: "📓", sql: "🗄️", api: "🔌", frontend: "🖥️", terminal: "⌨️",
+    code: "💻", excel: "📊", dashboard: "📈", report: "📄",
+    circuit_lab: "🔌", interactive_circuit: "🔌", embedded_lab: "🔧",
+    diagram_workspace: "📐", visual_inspection: "🔍", diagnostic_console: "🩺",
+    document_viewer: "📃", sequence_builder: "🧬", engineering_lab: "🏗️",
+    system_design: "🧩", calculator: "🧮", security_console: "🛡️",
+    soc_console: "🛰️", sre_console: "📡", qa_lab: "✅",
+    business_analysis: "📋", medical_coding: "⚕️", markdown: "📝",
+  }
+
+  // Adapts an AI-generated mission (useArenaMissions' `task` shape) into the
+  // `challenge` shape MissionDesk/challengeToMission expect — the AI schema
+  // (geminiGenerateMission) doesn't return icon/tools/id the way the old
+  // static domainChallenges.js entries did, so this fills honest fallbacks
+  // rather than leaving them undefined.
+  const taskToChallenge = (task) => {
+    if (!task) return null
+    const ws = task.workstation || "code"
+    return {
+      ...task,
+      id:          task.id || task.slotId || `ai_${(task.title || "mission").toLowerCase().replace(/[^a-z0-9]+/g, "_").slice(0, 40)}`,
+      icon:        WORKSTATION_ICONS[ws] || "🎯",
+      category:    task.type || task.tags?.[0] || "General",
+      skillTags:   task.tags || [],
+      tools:       task.tags || [],
+      timeLimit:   typeof task.timeLimit === "number" ? `${task.timeLimit} min` : (task.timeLimit || "30 min"),
+      description: task.scenario || task.taskDescription || "",
+      scenario:    task.scenario || task.taskDescription || "",
+    }
+  }
+
+  // AI slots (useArenaMissions' {status,task,slotIndex,...}) → the
+  // {index,status,challenge,cooldownUntil} shape MissionDesk already
+  // expects — MissionDesk itself is unchanged, only the data feeding it.
+  const aiSlots = (rawMissionsHook?.slots || []).map((s, i) => ({
+    index:         i,
+    status:        s?.status === "upgrade" ? "empty" : (s?.status || "empty"),
+    challenge:     taskToChallenge(s?.task),
+    cooldownUntil: s?.cooldownUntil || null,
+  }))
 
   // ── Parse timeLimit string → seconds (e.g. "25-35 min" → 25*60, "20 min" → 1200) ──
   const parseTimeLimitSecs = (tl) => {
@@ -4364,17 +4406,15 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
           } catch { /* fire-and-forget — non-fatal */ }
         }
       }
+      // 2026-07-28: this is now the only slot-completion bookkeeping call —
+      // it locks the real AI-generated slot for 24h, tracks the completed
+      // title (so it's never regenerated), and updates skill coverage/
+      // recent-skills for the next slot's generation. (A second call here
+      // used to also force-lock daily slot 0 when a mission was started from
+      // the free-practice library — dropped: library browsing is meant to be
+      // separate from the daily-mission slots, not consume one.)
       if (markCompleted && activeMissionSlot !== null) {
         await markCompleted(activeMissionSlot, activeMission, reviewResult)
-      }
-      // Lock the domain slot for 24hrs and schedule rotation to a new skill area.
-      // If mission was started from the library (slotIndex = null), mark slot 0 as
-      // completed so free-tier users don't immediately see another active mission.
-      if (domainSlots?.markCompleted && activeMission?.id) {
-        const targetSlot = activeMissionSlot !== null
-          ? activeMissionSlot
-          : 0  // library completion → always locks the primary (only) slot
-        await domainSlots.markCompleted(targetSlot, activeMission.id)
       }
     } catch (e) { console.error("Arena persist error:", e) }
 
@@ -4445,7 +4485,7 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
                 >
                   <span style={{ width: 18, textAlign: "center", fontSize: 14, flexShrink: 0 }}>{t.icon}</span>
                   <span>{t.label}</span>
-                  {t.id === "missions" && domainSlots.loadingSlots && <Spinner size={9} color={domain.color} />}
+                  {t.id === "missions" && rawMissionsHook?.loadingSlots && <Spinner size={9} color={domain.color} />}
                 </button>
               )
             })}
@@ -4545,11 +4585,11 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
           {/* SLOT VIEW — plan-gated daily challenges */}
           {!activeMission && !showLibrary && (
             <MissionDesk
-              slots={domainSlots.slots}
+              slots={aiSlots}
               domain={domain}
               domainKey={domainKey}
-              loadingSlots={domainSlots.loadingSlots}
-              allChallenges={domainSlots.allChallenges}
+              loadingSlots={rawMissionsHook?.loadingSlots}
+              allChallenges={aiSlots.map(s => s.challenge).filter(Boolean)}
               onBrowseAll={() => setShowLibrary(true)}
               unlockedCount={getPlan(effectiveUserData).arenaTasks}
               onUpgrade={(planId) => setUpgradeModal(planId)}
@@ -4577,7 +4617,7 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
                   ← Daily Slots
                 </button>
                 <span style={{ fontSize:14, fontWeight:800, color:T.ink }}>Challenge Library — {domain.label}</span>
-                <span style={{ fontSize:11, color:T.ink4 }}>{domainSlots.allChallenges.length} challenges</span>
+                <span style={{ fontSize:11, color:T.ink4 }}>{getDomainChallenges(domainKey).length} challenges</span>
               </div>
               <div style={{ flex:1, overflow:"hidden" }}>
                 <DomainChallengePicker
