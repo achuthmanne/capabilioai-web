@@ -14,6 +14,37 @@
 //   6. Return score + feedback to frontend
 
 const DEEPGRAM_URL = "https://api.deepgram.com/v1/listen"
+const DEEPGRAM_TTS_URL = "https://api.deepgram.com/v1/speak"
+
+// ─── Deepgram Aura-2 text-to-speech client ───────────────────────────────────
+// USE: EchoPitch (Aura career video) — real narration audio, mixed into the
+// exported video via Web Audio API on the client (see CareerVideoGenerator.jsx).
+//
+// HONEST LIMITATION (checked 2026-07-28 against Deepgram's docs): Aura-2's
+// English voices only cover American, British, Australian and Filipino
+// accents — there is no Indian-English (en-in) voice in Deepgram's catalog
+// today. DEFAULT_TTS_MODEL below is a real, working American-English voice,
+// not an Indian one — do not relabel this as "Indian voice" anywhere in the
+// UI. A genuine en-IN voice would require a different provider (e.g. Google
+// Cloud TTS's en-IN-Wavenet/Neural2 voices, or Azure's en-IN-NeerjaNeural) —
+// tracked as a follow-up, not silently substituted here.
+const DEFAULT_TTS_MODEL = "aura-2-luna-en"
+
+export async function synthesizeSpeech(text, { model = DEFAULT_TTS_MODEL } = {}) {
+  const key = process.env.DEEPGRAM_API_KEY
+  if (!key) throw new Error("DEEPGRAM_API_KEY not set")
+  if (!text || !text.trim()) throw new Error("No text provided")
+
+  const res = await fetch(`${DEEPGRAM_TTS_URL}?model=${encodeURIComponent(model)}&encoding=mp3`, {
+    method: "POST",
+    headers: { Authorization: `Token ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ text: text.slice(0, 2000) }),
+  })
+  if (!res.ok) throw new Error(`Deepgram TTS ${res.status}: ${(await res.text()).slice(0, 200)}`)
+
+  const arrayBuffer = await res.arrayBuffer()
+  return { audioBuffer: Buffer.from(arrayBuffer), contentType: res.headers.get("content-type") || "audio/mpeg" }
+}
 
 export async function transcribeAudio(audioBuffer, mimeType = "audio/webm") {
   const key = process.env.DEEPGRAM_API_KEY

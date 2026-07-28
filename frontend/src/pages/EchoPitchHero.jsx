@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
 import { motion } from "framer-motion"
 import { EchoPitchLivePreview } from "./CareerVideoGenerator"
+import EchoPitchDemoPlayer from "./EchoPitchDemoPlayer"
 
 // ─── EchoPitch — premium hero section for Aura ──────────────────────────────
 // Replaces the old "Personal Brand Video" card. Split layout: copy + CTAs on
@@ -94,7 +95,7 @@ export default function EchoPitchHero({ userData, skillGraph, completedTasks, ex
             {[
               { label:"Arena tasks", value: stats.tasks },
               { label:"Skills tracked", value: stats.skills },
-              { label:"Roles logged", value: stats.roles },
+              { label:"Experience entries", value: stats.roles },
             ].map(s => (
               <div key={s.label} style={{ padding:"7px 12px", borderRadius:10, background:"rgba(255,255,255,0.05)",
                 border:"1px solid rgba(255,255,255,0.08)" }}>
@@ -131,6 +132,10 @@ export default function EchoPitchHero({ userData, skillGraph, completedTasks, ex
               </motion.div>
             )}
           </div>
+
+          {/* Real, generated product demo — see EchoPitchDemoPlayer.jsx header
+              for exactly what's real vs. out of scope here. */}
+          <EchoPitchDemoPlayer avatarUrl={userData?.avatarUrl} />
         </motion.div>
 
         {/* Right — glassmorphism live preview */}

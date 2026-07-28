@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { userDoc } from "../lib/db"
 import { supabase } from "../lib/supabase"
 
@@ -3048,6 +3048,16 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
   // nothing replaced it as a read source for this dashboard. This is a
   // read-only fetch — it cannot reintroduce that bug.
   const [liveArenaSkillGraph, setLiveArenaSkillGraph] = useState([])
+  // EchoPitch evidence source (2026-07-28): the same class of bug as
+  // liveArenaSkillGraph above — userData.arenaHistory is a legacy Firestore-
+  // era field (see lib/db.js comment "replaces users/{uid}/arenaHistory
+  // subcollection") that Arena V2's proof_objects pipeline never writes to.
+  // A student who completes real Arena V2 missions (proof_objects rows) was
+  // showing "0 Arena tasks" in EchoPitch even with real completions on
+  // record. Fix: read the same public, already-shipped GET /api/proofs/:userId
+  // endpoint that powers the Portfolio "Engineering Proofs" tab — real,
+  // AI-graded proof rows, not a re-derivation of anything.
+  const [echoPitchProofs, setEchoPitchProofs] = useState([])
   const [resilienceData, setResilienceData] = useState(null)
   const [resilienceLoading, setResLoading] = useState(false)
   const [githubData, setGithubData]     = useState(null)
@@ -3173,6 +3183,44 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
     })()
     return () => { cancelled = true }
   }, [user?.id, arenaHistRows.length])
+
+  // EchoPitch evidence — see echoPitchProofs declaration above for why this
+  // reads proof_objects instead of userData.arenaHistory. Public endpoint,
+  // no auth header needed (same as EngineeringProofsPanel.jsx).
+  useEffect(() => {
+    const uid = user?.id || user?.uid
+    if (!uid) return
+    let cancelled = false
+    fetch(`${API}/api/proofs/${uid}`)
+      .then(r => r.json())
+      .then(d => {
+        if (cancelled || d.error) return
+        const flat = (d.domains || []).flatMap(g => g.proofs || [])
+        flat.sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt))
+        setEchoPitchProofs(flat)
+      })
+      .catch(() => { /* non-fatal — EchoPitch falls back to 0 real evidence, never fake */ })
+    return () => { cancelled = true }
+  }, [user?.id])
+
+  // Maps real proof_objects rows into the {task,submission} shape
+  // CareerVideoGenerator/EchoPitchHero already expect (same shape the old
+  // arenaHistory mapping produced) — swap-in fix, no consumer changes needed.
+  const echoPitchCompletedTasks = useMemo(() => {
+    if (echoPitchProofs.length > 0) {
+      return echoPitchProofs.slice(0, 10).map(p => ({
+        task: { title: p.title, difficulty: p.difficulty, category: p.domain, skill: p.skill, scenario: p.challengeType },
+        submission: { score: p.score, eloGained: p.eloDelta, summary: (p.skillsDemonstrated || []).join(", ") },
+      }))
+    }
+    // Fallback for any pre-proof_objects-era account that only has the old
+    // arenaHistory field populated — kept so this fix can't regress anyone,
+    // not a claim that this path is commonly hit today.
+    return (userData?.arenaHistory || []).slice(0, 10).map(h => ({
+      task: { title: h.taskTitle || h.title, difficulty: h.difficulty, category: h.category, skill: h.skill, scenario: h.scenario },
+      submission: { score: h.score, eloGained: h.eloGained || h.eloDelta, summary: h.feedback || h.summary },
+    }))
+  }, [echoPitchProofs, userData?.arenaHistory])
 
   // Returns true/false so callers that need to know (e.g. resume upload) can
   // show an accurate result instead of assuming success. BUG FIX (2026-07-20):
@@ -4184,7 +4232,7 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
       `}</style>
 
       {showExpModal&&<AddExperienceModal onSave={saveExperience} onClose={()=>{setShowExpModal(false);setEditingIdx(null)}} existing={editingIdx!==null?experiences[editingIdx]:null}/>}
-      {showVideoGenerator&&<CareerVideoGenerator userData={userData} skillGraph={skillGraph} completedTasks={(userData?.arenaHistory||[]).slice(0,10).map(h=>({task:{title:h.taskTitle||h.title,difficulty:h.difficulty,category:h.category,skill:h.skill,scenario:h.scenario},submission:{score:h.score,eloGained:h.eloGained||h.eloDelta,summary:h.feedback||h.summary}}))} experiences={experiences} onClose={()=>setShowVideoGenerator(false)}/>}
+      {showVideoGenerator&&<CareerVideoGenerator userData={userData} skillGraph={skillGraph} completedTasks={echoPitchCompletedTasks} experiences={experiences} onClose={()=>setShowVideoGenerator(false)}/>}
       <input ref={fileInputRef} type="file" style={{display:"none"}} onChange={handleUpload} accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.zip,.txt"/>
       <input ref={resumeFileInputRef} type="file" style={{display:"none"}} onChange={handleResumeUpload} accept=".pdf,.doc,.docx"/>
 
@@ -4982,7 +5030,7 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
             <EchoPitchHero
               userData={userData}
               skillGraph={skillGraph}
-              completedTasks={(userData?.arenaHistory||[]).slice(0,10).map(h=>({task:{title:h.taskTitle||h.title,difficulty:h.difficulty,category:h.category,skill:h.skill,scenario:h.scenario},submission:{score:h.score,eloGained:h.eloGained||h.eloDelta,summary:h.feedback||h.summary}}))}
+              completedTasks={echoPitchCompletedTasks}
               experiences={experiences}
               isElite={auraPlan.id==="elite"}
               onGenerate={()=>setShowVideoGenerator(true)}

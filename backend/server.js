@@ -160,6 +160,7 @@ import verifyRoutes           from "./server/routes/verify.js"
 import skillGapRoutes         from "./server/routes/skillGap.js"
 import enrichRoutes           from "./server/routes/enrich.js"
 import voiceRoutes            from "./server/routes/voice.js"
+import ttsRoutes              from "./server/routes/tts.js"
 // ── Professional Path modules ─────────────────────────────────────────────────
 import professionalProfileRoutes from "./server/routes/professionalProfile.js"
 import careerTimelineRoutes      from "./server/routes/careerTimeline.js"
@@ -220,6 +221,7 @@ app.use("/api/arena/v2",     aiLimiter)
 app.use("/api/skill-studio", aiLimiter)
 app.use("/api/chat",         aiLimiter)
 app.use("/api/voice",        aiLimiter)
+app.use("/api/tts",          aiLimiter)
 app.use("/api/copilot",      aiLimiter)
 app.use("/api/groq",         aiLimiter)
 // PC-3: these AI-backed endpoints were only under the general 100/min limit.
@@ -334,6 +336,7 @@ app.use("/api/verify",       verifyRoutes)       // digilocker, epfo, certificat
 app.use("/api",              skillGapRoutes)     // skill-gap, market analysis — Gemini Search
 app.use("/api/enrich",       enrichRoutes)       // stub — replaced by ProxyCurl
 app.use("/api/voice",        voiceRoutes)        // transcribe — Deepgram nova-2 + Claude eval
+app.use("/api/tts",          ttsRoutes)          // speak — Deepgram Aura-2 TTS (EchoPitch audio-in-video)
 // ── Professional Path ─────────────────────────────────────────────────────────
 app.use("/api",              professionalProfileRoutes) // pro/profile, pro/epfo, pro/visibility
 app.use("/api",              careerTimelineRoutes)      // pro/timeline, pro/vault

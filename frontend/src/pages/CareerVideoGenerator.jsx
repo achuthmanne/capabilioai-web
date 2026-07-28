@@ -723,14 +723,18 @@ const THEMES = [
 ]
 
 // ── Voice options ──────────────────────────────────────────────────────────
-// HONEST SCOPE NOTE: "Professional AI Voice" is real today (Web Speech API,
-// same engine this feature already shipped with). "Own Voice" recording and
-// "Voice Clone" both require capability this codebase does not have yet
-// (real mic-capture mixing / a paid voice-cloning provider respectively) —
-// shown as real, visible, disabled options with an honest tooltip rather
-// than either hidden or silently faked.
+// HONEST SCOPE NOTE (updated 2026-07-28): "Professional AI Voice" now uses
+// real Deepgram Aura-2 TTS audio (backend/server/routes/tts.js), decoded and
+// mixed into the exported video via Web Audio API — the downloaded file
+// actually contains this narration now, not just a live-only browser voice.
+// Checked against Deepgram's voice catalog: it has no Indian-English (en-in)
+// accent today, only American/British/Australian/Filipino — so this is
+// labeled "US English" rather than falsely claimed as Indian. "Own Voice"
+// recording and "Voice Clone" both still require capability this codebase
+// doesn't have (real mic-capture mixing / a paid voice-cloning provider) —
+// shown as real, visible, disabled options with an honest tooltip.
 const VOICE_OPTIONS = [
-  { id:"ai",    label:"Professional AI Voice", desc:"Studio-tone narration, generated instantly.", locked:false },
+  { id:"ai",    label:"Professional AI Voice (US English)", desc:"Real studio-tone narration, baked into your downloaded video.", locked:false },
   { id:"own",   label:"Own Voice",             desc:"Record your own narration.",  locked:true },
   { id:"clone", label:"Voice Clone",           desc:"Clone your voice from a sample.", locked:true },
 ]
@@ -906,13 +910,72 @@ Return ONLY a JSON array of 9 strings, no markdown: ["s1","s2","s3","s4","s5","s
   const toggleTask=(i)=>setSelectedTasks(prev=>{const n=new Set(prev); n.has(i)?n.delete(i):n.add(i); return n})
   const toggleExp=(i)=>setSelectedExp(prev=>{const n=new Set(prev); n.has(i)?n.delete(i):n.add(i); return n})
 
+  // ── Real narration audio, mixed into the exported video ────────────────────
+  // Browser Web Speech API can play narration live but its audio can never be
+  // captured into a MediaRecorder stream (no browser exposes that as a
+  // MediaStreamTrack) — that was a real, silent gap in the previous version:
+  // downloaded videos had zero audio despite the narration playing out loud
+  // during generation. Fix: fetch real TTS audio bytes from our own backend
+  // (Deepgram Aura-2, see routes/tts.js), decode them with Web Audio API, and
+  // route the decoded audio through a MediaStreamAudioDestinationNode whose
+  // track gets added to the canvas' captureStream before recording. That
+  // makes the audio a genuine part of the recorded MediaStream — real, not
+  // simulated.
+  const audioCtxRef = useRef(null)
+  const ttsDestRef  = useRef(null)
+  const [voiceSynthStatus, setVoiceSynthStatus] = useState("")
+  const [audioUnavailable, setAudioUnavailable] = useState(false)
+
+  async function synthesizeAllNarration(lines, audioCtx) {
+    const buffers = []
+    for (let i = 0; i < lines.length; i++) {
+      setVoiceSynthStatus(`Synthesizing narration ${i+1} of ${lines.length}…`)
+      const text = lines[i] || ""
+      if (!text) { buffers.push(null); continue }
+      try {
+        const res = await fetch(`${API}/api/tts/speak`, {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }),
+        })
+        if (!res.ok) throw new Error(`tts ${res.status}`)
+        const arrayBuffer = await res.arrayBuffer()
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer)
+        buffers.push(audioBuffer)
+      } catch {
+        buffers.push(null) // per-line failure — keep going, video still gets other lines' audio
+      }
+    }
+    setVoiceSynthStatus("")
+    return buffers
+  }
+
   const generateVideo=useCallback(async()=>{
-    setPhase("generating"); setProgress(0)
+    setPhase("generating"); setProgress(0); setAudioUnavailable(false)
     cancelAnimationFrame(rafRef.current); chunksRef.current=[]
     const canvas=canvasRef.current
-    const stream=canvas.captureStream(30)
-    const mime=MediaRecorder.isTypeSupported("video/webm;codecs=vp9")?"video/webm;codecs=vp9":"video/webm"
-    const recorder=new MediaRecorder(stream,{mimeType:mime})
+
+    let audioTrack = null, narrationBuffers = []
+    if (voiceId === "ai") {
+      try {
+        if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)()
+        const audioCtx = audioCtxRef.current
+        if (audioCtx.state === "suspended") await audioCtx.resume()
+        if (!ttsDestRef.current) ttsDestRef.current = audioCtx.createMediaStreamDestination()
+        narrationBuffers = await synthesizeAllNarration(script, audioCtx)
+        const gotAny = narrationBuffers.some(Boolean)
+        if (gotAny) audioTrack = ttsDestRef.current.stream.getAudioTracks()[0]
+        else setAudioUnavailable(true) // backend TTS unreachable/unconfigured — honest fallback, no fake audio
+      } catch {
+        setAudioUnavailable(true)
+      }
+    }
+
+    const videoTrack = canvas.captureStream(30).getVideoTracks()[0]
+    const combined = new MediaStream(audioTrack ? [videoTrack, audioTrack] : [videoTrack])
+    const mimeCandidates = audioTrack
+      ? ["video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"]
+      : ["video/webm;codecs=vp9","video/webm"]
+    const mime = mimeCandidates.find(m=>MediaRecorder.isTypeSupported(m)) || "video/webm"
+    const recorder=new MediaRecorder(combined,{mimeType:mime})
     recorderRef.current=recorder
     recorder.ondataavailable=e=>{if(e.data.size>0)chunksRef.current.push(e.data)}
     recorder.onstop=()=>{
@@ -923,8 +986,18 @@ Return ONLY a JSON array of 9 strings, no markdown: ["s1","s2","s3","s4","s5","s
     let si=0
     for(const section of SECTIONS){
       setCurrentSec(SECTIONS.indexOf(section))
-      const text=script[si++]||""
-      if(text&&voiceId==="ai"&&window.speechSynthesis){
+      const text=script[si] || ""
+      const narrationBuffer = narrationBuffers[si]
+      si++
+      if (narrationBuffer && audioTrack) {
+        const src = audioCtxRef.current.createBufferSource()
+        src.buffer = narrationBuffer
+        src.connect(ttsDestRef.current)
+        src.start()
+      } else if (text && voiceId==="ai" && !audioTrack && window.speechSynthesis) {
+        // TTS backend unavailable this run — live-only fallback so the user
+        // still hears something while generating, exactly the old behavior
+        // (and still honestly won't be in the downloaded file).
         window.speechSynthesis.cancel()
         const utt=new SpeechSynthesisUtterance(text)
         utt.rate=.92; utt.pitch=1; utt.volume=1
@@ -949,7 +1022,10 @@ Return ONLY a JSON array of 9 strings, no markdown: ["s1","s2","s3","s4","s5","s
         })
       }
     }
-    window.speechSynthesis?.cancel(); recorder.stop()
+    window.speechSynthesis?.cancel()
+    // Small tail so the last line's audio isn't cut off mid-word.
+    await new Promise(r=>setTimeout(r,400))
+    recorder.stop()
   },[script,data,voiceId])
 
   const download=()=>{
@@ -1199,7 +1275,7 @@ Return ONLY a JSON array of 9 strings, no markdown: ["s1","s2","s3","s4","s5","s
               borderRadius:12,padding:"16px 18px",textAlign:"center"}}>
               <div style={{width:18,height:18,border:`2px solid ${theme.accent}`,borderTopColor:"transparent",
                 borderRadius:"50%",animation:"spin .8s linear infinite",margin:"0 auto 8px"}}/>
-              <div style={{fontSize:13,fontWeight:700,color:theme.accent}}>Rendering... {progress}%</div>
+              <div style={{fontSize:13,fontWeight:700,color:theme.accent}}>{voiceSynthStatus || `Rendering... ${progress}%`}</div>
               <div style={{fontSize:11,color:COLORS.dim,marginTop:3}}>Keep this tab open · ~{TOTAL_DURATION}s</div>
             </div>
           )}
@@ -1212,6 +1288,12 @@ Return ONLY a JSON array of 9 strings, no markdown: ["s1","s2","s3","s4","s5","s
                 <div style={{fontSize:14,fontWeight:800,color:COLORS.green,marginBottom:3}}>Your EchoPitch is ready</div>
                 <div style={{fontSize:11,color:COLORS.dim}}>Download now — one link sharing is coming soon</div>
               </div>
+              {audioUnavailable && (
+                <div style={{background:"rgba(245,158,11,0.08)",border:"1px solid rgba(245,158,11,0.25)",
+                  borderRadius:10,padding:"9px 12px",fontSize:10.5,color:"#F5C453",marginBottom:12,lineHeight:1.6}}>
+                  ⚠️ Narration audio service was unavailable this run — this video was rendered without voice audio. Try regenerating.
+                </div>
+              )}
               <video src={videoUrl} controls style={{width:"100%",borderRadius:10,marginBottom:10,
                 border:"1px solid rgba(255,255,255,0.08)"}}/>
               <button className="vbtn" onClick={download} style={{width:"100%",padding:"15px",borderRadius:12,
@@ -1239,7 +1321,7 @@ Return ONLY a JSON array of 9 strings, no markdown: ["s1","s2","s3","s4","s5","s
           <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",
             borderRadius:10,padding:"12px 14px",fontSize:10.5,color:COLORS.dim,lineHeight:1.7}}>
             <span style={{fontWeight:700}}>ℹ️ </span>
-            Canvas + MediaRecorder renders locally in your browser. Narration via Web Speech API. Sharing, hosting and voice cloning are on the EchoPitch roadmap — nothing here is faked.
+            Canvas + MediaRecorder renders locally in your browser. Narration is real Deepgram AI audio (US English), mixed directly into your downloaded video. Sharing, hosting and voice cloning are on the EchoPitch roadmap — nothing here is faked.
           </div>
         </div>
       </div>
