@@ -2999,7 +2999,13 @@ function StudentTestimonialsPanel({ testimonials, onSave }) {
 // it. Left in STUDENT_TAB_IDS/the student tab bar below — untouched, out of
 // scope for the professional-path re-scope.
 const STUDENT_TAB_IDS      = new Set(["dashboard", "vault", "skillgraph", "interview", "skillgap", "resilience", "fingerprint", "voucher", "monthreport", "settings"])
-const PROFESSIONAL_TAB_IDS = new Set(["vault", "settings"])
+// "echopitch" added 2026-07-29 — the AI video generator (EchoPitchHero) was
+// only reachable via the student "dashboard" tab, which isn't in this set at
+// all, so it was structurally unreachable for professional-path users even
+// though the underlying data (skillGraph/echoPitchCompletedTasks/experiences,
+// all proof_objects/user_skills-sourced, not Arena-specific) already works
+// for any path.
+const PROFESSIONAL_TAB_IDS = new Set(["vault", "echopitch", "settings"])
 
 export default function Aura({ user, activeTab: initialTabProp, setActiveTab: setActiveTabProp, onNavigate, onNavigatePricing, userData: propUserData, setUserData }) {
   const validTabIds = propUserData?.path === "professional" ? PROFESSIONAL_TAB_IDS : STUDENT_TAB_IDS
@@ -4262,6 +4268,9 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
           // moved to Launchpad ("Interview Prep" tab), see PROFESSIONAL_TAB_IDS
           // comment above.
           {id:"vault",        label:"Vault",             icon:"◫"},
+          // 2026-07-29: AI Video (EchoPitch) — real evidence (proof_objects),
+          // no Arena dependency, was previously student-dashboard-only.
+          {id:"echopitch",    label:"AI Video",          icon:"🎬"},
         ] : [
           // Students + others: full tab set
           {id:"dashboard",  label:"Dashboard",    icon:"▦"},
@@ -6056,6 +6065,25 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
             comment above; MonthlyReportPanel is raw-ELO/Arena content) ═══════ */}
         {activeTab==="monthreport"&&path!=="professional"&&(
           <MonthlyReportPanel userData={userData} skillGraph={skillGraph} eloHistory={eloHistory} eloRating={eloRating} keyword={keyword} arenaCompleted={arenaCompleted} user={user}/>
+        )}
+
+        {/* ═══════════ AI VIDEO (EchoPitch) TAB — professional only ═══════════
+            Same component/props the student dashboard tab uses — skillGraph,
+            echoPitchCompletedTasks and experiences are all path-neutral
+            (proof_objects/user_skills-sourced, not Arena-specific), so no
+            data adaptation was needed, just making the tab reachable. */}
+        {activeTab==="echopitch"&&path==="professional"&&(
+          <div style={{animation:"fadeUp 0.3s ease both"}}>
+            <EchoPitchHero
+              userData={userData}
+              skillGraph={skillGraph}
+              completedTasks={echoPitchCompletedTasks}
+              experiences={experiences}
+              isElite={auraPlan.id==="elite"}
+              onGenerate={()=>setShowVideoGenerator(true)}
+              onNavigatePricing={onNavigatePricing}
+            />
+          </div>
         )}
 
         {/* ═══════════ SETTINGS TAB ═══════════ */}

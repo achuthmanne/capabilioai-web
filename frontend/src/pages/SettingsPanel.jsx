@@ -10,7 +10,7 @@
 //   path           — userData.path shortcut
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useState, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { supabase } from "../lib/supabase"
 import { getPlan } from "../config/plans"
 
@@ -1839,9 +1839,16 @@ function AdvancedSection({ user, userData, save, setUserData }) {
 }
 
 // ── Right Contextual Panel ────────────────────────────────────────────────────
-function ContextPanel({ userData, activeSection }) {
+function ContextPanel({ userData, activeSection, eloRating }) {
   const { score, items } = calcCompleteness(userData)
-  const tier = getTier(userData?.eloRating || 500)
+  // eloRating is passed down from SettingsPanel's own (now path-aware)
+  // computation rather than recomputed here from userData.eloRating alone —
+  // this panel used to independently derive its tier from the legacy field
+  // even for professional users, so its "Your Standing" tier LABEL could
+  // disagree with the identity-card badge above even after that badge was
+  // fixed to use the real Professional ELO track. Falls back to the legacy
+  // field only if the prop wasn't passed (defensive, shouldn't happen).
+  const tier = getTier(eloRating ?? userData?.eloRating ?? 500)
   const pm = PATH_META[userData?.path] || PATH_META.student
 
   const tips = {
@@ -1999,7 +2006,31 @@ export default function SettingsPanel({ userData, user, save, setUserData, path 
 
   const allSections = NAV_GROUPS.flatMap(g => g.items)
   const current = allSections.find(s => s.id === activeSection)
-  const eloRating = userData?.eloRating || 500
+
+  // Mirrors App.jsx's top-nav ELO badge fix (2026-07-26) exactly — same
+  // source, same "professional path uses the real Professional Skill Rating
+  // track, everyone else keeps the legacy Arena/profile-completeness field"
+  // logic, so this identity-card badge can never disagree with the number
+  // right above it in the nav. This badge was previously reading
+  // userData.eloRating unconditionally for every path, which is how it ended
+  // up showing a different number ("1050") than the nav pill ("987") for the
+  // same professional user at the same moment — two real ELO systems
+  // (profiles.elo_rating vs professional_elo_state), read inconsistently.
+  const effectivePath = path || userData?.path
+  const [proElo, setProElo] = useState(null)
+  useEffect(() => {
+    if (effectivePath !== "professional") { setProElo(null); return }
+    let cancelled = false
+    import("../lib/api").then(({ professionalEloApi }) => {
+      professionalEloApi.status()
+        .then(res => { if (!cancelled) setProElo(res) })
+        .catch(() => { if (!cancelled) setProElo(null) })
+    })
+    return () => { cancelled = true }
+  }, [effectivePath])
+  const eloRating = (effectivePath === "professional" && proElo != null)
+    ? (proElo.overall_elo ?? proElo.elo ?? userData?.eloRating ?? 500)
+    : (userData?.eloRating || 500)
   const tier = getTier(eloRating)
   const pm = PATH_META[path || userData?.path] || PATH_META.student
   const plan = getPlan(userData)
@@ -2186,7 +2217,7 @@ export default function SettingsPanel({ userData, user, save, setUserData, path 
 
         {/* Right Contextual Panel */}
         <div style={{ width:240, flexShrink:0, position:"sticky", top:16 }}>
-          <ContextPanel userData={userData} activeSection={activeSection} />
+          <ContextPanel userData={userData} activeSection={activeSection} eloRating={eloRating} />
         </div>
 
       </div>

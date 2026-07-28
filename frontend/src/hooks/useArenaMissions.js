@@ -299,7 +299,13 @@ export function useArenaMissions() {
 
     const { mission, error: fetchError } = await fetchMissions({ keyword, domainKey, eloRating, skillGraph, weakAreas, path, skillCoverage: coverage, recentSkills, slotIndex: idx, completedMissions })
     const slot = mission
-      ? { status: "active", task: { ...mission, slotId: `slot_${idx}_${Date.now()}` }, slotIndex: idx, createdAt: new Date().toISOString(), completedAt: null, cooldownUntil: null }
+      // domainKey MUST be stamped here — reconcileSlots' stale-domain check
+      // (s.task.domainKey !== userDomain) reads this field to auto-invalidate
+      // a slot when the student's role changes. Without it, mission.domainKey
+      // is always undefined and a stored slot from a previous role/domain
+      // (or from before a content-quality fix) never gets regenerated on its
+      // own — it silently persists until the student happens to complete it.
+      ? { status: "active", task: { ...mission, domainKey, slotId: `slot_${idx}_${Date.now()}` }, slotIndex: idx, createdAt: new Date().toISOString(), completedAt: null, cooldownUntil: null }
       : { ...makeEmptySlot(idx), status: "error", errorMsg: fetchError || "Server unreachable" }
 
     if (slot.status === "active") persistSlot(u.id, idx, slot)

@@ -757,10 +757,16 @@ function SearchBar({ value, onChange }) {
 // already exist below and are real.
 
 function StudentPulse({ user, userData }) {
+  // This component now serves both student and professional paths (see the
+  // routing comment in the default export below) — isProfessional gates the
+  // handful of spots where the copy/defaults/ELO-display rules genuinely
+  // need to differ, everything else (tabs, feed, composer, network) is
+  // already path-neutral and shared as-is.
+  const isProfessional = userData?.path === "professional"
   const roleConf    = getRoleConfig(userData)
   const domain      = roleConf.label || userData?.keyword || "Tech"
-  const elo         = userData?.eloRating || userData?.elo_rating || 400
-  const displayName = userData?.displayName || userData?.display_name || userData?.name || "Student"
+  const elo         = userData?.eloRating || userData?.elo_rating || (isProfessional ? 800 : 400)
+  const displayName = userData?.displayName || userData?.display_name || userData?.name || (isProfessional ? "Professional" : "Student")
   const initials    = displayName[0]?.toUpperCase() || "S"
 
   // ── Feed state ──────────────────────────────────────────────────────────────
@@ -1379,7 +1385,7 @@ function StudentPulse({ user, userData }) {
                       <div style={{position:"relative",marginBottom:14}}>
                         <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:14,color:P.ink4}}>🔍</span>
                         <input value={userSearch} onChange={e=>searchUsers(e.target.value)}
-                          placeholder="Search people by name, domain, college…"
+                          placeholder={isProfessional ? "Search people by name, domain, company…" : "Search people by name, domain, college…"}
                           style={{width:"100%",padding:"10px 12px 10px 36px",border:`1.5px solid ${P.border}`,borderRadius:10,fontSize:13,fontFamily:"inherit",outline:"none",background:"#FAFAF9",boxSizing:"border-box"}}
                           onFocus={e=>e.target.style.borderColor=P.accent}
                           onBlur={e=>e.target.style.borderColor=P.border}/>
@@ -1887,9 +1893,12 @@ function StudentPulse({ user, userData }) {
               </div>
             </div>
 
-            {/* ELO-Matched Builders */}
+            {/* Peer builders — professional gets no raw ELO numbers (Rule
+                #1 applies to peers' scores here too, not just your own), just
+                a relevance dot; student keeps the fire+number, which is a
+                familiar part of the Arena-driven student experience. */}
             <div style={{background:P.surface,border:`1px solid ${P.border}`,borderRadius:P.r,padding:16,boxShadow:P.shadow}}>
-              <div style={{fontSize:10,fontWeight:800,color:P.ink4,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:12}}>ELO-MATCHED BUILDERS</div>
+              <div style={{fontSize:10,fontWeight:800,color:P.ink4,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:12}}>{isProfessional ? "PEOPLE IN YOUR FIELD" : "ELO-MATCHED BUILDERS"}</div>
               {builders.length===0 ? (
                 <div style={{fontSize:12,color:P.ink4,textAlign:"center",padding:"12px 0"}}>Loading builders...</div>
               ) : builders.map((b,i)=>{
@@ -1902,7 +1911,10 @@ function StudentPulse({ user, userData }) {
                       <div style={{fontSize:12,fontWeight:700,color:P.ink2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{bName}</div>
                       <div style={{fontSize:10,color:P.ink4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.keyword||b.path||""}</div>
                     </div>
-                    <span style={{fontSize:11,fontWeight:700,color:P.accent,fontFamily:"'DM Mono',monospace",flexShrink:0}}>🔥{b.elo_rating||400}</span>
+                    {isProfessional
+                      ? <span style={{width:8,height:8,borderRadius:"50%",background:"#34D399",flexShrink:0}} title="Active in your field"/>
+                      : <span style={{fontSize:11,fontWeight:700,color:P.accent,fontFamily:"'DM Mono',monospace",flexShrink:0}}>🔥{b.elo_rating||400}</span>
+                    }
                   </div>
                 )
               })}
@@ -1957,17 +1969,37 @@ function StudentPulse({ user, userData }) {
               </div>
             </div>
 
-            {/* User standing card */}
+            {/* User standing card — Career OS Non-negotiable Rule #1: no bare
+                score number ships to a professional-facing screen without a
+                plain-language translation (see SKILL_TIER_PHRASES above).
+                Student path is unchanged (Arena ELO is a real, visible part
+                of the student experience); professional gets the tier
+                phrase instead of the raw number, same treatment already
+                applied in ProfileSidebar/SettingsPanel. */}
             <div style={{background:`linear-gradient(135deg,${P.accent},#f97316)`,borderRadius:P.r,padding:"14px 16px"}}>
               <div style={{fontSize:10,fontWeight:800,letterSpacing:"0.1em",color:"rgba(255,255,255,0.7)",textTransform:"uppercase",marginBottom:6}}>YOUR STANDING</div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6}}>
-                {[{l:"ELO",v:elo},{l:"TASKS",v:userData?.arena_completed||0},{l:"STREAK",v:`${userData?.arena_streak||0}d`}].map((s,i)=>(
-                  <div key={i} style={{textAlign:"center"}}>
-                    <div style={{fontSize:18,fontWeight:800,color:"#fff",fontFamily:"'DM Mono',monospace"}}>{s.v}</div>
-                    <div style={{fontSize:9,color:"rgba(255,255,255,0.7)",fontWeight:700,letterSpacing:"0.08em"}}>{s.l}</div>
+              {isProfessional ? (
+                <div>
+                  <div style={{fontSize:15,fontWeight:800,color:"#fff",marginBottom:4}}>{skillTierPhrase(elo)}</div>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6,marginTop:8}}>
+                    {[{l:"FOLLOWING",v:myFollowing.length},{l:"FOLLOWERS",v:myFollowers.length}].map((s,i)=>(
+                      <div key={i} style={{textAlign:"center"}}>
+                        <div style={{fontSize:18,fontWeight:800,color:"#fff",fontFamily:"'DM Mono',monospace"}}>{s.v}</div>
+                        <div style={{fontSize:9,color:"rgba(255,255,255,0.7)",fontWeight:700,letterSpacing:"0.08em"}}>{s.l}</div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              ) : (
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6}}>
+                  {[{l:"ELO",v:elo},{l:"TASKS",v:userData?.arena_completed||0},{l:"STREAK",v:`${userData?.arena_streak||0}d`}].map((s,i)=>(
+                    <div key={i} style={{textAlign:"center"}}>
+                      <div style={{fontSize:18,fontWeight:800,color:"#fff",fontFamily:"'DM Mono',monospace"}}>{s.v}</div>
+                      <div style={{fontSize:9,color:"rgba(255,255,255,0.7)",fontWeight:700,letterSpacing:"0.08em"}}>{s.l}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
           </div>
@@ -1979,8 +2011,16 @@ function StudentPulse({ user, userData }) {
 
 
 export default function Pulse({ user, userData }) {
-  // Route to student-specific page for non-professional paths
-  if (userData?.path !== "professional" && userData?.path !== "authority" && userData?.path !== "institution") {
+  // 2026-07-29: StudentPulse (tabs: Community/Sparks/Network/Mentors/Saved)
+  // now also serves the professional path — it was already path-neutral
+  // under the hood (pulseApi/nexusApi/skillsApi calls, no student-only
+  // backend routes), so rather than maintaining two parallel feed
+  // implementations, professional reuses the same tab shell with a handful
+  // of path-aware tweaks inside StudentPulse itself (ELO Rule #1 compliance,
+  // display-name fallback, peer-search wording — see isProfessional usages
+  // below). Authority/institution are org-facing accounts, not individual
+  // community members, so they stay on the separate feed below.
+  if (userData?.path !== "authority" && userData?.path !== "institution") {
     return <StudentPulse user={user} userData={userData} />
   }
 
