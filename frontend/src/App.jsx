@@ -1098,21 +1098,19 @@ function App() {
   const initials    = (userData?.name || user?.displayName || "U").charAt(0).toUpperCase()
   const displayName = userData?.displayName || userData?.name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User"
 
+  // Nav decluttered 2026-07-28 (second, final pass): header stays at exactly
+  // five items. The Arena V2 pilots built this session stay reachable by
+  // direct page id (deep link / future entry point), not from this global
+  // header — and per explicit product direction, "Arena" itself keeps
+  // rendering the legacy <Arena> page below unchanged (role-based "Your
+  // Role" + "Common Challenges" cards, ARENA_DOMAINS/resolveArenaDomain) —
+  // no auto-routing to Arena V2 pilots. That role resolution already re-runs
+  // on every Arena render off current userData, so a role changed during
+  // onboarding is picked up automatically the next time Arena renders — no
+  // separate wiring needed for that part.
   const STUDENT_HEADER_NAV = [
     { id: "aura",        label: "Aura",         page: "aura",        prefix: "+" },
     { id: "arena",       label: "Arena",        page: "arena",       prefix: "×" },
-    { id: "arenaV2MLPilot", label: "ML Pilot (Beta)", page: "arenaV2MLPilot", prefix: "🧪" },
-    { id: "arenaV2SoftwarePilot", label: "SWE Pilot (Beta)", page: "arenaV2SoftwarePilot", prefix: "💻" },
-    { id: "arenaV2CyberPilot", label: "Cyber Pilot (Beta)", page: "arenaV2CyberPilot", prefix: "🛡️" },
-    { id: "arenaV2DevOpsPilot", label: "DevOps Pilot (Beta)", page: "arenaV2DevOpsPilot", prefix: "🛠️" },
-    { id: "arenaV2DbaPilot", label: "DBA Pilot (Beta)", page: "arenaV2DbaPilot", prefix: "🗄️" },
-    { id: "arenaV2EcePilot", label: "ECE Pilot (Beta)", page: "arenaV2EcePilot", prefix: "🔌" },
-    { id: "arenaV2EeePilot", label: "EEE Pilot (Beta)", page: "arenaV2EeePilot", prefix: "⚡" },
-    { id: "arenaV2CivilPilot", label: "Civil Pilot (Beta)", page: "arenaV2CivilPilot", prefix: "🏗️" },
-    { id: "arenaV2MechanicalPilot", label: "Mechanical Pilot (Beta)", page: "arenaV2MechanicalPilot", prefix: "⚙️" },
-    { id: "arenaV2BiotechPilot", label: "Biotech Pilot (Beta)", page: "arenaV2BiotechPilot", prefix: "🧬" },
-    { id: "arenaV2MedicalBiotechPilot", label: "Med Biotech Pilot (Beta)", page: "arenaV2MedicalBiotechPilot", prefix: "🩺" },
-    { id: "arenaV2ClinicalLabPilot", label: "Clinical Lab Pilot (Beta)", page: "arenaV2ClinicalLabPilot", prefix: "🧫" },
     { id: "pulse",       label: "Pulse",        page: "pulse",       prefix: "⚡" },
     { id: "skillstudio", label: "Skill Studio", page: "skillstudio",   prefix: "🎓" },
     { id: "launchpad",   label: "Launchpad",    page: "launchpad",     prefix: "🚀" },
