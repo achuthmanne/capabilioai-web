@@ -854,6 +854,11 @@ function StudentPulse({ user, userData }) {
   // ── Market insights state (replaces static DOMAIN_STATS) ────────────────────
   const [marketInsights, setMarketInsights] = useState(null)
   const [insightsLoading, setInsightsLoading] = useState(true)
+  // Distinguishes "genuinely no data yet" (e.g. a brand-new domain with no
+  // Gemini/Groq output) from "the backend call actually failed" — the two
+  // read identically as marketInsights===null otherwise, but only the
+  // second one should show a Retry affordance (2026-07-28).
+  const [insightsErrored, setInsightsErrored] = useState(false)
 
   // Real skills (2026-07-26 redesign) — same source as the professional
   // Pulse and Skills.jsx: user_skills, not a userData shortcut. Used to
@@ -881,11 +886,23 @@ function StudentPulse({ user, userData }) {
     // Market insights — server-cached 2hr, personalized by domain/role/skills.
     // No static fallback (2026-07-26): if the route reports `_error`, treat
     // it as unavailable rather than showing anything.
-    setInsightsLoading(true)
-    pulseApi.marketInsights(domain.toLowerCase(), userData?.job_role || userData?.target_role || domain, mySkills)
-      .then(data => { setMarketInsights(data?._error ? null : data); setInsightsLoading(false) })
-      .catch(() => { setMarketInsights(null); setInsightsLoading(false) })
+    loadMarketInsights()
   }, [domain, elo, JSON.stringify(mySkills)]) // eslint-disable-line
+
+  // Pulled out of the effect above so the "Retry" affordance on the failure
+  // state (2026-07-28) can re-run the exact same fetch on demand, instead of
+  // only ever getting one shot at load time.
+  const loadMarketInsights = () => {
+    setInsightsLoading(true); setInsightsErrored(false)
+    pulseApi.marketInsights(domain.toLowerCase(), userData?.job_role || userData?.target_role || domain, mySkills)
+      .then(data => {
+        const errored = !!data?._error
+        setMarketInsights(errored ? null : data)
+        setInsightsErrored(errored)
+        setInsightsLoading(false)
+      })
+      .catch(() => { setMarketInsights(null); setInsightsErrored(true); setInsightsLoading(false) })
+  }
 
   // ── Network: load followers/following & suggested users ─────────────────────
   const loadMyNetwork = async () => {
@@ -1207,9 +1224,20 @@ function StudentPulse({ user, userData }) {
               fake number. */}
         <div style={{background:"linear-gradient(135deg,#1a1a2e,#16213e)",borderRadius:P.r,padding:"10px 18px",marginBottom:16,display:"flex",alignItems:"center",gap:6,overflowX:"auto",animation:"fadeUp 0.35s ease both"}}>
           <span style={{fontSize:10,fontWeight:800,color:"rgba(255,255,255,0.5)",letterSpacing:"0.12em",textTransform:"uppercase",whiteSpace:"nowrap",marginRight:8}}>{marketInsights ? "LIVE DOMAIN PULSE" : "DOMAIN PULSE"}</span>
-          <span style={{fontSize:11,color:"rgba(255,255,255,0.4)",marginRight:8,whiteSpace:"nowrap"}}>
-            {marketInsights ? <>Real-time signals for <span style={{color:P.accent,fontWeight:700}}>{domain}</span></> : insightsLoading ? "Loading signals…" : `No live signals for ${domain} yet`}
+          <span style={{fontSize:11,color:insightsErrored?"#FCA5A5":"rgba(255,255,255,0.4)",marginRight:8,whiteSpace:"nowrap"}}>
+            {marketInsights ? <>Real-time signals for <span style={{color:P.accent,fontWeight:700}}>{domain}</span></>
+              : insightsLoading ? "Loading signals…"
+              : insightsErrored ? "Signals temporarily unavailable"
+              : `No live signals for ${domain} yet`}
           </span>
+          {insightsErrored && !insightsLoading && (
+            <button onClick={loadMarketInsights}
+              style={{fontSize:10,fontWeight:700,color:P.accent,background:"rgba(255,255,255,0.06)",
+                border:"1px solid rgba(255,255,255,0.14)",borderRadius:99,padding:"3px 10px",cursor:"pointer",
+                whiteSpace:"nowrap",marginRight:8}}>
+              ↻ Retry
+            </button>
+          )}
           <div style={{flex:1}}/>
           {[{label:"MARKET OUTLOOK",value:stats.hiring,color:"#34D399"},{label:"AVG SALARY",value:stats.salary,color:"#FBBF24"},{label:"COMPANIES HIRING",value:stats.openRoles,color:"#F472B6"}].map((s,i)=>(
             <div key={i} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"2px 16px",borderLeft:"1px solid rgba(0,0,0,0.05)",flexShrink:0}}>
@@ -1257,7 +1285,7 @@ function StudentPulse({ user, userData }) {
 
               {/* Tab bar */}
               <div style={{display:"flex",borderBottom:`1px solid ${P.border}`}}>
-                {[{id:"community",label:"🌐 Community"},{id:"following",label:"✦ Sparks"},{id:"network",label:"👥 Network"},{id:"mentors",label:"🎓 Mentors"},{id:"capsules",label:"⚡ Capsules"}].map(t=>(
+                {[{id:"community",label:"🌐 Community"},{id:"following",label:"✦ Sparks"},{id:"network",label:"👥 Network"},{id:"mentors",label:"🎓 Mentors"},{id:"capsules",label:"🔖 Saved"}].map(t=>(
                   <button key={t.id} className="pt" onClick={()=>setFeedTab(t.id)}
                     style={{flex:1,padding:"12px 6px",fontSize:12,fontWeight:feedTab===t.id?700:500,color:feedTab===t.id?P.accent:P.ink3,borderBottom:feedTab===t.id?`2px solid ${P.accent}`:"2px solid transparent",whiteSpace:"nowrap"}}>
                     {t.label}
@@ -1655,7 +1683,7 @@ function StudentPulse({ user, userData }) {
 
                   {!feedLoading && posts.length === 0 && (
                     <div style={{textAlign:"center",padding:"50px 0",color:P.ink4}}>
-                      <div style={{fontSize:40,marginBottom:10}}>{feedTab==="following"?"🔔":feedTab==="capsules"?"⚡":"🌐"}</div>
+                      <div style={{fontSize:40,marginBottom:10}}>{feedTab==="following"?"🔔":feedTab==="capsules"?"🔖":"🌐"}</div>
                       <div style={{fontSize:14,fontWeight:600,color:P.ink3,marginBottom:6}}>
                         {feedTab==="following" ? "No posts from people you follow yet"
                          : feedTab==="capsules" ? "No saved posts yet — save posts to find them here"
@@ -1800,6 +1828,19 @@ function StudentPulse({ user, userData }) {
                 </div>
                 <button className="pb" onClick={()=>setShowDomainPicker(true)} style={{fontSize:18,color:P.ink4,background:"transparent",border:"none",padding:4}}>⚙</button>
               </div>
+
+              {insightsErrored && !insightsLoading && (
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,
+                  background:"#FEF2F2",border:"1px solid rgba(220,38,38,0.15)",borderRadius:8,
+                  padding:"7px 10px",marginBottom:10}}>
+                  <span style={{fontSize:10.5,color:"#B91C1C"}}>Signals temporarily unavailable</span>
+                  <button className="pb" onClick={loadMarketInsights}
+                    style={{fontSize:10,fontWeight:700,color:"#B91C1C",background:"#fff",
+                      border:"1px solid rgba(220,38,38,0.25)",borderRadius:99,padding:"3px 9px",cursor:"pointer"}}>
+                    ↻ Retry
+                  </button>
+                </div>
+              )}
 
               {/* Stats grid */}
               {insightsLoading
