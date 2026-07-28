@@ -21,7 +21,7 @@ import { resolveChallengeKey } from "../config/roleConfig"
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const COOLDOWN_MS     = 24 * 60 * 60 * 1000   // 24 hours
-const MAX_SLOTS       = 3                       // hard upper bound (Elite plan cap)
+const MAX_SLOTS       = 6                       // hard upper bound — matches Elite's arenaTasks:6 in plans.js
 const RECENT_MEMORY   = 3                       // avoid repeating last N challenge IDs
 const CATEGORY_MEMORY = 4                       // avoid repeating last N categories
 
@@ -129,12 +129,23 @@ async function saveProgress(uid, domainKey, progress) {
 }
 
 // ── Main hook ─────────────────────────────────────────────────────────────────
-// maxSlots: plan-gated slot count (1 = free, 3 = pro, 6 = elite capped at MAX_SLOTS)
-export function useDomainChallengeSlots(userData, maxSlots = 1) {
+// 2026-07-28: this hook now ALWAYS generates the full slot pool (up to
+// MAX_SLOTS=6, capped by how much distinct content the domain actually has)
+// regardless of the caller's plan tier — it used to take a `maxSlots` param
+// that WAS the plan's unlocked-task count, which meant it only ever
+// generated exactly as many slots as the user was entitled to, so
+// MissionDesk's "locked slot" math (slots.length - unlockedCount) could
+// never produce a locked row to show as an upgrade teaser. Plan-gating now
+// happens purely at render time in MissionDesk (unlockedCount prop, passed
+// separately by Arena.jsx) — this hook's only job is "what missions exist,"
+// not "how many is this user allowed to see."
+export function useDomainChallengeSlots(userData) {
   const domainKey      = resolveDomainKey(userData)
   const allChallenges  = getDomainChallenges(domainKey)
-  // Clamp to hard ceiling so we never create more than MAX_SLOTS DB rows
-  const slotCount      = Math.min(Math.max(1, maxSlots), MAX_SLOTS)
+  // Never generate more locked "teaser" slots than the domain actually has
+  // distinct content for — a domain with only 4 challenges tops out at 4
+  // slots, not 6, so an Elite user never sees a repeated/fake locked card.
+  const slotCount      = Math.min(MAX_SLOTS, allChallenges.length)
 
   const [user, setUser]           = useState(null)
   const [slots, setSlots]         = useState(() =>

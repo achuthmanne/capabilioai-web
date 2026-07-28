@@ -15,6 +15,7 @@ import { join }                            from "path"
 import jwt                                  from "jsonwebtoken"
 import { compileCircuitMission, isCircuitDomain } from "../lib/arena/missionCompiler.js"
 import { supabaseAdmin }                   from "../lib/supabase.js"
+import { getArenaTaskQuota, countTodaysDomainMissionCompletions } from "../lib/arenaPlanQuota.js"
 
 const router = Router()
 
@@ -355,9 +356,35 @@ router.post("/challenge", async (req, res) => {
 
 // ─── 8. Review Answer — Claude Haiku with behavioral context ─────────────────
 router.post("/review", async (req, res) => {
-  const { challenge={}, answer="", output="", testResults=[], userContext={}, behavioral={}, eloRating, keyword, timedOut=false } = req.body
+  const { challenge={}, answer="", output="", testResults=[], userContext={}, behavioral={}, eloRating, keyword, timedOut=false, challengeType="" } = req.body
   const elo = eloRating || userContext.eloRating || 800
   try {
+    // ── Daily mission quota — real enforcement, not just a UI lock (2026-07-28) ──
+    // Only "domain" challenges (Arena's daily mission slots) are quota'd — DSA
+    // practice challenges aren't part of the plan-gated slot system. Checked
+    // before calling the AI grader at all, so an over-quota submission never
+    // burns an AI call and never reaches the ELO-write block below.
+    if (challengeType === "domain") {
+      const uidForQuota = optionalUid(req)
+      if (uidForQuota) {
+        try {
+          const { data: prof } = await supabaseAdmin.from("profiles").select("subscription").eq("id", uidForQuota).single()
+          const quota = getArenaTaskQuota(prof?.subscription || "free")
+          const usedToday = await countTodaysDomainMissionCompletions(supabaseAdmin, uidForQuota)
+          if (usedToday >= quota) {
+            return res.status(403).json({
+              error:   "daily_quota_reached",
+              quota,
+              usedToday,
+              message: `You've used all ${quota} of today's Arena missions on your plan. Upgrade for more daily missions.`,
+            })
+          }
+        } catch (quotaErr) {
+          console.warn("[arena/review] quota check skipped:", quotaErr.message) // fail open — never block on our own bug
+        }
+      }
+    }
+
     const totalTests  = testResults.length
     const passedTests = testResults.filter(r => r.passed).length
     const testSummary = totalTests > 0

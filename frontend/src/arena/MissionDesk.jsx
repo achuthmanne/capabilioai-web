@@ -126,10 +126,40 @@ function MissionHero({ slot, domain, onStart }) {
 }
 
 // ── Mission queue rows (E) ───────────────────────────────────────────────────
+// 2026-07-28: locked rows now show a real (blurred) preview of the actual
+// mission waiting in that slot — title, difficulty, time — instead of a
+// generic "slot locked" placeholder. Scoped deliberately: only title/
+// difficulty/time are shown, never the scenario/question text or tools, so
+// the teaser stays a teaser rather than handing over the graded task itself.
 function QueueRow({ slot, domain, onStart, locked, onUpgrade, planLabel }) {
   const [hov, setHov] = useState(false)
 
   if (locked) {
+    const ch = slot?.status === "active" || slot?.status === "cooldown" ? slot?.challenge : null
+    if (ch) {
+      const wsType = resolveWorkstationType({ ...ch, workstation: ch.workstation, sandbox: ch.workstation })
+      const meta = getWorkstationMeta(wsType)
+      return (
+        <div style={{ position: "relative", borderRadius: 11, overflow: "hidden", border: `1.5px dashed ${T.border}` }}>
+          <div aria-hidden style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: "#fff", filter: "blur(4px)", userSelect: "none", pointerEvents: "none" }}>
+            <span style={{ fontSize: 18, flexShrink: 0 }}>{ch.icon}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: T.ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginBottom: 3 }}>{ch.title}</div>
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <WorkstationBadge meta={meta} size={9} />
+                <span style={{ fontSize: 9.5, fontWeight: 800, color: diffColor(ch.difficulty) }}>{ch.difficulty}</span>
+                <span style={{ fontSize: 9.5, color: T.ink4 }}>⏱ {ch.timeLimit}</span>
+              </div>
+            </div>
+          </div>
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: "rgba(255,255,255,0.55)" }}>
+            <span style={{ fontSize: 15 }}>🔒</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: T.ink2 }}>{planLabel} plan</span>
+            <button onClick={onUpgrade} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: T.purple, color: "#fff", fontSize: 10.5, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>Unlock</button>
+          </div>
+        </div>
+      )
+    }
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 16px", background: "#FBFBF9", border: `1.5px dashed ${T.border}`, borderRadius: 11 }}>
         <span style={{ fontSize: 16, opacity: 0.6 }}>🔒</span>
@@ -231,7 +261,8 @@ export default function MissionDesk({
   const visibleSlots = (slots || []).slice(0, unlockedCount)
   const heroSlot     = visibleSlots[0]
   const queueSlots   = visibleSlots.slice(1)
-  const lockedCount  = Math.max(0, (slots || []).length - unlockedCount)
+  const lockedSlots  = (slots || []).slice(unlockedCount) // real content for the blurred-preview rows below
+  const lockedCount  = lockedSlots.length
 
   // Workstation quick access — one tile per distinct workstation in this role's challenge bank
   const quickAccess = useMemo(() => {
@@ -267,8 +298,8 @@ export default function MissionDesk({
                 {queueSlots.map((s, i) => (
                   <QueueRow key={i} slot={s} domain={domain} onStart={onStart} />
                 ))}
-                {Array.from({ length: lockedCount }).map((_, i) => (
-                  <QueueRow key={`lock_${i}`} locked domain={domain}
+                {lockedSlots.map((s, i) => (
+                  <QueueRow key={`lock_${i}`} slot={s} locked domain={domain}
                     planLabel={unlockedCount + i === 1 ? "Pro" : "Elite"}
                     onUpgrade={() => onUpgrade(unlockedCount + i === 1 ? "pro" : "elite")} />
                 ))}

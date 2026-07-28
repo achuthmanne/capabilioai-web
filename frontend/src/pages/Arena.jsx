@@ -3595,8 +3595,11 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
   }, [domainKey])   // eslint-disable-line
 
   // ── Domain challenge slots (smart rotation, 24hr cooldown) ───────────────
-  // Pass plan-gated slot count so free-tier users only ever get 1 slot initialized
-  const domainSlots = useDomainChallengeSlots(effectiveUserData, getPlan(effectiveUserData).arenaTasks)
+  // 2026-07-28: hook now always generates the full slot pool regardless of
+  // plan — MissionDesk's unlockedCount prop (below) is what actually decides
+  // how many are interactive vs. shown as locked upgrade teasers. See the
+  // hook's own header comment for why this split matters.
+  const domainSlots = useDomainChallengeSlots(effectiveUserData)
 
   // ── Convert local challenge bank object → Arena mission format ────────────
   // _isDomainChallenge = true prevents DSA mis-detection for code-sandbox domain challenges
