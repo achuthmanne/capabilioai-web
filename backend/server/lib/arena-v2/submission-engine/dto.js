@@ -58,6 +58,29 @@ function buildRewardsBlock(rewardResult) {
   }
 }
 
+// Arena V2 Pilot Phase addition (additive only, no schemaVersion bump — same
+// discipline as the Milestone 9/10 `rewards`/`portfolio` blocks above): the
+// AI Reviewer's structured findings (strengths/suggestions/recruiter
+// readiness) live in the ValidatorResult's `metadata`, which
+// `assessment.feedback` never carried (feedback.detail only translates
+// `evidence`+`diagnostics` — see assessment/engine.js). Surfacing them here
+// lets the student see the same AI review immediately after submitting,
+// not only later through the recruiter-facing evidence read. Returns null
+// for validator types that don't populate this metadata (e.g.
+// ground_truth_compare), so this stays a no-op for every existing challenge.
+function buildAiReviewBlock(validatorResult) {
+  const meta = validatorResult?.metadata
+  if (!meta || (!meta.strengths && !meta.suggestions && !meta.recruiterReadiness)) return null
+  return {
+    strengths: Array.isArray(meta.strengths) ? meta.strengths : [],
+    suggestions: Array.isArray(meta.suggestions) ? meta.suggestions : [],
+    taskQuality: meta.taskQuality || null,
+    recruiterReadiness: meta.recruiterReadiness || null,
+    recruiterReadinessNote: meta.recruiterReadinessNote || null,
+    criteriaScores: meta.criteriaScores || null,
+  }
+}
+
 function buildPortfolioBlock(portfolioOutcome) {
   if (!portfolioOutcome) return null
   const { decisionType, artifact } = portfolioOutcome
@@ -81,6 +104,7 @@ export function buildFeedbackResponseDto({ submission, assessment, rewardResult 
     finalScore: assessment.final_score,
     isZeroEffort: assessment.is_zero_effort,
     feedback: assessment.feedback,
+    aiReview: buildAiReviewBlock(submission.validator_result),
     rewards: buildRewardsBlock(rewardResult),
     portfolio: buildPortfolioBlock(portfolioOutcome),
 

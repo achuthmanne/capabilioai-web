@@ -79,6 +79,18 @@ const VERIFICATION_BY_PUBLISH_STATE = {
  * @returns {object} the recruiter-facing view
  */
 export function buildRecruiterEvidenceViewFromProof(proof) {
+  // Arena V2 Pilot Phase addition (additive only — every field below is new,
+  // nothing above was removed or renamed, so this stays backward-compatible
+  // with any existing consumer): recruiters asked to see evidence, not just
+  // a completion status — time taken, ELO delta, and the AI Reviewer's
+  // structured findings (strengths/suggestions/recruiter-readiness) are
+  // already captured on the proof_objects row (elo_delta, time_taken_secs,
+  // validator_result.metadata — see rubricReview.js and
+  // proofObjects/builder.js) but were never surfaced through this read-side
+  // view before. Falls back to null/[] gracefully for proofs from
+  // ground_truth_compare or any other validator type that doesn't populate
+  // these metadata keys.
+  const aiMeta = proof.validator_result?.metadata || {}
   return {
     skill: proof.skill,
     status: "Completed",
@@ -90,5 +102,15 @@ export function buildRecruiterEvidenceViewFromProof(proof) {
     skillsDemonstrated: proof.skills_demonstrated || [],
     artifactType: proof.challenge_type,
     createdAt: proof.completed_at,
+    role: proof.role || null,
+    title: proof.title || null,
+    eloDelta: proof.elo_delta ?? null,
+    timeTakenSecs: proof.time_taken_secs ?? null,
+    strengths: Array.isArray(aiMeta.strengths) ? aiMeta.strengths : [],
+    suggestions: Array.isArray(aiMeta.suggestions) ? aiMeta.suggestions : [],
+    taskQuality: aiMeta.taskQuality || null,
+    recruiterReadiness: aiMeta.recruiterReadiness || null,
+    recruiterReadinessNote: aiMeta.recruiterReadinessNote || null,
+    criteriaScores: aiMeta.criteriaScores || null,
   }
 }

@@ -16,21 +16,22 @@
  * implementation MAY still report its own finer-grained timing under this
  * key; this wrapper only fills in the total wall-clock figure alongside it.
  *
- * SCOPE, mirroring Milestone 7's own honest-placeholder discipline: only
- * `ground_truth_compare` has a real implementation in this milestone,
- * because it's the only validator type any wired-up workstation (SqlWorkstation,
- * Milestone 7) actually needs. The other 10 throw NotImplementedValidatorError
- * — an explicit, typed, loggable failure — rather than a fake "always
- * passes" stub. A fake stub would be worse than no implementation: it would
- * silently hand out full credit for challenges nothing has actually graded,
- * which is a scoring-integrity bug, not a shortcut. As each additional
- * workstation gets built (Milestone 7's remaining 12), add its validator
- * implementation here the same way ground_truth_compare was added, and
- * remove it from the "not implemented" set below — building it with
- * `createValidatorResult` (validatorResult.js) so every validator type
- * keeps producing the same normalized shape Assessment consumes.
+ * SCOPE, mirroring Milestone 7's own honest-placeholder discipline:
+ * `ground_truth_compare` (SqlWorkstation, Milestone 7) and, as of the Arena
+ * V2 Pilot Phase, `rubric_review` (NotebookWorkstation / AI Reviewer v1 —
+ * see rubricReview.js) have real implementations. The other 9 throw
+ * NotImplementedValidatorError — an explicit, typed, loggable failure —
+ * rather than a fake "always passes" stub. A fake stub would be worse than
+ * no implementation: it would silently hand out full credit for challenges
+ * nothing has actually graded, which is a scoring-integrity bug, not a
+ * shortcut. As each additional workstation gets built, add its validator
+ * implementation here the same way these two were added, and remove it from
+ * the "not implemented" set below — building it with `createValidatorResult`
+ * (validatorResult.js) so every validator type keeps producing the same
+ * normalized shape Assessment consumes.
  */
 import { runGroundTruthCompare } from "./groundTruthCompare.js"
+import { runRubricReview } from "./rubricReview.js"
 
 export class NotImplementedValidatorError extends Error {
   constructor(type) {
@@ -42,6 +43,7 @@ export class NotImplementedValidatorError extends Error {
 
 const VALIDATOR_IMPLEMENTATIONS = {
   ground_truth_compare: runGroundTruthCompare,
+  rubric_review: runRubricReview,
 }
 
 /**

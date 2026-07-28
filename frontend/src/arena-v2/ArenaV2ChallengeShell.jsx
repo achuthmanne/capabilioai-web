@@ -35,6 +35,7 @@ import { Suspense, lazy, useCallback, useEffect, useState } from "react"
 import { fetchNextChallenge, SchemaVersionMismatchError } from "../api/arenaV2Delivery.js"
 import { submitChallenge } from "../api/arenaV2Submission.js"
 import { FRONTEND_WORKSTATION_REGISTRY, isWorkstationReady } from "./workstationRegistry.js"
+import ArenaV2WorkspaceShell from "./ArenaV2WorkspaceShell.jsx"
 
 const workstationComponentCache = {}
 function loadWorkstationComponent(componentKey) {
@@ -46,6 +47,79 @@ function loadWorkstationComponent(componentKey) {
     // module implements this already-decided componentKey."
     if (componentKey === "SqlWorkstation" && entry?.status === "ready") {
       workstationComponentCache[componentKey] = lazy(() => import("./workstations/SqlWorkstationV2.jsx"))
+    }
+    // ML/AI Engineer pilot (Arena V2 pilot phase) — same explicit,
+    // one-key-at-a-time wiring discipline as SqlWorkstation above, not a
+    // role/career branch.
+    if (componentKey === "NotebookWorkstation" && entry?.status === "ready") {
+      workstationComponentCache[componentKey] = lazy(() => import("./workstations/NotebookWorkstationV2.jsx"))
+    }
+    // Software Engineer, second role workspace — same wiring discipline.
+    if (componentKey === "CodeWorkstation" && entry?.status === "ready") {
+      workstationComponentCache[componentKey] = lazy(() => import("./workstations/CodeWorkstationV2.jsx"))
+    }
+    // Cybersecurity / SOC Analyst, third role workspace — same wiring discipline.
+    if (componentKey === "TerminalWorkstation" && entry?.status === "ready") {
+      workstationComponentCache[componentKey] = lazy(() => import("./workstations/TerminalWorkstationV2.jsx"))
+    }
+    // DevOps Engineer, fourth role workspace — same wiring discipline. Reuses
+    // the "ApiWorkstation" componentKey (unused until now) for a cloud/infra
+    // console; the componentKey is just a registry identifier, not a literal
+    // claim about the UI, same as TerminalWorkstation above.
+    if (componentKey === "ApiWorkstation" && entry?.status === "ready") {
+      workstationComponentCache[componentKey] = lazy(() => import("./workstations/DevOpsConsoleWorkstationV2.jsx"))
+    }
+    // Database Administrator, fifth role workspace — same wiring discipline.
+    // Reuses the "DashboardWorkstation" componentKey (unused until now,
+    // and a natural semantic fit since its backend uiModules already
+    // include sql_editor) for a database operations lab.
+    if (componentKey === "DashboardWorkstation" && entry?.status === "ready") {
+      workstationComponentCache[componentKey] = lazy(() => import("./workstations/DbaWorkstationV2.jsx"))
+    }
+    // Electronics Engineer (ECE), sixth role workspace — same wiring
+    // discipline. Reuses the "EmbeddedWorkstation" componentKey (unused
+    // until now, and a natural semantic fit — its backend uiModules already
+    // include register_serial_panel) for an analog circuit lab.
+    if (componentKey === "EmbeddedWorkstation" && entry?.status === "ready") {
+      workstationComponentCache[componentKey] = lazy(() => import("./workstations/EceWorkstationV2.jsx"))
+    }
+    // Electrical Engineer (EEE), seventh role workspace — same wiring
+    // discipline. Reuses the "SystemDesignWorkstation" componentKey (unused
+    // until now) for a power-systems/transient lab.
+    if (componentKey === "SystemDesignWorkstation" && entry?.status === "ready") {
+      workstationComponentCache[componentKey] = lazy(() => import("./workstations/EeeWorkstationV2.jsx"))
+    }
+    // Structural / Civil Engineer, eighth role workspace — same wiring
+    // discipline. Reuses the "ReportWorkstation" componentKey (unused until
+    // now) for a beam-deflection engineering lab.
+    if (componentKey === "ReportWorkstation" && entry?.status === "ready") {
+      workstationComponentCache[componentKey] = lazy(() => import("./workstations/StructuralWorkstationV2.jsx"))
+    }
+    // Mechanical Engineer, ninth role workspace — same wiring discipline.
+    // Reuses the "ExcelWorkstation" componentKey (unused until now) for a
+    // drivetrain speed/torque lab.
+    if (componentKey === "ExcelWorkstation" && entry?.status === "ready") {
+      workstationComponentCache[componentKey] = lazy(() => import("./workstations/MechanicalWorkstationV2.jsx"))
+    }
+    // Bioprocess Engineer, tenth role workspace — same wiring discipline.
+    // Reuses the "ReactFrontendWorkstation" componentKey (unused until now)
+    // for a bioreactor culture/assay lab.
+    if (componentKey === "ReactFrontendWorkstation" && entry?.status === "ready") {
+      workstationComponentCache[componentKey] = lazy(() => import("./workstations/BiotechWorkstationV2.jsx"))
+    }
+    // Medical Biotechnology Specialist, eleventh role workspace — same
+    // wiring discipline. Reuses the "FullStackWorkstation" componentKey
+    // (unused until now) for a clinical assay/ELISA lab.
+    if (componentKey === "FullStackWorkstation" && entry?.status === "ready") {
+      workstationComponentCache[componentKey] = lazy(() => import("./workstations/MedicalBiotechWorkstationV2.jsx"))
+    }
+    // Clinical Laboratory Specialist, twelfth role workspace. All other
+    // non-reserved componentKeys were already wired by phase eleven, so
+    // this reuses "CalculatorWorkstation" — the one remaining key, whose
+    // backend "Common Challenges only" note is a content-spec label, not
+    // an enforced constraint (see ClinicalLabWorkstationV2.jsx header).
+    if (componentKey === "CalculatorWorkstation" && entry?.status === "ready") {
+      workstationComponentCache[componentKey] = lazy(() => import("./workstations/ClinicalLabWorkstationV2.jsx"))
     }
   }
   return workstationComponentCache[componentKey] || null
@@ -66,57 +140,6 @@ function NotIntegratedNotice({ componentKey }) {
   )
 }
 
-function FeedbackPanel({ submissionState, onDismiss }) {
-  if (submissionState.status === "idle") return null
-
-  if (submissionState.status === "submitting") {
-    return (
-      <div style={{ padding: 16, textAlign: "center", color: "#94a3b8", borderTop: "1px solid #1e293b" }}>
-        Grading your submission…
-      </div>
-    )
-  }
-
-  if (submissionState.status === "error") {
-    return (
-      <div style={{ padding: 16, borderTop: "1px solid #1e293b", color: "#f87171" }}>
-        <div style={{ fontWeight: 700, marginBottom: 4 }}>Couldn't submit your attempt</div>
-        <div style={{ fontSize: 13 }}>{submissionState.error?.message}</div>
-      </div>
-    )
-  }
-
-  const fb = submissionState.feedback
-  return (
-    <div style={{ padding: 16, borderTop: "1px solid #1e293b" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <div style={{ fontWeight: 700, color: fb.passed ? "#4ade80" : "#f87171" }}>
-          {fb.passed ? "✓ Passed" : "✗ Not yet"} — {fb.finalScore}/100
-          {fb.isZeroEffort ? " (capped — submitted after the time limit)" : ""}
-        </div>
-        <button onClick={onDismiss} style={{ fontSize: 12, color: "#94a3b8", background: "none", border: "none", cursor: "pointer" }}>
-          Dismiss
-        </button>
-      </div>
-      <div style={{ fontSize: 13, color: "#cbd5e1", marginBottom: 8 }}>{fb.feedback?.summary}</div>
-      {fb.feedback?.detail?.length > 0 && (
-        <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
-          <tbody>
-            {fb.feedback.detail.map((d, i) => (
-              <tr key={i} style={{ borderTop: "1px solid #1e293b" }}>
-                <td style={{ padding: "4px 6px", color: d.passed ? "#4ade80" : "#f87171" }}>{d.passed ? "✓" : "✗"}</td>
-                <td style={{ padding: "4px 6px" }}>{d.metric}</td>
-                <td style={{ padding: "4px 6px", color: "#94a3b8" }}>expected {String(d.expected)}</td>
-                <td style={{ padding: "4px 6px", color: "#94a3b8" }}>{String(d.actual)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
-  )
-}
-
 function ErrorNotice({ error }) {
   const isSchemaMismatch = error instanceof SchemaVersionMismatchError
   return (
@@ -133,10 +156,25 @@ function ErrorNotice({ error }) {
 }
 
 /**
- * @param {{ challengeType: 'common'|'domain', role?: string, industry?: string,
- *           skill?: string, difficulty?: string, scenarioId?: string }} props
+ * @param {{ challengeType: 'common'|'domain', role?: string, careerFamily?: string,
+ *           industry?: string, skill?: string, difficulty?: string, scenarioId?: string,
+ *           userId?: string, onViewRecruiterEvidence?: (userId: string) => void,
+ *           onGraded?: (feedback: object) => void }} props
+ *   `onGraded` (additive, optional — every existing caller that omits it
+ *   behaves exactly as before) fires once per successful graded submission,
+ *   after the feedback state is already set. Kept for callers that still
+ *   want their own hook into grading events; the shared
+ *   ArenaV2WorkspaceShell no longer needs it to refresh its Career Skills
+ *   radar (it refetches off the feedback object itself), so this is now
+ *   optional plumbing rather than load-bearing.
+ *
+ *   `careerFamily`, `userId`, and `onViewRecruiterEvidence` are passed
+ *   straight through to ArenaV2WorkspaceShell (bottom evidence area) — this
+ *   component still never renders that chrome itself, just wires the DTO
+ *   and submission lifecycle into whichever shell/workstation combo the
+ *   backend decided on.
  */
-export default function ArenaV2ChallengeShell({ challengeType, role = null, industry = null, skill = null, difficulty = null, scenarioId = null }) {
+export default function ArenaV2ChallengeShell({ challengeType, role = null, careerFamily = "IT", industry = null, skill = null, difficulty = null, scenarioId = null, userId = null, onViewRecruiterEvidence = null, onGraded = null }) {
   const [state, setState] = useState({ status: "loading", dto: null, error: null })
   const [submissionState, setSubmissionState] = useState({ status: "idle", feedback: null, error: null })
 
@@ -164,14 +202,11 @@ export default function ArenaV2ChallengeShell({ challengeType, role = null, indu
         startedAt: state.dto.startedAt,
       })
       setSubmissionState({ status: "done", feedback, error: null })
+      onGraded?.(feedback)
     } catch (error) {
       setSubmissionState({ status: "error", feedback: null, error })
     }
-  }, [state])
-
-  const dismissFeedback = useCallback(() => {
-    setSubmissionState({ status: "idle", feedback: null, error: null })
-  }, [])
+  }, [state, onGraded])
 
   if (state.status === "loading") {
     return <div style={{ padding: 24, textAlign: "center", color: "#94a3b8" }}>Loading your next challenge…</div>
@@ -194,7 +229,14 @@ export default function ArenaV2ChallengeShell({ challengeType, role = null, indu
   }
 
   return (
-    <div>
+    <ArenaV2WorkspaceShell
+      dto={dto}
+      submissionState={submissionState}
+      role={role}
+      careerFamily={careerFamily}
+      userId={userId}
+      onViewRecruiterEvidence={onViewRecruiterEvidence}
+    >
       <Suspense fallback={<div style={{ padding: 24, textAlign: "center", color: "#94a3b8" }}>Loading workstation…</div>}>
         <WorkstationComponent
           challengeInstanceId={dto.challengeInstanceId}
@@ -212,7 +254,6 @@ export default function ArenaV2ChallengeShell({ challengeType, role = null, indu
           isSubmitting={submissionState.status === "submitting"}
         />
       </Suspense>
-      <FeedbackPanel submissionState={submissionState} onDismiss={dismissFeedback} />
-    </div>
+    </ArenaV2WorkspaceShell>
   )
 }

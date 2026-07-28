@@ -115,7 +115,13 @@ export async function submitChallenge(input, deps = defaultDeps) {
     validatorResult = await deps.runValidator({
       validatorConfig: instance.validator,
       submissionData,
-      context: { datasetSeedSql: instance.payload?.datasetSeedSql },
+      // `payload` was added (additive, non-breaking) for rubric_review
+      // (submission-validators/rubricReview.js): AI-graded validators need
+      // the actual mission prompt the student was shown, not just the
+      // dataset seed ground_truth_compare relies on. Existing validators
+      // (groundTruthCompare.js) only read context.datasetSeedSql and ignore
+      // the rest, so this is safe for every prior validator type.
+      context: { datasetSeedSql: instance.payload?.datasetSeedSql, payload: instance.payload },
     })
     updatedSubmission = await deps.updateSubmissionResult(submission.id, {
       status: "validated",

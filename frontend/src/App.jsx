@@ -23,6 +23,19 @@ import CareerPicker from "./pages/CareerPicker"
 // Each import() creates a separate chunk loaded only when the user visits that page.
 const Aura               = lazy(() => import("./pages/Aura"))
 const Arena              = lazy(() => import("./pages/Arena"))
+const ArenaV2MLPilot     = lazy(() => import("./pages/ArenaV2MLPilot"))
+const ArenaV2SoftwarePilot = lazy(() => import("./pages/ArenaV2SoftwarePilot"))
+const ArenaV2CyberPilot  = lazy(() => import("./pages/ArenaV2CyberPilot"))
+const ArenaV2DevOpsPilot = lazy(() => import("./pages/ArenaV2DevOpsPilot"))
+const ArenaV2DbaPilot    = lazy(() => import("./pages/ArenaV2DbaPilot"))
+const ArenaV2EcePilot    = lazy(() => import("./pages/ArenaV2EcePilot"))
+const ArenaV2EeePilot    = lazy(() => import("./pages/ArenaV2EeePilot"))
+const ArenaV2CivilPilot  = lazy(() => import("./pages/ArenaV2CivilPilot"))
+const ArenaV2MechanicalPilot = lazy(() => import("./pages/ArenaV2MechanicalPilot"))
+const ArenaV2BiotechPilot = lazy(() => import("./pages/ArenaV2BiotechPilot"))
+const ArenaV2MedicalBiotechPilot = lazy(() => import("./pages/ArenaV2MedicalBiotechPilot"))
+const ArenaV2ClinicalLabPilot = lazy(() => import("./pages/ArenaV2ClinicalLabPilot"))
+const ArenaV2RecruiterView = lazy(() => import("./pages/ArenaV2RecruiterView"))
 const Pulse              = lazy(() => import("./pages/Pulse"))
 const HardwareChallenges = lazy(() => import("./pages/HardwareChallenges"))
 const SkillStudio        = lazy(() => import("./pages/SkillStudio"))
@@ -692,6 +705,11 @@ function App() {
   const [loading,        setLoading]        = useState(true)
   const [onboardingDone, setOnboardingDone] = useState(false)
   const [currentPage,    setCurrentPage]    = useState("studentHome")
+  // Arena V2 pilot phase — which candidate's recruiter-facing evidence is
+  // currently being viewed (set by ArenaV2MLPilot's "View how recruiters
+  // see this proof" link, read by the arenaV2RecruiterView page below).
+  const [recruiterEvidenceUserId, setRecruiterEvidenceUserId] = useState(null)
+  const [recruiterEvidenceReturnPage, setRecruiterEvidenceReturnPage] = useState("arenaV2MLPilot")
   const [activeTab,      setActiveTab]      = useState("dashboard")
   const [activeNavItem,  setActiveNavItem]  = useState("home")
   const [userData,       setUserData]       = useState(null)
@@ -1083,6 +1101,18 @@ function App() {
   const STUDENT_HEADER_NAV = [
     { id: "aura",        label: "Aura",         page: "aura",        prefix: "+" },
     { id: "arena",       label: "Arena",        page: "arena",       prefix: "×" },
+    { id: "arenaV2MLPilot", label: "ML Pilot (Beta)", page: "arenaV2MLPilot", prefix: "🧪" },
+    { id: "arenaV2SoftwarePilot", label: "SWE Pilot (Beta)", page: "arenaV2SoftwarePilot", prefix: "💻" },
+    { id: "arenaV2CyberPilot", label: "Cyber Pilot (Beta)", page: "arenaV2CyberPilot", prefix: "🛡️" },
+    { id: "arenaV2DevOpsPilot", label: "DevOps Pilot (Beta)", page: "arenaV2DevOpsPilot", prefix: "🛠️" },
+    { id: "arenaV2DbaPilot", label: "DBA Pilot (Beta)", page: "arenaV2DbaPilot", prefix: "🗄️" },
+    { id: "arenaV2EcePilot", label: "ECE Pilot (Beta)", page: "arenaV2EcePilot", prefix: "🔌" },
+    { id: "arenaV2EeePilot", label: "EEE Pilot (Beta)", page: "arenaV2EeePilot", prefix: "⚡" },
+    { id: "arenaV2CivilPilot", label: "Civil Pilot (Beta)", page: "arenaV2CivilPilot", prefix: "🏗️" },
+    { id: "arenaV2MechanicalPilot", label: "Mechanical Pilot (Beta)", page: "arenaV2MechanicalPilot", prefix: "⚙️" },
+    { id: "arenaV2BiotechPilot", label: "Biotech Pilot (Beta)", page: "arenaV2BiotechPilot", prefix: "🧬" },
+    { id: "arenaV2MedicalBiotechPilot", label: "Med Biotech Pilot (Beta)", page: "arenaV2MedicalBiotechPilot", prefix: "🩺" },
+    { id: "arenaV2ClinicalLabPilot", label: "Clinical Lab Pilot (Beta)", page: "arenaV2ClinicalLabPilot", prefix: "🧫" },
     { id: "pulse",       label: "Pulse",        page: "pulse",       prefix: "⚡" },
     { id: "skillstudio", label: "Skill Studio", page: "skillstudio",   prefix: "🎓" },
     { id: "launchpad",   label: "Launchpad",    page: "launchpad",     prefix: "🚀" },
@@ -1322,6 +1352,108 @@ function App() {
           )}
           {currentPage === "nexus"     && <Nexus user={user} userData={userData} setUserData={setUserData} />}
           {currentPage === "arena"     && <Arena user={user} userData={userData} setUserData={setUserData} onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }} onNavigatePricing={() => setCurrentPage("pricing")} />}
+          {currentPage === "arenaV2MLPilot" && (
+            <ArenaV2MLPilot
+              user={user}
+              userData={userData}
+              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
+              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2MLPilot"); setCurrentPage("arenaV2RecruiterView") }}
+            />
+          )}
+          {currentPage === "arenaV2SoftwarePilot" && (
+            <ArenaV2SoftwarePilot
+              user={user}
+              userData={userData}
+              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
+              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2SoftwarePilot"); setCurrentPage("arenaV2RecruiterView") }}
+            />
+          )}
+          {currentPage === "arenaV2CyberPilot" && (
+            <ArenaV2CyberPilot
+              user={user}
+              userData={userData}
+              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
+              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2CyberPilot"); setCurrentPage("arenaV2RecruiterView") }}
+            />
+          )}
+          {currentPage === "arenaV2DevOpsPilot" && (
+            <ArenaV2DevOpsPilot
+              user={user}
+              userData={userData}
+              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
+              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2DevOpsPilot"); setCurrentPage("arenaV2RecruiterView") }}
+            />
+          )}
+          {currentPage === "arenaV2DbaPilot" && (
+            <ArenaV2DbaPilot
+              user={user}
+              userData={userData}
+              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
+              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2DbaPilot"); setCurrentPage("arenaV2RecruiterView") }}
+            />
+          )}
+          {currentPage === "arenaV2EcePilot" && (
+            <ArenaV2EcePilot
+              user={user}
+              userData={userData}
+              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
+              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2EcePilot"); setCurrentPage("arenaV2RecruiterView") }}
+            />
+          )}
+          {currentPage === "arenaV2EeePilot" && (
+            <ArenaV2EeePilot
+              user={user}
+              userData={userData}
+              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
+              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2EeePilot"); setCurrentPage("arenaV2RecruiterView") }}
+            />
+          )}
+          {currentPage === "arenaV2CivilPilot" && (
+            <ArenaV2CivilPilot
+              user={user}
+              userData={userData}
+              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
+              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2CivilPilot"); setCurrentPage("arenaV2RecruiterView") }}
+            />
+          )}
+          {currentPage === "arenaV2MechanicalPilot" && (
+            <ArenaV2MechanicalPilot
+              user={user}
+              userData={userData}
+              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
+              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2MechanicalPilot"); setCurrentPage("arenaV2RecruiterView") }}
+            />
+          )}
+          {currentPage === "arenaV2BiotechPilot" && (
+            <ArenaV2BiotechPilot
+              user={user}
+              userData={userData}
+              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
+              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2BiotechPilot"); setCurrentPage("arenaV2RecruiterView") }}
+            />
+          )}
+          {currentPage === "arenaV2MedicalBiotechPilot" && (
+            <ArenaV2MedicalBiotechPilot
+              user={user}
+              userData={userData}
+              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
+              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2MedicalBiotechPilot"); setCurrentPage("arenaV2RecruiterView") }}
+            />
+          )}
+          {currentPage === "arenaV2ClinicalLabPilot" && (
+            <ArenaV2ClinicalLabPilot
+              user={user}
+              userData={userData}
+              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
+              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2ClinicalLabPilot"); setCurrentPage("arenaV2RecruiterView") }}
+            />
+          )}
+          {currentPage === "arenaV2RecruiterView" && (
+            <ArenaV2RecruiterView
+              candidateUserId={recruiterEvidenceUserId}
+              onBack={() => setCurrentPage(recruiterEvidenceReturnPage || "arenaV2MLPilot")}
+            />
+          )}
           {currentPage === "pulse"     && <Pulse user={user} userData={userData} />}
           {currentPage === "authority" && <AuthorityProfile user={user} userData={{ ...userData, uid: user?.id }} setUserData={setUserData} onNavigate={setCurrentPage} />}
           {currentPage === "startupworkspace" && <StartupWorkspace user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}

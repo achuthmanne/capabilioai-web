@@ -18,18 +18,23 @@
 // "not built yet" state instead of a broken render.
 export const FRONTEND_WORKSTATION_REGISTRY = {
   SqlWorkstation:            { status: "ready",          importPath: "./workstations/SqlWorkstationV2.jsx" },
-  CodeWorkstation:           { status: "not_integrated" },
-  NotebookWorkstation:       { status: "not_integrated" },
-  ReactFrontendWorkstation:  { status: "not_integrated" },
-  ApiWorkstation:            { status: "not_integrated" },
-  TerminalWorkstation:       { status: "not_integrated" },
-  ExcelWorkstation:          { status: "not_integrated" },
-  DashboardWorkstation:      { status: "not_integrated" },
-  ReportWorkstation:         { status: "not_integrated" },
-  SystemDesignWorkstation:   { status: "not_integrated" },
-  EmbeddedWorkstation:       { status: "not_integrated" },
-  CalculatorWorkstation:     { status: "not_integrated" },
-  FullStackWorkstation:      { status: "not_integrated" },
+  CodeWorkstation:           { status: "ready",          importPath: "./workstations/CodeWorkstationV2.jsx" },
+  NotebookWorkstation:       { status: "ready",          importPath: "./workstations/NotebookWorkstationV2.jsx" },
+  ReactFrontendWorkstation:  { status: "ready",          importPath: "./workstations/BiotechWorkstationV2.jsx" },
+  ApiWorkstation:            { status: "ready",          importPath: "./workstations/DevOpsConsoleWorkstationV2.jsx" },
+  TerminalWorkstation:       { status: "ready",          importPath: "./workstations/TerminalWorkstationV2.jsx" },
+  ExcelWorkstation:          { status: "ready",          importPath: "./workstations/MechanicalWorkstationV2.jsx" },
+  DashboardWorkstation:      { status: "ready",          importPath: "./workstations/DbaWorkstationV2.jsx" },
+  ReportWorkstation:         { status: "ready",          importPath: "./workstations/StructuralWorkstationV2.jsx" },
+  SystemDesignWorkstation:   { status: "ready",          importPath: "./workstations/EeeWorkstationV2.jsx" },
+  EmbeddedWorkstation:       { status: "ready",          importPath: "./workstations/EceWorkstationV2.jsx" },
+  // "Common Challenges only" per the backend registry's own comment is a
+  // content-spec categorization note, not an enforced runtime constraint —
+  // see the file header of ClinicalLabWorkstationV2.jsx for the full
+  // reasoning on why reusing this key (rather than adding a new backend
+  // WORKSTATION_IDS entry) is the schema-safe choice for a 12th domain.
+  CalculatorWorkstation:     { status: "ready",          importPath: "./workstations/ClinicalLabWorkstationV2.jsx" },
+  FullStackWorkstation:      { status: "ready",          importPath: "./workstations/MedicalBiotechWorkstationV2.jsx" },
 }
 
 export function isWorkstationReady(componentKey) {

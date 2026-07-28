@@ -61,7 +61,7 @@ export function buildProofObjectFromAssessment(event, decision) {
     difficulty: instance.difficulty || null,
 
     title: synthesizeTitle(instance),
-    problemStatement: instance.payload?.scenario || instance.payload?.problemStatement || instance.payload?.brief || "",
+    problemStatement: instance.payload?.scenario || instance.payload?.problemStatement || instance.payload?.brief || instance.payload?.prompt || "",
     finalSubmission: submission.submission_data || {},
     snapshots: [], // reserved — code-replay capture is a later phase, not built yet
     buildOutput: submission.validator_result ? { validatorDetail: submission.validator_result } : {},

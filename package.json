@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "start": "node backend/server.js",
     "test:arena-v2": "node --test $(find backend/server/lib/arena-v2 -name '*.test.js')",
+    "test:arena-v2-frontend": "node --test $(find frontend/src/arena-v2 -name '*.test.js')",
     "lint": "eslint frontend/src backend/server --ext .js,.jsx",
     "format": "prettier --write \"frontend/src/**/*.{js,jsx}\" \"backend/server/**/*.js\""
   },

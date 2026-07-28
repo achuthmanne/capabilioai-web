@@ -76,6 +76,21 @@ export async function getSkillProgress(userId, careerFamily, skill) {
   return data
 }
 
+// Arena V2 Pilot Phase addition — every function above this point existed
+// for the write-side reward flow only; nothing previously let a caller read
+// back a user's own full skill-progress list (only the single-skill lookup
+// above, used internally by applyRewards). The Career Skills radar
+// (routes/arenaV2Library.js's new GET /my-progress) needs this to render
+// real per-skill state, not placeholder data.
+export async function listSkillProgressForUser(userId, careerFamily) {
+  const { data, error } = await supabaseAdmin
+    .from("av2_skill_progress")
+    .select("*")
+    .eq("user_id", userId).eq("career_family", careerFamily)
+  if (error) throw error
+  return data || []
+}
+
 export async function upsertSkillProgress(row) {
   const { data, error } = await supabaseAdmin
     .from("av2_skill_progress")

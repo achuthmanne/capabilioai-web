@@ -113,6 +113,33 @@ test("portfolio block never includes the full recruiter_evidence object — only
   assert.equal("skillsDemonstrated" in dto.portfolio, false)
 })
 
+test("omitting AI-review metadata (ground_truth_compare and other non-AI validators) leaves aiReview null — additive, non-breaking", () => {
+  const dto = buildFeedbackResponseDto(fixture())
+  assert.equal(dto.aiReview, null)
+})
+
+test("surfaces an aiReview block when the validator_result carries rubric_review metadata (e.g. the ML Engineer pilot)", () => {
+  const { submission, assessment } = fixture({
+    submission: {
+      id: "s", instance_id: "i", attempt_number: 1, status: "validated", is_timed_out: false,
+      validator_result: {
+        passed: true, score: 82, detail: [],
+        metadata: {
+          strengths: ["Real feature engineering"], suggestions: ["Add a train/test split"],
+          taskQuality: "Solid.", recruiterReadiness: "Recruiter-ready", recruiterReadinessNote: "Good signal.",
+          criteriaScores: { correctness: 85 },
+        },
+      },
+      submitted_at: "t",
+    },
+    assessment: { final_score: 82, is_zero_effort: false, feedback: { summary: "ok" }, created_at: "t2" },
+  })
+  const dto = buildFeedbackResponseDto({ submission, assessment })
+  assert.deepEqual(dto.aiReview.strengths, ["Real feature engineering"])
+  assert.equal(dto.aiReview.recruiterReadiness, "Recruiter-ready")
+  assert.equal(dto.aiReview.criteriaScores.correctness, 85)
+})
+
 test("reflects zero-effort/timeout state honestly", () => {
   const { submission, assessment } = fixture({
     submission: { id: "s", instance_id: "i", attempt_number: 1, status: "validated", is_timed_out: true, validator_result: { passed: true, score: 100, detail: [] }, submitted_at: "t" },

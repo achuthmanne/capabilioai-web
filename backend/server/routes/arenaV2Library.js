@@ -18,6 +18,7 @@ import { Router } from "express"
 import { requireAuth } from "../lib/auth.js"
 import { requireAdmin } from "../lib/arena-v2/requireAdmin.js"
 import * as repo from "../lib/arena-v2/challenge-library/repository.js"
+import { listSkillProgressForUser, getLatestEloForRole } from "../lib/arena-v2/reward-engine/repository.js"
 import {
   ValidationError,
   validateRoleCapabilities,
@@ -66,6 +67,22 @@ router.delete("/role-capabilities/:role", requireAdmin, async (req, res) => {
   try {
     await repo.deleteRoleCapabilities(req.params.role, req.query.careerFamily || "IT")
     res.status(204).end()
+  } catch (err) { handle(res, err) }
+})
+
+// ── My Progress (Arena V2 Pilot Phase) ───────────────────────────────────────
+// The authenticated student's own real skill-progress + ELO state — reads
+// only, backed entirely by reward-engine/repository.js (the same tables
+// the Reward Engine itself writes; no separate/duplicated progress store).
+// Used by the ML/AI Engineer pilot workspace's Career Skills radar.
+router.get("/my-progress", async (req, res) => {
+  try {
+    const { role, careerFamily = "IT" } = req.query
+    const [skillProgress, elo] = await Promise.all([
+      listSkillProgressForUser(req.user.id, careerFamily),
+      role ? getLatestEloForRole(req.user.id, role) : Promise.resolve(null),
+    ])
+    res.json({ skillProgress, elo })
   } catch (err) { handle(res, err) }
 })
 

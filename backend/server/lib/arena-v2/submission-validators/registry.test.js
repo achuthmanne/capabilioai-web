@@ -31,11 +31,12 @@ test("throws a typed NotImplementedValidatorError for a validator type with no i
   )
 })
 
-test("isValidatorImplemented reflects exactly the one wired-up validator (matching Milestone 7's one wired-up workstation)", () => {
+test("isValidatorImplemented reflects exactly the wired-up validators (SQL Workstation + ML/AI Pilot Notebook Workstation)", () => {
   assert.equal(isValidatorImplemented("ground_truth_compare"), true)
+  assert.equal(isValidatorImplemented("rubric_review"), true)
   const otherTypes = [
     "test_case_judge", "published_result_compare", "live_render_probe", "http_assertion",
-    "command_output_match", "formula_result_check", "kpi_compare", "rubric_review",
+    "command_output_match", "formula_result_check", "kpi_compare",
     "numeric_tolerance", "register_match",
   ]
   for (const t of otherTypes) assert.equal(isValidatorImplemented(t), false, `expected ${t} to be unimplemented`)
