@@ -38,6 +38,7 @@ firebase-adminsdk*.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+build.log
 
 # Vite temp files
 vite.config.js.timestamp-*
@@ -56,3 +57,4 @@ dist_pulse_home_check
 dist_company_skills_check
 _verify_pure.mjs
 _verify_sync_tmp.mjs
+frontend/src/config/.write_test.tmp
