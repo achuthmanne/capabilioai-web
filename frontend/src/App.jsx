@@ -8,6 +8,7 @@ import { FLAGS } from "./config/featureFlags"
 
 import PathNav     from "./components/PathNav"
 import { PageLoader } from "./components/CapUI"
+import ErrorBoundary from "./components/ErrorBoundary"
 import CopilotWidget from "./components/CopilotWidget"
 
 // ── Always needed for auth flow — keep static ────────────────────────────────
@@ -941,9 +942,11 @@ function App() {
   // header for why this exists (Career OS Tranche 4).
   if (window.location.pathname === "/admin/question-bank") {
     return (
-      <Suspense fallback={<PageLoader />}>
-        <AdminQuestionBank user={user} />
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={<PageLoader />}>
+          <AdminQuestionBank user={user} />
+        </Suspense>
+      </ErrorBoundary>
     )
   }
 
@@ -954,9 +957,11 @@ function App() {
   // but had no frontend, so it was only reachable via curl/Postman.
   if (window.location.pathname === "/admin/ops-dashboard") {
     return (
-      <Suspense fallback={<PageLoader />}>
-        <AdminOpsDashboard user={user} />
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={<PageLoader />}>
+          <AdminOpsDashboard user={user} />
+        </Suspense>
+      </ErrorBoundary>
     )
   }
 
@@ -968,9 +973,11 @@ function App() {
   // no frontend, so it was only reachable via curl/Postman.
   if (window.location.pathname === "/admin/skill-studio-content") {
     return (
-      <Suspense fallback={<PageLoader />}>
-        <AdminSkillStudioContent user={user} />
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={<PageLoader />}>
+          <AdminSkillStudioContent user={user} />
+        </Suspense>
+      </ErrorBoundary>
     )
   }
 
@@ -1337,7 +1344,13 @@ function App() {
       )}
 
       <div style={{ height: "calc(100vh - 56px)", overflowY: "auto", display: "flex", flexDirection: "column" }}>
-        {/* Suspense: lazy page chunks load on first navigation — PageLoader shows briefly */}
+        {/* Suspense: lazy page chunks load on first navigation — PageLoader shows briefly.
+            Wrapped in ErrorBoundary: if a chunk 404s (stale index.html pointing at a
+            hash a newer deploy purged), this used to unmount the ENTIRE app to a blank
+            white screen with no recovery path. ErrorBoundary now catches it and either
+            auto-reloads once (the common case, self-heals silently) or shows a visible
+            "Refresh page" fallback instead of a blank screen. */}
+        <ErrorBoundary>
         <Suspense fallback={<PageLoader />}>
           {currentPage === "studentHome"      && <StudentHome      user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
           {currentPage === "professionalHome" && <ProfessionalHome user={user} userData={userData} setUserData={setUserData} activeTab={activeTab} setActiveTab={setActiveTab} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} onNavigatePricing={() => { setCurrentPage("pricing"); setActiveNavItem("") }} />}
@@ -1497,6 +1510,7 @@ function App() {
           {currentPage === "pipeline"      && <HiringPipeline     user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
           {currentPage === "jobPostings"   && <JobPostings        user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
         </Suspense>
+        </ErrorBoundary>
       </div>
 
       {/* Excluded from authority/executive path: that path has its own dedicated
