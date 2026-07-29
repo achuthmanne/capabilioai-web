@@ -114,19 +114,22 @@ Format as JSON:
     // real-time search result — the honest `source: "ai_estimate"` field
     // below (unconditional now) tells the frontend never to label this
     // "Live", same honesty requirement as the 2026-07-26 Pulse redesign.
-    const completion = await Promise.race([
-      groq.chat.completions.create({
-        model:       GROQ_FAST,
-        max_tokens:  1500,
-        temperature: 0.4,
-        messages: [
-          { role: "system", content: "You are a tech career market analyst for India. Respond ONLY with valid JSON, no markdown." },
-          { role: "user",   content: prompt },
-        ],
-      }),
+    // NOTE: this file's `groq` import is a plain async function
+    // groq(messages, opts) — not an OpenAI-SDK-style client. The original
+    // version of this edit called groq.chat.completions.create(...), which
+    // is the SDK shape, not this lib's shape; that threw "Cannot read
+    // properties of undefined (reading 'completions')" on every request,
+    // which is why this route kept reporting "unavailable" even after the
+    // 403 route-shadowing bug (mentorMarketplaceAdmin.js) was fixed. Fixed
+    // to call groq() the way every other route in this codebase (arena.js)
+    // already does.
+    const text = await Promise.race([
+      groq([
+        { role: "system", content: "You are a tech career market analyst for India. Respond ONLY with valid JSON, no markdown." },
+        { role: "user",   content: prompt },
+      ], { model: GROQ_FAST, max_tokens: 1500, temperature: 0.4, json: true }),
       new Promise((_, reject) => setTimeout(() => reject(new Error("Groq timeout")), 12000))
     ])
-    const text = completion.choices[0]?.message?.content || "{}"
 
     // Extract JSON from response
     const match = text.match(/```json\s*([\s\S]*?)```/) || text.match(/(\{[\s\S]*\})/)
