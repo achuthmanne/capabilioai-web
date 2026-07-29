@@ -107,6 +107,15 @@ function createRateLimiter(windowMs, max, message) {
   }, windowMs).unref() // .unref() — don't block process exit
 
   return (req, res, next) => {
+    // TEMP DIAGNOSTIC (2026-07-29) — logs every /api request that reaches
+    // this app, plus the status code actually sent back. Added to find out
+    // whether the pulse/*+nexus/* 403s seen in the browser originate in this
+    // app or upstream of it (Render's edge/proxy), since none of this app's
+    // route handlers issue a 403 for those paths. Pure logging, no behavior
+    // change — safe to remove once the 403 source is confirmed.
+    res.on("finish", () => {
+      console.log(`[req] ${req.method} ${req.originalUrl} -> ${res.statusCode}`)
+    })
     // Trust X-Forwarded-For set by Vercel/Render proxy (first IP is the real client)
     const forwarded = req.headers["x-forwarded-for"]
     const ip = (forwarded ? forwarded.split(",")[0].trim() : null)

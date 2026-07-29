@@ -21,7 +21,7 @@
  *   GET  /api/nexus/connections    — list connections
  *   GET  /api/nexus/notifications  — notifications
  *   POST /api/nexus/notifications/read — mark read
- *   GET  /api/pulse/market-insights   — AI market trends + tech news (Gemini Search)
+ *   GET  /api/pulse/market-insights   — AI market trends + tech news (Groq, source: "ai_estimate")
  *   GET  /api/pulse/trending-tags     — real tech_tags counts from recent posts
  */
 import { Router }     from "express"
@@ -32,7 +32,7 @@ import { requireAuth } from "../lib/auth.js"
 const router = Router()
 
 // ── Simple in-memory cache — market insights change slowly, no need to hit
-//    Gemini on every page load. Cache per domain for 2 hours.
+//    Groq on every page load. Cache per domain for 2 hours.
 const insightsCache = new Map()  // key: domain → { data, expiresAt }
 const CACHE_TTL_MS  = 2 * 60 * 60 * 1000  // 2 hours
 
@@ -46,9 +46,11 @@ function optionalAuth(req, res, next) {
 // PULSE
 // ══════════════════════════════════════════
 
-// ── Market Insights + Tech News (Gemini Search) ────────────────────────────────
+// ── Market Insights + Tech News (Groq) ──────────────────────────────────────
 // Called by Pulse page for market trends and technology news.
-// Gemini Search uses Google Search grounding — returns real, current data.
+// 2026-07-29: Groq-only, no live search grounding — this is an LLM estimate,
+// not a real-time web search result. source: "ai_estimate" reflects that
+// honestly to the frontend, which must never label this "Live".
 // Cached per domain for 2 hours so we don't burn API quota on repeated page loads.
 // NOTE: this route was previously defined TWICE in this file — a live bug.
 // Express dispatches to whichever handler is registered first, so the older
@@ -71,7 +73,7 @@ router.get("/pulse/market-insights", optionalAuth, async (req, res) => {
 
   // Cache key is domain-only (not skills/role) — this is a deliberate trade,
   // not an oversight: caching per (domain × role × skills) combination would
-  // fragment the cache across near-infinite keys and burn Gemini/Groq quota
+  // fragment the cache across near-infinite keys and burn Groq quota
   // on every distinct user instead of sharing one fetch per domain per 2h.
   // The frontend compensates for this by re-ranking/highlighting the shared
   // report's items against the user's own skills client-side (see
