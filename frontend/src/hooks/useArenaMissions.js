@@ -262,7 +262,14 @@ export function useArenaMissions() {
         if (i < maxSlots && freeLocked && getPlan(ud).id === "free") {
           const plan = getPlan(ud)
           const daysLeft = plan.arenaIntervalDays - daysSinceLastArenaTask(ud)
-          return { ...makeEmptySlot(i), status: "cooldown", cooldownHrs: Math.ceil(daysLeft * 24), isPlanCooldown: true }
+          // BUG FIX (2026-07-29): this used to set only cooldownHrs, never
+          // cooldownUntil — MissionHero's countdown (CountdownDisplay) only
+          // ever reads cooldownUntil, so every free-tier user in their daily
+          // interval lockout saw a blank/broken timer instead of a real
+          // countdown. Derive an actual future timestamp from the same
+          // daysLeft math instead of a separate, incompatible field.
+          const cooldownUntil = Date.now() + Math.max(0, daysLeft) * 86400000
+          return { ...makeEmptySlot(i), status: "cooldown", cooldownHrs: Math.ceil(daysLeft * 24), cooldownUntil, isPlanCooldown: true }
         }
         if (s?.status === "active" && s?.task) {
           const slotDomain = s.task.domainKey || s.task.domain || null
