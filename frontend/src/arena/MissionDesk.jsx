@@ -84,7 +84,7 @@ function MissionHero({ slot, domain, onStart }) {
           </div>
         </div>
         <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 9.5, color: "#166534", marginBottom: 3 }}>NEXT MISSION IN</div>
+          <div style={{ fontSize: 9.5, color: "#166534", marginBottom: 3 }}>NEXT MISSION UNLOCKS IN</div>
           <div style={{ fontSize: 18 }}><CountdownDisplay cooldownUntil={slot.cooldownUntil} color="#15803D" /></div>
         </div>
       </div>
@@ -125,52 +125,44 @@ function MissionHero({ slot, domain, onStart }) {
   )
 }
 
-// ── Mission queue rows (E) ───────────────────────────────────────────────────
-// 2026-07-28: locked rows now show a real (blurred) preview of the actual
-// mission waiting in that slot — title, difficulty, time — instead of a
-// generic "slot locked" placeholder. Scoped deliberately: only title/
-// difficulty/time are shown, never the scenario/question text or tools, so
-// the teaser stays a teaser rather than handing over the graded task itself.
-function QueueRow({ slot, domain, onStart, locked, onUpgrade, planLabel }) {
-  const [hov, setHov] = useState(false)
+// ── Plan upsell (E2) ─────────────────────────────────────────────────────────
+// 2026-07-29: replaces the old per-slot "🔒 Mission slot locked — Unlock"
+// rows (one button per locked slot, up to 5 of them stacked in the queue).
+// That design implied every extra slot unlocks the same way a cooldown does
+// — it doesn't; plan-gated slots only ever open via upgrade, never by
+// waiting. Collapsing them into two flat plan cards (real daily-task counts
+// from config/plans.js: free=1, pro=3, elite=6) says that honestly, once,
+// instead of nagging once per hidden slot.
+function PlanUpsellCards({ onUpgrade }) {
+  const cards = [
+    { id: "pro",   label: "PRO",   tasksPerDay: 3, color: T.indigo, bg: T.indigoBg, tagline: "3x the daily missions" },
+    { id: "elite", label: "ELITE", tasksPerDay: 6, color: T.amber,  bg: T.amberBg,  tagline: "6x the daily missions" },
+  ]
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+      {cards.map(c => (
+        <div key={c.id} style={{ background: c.bg, border: `1.5px solid ${c.color}33`, borderRadius: 12, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ fontSize: 11, fontWeight: 900, color: c.color, letterSpacing: 0.6 }}>{c.label}</span>
+            <span style={{ fontSize: 9, fontWeight: 700, color: c.color, background: "#fff", padding: "2px 8px", borderRadius: 99 }}>{c.tagline}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
+            <span style={{ fontSize: 22, fontWeight: 900, color: T.ink, fontFamily: "'DM Mono',monospace" }}>{c.tasksPerDay}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: T.ink3 }}>tasks/day</span>
+          </div>
+          <button onClick={() => onUpgrade?.(c.id)}
+            style={{ marginTop: 2, padding: "8px 14px", borderRadius: 8, border: "none", background: c.color, color: "#fff", fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>
+            Upgrade to {c.label}
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
 
-  if (locked) {
-    const ch = slot?.status === "active" || slot?.status === "cooldown" ? slot?.challenge : null
-    if (ch) {
-      const wsType = resolveWorkstationType({ ...ch, workstation: ch.workstation, sandbox: ch.workstation })
-      const meta = getWorkstationMeta(wsType)
-      return (
-        <div style={{ position: "relative", borderRadius: 11, overflow: "hidden", border: `1.5px dashed ${T.border}` }}>
-          <div aria-hidden style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: "#fff", filter: "blur(4px)", userSelect: "none", pointerEvents: "none" }}>
-            <span style={{ fontSize: 18, flexShrink: 0 }}>{ch.icon}</span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: T.ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginBottom: 3 }}>{ch.title}</div>
-              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <WorkstationBadge meta={meta} size={9} />
-                <span style={{ fontSize: 9.5, fontWeight: 800, color: diffColor(ch.difficulty) }}>{ch.difficulty}</span>
-                <span style={{ fontSize: 9.5, color: T.ink4 }}>⏱ {ch.timeLimit}</span>
-              </div>
-            </div>
-          </div>
-          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: "rgba(255,255,255,0.55)" }}>
-            <span style={{ fontSize: 15 }}>🔒</span>
-            <span style={{ fontSize: 11, fontWeight: 700, color: T.ink2 }}>{planLabel} plan</span>
-            <button onClick={onUpgrade} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: T.purple, color: "#fff", fontSize: 10.5, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>Unlock</button>
-          </div>
-        </div>
-      )
-    }
-    return (
-      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 16px", background: "#FBFBF9", border: `1.5px dashed ${T.border}`, borderRadius: 11 }}>
-        <span style={{ fontSize: 16, opacity: 0.6 }}>🔒</span>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, color: T.ink3 }}>Mission slot locked — {planLabel} plan</div>
-          <div style={{ fontSize: 10.5, color: T.ink4 }}>More daily missions, more proof, faster ELO growth</div>
-        </div>
-        <button onClick={onUpgrade} style={{ padding: "7px 16px", borderRadius: 8, border: "none", background: T.purple, color: "#fff", fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>Unlock</button>
-      </div>
-    )
-  }
+// ── Mission queue rows (E) ───────────────────────────────────────────────────
+function QueueRow({ slot, domain, onStart }) {
+  const [hov, setHov] = useState(false)
 
   if (!slot || slot.status === "loading") {
     return <div style={{ height: 58, background: "#fff", border: `1px solid ${T.border}`, borderRadius: 11, animation: "shimmer 1.5s ease-in-out infinite" }} />
@@ -184,9 +176,12 @@ function QueueRow({ slot, domain, onStart, locked, onUpgrade, planLabel }) {
           <div style={{ fontSize: 12.5, fontWeight: 700, color: T.ink3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {slot.challenge?.title || "Mission"} — completed ✓
           </div>
-          <div style={{ fontSize: 10.5, color: T.ink4 }}>frozen in proof history · next mission rotates in</div>
+          <div style={{ fontSize: 10.5, color: T.ink4 }}>frozen in proof history · come back when the timer hits zero</div>
         </div>
-        <CountdownDisplay cooldownUntil={slot.cooldownUntil} color={T.purple} />
+        <div style={{ textAlign: "right", flexShrink: 0 }}>
+          <div style={{ fontSize: 8.5, color: T.ink4, marginBottom: 2 }}>UNLOCKS IN</div>
+          <CountdownDisplay cooldownUntil={slot.cooldownUntil} color={T.purple} />
+        </div>
       </div>
     )
   }
@@ -298,15 +293,18 @@ export default function MissionDesk({
                 {queueSlots.map((s, i) => (
                   <QueueRow key={i} slot={s} domain={domain} onStart={onStart} />
                 ))}
-                {lockedSlots.map((s, i) => (
-                  <QueueRow key={`lock_${i}`} slot={s} locked domain={domain}
-                    planLabel={unlockedCount + i === 1 ? "Pro" : "Elite"}
-                    onUpgrade={() => onUpgrade(unlockedCount + i === 1 ? "pro" : "elite")} />
-                ))}
                 {queueSlots.length === 0 && lockedCount === 0 && (
                   <EmptyDirective icon="🎯" label="Queue clear. Complete today's mission to keep your streak alive — every submission mints proof." />
                 )}
               </div>
+              {lockedCount > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: T.ink4, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>
+                    Want more missions per day?
+                  </div>
+                  <PlanUpsellCards onUpgrade={onUpgrade} />
+                </div>
+              )}
             </div>
 
             {/* G — workstation quick access */}
