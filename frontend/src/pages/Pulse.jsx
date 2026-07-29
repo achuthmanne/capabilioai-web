@@ -772,6 +772,12 @@ function StudentPulse({ user, userData }) {
   // ── Feed state ──────────────────────────────────────────────────────────────
   const [posts,       setPosts]       = useState([])
   const [builders,    setBuilders]    = useState([])
+  // 2026-07-29: separate from builders.length===0, which conflated "still
+  // fetching" with "fetched, but genuinely nobody matches" — the sidebar
+  // showed "Loading builders..." forever for the (very plausible, this
+  // early) second case. Defaults true, flips false once the fetch settles
+  // either way.
+  const [buildersLoading, setBuildersLoading] = useState(true)
   const [mentors,     setMentors]     = useState([])
   const [feedLoading, setFeedLoading] = useState(true)
   const [feedTab,     setFeedTab]     = useState("community")
@@ -941,7 +947,10 @@ function StudentPulse({ user, userData }) {
     let cancelled = false
     const wait = (ms) => new Promise(r => setTimeout(r, ms))
     ;(async () => {
-      pulseApi.builders(domain, elo, 6).then(d => !cancelled && setBuilders(d)).catch(() => !cancelled && setBuilders([]))
+      setBuildersLoading(true)
+      pulseApi.builders(domain, elo, 6)
+        .then(d => { if (!cancelled) { setBuilders(d); setBuildersLoading(false) } })
+        .catch(() => { if (!cancelled) { setBuilders([]); setBuildersLoading(false) } })
       await wait(200)
       pulseApi.mentors(domain, 4).then(d => !cancelled && setMentors(d)).catch(() => !cancelled && setMentors([]))
       await wait(200)
@@ -2072,8 +2081,12 @@ function StudentPulse({ user, userData }) {
                 familiar part of the Arena-driven student experience. */}
             <div style={{background:P.surface,border:`1px solid ${P.border}`,borderRadius:P.r,padding:16,boxShadow:P.shadow}}>
               <div style={{fontSize:10,fontWeight:800,color:P.ink4,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:12}}>{isProfessional ? "PEOPLE IN YOUR FIELD" : "ELO-MATCHED BUILDERS"}</div>
-              {builders.length===0 ? (
+              {buildersLoading ? (
                 <div style={{fontSize:12,color:P.ink4,textAlign:"center",padding:"12px 0"}}>Loading builders...</div>
+              ) : builders.length===0 ? (
+                <div style={{fontSize:12,color:P.ink4,textAlign:"center",padding:"12px 0"}}>
+                  No one else in your ELO range yet — check back as more {domain} builders join.
+                </div>
               ) : builders.map((b,i)=>{
                 const bName = b.display_name||b.name||"User"
                 const bColor = colorForId(b.id)
