@@ -221,6 +221,34 @@ import { startGradingWorker }    from "./server/lib/grading-worker.js"
 const app  = express()
 const PORT = process.env.PORT || 4000
 
+// BUG FIX (2026-07-29): cors() used to be registered AFTER the rate limiters
+// below. createRateLimiter's 429 branch (`return res.status(429).json(...)`)
+// never touches CORS headers — those only get attached by the cors()
+// middleware itself. Since Express runs middleware strictly in registration
+// order, ANY request (including the browser's own OPTIONS preflight, which
+// passes through these path-scoped limiters just like a real request) that
+// arrived after this IP had already hit its rate limit got a 429 with NO
+// Access-Control-Allow-Origin header — which the browser reports as a CORS
+// failure ("blocked by CORS policy: Response to preflight request doesn't
+// pass access control check"), not as the rate limit it actually was. This
+// silently broke EVERY /api/skill-studio/* and /api/arena/* call for any
+// client that had made >100 (or >20 for AI routes) requests/min — including
+// a real user simply reloading Skill Studio/Arena a handful of times while
+// several panels each fire their own request on mount. Moving cors() to be
+// the very first middleware means it always attaches headers first, on
+// every response this server ever sends, 429 or not.
+app.use(cors({
+  origin: [
+    process.env.FRONTEND_URL || "https://capabilio.online",
+    "https://capabilio.online",
+    "https://www.capabilio.online",
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:4173",
+  ],
+  credentials: true,
+}))
+
 // ─── Rate limiters ────────────────────────────────────────────────────────────
 const generalLimiter = createRateLimiter(60_000, 100, "Too many requests, please try again in a minute.")
 const aiLimiter      = createRateLimiter(60_000,  20, "AI rate limit reached. Please wait a moment.")
@@ -244,17 +272,8 @@ app.use("/api/analyse-professional-profile", aiLimiter)
 app.use("/api/resolve-role",                aiLimiter)
 app.use("/api/verify",       strictLimiter)
 
-app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || "https://capabilio.online",
-    "https://capabilio.online",
-    "https://www.capabilio.online",
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://localhost:4173",
-  ],
-  credentials: true,
-}))
+// (cors() is registered above, before the rate limiters — see the 2026-07-29
+// bug-fix comment near `const app = express()` for why.)
 // Roster CSV imports (college.js) need more than the 512kb default — override
 // for that path specifically, before the general limit below. body-parser
 // skips re-parsing a body that's already been parsed, so this is safe layering.

@@ -59,6 +59,8 @@ dist_verify_loop_closure
 dist_verify_rolegap
 dist_verify_bugfix
 dist_verify_arena
+dist_verify_cors
+dist_verify_cors_final2
 _verify_pure.mjs
 _verify_sync_tmp.mjs
 frontend/src/config/.write_test.tmp
