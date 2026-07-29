@@ -787,6 +787,58 @@ function StudentPulse({ user, userData }) {
   const [postTags,     setPostTags]     = useState("")
   const [posting,      setPosting]      = useState(false)
 
+  // ── Proof Posts — "Share Proof" picker state ──────────────────────────────
+  // Unlike the free-text composer, this never lets the user type the facts —
+  // they pick from a server-fetched list of their own real achievements, and
+  // the caption below is the only free-text field.
+  const [proofPickerOpen,  setProofPickerOpen]  = useState(false)
+  const [proofCandidates,  setProofCandidates]  = useState([])
+  const [proofLoading,     setProofLoading]     = useState(false)
+  const [proofSelected,    setProofSelected]    = useState(null)
+  const [proofCaption,     setProofCaption]     = useState("")
+  const [proofPosting,     setProofPosting]     = useState(false)
+
+  const openProofPicker = async () => {
+    setProofPickerOpen(true)
+    setProofSelected(null)
+    setProofCaption("")
+    setProofLoading(true)
+    try {
+      const { candidates } = await pulseApi.proofCandidates()
+      setProofCandidates(candidates || [])
+    } catch {
+      setProofCandidates([])
+    } finally {
+      setProofLoading(false)
+    }
+  }
+
+  const submitProofPost = async () => {
+    if (!proofSelected || proofPosting) return
+    setProofPosting(true)
+    setError("")
+    try {
+      const result = await pulseApi.createPost({
+        post_type:  "proof",
+        content:    proofCaption.trim(),
+        proof_ref:  { sourceType: proofSelected.sourceType, sourceId: proofSelected.sourceId },
+        role_tags:  [domain.toLowerCase()],
+        visibility: "public",
+      })
+      if (result.post) {
+        setPosts(p => [result.post, ...p])
+        setReactions(r => ({ ...r, [result.post.id]: { acknowledge: false, signal: false, save: false } }))
+        setProofPickerOpen(false)
+        setProofSelected(null)
+        setProofCaption("")
+      }
+    } catch (e) {
+      setError("Could not share proof: " + e.message)
+    } finally {
+      setProofPosting(false)
+    }
+  }
+
   // ── Per-post interaction state ──────────────────────────────────────────────
   // reactions[postId] = { acknowledge: bool, signal: bool, save: bool }
   const [reactions, setReactions] = useState({})
@@ -1133,6 +1185,10 @@ function StudentPulse({ user, userData }) {
     win:      { label: "WIN",      color: "#059669", bg: "#ECFDF5" },
     question: { label: "QUESTION", color: "#0891B2", bg: "#EFF6FF" },
     code:     { label: "CODE",     color: "#D97706", bg: "#FFF7ED" },
+    // Not a composer-selectable type (proof posts skip the free-text
+    // composer entirely — see openProofPicker/submitProofPost) but this
+    // entry still drives the feed-card type badge for post_type="proof".
+    proof:    { label: "✅ PROOF", color: "#059669", bg: "#ECFDF5" },
     text:     { label: "POST",     color: "#6B6560", bg: "#F3F4F6" },
   }
 
@@ -1299,8 +1355,10 @@ function StudentPulse({ user, userData }) {
                 ))}
               </div>
 
-              {/* Composer (shown when composerOpen OR inline) */}
-              {feedTab !== "mentors" && feedTab !== "following" && feedTab !== "network" && (
+              {/* Composer (shown when composerOpen OR inline) — Saved is a
+                  personal bookmark list, not a place to post from, so it's
+                  excluded here same as Mentors/Sparks/Network. */}
+              {feedTab !== "mentors" && feedTab !== "following" && feedTab !== "network" && feedTab !== "capsules" && (
                 <div style={{padding:"14px 16px",borderBottom:`1px solid ${P.border}`}}>
                   {composerOpen ? (
                     <div>
@@ -1343,13 +1401,81 @@ function StudentPulse({ user, userData }) {
                           {b.e} {b.l}
                         </button>
                       ))}
+                      {/* Share Proof — distinct from the free-text buttons above:
+                          this doesn't open the composer at all, it opens a picker
+                          over the user's own real verified achievements. */}
+                      <button className="pb" onClick={openProofPicker}
+                        style={{padding:"7px 11px",border:`1.5px solid #05966940`,borderRadius:8,background:"#ECFDF5",fontSize:12,fontWeight:700,color:"#059669"}}>
+                        ✅ Proof
+                      </button>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Sort bar — not shown on Mentors/Sparks/Network tab */}
-              {feedTab !== "mentors" && feedTab !== "following" && feedTab !== "network" && (
+              {/* Share Proof picker — fixed overlay, independent of feed tab/layout.
+                  Deliberately NOT a free-text form: step 1 is choosing a real
+                  achievement (server-fetched, server-verified on submit),
+                  step 2 is an optional caption. There is no way to type in a
+                  score, skill, or outcome — that's the whole point. */}
+              {proofPickerOpen && (
+                <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}
+                  onClick={()=>setProofPickerOpen(false)}>
+                  <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:14,width:"100%",maxWidth:480,maxHeight:"80vh",display:"flex",flexDirection:"column",overflow:"hidden",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
+                    <div style={{padding:"16px 18px",borderBottom:`1px solid ${P.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                      <div>
+                        <div style={{fontSize:15,fontWeight:800,color:P.ink}}>✅ Share a Proof</div>
+                        <div style={{fontSize:11,color:P.ink4,marginTop:2}}>Pick a real, verified achievement — facts come from Capabilio, not you</div>
+                      </div>
+                      <button className="pb" onClick={()=>setProofPickerOpen(false)} style={{border:"none",background:"none",fontSize:18,color:P.ink4,cursor:"pointer"}}>✕</button>
+                    </div>
+
+                    <div style={{flex:1,overflowY:"auto",padding:"10px 12px"}}>
+                      {proofLoading ? (
+                        <div style={{padding:"30px 0",textAlign:"center",fontSize:12,color:P.ink4}}>Loading your achievements…</div>
+                      ) : proofCandidates.length===0 ? (
+                        <div style={{padding:"30px 16px",textAlign:"center"}}>
+                          <div style={{fontSize:32,marginBottom:8}}>🎯</div>
+                          <div style={{fontSize:13,fontWeight:700,color:P.ink2,marginBottom:4}}>Nothing to share yet</div>
+                          <div style={{fontSize:11,color:P.ink4}}>Complete a verified challenge, improve your skill rating, or earn a verified skill — it'll show up here automatically.</div>
+                        </div>
+                      ) : proofCandidates.map(c=>(
+                        <div key={`${c.sourceType}_${c.sourceId}`} onClick={()=>setProofSelected(c)}
+                          style={{padding:"11px 12px",borderRadius:10,border:`1.5px solid ${proofSelected?.sourceId===c.sourceId&&proofSelected?.sourceType===c.sourceType?"#059669":P.border}`,background:proofSelected?.sourceId===c.sourceId&&proofSelected?.sourceType===c.sourceType?"#ECFDF5":"#fff",marginBottom:8,cursor:"pointer",transition:"all 0.12s"}}>
+                          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+                            <div style={{fontSize:13,fontWeight:700,color:P.ink,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.title}</div>
+                            {c.verified && <span style={{fontSize:9,fontWeight:800,color:"#059669",background:"#ECFDF5",padding:"2px 7px",borderRadius:99,flexShrink:0}}>✓ VERIFIED</span>}
+                          </div>
+                          {c.subtitle && <div style={{fontSize:11,color:P.ink4,marginTop:2}}>{c.subtitle}</div>}
+                          <div style={{display:"flex",gap:6,marginTop:6,flexWrap:"wrap"}}>
+                            {c.score!=null && <span style={{fontSize:10,fontWeight:700,color:P.accent,background:P.accent2,padding:"2px 8px",borderRadius:99}}>Score {c.score}</span>}
+                            {c.eloDelta!=null && <span style={{fontSize:10,fontWeight:700,color:"#059669",background:"#ECFDF5",padding:"2px 8px",borderRadius:99}}>+{c.eloDelta} ELO</span>}
+                            {c.difficulty && <span style={{fontSize:10,fontWeight:700,color:P.ink3,background:P.cream2||"#F3F4F6",padding:"2px 8px",borderRadius:99}}>{c.difficulty}</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {proofSelected && (
+                      <div style={{padding:"12px 16px",borderTop:`1px solid ${P.border}`}}>
+                        <textarea value={proofCaption} onChange={e=>setProofCaption(e.target.value)}
+                          placeholder="Add an optional caption…"
+                          style={{width:"100%",minHeight:50,padding:"8px 10px",border:`1.5px solid ${P.border}`,borderRadius:8,fontSize:12,color:P.ink,resize:"vertical",fontFamily:"inherit",outline:"none",boxSizing:"border-box",marginBottom:10}}/>
+                        <button className="pb" onClick={submitProofPost} disabled={proofPosting}
+                          style={{width:"100%",padding:"10px",borderRadius:8,border:"none",background:"#059669",color:"#fff",fontSize:13,fontWeight:700,opacity:proofPosting?0.7:1,cursor:proofPosting?"default":"pointer"}}>
+                          {proofPosting?"Sharing…":"Share Proof Post"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Sort bar — not shown on Mentors/Sparks/Network/Saved. "For
+                  You"/"Most Discussed"/"High Signal" are feed-ranking modes;
+                  meaningless on a personal saved list (which has no ranking,
+                  just your own bookmarks), so Saved is excluded too. */}
+              {feedTab !== "mentors" && feedTab !== "following" && feedTab !== "network" && feedTab !== "capsules" && (
                 <div style={{padding:"8px 16px",display:"flex",alignItems:"center",gap:6,borderBottom:`1px solid ${P.border}`,overflowX:"auto"}}>
                   <span style={{fontSize:11,fontWeight:600,color:P.ink4,marginRight:4,flexShrink:0}}>SORT</span>
                   {[{id:"foryou",label:"For You"},{id:"latest",label:"Latest"},{id:"discussed",label:"Most Discussed"},{id:"signal",label:"High Signal"}].map(s=>(
@@ -1705,8 +1831,10 @@ function StudentPulse({ user, userData }) {
                     const panel = commentPanels[post.id]
                     const tags = [...(post.tech_tags||[]), ...(post.role_tags||[])].filter(Boolean)
 
+                    const isProof = post.post_type === "proof" && post.proof_data
+
                     return (
-                      <div key={post.id} style={{borderBottom:i<posts.length-1?`1px solid ${P.border}`:"none"}}>
+                      <div key={post.id} style={{borderBottom:i<posts.length-1?`1px solid ${P.border}`:"none",background:isProof?"linear-gradient(180deg,#ECFDF5 0%,#fff 70px)":"transparent",borderLeft:isProof?"3px solid #059669":"3px solid transparent"}}>
                         <div style={{padding:16}}>
                           {/* Post header */}
                           <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10,marginBottom:10}}>
@@ -1716,6 +1844,10 @@ function StudentPulse({ user, userData }) {
                                 <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                                   <span style={{fontSize:13,fontWeight:700,color:P.ink}}>{authorName(post)}</span>
                                   {post.author?.verification_state==="verified"&&<span style={{fontSize:10,fontWeight:800,color:"#0891B2",background:"#EFF6FF",padding:"1px 7px",borderRadius:99}}>+ VERIFIED</span>}
+                                  {/* Inline verified skill badge — real skill, not a claim (Proof Posts
+                                      feature: author.verified_badge is batch-fetched server-side from
+                                      user_skills where verified=true, see GET /pulse/feed). */}
+                                  {post.author?.verified_badge&&<span style={{fontSize:10,fontWeight:800,color:"#059669",background:"#ECFDF5",padding:"1px 8px",borderRadius:99}}>✓ {post.author.verified_badge.skill}</span>}
                                   <span style={{fontSize:11,fontWeight:700,color:P.accent,background:P.accent2,padding:"1px 8px",borderRadius:99,fontFamily:"'DM Mono',monospace"}}>🔥{authorElo(post)}</span>
                                 </div>
                                 <div style={{fontSize:11,color:P.ink4}}>{post.author?.keyword||""} · {timeAgo(post.created_at)}</div>
@@ -1736,8 +1868,32 @@ function StudentPulse({ user, userData }) {
                             </div>
                           </div>
 
-                          {/* Content */}
-                          <p style={{fontSize:13,color:P.ink2,lineHeight:1.65,margin:"0 0 10px",whiteSpace:"pre-wrap"}}>{post.content}</p>
+                          {/* Proof card — the whole point of the feature: this
+                              block renders ONLY from post.proof_data, which the
+                              server stamped from a real proof_objects/
+                              professional_elo_events/user_skills row at post-
+                              creation time (see resolveProofRef in
+                              pulseNexus.js). Nothing here is user-typed. */}
+                          {isProof && (
+                            <div style={{background:"#fff",border:"1.5px solid #05966930",borderRadius:10,padding:"12px 14px",marginBottom:10}}>
+                              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:post.proof_data.subtitle?2:0}}>
+                                <div style={{fontSize:14,fontWeight:800,color:P.ink}}>{post.proof_data.title}</div>
+                                {post.proof_data.verified&&<span style={{fontSize:9,fontWeight:800,color:"#059669",background:"#ECFDF5",padding:"2px 8px",borderRadius:99,flexShrink:0,whiteSpace:"nowrap"}}>✓ VERIFIED BY CAPABILIO</span>}
+                              </div>
+                              {post.proof_data.subtitle&&<div style={{fontSize:11,color:P.ink4,marginBottom:8}}>{post.proof_data.subtitle}</div>}
+                              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                                {post.proof_data.score!=null&&<span style={{fontSize:10,fontWeight:700,color:P.accent,background:P.accent2,padding:"2px 8px",borderRadius:99}}>Score {post.proof_data.score}</span>}
+                                {post.proof_data.eloDelta!=null&&<span style={{fontSize:10,fontWeight:700,color:"#059669",background:"#ECFDF5",padding:"2px 8px",borderRadius:99}}>+{post.proof_data.eloDelta} ELO</span>}
+                                {post.proof_data.difficulty&&<span style={{fontSize:10,fontWeight:700,color:P.ink3,background:P.cream2||"#F3F4F6",padding:"2px 8px",borderRadius:99}}>{post.proof_data.difficulty}</span>}
+                                {(post.proof_data.skillTags||[]).slice(0,4).map((s,si)=>(
+                                  <span key={si} style={{fontSize:10,fontWeight:600,color:"#0891B2",background:"#EFF6FF",padding:"2px 8px",borderRadius:99}}>{s}</span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Content — for proof posts this is just the optional caption */}
+                          {post.content&&<p style={{fontSize:13,color:P.ink2,lineHeight:1.65,margin:"0 0 10px",whiteSpace:"pre-wrap"}}>{post.content}</p>}
 
                           {/* Tags */}
                           {tags.length>0&&<div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>

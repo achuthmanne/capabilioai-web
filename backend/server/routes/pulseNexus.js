@@ -3,7 +3,8 @@
  *
  * Pulse:
  *   GET  /api/pulse/feed           — paginated feed
- *   POST /api/pulse/posts          — create post
+ *   GET  /api/pulse/proof-candidates — current user's shareable verified achievements
+ *   POST /api/pulse/posts          — create post (post_type="proof" is server-verified, see resolveProofRef)
  *   PUT  /api/pulse/posts/:id      — edit post
  *   DELETE /api/pulse/posts/:id    — delete post
  *   POST /api/pulse/posts/:id/interact — acknowledge/signal/save/repost
@@ -228,8 +229,31 @@ router.get("/pulse/feed", optionalAuth, async (req, res) => {
     const { data: posts, error, count } = await q
     if (error) throw error
 
-    // Add user's interaction state if authenticated
+    // Inline verified-skill badge per author — Proof Posts feature. One
+    // batched query per page (like the interactions query below), not
+    // per-post, to avoid N+1. Picks each author's highest level_score
+    // VERIFIED skill; visible to every viewer (not gated on req.user) since
+    // it's about the post's author, not the current viewer.
     let enrichedPosts = posts || []
+    const authorIds = [...new Set(enrichedPosts.map(p => p.author_id).filter(Boolean))]
+    if (authorIds.length) {
+      const { data: badgeSkills } = await supabaseAdmin.from("user_skills")
+        .select("user_id,name,domain,level_score")
+        .in("user_id", authorIds)
+        .eq("verified", true)
+        .order("level_score", { ascending: false })
+      const badgeMap = {}
+      ;(badgeSkills || []).forEach(s => { if (!badgeMap[s.user_id]) badgeMap[s.user_id] = s })
+      enrichedPosts = enrichedPosts.map(p => ({
+        ...p,
+        author: p.author ? {
+          ...p.author,
+          verified_badge: badgeMap[p.author_id] ? { skill: badgeMap[p.author_id].name, domain: badgeMap[p.author_id].domain } : null,
+        } : p.author,
+      }))
+    }
+
+    // Add user's interaction state if authenticated
     if (req.user) {
       const postIds = enrichedPosts.map(p => p.id)
       if (postIds.length) {
@@ -248,20 +272,126 @@ router.get("/pulse/feed", optionalAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
+// Re-fetches the real achievement a Proof Post claims to be about, keyed by
+// (sourceType, sourceId) and scoped to the requesting user — this is the
+// entire trust boundary of the feature. The client sends only a pointer
+// ("I want to share proof_object #123"); every displayed fact (title, score,
+// ELO delta, skill tags, verified-ness) is read back from the source table
+// here, never taken from req.body. If the row doesn't exist or doesn't
+// belong to this user, the post is rejected outright rather than falling
+// back to unverified content.
+async function resolveProofRef(userId, ref) {
+  const sourceType = ref?.sourceType
+  const sourceId   = ref?.sourceId
+  if (!sourceType || !sourceId) return null
+
+  if (sourceType === "proof_object") {
+    const { data } = await supabaseAdmin.from("proof_objects")
+      .select("id,title,domain,skill,skills_demonstrated,difficulty,score,elo_delta,trust_level,completed_at")
+      .eq("id", sourceId).eq("user_id", userId).eq("is_portfolio_visible", true).maybeSingle()
+    if (!data) return null
+    return {
+      sourceType, sourceId: data.id, title: data.title || "Completed Challenge",
+      subtitle: [data.domain, data.skill].filter(Boolean).join(" · ") || null,
+      score: data.score, eloDelta: data.elo_delta, skillTags: data.skills_demonstrated || [],
+      difficulty: data.difficulty, verified: data.trust_level === "verified", verifiedAt: data.completed_at,
+    }
+  }
+  if (sourceType === "elo_event") {
+    const { data } = await supabaseAdmin.from("professional_elo_events")
+      .select("id,delta,new_elo,reason,affected_skills,created_at")
+      .eq("id", sourceId).eq("user_id", userId).maybeSingle()
+    if (!data || !(data.delta > 0)) return null
+    return {
+      sourceType, sourceId: data.id, title: data.reason || "Skill Rating Improved",
+      subtitle: `New rating: ${data.new_elo}`, score: null, eloDelta: data.delta,
+      skillTags: data.affected_skills || [], difficulty: null, verified: true, verifiedAt: data.created_at,
+    }
+  }
+  if (sourceType === "verified_skill") {
+    const { data } = await supabaseAdmin.from("user_skills")
+      .select("id,name,domain,level,level_score,verified,updated_at")
+      .eq("id", sourceId).eq("user_id", userId).eq("verified", true).maybeSingle()
+    if (!data) return null
+    return {
+      sourceType, sourceId: data.id, title: `${data.name} — Verified`,
+      subtitle: [data.domain, data.level].filter(Boolean).join(" · ") || null,
+      score: data.level_score, eloDelta: null, skillTags: [data.name],
+      difficulty: null, verified: true, verifiedAt: data.updated_at,
+    }
+  }
+  return null
+}
+
+// GET /pulse/proof-candidates — the current user's real, shareable
+// achievements (recent verified proof_objects, positive Professional ELO
+// events, and verified skills). This is what populates the "Share Proof"
+// picker — the user only ever CHOOSES from this list, never types facts in.
+router.get("/pulse/proof-candidates", requireAuth, async (req, res) => {
+  try {
+    const uid = req.user.id
+    const [proofsRes, eloRes, skillsRes] = await Promise.all([
+      supabaseAdmin.from("proof_objects")
+        .select("id,title,domain,skill,skills_demonstrated,difficulty,score,elo_delta,trust_level,completed_at")
+        .eq("user_id", uid).eq("is_portfolio_visible", true)
+        .order("completed_at", { ascending: false }).limit(15),
+      supabaseAdmin.from("professional_elo_events")
+        .select("id,delta,new_elo,reason,affected_skills,created_at")
+        .eq("user_id", uid).order("created_at", { ascending: false }).limit(10),
+      supabaseAdmin.from("user_skills")
+        .select("id,name,domain,level,level_score,verified,updated_at")
+        .eq("user_id", uid).eq("verified", true)
+        .order("updated_at", { ascending: false }).limit(10),
+    ])
+
+    const proofCandidates = (proofsRes.data || []).map(p => ({
+      sourceType: "proof_object", sourceId: p.id,
+      title: p.title || "Completed Challenge",
+      subtitle: [p.domain, p.skill].filter(Boolean).join(" · ") || null,
+      score: p.score, eloDelta: p.elo_delta, skillTags: p.skills_demonstrated || [],
+      difficulty: p.difficulty, verified: p.trust_level === "verified", date: p.completed_at,
+    }))
+    const eloCandidates = (eloRes.data || []).filter(e => (e.delta || 0) > 0).map(e => ({
+      sourceType: "elo_event", sourceId: e.id,
+      title: e.reason || "Skill Rating Improved", subtitle: `New rating: ${e.new_elo}`,
+      score: null, eloDelta: e.delta, skillTags: e.affected_skills || [],
+      difficulty: null, verified: true, date: e.created_at,
+    }))
+    const skillCandidates = (skillsRes.data || []).map(s => ({
+      sourceType: "verified_skill", sourceId: s.id,
+      title: `${s.name} — Verified`, subtitle: [s.domain, s.level].filter(Boolean).join(" · ") || null,
+      score: s.level_score, eloDelta: null, skillTags: [s.name],
+      difficulty: null, verified: true, date: s.updated_at,
+    }))
+
+    const candidates = [...proofCandidates, ...eloCandidates, ...skillCandidates]
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+    res.json({ candidates })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
 router.post("/pulse/posts", requireAuth, async (req, res) => {
   try {
-    const { post_type = "text", content, media_urls = [], poll_data, event_data, tech_tags = [], role_tags = [], visibility = "public" } = req.body
-    if (!content?.trim()) return res.status(400).json({ error: "content required" })
+    const { post_type = "text", content, media_urls = [], poll_data, event_data, tech_tags = [], role_tags = [], visibility = "public", proof_ref } = req.body
+
+    let proofData = null
+    if (post_type === "proof") {
+      proofData = await resolveProofRef(req.user.id, proof_ref)
+      if (!proofData) return res.status(400).json({ error: "Could not verify this achievement — it may not belong to you or no longer exists" })
+    } else if (!content?.trim()) {
+      return res.status(400).json({ error: "content required" })
+    }
 
     const { data, error } = await supabaseAdmin.from("pulse_posts").insert({
       author_id:  req.user.id,
       user_id:    req.user.id,   // satisfy NOT NULL on tables created with old schema
       post_type,
-      content:    content.trim(),
+      content:    (content || "").trim(),  // proof posts allow an empty/optional caption — the evidence is the content
       media_urls,
       poll_data:  poll_data || null,
       event_data: event_data || null,
-      tech_tags,
+      proof_data: proofData,
+      tech_tags:  post_type === "proof" && !tech_tags.length ? (proofData.skillTags || []) : tech_tags,
       role_tags,
       visibility,
     }).select("*, author:profiles!author_id(id,name,display_name,username,profile_photo_url,elo_rating,verification_state,path,keyword)").single()

@@ -333,6 +333,10 @@ export const pulseApi = {
   },
   // Real tech-tag frequency from recent posts — replaces hardcoded hashtags.
   trendingTags: (limit = 8) => request("GET", `/pulse/trending-tags?limit=${limit}`),
+  // Proof Posts — the current user's real, shareable achievements
+  // (proof_objects / Professional ELO events / verified skills). Feeds the
+  // "Share Proof" picker; every fact is re-verified server-side on create.
+  proofCandidates: () => request("GET", "/pulse/proof-candidates"),
 }
 
 // ══════════════════════════════════════════
