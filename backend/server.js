@@ -369,7 +369,19 @@ app.use("/api",              aiInterviewRoutes)         // pro/interview
 app.use("/api",              recruiterCommsRoutes)      // jobs, recruiter/messages, offers
 // app.use("/api",              mentorHubRoutes)         // DEAD CODE — see import comment above. Unmounted, not deleted.
 app.use("/api/pro/v1/mentor", mentorMarketplaceRoutes)  // Career OS Workstream 4 — mentor marketplace user-facing API (flag-gated)
-app.use("/api",               mentorMarketplaceAdminRoutes) // Career OS Workstream 4 — admin/mentor/* (requireAdmin + flag-gated)
+// 2026-07-29 ROUTING FIX: this was mounted at bare "/api" (same bug as the
+// questionBankAdmin.js shadow-routing fix noted above, just never applied
+// here). Its router.use(requireFlag, requireAuth, requireAdmin) has no path
+// scoping, so it ran for EVERY request that reached this mount point —
+// which was every /api request not already claimed by an earlier-mounted
+// router, including pulse/nexus (mounted just below). Since
+// MENTOR_MARKETPLACE_V1_ENABLED is false in prod, that meant pulse/feed,
+// pulse/builders, nexus/connections, nexus/search, etc. were all being
+// 403'd with "mentor_marketplace_v1 is disabled" before pulseNexusRoutes
+// ever got a chance to handle them. Route definitions inside
+// mentorMarketplaceAdmin.js were relative-ized to match (were
+// "/admin/mentor/x", now "/x") so the external paths are unchanged.
+app.use("/api/admin/mentor",  mentorMarketplaceAdminRoutes) // Career OS Workstream 4 — admin/mentor/* (requireAdmin + flag-gated)
 app.use("/api",              pulseNexusRoutes)          // pulse/feed, pulse/market-insights (Gemini Search), nexus/*
 app.use("/api",              execIntrosRoutes)          // exec/intro-requests — Executive Path warm introductions
 app.use("/api",              orbitPlansRoutes)          // orbit/plans, intel/report

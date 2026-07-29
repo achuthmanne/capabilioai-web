@@ -52,7 +52,7 @@ before(async () => {
   app.use(express.json())
   app.use("/api/pro/v1/company", companyRoutes)
   app.use("/api/pro/v1/mentor", mentorMarketplaceRoutes)
-  app.use("/api", mentorMarketplaceAdminRoutes)
+  app.use("/api/admin/mentor", mentorMarketplaceAdminRoutes)
 
   server = http.createServer(app)
   await new Promise(resolve => server.listen(0, resolve))

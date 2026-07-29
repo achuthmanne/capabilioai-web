@@ -48,7 +48,7 @@ async function logAudit({ entityType, entityId, actorId, action, fromStatus, toS
 }
 
 // ── Applications review queue ─────────────────────────────────────────────
-router.get("/admin/mentor/applications", async (req, res) => {
+router.get("/applications", async (req, res) => {
   try {
     const { status = "submitted" } = req.query
     const { data, error } = await supabaseAdmin.from("mentor_applications").select("*").eq("status", status).order("created_at", { ascending: false })
@@ -57,7 +57,7 @@ router.get("/admin/mentor/applications", async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
-router.post("/admin/mentor/applications/:id/approve", async (req, res) => {
+router.post("/applications/:id/approve", async (req, res) => {
   try {
     const { data: application, error } = await supabaseAdmin.from("mentor_applications").select("*").eq("id", req.params.id).single()
     if (error) throw error
@@ -82,7 +82,7 @@ router.post("/admin/mentor/applications/:id/approve", async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
-router.post("/admin/mentor/applications/:id/reject", async (req, res) => {
+router.post("/applications/:id/reject", async (req, res) => {
   try {
     const { reason } = req.body
     if (!reason?.trim()) return res.status(400).json({ error: "reason is required to reject an application" })
@@ -101,7 +101,7 @@ router.post("/admin/mentor/applications/:id/reject", async (req, res) => {
 })
 
 // ── Disputes ───────────────────────────────────────────────────────────────
-router.get("/admin/mentor/disputes", async (req, res) => {
+router.get("/disputes", async (req, res) => {
   try {
     const { status = "open" } = req.query
     const { data, error } = await supabaseAdmin.from("mentor_disputes").select("*").eq("status", status).order("created_at", { ascending: false })
@@ -110,7 +110,7 @@ router.get("/admin/mentor/disputes", async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
-router.post("/admin/mentor/disputes/:id/resolve", async (req, res) => {
+router.post("/disputes/:id/resolve", async (req, res) => {
   try {
     const { resolution, notes } = req.body // resolution: resolved_refund | resolved_partial_refund | resolved_no_refund
     if (!["resolved_refund", "resolved_partial_refund", "resolved_no_refund"].includes(resolution)) {
@@ -141,7 +141,7 @@ router.post("/admin/mentor/disputes/:id/resolve", async (req, res) => {
 })
 
 // ── No-show reporting (admin-adjudicated in v1 — either party reports, admin can override) ─
-router.post("/admin/mentor/bookings/:id/no-show", async (req, res) => {
+router.post("/bookings/:id/no-show", async (req, res) => {
   try {
     const { reportedRole } = req.body // 'mentee' | 'mentor' — who failed to show
     if (!["mentee", "mentor"].includes(reportedRole)) return res.status(400).json({ error: "reportedRole must be mentee or mentor" })
@@ -164,7 +164,7 @@ router.post("/admin/mentor/bookings/:id/no-show", async (req, res) => {
 })
 
 // ── Review moderation ──────────────────────────────────────────────────────
-router.get("/admin/mentor/reviews", async (req, res) => {
+router.get("/reviews", async (req, res) => {
   try {
     const { status = "pending" } = req.query
     const { data, error } = await supabaseAdmin.from("mentor_reviews").select("*").eq("moderation_status", status).order("created_at", { ascending: false })
@@ -173,7 +173,7 @@ router.get("/admin/mentor/reviews", async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
-router.post("/admin/mentor/reviews/:id/moderate", async (req, res) => {
+router.post("/reviews/:id/moderate", async (req, res) => {
   try {
     const { decision } = req.body // 'approved' | 'rejected'
     if (!["approved", "rejected"].includes(decision)) return res.status(400).json({ error: "decision must be approved or rejected" })
@@ -186,7 +186,7 @@ router.post("/admin/mentor/reviews/:id/moderate", async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
-router.get("/admin/mentor/review-reports", async (req, res) => {
+router.get("/review-reports", async (req, res) => {
   try {
     const { status = "open" } = req.query
     const { data, error } = await supabaseAdmin.from("mentor_review_reports").select("*").eq("status", status).order("created_at", { ascending: false })
@@ -195,7 +195,7 @@ router.get("/admin/mentor/review-reports", async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
-router.post("/admin/mentor/review-reports/:id/resolve", async (req, res) => {
+router.post("/review-reports/:id/resolve", async (req, res) => {
   try {
     const { status, note } = req.body // reviewed | dismissed | actioned
     if (!["reviewed", "dismissed", "actioned"].includes(status)) return res.status(400).json({ error: "status must be reviewed, dismissed, or actioned" })
@@ -212,7 +212,7 @@ router.post("/admin/mentor/review-reports/:id/resolve", async (req, res) => {
 })
 
 // ── Payout batches (admin-triggered, never automated) ────────────────────
-router.post("/admin/mentor/payouts", async (req, res) => {
+router.post("/payouts", async (req, res) => {
   try {
     const { mentorId, periodStart, periodEnd, platformFeePct } = req.body
     if (!mentorId || !periodStart || !periodEnd) return res.status(400).json({ error: "mentorId, periodStart, periodEnd are required" })
@@ -222,14 +222,14 @@ router.post("/admin/mentor/payouts", async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
-router.post("/admin/mentor/payouts/:id/finalize", async (req, res) => {
+router.post("/payouts/:id/finalize", async (req, res) => {
   try {
     const result = await finalizePayoutBatch(supabaseAdmin, { payoutId: req.params.id, adminId: req.user.id })
     res.json(result)
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
-router.post("/admin/mentor/payouts/:id/mark-paid", async (req, res) => {
+router.post("/payouts/:id/mark-paid", async (req, res) => {
   try {
     const { transferReference, taxInvoiceNumber } = req.body
     const result = await markPayoutPaid(supabaseAdmin, { payoutId: req.params.id, adminId: req.user.id, transferReference, taxInvoiceNumber })
@@ -239,7 +239,7 @@ router.post("/admin/mentor/payouts/:id/mark-paid", async (req, res) => {
 })
 
 // ── Reconciliation trigger (dry-run unless commit:true) ──────────────────
-router.post("/admin/mentor/reconciliation/run", async (req, res) => {
+router.post("/reconciliation/run", async (req, res) => {
   try {
     const commit = req.body?.commit === true
     // TRANCHE 3 (2026-07-25): wire the REAL Razorpay order-status checker
