@@ -3689,6 +3689,10 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
     status:        s?.status === "upgrade" ? "empty" : (s?.status || "empty"),
     challenge:     taskToChallenge(s?.task),
     cooldownUntil: s?.cooldownUntil || null,
+    // Surfaced so MissionDesk can tell "still generating" apart from "the
+    // generation call actually failed" instead of showing the same silent
+    // "check back in a moment" for both (see MissionHero's error branch).
+    errorMsg:      s?.errorMsg || null,
   }))
 
   // ── Parse timeLimit string → seconds (e.g. "25-35 min" → 25*60, "20 min" → 1200) ──
@@ -4597,6 +4601,7 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
               onBrowseAll={() => setShowLibrary(true)}
               unlockedCount={getPlan(effectiveUserData).arenaTasks}
               onUpgrade={(planId) => setUpgradeModal(planId)}
+              onRetry={rawMissionsHook?.retrySlot}
               onStart={(challenge, slotIndex, source) => {
                 const mission = challengeToMission(challenge)
                 mission.__source = source || "daily"

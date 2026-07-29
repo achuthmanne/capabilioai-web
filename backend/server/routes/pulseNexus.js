@@ -591,14 +591,20 @@ router.post("/nexus/connect", requireAuth, async (req, res) => {
     }
 
     const { data: requester } = await supabaseAdmin.from("profiles").select("name").eq("id", req.user.id).single()
+    // 2026-07-29 BUG FIX: was inserting `reference_id`/`reference_type`,
+    // which don't exist on notifications (real columns are `entity_id`/
+    // `entity_type` — see migration notes). Every notification insert here
+    // was silently failing (PostgREST resolves an unknown-column insert as
+    // a non-throwing {error}, not a rejection) — connection-request
+    // notifications have never actually been created.
     await supabaseAdmin.from("notifications").insert({
-      user_id:        addressee_id,
-      type:           "connection_request",
-      title:          "Connection Request",
-      body:           `${requester?.name || "Someone"} wants to connect with you`,
-      actor_id:       req.user.id,
-      reference_id:   data.id,
-      reference_type: "connection",
+      user_id:      addressee_id,
+      type:         "connection_request",
+      title:        "Connection Request",
+      body:         `${requester?.name || "Someone"} wants to connect with you`,
+      actor_id:     req.user.id,
+      entity_id:    data.id,
+      entity_type:  "connection",
     }).catch(() => {})
 
     res.json({ success: true, connection: data })
@@ -618,13 +624,13 @@ router.put("/nexus/connect/:id", requireAuth, async (req, res) => {
     if (status === "accepted") {
       const { data: accepter } = await supabaseAdmin.from("profiles").select("name").eq("id", req.user.id).single()
       await supabaseAdmin.from("notifications").insert({
-        user_id:        conn.requester_id,
-        type:           "connection_accepted",
-        title:          "Connection Accepted",
-        body:           `${accepter?.name || "Someone"} accepted your connection request`,
-        actor_id:       req.user.id,
-        reference_id:   data.id,
-        reference_type: "connection",
+        user_id:     conn.requester_id,
+        type:        "connection_accepted",
+        title:       "Connection Accepted",
+        body:        `${accepter?.name || "Someone"} accepted your connection request`,
+        actor_id:    req.user.id,
+        entity_id:   data.id,
+        entity_type: "connection",
       }).catch(() => {})
     }
     res.json({ success: true, connection: data })
@@ -646,17 +652,24 @@ router.post("/nexus/follow", requireAuth, async (req, res) => {
     // used everywhere else in this file).
     const { data: follower } = await supabaseAdmin.from("profiles").select("name").eq("id", req.user.id).single()
     await supabaseAdmin.from("notifications").insert({
-      user_id:        following_id,
-      type:           "new_follower",
-      title:          "New Follower",
-      body:           `${follower?.name || "Someone"} started following you`,
-      actor_id:       req.user.id,
-      reference_id:   req.user.id,
-      reference_type: "follow",
+      user_id:     following_id,
+      type:        "new_follower",
+      title:       "New Follower",
+      body:        `${follower?.name || "Someone"} started following you`,
+      actor_id:    req.user.id,
+      entity_id:   req.user.id,
+      entity_type: "follow",
     }).catch(() => {})
 
     res.json({ success: true, following: true })
-  } catch (e) { res.status(500).json({ error: e.message }) }
+  } catch (e) {
+    // 2026-07-29: log the real error server-side — this route was
+    // returning bare 500s with no trace in Render logs, making a genuine
+    // failure indistinguishable from the network blip a client retry can't
+    // tell apart either. Cheap insurance against the next silent failure.
+    console.error("[nexus/follow]", e.message)
+    res.status(500).json({ error: e.message })
+  }
 })
 
 router.delete("/nexus/follow/:uid", requireAuth, async (req, res) => {

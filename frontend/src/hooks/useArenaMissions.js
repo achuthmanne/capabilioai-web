@@ -15,8 +15,6 @@ import { resolveArenaKey } from "../config/roleConfig"
 
 const SERVER_LOCAL = import.meta.env.VITE_API_URL || "http://localhost:4000"
 const SERVER_PROD  = "https://capabilio-web.onrender.com"
-// Try local first; fall back to production if local is unreachable
-const SERVER = SERVER_LOCAL
 
 const todayStr    = () => new Date().toISOString().slice(0, 10)
 const nowMs       = () => Date.now()
@@ -153,8 +151,16 @@ async function fetchMissions({ keyword, domainKey, eloRating, skillGraph, weakAr
     slotIndex:        slotIndex ?? 0,
   }
 
-  // Try local server first, then production fallback
-  const servers = SERVER_LOCAL !== SERVER_PROD
+  // 2026-07-29: only try the localhost dev server when this build is
+  // actually running in dev mode (`npm run dev`). Previously this checked
+  // `SERVER_LOCAL !== SERVER_PROD`, which is true in ANY production build
+  // where VITE_API_URL wasn't set at Vercel build time — every visitor's
+  // browser then wasted a guaranteed-to-fail connection attempt to
+  // http://localhost:4000 (their own machine, nothing listening) on EVERY
+  // slot generation before falling back to the real server, adding several
+  // seconds of dead time per slot and making Render cold-start delays look
+  // even worse than they already are.
+  const servers = import.meta.env.DEV && SERVER_LOCAL !== SERVER_PROD
     ? [SERVER_LOCAL, SERVER_PROD]
     : [SERVER_PROD]
 

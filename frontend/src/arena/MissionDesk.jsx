@@ -58,7 +58,7 @@ function ReadinessStrip({ domain, elo, streak, completedCount }) {
 }
 
 // ── Daily mission hero (C1) ──────────────────────────────────────────────────
-function MissionHero({ slot, domain, onStart }) {
+function MissionHero({ slot, domain, onStart, onRetry }) {
   const [hov, setHov] = useState(false)
 
   if (!slot || slot.status === "loading") {
@@ -68,6 +68,31 @@ function MissionHero({ slot, domain, onStart }) {
         <div style={{ height: 22, width: "55%", background: T.borderSoft, borderRadius: 6, marginBottom: 10, animation: "shimmer 1.5s ease-in-out infinite 0.15s" }} />
         <div style={{ height: 48, background: "#FAFAF8", borderRadius: 9, marginBottom: 16, animation: "shimmer 1.5s ease-in-out infinite 0.3s" }} />
         <div style={{ height: 42, width: 200, background: T.borderSoft, borderRadius: 10, animation: "shimmer 1.5s ease-in-out infinite 0.45s" }} />
+        <div style={{ fontSize: 10.5, color: T.ink4, marginTop: 10 }}>Generating today's mission — first request after idle time can take up to a minute.</div>
+      </div>
+    )
+  }
+
+  // 2026-07-29: distinct from the generic "no mission assigned" empty state
+  // below — this means generation was actually TRIED and failed (server
+  // error / bad AI response / etc, see useArenaMissions.js generateSlot's
+  // `status:"error"` branch), not that it just hasn't started yet. Previously
+  // both cases fell through to the same silent "check back in a moment"
+  // message with no way to tell them apart or retry without a full refresh.
+  if (slot.status === "error") {
+    return (
+      <div style={{ background: T.redBg, border: "1.5px solid #FCA5A5", borderRadius: 16, padding: "22px 26px", display: "flex", alignItems: "center", gap: 18 }}>
+        <div style={{ width: 50, height: 50, borderRadius: "50%", background: "#fff", border: "2px solid #FCA5A5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>⚠</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 15, fontWeight: 900, color: "#991B1B" }}>Couldn't generate today's mission</div>
+          <div style={{ fontSize: 11.5, color: "#7F1D1D", marginTop: 3 }}>
+            {slot.errorMsg || "The mission server didn't respond."} If the server was idle, it can take up to a minute to wake up — retry usually fixes it.
+          </div>
+        </div>
+        <button onClick={() => onRetry?.(slot.index)}
+          style={{ padding: "10px 20px", borderRadius: 9, border: "none", background: "#DC2626", color: "#fff", fontSize: 12.5, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
+          Retry
+        </button>
       </div>
     )
   }
@@ -161,11 +186,27 @@ function PlanUpsellCards({ onUpgrade }) {
 }
 
 // ── Mission queue rows (E) ───────────────────────────────────────────────────
-function QueueRow({ slot, domain, onStart }) {
+function QueueRow({ slot, domain, onStart, onRetry }) {
   const [hov, setHov] = useState(false)
 
   if (!slot || slot.status === "loading") {
     return <div style={{ height: 58, background: "#fff", border: `1px solid ${T.border}`, borderRadius: 11, animation: "shimmer 1.5s ease-in-out infinite" }} />
+  }
+
+  if (slot.status === "error") {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 16px", background: T.redBg, border: "1px solid #FCA5A5", borderRadius: 11 }}>
+        <span style={{ fontSize: 15 }}>⚠</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: "#991B1B" }}>Mission generation failed</div>
+          <div style={{ fontSize: 10.5, color: "#7F1D1D", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{slot.errorMsg || "Server error"}</div>
+        </div>
+        <button onClick={() => onRetry?.(slot.index)}
+          style={{ padding: "7px 16px", borderRadius: 8, border: "none", background: "#DC2626", color: "#fff", fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
+          Retry
+        </button>
+      </div>
+    )
   }
 
   if (slot.status === "cooldown") {
@@ -218,7 +259,7 @@ function QueueRow({ slot, domain, onStart }) {
 export default function MissionDesk({
   slots, domain, domainKey, loadingSlots, allChallenges,
   onBrowseAll, unlockedCount, onUpgrade, onStart, onFreePractice, onOpenHistory,
-  elo, streak, completedCount, uid,
+  elo, streak, completedCount, uid, onRetry,
 }) {
   const [history, setHistory] = useState([])
 
@@ -281,7 +322,7 @@ export default function MissionDesk({
 
           {/* left column: hero + queue */}
           <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
-            <MissionHero slot={heroSlot} domain={domain} onStart={onStart} />
+            <MissionHero slot={heroSlot} domain={domain} onStart={onStart} onRetry={onRetry} />
 
             {/* E — mission queue */}
             <div>
@@ -291,7 +332,7 @@ export default function MissionDesk({
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {queueSlots.map((s, i) => (
-                  <QueueRow key={i} slot={s} domain={domain} onStart={onStart} />
+                  <QueueRow key={i} slot={s} domain={domain} onStart={onStart} onRetry={onRetry} />
                 ))}
                 {queueSlots.length === 0 && lockedCount === 0 && (
                   <EmptyDirective icon="🎯" label="Queue clear. Complete today's mission to keep your streak alive — every submission mints proof." />
