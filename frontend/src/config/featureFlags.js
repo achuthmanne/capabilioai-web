@@ -78,6 +78,17 @@ export const FLAGS = {
   // surface in this codebase ships flag-off first — a live number newly
   // shown to real users should be turned on deliberately, not by default.
   career_os_professional_elo: envFlag("CAREER_OS_PROFESSIONAL_ELO", false),
+
+  // Skill Studio V2 (2026-07-29) — skill-journey redesign: persisted module
+  // runtime, memory/decay engine, Arena readiness gate, interview bridge,
+  // recruiter evidence trail (docs/skill-studio-v2-production-spec-2026-07-29.md).
+  // Backend + migration are real and live (17 new tables, RLS-verified via
+  // Supabase advisors). Off by default per the same "new surface ships
+  // flag-off first" convention as every other flag here — the legacy
+  // pages/SkillStudio.jsx heuristic experience keeps running unaffected
+  // either way, and stays the instant rollback path if V2 needs to be
+  // turned back off after launch.
+  skill_studio_v2: envFlag("SKILL_STUDIO_V2", false),
 }
 
 export function isEnabled(flag) {

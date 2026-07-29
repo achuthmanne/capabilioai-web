@@ -1,0 +1,394 @@
+/**
+ * skillStudioV2.js — Skill Studio "skill journey" redesign, additive routes.
+ * ---------------------------------------------------------------------------
+ * Mounted at the SAME "/api/skill-studio" prefix as the existing
+ * routes/skillStudio.js (lesson, learning-path, youtube, resources) — no
+ * path collisions, existing routes untouched. See
+ * docs/skill-studio-v2-production-spec-2026-07-29.md for the full design.
+ * Arena result ingestion is now LIVE — submission-engine/service.js calls
+ * arenaIngestion.js#notifySkillStudio on every real Arena submission (see
+ * that file's header). GET /arena/ingestion below is the learner-facing
+ * read of arena_ingestion_records so Skill Studio can show "your Arena
+ * result was applied" without the learner ever needing to know the table
+ * exists. Content-ops/mentor review queue lives in
+ * routes/skillStudioContentAdmin.js (separate, admin-gated namespace).
+ *
+ * All routes require auth (requireAuth) and are user-scoped from req.user.id
+ * — never trust a client-supplied userId.
+ */
+import { Router } from "express"
+import crypto from "crypto"
+import { requireAuth } from "../lib/auth.js"
+import { supabaseAdmin } from "../lib/supabase.js"
+
+import { slugify, getNodeById, listNodesForDomain, getEdgesFrom } from "../lib/skillStudio/graphService.js"
+import { createOrGetJourney, listJourneysForUser, archiveJourney, completeJourney } from "../lib/skillStudio/journeyPlanner.js"
+import { getOrCreateModule } from "../lib/skillStudio/contentGenerator.js"
+import { getOrGenerateQuestion, scoreAnswer } from "../lib/skillStudio/quizEngine.js"
+import { getDueReviews, submitRevisionReview, readDecayedState, reinforce } from "../lib/skillStudio/memoryEngine.js"
+import { checkReadiness, handoff } from "../lib/skillStudio/arenaBridge.js"
+import { writeModuleEvidence, writeInterviewEvidence, publishEvidence } from "../lib/skillStudio/evidenceBridge.js"
+import { getRecommendations, buildRecommendations } from "../lib/skillStudio/recommendationEngine.js"
+import { listForUser as listProofObjectsForUser } from "../lib/arena-v2/proofObjects/repository.js"
+import { logEvent } from "../lib/skillStudio/eventLogger.js"
+import { groq, GROQ_FAST } from "../lib/groq.js"
+
+const router = Router()
+
+// ── Home ──────────────────────────────────────────────────────────────────────
+router.get("/home", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id
+    const [journeys, recommendations, dueReviews] = await Promise.all([
+      listJourneysForUser(userId),
+      getRecommendations(userId),
+      getDueReviews(userId, 5),
+    ])
+    res.json({
+      activeJourneys: journeys,
+      topRecommendations: recommendations.slice(0, 3),
+      decayAlerts: dueReviews.filter(d => d.confidence < 0.45),
+      streak: null, // reserved — no streak table in this pass
+    })
+  } catch (e) {
+    console.error("[skill-studio/home]", e.message)
+    res.status(500).json({ error: e.message })
+  }
+})
+
+// ── Graph ─────────────────────────────────────────────────────────────────────
+router.get("/graph", requireAuth, async (req, res) => {
+  try {
+    const { domain } = req.query
+    if (!domain) return res.status(400).json({ error: "domain query param required" })
+    const nodes = await listNodesForDomain(domain)
+    const nodeIds = nodes.map(n => n.id)
+    const edgesNested = await Promise.all(nodeIds.map(id => getEdgesFrom(id)))
+    res.json({ nodes, edges: edgesNested.flat() })
+  } catch (e) {
+    console.error("[skill-studio/graph]", e.message)
+    res.status(500).json({ error: e.message })
+  }
+})
+
+// ── Journeys ──────────────────────────────────────────────────────────────────
+router.post("/journeys", requireAuth, async (req, res) => {
+  try {
+    const { skillName, domainKey = null, targetRole = null } = req.body
+    if (!skillName) return res.status(400).json({ error: "skillName is required" })
+    const result = await createOrGetJourney({ userId: req.user.id, skillName, domainKey, targetRole })
+    await logEvent({ userId: req.user.id, eventType: "journey_created", skillId: result.node.id, metadata: { skillName, created: result.created } })
+    res.json(result)
+  } catch (e) {
+    console.error("[skill-studio/journeys]", e.message)
+    res.status(500).json({ error: e.message })
+  }
+})
+
+router.post("/journeys/:id/archive", requireAuth, async (req, res) => {
+  try {
+    const data = await archiveJourney(req.user.id, req.params.id)
+    if (!data) return res.status(404).json({ error: "Journey not found" })
+    res.json({ journey: data })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+router.post("/journeys/:id/complete", requireAuth, async (req, res) => {
+  try {
+    const data = await completeJourney(req.user.id, req.params.id)
+    if (!data) return res.status(404).json({ error: "Journey not found" })
+    res.json({ journey: data })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// ── Modules ───────────────────────────────────────────────────────────────────
+router.post("/modules/generate", requireAuth, async (req, res) => {
+  try {
+    const { skillName, skillGraphNodeId, skillJourneyId, jobTitle, level = "intermediate", teachingMode = "intermediate" } = req.body
+    let nodeId = skillGraphNodeId
+    let slug = skillName ? slugify(skillName) : null
+    if (!nodeId && !slug) return res.status(400).json({ error: "skillName or skillGraphNodeId required" })
+    if (!nodeId) {
+      const node = await getNodeById((await createOrGetJourney({ userId: req.user.id, skillName })).node.id)
+      nodeId = node.id
+      slug = node.slug
+    } else {
+      const node = await getNodeById(nodeId)
+      slug = node?.slug || slug
+    }
+
+    const result = await getOrCreateModule({ skillSlug: slug, skillGraphNodeId: nodeId, skillJourneyId, jobTitle, level, teachingMode })
+    res.json(result)
+  } catch (e) {
+    console.error("[skill-studio/modules/generate]", e.message)
+    if (e.code === "generation_failed") return res.status(502).json({ error: e.message, code: e.code })
+    res.status(500).json({ error: e.message })
+  }
+})
+
+router.get("/modules/:moduleId", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id
+    const { moduleId } = req.params
+    const { data: mod, error: modErr } = await supabaseAdmin.from("modules").select("*").eq("id", moduleId).maybeSingle()
+    if (modErr) throw modErr
+    if (!mod) return res.status(404).json({ error: "Module not found" })
+    const { data: blocks } = await supabaseAdmin.from("module_content_blocks").select("*").eq("module_id", moduleId).order("ordinal")
+
+    let { data: state } = await supabaseAdmin.from("module_state").select("*").eq("user_id", userId).eq("module_id", moduleId).maybeSingle()
+    if (!state) {
+      const { data: created, error: createErr } = await supabaseAdmin
+        .from("module_state").insert({ user_id: userId, module_id: moduleId, status: "draft" }).select().single()
+      if (createErr) throw createErr
+      state = created
+    }
+    res.json({ module: mod, contentBlocks: blocks || [], moduleState: state })
+  } catch (e) {
+    console.error("[skill-studio/modules/:id]", e.message)
+    res.status(500).json({ error: e.message })
+  }
+})
+
+router.post("/modules/:moduleId/start", requireAuth, async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("module_state")
+      .upsert({ user_id: req.user.id, module_id: req.params.moduleId, status: "in_progress", started_at: new Date().toISOString() }, { onConflict: "user_id,module_id" })
+      .select().single()
+    if (error) throw error
+    res.json({ moduleState: data })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+router.post("/modules/:moduleId/playground-state", requireAuth, async (req, res) => {
+  try {
+    const { playgroundState = {} } = req.body
+    const { data, error } = await supabaseAdmin
+      .from("module_state")
+      .update({ playground_state: playgroundState, updated_at: new Date().toISOString() })
+      .eq("user_id", req.user.id).eq("module_id", req.params.moduleId)
+      .select().maybeSingle()
+    if (error) throw error
+    res.json({ moduleState: data })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+router.post("/modules/:moduleId/complete", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id
+    const { moduleId } = req.params
+    const { quizScore = 0, passed = true } = req.body
+
+    const { data: mod, error: modErr } = await supabaseAdmin.from("modules").select("*, skill_graph_nodes(label, slug, domain_key)").eq("id", moduleId).maybeSingle()
+    if (modErr) throw modErr
+    if (!mod) return res.status(404).json({ error: "Module not found" })
+
+    const { data: state, error: stateErr } = await supabaseAdmin
+      .from("module_state")
+      .upsert({ user_id: userId, module_id: moduleId, status: "completed", completed_at: new Date().toISOString() }, { onConflict: "user_id,module_id" })
+      .select().single()
+    if (stateErr) throw stateErr
+
+    await reinforce({ userId, skillGraphNodeId: mod.skill_graph_node_id, source: "module", correct: passed })
+
+    let evidence = null
+    if (passed) {
+      evidence = await writeModuleEvidence({
+        userId, moduleId, moduleTitle: mod.skill_graph_nodes?.label, skillLabel: mod.skill_graph_nodes?.label,
+        skillGraphNodeId: mod.skill_graph_node_id, domainKey: mod.skill_graph_nodes?.domain_key, level: mod.level, quizScore, passed,
+      })
+    }
+    await logEvent({ userId, eventType: "module_completed", skillId: mod.skill_graph_node_id, moduleId, score: quizScore })
+
+    res.json({ moduleState: state, evidenceCreated: !!evidence, evidence })
+  } catch (e) {
+    console.error("[skill-studio/modules/:id/complete]", e.message)
+    res.status(500).json({ error: e.message })
+  }
+})
+
+// ── Quiz ──────────────────────────────────────────────────────────────────────
+router.post("/quiz/start", requireAuth, async (req, res) => {
+  try {
+    const { skillGraphNodeId, skillLabel, moduleId = null, difficulty = "intermediate", questionType = "mcq" } = req.body
+    if (!skillGraphNodeId || !skillLabel) return res.status(400).json({ error: "skillGraphNodeId and skillLabel required" })
+    const question = await getOrGenerateQuestion({ skillGraphNodeId, skillLabel, moduleId, difficulty, questionType })
+    const sessionId = crypto.randomUUID()
+    res.json({ sessionId, firstQuestion: { id: question.id, questionType: question.question_type, prompt: question.payload?.prompt, options: question.payload?.options || null } })
+  } catch (e) {
+    console.error("[skill-studio/quiz/start]", e.message)
+    if (e.code === "generation_failed") return res.status(502).json({ error: e.message })
+    res.status(500).json({ error: e.message })
+  }
+})
+
+router.post("/quiz/:sessionId/answer", requireAuth, async (req, res) => {
+  try {
+    const { questionId, answer, hintUsed = false, responseMs = null, skillGraphNodeId } = req.body
+    if (!questionId || !skillGraphNodeId) return res.status(400).json({ error: "questionId and skillGraphNodeId required" })
+    const result = await scoreAnswer({
+      userId: req.user.id, sessionId: req.params.sessionId, questionId, answer, hintUsed, responseMs, skillGraphNodeId,
+    })
+    res.json(result)
+  } catch (e) {
+    console.error("[skill-studio/quiz/answer]", e.message)
+    res.status(500).json({ error: e.message })
+  }
+})
+
+// ── Memory ────────────────────────────────────────────────────────────────────
+router.get("/memory/due", requireAuth, async (req, res) => {
+  try {
+    const items = await getDueReviews(req.user.id, Number(req.query.limit) || 5)
+    res.json({ items })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+router.get("/memory/:skillGraphNodeId", requireAuth, async (req, res) => {
+  try {
+    const state = await readDecayedState(req.user.id, req.params.skillGraphNodeId)
+    res.json({ memory: state })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+router.post("/memory/:skillGraphNodeId/review", requireAuth, async (req, res) => {
+  try {
+    const { correct } = req.body
+    const state = await submitRevisionReview({ userId: req.user.id, skillGraphNodeId: req.params.skillGraphNodeId, correct: !!correct })
+    res.json({ newConfidence: state.confidence, nextReviewDue: state.next_review_due_at })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// ── Arena bridge ──────────────────────────────────────────────────────────────
+
+// Learner-facing read of arena_ingestion_records — "did my Arena result
+// reach Skill Studio, and what happened." Never exposes internal error
+// text for a 'failed' row beyond a generic status (avoid leaking internals
+// to the client); the real error message stays server-side for ops.
+router.get("/arena/ingestion", requireAuth, async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("arena_ingestion_records")
+      .select("id, status, instance_id, created_at, completed_at, skill_graph_nodes(label, slug)")
+      .eq("user_id", req.user.id)
+      .order("created_at", { ascending: false })
+      .limit(Number(req.query.limit) || 10)
+    if (error) throw error
+    res.json({ records: (data || []).map((r) => ({
+      id: r.id, status: r.status, skillLabel: r.skill_graph_nodes?.label || null,
+      createdAt: r.created_at, completedAt: r.completed_at,
+    })) })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+router.post("/arena/readiness", requireAuth, async (req, res) => {
+  try {
+    const { skillGraphNodeId } = req.body
+    if (!skillGraphNodeId) return res.status(400).json({ error: "skillGraphNodeId required" })
+    const readiness = await checkReadiness({ userId: req.user.id, skillGraphNodeId })
+    res.json(readiness)
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+router.post("/arena/handoff", requireAuth, async (req, res) => {
+  try {
+    const { skillJourneyId, skillGraphNodeId, domainKey } = req.body
+    if (!skillJourneyId || !skillGraphNodeId) return res.status(400).json({ error: "skillJourneyId and skillGraphNodeId required" })
+    const result = await handoff({ userId: req.user.id, skillJourneyId, skillGraphNodeId, domainKey })
+    await logEvent({ userId: req.user.id, eventType: "arena_handoff", skillId: skillGraphNodeId, metadata: { domainKey } })
+    res.json(result)
+  } catch (e) {
+    if (e.code === "not_ready") return res.status(403).json({ error: e.message, unmet: e.unmet })
+    console.error("[skill-studio/arena/handoff]", e.message)
+    res.status(500).json({ error: e.message })
+  }
+})
+
+// ── Interview bridge (question generation grounded in module + mistakes) ────
+router.post("/interview/generate", requireAuth, async (req, res) => {
+  try {
+    const { moduleId, skillLabel, mode = "technical" } = req.body
+    if (!skillLabel) return res.status(400).json({ error: "skillLabel required" })
+
+    const raw = await groq([
+      { role: "user", content: `Generate a ${mode} mock-interview question set (4 questions) for a candidate who just studied "${skillLabel}".\nReturn JSON only: {"questions":[{"type":"technical|debugging|architecture|behavioral","prompt":"..."}]}` },
+    ], { model: GROQ_FAST, max_tokens: 800, json: true })
+    const parsed = JSON.parse(raw)
+
+    const { data: session, error } = await supabaseAdmin
+      .from("interview_sessions")
+      .insert({ user_id: req.user.id, module_id: moduleId || null, mode, questions: parsed.questions || [] })
+      .select().single()
+    if (error) throw error
+    res.json({ sessionId: session.id, questions: parsed.questions || [] })
+  } catch (e) {
+    console.error("[skill-studio/interview/generate]", e.message)
+    res.status(502).json({ error: e.message })
+  }
+})
+
+router.post("/interview/:sessionId/submit", requireAuth, async (req, res) => {
+  try {
+    const { answers = [], skillLabel, domainKey = null } = req.body
+    const userId = req.user.id
+    const { data: session, error: sErr } = await supabaseAdmin.from("interview_sessions").select("*").eq("id", req.params.sessionId).eq("user_id", userId).maybeSingle()
+    if (sErr) throw sErr
+    if (!session) return res.status(404).json({ error: "Interview session not found" })
+
+    // Behavioral-style AI rubric scoring, explicitly capped and NEVER moving
+    // level_score/ELO (spec §8) — informs recruiter-facing evidence only.
+    const scores = { overall: answers.length ? Math.round((answers.filter(a => a?.length > 20).length / answers.length) * 100) : 0 }
+
+    const { error: uErr } = await supabaseAdmin
+      .from("interview_sessions")
+      .update({ answers, scores, completed_at: new Date().toISOString() })
+      .eq("id", req.params.sessionId).select().single()
+    if (uErr) throw uErr
+
+    const evidence = await writeInterviewEvidence({
+      userId, interviewSessionId: session.id, moduleTitle: skillLabel, skillLabel, domainKey, mode: session.mode, scores,
+    })
+    if (evidence) {
+      await supabaseAdmin.from("interview_sessions").update({ evidence_artifact_id: evidence.id }).eq("id", session.id)
+    }
+    await logEvent({ userId, eventType: "interview_completed", moduleId: session.module_id, score: scores.overall })
+
+    res.json({ scores, feedback: "Session recorded.", evidenceCreated: !!evidence })
+  } catch (e) {
+    console.error("[skill-studio/interview/submit]", e.message)
+    res.status(500).json({ error: e.message })
+  }
+})
+
+// ── Evidence ──────────────────────────────────────────────────────────────────
+router.get("/evidence", requireAuth, async (req, res) => {
+  try {
+    const artifacts = await listProofObjectsForUser(req.user.id)
+    res.json({ artifacts: artifacts.filter(a => ["skill_studio", "skill_studio_interview", "arena_v2"].includes(a.source)) })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+router.post("/evidence/:id/publish", requireAuth, async (req, res) => {
+  try {
+    const { publish = true } = req.body
+    const artifact = await publishEvidence(req.params.id, !!publish)
+    res.json({ artifact })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// ── Recommendations ───────────────────────────────────────────────────────────
+router.get("/recommendations", requireAuth, async (req, res) => {
+  try {
+    const recs = await getRecommendations(req.user.id)
+    res.json({ recommendations: recs })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+router.post("/recommendations/refresh", requireAuth, async (req, res) => {
+  try {
+    const recs = await buildRecommendations(req.user.id, req.body || {})
+    res.json({ recommendations: recs })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+export default router

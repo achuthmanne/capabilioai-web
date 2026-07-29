@@ -56,6 +56,12 @@ import { applyRewards, defaultDeps as rewardEngineDefaultDeps } from "../reward-
 import { createAssessmentCompletedEvent } from "../events/assessmentCompletedEvent.js"
 import { recordPortfolioOutcome, defaultDeps as portfolioDefaultDeps } from "../portfolio/engine.js"
 import { buildFeedbackResponseDto } from "./dto.js"
+// Skill Studio V2 loop closure (2026-07-29) — the "future consumer" this
+// file's own docblock reserved a slot for. See
+// ../../skillStudio/arenaIngestion.js's header for the non-throwing/
+// idempotent contract this MUST uphold: a Skill Studio bug must never
+// become a 500 on a real Arena submission.
+import { notifySkillStudio, defaultDeps as skillStudioDefaultDeps } from "../../skillStudio/arenaIngestion.js"
 
 export class SubmissionEngineError extends Error {}
 export class InstanceNotFoundError extends SubmissionEngineError {}
@@ -73,6 +79,8 @@ export const defaultDeps = {
   rewardEngineDeps: rewardEngineDefaultDeps,
   recordPortfolioOutcome,
   portfolioDeps: portfolioDefaultDeps,
+  notifySkillStudio,
+  skillStudioDeps: skillStudioDefaultDeps,
 }
 
 /**
@@ -179,6 +187,24 @@ export async function submitChallenge(input, deps = defaultDeps) {
   // failure propagates for the same "fail loudly, don't hide a data gap"
   // reason as reward-posting failures do, above.
   const portfolioOutcome = await deps.recordPortfolioOutcome(assessmentCompletedEvent, deps.portfolioDeps)
+
+  // Skill Studio V2 loop closure — a best-effort, NON-throwing consumer of
+  // the same event (mastery/memory/decay/evidence-link/recommendation
+  // refresh). Deliberately the ONE call in this function that is allowed to
+  // fail silently: unlike Reward/Portfolio (which fail loudly on purpose,
+  // per the comments above — a real data-integrity gap must surface), Skill
+  // Studio ingestion is downstream enrichment, not grading integrity, and
+  // arenaIngestion.js's own contract guarantees it never throws — but this
+  // call is still defensively guarded so that ANY deps object lacking
+  // `notifySkillStudio` (e.g. hand-built test fixtures that predate this
+  // change) keeps behaving exactly as before, unchanged.
+  if (typeof deps.notifySkillStudio === "function") {
+    try {
+      await deps.notifySkillStudio(assessmentCompletedEvent, deps.skillStudioDeps)
+    } catch (e) {
+      console.error("[submission-engine] notifySkillStudio threw despite its non-throwing contract:", e?.message)
+    }
+  }
 
   // Only close out the instance once there's genuinely nothing left to retry
   // — passed, or attempts exhausted. Marking it 'graded' unconditionally

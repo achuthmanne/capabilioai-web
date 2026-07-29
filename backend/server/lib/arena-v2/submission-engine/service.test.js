@@ -49,6 +49,12 @@ function fakeDeps(overrides = {}) {
       return { decisionType: "not_eligible", artifact: null, alreadyApplied: false }
     }),
     portfolioDeps: {},
+    // Only present at all when a test explicitly opts in (Skill Studio loop
+    // closure tests, below) — every pre-existing test's deps object gets
+    // exactly the same shape it always had, with no notifySkillStudio key,
+    // proving service.js's `typeof deps.notifySkillStudio === "function"`
+    // guard is what keeps them passing unchanged, not an accidental default.
+    ...(overrides.notifySkillStudio ? { notifySkillStudio: overrides.notifySkillStudio, skillStudioDeps: {} } : {}),
   }
   return { deps: base, calls, instanceStatuses, submissions }
 }
@@ -195,4 +201,55 @@ test("passes the instance's pinned datasetSeedSql to the validator as context, n
   })
   await submitChallenge({ userId: "user-1", instanceId: "inst-1", submissionData: { query: "SELECT 1" } }, deps)
   assert.equal(capturedContext.datasetSeedSql, "CREATE TABLE t (a INT);")
+})
+
+// ─────────────────────────────────────────────────────────────────────────
+// SKILL STUDIO V2 LOOP CLOSURE (2026-07-29) — notifySkillStudio wiring.
+// These are ADDITIVE to every test above; none of the existing fakeDeps()
+// fixtures were touched, and none of them include notifySkillStudio/
+// skillStudioDeps — proving the guarded `typeof deps.notifySkillStudio ===
+// "function"` check in service.js keeps every pre-existing caller working
+// unchanged, exactly as intended.
+// ─────────────────────────────────────────────────────────────────────────
+
+test("SKILL STUDIO LOOP CLOSURE: notifySkillStudio receives the identical AssessmentCompletedEvent Reward/Portfolio Engine received", async () => {
+  let receivedEvent = null
+  const { deps } = fakeDeps({
+    notifySkillStudio: async (event) => { receivedEvent = event; return { ok: true } },
+  })
+  await submitChallenge({ userId: "user-1", instanceId: "inst-1", submissionData: { query: "SELECT 1" } }, deps)
+  assert.ok(receivedEvent)
+  assert.deepEqual(Object.keys(receivedEvent).sort(), ["assessment", "instance", "rewardResult", "submission"])
+  assert.equal(receivedEvent.assessment.id, "assess-1")
+})
+
+test("SKILL STUDIO LOOP CLOSURE: is called AFTER recordPortfolioOutcome and BEFORE the instance is marked graded", async () => {
+  const { deps, calls } = fakeDeps({
+    notifySkillStudio: async () => { calls.push(["notifySkillStudio"]); return { ok: true } },
+  })
+  await submitChallenge({ userId: "user-1", instanceId: "inst-1", submissionData: { query: "SELECT 1" } }, deps)
+  const portfolioIdx = calls.findIndex((c) => c[0] === "recordPortfolioOutcome")
+  const notifyIdx = calls.findIndex((c) => c[0] === "notifySkillStudio")
+  const markGradedIdx = calls.findIndex((c) => c[0] === "markInstanceStatus")
+  assert.ok(portfolioIdx >= 0 && portfolioIdx < notifyIdx && notifyIdx < markGradedIdx)
+})
+
+test("SKILL STUDIO LOOP CLOSURE: a deps object with NO notifySkillStudio key behaves exactly as before (every pre-existing test's fixture shape)", async () => {
+  const { deps, instanceStatuses } = fakeDeps() // base fixture never sets notifySkillStudio
+  const dto = await submitChallenge({ userId: "user-1", instanceId: "inst-1", submissionData: { query: "SELECT 1" } }, deps)
+  assert.equal(dto.finalScore, 100)
+  assert.deepEqual(instanceStatuses, ["graded"])
+})
+
+test("SKILL STUDIO LOOP CLOSURE: if notifySkillStudio somehow throws (violating its own contract), the Arena response is still returned successfully, not broken", async () => {
+  const { deps } = fakeDeps({
+    notifySkillStudio: async () => { throw new Error("Skill Studio bug — must never surface to the learner") },
+  })
+  const dto = await submitChallenge({ userId: "user-1", instanceId: "inst-1", submissionData: { query: "SELECT 1" } }, deps)
+  assert.equal(dto.finalScore, 100)
+})
+
+test("SKILL STUDIO LOOP CLOSURE: defaultDeps wires notifySkillStudio to the real arenaIngestion.notifySkillStudio", async () => {
+  assert.equal(typeof defaultDeps.notifySkillStudio, "function")
+  assert.equal(typeof defaultDeps.skillStudioDeps, "object")
 })

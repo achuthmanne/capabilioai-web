@@ -39,6 +39,7 @@ const ArenaV2RecruiterView = lazy(() => import("./pages/ArenaV2RecruiterView"))
 const Pulse              = lazy(() => import("./pages/Pulse"))
 const HardwareChallenges = lazy(() => import("./pages/HardwareChallenges"))
 const SkillStudio        = lazy(() => import("./pages/SkillStudio"))
+const SkillStudioShell   = lazy(() => import("./skillStudio/SkillStudioShell")) // Skill Studio V2 — behind FLAGS.skill_studio_v2, see featureFlags.js
 const Launchpad          = lazy(() => import("./pages/Launchpad"))
 const Portfolio          = lazy(() => import("./pages/Portfolio"))
 const AuthorityProfile   = lazy(() => import("./pages/AuthorityProfile"))
@@ -71,6 +72,7 @@ const JobPostings        = lazy(() => import("./pages/JobPostings"))
 // ── Internal-only admin tools — never in nav, reached by direct URL only ──
 const AdminQuestionBank  = lazy(() => import("./pages/AdminQuestionBank"))
 const AdminOpsDashboard  = lazy(() => import("./pages/AdminOpsDashboard"))
+const AdminSkillStudioContent = lazy(() => import("./pages/AdminSkillStudioContent"))
 
 const API = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
 
@@ -958,6 +960,20 @@ function App() {
     )
   }
 
+  // Internal-only, no nav entry — access control is server-side
+  // (requireAuth + requireAdmin on backend/server/routes/
+  // skillStudioContentAdmin.js). See AdminSkillStudioContent.jsx header for
+  // why this exists (Skill Studio V2 loop closure, 2026-07-29) — the
+  // generated module/quiz review queue existed since Skill Studio V2 but had
+  // no frontend, so it was only reachable via curl/Postman.
+  if (window.location.pathname === "/admin/skill-studio-content") {
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <AdminSkillStudioContent user={user} />
+      </Suspense>
+    )
+  }
+
   if (window.location.pathname.startsWith("/join/")) {
     const inviteCode = window.location.pathname.replace("/join/", "").split("/")[0]
     return (
@@ -1463,7 +1479,9 @@ function App() {
           {currentPage === "marketplace"  && <ExecutiveComingSoon module="marketplace" />}
           {currentPage === "analytics"    && <ExecutiveAnalytics user={user} userData={userData} />}
           {currentPage === "aicopilot"    && <ExecutiveComingSoon module="aicopilot" />}
-          {currentPage === "skillstudio" && <SkillStudio user={user} userData={userData} />}
+          {currentPage === "skillstudio" && (FLAGS.skill_studio_v2
+            ? <SkillStudioShell user={user} userData={userData} />
+            : <SkillStudio user={user} userData={userData} />)}
           {currentPage === "launchpad"   && <Launchpad   user={user} userData={userData} onNavigatePricing={() => { setCurrentPage("pricing"); setActiveNavItem("") }} />}
           {currentPage === "pricing"     && <Pricing     user={user} userData={userData} setUserData={setUserData} onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }} />}
 

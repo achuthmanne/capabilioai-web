@@ -160,6 +160,8 @@ import proofsRoutes           from "./server/routes/proofs.js"            // Por
 import educationRoutes        from "./server/routes/education.js"        // Education redesign Phase 1 — GET /profile/:userId (public), POST /profile (auth, own profile only)
 import verificationRoutes     from "./server/routes/verification.js"     // Trust & Verification Center Phase 1 — provider registry, hash-chained audit log, POST /verify
 import skillStudioRoutes      from "./server/routes/skillStudio.js"
+import skillStudioV2Routes    from "./server/routes/skillStudioV2.js"       // Skill Studio V2 — skill journeys/module runtime/memory/Arena+interview bridges/evidence (additive, same /api/skill-studio prefix, no path collisions)
+import skillStudioContentAdminRoutes from "./server/routes/skillStudioContentAdmin.js" // Skill Studio V2 content/admin review queue — requireAuth+requireAdmin, dedicated namespace (see questionBankAdmin.js's 2026-07-24 routing-shadow fix for why NOT bare "/api")
 import chatRoutes             from "./server/routes/chat.js"
 import githubRoutes           from "./server/routes/github.js"
 import jobRoutes              from "./server/routes/jobs.js"
@@ -336,6 +338,8 @@ app.use("/api/admin/ops",       opsDashboardRoutes)       // Career OS Tranche 1
 app.use("/api/education",       educationRoutes)         // Education redesign Phase 1 — academic identity (education_profile) + achievements (proof_objects)
 app.use("/api/verification",    verificationRoutes)      // Trust & Verification Center Phase 1 — provider registry, hash-chained audit log
 app.use("/api/skill-studio", skillStudioRoutes)  // lesson, learning-path, youtube, resources
+app.use("/api/skill-studio", skillStudioV2Routes) // Skill Studio V2 — home, graph, journeys, modules, quiz, memory, arena, interview, evidence, recommendations
+app.use("/api/admin/skill-studio-content", skillStudioContentAdminRoutes) // Skill Studio content/creator review queue — requireAuth+requireAdmin, dedicated namespace (see questionBankAdmin.js routing-shadow fix)
 app.use("/api/chat",         chatRoutes)         // chat
 app.use("/api/github",       githubRoutes)       // analyze
 app.use("/api",              jobRoutes)          // jobs, markets/india

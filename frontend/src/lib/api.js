@@ -454,10 +454,82 @@ export const portfolioApi = {
   lookup: (identifier) => request("GET", `/portfolio/lookup/${encodeURIComponent(identifier)}`),
 }
 
+// Multi-turn AI chat (routes/chat.js — Claude Haiku -> Groq fallback, no
+// auth required, matches the direct-fetch usage already in Aura.jsx). Used
+// by TutorPanel (Skill Studio V2) instead of a second chat client.
+export const chatApi = {
+  send: (messages, system) => request("POST", "/chat", { messages, system }),
+}
+
+// Public Engineering Proofs API (routes/proofs.js) — no auth, only
+// is_portfolio_visible=true rows. Used by RecruiterProofDrawer (Skill
+// Studio V2) since publishing Skill Studio evidence flips this same flag
+// via the shared proofObjects/repository.js#updatePublishState — no second
+// recruiter-visibility model needed.
+export const proofsApi = {
+  forUser: (userId, params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return request("GET", `/proofs/${userId}${qs ? `?${qs}` : ""}`)
+  },
+}
+
 // Professional ELO (product decision 2026-07-25) — real assessment-
 // performance-driven rating track, separate from profile-completeness ELO.
 export const professionalEloApi = {
   status: () => request("GET", "/pro/elo/professional"),
+}
+
+// ══════════════════════════════════════════
+// SKILL STUDIO V2 — skill journeys / module runtime / memory / Arena+interview
+// bridges / evidence (docs/skill-studio-v2-production-spec-2026-07-29.md).
+// Hits the additive routes in backend/server/routes/skillStudioV2.js, mounted
+// on the SAME /api/skill-studio prefix as the pre-existing skillStudioApi-less
+// /lesson,/learning-path,/youtube,/resources calls SkillStudio.jsx makes
+// directly via fetch() — no collision, both live side by side.
+// ══════════════════════════════════════════
+export const skillStudioV2Api = {
+  home:               () => request("GET", "/skill-studio/home"),
+  graph:              (domain) => request("GET", `/skill-studio/graph?domain=${encodeURIComponent(domain)}`),
+  createJourney:      (skillName, domainKey, targetRole) => request("POST", "/skill-studio/journeys", { skillName, domainKey, targetRole }),
+  archiveJourney:     (id) => request("POST", `/skill-studio/journeys/${id}/archive`),
+  completeJourney:    (id) => request("POST", `/skill-studio/journeys/${id}/complete`),
+  generateModule:     (data) => request("POST", "/skill-studio/modules/generate", data),
+  getModule:          (moduleId) => request("GET", `/skill-studio/modules/${moduleId}`),
+  startModule:        (moduleId) => request("POST", `/skill-studio/modules/${moduleId}/start`),
+  savePlaygroundState: (moduleId, playgroundState) => request("POST", `/skill-studio/modules/${moduleId}/playground-state`, { playgroundState }),
+  completeModule:     (moduleId, data) => request("POST", `/skill-studio/modules/${moduleId}/complete`, data),
+  quizStart:          (data) => request("POST", "/skill-studio/quiz/start", data),
+  quizAnswer:         (sessionId, data) => request("POST", `/skill-studio/quiz/${sessionId}/answer`, data),
+  memoryDue:          (limit = 5) => request("GET", `/skill-studio/memory/due?limit=${limit}`),
+  memoryFor:          (skillGraphNodeId) => request("GET", `/skill-studio/memory/${skillGraphNodeId}`),
+  memoryReview:       (skillGraphNodeId, correct) => request("POST", `/skill-studio/memory/${skillGraphNodeId}/review`, { correct }),
+  arenaReadiness:     (skillGraphNodeId) => request("POST", "/skill-studio/arena/readiness", { skillGraphNodeId }),
+  arenaHandoff:       (data) => request("POST", "/skill-studio/arena/handoff", data),
+  interviewGenerate:  (data) => request("POST", "/skill-studio/interview/generate", data),
+  interviewSubmit:    (sessionId, data) => request("POST", `/skill-studio/interview/${sessionId}/submit`, data),
+  evidenceList:       () => request("GET", "/skill-studio/evidence"),
+  evidencePublish:    (id, publish) => request("POST", `/skill-studio/evidence/${id}/publish`, { publish }),
+  recommendations:    () => request("GET", "/skill-studio/recommendations"),
+  refreshRecommendations: (opts = {}) => request("POST", "/skill-studio/recommendations/refresh", opts),
+  arenaIngestion:     (limit = 10) => request("GET", `/skill-studio/arena/ingestion?limit=${limit}`),
+}
+
+// ══════════════════════════════════════════
+// SKILL STUDIO CONTENT ADMIN — generated module/quiz review queue
+// (Skill Studio V2 loop closure, 2026-07-29). Every route here is
+// requireAuth+requireAdmin server-side (backend/server/routes/
+// skillStudioContentAdmin.js) — dedicated namespace, no client-side
+// admin check.
+// ══════════════════════════════════════════
+export const skillStudioContentAdminApi = {
+  list:        ({ status, jobType, limit, offset } = {}) => request("GET", `/admin/skill-studio-content${toQuery({ status, jobType, limit, offset })}`),
+  get:         (id) => request("GET", `/admin/skill-studio-content/${id}`),
+  addSource:   (data) => request("POST", "/admin/skill-studio-content/sources", data),
+  generate:    (data) => request("POST", "/admin/skill-studio-content/generate", data),
+  approve:     (id, notes) => request("POST", `/admin/skill-studio-content/${id}/approve`, { notes }),
+  reject:      (id, notes) => request("POST", `/admin/skill-studio-content/${id}/reject`, { notes }),
+  edit:        (id, editedOutput, notes) => request("POST", `/admin/skill-studio-content/${id}/edit`, { editedOutput, notes }),
+  regenerate:  (id, notes) => request("POST", `/admin/skill-studio-content/${id}/regenerate`, { notes }),
 }
 
 // Skill Rating v2 (2026-07-26) — verification-gated certification bonus.
