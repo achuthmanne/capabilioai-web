@@ -954,15 +954,23 @@ function StudentPulse({ user, userData }) {
       await wait(200)
       pulseApi.mentors(domain, 4).then(d => !cancelled && setMentors(d)).catch(() => !cancelled && setMentors([]))
       await wait(200)
-      // Load network counts for sidebar stats
-      nexusApi.connections().then(data => {
+      // Load real Following/Followers (the `follows` table) for sidebar
+      // stats. Previously this read from `connections` (Sparks) instead,
+      // which is a different relationship entirely — that's why the Follow
+      // button's state used to reset on every refresh and followed users
+      // never showed up in Following/Followers anywhere in the UI.
+      nexusApi.follows().then(data => {
         if (cancelled) return
-        const all = Array.isArray(data) ? data : (data?.connections || [])
-        const accepted = all.filter(c => c.status === "accepted")
-        setMyFollowing(accepted.filter(c => c.requester_id === user?.id)
-          .map(c => ({ ...c.addressee, connId: c.id })))
-        setMyFollowers(accepted.filter(c => c.addressee_id === user?.id)
-          .map(c => ({ ...c.requester, connId: c.id })))
+        setMyFollowing(data?.following || [])
+        setMyFollowers(data?.followers || [])
+        // Pre-seed sparkActions so any already-followed user renders as
+        // "✓ Following" immediately (Discover results, suggested users,
+        // etc.) instead of only updating state after a button click.
+        setSparkActions(a => {
+          const next = { ...a }
+          for (const u of (data?.following || [])) next[u.id] = "followed"
+          return next
+        })
       }).catch(() => {})
       await wait(200)
       // Market insights — server-cached 2hr, personalized by domain/role/skills.
@@ -992,18 +1000,32 @@ function StudentPulse({ user, userData }) {
   const loadMyNetwork = async () => {
     setNetworkLoading(true)
     try {
-      const data = await nexusApi.connections()
-      const all = Array.isArray(data) ? data : (data?.connections || [])
-      const accepted = all.filter(c => c.status === "accepted")
-      setMyFollowing(accepted.filter(c => c.requester_id === user?.id)
-        .map(c => ({ ...c.addressee, connId: c.id })))
-      setMyFollowers(accepted.filter(c => c.addressee_id === user?.id)
-        .map(c => ({ ...c.requester, connId: c.id })))
-      // Suggested: load top users excluding already connected
+      // Following/Followers come from the real `follows` table now (not
+      // `connections`/Sparks — those are a separate request-approve system,
+      // see nexusApi.follows() doc comment).
+      const [followsData, connData] = await Promise.all([
+        nexusApi.follows(),
+        nexusApi.connections().catch(() => []),
+      ])
+      const following = followsData?.following || []
+      const followers = followsData?.followers || []
+      setMyFollowing(following)
+      setMyFollowers(followers)
+      setSparkActions(a => {
+        const next = { ...a }
+        for (const u of following) next[u.id] = "followed"
+        return next
+      })
+
+      // Suggested: load top users excluding anyone already followed or
+      // already connected via Sparks.
+      const all = Array.isArray(connData) ? connData : (connData?.connections || [])
       const connectedIds = new Set(all.map(c =>
         c.requester_id === user?.id ? c.addressee_id : c.requester_id))
+      const followingIds = new Set(following.map(u => u.id))
       const sug = await nexusApi.search({ limit: 8 }).catch(() => ({ profiles: [] }))
-      const sugList = (sug?.profiles || []).filter(p => p.id !== user?.id && !connectedIds.has(p.id))
+      const sugList = (sug?.profiles || []).filter(p =>
+        p.id !== user?.id && !connectedIds.has(p.id) && !followingIds.has(p.id))
       setSuggestedUsers(sugList.slice(0, 6))
     } catch {}
     setNetworkLoading(false)

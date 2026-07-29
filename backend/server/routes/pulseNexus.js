@@ -639,6 +639,22 @@ router.post("/nexus/follow", requireAuth, async (req, res) => {
     const { error } = await supabaseAdmin.from("follows")
       .upsert({ follower_id: req.user.id, following_id }, { onConflict: "follower_id,following_id", ignoreDuplicates: true })
     if (error) throw error
+
+    // Notify the followed user — matches the notification pattern already
+    // used on /nexus/connect. Fire-and-forget: a notification failure must
+    // never fail the follow action itself (same .catch(()=>{}) convention
+    // used everywhere else in this file).
+    const { data: follower } = await supabaseAdmin.from("profiles").select("name").eq("id", req.user.id).single()
+    await supabaseAdmin.from("notifications").insert({
+      user_id:        following_id,
+      type:           "new_follower",
+      title:          "New Follower",
+      body:           `${follower?.name || "Someone"} started following you`,
+      actor_id:       req.user.id,
+      reference_id:   req.user.id,
+      reference_type: "follow",
+    }).catch(() => {})
+
     res.json({ success: true, following: true })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
@@ -659,6 +675,32 @@ router.get("/nexus/connections", requireAuth, async (req, res) => {
       .order("updated_at", { ascending: false })
     if (error) throw error
     res.json(data || [])
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// Real Follow/Follower lists (the `follows` table) for the current user, with
+// joined profile data — powers the Network tab's Following/Followers lists
+// and sidebar counters. Previously the frontend had no way to read this back
+// at all: it only ever wrote to `follows` (POST/DELETE /nexus/follow) and
+// derived "Following"/"Followers" from the unrelated `connections` (Sparks)
+// table instead, which is why the Follow button's state reset on every page
+// refresh and followed users never actually showed up anywhere.
+router.get("/nexus/follows", requireAuth, async (req, res) => {
+  try {
+    const uid = req.user.id
+    const PROFILE_COLS = "id,name,display_name,username,keyword,elo_rating,profile_photo_url,headline,current_role_title,path"
+
+    const [{ data: followingRows, error: e1 }, { data: followerRows, error: e2 }] = await Promise.all([
+      supabaseAdmin.from("follows").select(`following:following_id(${PROFILE_COLS})`).eq("follower_id", uid),
+      supabaseAdmin.from("follows").select(`follower:follower_id(${PROFILE_COLS})`).eq("following_id", uid),
+    ])
+    if (e1) throw e1
+    if (e2) throw e2
+
+    res.json({
+      following: (followingRows || []).map(r => r.following).filter(Boolean),
+      followers: (followerRows || []).map(r => r.follower).filter(Boolean),
+    })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 

@@ -360,6 +360,10 @@ export const nexusApi = {
   follow:       (uid) => request("POST", "/nexus/follow", { following_id: uid }),
   unfollow:     (uid) => request("DELETE", `/nexus/follow/${uid}`),
   connections:  () => request("GET", "/nexus/connections"),
+  // Real Follow relationships (the `follows` table) — distinct from
+  // connections() above, which is the Sparks/request-approve system.
+  // Returns { following: [...profiles], followers: [...profiles] }.
+  follows:      () => request("GET", "/nexus/follows"),
   notifications: () => request("GET", "/nexus/notifications"),
   markRead:     (ids) => request("POST", "/nexus/notifications/read", { ids }),
 }
