@@ -26,7 +26,6 @@
  */
 import { Router }     from "express"
 import { supabaseAdmin } from "../lib/supabase.js"
-import { geminiSearch }  from "../lib/gemini.js"
 import { groq, GROQ_FAST } from "../lib/groq.js"
 import { requireAuth } from "../lib/auth.js"
 
@@ -83,8 +82,6 @@ router.get("/pulse/market-insights", optionalAuth, async (req, res) => {
     return res.json({ ...cached.data, cached: true })
   }
 
-  const hasGemini = process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== "your_gemini_key_here"
-
   try {
     const prompt = `You are a tech career market analyst for the Indian IT industry.
 Provide a concise market intelligence report for: "${role}" / "${domain}" domain.
@@ -107,36 +104,27 @@ Format as JSON:
   "outlook_reason": "1-2 sentences"
 }`
 
-    let text
-    if (hasGemini) {
-      try {
-        ;({ text } = await geminiSearch(prompt, { maxTokens: 2000 }))
-      } catch (geminiErr) {
-        console.warn("[pulse/market-insights] Gemini failed, falling back to Groq:", geminiErr.message)
-        text = null
-      }
-    }
-
-    // Groq fallback — no live Google Search grounding, just an LLM estimate.
-    // Honesty requirement (2026-07-26 Pulse redesign): the frontend must
-    // never label this "Live" — the `source` field below tells it which
-    // case this is so it can say "AI-estimated" instead of implying a real
-    // search happened.
-    if (!text) {
-      const completion = await Promise.race([
-        groq.chat.completions.create({
-          model:       GROQ_FAST,
-          max_tokens:  1500,
-          temperature: 0.4,
-          messages: [
-            { role: "system", content: "You are a tech career market analyst for India. Respond ONLY with valid JSON, no markdown." },
-            { role: "user",   content: prompt },
-          ],
-        }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Groq timeout")), 12000))
-      ])
-      text = completion.choices[0]?.message?.content || "{}"
-    }
+    // Groq-only (2026-07-29): Gemini Search was removed from this path —
+    // the deployed backend's GEMINI_API_KEY was unreliable/unset and every
+    // call was throwing before it ever reached the Groq fallback below,
+    // producing the "signals unavailable" state users were seeing. Groq has
+    // no live Google Search grounding, so this is an LLM estimate, not a
+    // real-time search result — the honest `source: "ai_estimate"` field
+    // below (unconditional now) tells the frontend never to label this
+    // "Live", same honesty requirement as the 2026-07-26 Pulse redesign.
+    const completion = await Promise.race([
+      groq.chat.completions.create({
+        model:       GROQ_FAST,
+        max_tokens:  1500,
+        temperature: 0.4,
+        messages: [
+          { role: "system", content: "You are a tech career market analyst for India. Respond ONLY with valid JSON, no markdown." },
+          { role: "user",   content: prompt },
+        ],
+      }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Groq timeout")), 12000))
+    ])
+    const text = completion.choices[0]?.message?.content || "{}"
 
     // Extract JSON from response
     const match = text.match(/```json\s*([\s\S]*?)```/) || text.match(/(\{[\s\S]*\})/)
@@ -149,7 +137,7 @@ Format as JSON:
       // the honest replacement: however many companies the report actually
       // named.
       companies_hiring_count: Array.isArray(data.hiring_companies) ? data.hiring_companies.length : 0,
-      source: hasGemini ? "live_search" : "ai_estimate",
+      source: "ai_estimate",
       generatedAt: new Date().toISOString(),
     }
     insightsCache.set(cacheKey, { data: payload, expiresAt: Date.now() + CACHE_TTL_MS })
