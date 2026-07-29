@@ -928,23 +928,40 @@ function StudentPulse({ user, userData }) {
       .catch(() => setMySkills([]))
   }, [])
 
-  // Load sidebar data + market insights when domain changes
+  // Load sidebar data + market insights when domain changes.
+  // 2026-07-29: these used to all fire in the same tick (6+ simultaneous
+  // requests counting loadFeed's own effect below) — on the free-tier Render
+  // backend this burst was consistently coming back 403 for every pulse/nexus
+  // call while isolated single requests (e.g. arena/skill-graph from a
+  // different page) succeeded. Staggering them with small delays spreads the
+  // burst out and costs nothing (these are all background sidebar reads, not
+  // anything the user is blocked on). Sequenced + delayed rather than
+  // Promise.all'd on purpose.
   useEffect(() => {
-    pulseApi.builders(domain, elo, 6).then(setBuilders).catch(() => setBuilders([]))
-    pulseApi.mentors(domain, 4).then(setMentors).catch(() => setMentors([]))
-    // Load network counts for sidebar stats
-    nexusApi.connections().then(data => {
-      const all = Array.isArray(data) ? data : (data?.connections || [])
-      const accepted = all.filter(c => c.status === "accepted")
-      setMyFollowing(accepted.filter(c => c.requester_id === user?.id)
-        .map(c => ({ ...c.addressee, connId: c.id })))
-      setMyFollowers(accepted.filter(c => c.addressee_id === user?.id)
-        .map(c => ({ ...c.requester, connId: c.id })))
-    }).catch(() => {})
-    // Market insights — server-cached 2hr, personalized by domain/role/skills.
-    // No static fallback (2026-07-26): if the route reports `_error`, treat
-    // it as unavailable rather than showing anything.
-    loadMarketInsights()
+    let cancelled = false
+    const wait = (ms) => new Promise(r => setTimeout(r, ms))
+    ;(async () => {
+      pulseApi.builders(domain, elo, 6).then(d => !cancelled && setBuilders(d)).catch(() => !cancelled && setBuilders([]))
+      await wait(200)
+      pulseApi.mentors(domain, 4).then(d => !cancelled && setMentors(d)).catch(() => !cancelled && setMentors([]))
+      await wait(200)
+      // Load network counts for sidebar stats
+      nexusApi.connections().then(data => {
+        if (cancelled) return
+        const all = Array.isArray(data) ? data : (data?.connections || [])
+        const accepted = all.filter(c => c.status === "accepted")
+        setMyFollowing(accepted.filter(c => c.requester_id === user?.id)
+          .map(c => ({ ...c.addressee, connId: c.id })))
+        setMyFollowers(accepted.filter(c => c.addressee_id === user?.id)
+          .map(c => ({ ...c.requester, connId: c.id })))
+      }).catch(() => {})
+      await wait(200)
+      // Market insights — server-cached 2hr, personalized by domain/role/skills.
+      // No static fallback (2026-07-26): if the route reports `_error`, treat
+      // it as unavailable rather than showing anything.
+      if (!cancelled) loadMarketInsights()
+    })()
+    return () => { cancelled = true }
   }, [domain, elo, JSON.stringify(mySkills)]) // eslint-disable-line
 
   // Pulled out of the effect above so the "Retry" affordance on the failure
