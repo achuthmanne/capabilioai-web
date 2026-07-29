@@ -48,6 +48,17 @@ export async function listJourneysForUser(userId, status = "active") {
   return data || []
 }
 
+/** True only if this user has NEVER had a skill_journeys row of any status.
+ *  Used to gate one-time role-gap seeding (roleGapSeeder.js) — must NOT
+ *  re-trigger just because a user archived/completed everything, so this
+ *  deliberately ignores status rather than filtering to "active". */
+export async function hasAnyJourneyEver(userId) {
+  const { count, error } = await supabaseAdmin
+    .from(JOURNEYS).select("id", { count: "exact", head: true }).eq("user_id", userId)
+  if (error) throw error
+  return (count || 0) > 0
+}
+
 export async function archiveJourney(userId, journeyId) {
   const { data, error } = await supabaseAdmin
     .from(JOURNEYS).update({ status: "archived", updated_at: new Date().toISOString() })

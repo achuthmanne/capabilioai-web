@@ -23,6 +23,7 @@ import { supabaseAdmin } from "../lib/supabase.js"
 
 import { slugify, getNodeById, listNodesForDomain, getEdgesFrom } from "../lib/skillStudio/graphService.js"
 import { createOrGetJourney, listJourneysForUser, archiveJourney, completeJourney } from "../lib/skillStudio/journeyPlanner.js"
+import { seedIfFirstVisit } from "../lib/skillStudio/roleGapSeeder.js"
 import { getOrCreateModule } from "../lib/skillStudio/contentGenerator.js"
 import { getOrGenerateQuestion, scoreAnswer } from "../lib/skillStudio/quizEngine.js"
 import { getDueReviews, submitRevisionReview, readDecayedState, reinforce } from "../lib/skillStudio/memoryEngine.js"
@@ -39,9 +40,20 @@ const router = Router()
 router.get("/home", requireAuth, async (req, res) => {
   try {
     const userId = req.user.id
+
+    // First-ever visit with zero skill_journeys rows: bootstrap from this
+    // user's EXISTING role-gap data (skill_graph + roleConfig.auraSkills)
+    // instead of leaving Learning Home permanently empty (2026-07-29 fix —
+    // see roleGapSeeder.js header). No-ops silently on any later visit, and
+    // never blocks /home from responding even if seeding itself fails.
+    const seeded = await seedIfFirstVisit(userId).catch((e) => {
+      console.error("[skill-studio/home] role-gap seeding threw despite its non-throwing contract:", e.message)
+      return false
+    })
+
     const [journeys, recommendations, dueReviews] = await Promise.all([
       listJourneysForUser(userId),
-      getRecommendations(userId),
+      seeded ? buildRecommendations(userId) : getRecommendations(userId),
       getDueReviews(userId, 5),
     ])
     res.json({
@@ -49,6 +61,7 @@ router.get("/home", requireAuth, async (req, res) => {
       topRecommendations: recommendations.slice(0, 3),
       decayAlerts: dueReviews.filter(d => d.confidence < 0.45),
       streak: null, // reserved — no streak table in this pass
+      roleGapsSeeded: seeded,
     })
   } catch (e) {
     console.error("[skill-studio/home]", e.message)

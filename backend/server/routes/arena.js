@@ -71,7 +71,9 @@ function optionalUid(req) {
 // without reintroducing any write-side race: it performs no writes at all.
 // elo_value (400-2000ish rating scale) is rescaled 0-100 for the radar here
 // rather than in the frontend, so every caller gets the same scale.
-function eloValueToRadarScore(eloValue) {
+// Exported so other modules can derive the SAME 0-100 radar score from a raw
+// skill_graph.elo_value without duplicating this formula (roleGapSeeder.js).
+export function eloValueToRadarScore(eloValue) {
   const v = Number(eloValue) || 400
   return Math.max(0, Math.min(100, Math.round(((v - 400) / 1200) * 100)))
 }

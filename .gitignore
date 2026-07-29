@@ -55,6 +55,8 @@ dist_home_fix_check2
 dist_company_check
 dist_pulse_home_check
 dist_company_skills_check
+dist_verify_loop_closure
+dist_verify_rolegap
 _verify_pure.mjs
 _verify_sync_tmp.mjs
 frontend/src/config/.write_test.tmp
