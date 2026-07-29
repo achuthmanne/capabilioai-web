@@ -38,10 +38,22 @@ export async function createOrGetJourney({ userId, skillName, domainKey = null, 
   return { journey: data, node, created: true }
 }
 
-export async function listJourneysForUser(userId, status = "active") {
-  const { data, error } = await supabaseAdmin
+// Exported so a test can assert the exact select string still includes the
+// node's `id` — see listJourneysForUser's 2026-07-29 bug-fix comment below.
+export const JOURNEY_LIST_SELECT = "*, skill_graph_nodes(id, label, slug, domain_key)"
+
+export async function listJourneysForUser(userId, status = "active", deps = { supabaseAdmin }) {
+  // BUG FIX (2026-07-29): this embedded select used to omit `id` from the
+  // nested skill_graph_nodes(...) relation. The frontend reads that as
+  // `node.id` for skillGraphNodeId everywhere a journey is opened (Quiz,
+  // Arena gate, module requests) — with `id` missing, every one of those
+  // calls sent skillGraphNodeId: undefined. Module generation happened to
+  // have a skillName-based fallback that silently masked this, but
+  // POST /quiz/start has no such fallback and hard-required both fields,
+  // which is what surfaced this as "skillGraphNodeId and skillLabel required".
+  const { data, error } = await deps.supabaseAdmin
     .from(JOURNEYS)
-    .select("*, skill_graph_nodes(label, slug, domain_key)")
+    .select(JOURNEY_LIST_SELECT)
     .eq("user_id", userId).eq("status", status)
     .order("priority_rank", { ascending: true })
   if (error) throw error
@@ -52,8 +64,8 @@ export async function listJourneysForUser(userId, status = "active") {
  *  Used to gate one-time role-gap seeding (roleGapSeeder.js) — must NOT
  *  re-trigger just because a user archived/completed everything, so this
  *  deliberately ignores status rather than filtering to "active". */
-export async function hasAnyJourneyEver(userId) {
-  const { count, error } = await supabaseAdmin
+export async function hasAnyJourneyEver(userId, deps = { supabaseAdmin }) {
+  const { count, error } = await deps.supabaseAdmin
     .from(JOURNEYS).select("id", { count: "exact", head: true }).eq("user_id", userId)
   if (error) throw error
   return (count || 0) > 0

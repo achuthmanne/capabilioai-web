@@ -41,7 +41,12 @@ export async function generateLesson({ topic, jobTitle, level = "intermediate", 
       const raw = await groq([
         { role: "system", content: "Generate structured micro-lessons for Indian tech professionals. Return ONLY valid JSON." },
         { role: "user", content: `${duration}-min lesson on "${topic}" for ${level} ${jobTitle || "Professional"}.\nReturn JSON: {"title":"...","objective":"...","sections":[{"heading":"...","content":"...","codeExample":"..."}],"keyPoints":["..."],"quiz":[{"question":"...","options":["a","b","c","d"],"correct":0,"explanation":"..."}],"practiceTask":"...","nextTopics":["..."]}` },
-      ], { max_tokens: 2000, json: true })
+      // BUG FIX (2026-07-29): 2000 tokens was too tight for this schema (title +
+      // objective + 3 sections w/ code examples + 5 quiz questions w/ options/
+      // explanations + keyPoints + practiceTask + nextTopics) — Groq was cutting
+      // the response off mid-object, producing invalid JSON (json_validate_failed)
+      // on a real, reproducible fraction of lessons rather than a rare edge case.
+      ], { max_tokens: 3200, json: true })
       return { lesson: JSON.parse(raw), generatedBy: "groq" }
     } catch (groqErr) {
       const err = new Error(`Lesson generation failed for ${topic}/${level}: ${groqErr.message} (gemini: ${geminiErr.message})`)
@@ -62,19 +67,24 @@ export function blocksFromLesson(lesson) {
   return blocks
 }
 
+// DI shape (same as arenaIngestion.js/contentQueue.js's defaultDeps) so
+// getOrCreateModule's topic-selection logic — the exact thing that regressed
+// to a raw slug — can be unit tested without a real Supabase/Gemini/Groq call.
+export const defaultDeps = { supabaseAdmin, generateLesson, blocksFromLesson }
+
 /**
  * getOrCreateModule — the real cache-or-generate check. Returns
  * { module, blocks, cached: boolean }.
  */
-export async function getOrCreateModule({ skillSlug, skillGraphNodeId, skillJourneyId, jobTitle, level = "intermediate", teachingMode = "intermediate", duration = 15 }) {
+export async function getOrCreateModule({ skillSlug, skillLabel, skillGraphNodeId, skillJourneyId, jobTitle, level = "intermediate", teachingMode = "intermediate", duration = 15 }, deps = defaultDeps) {
   const cacheKey = contentCacheKey(skillSlug, level, teachingMode)
 
-  const { data: existingModule, error: findErr } = await supabaseAdmin
+  const { data: existingModule, error: findErr } = await deps.supabaseAdmin
     .from(MODULES).select("*").eq("content_cache_key", cacheKey).eq("version", 1).maybeSingle()
   if (findErr) throw findErr
 
   if (existingModule) {
-    const { data: blocks, error: blocksErr } = await supabaseAdmin
+    const { data: blocks, error: blocksErr } = await deps.supabaseAdmin
       .from(BLOCKS).select("*").eq("module_id", existingModule.id).order("ordinal", { ascending: true })
     if (blocksErr) throw blocksErr
     if (blocks && blocks.length > 0) {
@@ -85,9 +95,14 @@ export async function getOrCreateModule({ skillSlug, skillGraphNodeId, skillJour
     }
   }
 
-  const { lesson, generatedBy } = await generateLesson({ topic: skillSlug, jobTitle, level, duration })
+  // BUG FIX (2026-07-29): this used to pass skillSlug (e.g. "pytorch--tensorflow"
+  // — slugify() turns "PyTorch / TensorFlow" into a double-hyphen slug once the
+  // "/" is stripped) straight into the AI prompt as the topic. skillSlug is a
+  // cache key, not a human-readable label — falls back to it only if no real
+  // label was ever resolved by the caller.
+  const { lesson, generatedBy } = await deps.generateLesson({ topic: skillLabel || skillSlug, jobTitle, level, duration })
 
-  const moduleRow = existingModule || (await supabaseAdmin
+  const moduleRow = existingModule || (await deps.supabaseAdmin
     .from(MODULES)
     .insert({
       skill_journey_id: skillJourneyId || null,
@@ -99,8 +114,8 @@ export async function getOrCreateModule({ skillSlug, skillGraphNodeId, skillJour
     })
     .select().single()).data
 
-  const rows = blocksFromLesson(lesson).map(b => ({ ...b, module_id: moduleRow.id, generated_by: generatedBy, source_citations: [] }))
-  const { data: insertedBlocks, error: insertErr } = await supabaseAdmin.from(BLOCKS).insert(rows).select()
+  const rows = deps.blocksFromLesson(lesson).map(b => ({ ...b, module_id: moduleRow.id, generated_by: generatedBy, source_citations: [] }))
+  const { data: insertedBlocks, error: insertErr } = await deps.supabaseAdmin.from(BLOCKS).insert(rows).select()
   if (insertErr) throw insertErr
 
   return { module: moduleRow, blocks: insertedBlocks, cached: false, quiz: lesson.quiz || [] }

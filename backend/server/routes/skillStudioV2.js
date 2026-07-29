@@ -117,20 +117,25 @@ router.post("/journeys/:id/complete", requireAuth, async (req, res) => {
 // ── Modules ───────────────────────────────────────────────────────────────────
 router.post("/modules/generate", requireAuth, async (req, res) => {
   try {
-    const { skillName, skillGraphNodeId, skillJourneyId, jobTitle, level = "intermediate", teachingMode = "intermediate" } = req.body
+    const { skillName, skillLabel, skillGraphNodeId, skillJourneyId, jobTitle, level = "intermediate", teachingMode = "intermediate" } = req.body
     let nodeId = skillGraphNodeId
     let slug = skillName ? slugify(skillName) : null
+    let label = skillLabel || skillName || null
     if (!nodeId && !slug) return res.status(400).json({ error: "skillName or skillGraphNodeId required" })
     if (!nodeId) {
       const node = await getNodeById((await createOrGetJourney({ userId: req.user.id, skillName })).node.id)
       nodeId = node.id
       slug = node.slug
+      label = label || node.label
     } else {
       const node = await getNodeById(nodeId)
       slug = node?.slug || slug
+      // Prefer the catalog node's real label over the slug — see
+      // contentGenerator.js's getOrCreateModule fix for why this matters.
+      label = label || node?.label || slug
     }
 
-    const result = await getOrCreateModule({ skillSlug: slug, skillGraphNodeId: nodeId, skillJourneyId, jobTitle, level, teachingMode })
+    const result = await getOrCreateModule({ skillSlug: slug, skillLabel: label, skillGraphNodeId: nodeId, skillJourneyId, jobTitle, level, teachingMode })
     res.json(result)
   } catch (e) {
     console.error("[skill-studio/modules/generate]", e.message)
