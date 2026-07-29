@@ -46,7 +46,7 @@ export function useRazorpay() {
     const keyId = import.meta.env.VITE_RAZORPAY_KEY_ID
     if (!keyId) { onError?.("Razorpay key not configured."); return }
 
-    const API = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
+    const API = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
 
     // Build checkout description — mention college discount when applicable
     const inviteCtx     = getInviteCtx()

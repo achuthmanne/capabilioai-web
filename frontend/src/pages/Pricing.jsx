@@ -6,7 +6,7 @@ import { useState } from "react"
 import { PLANS, getPlan, getPlansByPath } from "../config/plans"
 import { useRazorpay } from "../hooks/useRazorpay"
 
-const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
+const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
 
 const T = {
   cream:"#F6F6F1", cream2:"#EFEFE9", cream3:"#E8E8E1",

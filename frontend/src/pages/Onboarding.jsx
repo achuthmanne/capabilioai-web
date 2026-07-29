@@ -5,7 +5,7 @@ import { useRazorpay } from "../hooks/useRazorpay"
 import { getSkillModule } from "../config/skillModules"
 import { ROLE_REGISTRY } from "../config/roleConfig"
 
-const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
+const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
 
 // ─── CSS injected once ─────────────────────────────────────────────
 const ONBOARDING_STYLES = `

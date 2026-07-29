@@ -18,7 +18,7 @@ import { useRef, useState, useCallback } from "react"
 // American-English TTS. Deepgram's catalog has no Indian-English voice today
 // (checked 2026-07-28 against their docs), so this is not labeled as one.
 
-const API = "https://capabilio-server.onrender.com"
+const API = "https://capabilio-web.onrender.com"
 const W = 1280, H = 720
 
 const ACCENT = "#00D2FF", ACCENT2 = "#78FF9E", GOLD = "#F5C453", BG = "#050810", BG2 = "#0a1628"

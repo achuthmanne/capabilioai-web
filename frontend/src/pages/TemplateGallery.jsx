@@ -8,7 +8,7 @@ import { TemplateComponents, PDFRenderer } from "./PortfolioPDFRenderer"
 import html2canvas from "html2canvas"
 import { jsPDF } from "jspdf"
 
-const API = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
+const API = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
 
 // Mini thumbnail preview for each template
 function TemplateThumbnail({ template, active, owned, onClick }) {

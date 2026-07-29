@@ -4,7 +4,14 @@
  */
 import { supabase } from "./supabase"
 
-const BASE = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
+// 2026-07-29: fixed a wrong fallback here — "capabilio-web.onrender.com"
+// was never a real service (confirmed via Render dashboard: the only actual
+// backend is "capabilio-web", srv-d8lu178g4nts73fr1i20). A VITE_API_URL
+// override had been silently masking this for a while; when it briefly went
+// unset/wrong in production every single API route 404'd at once. Fixing
+// the fallback to the real service so this can't happen again if the env
+// var is ever missing.
+const BASE = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
 
 async function getToken() {
   const { data: { session } } = await supabase.auth.getSession()

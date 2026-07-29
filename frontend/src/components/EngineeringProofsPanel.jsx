@@ -27,7 +27,7 @@ const C = {
   brand: "#7C3AED", brand2: "rgba(124,58,237,0.15)",
 }
 
-const API = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
+const API = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
 
 const DIFFICULTY_COLOR = { easy: C.green, medium: C.amber, hard: C.red, expert: C.purple }
 

@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { supabase } from "../lib/supabase"
 import { profileRealtime } from "../lib/realtimeSingletons"
 
-const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
+const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
 const todayStr = () => new Date().toISOString().slice(0, 10)
 
 const SLOTS_CACHE_KEY = (uid, keyword) =>

@@ -15,7 +15,7 @@
 // reimplementing it.
 import { supabase } from "../lib/supabase"
 
-export const ARENA_V2_SERVER = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
+export const ARENA_V2_SERVER = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
 
 export async function authHeaders() {
   const h = { "Content-Type": "application/json" }

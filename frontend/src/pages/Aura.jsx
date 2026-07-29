@@ -52,7 +52,7 @@ const T = {
   shadow2: "0 8px 24px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.4)",
 }
 
-const API = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
+const API = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
 
 const CERT_PROVIDERS = [
   { id:"aws",        label:"AWS",           icon:"☁️",  color:"#F59E0B", placeholder:"AWS Certification ID (e.g. AWS-SAA-123456)" },
@@ -4087,7 +4087,7 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
     const failSummary=failedTasks.slice(0,5).map(f=>`Task: ${f.taskTitle||"Arena Task"}, Score: ${f.score}%`).join("\n")
     const prompt=`Career coach analyzing failure patterns. Failures:\n${failSummary}\nResilience: ${resilienceScore}/100.\nReturn ONLY JSON:\n{"patterns":["p1","p2","p3"],"strengths":["s1","s2"],"coachAdvice":"2 sentence advice","weeklyChallenge":"one specific task","growthMindsetScore":${resilienceScore}}`
     try {
-      const d=await fetch("https://capabilio-server.onrender.com/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})}).then(r=>r.json())
+      const d=await fetch("https://capabilio-web.onrender.com/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})}).then(r=>r.json())
       const txt=(d.text||"").replace(/```json|```/g,"").trim()
       const s=txt.indexOf("{"),e=txt.lastIndexOf("}")+1
       setResilienceData(JSON.parse(txt.slice(s,e)))

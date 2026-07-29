@@ -13,7 +13,7 @@ import { getRoleConfig } from "../config/roleConfig"
 import { SectionErrorBoundary, EvidenceSourceBadge, OutcomeCard, ProfessionalScoreHero, SecondaryDiagnosticsPanel } from "../components/careeros/CareerOSUI"
 import { FLAGS } from "../config/featureFlags"
 
-const API = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
+const API = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
 
 // ─── Design System ────────────────────────────────────────────────────────────
 const DS = {

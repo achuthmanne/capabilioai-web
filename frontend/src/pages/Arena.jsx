@@ -2414,7 +2414,7 @@ function MissionWorkstation({ mission, domain, domainKey, activeModuleId, code, 
 // ─────────────────────────────────────────────────────────────────────────────
 // UPGRADE MODAL — inline Razorpay payment, no page navigation
 // ─────────────────────────────────────────────────────────────────────────────
-const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
+const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
 
 function UpgradeModal({ planId, user, userData, onSuccess, onClose }) {
   const plan = PLANS[planId]
@@ -3921,7 +3921,7 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
       || (activeMission?.workstation || activeMission?.sandbox_type) === "code"
     )
 
-    // BUG FIX (2026-07-18): every fetch below talks to capabilio-server.onrender.com,
+    // BUG FIX (2026-07-18): every fetch below talks to capabilio-web.onrender.com,
     // which cold-starts (30-60s+) after idling on Render's free tier. None of
     // these calls had a timeout, so a cold/slow backend left Submit Solution
     // stuck indefinitely on "Freezing & scoring…" with no feedback at all —
@@ -4028,7 +4028,7 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
       const _uid = user?.id || user?.uid
       if (_uid) {
         try {
-          const _SERVER = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
+          const _SERVER = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
           const flagRes = await fetchWithTimeout(`${_SERVER}/api/arena/flag-integrity`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -4053,7 +4053,7 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
     let aiReview = null
     if (!isZeroEffortTimeout && netMeaningful >= 2) {
       try {
-        const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
+        const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
         // P0-5: send bearer token so the server can do the authoritative ELO write.
         const { data: { session: _rvSess } } = await supabase.auth.getSession()
         const res = await fetchWithTimeout(`${SERVER}/api/arena/review`, {
@@ -4387,7 +4387,7 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
         // score ≥ 50: proof created; ≥ 60: recruiter visible; ≥ 70: portfolio visible
         if (finalScore >= 50 && !integrity.isCheat) {
           try {
-            const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
+            const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
             // Use refreshSession to get a fresh token — long Arena sessions can expire the JWT.
             const { supabase: _sb } = await import("../lib/supabase")
             const { data: _refreshed } = await _sb.auth.refreshSession()

@@ -74,7 +74,7 @@ const problemsDb = createClient(
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNicmpkZmxseGZtbXZhbGlqcGVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxMTE0MzYsImV4cCI6MjA5NTY4NzQzNn0.P2zSjd4AiVV2SlVb-bWMzzMQSCjkKFfLh1OvJU6tM-s"
 )
 
-const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
+const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const T = {

@@ -72,7 +72,7 @@ const JobPostings        = lazy(() => import("./pages/JobPostings"))
 const AdminQuestionBank  = lazy(() => import("./pages/AdminQuestionBank"))
 const AdminOpsDashboard  = lazy(() => import("./pages/AdminOpsDashboard"))
 
-const API = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
+const API = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
 
 // ── Auth Modal ────────────────────────────────────────────────────────────────
 const PATH_META = {

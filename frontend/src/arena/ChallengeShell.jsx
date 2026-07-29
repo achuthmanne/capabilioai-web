@@ -22,7 +22,7 @@ import { arenaDb } from "../lib/db"
 import useAntiCheat from "./useAntiCheat"
 import ArenaWatermark from "./ArenaWatermark"
 
-const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
+const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
 
 // ── Deterministic "ticket" context synthesizer ───────────────────────────────
 // Real companies never hand an engineer a bare problem statement — they hand

@@ -30,7 +30,7 @@ import {
 // go through a server-side proxy (backend/server/routes/groqProxy.js) that
 // holds the real key. Request/response shape is unchanged — only the
 // destination and the key moved.
-const API = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
+const API = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
 const GROQ_PROXY = `${API}/api/groq/chat`
 
 function sessionId() {

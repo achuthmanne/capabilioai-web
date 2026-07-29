@@ -1,6 +1,6 @@
 // arenaApi.js — ✅ MIGRATED: process.env → import.meta.env (Vite)
 import { supabase } from "../lib/supabase"
-const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
+const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
 
 // P0-5: /api/arena/review now writes ELO server-side, so it needs the bearer token.
 async function authHeaders() {

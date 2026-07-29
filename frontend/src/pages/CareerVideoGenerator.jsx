@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react"
 
-const API = "https://capabilio-server.onrender.com"
+const API = "https://capabilio-web.onrender.com"
 const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi)
 const easeOut  = t => 1 - Math.pow(1 - t, 3)
 const easeIn   = t => t * t

@@ -14,7 +14,7 @@ import { getPlan, daysSinceLastArenaTask } from "../config/plans"
 import { resolveArenaKey } from "../config/roleConfig"
 
 const SERVER_LOCAL = import.meta.env.VITE_API_URL || "http://localhost:4000"
-const SERVER_PROD  = "https://capabilio-server.onrender.com"
+const SERVER_PROD  = "https://capabilio-web.onrender.com"
 // Try local first; fall back to production if local is unreachable
 const SERVER = SERVER_LOCAL
 

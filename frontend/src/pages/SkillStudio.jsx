@@ -9,7 +9,7 @@ import { supabase } from "../lib/supabase"
 import { getSkillModule } from "../config/skillModules"
 import { resolveArenaKey, getRoleConfig } from "../config/roleConfig"
 
-const API = import.meta.env.VITE_API_URL || "https://capabilio-server.onrender.com"
+const API = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
 
 // ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
 const D = {
