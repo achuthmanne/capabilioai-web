@@ -6,8 +6,9 @@ node_modules
 # Build output
 dist
 dist-ssr
-dist_ws0_check
-dist_ws1_check
+# Any one-off local verification build (dist_check, dist_ws2_check,
+# dist_verify_cors, etc.) — none of these are ever meant to be committed.
+dist_*
 *.local
 
 # Environment files — NEVER commit these
@@ -45,27 +46,6 @@ vite.config.js.timestamp-*
 
 # Misc
 *.bak
-dist_ws2_check
-dist_ws2_verify_final
-dist_ws3_verify
-dist_ws4_check
-dist_ws4_hotfix_check
-dist_home_fix_check
-dist_home_fix_check2
-dist_company_check
-dist_pulse_home_check
-dist_company_skills_check
-dist_verify_loop_closure
-dist_verify_rolegap
-dist_verify_bugfix
-dist_verify_arena
-dist_verify_cors
-dist_verify_cors_final2
-dist_verify_errbound
-dist_verify_errbound2
-# Catch-all: every one-off verification build this session has been named
-# dist_verify_<something> — stop adding them one at a time.
-dist_verify_*
 _verify_pure.mjs
 _verify_sync_tmp.mjs
 frontend/src/config/.write_test.tmp
