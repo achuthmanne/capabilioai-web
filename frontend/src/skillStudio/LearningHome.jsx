@@ -33,6 +33,20 @@ import NextSkillPanel from "./NextSkillPanel"
 import MemoryPanel from "./MemoryPanel"
 import ArenaIngestionPanel from "./ArenaIngestionPanel"
 
+// 2026-07-30 rate-limit incident fix: this used to fan out to 8 parallel
+// arena/readiness requests on EVERY LearningHome mount — combined with the
+// home/memory/ingestion calls that also fire on mount, that alone could
+// approach a whole minute's request budget from one page load, and repeated
+// navigation back to Mission Control (e.g. after finishing a module) refired
+// all 8 again. Two changes: capped to 3 (Mission Control only needs "are you
+// close to Arena-ready," not an exhaustive per-skill audit), and results are
+// cached in-memory per skillGraphNodeId for a few minutes so revisiting this
+// page shortly after doesn't re-issue the same requests. Module-scope (not
+// component state) so it survives this component unmounting/remounting on
+// navigation — a plain useRef would not.
+const READINESS_CACHE_TTL_MS = 3 * 60 * 1000
+const readinessCache = new Map() // skillGraphNodeId -> { result, fetchedAt }
+
 export default function LearningHome({ jobTitle, domainKey, onOpenJourney, onOpenGraph }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -54,10 +68,11 @@ export default function LearningHome({ jobTitle, domainKey, onOpenJourney, onOpe
 
   // Arena/Interview Readiness aggregate — bounded to active journeys (same
   // per-skill call ArenaGatePanel already makes one-at-a-time; this just
-  // fans it out across a small, naturally-bounded list). Capped at 8 to
-  // avoid an unbounded burst of requests for a learner with many journeys.
+  // fans it out across a small, naturally-bounded list). Capped at 3 (was 8
+  // — see the incident note above) to keep Mission Control's own request
+  // burst small regardless of how many journeys a learner has active.
   useEffect(() => {
-    const journeys = (data?.activeJourneys || []).slice(0, 8)
+    const journeys = (data?.activeJourneys || []).slice(0, 3)
     if (journeys.length === 0) {
       setReadiness({ loading: false, readyCount: 0, total: 0, items: [] })
       return
@@ -68,9 +83,15 @@ export default function LearningHome({ jobTitle, domainKey, onOpenJourney, onOpe
       journeys.map(async (j) => {
         const nodeId = j.skill_graph_nodes?.id
         if (!nodeId) return null
+        const cached = readinessCache.get(nodeId)
+        if (cached && Date.now() - cached.fetchedAt < READINESS_CACHE_TTL_MS) {
+          return { journeyId: j.id, skill: j.skill_graph_nodes?.label || "Skill", ...cached.result }
+        }
         try {
           const r = await skillStudioV2Api.arenaReadiness(nodeId)
-          return { journeyId: j.id, skill: j.skill_graph_nodes?.label || "Skill", ready: !!r.ready, quizPassRate: r.quizPassRate, memoryConfidence: r.memoryConfidence }
+          const result = { ready: !!r.ready, quizPassRate: r.quizPassRate, memoryConfidence: r.memoryConfidence }
+          readinessCache.set(nodeId, { result, fetchedAt: Date.now() })
+          return { journeyId: j.id, skill: j.skill_graph_nodes?.label || "Skill", ...result }
         } catch {
           return null // a single skill's readiness check failing shouldn't blank the whole dashboard
         }

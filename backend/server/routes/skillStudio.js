@@ -10,13 +10,18 @@
 import { Router } from "express"
 import { groq, GROQ_FAST }                                    from "../lib/groq.js"
 import { geminiGenerateLesson, geminiGenerateLearningPath }   from "../lib/gemini.js"
+// 2026-07-30 rate-limit incident fix: /api/skill-studio moved to the more
+// generous skillStudioLimiter at the prefix level (server.js); these two
+// routes actually spend AI-provider tokens, so they keep the stricter
+// aiLimiter applied directly — see rateLimiters.js's header.
+import { aiLimiter } from "../lib/rateLimiters.js"
 
 const router = Router()
 
 // ─── Lesson ──────────────────────────────────────────────────────────────────
 // STICKY — generated once per topic/module, persists until user completes it.
 // Gemini Flash: native JSON mode, free tier more than sufficient.
-router.post("/lesson", async (req, res) => {
+router.post("/lesson", aiLimiter, async (req, res) => {
   const { topic="Python", jobTitle="Professional", skillLevel="Intermediate", duration=15 } = req.body
   try {
     const lesson = await geminiGenerateLesson({ topic, jobTitle, skillLevel, duration })
@@ -40,7 +45,7 @@ router.post("/lesson", async (req, res) => {
 // ─── Learning Path ────────────────────────────────────────────────────────────
 // STICKY — generated once per user profile snapshot, cached until skills change.
 // Gemini Flash: handles the structured multi-phase output cleanly.
-router.post("/learning-path", async (req, res) => {
+router.post("/learning-path", aiLimiter, async (req, res) => {
   const { jobTitle="Developer", skillGraph=[], weakAreas=[], eloRating=800 } = req.body
   try {
     const path = await geminiGenerateLearningPath({ jobTitle, skillGraph, weakAreas, eloRating })

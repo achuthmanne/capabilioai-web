@@ -87,65 +87,12 @@ import express from "express"
 import cors    from "cors"
 
 // ─── Rate limiter ─────────────────────────────────────────────────────────────
-// Sliding-window counter per IP. Stores only the window-start timestamp + count
-// (not an array of timestamps) — O(1) memory per IP, O(1) per request.
-// Works correctly behind Vercel/Render reverse proxies via X-Forwarded-For.
-// Note: in a multi-process cluster each worker has its own store. At 50k users
-// this is intentional — it provides per-worker limits which still throttle
-// individual IPs effectively without needing Redis. For strict global limits,
-// swap the store for an Upstash Redis client (see SCALE.md).
-function createRateLimiter(windowMs, max, message) {
-  // Map<ip, { count, windowStart }>
-  const store = new Map()
-
-  // Prune expired windows every windowMs to prevent unbounded memory growth
-  setInterval(() => {
-    const cutoff = Date.now() - windowMs
-    for (const [ip, entry] of store) {
-      if (entry.windowStart < cutoff) store.delete(ip)
-    }
-  }, windowMs).unref() // .unref() — don't block process exit
-
-  return (req, res, next) => {
-    // TEMP DIAGNOSTIC (2026-07-29) — logs every /api request that reaches
-    // this app, plus the status code actually sent back. Added to find out
-    // whether the pulse/*+nexus/* 403s seen in the browser originate in this
-    // app or upstream of it (Render's edge/proxy), since none of this app's
-    // route handlers issue a 403 for those paths. Pure logging, no behavior
-    // change — safe to remove once the 403 source is confirmed.
-    res.on("finish", () => {
-      console.log(`[req] ${req.method} ${req.originalUrl} -> ${res.statusCode}`)
-    })
-    // Trust X-Forwarded-For set by Vercel/Render proxy (first IP is the real client)
-    const forwarded = req.headers["x-forwarded-for"]
-    const ip = (forwarded ? forwarded.split(",")[0].trim() : null)
-      || req.socket?.remoteAddress
-      || "unknown"
-
-    const now    = Date.now()
-    const entry  = store.get(ip)
-    let count
-
-    if (!entry || now - entry.windowStart >= windowMs) {
-      // New window
-      count = 1
-      store.set(ip, { count: 1, windowStart: now })
-    } else {
-      count = entry.count + 1
-      entry.count = count
-    }
-
-    res.setHeader("X-RateLimit-Limit",     max)
-    res.setHeader("X-RateLimit-Remaining", Math.max(0, max - count))
-    res.setHeader("X-RateLimit-Reset",     Math.ceil(((entry?.windowStart || now) + windowMs) / 1000))
-
-    if (count > max) {
-      res.setHeader("Retry-After", Math.ceil(windowMs / 1000))
-      return res.status(429).json({ error: message })
-    }
-    next()
-  }
-}
+// Moved to server/lib/rateLimiters.js on 2026-07-30 — see that file's header
+// for the production incident (Skill Studio's dashboard sharing one 20/min
+// bucket with Arena/chat/voice/TTS/Groq) that prompted the split. Imported
+// below; skillStudioV2.js/skillStudio.js also import aiLimiter directly to
+// apply it at the route level on their specific generation endpoints.
+import { generalLimiter, aiLimiter, strictLimiter, skillStudioLimiter } from "./server/lib/rateLimiters.js"
 
 // ─── Route modules ────────────────────────────────────────────────────────────
 import resumeRoutes           from "./server/routes/resume.js"
@@ -250,14 +197,19 @@ app.use(cors({
 }))
 
 // ─── Rate limiters ────────────────────────────────────────────────────────────
-const generalLimiter = createRateLimiter(60_000, 100, "Too many requests, please try again in a minute.")
-const aiLimiter      = createRateLimiter(60_000,  20, "AI rate limit reached. Please wait a moment.")
-const strictLimiter  = createRateLimiter(60_000,  10, "Too many attempts. Please wait before trying again.")
-
+// Instances now imported from server/lib/rateLimiters.js (see that file's
+// header for the 2026-07-30 incident this split fixes). /api/skill-studio
+// moved off the shared aiLimiter bucket onto its own dedicated
+// skillStudioLimiter (60/min) — its actual AI-generation endpoints
+// (/modules/generate, /quiz/start, /modules/:id/remedial, /modules/:id/
+// revision, /modules/:id/narration, /interview/generate, legacy /lesson,
+// /learning-path) still get the stricter aiLimiter too, applied at the
+// route level inside skillStudioV2.js/skillStudio.js — same double-layering
+// generalLimiter+aiLimiter already used elsewhere.
 app.use("/api", generalLimiter)
 app.use("/api/arena",        aiLimiter)
 app.use("/api/arena/v2",     aiLimiter)
-app.use("/api/skill-studio", aiLimiter)
+app.use("/api/skill-studio", skillStudioLimiter)
 app.use("/api/chat",         aiLimiter)
 app.use("/api/voice",        aiLimiter)
 app.use("/api/tts",          aiLimiter)

@@ -20,6 +20,13 @@ import { Router } from "express"
 import crypto from "crypto"
 import { requireAuth } from "../lib/auth.js"
 import { supabaseAdmin } from "../lib/supabase.js"
+// 2026-07-30 rate-limit incident fix: /api/skill-studio as a whole now sits
+// behind the more generous skillStudioLimiter (server.js), not the shared
+// 20/min aiLimiter bucket. The handful of routes below that actually spend
+// AI-provider tokens (as opposed to reading/caching/deterministic-scoring)
+// still get aiLimiter applied directly, so real generation cost is still
+// protected — see rateLimiters.js's header for the full incident writeup.
+import { aiLimiter } from "../lib/rateLimiters.js"
 
 import { slugify, getNodeById, listNodesForDomain, getEdgesFrom } from "../lib/skillStudio/graphService.js"
 import { createOrGetJourney, listJourneysForUser, archiveJourney, completeJourney } from "../lib/skillStudio/journeyPlanner.js"
@@ -131,7 +138,7 @@ router.post("/journeys/:id/complete", requireAuth, async (req, res) => {
 })
 
 // ── Modules ───────────────────────────────────────────────────────────────────
-router.post("/modules/generate", requireAuth, async (req, res) => {
+router.post("/modules/generate", aiLimiter, requireAuth, async (req, res) => {
   try {
     const { skillName, skillLabel, skillGraphNodeId, skillJourneyId, jobTitle, level = "intermediate", teachingMode = "intermediate" } = req.body
     let nodeId = skillGraphNodeId
@@ -267,7 +274,7 @@ router.post("/modules/:moduleId/complete", requireAuth, async (req, res) => {
 // contentGenerator.generateRemedialSupplement's header for why: this is
 // specific to one learner's missed topics and must never leak into the
 // shared modules/module_content_blocks cache other learners read from).
-router.post("/modules/:moduleId/remedial", requireAuth, async (req, res) => {
+router.post("/modules/:moduleId/remedial", aiLimiter, requireAuth, async (req, res) => {
   try {
     const { moduleId } = req.params
     const { missedTopics = [] } = req.body
@@ -294,7 +301,7 @@ router.post("/modules/:moduleId/remedial", requireAuth, async (req, res) => {
 // Flashcards / cheat sheet / interview questions for the "Revise" tab.
 // Cached per module (module_revision_content, unique on module_id) — shared
 // across every learner on the same module, same pattern as the lesson cache.
-router.get("/modules/:moduleId/revision", requireAuth, async (req, res) => {
+router.get("/modules/:moduleId/revision", aiLimiter, requireAuth, async (req, res) => {
   try {
     const { moduleId } = req.params
     const { data: mod, error: modErr } = await supabaseAdmin
@@ -325,7 +332,7 @@ router.get("/modules/:moduleId/revision", requireAuth, async (req, res) => {
 // has no separate server-side flag check, matching every other Skill Studio
 // V2 route — the whole namespace is unreachable unless the frontend surface
 // that calls it is rendered, same pattern as /modules/:id/revision).
-router.get("/modules/:moduleId/narration", requireAuth, async (req, res) => {
+router.get("/modules/:moduleId/narration", aiLimiter, requireAuth, async (req, res) => {
   try {
     const { moduleId } = req.params
     const { data: mod, error: modErr } = await supabaseAdmin
@@ -352,7 +359,7 @@ router.get("/modules/:moduleId/narration", requireAuth, async (req, res) => {
 })
 
 // ── Quiz ──────────────────────────────────────────────────────────────────────
-router.post("/quiz/start", requireAuth, async (req, res) => {
+router.post("/quiz/start", aiLimiter, requireAuth, async (req, res) => {
   try {
     const { skillGraphNodeId, skillLabel, moduleId = null, difficulty = "intermediate", questionType = "mcq" } = req.body
     if (!skillGraphNodeId || !skillLabel) return res.status(400).json({ error: "skillGraphNodeId and skillLabel required" })
@@ -449,7 +456,7 @@ router.post("/arena/handoff", requireAuth, async (req, res) => {
 })
 
 // ── Interview bridge (question generation grounded in module + mistakes) ────
-router.post("/interview/generate", requireAuth, async (req, res) => {
+router.post("/interview/generate", aiLimiter, requireAuth, async (req, res) => {
   try {
     const { moduleId, skillLabel, mode = "technical" } = req.body
     if (!skillLabel) return res.status(400).json({ error: "skillLabel required" })
