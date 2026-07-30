@@ -93,7 +93,7 @@ const PATH_META = {
 // Never blocks free text: selecting a suggestion just fills the field,
 // exactly like typing does, so a college missing from the AICTE-derived
 // dataset is still saved as entered.
-function CollegeAutocomplete({ value, setValue, accent, inputStyle, setError }) {
+function CollegeAutocomplete({ value, setValue, accent, inputStyle, setError, onSelect }) {
   const [results, setResults]   = useState([])
   const [open, setOpen]         = useState(false)
   const inputRef = useRef(null)
@@ -154,7 +154,7 @@ function CollegeAutocomplete({ value, setValue, accent, inputStyle, setError }) 
           {results.map(c => (
             <div
               key={c.id}
-              onMouseDown={e => { e.preventDefault(); setValue(c.name); setOpen(false); setResults([]) }}
+              onMouseDown={e => { e.preventDefault(); setValue(c.name); onSelect?.(c); setOpen(false); setResults([]) }}
               style={{ padding: "10px 14px", cursor: "pointer", borderBottom: "1px solid #F5F5F5", fontSize: 13 }}
             >
               <div style={{ fontWeight: 700, color: "#1A1714" }}>{c.name}</div>
@@ -234,7 +234,6 @@ function AuthModal({ show, onClose, mode, setMode }) {
   const [instType,    setInstType]    = useState("College")
   const [instCity,    setInstCity]    = useState("")
   const [instWebsite, setInstWebsite] = useState("")
-  const [adminName,   setAdminName]   = useState("")
   // shared
   const [error,    setError]    = useState("")
   const [loading,  setLoading]  = useState(false)
@@ -249,7 +248,7 @@ function AuthModal({ show, onClose, mode, setMode }) {
       setRefCode(""); setRefValid(null); setRefData(null)
       setCompany(""); setJobTitle(""); setLinkedinUrl(""); setExperience("")
       setOrgName(""); setExecTitle("")
-      setInstName(""); setInstType("College"); setInstCity(""); setInstWebsite(""); setAdminName("")
+      setInstName(""); setInstType("College"); setInstCity(""); setInstWebsite("")
       setError(""); setLoading(false)
     }
   }, [show])
@@ -288,10 +287,9 @@ function AuthModal({ show, onClose, mode, setMode }) {
           if (!execTitle)      { setError("Please select your executive title"); setLoading(false); return }
           signupMeta = { ...signupMeta, org_name: orgName.trim(), exec_title: execTitle, linkedin_url: linkedinUrl.trim(), path: "authority" }
         } else if (selectedPath === "institution") {
-          if (!instName.trim())  { setError("Institution name is required");   setLoading(false); return }
-          if (!adminName.trim()) { setError("Admin contact name is required"); setLoading(false); return }
-          if (!instCity.trim())  { setError("City / State is required");       setLoading(false); return }
-          signupMeta = { ...signupMeta, institution_name: instName.trim(), institution_type: instType, city: instCity.trim(), website: instWebsite.trim(), admin_name: adminName.trim(), path: "institution" }
+          if (!instName.trim())  { setError("Institution name is required"); setLoading(false); return }
+          if (!instCity.trim())  { setError("City / State is required");     setLoading(false); return }
+          signupMeta = { ...signupMeta, institution_name: instName.trim(), institution_type: instType, city: instCity.trim(), website: instWebsite.trim(), admin_name: fullName, path: "institution" }
         } else {
           // Student (default)
           if (!college.trim()) { setError("College name is required");  setLoading(false); return }
@@ -359,7 +357,7 @@ function AuthModal({ show, onClose, mode, setMode }) {
     const base = first && last && email && password && confirm
     if (selectedPath === "professional") return !!(base && company && jobTitle)
     if (selectedPath === "executive")    return !!(base && orgName && execTitle)
-    if (selectedPath === "institution")  return !!(base && instName && instCity && adminName)
+    if (selectedPath === "institution")  return !!(base && instName && instCity)
     return !!(base && college && branch)
   })() : !!(email && password)
 
@@ -451,7 +449,10 @@ function AuthModal({ show, onClose, mode, setMode }) {
           {inp(last,  setLast,  "text", "Admin last name")}
         </div>
         {instType === "College"
-          ? <CollegeAutocomplete value={instName} setValue={setInstName} accent={accent} inputStyle={inputStyle} setError={setError} />
+          ? <CollegeAutocomplete
+              value={instName} setValue={setInstName} accent={accent} inputStyle={inputStyle} setError={setError}
+              onSelect={c => setInstCity([c.district, c.state].filter(Boolean).join(", "))}
+            />
           : inp(instName, setInstName, "text", "Institution / Organisation name")}
         <div style={{ display:"flex", background:"#FAF7F2", borderRadius:9, padding:3, border:"1px solid #E8E3DA" }}>
           {["College","Company","Government","NGO"].map(t=>(
@@ -465,9 +466,8 @@ function AuthModal({ show, onClose, mode, setMode }) {
             </button>
           ))}
         </div>
-        {inp(adminName,   setAdminName,   "text", "Admin contact name")}
-        {inp(instCity,    setInstCity,    "text", "City, State")}
-        {inp(instWebsite, setInstWebsite, "url",  "Website URL (optional)")}
+        {inp(instCity, setInstCity, "text", instType === "College" ? "City, State (auto-filled — edit if needed)" : "City, State")}
+        {inp(instWebsite, setInstWebsite, "url", "Website URL (optional)")}
       </>
     )
 
@@ -587,7 +587,7 @@ function AuthModal({ show, onClose, mode, setMode }) {
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
               {mode === "signup" && renderPathFields()}
 
-              {inp(email, setEmail, "email", "Email address")}
+              {inp(email, setEmail, "email", selectedPath === "institution" ? (instType === "College" ? "College email ID" : "Official email ID") : "Email address")}
 
               {/* Password */}
               <div>
