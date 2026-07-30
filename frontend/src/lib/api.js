@@ -73,6 +73,7 @@ export const profileApi = {
 // ══════════════════════════════════════════
 export const orgApi = {
   verifyEmail: () => request("POST", "/org/verify-email"),
+  verifyDocument: (url, docType = "naac_certificate") => request("POST", "/org/verify-document", { url, docType }),
 
   // Self-serve student join links — share one link instead of inviting
   // hundreds of students one at a time via the "+ Invite" modal.

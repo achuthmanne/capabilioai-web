@@ -11,6 +11,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { supabase } from "../lib/supabase"
 import { orgApi } from "../lib/api"
+import { verificationLevel, VERIFICATION_LEVEL_LABEL } from "../lib/orgVerification"
 import InstitutionPublicProfile from "./InstitutionPublicProfile"
 
 // ─── Design Tokens — Futuristic dark theme (matches institution-path-prototype) ─
@@ -701,15 +702,6 @@ function timeSince(dateStr) {
   if (s < 3600) return `${Math.floor(s / 60)}m ago`
   if (s < 86400) return `${Math.floor(s / 3600)}h ago`
   return `${Math.floor(s / 86400)}d ago`
-}
-
-function verificationLevel(userData) {
-  const vs = userData?.verificationStatus || userData?.verification_status || ""
-  if (vs === "fully_verified" || vs === "verified") return 4
-  if (vs === "document_submitted") return 3
-  if (vs === "domain_verified") return 2
-  if (vs === "email_verified") return 1
-  return 0
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -2901,6 +2893,8 @@ function SettingsPage({ userData, user, initialTab = "profile", reloadAudit, aud
   const [localVLevelBoost, setLocalVLevelBoost] = useState(0)
   const [verifyMsg, setVerifyMsg] = useState(null)
   const [verifyError, setVerifyError] = useState(null)
+  const [docUploading, setDocUploading] = useState(false)
+  const docInputRef = useRef(null)
 
   async function handleEmailVerify() {
     setVerifyMsg(null); setVerifyError(null)
@@ -2922,6 +2916,28 @@ function SettingsPage({ userData, user, initialTab = "profile", reloadAudit, aud
   async function handleDomainVerify() {
     // Level 2 — opens email to ops team
     window.location.href = `mailto:verify@capabilio.com?subject=Domain Verification Request — ${userData?.org_name || "Institution"}&body=Hi Capabilio team,%0A%0APlease initiate domain verification for our institution.%0A%0AOrganisation: ${userData?.org_name || ""}%0AWebsite: ${userData?.org_website || ""}%0AAdmin: ${userData?.org_admin_name || ""}%0A%0AThank you.`
+  }
+
+  // Level 3 — real self-serve upload, replacing the old email-only
+  // instruction. Uploads straight to the same org-media Supabase Storage
+  // bucket already used for profile/cover photos (uploadOrgPhoto, defined
+  // above), then hands the resulting URL to the backend so it can record it
+  // and advance verificationStatus server-side (PC-7 protected column).
+  async function handleDocumentUpload(file) {
+    setDocUploading(true); setVerifyMsg(null); setVerifyError(null)
+    try {
+      const url = await uploadOrgPhoto(user.id, file, "naac_cert")
+      await orgApi.verifyDocument(url)
+      await auditLog(user.id, user.id, userData?.name || "Admin",
+        "Uploaded accreditation document (NAAC certificate)", "verification.document_submitted", "setting", "verification")
+      setLocalVLevelBoost(3)
+      setVerifyMsg("✅ Document uploaded! Level 3 complete — awaiting final review for Level 4.")
+      reloadAudit()
+    } catch (e) {
+      setVerifyError(e.message.includes("bucket") ? "Storage not configured. Ask admin to create 'org-media' bucket in Supabase." : e.message)
+    } finally {
+      setDocUploading(false)
+    }
   }
 
   async function handleSave() {
@@ -3015,7 +3031,7 @@ function SettingsPage({ userData, user, initialTab = "profile", reloadAudit, aud
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <Card style={{ background: T.skyL, border: `1px solid ${T.sky}30` }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: T.sky, marginBottom: 4 }}>
-              Verification Level: {vLevel}/4 — {["Unverified", "Email Verified", "Domain Verified", "Document Submitted", "Fully Verified"][vLevel]}
+              Verification Level: {vLevel}/4 — {VERIFICATION_LEVEL_LABEL[vLevel]}
             </div>
             <div style={{ fontSize: 12, color: T.ink3 }}>Complete all 4 levels to get the Verified Institution badge and unlock full platform features.</div>
           </Card>
@@ -3048,7 +3064,10 @@ function SettingsPage({ userData, user, initialTab = "profile", reloadAudit, aud
                     )}
                     {!v.done && v.level === vLevel + 1 && v.level === 3 && (
                       <div style={{ fontSize: 11, color: T.sky, marginTop: 4 }}>
-                        Email your NAAC certificate / incorporation docs to verify@capabilio.com
+                        Upload your NAAC certificate or accreditation / incorporation document (PDF, JPG, PNG).
+                        {userData?.org_naac_cert_url && (
+                          <> · <a href={userData.org_naac_cert_url} target="_blank" rel="noreferrer" style={{ color: T.sky }}>View uploaded document</a></>
+                        )}
                       </div>
                     )}
                     {!v.done && v.level === vLevel + 1 && v.level === 4 && (
@@ -3061,12 +3080,24 @@ function SettingsPage({ userData, user, initialTab = "profile", reloadAudit, aud
                 {v.done ? (
                   <span style={{ fontSize: 12, color: T.green, fontWeight: 700 }}>Verified ✓</span>
                 ) : v.level === vLevel + 1 ? (
-                  <Btn
-                    style={{ fontSize: 11, padding: "5px 12px" }}
-                    onClick={v.level === 1 ? handleEmailVerify : v.level === 2 ? handleDomainVerify : undefined}
-                  >
-                    {v.level === 1 ? "Verify Email →" : v.level === 2 ? "Request →" : v.level === 3 ? "Email Docs →" : "Awaiting Review"}
-                  </Btn>
+                  <>
+                    {v.level === 3 && (
+                      <input ref={docInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: "none" }}
+                        onChange={e => { const f = e.target.files?.[0]; if (f) handleDocumentUpload(f) }} />
+                    )}
+                    <Btn
+                      style={{ fontSize: 11, padding: "5px 12px" }}
+                      disabled={v.level === 3 && docUploading}
+                      onClick={
+                        v.level === 1 ? handleEmailVerify
+                        : v.level === 2 ? handleDomainVerify
+                        : v.level === 3 ? () => docInputRef.current?.click()
+                        : undefined
+                      }
+                    >
+                      {v.level === 1 ? "Verify Email →" : v.level === 2 ? "Request →" : v.level === 3 ? (docUploading ? "Uploading…" : "Upload Document →") : "Awaiting Review"}
+                    </Btn>
+                  </>
                 ) : (
                   <span style={{ fontSize: 11, color: T.ink4 }}>Locked</span>
                 )}
@@ -3152,6 +3183,20 @@ export default function InstitutionOS({ user, userData, onNavigate }) {
     window.addEventListener("resize", handleResize)
     return () => window.removeEventListener("resize", handleResize)
   }, [])
+
+  // Auto-complete Level 1 (Email Verification) instead of making the admin
+  // find Settings → Verification and click a button. A signed-in Supabase
+  // session already proves the email was confirmed (Supabase gates session
+  // issuance on email confirmation) — the manual click added no new
+  // information, it just left honestly-already-verified accounts stuck
+  // showing "pending" until someone happened to visit that tab. Fire-and-
+  // forget: this is additive-only (never downgrades an existing higher level)
+  // and the same PC-7-protected backend route already used by the manual button.
+  useEffect(() => {
+    if (verificationLevel(userData) < 1) {
+      orgApi.verifyEmail().catch(() => {}) // silent — Settings tab still offers a manual retry
+    }
+  }, [user?.id, userData?.verificationStatus]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch all org data at root level — shared across pages
   const { data: members,       loading: membersLoading,  error: membersError,  reload: reloadMembers  } = useOrgMembers(user?.id)

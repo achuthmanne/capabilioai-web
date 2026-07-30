@@ -10,6 +10,7 @@
  *   onAction(name) — optional, called for follow / request-access / brochure
  */
 import { useEffect, useRef } from "react"
+import { verificationLevel } from "../lib/orgVerification"
 
 const IP_CSS = `
 .ipx{--bg:#0b0a08;--bg2:#13100c;--line:rgba(255,255,255,.10);--line2:rgba(255,255,255,.16);
@@ -113,13 +114,16 @@ const IP_CSS = `
 const C = { am:'#dc8b18',gold:'#f6c453',green:'#4fd4a3',blue:'#74a8ff',purple:'#ab93ff',cyan:'#54d9e0',pink:'#ff8db1',red:'#ff8177',teal:'#34d4bf' }
 
 function buildBody(d) {
-  // d = { orgName, orgLocation, orgType, naacGrade, studentCount, verified }
+  // d = { orgName, orgLocation, orgType, naacGrade, studentCount, vLevel, websiteProvided, adminProvided, docUploaded }
   const orgName     = d.orgName     || "Your Institution"
   const orgLocation = d.orgLocation || "India"
   const orgType     = d.orgType     || "Higher Education"
   const naacGrade   = d.naacGrade   || ""
   const studentCount= d.studentCount|| "—"
-  const verified    = d.verified
+  const vLevel      = d.vLevel || 0
+  // "verified" here means Level 4 (Capabilio Verified badge) — the real,
+  // manually-reviewed top level, not a single always-guessed boolean.
+  const verified    = vLevel >= 4
 
   // Split org name: first word bold, rest italic-serif (like VIT / Vellore layout)
   const nameParts   = orgName.trim().split(/\s+/)
@@ -129,17 +133,25 @@ function buildBody(d) {
   const naacBadge   = naacGrade ? ` · NAAC ${naacGrade}` : ""
   const verBadge    = verified
     ? `<span class="livdot"></span>✦ Capabilio Verified${naacBadge}`
+    : vLevel > 0
+    ? `<span style="width:6px;height:6px;border-radius:50%;background:var(--gold);display:inline-block"></span> ✦ Verification in progress (Level ${vLevel}/4)`
     : `<span style="width:6px;height:6px;border-radius:50%;background:var(--gold);display:inline-block"></span> ✦ Profile Active — Verification Pending`
 
+  // Every row here maps to a real, checkable signal — see
+  // lib/orgVerification.js for the level source of truth and
+  // InstitutionOS.jsx's Settings → Verification tab for where each one is
+  // actually completed. Nothing below is a static placeholder.
   const TRUST=[
-    [verified ? '✓' : '⏳', verified ? 'Domain & email verified' : 'Email verification pending', verified ? 'y' : 'p'],
-    ['✓','Profile created & active','y'],
+    [vLevel >= 1 ? '✓' : '○', vLevel >= 1 ? 'Email verified' : 'Email verification pending', vLevel >= 1 ? 'y' : 'n'],
+    [vLevel >= 2 ? '✓' : d.websiteProvided ? '⏳' : '○', vLevel >= 2 ? 'Institution domain verified' : d.websiteProvided ? 'Website on file — domain verification pending' : 'Website not provided', vLevel >= 2 ? 'y' : d.websiteProvided ? 'p' : 'n'],
+    [d.adminProvided ? '✓' : '○', d.adminProvided ? 'Admin name & role on file' : 'Admin details not provided', d.adminProvided ? 'y' : 'n'],
+    [d.docUploaded ? '✓' : '○', d.docUploaded ? 'NAAC / accreditation document uploaded' : 'NAAC certificate not uploaded', d.docUploaded ? 'y' : 'n'],
     [naacGrade ? '✓' : '○', naacGrade ? `NAAC ${naacGrade} grade on record` : 'NAAC grade not yet added', naacGrade ? 'y' : 'n'],
-    [verified ? '✓' : '○','Admin identity verified', verified ? 'y' : 'n'],
-    ['⏳','Trust Seal review in progress','p'],
-    ['○','Placement data not yet linked','n'],
-    ['○','Research output not yet linked','n'],
+    [verified ? '✓' : d.docUploaded ? '⏳' : '○', verified ? 'Fully verified by Capabilio' : d.docUploaded ? 'Manual review in progress' : 'Awaiting document upload for review', verified ? 'y' : d.docUploaded ? 'p' : 'n'],
   ]
+  // Weighted, not binary — each real signal contributes independently so
+  // partial progress shows as partial credit, not a flat 40/72 toggle.
+  const trustScore = Math.min(100, vLevel * 20 + (d.websiteProvided ? 5 : 0) + (d.adminProvided ? 5 : 0) + (d.docUploaded ? 5 : 0) + (naacGrade ? 5 : 0))
 
   // Placeholder stats — will be real once placement data is captured
   const HLS=[
@@ -184,7 +196,7 @@ function buildBody(d) {
       🤝 Recruiter partners will appear here as they connect through Capabilio
     </div>
     <div class="ip-bottom-row">
-      <div class="ip-trust"><div class="ip-trust-score" style="color:${verified ? 'var(--green)' : 'var(--gold)'}">${verified ? '72' : '40'}</div><div class="ip-trust-label">Trust Score / 100</div>${trustChecks}</div>
+      <div class="ip-trust"><div class="ip-trust-score" style="color:${verified ? 'var(--green)' : 'var(--gold)'}">${trustScore}</div><div class="ip-trust-label">Trust Score / 100</div>${trustChecks}</div>
       <div><div class="ip-sh"><h2>Landmark Outcomes</h2><div class="hl"></div></div><div class="ip-hl-grid">${hlCards}</div></div>
     </div>
     <div class="ip-cta"><div class="cta-text" style="flex:1"><h3>Partner with ${orgName}</h3><p>Access verified, skill-scored talent. NDA-gated. Sign a data agreement and receive curated shortlists in 48 hours.</p></div><button class="btnP" data-ip="reqAccess" style="white-space:nowrap">⚡ Request Access</button><button class="btnG" data-ip="follow" style="white-space:nowrap">+ Follow Institution</button></div>
@@ -275,12 +287,20 @@ export default function InstitutionPublicProfile({ onBack, onAction, userData, m
     : (userData?.student_count || "—")
 
   const profileData = {
-    orgName:      userData?.org_name      || "Your Institution",
-    orgLocation:  userData?.org_location  || "",
-    orgType:      userData?.org_inst_type || userData?.org_industry || "Higher Education",
-    naacGrade:    userData?.org_naac_grade|| "",
-    studentCount: studentCount || "—",
-    verified:     !!userData?.verified,
+    orgName:        userData?.org_name      || "Your Institution",
+    orgLocation:    userData?.org_location  || "",
+    orgType:        userData?.org_inst_type || userData?.org_industry || "Higher Education",
+    naacGrade:      userData?.org_naac_grade|| "",
+    studentCount:   studentCount || "—",
+    // Real, institution-specific verification (Settings → Verification /
+    // lib/orgVerification.js) — replaces the old `userData.verified` boolean,
+    // which is a generic professional-identity flag (backend/routes/verify.js)
+    // that institution accounts never go through, so it was always false and
+    // the whole trust card always showed the same fake "40, pending" state.
+    vLevel:         verificationLevel(userData),
+    websiteProvided:!!userData?.org_website,
+    adminProvided:  !!(userData?.org_admin_name && userData?.org_admin_role),
+    docUploaded:    !!userData?.org_naac_cert_url,
   }
 
   useEffect(() => {

@@ -1631,16 +1631,23 @@ export default function Onboarding({ user, onComplete, onBack }) {
   const [authError, setAuthError] = useState("")
 
   // Organisation-specific (institution path — new flow)
-  const [orgSubType, setOrgSubType] = useState("")           // "college" | "company"
-  const [orgInstName, setOrgInstName] = useState("")         // institution or company name
-  const [orgAdminName, setOrgAdminName] = useState("")       // admin's full name
+  // Pre-filled from the signup modal's user_metadata (same pattern as
+  // college/branch above), since App.jsx's "Create account" modal already
+  // collected institution name / admin name / city / website / org type —
+  // re-asking for them here would be duplicate data entry. Still editable.
+  const [orgSubType, setOrgSubType] = useState(
+    (user?.user_metadata?.institution_type || "").toLowerCase() === "college" ? "college"
+    : user?.user_metadata?.institution_type ? "company" : ""
+  )
+  const [orgInstName, setOrgInstName] = useState(user?.user_metadata?.institution_name || "")
+  const [orgAdminName, setOrgAdminName] = useState(user?.user_metadata?.admin_name || user?.user_metadata?.full_name || "")
   const [orgAdminRole, setOrgAdminRole] = useState("")       // admin's job title / role
   const [orgInstType, setOrgInstType] = useState("")         // University/College/etc (college only)
-  const [orgLocation, setOrgLocation] = useState("")         // state / city
+  const [orgLocation, setOrgLocation] = useState(user?.user_metadata?.city || "")
   const [orgBatchSize, setOrgBatchSize] = useState("")       // annual batch size (college)
   const [orgDepts, setOrgDepts] = useState([])               // selected departments (college)
   const [orgNaacGrade, setOrgNaacGrade] = useState("")       // NAAC grade optional
-  const [orgWebsite, setOrgWebsite] = useState("")           // institution or company website
+  const [orgWebsite, setOrgWebsite] = useState(user?.user_metadata?.website || "")           // institution or company website
   const [orgIndustry, setOrgIndustry] = useState("")         // company industry
   const [orgCompanySize, setOrgCompanySize] = useState("")   // company headcount range
   const [orgHiringVolume, setOrgHiringVolume] = useState("") // annual hires
@@ -1736,11 +1743,19 @@ export default function Onboarding({ user, onComplete, onBack }) {
       // Check if the user already has a path from signup (stored in user_metadata).
       // If so, skip the path-selection screen and jump directly to that path's first step.
       const signupPath = user?.user_metadata?.path || null
+      // Institution signups already picked College vs Company/Government/NGO
+      // in the "Create account" modal (user_metadata.institution_type) — skip
+      // the redundant "what type of org" screen and go straight to the
+      // matching detail step, pre-filled from what they already entered.
+      const signupInstType = (user?.user_metadata?.institution_type || "").toLowerCase()
+      const institutionFirstStep = signupInstType === "college" ? "org-college"
+        : signupInstType ? "org-company-workspace"
+        : "org-type"
       const PATH_FIRST_STEP = {
         student:      "search",
         professional: "professional",
         authority:    "authority",
-        institution:  "org-type",
+        institution:  institutionFirstStep,
       }
       if (signupPath && PATH_FIRST_STEP[signupPath]) {
         setPath(signupPath)
