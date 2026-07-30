@@ -261,8 +261,18 @@ router.post("/challenges/:id/submit", requireAuth, async (req, res) => {
     // ── Fetch challenge + profile IN PARALLEL ──────────────────────────────────
     const [challengeRes, profileRes, attemptsRes] = await Promise.all([
       supabase.from("challenges").select("*").eq("id", id).single(),
+      // BUG FIX (2026-07-30): `last_arena_day` is not a real column (see the
+      // /streaks/:uid fix below for the confirmed schema) — PostgREST rejects
+      // the whole select when any column is unknown, so this call silently
+      // returned profile: null on EVERY submission through this endpoint.
+      // That meant userElo fell back to the 800 default below regardless of
+      // the user's real ELO, and userProfile.{arena_completed,arena_streak,
+      // last_arena_date} were all undefined going into enqueueGrading — the
+      // grading worker's ELO-delta math and streak fallback logic were both
+      // computing against wrong/missing baselines for every queued (async)
+      // arena submission, not just this one user's.
       supabase.from("profiles")
-        .select("elo_rating, arena_completed, arena_streak, last_arena_date, last_arena_day")
+        .select("elo_rating, arena_completed, arena_streak, last_arena_date")
         .eq("id", userId).single(),
       // Count prior submissions from arena_history (production table)
       supabase.from("arena_history")
@@ -292,7 +302,7 @@ router.post("/challenges/:id/submit", requireAuth, async (req, res) => {
       userProfile: {
         arena_completed:  profile?.arena_completed,
         arena_streak:     profile?.arena_streak,
-        last_arena_date:  profile?.last_arena_date || profile?.last_arena_day,
+        last_arena_date:  profile?.last_arena_date,
       },
       attempts,
     })
@@ -350,11 +360,20 @@ router.get("/streaks/:uid", async (req, res) => {
     const { uid } = req.params
 
     // Profile streak data
-    const { data: profile } = await supabase
+    // BUG FIX (2026-07-30): this selected `last_arena_day`, a column that
+    // does not exist on profiles (confirmed live — the real column is
+    // `last_arena_date`, already selected right before it). Supabase/
+    // PostgREST rejects the entire select when ANY requested column is
+    // unknown, so `profile` came back undefined on every single call —
+    // the Streaks tab showed 0/blank for every field derived from it
+    // (current_streak, last_active_date) regardless of what was actually
+    // in the DB, even for users who really had completed challenges.
+    const { data: profile, error: profileErr } = await supabase
       .from("profiles")
-      .select("arena_streak, last_arena_date, last_arena_day, arena_completed")
+      .select("arena_streak, last_arena_date, arena_completed")
       .eq("id", uid)
       .single()
+    if (profileErr) console.error("[arena/v2/streaks] profile fetch failed:", profileErr.message)
 
     // 52 weeks of streak events (heatmap source)
     const fromDate = new Date(Date.now() - 364 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
@@ -435,7 +454,7 @@ router.get("/streaks/:uid", async (req, res) => {
     return res.json({
       current_streak:     currentStreak,
       longest_streak:     longestStreak,
-      last_active_date:   profile?.last_arena_date || profile?.last_arena_day || null,
+      last_active_date:   profile?.last_arena_date || null,
       total_active_days:  (events || []).length,
       total_submissions:  profile?.arena_completed || 0,
       freeze_available:   2,   // TODO: compute from plan

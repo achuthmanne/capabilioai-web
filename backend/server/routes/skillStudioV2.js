@@ -23,7 +23,7 @@ import { supabaseAdmin } from "../lib/supabase.js"
 
 import { slugify, getNodeById, listNodesForDomain, getEdgesFrom } from "../lib/skillStudio/graphService.js"
 import { createOrGetJourney, listJourneysForUser, archiveJourney, completeJourney } from "../lib/skillStudio/journeyPlanner.js"
-import { seedIfFirstVisit } from "../lib/skillStudio/roleGapSeeder.js"
+import { seedIfFirstVisit, syncMissingJourneys } from "../lib/skillStudio/roleGapSeeder.js"
 import { getOrCreateModule } from "../lib/skillStudio/contentGenerator.js"
 import { getOrGenerateQuestion, scoreAnswer } from "../lib/skillStudio/quizEngine.js"
 import { getDueReviews, submitRevisionReview, readDecayedState, reinforce } from "../lib/skillStudio/memoryEngine.js"
@@ -46,10 +46,25 @@ router.get("/home", requireAuth, async (req, res) => {
     // instead of leaving Learning Home permanently empty (2026-07-29 fix —
     // see roleGapSeeder.js header). No-ops silently on any later visit, and
     // never blocks /home from responding even if seeding itself fails.
-    const seeded = await seedIfFirstVisit(userId).catch((e) => {
+    const seededFirstVisit = await seedIfFirstVisit(userId).catch((e) => {
       console.error("[skill-studio/home] role-gap seeding threw despite its non-throwing contract:", e.message)
       return false
     })
+
+    // BUG FIX (2026-07-30): seedIfFirstVisit only ever ran ONCE per user and
+    // (before today) only seeded the 4 lowest-scoring "critical" skills — so
+    // an 11-skill role like Data Analyst permanently topped out at 4 Learning
+    // Home journeys no matter how the user's real skill_graph changed later.
+    // syncMissingJourneys is idempotent and cheap (no-ops once nothing is
+    // missing), so it's safe to run on every single /home load — this is
+    // what actually keeps Skill Studio's journey list in sync with the same
+    // role-skill list Aura's radar reads, instead of freezing it at
+    // whatever happened to exist on day one.
+    const synced = await syncMissingJourneys(userId).catch((e) => {
+      console.error("[skill-studio/home] syncMissingJourneys threw despite its non-throwing contract:", e.message)
+      return { seeded: [] }
+    })
+    const seeded = seededFirstVisit || (synced?.seeded?.length > 0)
 
     const [journeys, recommendations, dueReviews] = await Promise.all([
       listJourneysForUser(userId),
