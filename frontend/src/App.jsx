@@ -813,6 +813,22 @@ function App() {
                 data.username = autoUsername
               }
             }
+            // Backfill missing display_name from auth metadata — same pattern as the
+            // username backfill above. Root cause of Arena leaderboard showing
+            // "Anonymous": arena_leaderboard reads fall back to profiles.display_name
+            // / profiles.username when the domain-scoped table query errors, and for
+            // any profile row where both are empty (older accounts, or accounts
+            // created before this field was reliably written on onboarding) that
+            // fallback had nothing to show. This runs once per session per the same
+            // window.__displayNameSetAttempted guard style as __usernameSetAttempted.
+            if (!data.display_name) {
+              if (!window.__displayNameSetAttempted) {
+                window.__displayNameSetAttempted = true
+                const autoDisplayName = u.user_metadata?.full_name || u.email?.split("@")[0] || "Member"
+                await userDoc.update(u.id, { display_name: autoDisplayName }).catch(() => {})
+                data.display_name = autoDisplayName
+              }
+            }
             const isDone =
               data.onboarding_complete === true ||
               data.onboardingComplete === true

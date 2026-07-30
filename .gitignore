@@ -61,6 +61,11 @@ dist_verify_bugfix
 dist_verify_arena
 dist_verify_cors
 dist_verify_cors_final2
+dist_verify_errbound
+dist_verify_errbound2
+# Catch-all: every one-off verification build this session has been named
+# dist_verify_<something> — stop adding them one at a time.
+dist_verify_*
 _verify_pure.mjs
 _verify_sync_tmp.mjs
 frontend/src/config/.write_test.tmp

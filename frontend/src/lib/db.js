@@ -395,18 +395,52 @@ export const arenaDb = {
     return unsub
   },
 
+  // NOTE (2026-07-30 fix): arena_leaderboard's REAL columns, per
+  // missing_tables_migration.sql, are `domain`, `elo_rating`, `arena_completed`
+  // — NOT `domain_key`, `elo`, `tasks_done` as every call site here and in
+  // Arena.jsx previously assumed, and there is no `rank` column at all. Every
+  // read against this table filtered/ordered on a column that doesn't exist,
+  // which made PostgREST return an error on every single call — silently
+  // swallowed by `if (error || !data?.length) fetchProfiles()` — so the app
+  // ALWAYS fell through to the profiles-wide fallback ranking, never actually
+  // using arena_leaderboard at all. That fallback then rendered "Anonymous"
+  // for any account whose profiles.display_name/username were both empty
+  // (see the parallel display_name backfill added in App.jsx's auth-state
+  // handler), and "0" missions always, because the fallback's field names
+  // (`user_id`, `tasks_done`) never matched what LeaderboardWidget reads
+  // (`uid`, `missionsCompleted`). Both code paths below are now normalized to
+  // emit the exact same shape the widget expects:
+  // { id, uid, display_name, elo, missionsCompleted, streak }
+
   /** Upsert leaderboard — gracefully skips if table missing */
   upsertLeaderboard: async (uid, domainKey, data) => {
+    const row = { id: `${uid}_${domainKey}`, user_id: uid, domain: domainKey, updated_at: new Date().toISOString() }
+    if (data.display_name !== undefined)      row.display_name = data.display_name
+    if (data.elo !== undefined)               row.elo_rating = data.elo
+    if (data.elo_delta !== undefined)         row.elo_delta = data.elo_delta
+    if (data.tasks_done !== undefined)        row.arena_completed = data.tasks_done
+    if (data.arena_streak !== undefined)      row.arena_streak = data.arena_streak
+    // `rank` isn't a persisted column — it's always computed client-side
+    // from ordered position (see LeaderboardWidget) or via getRankCount().
     const { error } = await supabase
       .from('arena_leaderboard')
-      .upsert({ id: `${uid}_${domainKey}`, user_id: uid, domain_key: domainKey, ...data, updated_at: new Date().toISOString() }, { onConflict: 'id' })
+      .upsert(row, { onConflict: 'id' })
     if (error && error.code !== '42P01') console.error('arenaDb.upsertLeaderboard error:', error.message)
     return !error
   },
 
   getLeaderboardEntry: async (uid, domainKey) => {
     const { data } = await supabase.from('arena_leaderboard').select('*').eq('id', `${uid}_${domainKey}`).single()
-    return data || null
+    if (!data) return null
+    return {
+      id: data.id,
+      uid: data.user_id,
+      display_name: data.display_name,
+      elo: data.elo_rating ?? 0,
+      tasks_done: data.arena_completed ?? 0,
+      missionsCompleted: data.arena_completed ?? 0,
+      streak: data.arena_streak ?? 0,
+    }
   },
 
   /** Listen to leaderboard — falls back to profiles.elo_rating ranking if table missing */
@@ -418,10 +452,11 @@ export const arenaDb = {
         .order('elo_rating', { ascending: false })
         .limit(20)
         .then(({ data }) => callback((data || []).map(p => ({
-          user_id:  p.id,
+          id: p.id,
+          uid: p.id,
           display_name: p.display_name || p.username || "Anonymous",
           elo:      p.elo_rating || 0,
-          tasks_done: p.arena_completed || 0,
+          missionsCompleted: p.arena_completed || 0,
           streak:   p.arena_streak || 0,
         }))))
 
@@ -429,10 +464,23 @@ export const arenaDb = {
     supabase
       .from('arena_leaderboard')
       .select('*')
-      .eq('domain_key', domainKey)
-      .order('elo', { ascending: false })
+      .eq('domain', domainKey)
+      .order('elo_rating', { ascending: false })
       .limit(20)
-      .then(({ data, error }) => { if (error || !data?.length) fetchProfiles(); else callback(data) })
+      .then(({ data, error }) => {
+        if (error || !data?.length) {
+          fetchProfiles()
+        } else {
+          callback(data.map(row => ({
+            id: row.id,
+            uid: row.user_id,
+            display_name: row.display_name || row.username || "Anonymous",
+            elo: row.elo_rating ?? 0,
+            missionsCompleted: row.arena_completed ?? 0,
+            streak: row.arena_streak ?? 0,
+          })))
+        }
+      })
 
     // Poll every 30s instead of a broadcast Realtime channel on the entire
     // profiles table (which would fan out to every connected user on every

@@ -12,26 +12,21 @@ import { useState, useEffect, useCallback } from "react"
 import { skillStudioV2Api } from "../lib/api"
 import { D, cardStyle } from "./tokens"
 import AIExplainPanel from "./AIExplainPanel"
-import VisualLearningPanel from "./VisualLearningPanel"
-import PlaygroundPanel from "./PlaygroundPanel"
 import TutorPanel from "./TutorPanel"
 import QuizPanel from "./QuizPanel"
-import MemoryPanel from "./MemoryPanel"
-import ArenaGatePanel from "./ArenaGatePanel"
 import InterviewGatePanel from "./InterviewGatePanel"
-import EvidencePanel from "./EvidencePanel"
 import NextSkillPanel from "./NextSkillPanel"
 
+// Visual, Playground, Memory, Arena, and Evidence tabs removed 2026-07-30 —
+// Visual had no real diagram generation (static "no diagram yet" placeholder
+// for every module), and the other three weren't delivering working content
+// either. Kept: Learn, Tutor, Quiz, Interview. If any of these are rebuilt
+// with real functioning content later, re-add the tab entry + panel import.
 const TABS = [
   { id: "learn", label: "Learn" },
-  { id: "visual", label: "Visual" },
-  { id: "playground", label: "Playground" },
   { id: "tutor", label: "Tutor" },
   { id: "quiz", label: "Quiz" },
-  { id: "memory", label: "Memory" },
-  { id: "arena", label: "Arena" },
   { id: "interview", label: "Interview" },
-  { id: "evidence", label: "Evidence" },
 ]
 
 export default function ModuleRuntime({ moduleRequest, onArenaGo, onExitToJourney, recommendations = [] }) {
@@ -39,11 +34,11 @@ export default function ModuleRuntime({ moduleRequest, onArenaGo, onExitToJourne
   const [mode, setMode] = useState("intermediate")
   const [module, setModule] = useState(null)
   const [blocks, setBlocks] = useState([])
-  const [moduleState, setModuleState] = useState(null)
   const [activeTab, setActiveTab] = useState("learn")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [quizPassed, setQuizPassed] = useState(null)
+  const [completed, setCompleted] = useState(false)
 
   const generate = useCallback(async (nextLevel, nextMode) => {
     setLoading(true); setError(null)
@@ -57,8 +52,6 @@ export default function ModuleRuntime({ moduleRequest, onArenaGo, onExitToJourne
       })
       setModule(result.module)
       setBlocks(result.blocks || [])
-      const { moduleState } = await skillStudioV2Api.getModule(result.module.id)
-      setModuleState(moduleState)
       await skillStudioV2Api.startModule(result.module.id)
     } catch (e) {
       setError(e.message)
@@ -79,7 +72,10 @@ export default function ModuleRuntime({ moduleRequest, onArenaGo, onExitToJourne
     const passed = quizPassed?.passed ?? false
     try {
       await skillStudioV2Api.completeModule(module.id, { quizScore: score, passed })
-      setActiveTab("evidence")
+      // Evidence tab was removed (2026-07-30) — there's nowhere left to route
+      // to, so just surface a completion banner in place instead of switching
+      // to a tab that no longer renders anything.
+      setCompleted(true)
     } catch (e) {
       setError(e.message)
     }
@@ -126,18 +122,19 @@ export default function ModuleRuntime({ moduleRequest, onArenaGo, onExitToJourne
 
       <div style={{ ...cardStyle, padding: 20, minHeight: 260 }}>
         {activeTab === "learn" && <AIExplainPanel contentBlocks={blocks} mode={mode} onModeChange={changeMode} />}
-        {activeTab === "visual" && <VisualLearningPanel contentBlocks={blocks} />}
-        {activeTab === "playground" && <PlaygroundPanel moduleId={module.id} initialState={moduleState?.playground_state} />}
         {activeTab === "tutor" && <TutorPanel skillLabel={skillLabel} moduleOverview={blocks.find((b) => b.block_type === "overview")?.content} />}
         {activeTab === "quiz" && (
           <QuizPanel skillGraphNodeId={moduleRequest.skillGraphNodeId} skillLabel={skillLabel} moduleId={module.id}
             onSessionComplete={(result) => { setQuizPassed(result); if (result.passed) completeModule() }} />
         )}
-        {activeTab === "memory" && <MemoryPanel />}
-        {activeTab === "arena" && <ArenaGatePanel skillJourneyId={moduleRequest.skillJourneyId} skillGraphNodeId={moduleRequest.skillGraphNodeId} domainKey={moduleRequest.domainKey} onArenaGo={onArenaGo} />}
         {activeTab === "interview" && <InterviewGatePanel moduleId={module.id} skillLabel={skillLabel} domainKey={moduleRequest.domainKey} />}
-        {activeTab === "evidence" && <EvidencePanel skillLabel={skillLabel} />}
       </div>
+
+      {completed && (
+        <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 10, background: D.indigo + "12", color: D.indigo, fontSize: 12, fontWeight: 700 }}>
+          ✓ Module completed — quiz score {quizPassed?.score ?? 0}%.
+        </div>
+      )}
 
       {quizPassed && !quizPassed.passed && (
         <div style={{ marginTop: 12, fontSize: 12, color: D.amber }}>

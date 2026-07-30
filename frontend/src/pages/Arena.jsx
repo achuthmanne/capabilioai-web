@@ -4383,8 +4383,11 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
             // so the leaderboard row's streak was never actually written.
             arena_streak: streak,
           })
-          const rank = await arenaDb.getRankCount(domainKey, newElo)
-          await arenaDb.upsertLeaderboard(uid, domainKey, { rank })
+          // NOTE: arena_leaderboard has no `rank` column — rank is always
+          // derived from ordered position (LeaderboardWidget) or from
+          // getRankCount() against profiles.elo_rating, never persisted.
+          // The previous upsertLeaderboard(uid, domainKey, { rank }) call
+          // here wrote a nonexistent column on every mission submit.
         } catch {}
 
         // ── Proof artifact — mints a recruiter-visible career asset ──────────────
