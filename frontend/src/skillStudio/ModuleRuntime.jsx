@@ -11,21 +11,31 @@
 import { useState, useEffect, useCallback } from "react"
 import { skillStudioV2Api } from "../lib/api"
 import { D, cardStyle } from "./tokens"
+import { FLAGS } from "../config/featureFlags"
 import AIExplainPanel from "./AIExplainPanel"
 import TutorPanel from "./TutorPanel"
 import QuizPanel from "./QuizPanel"
 import InterviewGatePanel from "./InterviewGatePanel"
 import NextSkillPanel from "./NextSkillPanel"
+import RevisePanel from "./RevisePanel"
+import WatchPanel from "./WatchPanel"
 
 // Visual, Playground, Memory, Arena, and Evidence tabs removed 2026-07-30 —
 // Visual had no real diagram generation (static "no diagram yet" placeholder
 // for every module), and the other three weren't delivering working content
-// either. Kept: Learn, Tutor, Quiz, Interview. If any of these are rebuilt
-// with real functioning content later, re-add the tab entry + panel import.
-const TABS = [
+// either. Kept: Learn, Tutor, Quiz, Interview. Revise added 2026-07-30
+// (Phase 1 part B) — real cached content from module_revision_content, not a
+// placeholder. Watch added 2026-07-30 (Phase 2a) — real narrated walkthrough
+// from module_narration, behind FLAGS.skill_studio_video (see below, built
+// with the tab list dynamically rather than statically so it can be turned
+// off independently of the rest of Skill Studio V2). If any of the removed
+// tabs are rebuilt with real functioning content later, re-add the tab entry
+// + panel import.
+const BASE_TABS = [
   { id: "learn", label: "Learn" },
   { id: "tutor", label: "Tutor" },
   { id: "quiz", label: "Quiz" },
+  { id: "revise", label: "Revise" },
   { id: "interview", label: "Interview" },
 ]
 
@@ -39,6 +49,9 @@ export default function ModuleRuntime({ moduleRequest, onArenaGo, onExitToJourne
   const [error, setError] = useState(null)
   const [quizPassed, setQuizPassed] = useState(null)
   const [completed, setCompleted] = useState(false)
+  const [remedial, setRemedial] = useState(null)
+  const [remedialLoading, setRemedialLoading] = useState(false)
+  const [remedialError, setRemedialError] = useState(null)
 
   const generate = useCallback(async (nextLevel, nextMode) => {
     setLoading(true); setError(null)
@@ -66,20 +79,44 @@ export default function ModuleRuntime({ moduleRequest, onArenaGo, onExitToJourne
     generate(level, nextMode)
   }
 
-  async function completeModule() {
+  async function completeModule(result) {
     if (!module) return
-    const score = quizPassed?.score ?? 0
-    const passed = quizPassed?.passed ?? false
+    const score = result?.score ?? quizPassed?.score ?? 0
+    const passed = result?.passed ?? quizPassed?.passed ?? false
+    const sessionId = result?.sessionId ?? quizPassed?.sessionId ?? null
     try {
-      await skillStudioV2Api.completeModule(module.id, { quizScore: score, passed })
+      // sessionId lets the server recompute score/passed from quiz_attempts
+      // itself (quizEngine.getSessionResult) instead of trusting these
+      // client-sent values — see POST /modules/:id/complete's 2026-07-30 fix.
+      const completion = await skillStudioV2Api.completeModule(module.id, { sessionId, quizScore: score, passed })
       // Evidence tab was removed (2026-07-30) — there's nowhere left to route
       // to, so just surface a completion banner in place instead of switching
       // to a tab that no longer renders anything.
       setCompleted(true)
+      // Server is authoritative: if it disagreed with the client's "passed"
+      // guess (e.g. stale state), reflect that back into quizPassed/missedTopics
+      // so the remedial-regeneration UI stays consistent with what actually happened.
+      setQuizPassed((prev) => ({ ...prev, score: completion.quizScore, passed: completion.passed, missedTopics: completion.missedTopics }))
     } catch (e) {
       setError(e.message)
     }
   }
+
+  // Phase 1 part C: on a failed session, fetch ONE targeted remedial
+  // supplement (extra explanation + example aimed at the missed topics)
+  // instead of just telling the learner to "revisit" the same static content.
+  // Never persisted server-side — regenerated fresh each time it's requested.
+  const fetchRemedial = useCallback(async (missedTopics) => {
+    if (!module) return
+    setRemedialLoading(true); setRemedialError(null)
+    try {
+      const { supplement } = await skillStudioV2Api.moduleRemedial(module.id, { missedTopics })
+      setRemedial(supplement)
+    } catch (e) {
+      setRemedialError(e.message)
+    }
+    setRemedialLoading(false)
+  }, [module])
 
   if (loading && !module) {
     return <div style={{ padding: 40, textAlign: "center", color: D.muted, fontSize: 13 }}>Assembling your module…</div>
@@ -95,6 +132,12 @@ export default function ModuleRuntime({ moduleRequest, onArenaGo, onExitToJourne
   }
 
   const skillLabel = moduleRequest.skillLabel || moduleRequest.skillName
+  // Watch tab inserted right after Learn when the flag is on — placed there
+  // (not at the end) since it's an alternate way to consume the SAME lesson
+  // content Learn shows, not a separate downstream step like Quiz/Interview.
+  const TABS = FLAGS.skill_studio_video
+    ? [BASE_TABS[0], { id: "watch", label: "Watch" }, ...BASE_TABS.slice(1)]
+    : BASE_TABS
 
   return (
     <div>
@@ -122,10 +165,30 @@ export default function ModuleRuntime({ moduleRequest, onArenaGo, onExitToJourne
 
       <div style={{ ...cardStyle, padding: 20, minHeight: 260 }}>
         {activeTab === "learn" && <AIExplainPanel contentBlocks={blocks} mode={mode} onModeChange={changeMode} />}
+        {activeTab === "watch" && FLAGS.skill_studio_video && (
+          <WatchPanel moduleId={module.id} diagramSpec={blocks.find((b) => b.block_type === "diagram_spec")?.content} />
+        )}
         {activeTab === "tutor" && <TutorPanel skillLabel={skillLabel} moduleOverview={blocks.find((b) => b.block_type === "overview")?.content} />}
         {activeTab === "quiz" && (
           <QuizPanel skillGraphNodeId={moduleRequest.skillGraphNodeId} skillLabel={skillLabel} moduleId={module.id}
-            onSessionComplete={(result) => { setQuizPassed(result); if (result.passed) completeModule() }} />
+            onSessionComplete={(result) => {
+              setQuizPassed(result)
+              setRemedial(null)
+              if (result.passed) {
+                completeModule(result)
+              } else {
+                // QuizPanel's client-side result only carries score/passed/
+                // sessionId, not the missed-topic prompts (those live in
+                // quiz_attempts server-side, see quizEngine.getSessionResult).
+                // The remedial route tolerates an empty missedTopics array
+                // (falls back to a general targeted-review supplement), so
+                // this is a safe request even without that detail.
+                fetchRemedial([])
+              }
+            }} />
+        )}
+        {activeTab === "revise" && (
+          <RevisePanel moduleId={module.id} skillLabel={skillLabel} jobTitle={moduleRequest.jobTitle} level={level} />
         )}
         {activeTab === "interview" && <InterviewGatePanel moduleId={module.id} skillLabel={skillLabel} domainKey={moduleRequest.domainKey} />}
       </div>
@@ -136,9 +199,24 @@ export default function ModuleRuntime({ moduleRequest, onArenaGo, onExitToJourne
         </div>
       )}
 
-      {quizPassed && !quizPassed.passed && (
-        <div style={{ marginTop: 12, fontSize: 12, color: D.amber }}>
-          Quiz score was below 70% — revisit the explanation before retrying, rather than repeating the quiz cold.
+      {quizPassed && !quizPassed.passed && !completed && (
+        <div style={{ marginTop: 12, padding: "12px 14px", borderRadius: 10, background: D.amber + "12", border: `1px solid ${D.amber}33` }}>
+          <div style={{ fontSize: 12, color: D.amber, fontWeight: 700, marginBottom: 6 }}>
+            Quiz score was below the 80% pass mark — here's a targeted follow-up before you retry.
+          </div>
+          {remedialLoading && <div style={{ fontSize: 12, color: D.muted }}>Preparing a targeted example…</div>}
+          {remedialError && <div style={{ fontSize: 12, color: D.rose }}>{remedialError}</div>}
+          {remedial?.extra_explanation && (
+            <div style={{ fontSize: 12, color: D.text2, lineHeight: 1.6, marginBottom: 8 }}>{remedial.extra_explanation}</div>
+          )}
+          {remedial?.extra_example?.scenario && (
+            <div style={{ fontSize: 12, color: D.text1 }}>
+              <strong>{remedial.extra_example.scenario}</strong>
+              {remedial.extra_example.walkthrough && (
+                <div style={{ color: D.text2, marginTop: 4, whiteSpace: "pre-wrap" }}>{remedial.extra_example.walkthrough}</div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

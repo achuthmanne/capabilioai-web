@@ -89,6 +89,17 @@ export const FLAGS = {
   // either way, and stays the instant rollback path if V2 needs to be
   // turned back off after launch.
   skill_studio_v2: envFlag("SKILL_STUDIO_V2", false),
+
+  // Skill Studio Phase 2a (2026-07-30) — narrated visual walkthrough ("Watch"
+  // tab): real Deepgram Aura-2 TTS narration synced to the existing
+  // diagram_spec animation, cached per module (see module_narration /
+  // narrationEngine.js). Deliberately a SEPARATE flag from skill_studio_v2
+  // (not nested under it) so narration can be rolled back independently if
+  // TTS/storage misbehaves, without having to disable all of Skill Studio V2.
+  // Still requires skill_studio_v2 to be on too — narration only renders
+  // inside ModuleRuntime, which only exists when V2 is enabled. Off by
+  // default per the same "new surface ships flag-off first" convention.
+  skill_studio_video: envFlag("SKILL_STUDIO_VIDEO", false),
 }
 
 export function isEnabled(flag) {

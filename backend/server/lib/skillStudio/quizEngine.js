@@ -19,6 +19,12 @@ const ATTEMPTS = "quiz_attempts"
 const DETERMINISTIC_TYPES = new Set(["mcq", "fill_blank"])
 const AI_REVIEW_WEIGHT_CAP = 0.6 // AI-rubric contribution never exceeds 60% of the pass/fail signal
 
+// Skill Studio Phase 1 (2026-07-30) — module completion pass floor. Named,
+// single source of truth: quizEngine.getSessionResult (server, authoritative)
+// and QuizPanel.jsx (client, display-only — mirrors this exact value so the
+// UI never shows a pass/fail that contradicts what the server will decide).
+export const MODULE_PASS_THRESHOLD = 80
+
 export async function getOrGenerateQuestion({ skillGraphNodeId, skillLabel, moduleId = null, difficulty = "intermediate", questionType = "mcq" }) {
   const { data: cached, error: findErr } = await supabaseAdmin
     .from(QUESTIONS).select("*")
@@ -117,4 +123,41 @@ export async function scoreAnswer({ userId, sessionId, questionId, answer, hintU
   }
 
   return { attempt, correct, explanation: question.payload?.explanation || null }
+}
+
+/**
+ * getSessionResult — the SERVER-AUTHORITATIVE recompute of a quiz session's
+ * score/pass state from quiz_attempts, scoped to (sessionId, userId).
+ * ---------------------------------------------------------------------------
+ * Before this, POST /modules/:id/complete trusted a client-computed
+ * {quizScore, passed} straight from req.body — a client can send anything
+ * there. Every individual answer was already scored server-side
+ * (scoreAnswer above), but the SESSION-LEVEL pass/fail aggregate was never
+ * re-verified: gating progress is exactly the kind of decision that must be
+ * server-side and deterministic (never trust a client-supplied boolean for
+ * something that unlocks Arena / writes proof_objects).
+ *
+ * Also returns missedTopics — the prompts of every question answered
+ * incorrectly in this session — so a failed session can drive targeted
+ * remedial regeneration instead of just re-showing the same lesson.
+ */
+export async function getSessionResult({ sessionId, userId }) {
+  const { data: attempts, error } = await supabaseAdmin
+    .from(ATTEMPTS)
+    .select("correct, quiz_question_id, quiz_questions(payload)")
+    .eq("session_id", sessionId)
+    .eq("user_id", userId)
+  if (error) throw error
+
+  const rows = attempts || []
+  const answeredCount = rows.length
+  const correctCount = rows.filter((r) => r.correct).length
+  const score = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : 0
+  const passed = answeredCount > 0 && score >= MODULE_PASS_THRESHOLD
+  const missedTopics = rows
+    .filter((r) => !r.correct)
+    .map((r) => r.quiz_questions?.payload?.prompt)
+    .filter(Boolean)
+
+  return { score, passed, answeredCount, correctCount, missedTopics }
 }

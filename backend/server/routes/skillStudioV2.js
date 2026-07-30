@@ -24,8 +24,9 @@ import { supabaseAdmin } from "../lib/supabase.js"
 import { slugify, getNodeById, listNodesForDomain, getEdgesFrom } from "../lib/skillStudio/graphService.js"
 import { createOrGetJourney, listJourneysForUser, archiveJourney, completeJourney } from "../lib/skillStudio/journeyPlanner.js"
 import { seedIfFirstVisit, syncMissingJourneys } from "../lib/skillStudio/roleGapSeeder.js"
-import { getOrCreateModule } from "../lib/skillStudio/contentGenerator.js"
-import { getOrGenerateQuestion, scoreAnswer } from "../lib/skillStudio/quizEngine.js"
+import { getOrCreateModule, generateRemedialSupplement, getOrCreateRevisionContent } from "../lib/skillStudio/contentGenerator.js"
+import { getOrCreateNarration } from "../lib/skillStudio/narrationEngine.js"
+import { getOrGenerateQuestion, scoreAnswer, getSessionResult, MODULE_PASS_THRESHOLD } from "../lib/skillStudio/quizEngine.js"
 import { getDueReviews, submitRevisionReview, readDecayedState, reinforce } from "../lib/skillStudio/memoryEngine.js"
 import { checkReadiness, handoff } from "../lib/skillStudio/arenaBridge.js"
 import { writeModuleEvidence, writeInterviewEvidence, publishEvidence } from "../lib/skillStudio/evidenceBridge.js"
@@ -210,11 +211,31 @@ router.post("/modules/:moduleId/complete", requireAuth, async (req, res) => {
   try {
     const userId = req.user.id
     const { moduleId } = req.params
-    const { quizScore = 0, passed = true } = req.body
+    const { sessionId, quizScore: clientScore = 0, passed: clientPassed = true } = req.body
 
     const { data: mod, error: modErr } = await supabaseAdmin.from("modules").select("*, skill_graph_nodes(label, slug, domain_key)").eq("id", moduleId).maybeSingle()
     if (modErr) throw modErr
     if (!mod) return res.status(404).json({ error: "Module not found" })
+
+    // BUG FIX (2026-07-30, Phase 1): this used to trust req.body.passed
+    // directly — a client could send { passed: true } regardless of what
+    // actually happened in the quiz. Every individual answer is already
+    // scored server-side (quizEngine.scoreAnswer), so when the caller sends
+    // the sessionId it used for the quiz, recompute the pass/fail from the
+    // real quiz_attempts rows instead of trusting the client's summary.
+    // Falls back to the client-supplied values ONLY when no sessionId is
+    // given (keeps older callers working) — logged so that path is visible.
+    let quizScore = clientScore
+    let passed = clientPassed
+    let missedTopics = []
+    if (sessionId) {
+      const result = await getSessionResult({ sessionId, userId })
+      quizScore = result.score
+      passed = result.passed
+      missedTopics = result.missedTopics
+    } else {
+      console.warn(`[skill-studio/modules/:id/complete] no sessionId provided for module ${moduleId} — trusting client-supplied passed/quizScore (legacy path)`)
+    }
 
     const { data: state, error: stateErr } = await supabaseAdmin
       .from("module_state")
@@ -233,9 +254,99 @@ router.post("/modules/:moduleId/complete", requireAuth, async (req, res) => {
     }
     await logEvent({ userId, eventType: "module_completed", skillId: mod.skill_graph_node_id, moduleId, score: quizScore })
 
-    res.json({ moduleState: state, evidenceCreated: !!evidence, evidence })
+    res.json({ moduleState: state, evidenceCreated: !!evidence, evidence, quizScore, passed, passThreshold: MODULE_PASS_THRESHOLD, missedTopics })
   } catch (e) {
     console.error("[skill-studio/modules/:id/complete]", e.message)
+    res.status(500).json({ error: e.message })
+  }
+})
+
+// ── Remedial regeneration (Phase 1) ─────────────────────────────────────────
+// Called when a module quiz fails the MODULE_PASS_THRESHOLD floor. Returns
+// ONE additional targeted example — never persisted (see
+// contentGenerator.generateRemedialSupplement's header for why: this is
+// specific to one learner's missed topics and must never leak into the
+// shared modules/module_content_blocks cache other learners read from).
+router.post("/modules/:moduleId/remedial", requireAuth, async (req, res) => {
+  try {
+    const { moduleId } = req.params
+    const { missedTopics = [] } = req.body
+    const { data: mod, error: modErr } = await supabaseAdmin
+      .from("modules").select("*, skill_graph_nodes(label)").eq("id", moduleId).maybeSingle()
+    if (modErr) throw modErr
+    if (!mod) return res.status(404).json({ error: "Module not found" })
+
+    const { data: profile } = await supabaseAdmin.from("profiles").select("target_role, keyword").eq("id", req.user.id).maybeSingle()
+    const jobTitle = profile?.target_role || profile?.keyword || "Professional"
+
+    const supplement = await generateRemedialSupplement({
+      topic: mod.skill_graph_nodes?.label, jobTitle, level: mod.level, missedTopics,
+    })
+    res.json({ supplement })
+  } catch (e) {
+    console.error("[skill-studio/modules/:id/remedial]", e.message)
+    if (e.code === "generation_failed") return res.status(502).json({ error: e.message })
+    res.status(500).json({ error: e.message })
+  }
+})
+
+// ── Revision content (Phase 1) ──────────────────────────────────────────────
+// Flashcards / cheat sheet / interview questions for the "Revise" tab.
+// Cached per module (module_revision_content, unique on module_id) — shared
+// across every learner on the same module, same pattern as the lesson cache.
+router.get("/modules/:moduleId/revision", requireAuth, async (req, res) => {
+  try {
+    const { moduleId } = req.params
+    const { data: mod, error: modErr } = await supabaseAdmin
+      .from("modules").select("*, skill_graph_nodes(label)").eq("id", moduleId).maybeSingle()
+    if (modErr) throw modErr
+    if (!mod) return res.status(404).json({ error: "Module not found" })
+
+    const { data: profile } = await supabaseAdmin.from("profiles").select("target_role, keyword").eq("id", req.user.id).maybeSingle()
+    const jobTitle = profile?.target_role || profile?.keyword || "Professional"
+
+    const { revision } = await getOrCreateRevisionContent({
+      moduleId, topic: mod.skill_graph_nodes?.label, jobTitle, level: mod.level,
+    })
+    res.json({ revision })
+  } catch (e) {
+    console.error("[skill-studio/modules/:id/revision]", e.message)
+    if (e.code === "generation_failed") return res.status(502).json({ error: e.message })
+    res.status(500).json({ error: e.message })
+  }
+})
+
+// ── Narration (Phase 2a) ────────────────────────────────────────────────────
+// "Watch" tab — narrated visual walkthrough. Cached per module
+// (module_narration, unique on module_id) exactly like the lesson and
+// revision content — one generation serves every learner on this module.
+// Never touches quiz scoring/ELO/gating — purely additive to the Learn
+// experience. Behind FLAGS.skill_studio_video client-side (this route itself
+// has no separate server-side flag check, matching every other Skill Studio
+// V2 route — the whole namespace is unreachable unless the frontend surface
+// that calls it is rendered, same pattern as /modules/:id/revision).
+router.get("/modules/:moduleId/narration", requireAuth, async (req, res) => {
+  try {
+    const { moduleId } = req.params
+    const { data: mod, error: modErr } = await supabaseAdmin
+      .from("modules").select("*, skill_graph_nodes(label)").eq("id", moduleId).maybeSingle()
+    if (modErr) throw modErr
+    if (!mod) return res.status(404).json({ error: "Module not found" })
+
+    const { data: contentBlocks } = await supabaseAdmin
+      .from("module_content_blocks").select("*").eq("module_id", moduleId).order("ordinal")
+
+    const { data: profile } = await supabaseAdmin.from("profiles").select("target_role, keyword").eq("id", req.user.id).maybeSingle()
+    const jobTitle = profile?.target_role || profile?.keyword || "Professional"
+
+    const { narration } = await getOrCreateNarration({
+      moduleId, topic: mod.skill_graph_nodes?.label, jobTitle, level: mod.level, contentBlocks: contentBlocks || [],
+    })
+    res.json({ narration })
+  } catch (e) {
+    console.error("[skill-studio/modules/:id/narration]", e.message)
+    if (e.code === "no_content") return res.status(409).json({ error: e.message, code: e.code })
+    if (e.code === "generation_failed") return res.status(502).json({ error: e.message, code: e.code })
     res.status(500).json({ error: e.message })
   }
 })

@@ -795,35 +795,149 @@ Return ONLY this JSON (no markdown, no extra text):
 // ── 7. Skill Studio lesson generation ─────────────────────────────────────────
 // Sticky: generated once per topic, stored in frontend state / Supabase until
 // the user marks the module complete.
-export async function geminiGenerateLesson({ topic, jobTitle, skillLevel, duration }) {
+// Skill Studio Phase 1 (2026-07-30) — richer lesson schema. Additive: every
+// field from the original schema (title/objective/sections/keyPoints/quiz/
+// practiceTask/nextTopics) is unchanged, so any code still reading only
+// those fields keeps working. New fields (hook, worked_example,
+// common_mistake, checkpoint_question, diagram_spec) are optional in every
+// consumer (contentGenerator.blocksFromLesson, AIExplainPanel) — a provider
+// that omits them degrades to the old lesson shape instead of breaking.
+export async function geminiGenerateLesson({ topic, jobTitle, skillLevel, duration, remedial = false, missedTopics = [] }) {
   const genai    = client()
   const genModel = genai.getGenerativeModel({ model: GEMINI_FLASH })
 
-  const prompt = `Generate a ${duration}-minute structured micro-lesson on "${topic}" for a ${skillLevel} ${jobTitle} in the Indian tech industry.
+  const remedialNote = remedial
+    ? `\n\nThis is a REMEDIAL re-teach — the learner just failed a verification quiz on: ${missedTopics.join(", ") || "this topic"}. Do not repeat the same explanation. Focus the "hook", "worked_example", and "common_mistake" specifically on why those exact points are commonly misunderstood, with one additional fully-worked numeric example.`
+    : ""
+
+  const prompt = `Generate a ${duration}-minute structured micro-lesson on "${topic}" for a ${skillLevel} ${jobTitle} in the Indian tech industry.${remedialNote}
 
 Return JSON:
 {
   "title": "...",
   "objective": "1 sentence learning goal",
+  "hook": "1-2 sentences — why this matters, a real business reason, said conversationally",
   "sections": [
     { "heading": "...", "content": "2-3 paragraphs", "codeExample": "// code if relevant, else omit" }
   ],
+  "worked_example": {
+    "company": "a real, plausible Indian company (e.g. Swiggy, Zomato, Flipkart, Razorpay)",
+    "scenario": "1-2 sentence real business scenario using this skill",
+    "walkthrough": "step-by-step solution, numbered, ending in a concrete numeric/factual result"
+  },
+  "common_mistake": {
+    "wrong": "a realistic wrong approach/code/answer a learner would actually write",
+    "correct": "the corrected version",
+    "why": "1-2 sentences on why the wrong version fails"
+  },
+  "checkpoint_question": { "prompt": "one quick comprehension check tied directly to the hook/example above", "answer": "short correct answer" },
+  "diagram_spec": {
+    "type": "flow | merge | comparison | hierarchy",
+    "nodes": [ { "id": "n1", "label": "..." } ],
+    "edges": [ { "from": "n1", "to": "n2", "label": "optional" } ],
+    "steps": [ "1-4 short strings, each describing what becomes visible/highlighted at that reveal step" ]
+  },
   "keyPoints": ["...", "..."],
   "quiz": [
     { "question": "...", "options": ["a","b","c","d"], "correct": 0, "explanation": "..." }
   ],
   "practiceTask": "1 hands-on exercise",
   "nextTopics": ["...", "..."]
-}`
+}
+
+diagram_spec must be small (max 6 nodes, max 4 steps) and directly illustrate the core concept — omit it only if the topic has no natural visual structure.`
 
   const result = await genModel.generateContent({
     contents: [{ role: "user", parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 2000, responseMimeType: "application/json" },
+    generationConfig: { maxOutputTokens: 2600, responseMimeType: "application/json" },
   })
 
   const parsed = JSON.parse(result.response.text())
   if (!parsed?.title) throw new Error("Gemini returned invalid lesson structure")
   return parsed
+}
+
+// Lightweight follow-up call for a remedial supplement ONLY — used when a
+// learner fails the module quiz (see quizEngine.MODULE_PASS_THRESHOLD) and
+// needs one more targeted example, not a full lesson regeneration. Kept
+// separate from geminiGenerateLesson's remedial mode above so the "just give
+// me one more example" path is fast/cheap and never touches the shared
+// content cache (this content is per-learner, never persisted to the shared
+// modules/module_content_blocks tables).
+export async function geminiGenerateRemedialSupplement({ topic, jobTitle, skillLevel, missedTopics }) {
+  const genai    = client()
+  const genModel = genai.getGenerativeModel({ model: GEMINI_FLASH })
+
+  const prompt = `A ${skillLevel} ${jobTitle} just failed a quiz on "${topic}", missing: ${missedTopics.join(", ") || topic}.
+Give them ONE more targeted, fully-worked example plus a short plain-language explanation that directly addresses those gaps — do not repeat generic background they already saw.
+
+Return JSON:
+{ "extra_explanation": "2-4 sentences, plain language, targeted at the missed points", "extra_example": { "scenario": "...", "walkthrough": "step-by-step, ending in a concrete result" } }`
+
+  const result = await genModel.generateContent({
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    generationConfig: { maxOutputTokens: 700, responseMimeType: "application/json" },
+  })
+  return JSON.parse(result.response.text())
+}
+
+// Revision content — flashcards / cheat sheet / interview questions,
+// generated once per module and cached (see module_revision_content in
+// contentGenerator.js) exactly like the lesson itself: shared across every
+// learner studying the same (skill, level) tuple, never per-user.
+export async function geminiGenerateRevisionContent({ topic, jobTitle, skillLevel }) {
+  const genai    = client()
+  const genModel = genai.getGenerativeModel({ model: GEMINI_FLASH })
+
+  const prompt = `Create revision material for "${topic}" for a ${skillLevel} ${jobTitle}.
+
+Return JSON:
+{
+  "flashcards": [ { "front": "short question/term", "back": "short answer" } ] (5-8 items),
+  "cheat_sheet": ["short punchy fact/formula/syntax line", "..."] (5-10 items),
+  "interview_qs": [ { "question": "...", "answer_outline": "2-3 sentence model answer outline" } ] (3-5 items)
+}`
+
+  const result = await genModel.generateContent({
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    generationConfig: { maxOutputTokens: 1400, responseMimeType: "application/json" },
+  })
+  return JSON.parse(result.response.text())
+}
+
+// Phase 2a narration script — turns a module's ALREADY-GENERATED lesson
+// content (hook/sections/worked_example/common_mistake/diagram_spec steps)
+// into a short, timed spoken-narration script for the "Watch" tab. This is
+// NOT a second content-generation pass — no new facts/examples are invented
+// here, it only rephrases existing lesson content into natural spoken form.
+// Segments are capped (6-8) and short (TTS-friendly, <350 chars) — each maps
+// 1:1 to a diagram_spec step when tiedToStep is set, so the client can drive
+// DiagramSpecView's animation off the audio queue's current segment index
+// instead of needing precise audio-duration timestamps.
+export async function geminiGenerateNarrationScript({ topic, jobTitle, skillLevel, lessonSummary, diagramSteps = [] }) {
+  const genai    = client()
+  const genModel = genai.getGenerativeModel({ model: GEMINI_FLASH })
+
+  const prompt = `You are narrating an existing lesson on "${topic}" for a ${skillLevel} ${jobTitle}, out loud, as a short spoken walkthrough (not reading text verbatim — natural spoken phrasing, contractions ok, second person "you").
+
+Lesson content already written (do not invent new facts beyond this):
+${lessonSummary}
+
+${diagramSteps.length > 0 ? `The lesson has an animated diagram with these steps, in order: ${diagramSteps.map((s, i) => `(${i}) ${s}`).join(" | ")}` : "This lesson has no animated diagram."}
+
+Return JSON:
+{
+  "segments": [
+    { "text": "1-2 short spoken sentences, under 350 characters", "tiedToStep": <diagram step index this segment narrates, or null if not tied to a diagram step> }
+  ]
+}
+Rules: first segment is a short spoken hook/intro (tiedToStep null). ${diagramSteps.length > 0 ? "Include exactly one segment per diagram step, tiedToStep matching that step's index, in the same order." : ""} Last segment is a short spoken wrap-up (tiedToStep null). 6-8 segments total.`
+
+  const result = await genModel.generateContent({
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    generationConfig: { maxOutputTokens: 900, responseMimeType: "application/json" },
+  })
+  return JSON.parse(result.response.text())
 }
 
 // ── 8. Skill Studio learning path generation ───────────────────────────────────

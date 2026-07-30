@@ -512,6 +512,14 @@ export const skillStudioV2Api = {
   recommendations:    () => request("GET", "/skill-studio/recommendations"),
   refreshRecommendations: (opts = {}) => request("POST", "/skill-studio/recommendations/refresh", opts),
   arenaIngestion:     (limit = 10) => request("GET", `/skill-studio/arena/ingestion?limit=${limit}`),
+  // Phase 1 (2026-07-30): remedial regeneration (never cached — ephemeral,
+  // targeted at one learner's missed topics) and revision content (cached
+  // per-module via module_revision_content, shared like the base lesson).
+  moduleRemedial:     (moduleId, data) => request("POST", `/skill-studio/modules/${moduleId}/remedial`, data),
+  moduleRevision:     (moduleId) => request("GET", `/skill-studio/modules/${moduleId}/revision`),
+  // Phase 2a (2026-07-30): narrated visual walkthrough. Cached per module,
+  // same lazy generate-on-first-request pattern as moduleRevision above.
+  moduleNarration:    (moduleId) => request("GET", `/skill-studio/modules/${moduleId}/narration`),
 }
 
 // ══════════════════════════════════════════

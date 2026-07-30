@@ -10,6 +10,15 @@ import { D, sectionLabel } from "./tokens"
 
 const QUESTIONS_PER_SESSION = 3
 
+// Display-only mirror of quizEngine.js's MODULE_PASS_THRESHOLD (server is
+// the source of truth — POST /modules/:id/complete recomputes this exact
+// number from quiz_attempts server-side and ignores whatever this component
+// sends as "passed"; this constant only controls what the UI SHOWS the
+// learner before that server round-trip happens, so it must never drift
+// from the server value or the UI would say "passed" and then have the
+// server disagree). 2026-07-30 Phase 1: raised from 70 to 80.
+const MODULE_PASS_THRESHOLD = 80
+
 export default function QuizPanel({ skillGraphNodeId, skillLabel, moduleId, onSessionComplete }) {
   const [sessionId, setSessionId] = useState(null)
   const [question, setQuestion] = useState(null)
@@ -41,7 +50,11 @@ export default function QuizPanel({ skillGraphNodeId, skillLabel, moduleId, onSe
 
       if (nextAnswered >= QUESTIONS_PER_SESSION) {
         const score = Math.round((nextCorrect / nextAnswered) * 100)
-        onSessionComplete?.({ score, passed: score >= 70 })
+        // sessionId is included so the caller can send it to
+        // POST /modules/:id/complete, which recomputes score/passed from
+        // quiz_attempts server-side and ignores this client-side "passed" —
+        // see quizEngine.getSessionResult for the authoritative version.
+        onSessionComplete?.({ score, passed: score >= MODULE_PASS_THRESHOLD, sessionId })
       } else {
         const { firstQuestion } = await skillStudioV2Api.quizStart({ skillGraphNodeId, skillLabel, moduleId })
         setQuestion(firstQuestion); setAnswer("")
@@ -64,11 +77,12 @@ export default function QuizPanel({ skillGraphNodeId, skillLabel, moduleId, onSe
 
   if (answeredCount >= QUESTIONS_PER_SESSION) {
     const score = Math.round((correctCount / answeredCount) * 100)
+    const passed = score >= MODULE_PASS_THRESHOLD
     return (
       <div>
         <div style={{ ...sectionLabel, marginBottom: 10 }}>Quiz Complete</div>
-        <div style={{ fontSize: 22, fontWeight: 900, color: score >= 70 ? D.emerald : D.rose }}>{score}%</div>
-        <div style={{ fontSize: 11, color: D.muted, marginTop: 4 }}>{correctCount}/{answeredCount} correct</div>
+        <div style={{ fontSize: 22, fontWeight: 900, color: passed ? D.emerald : D.rose }}>{score}%</div>
+        <div style={{ fontSize: 11, color: D.muted, marginTop: 4 }}>{correctCount}/{answeredCount} correct · pass mark {MODULE_PASS_THRESHOLD}%</div>
       </div>
     )
   }
