@@ -601,17 +601,34 @@ plt.close('all')
 json.dumps({'stdout': __buf.getvalue(), 'error': __error, 'images': __images})
 `
 
+// Every path a user could reasonably guess for "the dataset" — the panel
+// header advertises '/data/orders.csv', but users legitimately also try
+// bare 'orders.csv' (resolves to cwd, '/' in Pyodide), '/orders.csv', and
+// 'data.csv'/'/data/data.csv' (the exact filename gemini.js's own starterCode
+// comment suggests: "In production: df = pd.read_csv('data.csv')"). Any of
+// these failing with a raw pandas C-parser traceback ("the code written is
+// correct" but it 500s) was a real, confusing bug — not a data-completeness
+// issue. Writing the same CSV to every plausible path costs nothing and
+// removes this whole failure class instead of forcing users to memorize one
+// exact internal convention.
+const DATASET_ALIAS_PATHS = [
+  "/data/orders.csv", "/data/raw.csv", "/data/data.csv",
+  "/orders.csv", "/data.csv", "orders.csv", "data.csv",
+]
+
 /**
  * Runs real Python. The mission's seeded dataset is mounted at
- * /data/orders.csv (also /data/raw.csv) and preloaded as `df`.
+ * /data/orders.csv (also aliased to every other path a user might
+ * reasonably guess — see DATASET_ALIAS_PATHS) and preloaded as `df`.
  * Returns { stdout, error, images: [base64Png…] }.
  */
 export async function runPython(mission, code, onStatus) {
   const py = await loadPython(onStatus)
   onStatus?.("Running your code…")
   const csv = datasetToCsv(mission)
-  py.FS.writeFile("/data/orders.csv", csv)
-  py.FS.writeFile("/data/raw.csv", csv)
+  for (const path of DATASET_ALIAS_PATHS) {
+    py.FS.writeFile(path, csv)
+  }
   py.globals.set("__USER_CODE", code)
   const raw = await py.runPythonAsync(PY_RUNNER)
   return JSON.parse(raw)

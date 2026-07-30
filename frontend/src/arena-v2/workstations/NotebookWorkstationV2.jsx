@@ -123,7 +123,15 @@ export default function NotebookWorkstationV2({ challengeInstanceId, skill, diff
       const py = pyRef.current
       setPyStatus("Running your code…")
       try { py.FS.mkdir("/data") } catch { /* already exists */ }
-      py.FS.writeFile("/data/customers.csv", payload?.datasetCsv || "")
+      // Alias to every path a user might reasonably guess, not just the one
+      // the starter code happens to use — same fix as the legacy notebook
+      // workstation's DATASET_ALIAS_PATHS (workstationEngine.js): a plausible
+      // user-typed pd.read_csv(...) call shouldn't 500 with a raw pandas
+      // C-parser traceback just because it didn't guess our exact convention.
+      const csvContent = payload?.datasetCsv || ""
+      for (const path of ["/data/customers.csv", "/customers.csv", "customers.csv", "/data/data.csv", "/data.csv", "data.csv"]) {
+        py.FS.writeFile(path, csvContent)
+      }
       py.globals.set("__USER_CODE", code)
       const raw = await py.runPythonAsync(PY_RUNNER)
       setRunResult(JSON.parse(raw))
