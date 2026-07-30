@@ -311,7 +311,7 @@ function ScoreRing({ score, size=48 }) {
 
 function Card({ children, style={}, accent=null }) {
   return (
-    <div style={{
+    <div className="pf-card" style={{
       background: "rgba(255,255,255,0.04)",
       backdropFilter: "blur(24px)",
       WebkitBackdropFilter: "blur(24px)",
@@ -324,7 +324,7 @@ function Card({ children, style={}, accent=null }) {
       ...(accent ? { borderTop: `2px solid ${accent}` } : {}),
       ...style,
     }}>
-      {accent && <div style={{
+      {accent && <div className="pf-decor" style={{
         position:"absolute", top:0, left:0, right:0, height:120,
         background:`linear-gradient(180deg, ${accent}10 0%, transparent 100%)`,
         pointerEvents:"none", borderRadius:"24px 24px 0 0",
@@ -429,7 +429,7 @@ function SkillBadge({ label, pct, color=C.blue }) {
       {/* Label + bar */}
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:7 }}>
-          <span style={{ fontSize:13, fontWeight:700, color:C.ink, whiteSpace:"nowrap", overflow:"hidden",
+          <span className="pf-skill-label" style={{ fontSize:13, fontWeight:700, color:C.ink, whiteSpace:"nowrap", overflow:"hidden",
             textOverflow:"ellipsis", maxWidth:130 }}>{label}</span>
           <span style={{
             fontSize:11, fontWeight:900, color:"#fff",
@@ -1347,6 +1347,24 @@ export default function Portfolio({ username: usernameProp }) {
   // code in this file still branches on it defensively.
   const [activeView,  setActiveView]  = useState("overview")
 
+  // PDF export fix (2026-07-30) — recharts' <ResponsiveContainer> measures its
+  // parent's pixel box once via ResizeObserver, sized for the live on-screen
+  // viewport. When window.print() switches the page into print layout (a
+  // different width/margins), the chart doesn't automatically re-measure, so
+  // the Skill Radar printed cut-off/oddly-scaled. Bumping this key right
+  // before printing forces React to unmount+remount the chart, giving
+  // ResponsiveContainer a fresh measurement against the actual print layout.
+  const [printKey, setPrintKey] = useState(0)
+  useEffect(() => {
+    const bump = () => setPrintKey(k => k + 1)
+    window.addEventListener("beforeprint", bump)
+    window.addEventListener("afterprint", bump)
+    return () => {
+      window.removeEventListener("beforeprint", bump)
+      window.removeEventListener("afterprint", bump)
+    }
+  }, [])
+
   const refs = { overview:useRef(), summary:useRef(), activity:useRef(), skills:useRef(), challenges:useRef(), interviews:useRef(), experience:useRef(), certificates:useRef(), testimonials:useRef() }
 
   useEffect(()=>{
@@ -1622,7 +1640,32 @@ export default function Portfolio({ username: usernameProp }) {
         @keyframes liveDot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.7)}}
         @keyframes scanLine{0%{transform:translateY(-100%);opacity:0}20%{opacity:0.6}80%{opacity:0.6}100%{transform:translateY(400%);opacity:0}}
         @keyframes archetypeFloat{0%,100%{transform:translateY(0px)}50%{transform:translateY(-4px)}}
-        @media print{.np{display:none!important}}
+        @media print{
+          /* PDF export fix (2026-07-30) — window.print() had almost no print
+             stylesheet before this (only .np{display:none}), so the dark
+             theme + card grid layout printed badly broken. Root causes found
+             by tracing the actual print output:
+             1. Chrome's print pipeline strips background-color/backdrop-filter
+                by default ("background graphics" off) — since every card here
+                uses a NEAR-WHITE text color (C.ink) meant to sit on a
+                near-black background, stripping the background silently
+                produced near-white text on a white PDF page: invisible words,
+                exactly what was reported. print-color-adjust:exact forces the
+                browser to print backgrounds/colors as authored instead.
+             2. CSS Grid/Flexbox card layouts (Skill Radar, Skill Levels,
+                Activity heatmap, every <Card>) have no atomicity hint for the
+                print paginator, so browsers freely slice a card in half
+                across a page boundary. break-inside:avoid on .pf-card fixes
+                this for every card at once (single shared Card component).
+             3. The skill-label span had a hard maxWidth:130 ellipsis that
+                clips text even harder once print margins/scale are applied
+                ("SQL (Advan…" never resolving) — relaxed for print only. */
+          .np{display:none!important}
+          html,body,*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+          .pf-card{break-inside:avoid;page-break-inside:avoid}
+          .pf-skill-label{max-width:none!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important}
+          .pf-decor{display:none!important}
+        }
         ::-webkit-scrollbar{width:6px}
         ::-webkit-scrollbar-track{background:${C.bg}}
         ::-webkit-scrollbar-thumb{background:${C.border2};border-radius:99px}
@@ -2238,7 +2281,7 @@ export default function Portfolio({ username: usernameProp }) {
                         <span style={{width:4,height:14,background:aConfig?.palette?.accent||C.teal,borderRadius:2,display:"inline-block"}}/>
                         Skill Radar
                       </div>
-                      <ResponsiveContainer width="100%" height={220}>
+                      <ResponsiveContainer key={printKey} width="100%" height={220}>
                         <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="75%">
                           <PolarGrid stroke="rgba(255,255,255,0.08)"/>
                           <PolarAngleAxis dataKey="subject" tick={{fill:C.ink3,fontSize:10,fontWeight:600}}/>
