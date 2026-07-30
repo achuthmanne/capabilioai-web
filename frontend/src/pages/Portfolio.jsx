@@ -13,7 +13,6 @@ import { getPortfolioConfig, ARCHETYPES } from "../config/portfolioArchetypes"
 import { userDoc } from "../lib/db"
 import { supabase } from "../lib/supabase"
 import { portfolioApi } from "../lib/api"
-import EngineeringProofsPanel from "../components/EngineeringProofsPanel"
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   Radar, ResponsiveContainer, Tooltip,
@@ -1339,10 +1338,13 @@ export default function Portfolio({ username: usernameProp }) {
   const [summary,     setSummary]     = useState("")
   const [scrolled,    setScrolled]    = useState(false)
   const [currentUid,  setCurrentUid]  = useState(null)
-  // "overview" = the existing scroll-sectioned page (unchanged below); "proofs"
-  // = the new Engineering Proofs tab (EngineeringProofsPanel), which fully
-  // replaces the body rather than being threaded into the scroll-nav, so the
-  // existing page's layout/refs/PDF-export logic stays untouched.
+  // Engineering Proofs tab (EngineeringProofsPanel) removed 2026-07-30 — it
+  // read from proof_objects, a table Arena V1 challenge completions never
+  // populate, so it always showed "0 verified proofs" even for users with
+  // real completed challenges (those render correctly in the separate
+  // Challenges tab, which reads arena_history directly). Only "overview"
+  // is a real value now; kept as state (not simplified away) since other
+  // code in this file still branches on it defensively.
   const [activeView,  setActiveView]  = useState("overview")
 
   const refs = { overview:useRef(), summary:useRef(), activity:useRef(), skills:useRef(), challenges:useRef(), interviews:useRef(), experience:useRef(), certificates:useRef(), testimonials:useRef() }
@@ -1658,16 +1660,6 @@ export default function Portfolio({ username: usernameProp }) {
               {l}
             </button>
           ))}
-          {/* Engineering Proofs — the Proof Object system, a real tab-switch
-              (not a scroll anchor) since its data is fetched independently. */}
-          <button onClick={()=>setActiveView(v=>v==="proofs"?"overview":"proofs")}
-            style={{padding:"6px 14px",borderRadius:99,
-              border:activeView==="proofs"?`1px solid ${C.purple}55`:"1px solid transparent",
-              background:activeView==="proofs"?C.purple2:"transparent",
-              color:activeView==="proofs"?C.purple:C.ink3,fontSize:13,fontWeight:700,cursor:"pointer",
-              display:"flex",alignItems:"center",gap:5}}>
-            🛡 Engineering Proofs
-          </button>
         </div>
         {isOwner&&(
           <button onClick={()=>window.print()} className="np"
@@ -2560,13 +2552,6 @@ export default function Portfolio({ username: usernameProp }) {
         </div>
       </div>
       </>
-      )}
-
-      {/* ══ ENGINEERING PROOFS — Proof Object system ═══════════════════════ */}
-      {activeView==="proofs" && (
-        <div style={{maxWidth:1200,margin:"0 auto",padding:"32px 24px 80px"}}>
-          <EngineeringProofsPanel userId={ud.uid || ud.id || currentUid}/>
-        </div>
       )}
     </div>
   )
