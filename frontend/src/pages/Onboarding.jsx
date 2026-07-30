@@ -3242,7 +3242,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
             <div style={{ fontSize:10, fontWeight:700, color:T.muted, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:12 }}>Institution Details</div>
 
             <FieldRow label="Institution Name *">
-              <FieldInput value={orgInstName} onChange={e=>setOrgInstName(e.target.value)} placeholder="e.g. VIT Vellore, BITS Pilani, RGIPT" />
+              <CollegeSearchPicker value={orgInstName} onChange={setOrgInstName} placeholder="e.g. VIT Vellore, BITS Pilani, RGIPT" />
             </FieldRow>
 
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
