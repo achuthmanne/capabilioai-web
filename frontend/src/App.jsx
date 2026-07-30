@@ -450,7 +450,9 @@ function AuthModal({ show, onClose, mode, setMode }) {
           {inp(first, setFirst, "text", "Admin first name")}
           {inp(last,  setLast,  "text", "Admin last name")}
         </div>
-        {inp(instName, setInstName, "text", "Institution / Organisation name")}
+        {instType === "College"
+          ? <CollegeAutocomplete value={instName} setValue={setInstName} accent={accent} inputStyle={inputStyle} setError={setError} />
+          : inp(instName, setInstName, "text", "Institution / Organisation name")}
         <div style={{ display:"flex", background:"#FAF7F2", borderRadius:9, padding:3, border:"1px solid #E8E3DA" }}>
           {["College","Company","Government","NGO"].map(t=>(
             <button key={t} onClick={()=>{setInstType(t);setError("")}}
