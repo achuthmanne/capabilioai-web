@@ -192,7 +192,7 @@ function buildBody(d) {
       <div class="ip-tagline">${orgName} — ${studentCount !== '—' ? studentCount + ' students' : 'building the next generation of talent'}, connecting with top recruiters on Capabilio.</div>
       <div class="ip-meta-row"><span>🏛️ ${orgType}</span>${orgLocation ? '<span>📍 ' + orgLocation + '</span>' : ''}<span>👥 <b>${studentCount}</b> students</span></div>
       <div class="ip-meta-row"><span class="live-badge"><span class="pulse"></span>Live on Capabilio</span><span>📅 Profile active</span></div>
-      <div class="ip-actions"><button class="btnP" data-ip="reqAccess">⚡ Request Recruiter Access</button><button class="btnG" data-ip="follow">+ Follow</button><button class="btnG" data-ip="brochure">📥 Download Brochure</button></div>
+      <div class="ip-actions"><button class="btnG" data-ip="brochure">📥 Download Brochure</button></div>
     </div>
     <div class="ip-hero-right"><div class="ip-orbit" data-orbit><div class="ip-ring3"></div><div class="ip-ring2"></div><div class="ip-ring1"></div><div class="ip-orbit-core"><div class="cn">${studentCount}</div><div class="cl">Students</div></div></div></div>
   </div>
@@ -214,7 +214,7 @@ function buildBody(d) {
       <div class="ip-trust"><div class="ip-trust-score" style="color:${verified ? 'var(--green)' : 'var(--gold)'}">${trustScore}</div><div class="ip-trust-label">Trust Score / 100</div>${trustChecks}</div>
       <div><div class="ip-sh"><h2>Landmark Outcomes</h2><div class="hl"></div></div><div class="ip-hl-grid">${hlCards}</div></div>
     </div>
-    <div class="ip-cta"><div class="cta-text" style="flex:1"><h3>Partner with ${orgName}</h3><p>Access verified, skill-scored talent. NDA-gated. Sign a data agreement and receive curated shortlists in 48 hours.</p></div><button class="btnP" data-ip="reqAccess" style="white-space:nowrap">⚡ Request Access</button><button class="btnG" data-ip="follow" style="white-space:nowrap">+ Follow Institution</button></div>
+    <div class="ip-cta"><div class="cta-text" style="flex:1"><h3>Partner with ${orgName}</h3><p>Access verified, skill-scored talent. NDA-gated. Sign a data agreement and receive curated shortlists in 48 hours.</p></div></div>
   </div>`
 }
 

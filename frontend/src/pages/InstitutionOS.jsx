@@ -76,7 +76,9 @@ const NAV_GROUPS = [
       { id: "home",      label: "Institution home", badge: "Live", mobileShow: true },
       { id: "pubprofile",label: "Public Profile", mobileShow: true  },
       { id: "community", label: "Community",        mobileShow: false  },
-      { id: "events",    label: "Posts",            mobileShow: false },
+      // 2026-07-31: "Posts" (id events) removed from nav — merged into
+      // Community's Posts tab. PAGE_MAP still maps "events" so any stale
+      // deep-link/state falls through gracefully rather than blank-screening.
       { id: "outcomes",  label: "Search presence",  mobileShow: false },
     ],
   },
@@ -2607,18 +2609,9 @@ function CommunityPage({ userData, user }) {
               : initials
             }
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button style={{
-              padding: "8px 18px", borderRadius: 12, fontSize: 13, fontWeight: 800,
-              background: "linear-gradient(135deg,#dc8b18,#f6c453)", color: "#23170a",
-              border: "none", cursor: "pointer", fontFamily: FONT,
-            }}>+ Follow</button>
-            <button style={{
-              padding: "8px 18px", borderRadius: 12, fontSize: 13, fontWeight: 700,
-              background: "transparent", color: T.ink3,
-              border: `1px solid ${T.border}`, cursor: "pointer", fontFamily: FONT,
-            }}>Message</button>
-          </div>
+          {/* 2026-07-31: removed the +Follow/Message buttons per product
+              direction — this is the admin's own community view, following
+              your own institution made no sense. */}
         </div>
 
         {/* Name + meta */}
@@ -2670,57 +2663,10 @@ function CommunityPage({ userData, user }) {
 
       {/* Tab content */}
       <div style={{ padding: "20px 24px", maxWidth: 680 }}>
-        {tab === "posts" && (
-          postsLoading ? <Spinner /> : posts.length === 0 ? (
-            <div style={{ padding: "32px 0", textAlign: "center", color: T.ink4, fontSize: 13 }}>
-              No posts yet. Go to <b style={{ color: T.gold }}>Posts</b> in the sidebar to publish your first one.
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {posts.map(post => {
-                const pPhoto = profilePhoto
-                const pInit  = initials
-                return (
-                  <div key={post.id} style={{
-                    border: `1px solid ${T.border}`, borderRadius: 22,
-                    background: "linear-gradient(180deg,rgba(255,255,255,0.052),rgba(255,255,255,0.026))",
-                    padding: 18,
-                  }}>
-                    <div style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 12 }}>
-                      <div style={{
-                        width: 44, height: 44, borderRadius: 14, flexShrink: 0,
-                        background: pPhoto ? "transparent" : "linear-gradient(135deg,#dc8b18,#f6c453)",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: 15, fontWeight: 900, color: "#23170a",
-                        overflow: "hidden", border: `1px solid ${T.border}`,
-                      }}>
-                        {pPhoto ? <img src={pPhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : pInit}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{orgName}</div>
-                        <div style={{ fontSize: 11, color: T.ink4 }}>{memberCount} followers · {timeSince(post.created_at)}</div>
-                      </div>
-                      {post.category && (() => { const b = POST_CATEGORY_BADGE[post.category] || POST_CATEGORY_BADGE["Update"]; return (
-                        <span style={{ flexShrink: 0, padding: "3px 9px", borderRadius: 999, border: `1px solid ${b.color}`, background: `${b.color}18`, color: b.color, fontSize: 10.5, fontWeight: 800, whiteSpace: "nowrap" }}>
-                          {b.icon} {post.category}
-                        </span>
-                      )})()}
-                    </div>
-                    <div style={{ fontSize: 13.5, color: T.ink2, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{post.title}</div>
-                    {post.description && post.description.startsWith("http") && (
-                      <img src={post.description} alt="" style={{ width: "100%", marginTop: 12, borderRadius: 14, objectFit: "cover", maxHeight: 320 }} />
-                    )}
-                    <div style={{ display: "flex", gap: 16, marginTop: 14, paddingTop: 12, borderTop: `1px solid ${T.border}` }}>
-                      <button style={{ fontSize: 12, color: T.ink4, background: "none", border: "none", cursor: "pointer", fontFamily: FONT }}>👍 Like</button>
-                      <button style={{ fontSize: 12, color: T.ink4, background: "none", border: "none", cursor: "pointer", fontFamily: FONT }}>💬 Comment</button>
-                      <button style={{ fontSize: 12, color: T.ink4, background: "none", border: "none", cursor: "pointer", fontFamily: FONT }}>↗ Share</button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )
-        )}
+        {/* 2026-07-31: the standalone sidebar "Posts" page is merged here —
+            the Posts tab now hosts the full composer + feed (EventsPage in
+            embedded mode) instead of a read-only mirror of it. */}
+        {tab === "posts" && <EventsPage userData={userData} user={user} embedded />}
 
         {tab === "about" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -2824,7 +2770,11 @@ const POST_CATEGORY_BADGE = {
   "Candidate Spotlight":{ icon: "🌟", color: "#059669" },
 }
 
-function EventsPage({ userData, user }) {
+// embedded=true (2026-07-31): renders composer+feed without its own
+// PageShell/header so CommunityPage can host it as its Posts tab — the
+// standalone sidebar "Posts" page was merged into Community per product
+// direction. The component itself is unchanged otherwise.
+function EventsPage({ userData, user, embedded = false }) {
   const orgId = user?.id
   const { data: posts, loading, error, reload } = useOrgPosts(orgId)
   const isCollege = (userData?.org_type || "college") !== "company"
@@ -2885,18 +2835,21 @@ function EventsPage({ userData, user }) {
     reload()
   }
 
+  const Wrap = embedded ? ({ children }) => <>{children}</> : PageShell
   return (
-    <PageShell>
-      <div style={{ marginBottom: 22 }}>
-        <h1 style={{
-          margin: 0, fontFamily: FONT_SERIF,
-          fontStyle: "italic", fontWeight: 700, fontSize: 34,
-          letterSpacing: "-0.02em", lineHeight: 1.05, color: T.ink,
-        }}>
-          Institution <span style={{ color: T.gold }}>posts</span>
-        </h1>
-        <p style={{ margin: "6px 0 0", fontSize: 12, color: T.ink4 }}>Visible to anyone who views your institution's public profile</p>
-      </div>
+    <Wrap>
+      {!embedded && (
+        <div style={{ marginBottom: 22 }}>
+          <h1 style={{
+            margin: 0, fontFamily: FONT_SERIF,
+            fontStyle: "italic", fontWeight: 700, fontSize: 34,
+            letterSpacing: "-0.02em", lineHeight: 1.05, color: T.ink,
+          }}>
+            Institution <span style={{ color: T.gold }}>posts</span>
+          </h1>
+          <p style={{ margin: "6px 0 0", fontSize: 12, color: T.ink4 }}>Visible to anyone who views your institution's public profile</p>
+        </div>
+      )}
 
       {/* Post composer */}
       <div style={{
@@ -3064,7 +3017,7 @@ function EventsPage({ userData, user }) {
           ))}
         </div>
       )}
-    </PageShell>
+    </Wrap>
   )
 }
 
