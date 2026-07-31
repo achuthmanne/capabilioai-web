@@ -3814,8 +3814,21 @@ function SettingsPage({ userData, user, initialTab = "profile", reloadAudit, aud
 // ═══════════════════════════════════════════════════════════════════════════════
 // ROOT — InstitutionOS
 // ═══════════════════════════════════════════════════════════════════════════════
-export default function InstitutionOS({ user, userData, onNavigate }) {
-  const [activePage, setActivePage] = useState("home")
+// initialPage (added 2026-08-01, bugfix): optional, defaults to "home" so
+// every existing call site behaves exactly as before. Lets a caller mount
+// InstitutionOS directly onto one of its internal tabs (e.g. "settings")
+// instead of always landing on Home — see App.jsx's top-nav Settings button,
+// which previously routed institution accounts into the unrelated
+// Executive Path (Aura.jsx's isExecutive flag treats path==="institution"
+// the same as path==="authority", so any institution user who ended up on
+// the shared "aura" page got handed to ExecutiveAura). The real bug was
+// that button always set currentPage="aura" regardless of navPath; this
+// prop is the institution-path side of the fix — App.jsx now sends
+// institution users to currentPage="orgSettings" and passes
+// initialPage="settings" through so they land on InstitutionOS's own
+// Settings tab instead.
+export default function InstitutionOS({ user, userData, onNavigate, initialPage = "home" }) {
+  const [activePage, setActivePage] = useState(initialPage)
   const [isMobile, setIsMobile]     = useState(window.innerWidth < 768)
   const [settingsTab, setSettingsTab] = useState("profile")
   const [role, setRole]             = useState("admin")

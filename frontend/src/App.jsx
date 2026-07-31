@@ -1309,9 +1309,24 @@ function App() {
 
                 <button
                   onClick={() => {
-                    setCurrentPage("aura")
-                    setActiveTab("settings")
-                    setActiveNavItem("aura")
+                    // 2026-08-01 bugfix: this always routed to currentPage
+                    // "aura" regardless of the signed-in account's path.
+                    // Aura.jsx treats userData.path==="institution" the same
+                    // as "authority" (its isExecutive flag merges both) and
+                    // hands off to ExecutiveAura — so an institution admin
+                    // clicking this Settings button landed on the Executive
+                    // Path's settings screen instead of their own. Institution
+                    // accounts now route into InstitutionOS's own Settings
+                    // tab (orgSettings + initialPage="settings", wired above
+                    // at the InstitutionOS mount site) instead of "aura".
+                    if (navPath === "institution") {
+                      setCurrentPage("orgSettings")
+                      setActiveNavItem("orgSettings")
+                    } else {
+                      setCurrentPage("aura")
+                      setActiveTab("settings")
+                      setActiveNavItem("aura")
+                    }
                     setProfileMenuOpen(false)
                   }}
                   style={{
@@ -1376,7 +1391,26 @@ function App() {
           {currentPage === "company" && <Company user={user} />}
           {currentPage === "executiveHome"    && <ExecutiveHome    user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
           {["orgHome","orgIntel","orgTasks","orgPeople","orgSettings","orgCommunity","orgGroups","orgCohorts","orgEvents","orgOpportunities","orgOutcomes"].includes(currentPage) && (
-            <InstitutionOS user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />
+            // 2026-08-01 bugfix: these 11 currentPage values previously all
+            // mounted the exact same InstitutionOS with no way to land on
+            // anything but its default Home tab — orgSettings existed as a
+            // currentPage value but did nothing differently. InstitutionOS
+            // now accepts initialPage so orgSettings actually opens Settings
+            // (see the header Settings button below, and InstitutionOS.jsx's
+            // initialPage prop comment for the full bug this fixes).
+            //
+            // key forces a remount when the request is specifically for
+            // Settings — initialPage alone only affects a component's FIRST
+            // render (useState semantics), so without this, clicking the
+            // header Settings button while already inside InstitutionOS
+            // (the exact scenario in the bug report) would re-render with a
+            // new initialPage prop that useState silently ignores, leaving
+            // the user on whatever org tab they already had open. A user is
+            // never mid-edit in a way a remount here would lose data — this
+            // is a top-level nav action, not a form.
+            <InstitutionOS key={currentPage === "orgSettings" ? "org-settings" : "org-default"}
+              user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }}
+              initialPage={currentPage === "orgSettings" ? "settings" : "home"} />
           )}
 
           {currentPage === "orbit" && (
