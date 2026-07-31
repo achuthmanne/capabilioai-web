@@ -36,6 +36,56 @@ const router = Router()
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+function slugifyInstitutionName(name) {
+  return (name || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || "institution"
+}
+
+// Lazily creates the missing `institutions` row for a legacy
+// profiles.org_type='college' admin the first time they resolve
+// GET /institutions/mine — see the call site for the full rationale.
+// Read-only against `profiles` (never writes back to it); only ever
+// inserts into `institutions`, and only when no institutions/institution_staff
+// row already exists for this user (call site guarantees that ordering).
+async function bootstrapInstitutionFromProfile(userId) {
+  const { data: profile } = await supabaseAdmin
+    .from("profiles")
+    .select("org_type, org_name, org_inst_type, org_website, org_location")
+    .eq("id", userId)
+    .maybeSingle()
+
+  if (!profile || profile.org_type !== "college" || !profile.org_name?.trim()) return null
+
+  const type = /university/i.test(profile.org_inst_type || "") ? "university" : "college"
+  const baseSlug = slugifyInstitutionName(profile.org_name)
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const slug = attempt === 0 ? baseSlug : `${baseSlug}-${Math.random().toString(36).slice(2, 6)}`
+    const { data: inserted, error } = await supabaseAdmin
+      .from("institutions")
+      .insert({
+        name: profile.org_name.trim(),
+        slug,
+        type,
+        admin_user_id: userId,
+        website: profile.org_website || null,
+        address: profile.org_location ? { raw: profile.org_location } : {},
+      })
+      .select("id, name, slug, type, email_domain, website, verification_level, status, plan, created_at")
+      .single()
+    if (!error) return inserted
+    if (error.code !== "23505") { // unique_violation on slug — retry with a suffix; anything else, give up
+      console.error("[college] bootstrapInstitutionFromProfile", error)
+      return null
+    }
+  }
+  return null
+}
+
 // The MCP tool contract (mcp/src/tools/college.ts) identifies a college by a
 // human-readable `collegeCode` (e.g. "VITU"), matching institutions.slug —
 // not the internal UUID. Every :id route param below is resolved through
@@ -112,6 +162,456 @@ function requireInstitutionAdmin() {
   }
 }
 
+// Added 2026-07-31 (Phase 3 — recruiter discovery). A "recruiter" here is
+// any authenticated user whose profile is org_type='company' — the same
+// account model orgCompanyLinks.js already uses to identify companies, kept
+// consistent rather than inventing a second recruiter-identity concept.
+function requireRecruiter() {
+  return async (req, res, next) => {
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("org_type")
+      .eq("id", req.user.id)
+      .maybeSingle()
+    if (profile?.org_type !== "company") {
+      return res.status(403).json({ error: "Requires a company/recruiter account" })
+    }
+    next()
+  }
+}
+
+// Notifies every active placement-cell member (college_admin + the legacy
+// single admin_user_id + placement_officer staff) for an institution — the
+// "CC to placement cell" behavior requested for recruiter invites/interviews.
+// Best-effort: a notification failure never blocks the action that triggered it.
+async function notifyPlacementCell(institutionId, { type, title, body, actorId, entityId, entityType }) {
+  try {
+    const { data: inst } = await supabaseAdmin.from("institutions").select("admin_user_id").eq("id", institutionId).single()
+    const { data: staff } = await supabaseAdmin
+      .from("institution_staff")
+      .select("user_id")
+      .eq("institution_id", institutionId)
+      .eq("status", "active")
+      .in("role", ["college_admin", "placement_officer"])
+    const recipients = new Set([inst?.admin_user_id, ...(staff || []).map((s) => s.user_id)].filter(Boolean))
+    if (recipients.size === 0) return
+    await supabaseAdmin.from("notifications").insert(
+      [...recipients].map((userId) => ({
+        user_id: userId, type, title, body,
+        actor_id: actorId || null, entity_id: entityId || null, entity_type: entityType || null,
+        category: "placement_cell",
+      }))
+    )
+  } catch (err) {
+    console.error("[college] notifyPlacementCell", err)
+  }
+}
+
+// ── GET /recruiter/search — cross-college candidate discovery ────────────────
+// Recruiter-only (requireRecruiter). Only ever returns students the college
+// has explicitly opted into recruiter visibility for
+// (shared_with_recruiters=true) and who are in an active-family status —
+// the placement cell's share/approve controls (Phase 2) are the only gate
+// here, there is no separate recruiter-side override. Same non-PII allowlist
+// as the roster endpoint; adds the institution's public name (not private
+// data) so a recruiter can tell which college a result belongs to.
+router.get("/recruiter/search", requireAuth, requireRecruiter(), async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1)
+  const pageSize = Math.min(50, Math.max(1, parseInt(req.query.pageSize, 10) || 20))
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
+  let query = supabaseAdmin
+    .from("institution_students")
+    // student_user_id fetched only to join non-PII profile aggregates below
+    // (career role) — stripped before the response is built, same PII
+    // discipline as the roster endpoint.
+    .select("id, institution_id, student_user_id, department, batch, roll_number, elo_current, job_readiness_score, status", { count: "exact" })
+    .eq("shared_with_recruiters", true)
+    .in("status", ACTIVE_STATUSES)
+
+  if (req.query.collegeId) {
+    const collegeId = UUID_RE.test(req.query.collegeId) ? req.query.collegeId : null
+    if (collegeId) {
+      query = query.eq("institution_id", collegeId)
+    } else {
+      const { data: inst } = await supabaseAdmin.from("institutions").select("id").ilike("slug", req.query.collegeId).maybeSingle()
+      if (!inst) return res.status(200).json({ students: [], page, pageSize, total: 0 })
+      query = query.eq("institution_id", inst.id)
+    }
+  }
+  if (req.query.branch) query = query.eq("department", req.query.branch)
+  if (req.query.minElo) query = query.gte("elo_current", parseFloat(req.query.minElo))
+  if (req.query.minReadiness) query = query.gte("job_readiness_score", parseFloat(req.query.minReadiness))
+
+  const { data, error, count } = await query.order("elo_current", { ascending: false }).range(from, to)
+  if (error) return res.status(500).json({ error: error.message })
+
+  const institutionIds = [...new Set(data.map((s) => s.institution_id))]
+  const userIds = data.map((s) => s.student_user_id).filter(Boolean)
+  const [{ data: institutions }, { data: profileRows }] = await Promise.all([
+    institutionIds.length ? supabaseAdmin.from("institutions").select("id, name").in("id", institutionIds) : Promise.resolve({ data: [] }),
+    userIds.length ? supabaseAdmin.from("profiles").select("id, job_role, target_role").in("id", userIds) : Promise.resolve({ data: [] }),
+  ])
+  const instNameById = Object.fromEntries((institutions || []).map((i) => [i.id, i.name]))
+
+  // req.query.role is a post-filter (same "no cheap FK-embed across to
+  // profiles" limitation documented on the roster endpoint) — applied after
+  // the DB page is fetched, which is an acceptable trade-off at this
+  // platform's current scale for a recruiter-facing search.
+  const profileById = Object.fromEntries((profileRows || []).map((p) => [p.id, p]))
+  const roleQuery = (req.query.role || "").trim().toLowerCase()
+  let results = data.map((s) => {
+    const careerRole = profileById[s.student_user_id]?.job_role || profileById[s.student_user_id]?.target_role || null
+    return {
+      id: s.id,
+      collegeId: s.institution_id,
+      collegeName: instNameById[s.institution_id] || "Unknown institution",
+      department: s.department,
+      batch: s.batch,
+      elo: s.elo_current,
+      jobReadiness: s.job_readiness_score,
+      careerRole,
+      // matchScore: a transparent, deterministic 0-100 illustrative sort
+      // signal built ONLY from data already on this row — 60% normalized
+      // ELO (against a 1500 ceiling — Expert-tier ELO per elo_events'
+      // grading bands) + 30% job-readiness score + a flat 10pt bonus for an
+      // exact role-query match. This is explicitly NOT a second scoring
+      // system or a prediction of hire likelihood — it never gets written
+      // anywhere, it exists only to help a recruiter sort this one response.
+      matchScore: Math.round(
+        Math.min(100, (Number(s.elo_current) || 0) / 15) * 0.6 +
+        Math.min(100, Number(s.job_readiness_score) || 0) * 0.3 +
+        (roleQuery && careerRole && careerRole.toLowerCase().includes(roleQuery) ? 10 : 0)
+      ),
+    }
+  })
+  if (roleQuery) {
+    results = results.filter((r) => (r.careerRole || "").toLowerCase().includes(roleQuery))
+  }
+  results.sort((a, b) => b.matchScore - a.matchScore)
+
+  res.status(200).json({ students: results, page, pageSize, total: count })
+})
+
+// ── POST /institutions/:id/students/:studentId/invite — recruiter invite ─────
+// Requires the student to already be shared_with_recruiters=true (placement
+// cell's own gate, re-checked here — never trust that a recruiter only calls
+// this after a legitimate /recruiter/search result). CCs the placement cell
+// via notifyPlacementCell so this satisfies "placement cell visibility",
+// not just a private recruiter<->student channel.
+router.post("/institutions/:id/students/:studentId/invite", requireAuth, requireRecruiter(), async (req, res) => {
+  const { id: institutionId, studentId } = req.params
+  const { type = "profile_view" } = req.body || {}
+  if (!["profile_view", "challenge", "interview"].includes(type)) {
+    return res.status(400).json({ error: "type must be one of profile_view, challenge, interview" })
+  }
+
+  const { data: student } = await supabaseAdmin
+    .from("institution_students")
+    .select("id, student_user_id, shared_with_recruiters, status")
+    .eq("id", studentId)
+    .eq("institution_id", institutionId)
+    .maybeSingle()
+  if (!student) return res.status(404).json({ error: "Student not found" })
+  if (!student.shared_with_recruiters) return res.status(403).json({ error: "This student is not shared with recruiters" })
+
+  const { data: invite, error } = await supabaseAdmin
+    .from("recruiter_invites")
+    .insert({ institution_id: institutionId, recruiter_id: req.user.id, student_id: studentId, type, status: "sent" })
+    .select()
+    .single()
+  if (error) return res.status(500).json({ error: error.message })
+
+  const { data: recruiterProfile } = await supabaseAdmin.from("profiles").select("org_name, name").eq("id", req.user.id).single()
+  const recruiterName = recruiterProfile?.org_name || recruiterProfile?.name || "A recruiter"
+
+  if (student.student_user_id) {
+    await supabaseAdmin.from("notifications").insert({
+      user_id: student.student_user_id, type: "recruiter_invite",
+      title: "A recruiter is interested in your profile",
+      body: `${recruiterName} sent a ${type.replace("_", " ")} invite`,
+      actor_id: req.user.id, entity_id: invite.id, entity_type: "recruiter_invites",
+      category: "recruiter",
+    }).catch(() => {})
+  }
+  await notifyPlacementCell(institutionId, {
+    type: "recruiter_invite", title: "Recruiter invite sent to a student",
+    body: `${recruiterName} sent a ${type.replace("_", " ")} invite to a student in your roster`,
+    actorId: req.user.id, entityId: invite.id, entityType: "recruiter_invites",
+  })
+
+  res.status(200).json({ invite })
+})
+
+// ── GET /institutions/:id/recruiter-invites — placement cell visibility ──────
+router.get("/institutions/:id/recruiter-invites", requireAuth, requireInstitutionStaff(), async (req, res) => {
+  const { id: institutionId } = req.params
+  const { data, error } = await supabaseAdmin
+    .from("recruiter_invites")
+    .select("id, recruiter_id, student_id, type, status, created_at")
+    .eq("institution_id", institutionId)
+    .order("created_at", { ascending: false })
+    .limit(200)
+  if (error) return res.status(500).json({ error: error.message })
+  res.status(200).json({ invites: data || [] })
+})
+
+// ── POST /institutions/:id/students/:studentId/interview — recruiter-requested interview ──
+router.post("/institutions/:id/students/:studentId/interview", requireAuth, requireRecruiter(), async (req, res) => {
+  const { id: institutionId, studentId } = req.params
+  const { mode = "human", scheduledAt = null } = req.body || {}
+  if (!["ai", "human", "hybrid"].includes(mode)) {
+    return res.status(400).json({ error: "mode must be one of ai, human, hybrid" })
+  }
+
+  const { data: student } = await supabaseAdmin
+    .from("institution_students")
+    .select("id, student_user_id, shared_with_recruiters")
+    .eq("id", studentId)
+    .eq("institution_id", institutionId)
+    .maybeSingle()
+  if (!student) return res.status(404).json({ error: "Student not found" })
+  if (!student.shared_with_recruiters) return res.status(403).json({ error: "This student is not shared with recruiters" })
+
+  const { data: interview, error } = await supabaseAdmin
+    .from("interviews")
+    .insert({
+      institution_id: institutionId, recruiter_id: req.user.id, student_id: studentId,
+      mode, scheduled_at: scheduledAt, status: scheduledAt ? "scheduled" : "consent_pending",
+    })
+    .select()
+    .single()
+  if (error) return res.status(500).json({ error: error.message })
+
+  const { data: recruiterProfile } = await supabaseAdmin.from("profiles").select("org_name, name").eq("id", req.user.id).single()
+  const recruiterName = recruiterProfile?.org_name || recruiterProfile?.name || "A recruiter"
+
+  if (student.student_user_id) {
+    await supabaseAdmin.from("notifications").insert({
+      user_id: student.student_user_id, type: "interview_requested",
+      title: "Interview requested",
+      body: `${recruiterName} requested an interview${scheduledAt ? ` for ${new Date(scheduledAt).toLocaleDateString("en-IN")}` : ""}`,
+      actor_id: req.user.id, entity_id: interview.id, entity_type: "interviews",
+      category: "recruiter",
+    }).catch(() => {})
+  }
+  await notifyPlacementCell(institutionId, {
+    type: "interview_requested", title: "Recruiter requested a student interview",
+    body: `${recruiterName} requested an interview with a student in your roster`,
+    actorId: req.user.id, entityId: interview.id, entityType: "interviews",
+  })
+
+  res.status(200).json({ interview })
+})
+
+// ── GET /institutions/:id/interviews — placement cell pipeline visibility ────
+router.get("/institutions/:id/interviews", requireAuth, requireInstitutionStaff(), async (req, res) => {
+  const { id: institutionId } = req.params
+  const { data, error } = await supabaseAdmin
+    .from("interviews")
+    .select("id, recruiter_id, student_id, mode, status, scheduled_at, consent_given_at, created_at")
+    .eq("institution_id", institutionId)
+    .order("created_at", { ascending: false })
+    .limit(200)
+  if (error) return res.status(500).json({ error: error.message })
+  res.status(200).json({ interviews: data || [] })
+})
+
+// ── PATCH /institutions/:id/interviews/:interviewId — placement cell pipeline management ──
+// Admin-only status transitions (cancel/complete) — consent_given_at is
+// deliberately NOT settable here (that's the student's own action, out of
+// this pass's scope) which keeps the interviews_consent_before_recording
+// DB constraint meaningful rather than something this route could bypass.
+router.patch(
+  "/institutions/:id/interviews/:interviewId",
+  requireAuth,
+  requireInstitutionAdmin(),
+  async (req, res) => {
+    const { id: institutionId, interviewId } = req.params
+    const { status } = req.body || {}
+    if (!["scheduled", "live", "completed", "cancelled"].includes(status)) {
+      return res.status(400).json({ error: "Invalid status" })
+    }
+    const { data: updated, error } = await supabaseAdmin
+      .from("interviews")
+      .update({ status })
+      .eq("id", interviewId)
+      .eq("institution_id", institutionId)
+      .select()
+      .single()
+    if (error) return res.status(500).json({ error: error.message })
+    res.status(200).json({ interview: updated })
+  }
+)
+
+// ── POST /institutions/:id/students/:studentId/offer — recruiter sends an offer ──
+// Added 2026-07-31 (Phase 4). Same shared_with_recruiters re-check as
+// invite/interview (Phase 3) — a recruiter can only offer a student the
+// college has explicitly made visible. Writes the real `offers` table (not
+// the incompatible schema recruiterComms.js assumes — see the Phase 3
+// summary for that pre-existing, separate bug). Notifies the student (their
+// inbox — GET /api/nexus/notifications, already built and already rendered
+// in OrbitDashboard.jsx, reused as-is rather than building a second inbox)
+// and CCs the placement cell.
+router.post("/institutions/:id/students/:studentId/offer", requireAuth, requireRecruiter(), async (req, res) => {
+  const { id: institutionId, studentId } = req.params
+  const { company, role = null, ctcLpa = null, offerDate = null } = req.body || {}
+  if (!company || !company.trim()) return res.status(400).json({ error: "company is required" })
+
+  const { data: student } = await supabaseAdmin
+    .from("institution_students")
+    .select("id, student_user_id, shared_with_recruiters")
+    .eq("id", studentId)
+    .eq("institution_id", institutionId)
+    .maybeSingle()
+  if (!student) return res.status(404).json({ error: "Student not found" })
+  if (!student.shared_with_recruiters) return res.status(403).json({ error: "This student is not shared with recruiters" })
+
+  const { data: offer, error } = await supabaseAdmin
+    .from("offers")
+    .insert({
+      student_id: studentId, institution_id: institutionId, recruiter_id: req.user.id,
+      company: company.trim(), role, ctc_lpa: ctcLpa, offer_date: offerDate, status: "offered",
+    })
+    .select()
+    .single()
+  if (error) return res.status(500).json({ error: error.message })
+
+  const { data: recruiterProfile } = await supabaseAdmin.from("profiles").select("org_name, name").eq("id", req.user.id).single()
+  const recruiterName = recruiterProfile?.org_name || recruiterProfile?.name || "A recruiter"
+
+  if (student.student_user_id) {
+    await supabaseAdmin.from("notifications").insert({
+      user_id: student.student_user_id, type: "offer_received",
+      title: "Offer Letter Received",
+      body: `${recruiterName} sent you an offer${role ? ` for ${role}` : ""} at ${company.trim()}`,
+      actor_id: req.user.id, entity_id: offer.id, entity_type: "offers",
+      category: "recruiter", urgency: "important",
+    }).catch(() => {})
+  }
+  await notifyPlacementCell(institutionId, {
+    type: "offer_sent", title: "Recruiter sent an offer to a student",
+    body: `${recruiterName} offered a student in your roster a role at ${company.trim()}`,
+    actorId: req.user.id, entityId: offer.id, entityType: "offers",
+  })
+
+  res.status(200).json({ offer })
+})
+
+// ── GET /institutions/:id/offers — placement cell visibility ─────────────────
+router.get("/institutions/:id/offers", requireAuth, requireInstitutionStaff(), async (req, res) => {
+  const { id: institutionId } = req.params
+  const { data, error } = await supabaseAdmin
+    .from("offers")
+    .select("id, student_id, recruiter_id, company, role, ctc_lpa, offer_date, status, created_at")
+    .eq("institution_id", institutionId)
+    .order("created_at", { ascending: false })
+    .limit(200)
+  if (error) return res.status(500).json({ error: error.message })
+  res.status(200).json({ offers: data || [] })
+})
+
+// ── GET /institutions/:id/placements — placement-cell confirmation queue ─────
+// Added 2026-07-31 (Phase 4). Lists institution_placements rows so the
+// placement cell can see (and confirm) the records POST /offers/:id/respond
+// creates on acceptance. This is the list-side counterpart to the existing
+// POST .../placements/:placementId/confirm route (Phase-1 era) — that route
+// could already confirm a placement, but nothing could tell an admin which
+// placementId to confirm until now.
+router.get("/institutions/:id/placements", requireAuth, requireInstitutionStaff(), async (req, res) => {
+  const { id: institutionId } = req.params
+  let query = supabaseAdmin
+    .from("institution_placements")
+    .select("id, student_id, offer_id, company, role, ctc_lpa, joining_date, elo_at_placement, confirmation_status, confirmed_at, visible_on_placement_wall, created_at")
+    .eq("institution_id", institutionId)
+  if (req.query.status) query = query.eq("confirmation_status", req.query.status)
+  const { data, error } = await query.order("created_at", { ascending: false }).limit(200)
+  if (error) return res.status(500).json({ error: error.message })
+  res.status(200).json({ placements: data || [] })
+})
+
+// ── POST /offers/:offerId/respond — student accepts/declines their own offer ──
+// Student-only: ownership is verified against institution_students.student_user_id
+// (never trusts a student_id in the request body), matching this project's
+// "never trust client input" rule the same way self-link does. On accept,
+// this auto-creates the institution_placements row that
+// POST /institutions/:id/placements/:placementId/confirm (already built,
+// Phase 1-era) expects to exist — closing the loop from "student accepted an
+// offer" to "placement cell can TPO-confirm it" without a manual placement-
+// cell data-entry step. institution_students.status is deliberately NOT
+// changed here — it only becomes 'placed' via the existing TPO-confirm gate,
+// so acceptance alone can never silently count as a confirmed placement in
+// any stats/leaderboard endpoint.
+router.post("/offers/:offerId/respond", requireAuth, async (req, res) => {
+  const { offerId } = req.params
+  const { response } = req.body || {} // "accepted" | "declined"
+  if (!["accepted", "declined"].includes(response)) {
+    return res.status(400).json({ error: "response must be 'accepted' or 'declined'" })
+  }
+
+  const { data: offer, error: fetchErr } = await supabaseAdmin
+    .from("offers")
+    .select("id, student_id, institution_id, recruiter_id, company, role, ctc_lpa, status")
+    .eq("id", offerId)
+    .single()
+  if (fetchErr || !offer) return res.status(404).json({ error: "Offer not found" })
+  if (offer.status !== "offered") {
+    return res.status(409).json({ error: `Cannot respond — offer status is already '${offer.status}'` })
+  }
+
+  const { data: student } = await supabaseAdmin
+    .from("institution_students")
+    .select("id, student_user_id, elo_current")
+    .eq("id", offer.student_id)
+    .single()
+  if (!student || student.student_user_id !== req.user.id) {
+    return res.status(403).json({ error: "This offer does not belong to you" })
+  }
+
+  const { data: updatedOffer, error: updateErr } = await supabaseAdmin
+    .from("offers")
+    .update({ status: response })
+    .eq("id", offerId)
+    .select()
+    .single()
+  if (updateErr) return res.status(500).json({ error: updateErr.message })
+
+  let placement = null
+  if (response === "accepted") {
+    const { data: createdPlacement, error: placementErr } = await supabaseAdmin
+      .from("institution_placements")
+      .insert({
+        offer_id: offerId, student_id: offer.student_id, institution_id: offer.institution_id,
+        company: offer.company, role: offer.role, ctc_lpa: offer.ctc_lpa,
+        elo_at_placement: student.elo_current, confirmation_status: "unconfirmed",
+      })
+      .select()
+      .single()
+    if (placementErr) return res.status(500).json({ error: placementErr.message })
+    placement = createdPlacement
+  }
+
+  if (offer.recruiter_id) {
+    await supabaseAdmin.from("notifications").insert({
+      user_id: offer.recruiter_id, type: "offer_response",
+      title: `Offer ${response === "accepted" ? "Accepted" : "Declined"}`,
+      body: `The candidate ${response} your offer at ${offer.company}`,
+      actor_id: req.user.id, entity_id: offerId, entity_type: "offers",
+      category: "recruiter",
+    }).catch(() => {})
+  }
+  await notifyPlacementCell(offer.institution_id, {
+    type: response === "accepted" ? "offer_accepted" : "offer_declined",
+    title: response === "accepted" ? "Student accepted an offer — needs confirmation" : "Student declined an offer",
+    body: `A student in your roster ${response} an offer at ${offer.company}` +
+      (response === "accepted" ? " — confirm it in Placements to finalize." : ""),
+    actorId: req.user.id, entityId: offerId, entityType: "offers",
+  })
+
+  res.status(200).json({ offer: updatedOffer, placement })
+})
+
 // ── Dependency-free CSV parser (small file sizes only — roster CSVs, not GB data) ──
 function parseCsv(text) {
   const lines = text.split(/\r\n|\n|\r/).filter((l) => l.trim().length > 0)
@@ -142,6 +642,165 @@ function parseCsv(text) {
   })
   return { headers, rows }
 }
+
+// ── GET /institutions/mine — resolve the caller's own institution ────────────
+// Added 2026-07-31 (College Path enhancement pass). Registered BEFORE
+// /institutions/:id so Express's literal-path match wins over the :id param
+// route for the exact segment "mine" — router.param("id", ...) never fires
+// for this route since its path has no :id token.
+// Lets a staff member's dashboard resolve "which institution am I looking
+// at" without already knowing the institution's UUID/slug, which the old
+// org_members-based dashboard never needed (org_id was just req.user.id).
+router.get("/institutions/mine", requireAuth, async (req, res) => {
+  const userId = req.user.id
+
+  const { data: ownedInstitution } = await supabaseAdmin
+    .from("institutions")
+    .select("id, name, slug, type, email_domain, website, verification_level, status, plan, created_at")
+    .eq("admin_user_id", userId)
+    .maybeSingle()
+
+  if (ownedInstitution) {
+    const { data: verification } = await supabaseAdmin
+      .from("institution_verification")
+      .select("*")
+      .eq("institution_id", ownedInstitution.id)
+      .maybeSingle()
+    return res.status(200).json({ institution: ownedInstitution, verification: verification || null, role: "college_admin" })
+  }
+
+  const { data: staffRow } = await supabaseAdmin
+    .from("institution_staff")
+    .select("institution_id, role")
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .order("role", { ascending: true })
+  if (!staffRow || staffRow.length === 0) {
+    // Lazy bootstrap: every college admin who signed up before this
+    // migration exists only as profiles.org_type='college' (the legacy
+    // org_* signup path) — there is currently zero backfill from that row
+    // into `institutions`, so without this every such admin would 404 here
+    // forever and never see canonical data, no matter what the dashboard
+    // reads. This creates exactly one institutions row, once, from data the
+    // admin already entered at signup — it does not touch or migrate
+    // org_members/org_tasks/org_events, and existing legacy screens keep
+    // working unchanged either way.
+    const bootstrapped = await bootstrapInstitutionFromProfile(userId)
+    if (bootstrapped) {
+      return res.status(200).json({ institution: bootstrapped, verification: null, role: "college_admin", bootstrapped: true })
+    }
+    return res.status(404).json({ error: "Not a staff member of any institution" })
+  }
+  const priority = ["college_admin", "placement_officer", "dept_head", "professor", "mentor"]
+  const bestRole = priority.find((r) => staffRow.some((s) => s.role === r)) || staffRow[0].role
+  const institutionId = staffRow.find((s) => s.role === bestRole)?.institution_id || staffRow[0].institution_id
+
+  const { data: institution, error } = await supabaseAdmin
+    .from("institutions")
+    .select("id, name, slug, type, email_domain, website, verification_level, status, plan, created_at")
+    .eq("id", institutionId)
+    .single()
+  if (error || !institution) return res.status(404).json({ error: "Institution not found" })
+
+  const { data: verification } = await supabaseAdmin
+    .from("institution_verification")
+    .select("*")
+    .eq("institution_id", institution.id)
+    .maybeSingle()
+
+  res.status(200).json({ institution, verification: verification || null, role: bestRole })
+})
+
+// ── POST /self-link — student auto-alignment to their declared college ───────
+// Added 2026-07-31. Called (best-effort, non-blocking) by the frontend once
+// after a student completes onboarding with a `college` value on their
+// profile. Deliberately NOT a client-side write to institution_students —
+// that table's RLS is scoped to institution staff, and per this project's
+// "never trust client input" rule a student's own session must never be able
+// to assert its own institution membership directly. This endpoint is the
+// single, server-verified path: it re-reads the student's own profile.college
+// (never trusts a value passed in the request body), matches it against
+// registered institutions.name, and only links on a single unambiguous match.
+// New rows land as status='pending_admin' (link_method='self_declared') so
+// they surface in the placement cell's existing workflow-queue pattern for
+// approval rather than silently appearing as an active/counted student.
+// Idempotent: never overwrites an existing institution_students row (in
+// particular never downgrades a row that's already active/placed/etc.).
+function escapeIlike(input) {
+  return input.replace(/[\\%_]/g, (ch) => `\\${ch}`)
+}
+
+router.post("/self-link", requireAuth, async (req, res) => {
+  const userId = req.user.id
+
+  const { data: profile, error: profileErr } = await supabaseAdmin
+    .from("profiles")
+    .select("college, branch")
+    .eq("id", userId)
+    .maybeSingle()
+  if (profileErr) return res.status(500).json({ error: profileErr.message })
+
+  const collegeText = (profile?.college || "").trim()
+  if (!collegeText) {
+    return res.status(200).json({ linked: false, reason: "no_college_on_profile" })
+  }
+
+  const { data: existingLink } = await supabaseAdmin
+    .from("institution_students")
+    .select("id, institution_id, status")
+    .eq("student_user_id", userId)
+    .maybeSingle()
+  if (existingLink) {
+    return res.status(200).json({ linked: true, alreadyLinked: true, institutionId: existingLink.institution_id, status: existingLink.status })
+  }
+
+  const term = escapeIlike(collegeText)
+  const { data: matches, error: matchErr } = await supabaseAdmin
+    .from("institutions")
+    .select("id, name")
+    .ilike("name", `%${term}%`)
+    .limit(2) // only need to know "exactly one" vs "ambiguous"
+  if (matchErr) return res.status(500).json({ error: matchErr.message })
+
+  if (!matches || matches.length !== 1) {
+    return res.status(200).json({
+      linked: false,
+      reason: matches && matches.length > 1 ? "ambiguous_match" : "no_registered_institution",
+    })
+  }
+
+  const institutionId = matches[0].id
+  const { data: inserted, error: insertErr } = await supabaseAdmin
+    .from("institution_students")
+    .insert({
+      institution_id: institutionId,
+      student_user_id: userId,
+      link_method: "self_declared",
+      status: "pending_admin",
+      department: profile?.branch || null,
+    })
+    .select("id, status")
+    .single()
+
+  if (insertErr) {
+    // Unique-constraint race (two calls in flight) is not an error condition.
+    if (insertErr.code === "23505") {
+      return res.status(200).json({ linked: true, alreadyLinked: true, institutionId })
+    }
+    return res.status(500).json({ error: insertErr.message })
+  }
+
+  await supabaseAdmin.from("activity_logs").insert({
+    institution_id: institutionId,
+    actor_id: userId,
+    action_code: "student.self_linked",
+    entity_type: "institution_students",
+    entity_id: inserted.id,
+    details: { matchedName: matches[0].name, declaredCollege: collegeText },
+  })
+
+  res.status(200).json({ linked: true, institutionId, status: inserted.status })
+})
 
 // ── GET /institutions/:id ──────────────────────────────────────────────────────
 router.get("/institutions/:id", requireAuth, requireInstitutionStaff(), async (req, res) => {
@@ -259,25 +918,52 @@ router.post("/institutions/:id/roster/import", requireAuth, requireInstitutionAd
   res.status(200).json(results)
 })
 
+// Status buckets used by the "active"/"inactive" filter — kept as a named
+// constant so the workflow-queue panel and this filter can't silently drift
+// apart on what "active" means.
+const ACTIVE_STATUSES = ["active", "placed", "transitioning", "professional_active"]
+
 // ── GET /institutions/:id/students — college.getStudentRoster ─────────────────
+// Extended 2026-07-31 (Phase 2 — placement-cell advanced filters) with role,
+// task-count, interview-status, share-status and active/inactive filtering.
+// department/batch/status/shared/active/search filter at the DB level (fast,
+// paginated correctly). role/minTasks/interviewStatus require data that only
+// lives in `profiles` and `interview_sessions` — there is no FK-embeddable
+// relationship from institution_students to either (student_user_id points
+// at auth.users, and PostgREST can't embed across that), so when any of
+// those three filters is present this falls back to fetching a larger
+// DB-filtered candidate batch (capped at 500 — generous for any single
+// institution at this platform's current scale) and filtering/paginating in
+// memory. This is a documented, honest trade-off, not a fully indexed
+// query — worth revisiting with a materialized view if a single
+// institution's roster grows past a few thousand.
 router.get("/institutions/:id/students", requireAuth, requireInstitutionStaff(), async (req, res) => {
   const { id: institutionId } = req.params
   const page = Math.max(1, parseInt(req.query.page, 10) || 1)
   const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize, 10) || 50))
-  const from = (page - 1) * pageSize
-  const to = from + pageSize - 1
+
+  const needsEnrichedFilter = !!(req.query.role || req.query.minTasks || req.query.interviewStatus)
+  const from = needsEnrichedFilter ? 0 : (page - 1) * pageSize
+  const to = needsEnrichedFilter ? 499 : from + pageSize - 1
 
   let query = supabaseAdmin
     .from("institution_students")
     // Explicit allowlist — no email/phone/DOB. This is the PII boundary.
-    .select("id, department, batch, roll_number, status, elo_current, job_readiness_score, linked_at", {
-      count: "exact",
-    })
+    // student_user_id is included only to join non-PII profile/interview
+    // aggregates below — it is stripped from every response before sending.
+    .select(
+      "id, student_user_id, department, batch, roll_number, status, elo_current, job_readiness_score, linked_at, shared_with_recruiters",
+      { count: "exact" }
+    )
     .eq("institution_id", institutionId)
 
   if (req.query.department) query = query.eq("department", req.query.department)
   if (req.query.batch) query = query.eq("batch", req.query.batch)
   if (req.query.status) query = query.eq("status", req.query.status)
+  if (req.query.shared === "true") query = query.eq("shared_with_recruiters", true)
+  if (req.query.shared === "false") query = query.eq("shared_with_recruiters", false)
+  if (req.query.active === "true") query = query.in("status", ACTIVE_STATUSES)
+  if (req.query.active === "false") query = query.not("status", "in", `(${ACTIVE_STATUSES.join(",")})`)
   // Roll-number search only — name search would require a join against
   // profiles (which holds PII) and is intentionally not implemented here.
   if (req.query.search) query = query.ilike("roll_number", `%${req.query.search}%`)
@@ -300,8 +986,175 @@ router.get("/institutions/:id/students", requireAuth, requireInstitutionStaff(),
     .range(from, to)
 
   if (error) return res.status(500).json({ error: error.message })
-  res.status(200).json({ students: data, page, pageSize, total: count })
+
+  // Enrich with non-PII, aggregate-only profile/interview data — same
+  // allowlist discipline as the base select, no email/phone/DOB pulled in.
+  // Always computed (not just when filtering on it) so the roster UI can
+  // show career role / task count / AI interview count columns on every
+  // page, not just filtered ones.
+  const userIds = data.map((s) => s.student_user_id).filter(Boolean)
+  const [{ data: profileRows }, { data: interviewRows }] = await Promise.all([
+    userIds.length
+      ? supabaseAdmin.from("profiles").select("id, job_role, target_role, arena_completed").in("id", userIds)
+      : Promise.resolve({ data: [] }),
+    userIds.length
+      ? supabaseAdmin.from("interview_sessions").select("user_id").in("user_id", userIds)
+      : Promise.resolve({ data: [] }),
+  ])
+  const profileById = Object.fromEntries((profileRows || []).map((p) => [p.id, p]))
+  const interviewCountById = {}
+  for (const row of interviewRows || []) {
+    interviewCountById[row.user_id] = (interviewCountById[row.user_id] || 0) + 1
+  }
+
+  let enriched = data.map(({ student_user_id, ...rest }) => {
+    const profile = profileById[student_user_id] || {}
+    return {
+      ...rest,
+      careerRole: profile.job_role || profile.target_role || null,
+      taskCount: profile.arena_completed || 0,
+      aiInterviewCount: interviewCountById[student_user_id] || 0,
+    }
+  })
+
+  if (!needsEnrichedFilter) {
+    return res.status(200).json({ students: enriched, page, pageSize, total: count })
+  }
+
+  const roleFilter = (req.query.role || "").trim().toLowerCase()
+  const minTasks = req.query.minTasks ? parseInt(req.query.minTasks, 10) : null
+  const interviewStatusFilter = req.query.interviewStatus // "none" | "attempted"
+
+  if (roleFilter) enriched = enriched.filter((s) => (s.careerRole || "").toLowerCase().includes(roleFilter))
+  if (minTasks != null && Number.isFinite(minTasks)) enriched = enriched.filter((s) => s.taskCount >= minTasks)
+  if (interviewStatusFilter === "none") enriched = enriched.filter((s) => s.aiInterviewCount === 0)
+  if (interviewStatusFilter === "attempted") enriched = enriched.filter((s) => s.aiInterviewCount > 0)
+
+  const filteredTotal = enriched.length
+  const pageStart = (page - 1) * pageSize
+  const paged = enriched.slice(pageStart, pageStart + pageSize)
+
+  res.status(200).json({ students: paged, page, pageSize, total: filteredTotal, filteredInMemory: true })
 })
+
+// ── PATCH /institutions/:id/students/:studentId/share — placement-cell share control ──
+// Added 2026-07-31. Placement-officer-or-admin-only, matching every other
+// state-changing route in this file. This is the "share status" control the
+// filters above read from — flipping it to false hides a student from any
+// recruiter-facing roster query without changing their institution_students
+// status (a student can be active but not yet shared, e.g. pending a
+// placement-cell review).
+router.patch(
+  "/institutions/:id/students/:studentId/share",
+  requireAuth,
+  requireInstitutionAdmin(),
+  async (req, res) => {
+    const { id: institutionId, studentId } = req.params
+    const { shared } = req.body || {}
+    if (typeof shared !== "boolean") return res.status(400).json({ error: "Body must include { shared: boolean }" })
+
+    const { data: updated, error } = await supabaseAdmin
+      .from("institution_students")
+      .update({ shared_with_recruiters: shared })
+      .eq("id", studentId)
+      .eq("institution_id", institutionId)
+      .select("id, shared_with_recruiters")
+      .single()
+    if (error) return res.status(500).json({ error: error.message })
+
+    await supabaseAdmin.from("activity_logs").insert({
+      institution_id: institutionId,
+      actor_id: req.user.id,
+      action_code: shared ? "student.shared" : "student.unshared",
+      entity_type: "institution_students",
+      entity_id: studentId,
+    })
+
+    res.status(200).json({ student: updated })
+  }
+)
+
+// ── POST /institutions/:id/students/:studentId/approve — workflow-queue action ──
+// Added 2026-07-31. Flips a self-linked or roster-imported student from
+// 'pending_admin' to 'active' — the missing other half of self-link's
+// "land pending, surface in the workflow queue" design. Placement-officer-
+// or college-admin-only (requireInstitutionAdmin), matching every other
+// state-changing route in this file.
+router.post(
+  "/institutions/:id/students/:studentId/approve",
+  requireAuth,
+  requireInstitutionAdmin(),
+  async (req, res) => {
+    const { id: institutionId, studentId } = req.params
+    const { data: student, error: fetchErr } = await supabaseAdmin
+      .from("institution_students")
+      .select("id, institution_id, status")
+      .eq("id", studentId)
+      .eq("institution_id", institutionId)
+      .single()
+    if (fetchErr || !student) return res.status(404).json({ error: "Student not found" })
+    if (student.status !== "pending_admin") {
+      return res.status(409).json({ error: `Cannot approve — student status is '${student.status}', not 'pending_admin'` })
+    }
+
+    const { data: updated, error: updateErr } = await supabaseAdmin
+      .from("institution_students")
+      .update({ status: "active", approved_at: new Date().toISOString() })
+      .eq("id", studentId)
+      .select()
+      .single()
+    if (updateErr) return res.status(500).json({ error: updateErr.message })
+
+    await supabaseAdmin.from("activity_logs").insert({
+      institution_id: institutionId,
+      actor_id: req.user.id,
+      action_code: "student.approved",
+      entity_type: "institution_students",
+      entity_id: studentId,
+    })
+
+    res.status(200).json({ student: updated })
+  }
+)
+
+// ── POST /institutions/:id/students/:studentId/reject — workflow-queue action ──
+router.post(
+  "/institutions/:id/students/:studentId/reject",
+  requireAuth,
+  requireInstitutionAdmin(),
+  async (req, res) => {
+    const { id: institutionId, studentId } = req.params
+    const { data: student, error: fetchErr } = await supabaseAdmin
+      .from("institution_students")
+      .select("id, institution_id, status")
+      .eq("id", studentId)
+      .eq("institution_id", institutionId)
+      .single()
+    if (fetchErr || !student) return res.status(404).json({ error: "Student not found" })
+    if (student.status !== "pending_admin") {
+      return res.status(409).json({ error: `Cannot reject — student status is '${student.status}', not 'pending_admin'` })
+    }
+
+    const { data: updated, error: updateErr } = await supabaseAdmin
+      .from("institution_students")
+      .update({ status: "rejected" })
+      .eq("id", studentId)
+      .select()
+      .single()
+    if (updateErr) return res.status(500).json({ error: updateErr.message })
+
+    await supabaseAdmin.from("activity_logs").insert({
+      institution_id: institutionId,
+      actor_id: req.user.id,
+      action_code: "student.rejected",
+      entity_type: "institution_students",
+      entity_id: studentId,
+      severity: "warning",
+    })
+
+    res.status(200).json({ student: updated })
+  }
+)
 
 // ── GET /institutions/:id/leaderboard — college.getDepartmentLeaderboard ─────
 router.get("/institutions/:id/leaderboard", requireAuth, requireInstitutionStaff(), async (req, res) => {

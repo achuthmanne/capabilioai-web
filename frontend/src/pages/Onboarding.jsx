@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { userDoc } from "../lib/db";
+import { collegeApi } from "../lib/api"
 import { PLANS, getPlansByPath, getPlansByPathWithDiscount, getDefaultPlanForPath, getInviteContext, applyDiscount } from "../config/plans"
 import { useRazorpay } from "../hooks/useRazorpay"
 import { getSkillModule } from "../config/skillModules"
@@ -2068,6 +2069,15 @@ export default function Onboarding({ user, onComplete, onBack }) {
         path:      "student",
         keyword:   keyword || payload.keyword || "",
       })
+
+      // College Path auto-alignment (added 2026-07-31): server-verified,
+      // best-effort attempt to link this student to their college's
+      // dashboard if that college is a registered Capabilio institution.
+      // Fire-and-forget by design — same "fail silently, never block
+      // onboarding" posture as the college-directory typeahead above. A
+      // student whose college isn't registered yet (the common case) simply
+      // stays unlinked; nothing about the existing save above changes.
+      collegeApi.selfLink().catch(() => {})
     } catch (err) { console.warn("Profile save failed:", err) }
     setSavingResult(false)
     // Show RecoPopup only AFTER save is complete — prevents it appearing while

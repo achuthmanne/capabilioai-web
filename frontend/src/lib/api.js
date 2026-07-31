@@ -100,6 +100,72 @@ export const orgApi = {
 }
 
 // ══════════════════════════════════════════
+// COLLEGE PATH — canonical institution_* schema (backend/server/routes/college.js)
+// Distinct from orgApi above, which is the legacy org_* family. Added
+// 2026-07-31 as part of bridging the dashboard onto the FK-correct schema.
+// ══════════════════════════════════════════
+export const collegeApi = {
+  // Student-side: best-effort auto-link to a registered institution based on
+  // their own profile.college text. Safe to call repeatedly (idempotent).
+  selfLink: () => request("POST", "/college/self-link"),
+
+  // Staff-side: resolve "which institution am I looking at" for the signed-in user.
+  myInstitution: () => request("GET", "/college/institutions/mine"),
+
+  getStudents: (institutionId, params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return request("GET", `/college/institutions/${institutionId}/students${qs ? `?${qs}` : ""}`)
+  },
+  getStats:      (institutionId) => request("GET", `/college/institutions/${institutionId}/stats`),
+  getBranches:   (institutionId) => request("GET", `/college/institutions/${institutionId}/branches`),
+  getLeaderboard: (institutionId, params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return request("GET", `/college/institutions/${institutionId}/leaderboard${qs ? `?${qs}` : ""}`)
+  },
+  exportReport:  (institutionId, format = "json") => request("GET", `/college/institutions/${institutionId}/export?format=${format}`),
+  confirmPlacement: (institutionId, placementId) => request("POST", `/college/institutions/${institutionId}/placements/${placementId}/confirm`),
+  approveStudent: (institutionId, studentId) => request("POST", `/college/institutions/${institutionId}/students/${studentId}/approve`),
+  rejectStudent:  (institutionId, studentId) => request("POST", `/college/institutions/${institutionId}/students/${studentId}/reject`),
+  shareStudent:   (institutionId, studentId, shared) => request("PATCH", `/college/institutions/${institutionId}/students/${studentId}/share`, { shared }),
+
+  // Phase 3 — recruiter discovery / invite / interview workflow.
+  recruiterSearch: (params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return request("GET", `/college/recruiter/search${qs ? `?${qs}` : ""}`)
+  },
+  inviteStudent:   (institutionId, studentId, type = "profile_view") =>
+    request("POST", `/college/institutions/${institutionId}/students/${studentId}/invite`, { type }),
+  requestInterview: (institutionId, studentId, opts = {}) =>
+    request("POST", `/college/institutions/${institutionId}/students/${studentId}/interview`, opts),
+  listRecruiterInvites: (institutionId) => request("GET", `/college/institutions/${institutionId}/recruiter-invites`),
+  listInterviews:       (institutionId) => request("GET", `/college/institutions/${institutionId}/interviews`),
+  updateInterviewStatus: (institutionId, interviewId, status) =>
+    request("PATCH", `/college/institutions/${institutionId}/interviews/${interviewId}`, { status }),
+
+  // Phase 4 — offers, placement records, student response.
+  sendOffer:     (institutionId, studentId, opts) =>
+    request("POST", `/college/institutions/${institutionId}/students/${studentId}/offer`, opts),
+  listOffers:    (institutionId) => request("GET", `/college/institutions/${institutionId}/offers`),
+  respondToOffer: (offerId, response) => request("POST", `/college/offers/${offerId}/respond`, { response }),
+  listPlacements: (institutionId, params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return request("GET", `/college/institutions/${institutionId}/placements${qs ? `?${qs}` : ""}`)
+  },
+}
+
+// ══════════════════════════════════════════
+// COLLEGE PATH — in-house chat (backend/server/routes/collegeChat.js)
+// Phase 5, added 2026-07-31. Distinct from the generic AI chat.js endpoint.
+// ══════════════════════════════════════════
+export const collegeChatApi = {
+  listThreads:  (institutionId) => request("GET", `/college-chat/threads?institutionId=${institutionId}`),
+  startThread:  (institutionId, firstMessage, opts = {}) =>
+    request("POST", "/college-chat/threads", { institutionId, firstMessage, ...opts }),
+  getMessages:  (threadId) => request("GET", `/college-chat/threads/${threadId}/messages`),
+  sendMessage:  (threadId, body) => request("POST", `/college-chat/threads/${threadId}/messages`, { body }),
+}
+
+// ══════════════════════════════════════════
 // EPFO VERIFICATION
 // ══════════════════════════════════════════
 export const epfoApi = {

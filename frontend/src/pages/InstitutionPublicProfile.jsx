@@ -9,8 +9,9 @@
  *   onBack()   — optional, called by the "← Search" breadcrumb
  *   onAction(name) — optional, called for follow / request-access / brochure
  */
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { verificationLevel } from "../lib/orgVerification"
+import { collegeApi } from "../lib/api"
 
 const IP_CSS = `
 .ipx{--bg:#0b0a08;--bg2:#13100c;--line:rgba(255,255,255,.10);--line2:rgba(255,255,255,.16);
@@ -153,14 +154,30 @@ function buildBody(d) {
   // partial progress shows as partial credit, not a flat 40/72 toggle.
   const trustScore = Math.min(100, vLevel * 20 + (d.websiteProvided ? 5 : 0) + (d.adminProvided ? 5 : 0) + (d.docUploaded ? 5 : 0) + (naacGrade ? 5 : 0))
 
-  // Placeholder stats — will be real once placement data is captured
+  // Canonical (institution_students / offers / placements) numbers when
+  // available — real data, not a prediction. Each falls back to the honest
+  // "Coming soon" placeholder it replaces when there's nothing to show yet
+  // (e.g. no confirmed placements have a CTC recorded), same as before.
+  const canon = d.canonical || {}
   const HLS=[
-    {yr:'Coming soon',v:'—',s:'Highest package — add placement data to unlock',c:C.gold},
-    {yr:'Coming soon',v:'—',s:'Offers this cycle — sync your placement records',c:C.green},
-    {yr:'Coming soon',v:'—',s:'ELO lift this term — students need Arena scores',c:C.blue},
-    {yr:'Coming soon',v:'—',s:'Placement rate — complete student profiles to track',c:C.purple},
-    {yr:'Coming soon',v:'—',s:'Top student ELO — pending Arena activity',c:C.cyan},
-    {yr:'Coming soon',v:'—',s:'At-risk recovery rate — set up cohorts to measure',c:C.green},
+    canon.highestPackage != null
+      ? {yr:'This cycle',v:`${canon.highestPackage} LPA`,s:'Highest confirmed package',c:C.gold}
+      : {yr:'Coming soon',v:'—',s:'Highest package — add placement data to unlock',c:C.gold},
+    canon.offersCount != null
+      ? {yr:'This cycle',v:String(canon.offersCount),s:'Offers sent to your shared students',c:C.green}
+      : {yr:'Coming soon',v:'—',s:'Offers this cycle — sync your placement records',c:C.green},
+    canon.avgElo != null
+      ? {yr:'Live',v:String(canon.avgElo),s:'Average student ELO across your roster',c:C.blue}
+      : {yr:'Coming soon',v:'—',s:'Average ELO — students need Arena scores',c:C.blue},
+    canon.placementRate != null
+      ? {yr:'This cycle',v:`${canon.placementRate}%`,s:'Placement rate — confirmed placements / total roster',c:C.purple}
+      : {yr:'Coming soon',v:'—',s:'Placement rate — complete student profiles to track',c:C.purple},
+    canon.topElo != null
+      ? {yr:'Live',v:String(canon.topElo),s:'Top student ELO on your roster',c:C.cyan}
+      : {yr:'Coming soon',v:'—',s:'Top student ELO — pending Arena activity',c:C.cyan},
+    canon.partnersCount != null
+      ? {yr:'Live',v:String(canon.partnersCount),s:'Recruiters who have engaged your students',c:C.green}
+      : {yr:'Coming soon',v:'—',s:'Recruiter partners — connect via Talent Network',c:C.green},
   ]
 
   const trustChecks=TRUST.map(t=>`<div class="ip-tcheck"><div class="tc ${t[2]}">${t[0]}</div><span>${t[1]}</span></div>`).join('')
@@ -182,19 +199,17 @@ function buildBody(d) {
   <div class="ip-ticker"><div class="ip-ticker-track" data-ticker="${encodeURIComponent(orgName)}"></div></div>
   <div class="ip-body">
     <div class="ip-statstrip">
-      <div class="ip-stat"><div class="sn" style="color:var(--green)">—</div><div class="sl">Offers this cycle</div><div class="sd" style="color:var(--mut2)">Add placement data</div></div>
-      <div class="ip-stat"><div class="sn" style="color:var(--gold)">—</div><div class="sl">Avg Package</div><div class="sd" style="color:var(--mut2)">Pending records</div></div>
+      <div class="ip-stat"><div class="sn" style="color:var(--green)">${canon.offersCount ?? '—'}</div><div class="sl">Offers this cycle</div><div class="sd" style="color:var(--mut2)">${canon.offersCount != null ? 'Live' : 'Add placement data'}</div></div>
+      <div class="ip-stat"><div class="sn" style="color:var(--gold)">${canon.avgPackage != null ? canon.avgPackage + ' LPA' : '—'}</div><div class="sl">Avg Package</div><div class="sd" style="color:var(--mut2)">${canon.avgPackage != null ? 'Confirmed placements' : 'Pending records'}</div></div>
       <div class="ip-stat"><div class="sn" style="color:var(--blue)">${studentCount}</div><div class="sl">Students</div><div class="sd" style="color:var(--mut2)">On platform</div></div>
-      <div class="ip-stat"><div class="sn" style="color:var(--cyan)">—</div><div class="sl">Recruiter Partners</div><div class="sd" style="color:var(--mut2)">Growing</div></div>
+      <div class="ip-stat"><div class="sn" style="color:var(--cyan)">${canon.partnersCount ?? '—'}</div><div class="sl">Recruiter Partners</div><div class="sd" style="color:var(--mut2)">${canon.partnersCount != null ? 'Live' : 'Growing'}</div></div>
     </div>
-    <div class="ip-sh"><h2>Departments</h2><div class="hl"></div><span class="badge" style="background:rgba(247,242,234,.07);color:var(--mut2)">Add via Settings</span></div>
-    <div style="border:1px dashed rgba(255,255,255,.08);border-radius:16px;padding:32px;text-align:center;color:var(--mut2);font-size:12px;margin-bottom:24px">
-      🎓 Department breakdown will appear here once you add departments in Settings → Profile
-    </div>
+    <div class="ip-sh"><h2>Departments</h2><div class="hl"></div><span class="badge" style="background:rgba(247,242,234,.07);color:var(--mut2)">${canon.branches && canon.branches.length ? 'Live' : 'Add via Settings'}</span></div>
+    ${canon.branches && canon.branches.length
+      ? '<div class="ip-dept-grid">' + canon.branches.slice(0,4).map((b,i)=>`<div class="ip-dept${i===0?' feat':''}"><div class="dd-code">${b.department}</div><div class="dd-sub">${b.students} students · avg ELO ${b.avgElo}</div><div class="dd-track"><div class="dd-fill" style="width:${Math.min(100,b.placedPct)}%;background:${C.gold}"></div></div><div class="dd-placed">${b.placedPct}%</div><div class="dd-elo">placed</div></div>`).join('') + '</div>'
+      : '<div style="border:1px dashed rgba(255,255,255,.08);border-radius:16px;padding:32px;text-align:center;color:var(--mut2);font-size:12px;margin-bottom:24px">🎓 Department breakdown will appear here once students are linked to your institution</div>'}
     <div class="ip-sh"><h2>Recruiter Network</h2><div class="hl"></div><span class="badge" style="background:rgba(79,212,163,.12);color:var(--green)">● Active</span></div>
-    <div style="border:1px dashed rgba(255,255,255,.08);border-radius:16px;padding:32px;text-align:center;color:var(--mut2);font-size:12px;margin-bottom:24px">
-      🤝 Recruiter partners will appear here as they connect through Capabilio
-    </div>
+    ${canon.partnersCount ? `<div style="border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px;text-align:center;color:var(--mut);font-size:13px;margin-bottom:24px">🤝 <b style="color:var(--txt)">${canon.partnersCount}</b> recruiter${canon.partnersCount===1?'':'s'} ${canon.partnersCount===1?'has':'have'} engaged your shared students</div>` : '<div style="border:1px dashed rgba(255,255,255,.08);border-radius:16px;padding:32px;text-align:center;color:var(--mut2);font-size:12px;margin-bottom:24px">🤝 Recruiter partners will appear here as they connect through Capabilio</div>'}
     <div class="ip-bottom-row">
       <div class="ip-trust"><div class="ip-trust-score" style="color:${verified ? 'var(--green)' : 'var(--gold)'}">${trustScore}</div><div class="ip-trust-label">Trust Score / 100</div>${trustChecks}</div>
       <div><div class="ip-sh"><h2>Landmark Outcomes</h2><div class="hl"></div></div><div class="ip-hl-grid">${hlCards}</div></div>
@@ -238,13 +253,14 @@ function initInstPage(root) {
   if (orbit) {
     const CX = 160, CY = 160
     const sc = orbit.closest(".ipx")?.dataset?.studentCount || "—"
+    const ds = orbit.closest(".ipx")?.dataset || {}
     const ONODES = [
-      { angle: 0,   r: 82,  n: sc,    l: 'Students', col: '#74a8ff' },
-      { angle: 180, r: 82,  n: '—',   l: 'Partners',  col: '#54d9e0' },
-      { angle: 75,  r: 128, n: '—',   l: 'Avg Pkg',   col: '#f6c453' },
-      { angle: 255, r: 128, n: '—',   l: 'Offers',    col: '#ab93ff' },
-      { angle: 330, r: 152, n: '—',   l: 'Trust',     col: '#4fd4a3' },
-      { angle: 150, r: 152, n: '—',   l: 'ELO Lift',  col: '#dc8b18' },
+      { angle: 0,   r: 82,  n: sc,                              l: 'Students', col: '#74a8ff' },
+      { angle: 180, r: 82,  n: ds.partners || '—',               l: 'Partners',  col: '#54d9e0' },
+      { angle: 75,  r: 128, n: ds.avgPkg ? ds.avgPkg + ' LPA' : '—', l: 'Avg Pkg',   col: '#f6c453' },
+      { angle: 255, r: 128, n: ds.offers || '—',                 l: 'Offers',    col: '#ab93ff' },
+      { angle: 330, r: 152, n: ds.trust || '—',                  l: 'Trust',     col: '#4fd4a3' },
+      { angle: 150, r: 152, n: ds.avgElo || '—',                 l: 'Avg ELO',   col: '#dc8b18' },
     ]
     ONODES.forEach(o => {
       const rad = o.angle * Math.PI / 180, px = CX + o.r * Math.cos(rad), py = CY + o.r * Math.sin(rad)
@@ -280,11 +296,48 @@ function initInstPage(root) {
 
 export default function InstitutionPublicProfile({ onBack, onAction, userData, members }) {
   const ref = useRef(null)
+  // Fetched independently (not threaded through props) so this component
+  // stays a self-contained public-profile view regardless of which page
+  // renders it. Degrades to the existing "—" placeholders on any failure —
+  // this is a showcase page, it must never hard-fail because of it.
+  const [canonical, setCanonical] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const mine = await collegeApi.myInstitution()
+        const institutionId = mine?.institution?.id
+        if (!institutionId) return
+        const [stats, branches, offers, placements] = await Promise.all([
+          collegeApi.getStats(institutionId).catch(() => null),
+          collegeApi.getBranches(institutionId).catch(() => null),
+          collegeApi.listOffers(institutionId).catch(() => null),
+          collegeApi.listPlacements(institutionId, { status: "tpo_confirmed" }).catch(() => null),
+        ])
+        if (cancelled) return
+        const confirmedCtcs = (placements?.placements || []).map(p => p.ctc_lpa).filter(v => typeof v === "number")
+        const partnerIds = new Set((offers?.offers || []).map(o => o.recruiter_id).filter(Boolean))
+        setCanonical({
+          totalStudents: stats?.totalStudents,
+          avgElo: stats?.avgElo,
+          topElo: (branches?.branches || []).reduce((m, b) => Math.max(m, b.avgElo || 0), 0) || null,
+          placementRate: stats?.placementRate,
+          offersCount: offers?.offers?.length ?? null,
+          avgPackage: confirmedCtcs.length ? Math.round((confirmedCtcs.reduce((a, b) => a + b, 0) / confirmedCtcs.length) * 10) / 10 : null,
+          highestPackage: confirmedCtcs.length ? Math.max(...confirmedCtcs) : null,
+          partnersCount: partnerIds.size || null,
+          branches: branches?.branches || [],
+        })
+      } catch (_) { /* stays null — placeholders render as before */ }
+    })()
+    return () => { cancelled = true }
+  }, [])
 
   // Derive dynamic values from props
-  const studentCount = members
+  const studentCount = canonical?.totalStudents ?? (members
     ? members.filter(m => m.role === "student" || m.role === "Student").length || members.length
-    : (userData?.student_count || "—")
+    : (userData?.student_count || "—"))
 
   const profileData = {
     orgName:        userData?.org_name      || "Your Institution",
@@ -301,12 +354,17 @@ export default function InstitutionPublicProfile({ onBack, onAction, userData, m
     websiteProvided:!!userData?.org_website,
     adminProvided:  !!(userData?.org_admin_name && userData?.org_admin_role),
     docUploaded:    !!userData?.org_naac_cert_url,
+    canonical,
   }
 
   useEffect(() => {
     const root = ref.current
     if (!root) return
     root.dataset.studentCount = profileData.studentCount
+    root.dataset.partners = canonical?.partnersCount || ""
+    root.dataset.avgPkg = canonical?.avgPackage || ""
+    root.dataset.offers = canonical?.offersCount || ""
+    root.dataset.avgElo = canonical?.avgElo || ""
     root.innerHTML = buildBody(profileData)
     const cleanup = initInstPage(root)
     const onClick = (e) => {
@@ -318,8 +376,8 @@ export default function InstitutionPublicProfile({ onBack, onAction, userData, m
     }
     root.addEventListener("click", onClick)
     return () => { root.removeEventListener("click", onClick); cleanup && cleanup() }
-  // Re-render when userData or members change
-  }, [onBack, onAction, userData, members])
+  // Re-render when userData, members, or fetched canonical data changes
+  }, [onBack, onAction, userData, members, canonical])
 
   return (
     <>

@@ -10,7 +10,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { supabase } from "../lib/supabase"
-import { orgApi } from "../lib/api"
+import { orgApi, collegeApi, collegeChatApi, nexusApi } from "../lib/api"
 import { verificationLevel, VERIFICATION_LEVEL_LABEL } from "../lib/orgVerification"
 import InstitutionPublicProfile from "./InstitutionPublicProfile"
 
@@ -231,6 +231,72 @@ function useOrgAuditLog(orgId, limit = 20) {
   }, [orgId, limit])
   useEffect(() => { load() }, [load])
   return { data, loading, reload: load }
+}
+
+// ─── Canonical College Path roster (institution_students, added 2026-07-31) ──
+// Additive, parallel to the org_members hooks above — does not replace them.
+// Resolves the signed-in user's institution via /college/institutions/mine
+// (works whether they're the legacy admin_user_id or an institution_staff
+// row), then pulls the live, auto-linked, FK-correct roster + stats. If the
+// user has no institutions/institution_staff row at all (common today, since
+// most colleges haven't been created under the new schema yet), this hook
+// resolves to `institution: null` and every consumer below renders nothing
+// extra — the existing org_members-driven UI is completely unaffected.
+function useCanonicalRoster() {
+  const [institution, setInstitution] = useState(null)
+  const [role, setRole]               = useState(null)
+  const [students, setStudents]       = useState([])
+  const [stats, setStats]             = useState(null)
+  const [branches, setBranches]       = useState([])
+  const [loading, setLoading]         = useState(true)
+  const [notLinked, setNotLinked]     = useState(false)
+  const [filters, setFilters]         = useState({
+    department: "", batch: "", status: "", search: "",
+    role: "", minTasks: "", interviewStatus: "", shared: "", active: "",
+  })
+
+  const loadRoster = useCallback(async (institutionId, activeFilters) => {
+    try {
+      const cleanFilters = Object.fromEntries(
+        Object.entries(activeFilters || {}).filter(([, v]) => v)
+      )
+      const [studentsRes, statsRes, branchesRes] = await Promise.all([
+        collegeApi.getStudents(institutionId, { pageSize: 100, ...cleanFilters }),
+        collegeApi.getStats(institutionId),
+        collegeApi.getBranches(institutionId),
+      ])
+      setStudents(studentsRes?.students || [])
+      setStats(statsRes || null)
+      setBranches(branchesRes?.branches || [])
+    } catch (_) {
+      // Roster fetch failing shouldn't take down the rest of the dashboard.
+    }
+  }, [])
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await collegeApi.myInstitution()
+      setInstitution(res.institution)
+      setRole(res.role)
+      setNotLinked(false)
+      await loadRoster(res.institution.id, filters)
+    } catch (err) {
+      if (err.status === 404) setNotLinked(true)
+      setInstitution(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [loadRoster, filters])
+
+  useEffect(() => { load() }, [load])
+
+  const reload = useCallback(() => {
+    if (institution?.id) return loadRoster(institution.id, filters)
+    return load()
+  }, [institution, filters, loadRoster, load])
+
+  return { institution, role, students, stats, branches, loading, notLinked, filters, setFilters, reload }
 }
 
 function useOrgPosts(orgId) {
@@ -707,20 +773,38 @@ function timeSince(dateStr) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // PAGE 1 — HOME
 // ═══════════════════════════════════════════════════════════════════════════════
-function HomePage({ userData, user, onNav, members, tasks, events, auditLogs, auditLoading, onVerify }) {
+function HomePage({ userData, user, onNav, members, tasks, events, auditLogs, auditLoading, onVerify, canonical }) {
   const isCollege = (userData?.org_type || "college") !== "company"
   const firstName = (userData?.name || user?.displayName || "Admin").split(" ")[0]
   const hour = new Date().getHours()
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening"
   const vLevel = verificationLevel(userData)
 
-  // Computed KPIs from real data
-  const activeMembers   = members.filter(m => m.status === "active").length
-  const pendingMembers  = members.filter(m => m.status === "pending" || m.status === "invited").length
-  const placedMembers   = members.filter(m => m.placement_company).length
+  // Prefer the canonical institution_students-backed numbers when this
+  // institution has been migrated onto the new schema (see
+  // useCanonicalRoster above) — this is what actually fixes the "everything
+  // shows 0" dashboard state for colleges whose students are auto-linking
+  // via self-link/roster-import into institution_students but never wrote
+  // to the legacy org_members table the KPIs below used to read exclusively.
+  // Falls back to the original org_members computation untouched when there
+  // is no canonical institution for this admin yet.
+  const hasCanonical = !!canonical?.institution
+
+  // Computed KPIs from real data (legacy org_members — unchanged fallback)
+  const orgActiveMembers  = members.filter(m => m.status === "active").length
+  const orgPendingMembers = members.filter(m => m.status === "pending" || m.status === "invited").length
+  const orgPlacedMembers  = members.filter(m => m.placement_company).length
   const activeTasks     = tasks.filter(t => t.status === "active").length
   const urgentTasks     = tasks.filter(t => t.priority === "urgent" && t.status === "active").length
   const upcomingEvents  = events.filter(e => e.status === "upcoming").length
+
+  const canonActiveMembers  = (canonical?.students || []).filter(s => s.status === "active" || s.status === "placed" || s.status === "transitioning" || s.status === "professional_active").length
+  const canonPendingMembers = (canonical?.students || []).filter(s => s.status === "pending_admin").length
+  const canonPlacedMembers  = canonical?.stats?.confirmedPlacements ?? 0
+
+  const activeMembers  = hasCanonical ? canonActiveMembers  : orgActiveMembers
+  const pendingMembers = hasCanonical ? canonPendingMembers : orgPendingMembers
+  const placedMembers  = hasCanonical ? canonPlacedMembers  : orgPlacedMembers
 
   const pulseCards = isCollege ? [
     { value: activeMembers || "—",  label: "Active Members", color: T.sky,   context: `${pendingMembers} pending approval` },
@@ -942,7 +1026,287 @@ function HomePage({ userData, user, onNav, members, tasks, events, auditLogs, au
 // ═══════════════════════════════════════════════════════════════════════════════
 // PAGE 2 — INTELLIGENCE
 // ═══════════════════════════════════════════════════════════════════════════════
-function IntelligencePage({ userData, user, members, tasks, auditLogs, auditLoading }) {
+// ─── Recruiter Activity — placement-cell visibility, added 2026-07-31 ──────
+// Read-only view of recruiter_invites + interviews for this institution
+// (Phase 3). A recruiter-facing search/invite UI is a separate surface
+// (Recruiter portal) not built in this pass — this panel is specifically
+// the "placement cell visibility" half of the requirement: what recruiters
+// are doing with this college's shared students, visible to admins here.
+function RecruiterActivityPanel({ canonical }) {
+  const [invites, setInvites]   = useState([])
+  const [interviews, setInterviews] = useState([])
+  const [loading, setLoading]   = useState(true)
+  const [actionId, setActionId] = useState(null)
+  const institutionId = canonical?.institution?.id
+
+  const load = useCallback(async () => {
+    if (!institutionId) { setLoading(false); return }
+    setLoading(true)
+    try {
+      const [inv, iv] = await Promise.all([
+        collegeApi.listRecruiterInvites(institutionId),
+        collegeApi.listInterviews(institutionId),
+      ])
+      setInvites(inv?.invites || [])
+      setInterviews(iv?.interviews || [])
+    } catch (_) { /* panel degrades to empty state */ }
+    setLoading(false)
+  }, [institutionId])
+
+  useEffect(() => { load() }, [load])
+
+  async function setInterviewStatus(id, status) {
+    setActionId(id + status)
+    try { await collegeApi.updateInterviewStatus(institutionId, id, status); await load() }
+    catch (_) {}
+    setActionId(null)
+  }
+
+  if (!institutionId) {
+    return <EmptyState icon="🤝" title="Not connected yet" sub="Recruiter activity appears here once your institution is linked (visit Institution Home first)." />
+  }
+  if (loading) return <Spinner />
+
+  // Recruiter partnership CRM — a lightweight aggregation over data this
+  // panel already fetched (invites + interviews), grouped by recruiter_id.
+  // No new table: it's a read-side view, not a persisted CRM record.
+  const recruiterActivity = {}
+  for (const inv of invites) {
+    recruiterActivity[inv.recruiter_id] = recruiterActivity[inv.recruiter_id] || { invites: 0, interviews: 0 }
+    recruiterActivity[inv.recruiter_id].invites += 1
+  }
+  for (const iv of interviews) {
+    recruiterActivity[iv.recruiter_id] = recruiterActivity[iv.recruiter_id] || { invites: 0, interviews: 0 }
+    recruiterActivity[iv.recruiter_id].interviews += 1
+  }
+  const recruiterRows = Object.entries(recruiterActivity)
+
+  return (
+    <>
+      {recruiterRows.length > 0 && (
+        <Card style={{ marginBottom: 16 }}>
+          <SectionHead title="Recruiter Partners" />
+          {recruiterRows.map(([recruiterId, activity], i) => (
+            <div key={recruiterId} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: i < recruiterRows.length - 1 ? `1px solid ${T.border}` : "none" }}>
+              <div style={{ fontSize: 12.5, color: T.ink2 }}>Recruiter {recruiterId.slice(0, 8)}…</div>
+              <div style={{ fontSize: 11, color: T.ink4 }}>{activity.invites} invite{activity.invites !== 1 ? "s" : ""} · {activity.interviews} interview{activity.interviews !== 1 ? "s" : ""}</div>
+            </div>
+          ))}
+        </Card>
+      )}
+      <Card style={{ marginBottom: 16 }}>
+        <SectionHead title="Recruiter Invites" />
+        {invites.length === 0 ? (
+          <EmptyState icon="📨" title="No recruiter invites yet" sub="When a recruiter invites one of your shared students, it appears here." />
+        ) : (
+          invites.slice(0, 20).map((inv, i) => (
+            <div key={inv.id} style={{ display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: i < invites.length - 1 ? `1px solid ${T.border}` : "none" }}>
+              <div style={{ fontSize: 12.5, color: T.ink2 }}>
+                {inv.type.replace(/_/g, " ")} invite · student {inv.student_id.slice(0, 8)}…
+              </div>
+              <div style={{ fontSize: 11, color: T.ink4 }}>{inv.status} · {timeSince(inv.created_at)}</div>
+            </div>
+          ))
+        )}
+      </Card>
+      <Card>
+        <SectionHead title="Interview Pipeline" />
+        {interviews.length === 0 ? (
+          <EmptyState icon="🎤" title="No interviews yet" sub="Recruiter-requested interviews with your students appear here." />
+        ) : (
+          interviews.slice(0, 20).map((iv, i) => (
+            <div key={iv.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 0", borderBottom: i < interviews.length - 1 ? `1px solid ${T.border}` : "none" }}>
+              <div style={{ fontSize: 12.5, color: T.ink2 }}>
+                {iv.mode} interview · student {iv.student_id.slice(0, 8)}… · <span style={{ fontWeight: 600 }}>{iv.status.replace(/_/g, " ")}</span>
+              </div>
+              {["scheduled", "consent_pending", "live"].includes(iv.status) && (
+                <div style={{ display: "flex", gap: 6 }}>
+                  <Btn variant="outline" onClick={() => setInterviewStatus(iv.id, "completed")} disabled={actionId === iv.id + "completed"}
+                    style={{ fontSize: 11, padding: "4px 9px" }}>Mark completed</Btn>
+                  <Btn variant="outline" onClick={() => setInterviewStatus(iv.id, "cancelled")} disabled={actionId === iv.id + "cancelled"}
+                    style={{ fontSize: 11, padding: "4px 9px", borderColor: T.red, color: T.red }}>Cancel</Btn>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </Card>
+    </>
+  )
+}
+
+// ─── In-house chat — added 2026-07-31 (Phase 5) ─────────────────────────────
+// Internal admin<->placement-cell threads today (no recruiter picker UI yet
+// — recruiter-initiated threads land here too once a recruiter starts one
+// via the API, this view doesn't distinguish, it just shows whatever
+// threads the caller can see for this institution). Messages are
+// append-only — the thread itself is the audit trail requested for this
+// feature, nothing here supports editing or deleting a sent message.
+function ChatPanel({ canonical, user }) {
+  const institutionId = canonical?.institution?.id
+  const [threads, setThreads] = useState([])
+  const [activeThreadId, setActiveThreadId] = useState(null)
+  const [messages, setMessages] = useState([])
+  const [draft, setDraft] = useState("")
+  const [newSubject, setNewSubject] = useState("")
+  const [loading, setLoading] = useState(true)
+  const [sending, setSending] = useState(false)
+
+  const loadThreads = useCallback(async () => {
+    if (!institutionId) { setLoading(false); return }
+    setLoading(true)
+    try {
+      const res = await collegeChatApi.listThreads(institutionId)
+      setThreads(res?.threads || [])
+    } catch (_) { /* degrade to empty state */ }
+    setLoading(false)
+  }, [institutionId])
+
+  useEffect(() => { loadThreads() }, [loadThreads])
+
+  const loadMessages = useCallback(async (threadId) => {
+    try {
+      const res = await collegeChatApi.getMessages(threadId)
+      setMessages(res?.messages || [])
+    } catch (_) { setMessages([]) }
+  }, [])
+
+  useEffect(() => { if (activeThreadId) loadMessages(activeThreadId) }, [activeThreadId, loadMessages])
+
+  async function startThread() {
+    if (!draft.trim()) return
+    setSending(true)
+    try {
+      const res = await collegeChatApi.startThread(institutionId, draft.trim(), { subject: newSubject.trim() || null })
+      setDraft(""); setNewSubject("")
+      await loadThreads()
+      if (res?.thread?.id) setActiveThreadId(res.thread.id)
+    } catch (_) {}
+    setSending(false)
+  }
+
+  async function sendMessage() {
+    if (!draft.trim() || !activeThreadId) return
+    setSending(true)
+    try {
+      await collegeChatApi.sendMessage(activeThreadId, draft.trim())
+      setDraft("")
+      await loadMessages(activeThreadId)
+      await loadThreads()
+    } catch (_) {}
+    setSending(false)
+  }
+
+  if (!institutionId) {
+    return <EmptyState icon="💬" title="Not connected yet" sub="Messages appear here once your institution is linked (visit Institution Home first)." />
+  }
+  if (loading) return <Spinner />
+
+  return (
+    <div style={{ display: "flex", gap: 14, minHeight: 420 }}>
+      <div style={{ width: 240, flexShrink: 0 }}>
+        <Card style={{ marginBottom: 12 }}>
+          <SectionHead title="Threads" />
+          {threads.length === 0 ? (
+            <div style={{ fontSize: 11.5, color: T.ink4 }}>No conversations yet — start one below.</div>
+          ) : (
+            threads.map((t) => (
+              <div key={t.id} onClick={() => setActiveThreadId(t.id)}
+                style={{
+                  padding: "8px 6px", borderRadius: 8, cursor: "pointer", marginBottom: 4,
+                  background: activeThreadId === t.id ? T.skyL : "transparent",
+                }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: T.ink }}>
+                  {t.subject || (t.recruiter_id ? "Recruiter thread" : "Internal thread")}
+                </div>
+                <div style={{ fontSize: 10.5, color: T.ink4 }}>{timeSince(t.last_message_at)}</div>
+              </div>
+            ))
+          )}
+        </Card>
+      </div>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        <Card style={{ flex: 1, display: "flex", flexDirection: "column", marginBottom: 10, minHeight: 300 }}>
+          {!activeThreadId ? (
+            <EmptyState icon="✍️" title="Start a conversation" sub="Message your placement cell or a connected recruiter." />
+          ) : (
+            <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
+              {messages.map((m) => (
+                <div key={m.id} style={{
+                  alignSelf: m.sender_id === user?.id ? "flex-end" : "flex-start",
+                  maxWidth: "75%", background: m.sender_id === user?.id ? T.skyL : T.surface2,
+                  border: `1px solid ${T.border}`, borderRadius: 10, padding: "8px 11px",
+                }}>
+                  <div style={{ fontSize: 12.5, color: T.ink }}>{m.body}</div>
+                  <div style={{ fontSize: 10, color: T.ink4, marginTop: 3 }}>{timeSince(m.created_at)}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+        {!activeThreadId && (
+          <input value={newSubject} onChange={(e) => setNewSubject(e.target.value)} placeholder="Subject (optional)"
+            style={{ padding: "8px 12px", borderRadius: 8, background: T.bg, border: `1px solid ${T.border}`, color: T.ink, fontSize: 12, marginBottom: 8 }} />
+        )}
+        <div style={{ display: "flex", gap: 8 }}>
+          <input value={draft} onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") activeThreadId ? sendMessage() : startThread() }}
+            placeholder={activeThreadId ? "Write a message…" : "Start a new conversation…"}
+            style={{ flex: 1, padding: "9px 13px", borderRadius: 8, background: T.bg, border: `1px solid ${T.border}`, color: T.ink, fontSize: 13 }} />
+          <Btn onClick={activeThreadId ? sendMessage : startThread} disabled={sending || !draft.trim()}>
+            {sending ? "…" : "Send"}
+          </Btn>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Notification Center — added 2026-07-31 (Phase 6) ──────────────────────
+// Reuses the already-built GET /api/nexus/notifications (same source the
+// student-facing OrbitDashboard/Nexus bell reads) rather than a second
+// notification store — this is a "reminders and follow-ups" *view* for
+// institution staff, not new infrastructure. Every notification this whole
+// enhancement pass creates (offers, invites, interviews, chat) lands here.
+function NotificationCenterPanel() {
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await nexusApi.notifications()
+      setItems(Array.isArray(res) ? res : [])
+    } catch (_) { setItems([]) }
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  if (loading) return <Spinner />
+
+  return (
+    <Card>
+      <SectionHead title="Notifications" />
+      {items.length === 0 ? (
+        <EmptyState icon="🔔" title="Nothing yet" sub="Offers, recruiter activity, and messages will show up here as they happen." />
+      ) : (
+        items.slice(0, 40).map((n, i) => (
+          <div key={n.id} style={{ display: "flex", gap: 10, padding: "9px 0", borderBottom: i < items.length - 1 ? `1px solid ${T.border}` : "none", opacity: n.is_read ? 0.6 : 1 }}>
+            <span style={{ fontSize: 15, marginTop: 1 }}>{n.is_read ? "•" : "●"}</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12.5, color: T.ink, fontWeight: n.is_read ? 400 : 700 }}>{n.title || n.message || n.type}</div>
+              {n.body && <div style={{ fontSize: 11.5, color: T.ink3, marginTop: 2 }}>{n.body}</div>}
+              <div style={{ fontSize: 10.5, color: T.ink4, marginTop: 2 }}>{timeSince(n.created_at)}</div>
+            </div>
+          </div>
+        ))
+      )}
+    </Card>
+  )
+}
+
+function IntelligencePage({ userData, user, members, tasks, auditLogs, auditLoading, canonical }) {
   const [tab, setTab] = useState("pulse")
   const isCollege = (userData?.org_type || "college") !== "company"
 
@@ -968,8 +1332,8 @@ function IntelligencePage({ userData, user, members, tasks, auditLogs, auditLoad
     { value: "—",                         label: "Time to Hire", color: T.purple, context: "Track via integrations" },
   ]
 
-  const tabs = ["pulse", "elo", "placement"]
-  const tabLabels = { pulse: "Live Pulse", elo: "ELO Distribution", placement: isCollege ? "Placement Funnel" : "Hiring Funnel" }
+  const tabs = ["pulse", "elo", "placement", "recruiters", "messages", "notifications"]
+  const tabLabels = { pulse: "Live Pulse", elo: "ELO Distribution", placement: isCollege ? "Placement Funnel" : "Hiring Funnel", recruiters: "Recruiter Activity", messages: "Messages", notifications: "Notifications" }
 
   // ELO histogram from real members
   const eloRanges = [
@@ -1049,6 +1413,28 @@ function IntelligencePage({ userData, user, members, tasks, auditLogs, auditLoad
         )
       )}
 
+      {tab === "elo" && canonical?.branches?.length > 0 && (
+        <Card style={{ marginTop: 16 }}>
+          <SectionHead title="Readiness Heatmap (by branch)" />
+          <div style={{ fontSize: 11, color: T.ink4, marginBottom: 10 }}>
+            Live, from your canonical roster — avg job-readiness score and placement rate per branch.
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(4, canonical.branches.length)}, 1fr)`, gap: 8 }}>
+            {canonical.branches.map((b) => {
+              const readiness = b.avgJobReadiness || 0
+              const heat = readiness >= 70 ? T.green : readiness >= 40 ? T.amber : T.red
+              return (
+                <div key={b.department} style={{ border: `1px solid ${heat}40`, background: `${heat}14`, borderRadius: 12, padding: 12 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: T.ink }}>{b.department}</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: heat, fontFamily: MONO, marginTop: 4 }}>{readiness}%</div>
+                  <div style={{ fontSize: 10.5, color: T.ink4 }}>{b.students} students · {b.placedPct}% placed · ELO {b.avgElo}</div>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      )}
+
       {tab === "placement" && (
         <Card>
           <SectionHead title={isCollege ? "Placement Funnel" : "Hiring Funnel"} />
@@ -1084,6 +1470,10 @@ function IntelligencePage({ userData, user, members, tasks, auditLogs, auditLoad
           })()}
         </Card>
       )}
+
+      {tab === "recruiters" && <RecruiterActivityPanel canonical={canonical} />}
+      {tab === "messages" && <ChatPanel canonical={canonical} user={user} />}
+      {tab === "notifications" && <NotificationCenterPanel />}
     </PageShell>
   )
 }
@@ -1348,7 +1738,167 @@ function TasksPage({ userData, user, tasks, tasksLoading, tasksError, reloadTask
 // ═══════════════════════════════════════════════════════════════════════════════
 // PAGE 4 — PEOPLE
 // ═══════════════════════════════════════════════════════════════════════════════
-function PeoplePage({ userData, user, members, membersLoading, membersError, reloadMembers }) {
+// ─── Live Roster panel — canonical institution_students, added 2026-07-31 ──
+// Renders only when this admin/staff member resolves to a real institutions
+// row (useCanonicalRoster). Shows the auto-linked roster (self-link +
+// roster-import) with a pending-admin approval queue, independent of and
+// additive to the legacy org_members list below it.
+function CanonicalRosterPanel({ canonical }) {
+  const { institution, students, stats, branches, loading, filters, setFilters, reload } = canonical
+  const [actionId, setActionId] = useState(null)
+
+  const statusColor = {
+    pending_admin: T.amber, active: T.green, drifting: T.amber, at_risk: T.red,
+    placed: T.sky, transitioning: T.sky, professional_active: T.green,
+    graduated: T.ink4, rejected: T.red, alumni: T.ink4, withdrawn: T.ink4,
+  }
+
+  async function approve(studentId) {
+    setActionId(studentId + "-approve")
+    try { await collegeApi.approveStudent(institution.id, studentId); await reload() }
+    catch (_) { /* surfaced via unchanged loading state; reload() no-ops on failure */ }
+    setActionId(null)
+  }
+  async function reject(studentId) {
+    setActionId(studentId + "-reject")
+    try { await collegeApi.rejectStudent(institution.id, studentId); await reload() }
+    catch (_) {}
+    setActionId(null)
+  }
+  async function toggleShare(studentId, nextShared) {
+    setActionId(studentId + "-share")
+    try { await collegeApi.shareStudent(institution.id, studentId, nextShared); await reload() }
+    catch (_) {}
+    setActionId(null)
+  }
+
+  return (
+    <div style={{
+      background: "linear-gradient(180deg,rgba(255,255,255,0.052),rgba(255,255,255,0.026))",
+      border: `1px solid ${T.border}`, borderRadius: 18, padding: 18, marginBottom: 20,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: T.ink }}>Live Roster — {institution.name}</div>
+          <div style={{ fontSize: 11, color: T.ink4 }}>
+            Auto-linked via College Path · {stats ? `${stats.totalStudents} students · avg ELO ${stats.avgElo} · ${stats.placementRate}% placed` : "loading…"}
+          </div>
+        </div>
+        <Btn variant="outline" onClick={reload} style={{ fontSize: 11, padding: "5px 10px" }}>Refresh</Btn>
+      </div>
+
+      {/* Filters */}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "12px 0" }}>
+        <select value={filters.department} onChange={e => setFilters(f => ({ ...f, department: e.target.value }))}
+          style={{ padding: "7px 10px", borderRadius: 8, background: T.bg, border: `1px solid ${T.border}`, color: T.ink, fontSize: 12 }}>
+          <option value="">All branches</option>
+          {branches.map(b => <option key={b.department} value={b.department}>{b.department} ({b.students})</option>)}
+        </select>
+        <select value={filters.status} onChange={e => setFilters(f => ({ ...f, status: e.target.value }))}
+          style={{ padding: "7px 10px", borderRadius: 8, background: T.bg, border: `1px solid ${T.border}`, color: T.ink, fontSize: 12 }}>
+          <option value="">All statuses</option>
+          {Object.keys(statusColor).map(s => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
+        </select>
+        <input value={filters.search} onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
+          placeholder="Search roll number…"
+          style={{ padding: "7px 10px", borderRadius: 8, background: T.bg, border: `1px solid ${T.border}`, color: T.ink, fontSize: 12, minWidth: 140 }} />
+        <input value={filters.role} onChange={e => setFilters(f => ({ ...f, role: e.target.value }))}
+          placeholder="Career role…"
+          style={{ padding: "7px 10px", borderRadius: 8, background: T.bg, border: `1px solid ${T.border}`, color: T.ink, fontSize: 12, minWidth: 130 }} />
+        <input type="number" min="0" value={filters.minTasks} onChange={e => setFilters(f => ({ ...f, minTasks: e.target.value }))}
+          placeholder="Min tasks"
+          style={{ padding: "7px 10px", borderRadius: 8, background: T.bg, border: `1px solid ${T.border}`, color: T.ink, fontSize: 12, width: 90 }} />
+        <select value={filters.interviewStatus} onChange={e => setFilters(f => ({ ...f, interviewStatus: e.target.value }))}
+          style={{ padding: "7px 10px", borderRadius: 8, background: T.bg, border: `1px solid ${T.border}`, color: T.ink, fontSize: 12 }}>
+          <option value="">Any interview status</option>
+          <option value="attempted">AI interview attempted</option>
+          <option value="none">No AI interview yet</option>
+        </select>
+        <select value={filters.shared} onChange={e => setFilters(f => ({ ...f, shared: e.target.value }))}
+          style={{ padding: "7px 10px", borderRadius: 8, background: T.bg, border: `1px solid ${T.border}`, color: T.ink, fontSize: 12 }}>
+          <option value="">Shared: any</option>
+          <option value="true">Shared with recruiters</option>
+          <option value="false">Hidden from recruiters</option>
+        </select>
+        <select value={filters.active} onChange={e => setFilters(f => ({ ...f, active: e.target.value }))}
+          style={{ padding: "7px 10px", borderRadius: 8, background: T.bg, border: `1px solid ${T.border}`, color: T.ink, fontSize: 12 }}>
+          <option value="">Active/inactive: any</option>
+          <option value="true">Active only</option>
+          <option value="false">Inactive only</option>
+        </select>
+      </div>
+
+      {loading ? (
+        <div style={{ padding: 20, textAlign: "center", color: T.ink4, fontSize: 12 }}>Loading roster…</div>
+      ) : students.length === 0 ? (
+        <div style={{ padding: 20, textAlign: "center", color: T.ink4, fontSize: 12 }}>
+          No students linked yet. Students auto-link when they enter this college name during onboarding, or via CSV roster import.
+        </div>
+      ) : (
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
+            <thead>
+              <tr style={{ textAlign: "left", color: T.ink4, borderBottom: `1px solid ${T.border}` }}>
+                <th style={{ padding: "6px 8px" }}>Roll No.</th>
+                <th style={{ padding: "6px 8px" }}>Branch</th>
+                <th style={{ padding: "6px 8px" }}>Batch</th>
+                <th style={{ padding: "6px 8px" }}>Career Role</th>
+                <th style={{ padding: "6px 8px" }}>ELO</th>
+                <th style={{ padding: "6px 8px" }}>Job Readiness</th>
+                <th style={{ padding: "6px 8px" }}>Tasks</th>
+                <th style={{ padding: "6px 8px" }}>AI Interviews</th>
+                <th style={{ padding: "6px 8px" }}>Status</th>
+                <th style={{ padding: "6px 8px" }}>Shared</th>
+                <th style={{ padding: "6px 8px" }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {students.map(s => (
+                <tr key={s.id} style={{ borderBottom: `1px solid ${T.border}` }}>
+                  <td style={{ padding: "8px" }}>{s.roll_number || "—"}</td>
+                  <td style={{ padding: "8px" }}>{s.department || "—"}</td>
+                  <td style={{ padding: "8px" }}>{s.batch || "—"}</td>
+                  <td style={{ padding: "8px" }}>{s.careerRole || "—"}</td>
+                  <td style={{ padding: "8px" }}>{Math.round(s.elo_current || 0)}</td>
+                  <td style={{ padding: "8px" }}>{s.job_readiness_score != null ? `${s.job_readiness_score}%` : "—"}</td>
+                  <td style={{ padding: "8px" }}>{s.taskCount ?? 0}</td>
+                  <td style={{ padding: "8px" }}>{s.aiInterviewCount ?? 0}</td>
+                  <td style={{ padding: "8px" }}>
+                    <span style={{ color: statusColor[s.status] || T.ink4, fontWeight: 600 }}>{(s.status || "").replace(/_/g, " ")}</span>
+                  </td>
+                  <td style={{ padding: "8px" }}>
+                    <button onClick={() => toggleShare(s.id, !s.shared_with_recruiters)} disabled={actionId === s.id + "-share"}
+                      style={{
+                        border: "none", borderRadius: 6, padding: "3px 8px", fontSize: 11, fontWeight: 600, cursor: "pointer",
+                        background: s.shared_with_recruiters ? T.greenL : T.ink5, color: s.shared_with_recruiters ? T.green : T.ink4,
+                      }}>
+                      {actionId === s.id + "-share" ? "…" : s.shared_with_recruiters ? "Shared" : "Hidden"}
+                    </button>
+                  </td>
+                  <td style={{ padding: "8px", textAlign: "right" }}>
+                    {s.status === "pending_admin" && (
+                      <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                        <Btn onClick={() => approve(s.id)} disabled={actionId === s.id + "-approve"} style={{ fontSize: 11, padding: "4px 9px" }}>
+                          {actionId === s.id + "-approve" ? "…" : "Approve"}
+                        </Btn>
+                        <Btn variant="outline" onClick={() => reject(s.id)} disabled={actionId === s.id + "-reject"}
+                          style={{ fontSize: 11, padding: "4px 9px", borderColor: T.red, color: T.red }}>
+                          {actionId === s.id + "-reject" ? "…" : "Reject"}
+                        </Btn>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PeoplePage({ userData, user, members, membersLoading, membersError, reloadMembers, canonical }) {
   const [tab, setTab]         = useState("all")
   const [search, setSearch]   = useState("")
   const [showInvite, setShowInvite] = useState(false)
@@ -1481,6 +2031,8 @@ function PeoplePage({ userData, user, members, membersLoading, membersError, rel
           <Btn variant="outline" onClick={() => setTab("pending")} style={{ marginLeft: "auto", fontSize: 11, borderColor: T.amber, color: T.amber, padding: "4px 10px" }}>Review</Btn>
         </div>
       )}
+
+      {canonical?.institution && <CanonicalRosterPanel canonical={canonical} />}
 
       <div style={{ display: "flex", gap: 4, marginBottom: 16, overflowX: "auto", paddingBottom: 2 }}>
         {tabs.map(t => (
@@ -2719,7 +3271,104 @@ function RecruiterNetworkReceivedPage({ user }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // PAGE 10 — OUTCOMES
 // ═══════════════════════════════════════════════════════════════════════════════
-function OutcomesPage({ userData, members }) {
+// ─── Canonical Offers & Placement Confirmation — added 2026-07-31 (Phase 4) ──
+// Offers/placements now flow through the real `offers` -> student-accept ->
+// `institution_placements` (unconfirmed) -> TPO-confirm pipeline (the last
+// step, POST .../placements/:id/confirm, already existed from Phase 1 — this
+// is what finally gives it rows to act on). Additive to the legacy
+// org_members-driven "Placement Records" list below, not a replacement.
+function CanonicalOffersPanel({ canonical }) {
+  const institutionId = canonical?.institution?.id
+  const [offers, setOffers] = useState([])
+  const [unconfirmed, setUnconfirmed] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [actionId, setActionId] = useState(null)
+
+  const load = useCallback(async () => {
+    if (!institutionId) { setLoading(false); return }
+    setLoading(true)
+    try {
+      const [offersRes, placementsRes] = await Promise.all([
+        collegeApi.listOffers(institutionId),
+        collegeApi.listPlacements(institutionId, { status: "unconfirmed" }),
+      ])
+      setOffers(offersRes?.offers || [])
+      setUnconfirmed(placementsRes?.placements || [])
+    } catch (_) { /* degrade to empty state */ }
+    setLoading(false)
+  }, [institutionId])
+
+  useEffect(() => { load() }, [load])
+
+  async function confirm(placementId) {
+    setActionId(placementId)
+    try { await collegeApi.confirmPlacement(institutionId, placementId); await load() }
+    catch (_) {}
+    setActionId(null)
+  }
+
+  if (!institutionId) return null
+  if (loading) return <Spinner />
+
+  return (
+    <>
+      {unconfirmed.length > 0 && (
+        <Card style={{ marginBottom: 16, border: `1px solid ${T.amber}40` }}>
+          <SectionHead title="Needs Confirmation" />
+          <div style={{ fontSize: 11, color: T.ink4, marginBottom: 8 }}>
+            A student accepted an offer — confirm it to record a real placement and update their status.
+          </div>
+          {unconfirmed.map((p, i) => (
+            <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: i < unconfirmed.length - 1 ? `1px solid ${T.border}` : "none" }}>
+              <div style={{ fontSize: 12.5, color: T.ink2 }}>
+                {p.role ? `${p.role} at ` : ""}{p.company}{p.ctc_lpa ? ` · ${p.ctc_lpa} LPA` : ""}
+              </div>
+              <Btn onClick={() => confirm(p.id)} disabled={actionId === p.id} style={{ fontSize: 11, padding: "4px 10px" }}>
+                {actionId === p.id ? "…" : "Confirm Placement"}
+              </Btn>
+            </div>
+          ))}
+        </Card>
+      )}
+      {offers.length > 0 && (
+        <Card style={{ marginBottom: 16 }}>
+          <SectionHead title="Placement Pipeline" />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+            {["offered", "accepted", "declined", "rescinded"].map((status) => {
+              const count = offers.filter((o) => o.status === status).length
+              const color = status === "accepted" ? T.green : status === "declined" || status === "rescinded" ? T.red : T.amber
+              return (
+                <div key={status} style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 12px", textAlign: "center" }}>
+                  <div style={{ fontSize: 20, fontWeight: 800, color, fontFamily: MONO }}>{count}</div>
+                  <div style={{ fontSize: 10.5, color: T.ink4, textTransform: "capitalize" }}>{status}</div>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      )}
+      <Card style={{ marginBottom: 16 }}>
+        <SectionHead title="Offers" />
+        {offers.length === 0 ? (
+          <EmptyState icon="✉️" title="No offers yet" sub="Offers recruiters send to your shared students appear here." />
+        ) : (
+          offers.slice(0, 20).map((o, i) => (
+            <div key={o.id} style={{ display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: i < offers.length - 1 ? `1px solid ${T.border}` : "none" }}>
+              <div style={{ fontSize: 12.5, color: T.ink2 }}>
+                {o.role ? `${o.role} at ` : ""}{o.company}{o.ctc_lpa ? ` · ${o.ctc_lpa} LPA` : ""}
+              </div>
+              <div style={{ fontSize: 11, color: o.status === "accepted" ? T.green : o.status === "declined" ? T.red : T.ink4, fontWeight: 600 }}>
+                {o.status}
+              </div>
+            </div>
+          ))
+        )}
+      </Card>
+    </>
+  )
+}
+
+function OutcomesPage({ userData, members, canonical }) {
   const isCollege = (userData?.org_type || "college") !== "company"
   const placed = members.filter(m => m.placement_company)
   const active = members.filter(m => m.status === "active")
@@ -2734,6 +3383,8 @@ function OutcomesPage({ userData, members }) {
         <KPICard value={successRate > 0 ? `${successRate}%` : "—"} label="Success Rate" color={T.sky} context="Active → Placed" />
         <KPICard value={active.length || "—"} label="Active Members" color={T.amber} context="Eligible for placement" />
       </div>
+
+      {canonical?.institution && <CanonicalOffersPanel canonical={canonical} />}
 
       <Card>
         <SectionHead title={isCollege ? "Placement Records" : "Hire Records"} />
@@ -3203,6 +3854,7 @@ export default function InstitutionOS({ user, userData, onNavigate }) {
   const { data: tasks,         loading: tasksLoading,    error: tasksError,    reload: reloadTasks    } = useOrgTasks(user?.id)
   const { data: events,        loading: eventsLoading,   error: eventsError,   reload: reloadEvents   } = useOrgEvents(user?.id)
   const { data: auditLogs,     loading: auditLoading,    reload: reloadAudit   } = useOrgAuditLog(user?.id, 50)
+  const canonical = useCanonicalRoster()
 
   function onNav(page) {
     setActivePage(page)
@@ -3216,7 +3868,7 @@ export default function InstitutionOS({ user, userData, onNavigate }) {
     setActivePage("settings")
   }
 
-  const shared = { user, userData, onNav, members, membersLoading, membersError, reloadMembers, tasks, tasksLoading, tasksError, reloadTasks, events, eventsLoading, eventsError, reloadEvents, auditLogs, auditLoading, reloadAudit }
+  const shared = { user, userData, onNav, members, membersLoading, membersError, reloadMembers, tasks, tasksLoading, tasksError, reloadTasks, events, eventsLoading, eventsError, reloadEvents, auditLogs, auditLoading, reloadAudit, canonical }
 
   const PAGE_MAP = {
     home:          <HomePage          {...shared} onVerify={handleVerify} />,
@@ -3229,7 +3881,7 @@ export default function InstitutionOS({ user, userData, onNavigate }) {
     cohorts:       <CohortsPage       members={members} />,
     events:        <EventsPage        {...shared} />,
     companies:     <CompaniesPage     user={user} userData={userData} />,
-    outcomes:      <OutcomesPage      userData={userData} members={members} />,
+    outcomes:      <OutcomesPage      userData={userData} members={members} canonical={canonical} />,
     settings:      <SettingsPage      user={user} userData={userData} initialTab={settingsTab} reloadAudit={reloadAudit} auditLogs={auditLogs} auditLoading={auditLoading} />,
   }
 
