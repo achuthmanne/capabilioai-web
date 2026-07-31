@@ -101,7 +101,9 @@ const NAV_GROUPS = [
       // and users couldn't find it. Same IntelligencePage, opened directly
       // on the messages tab.
       { id: "chat",         label: "Team Chat",      mobileShow: true  },
-      { id: "settings",     label: "Student Readiness", mobileShow: false },
+      // 2026-08-01: was mislabeled "Student Readiness" — it always opened
+      // the Settings page (id "settings"); label now says what it is.
+      { id: "settings",     label: "Settings", mobileShow: false },
     ],
   },
 ]
@@ -113,6 +115,9 @@ const ROLES = [
   { id: "admin",     label: "Institution Admin", workspace: "Institution OS" },
   { id: "placement", label: "Placement Cell",    workspace: "Placement Cell" },
   { id: "recruiter", label: "Recruiter",         workspace: "Recruiter Portal" },
+  // Not shown in the View-as dropdown (dropdownHidden) — assigned
+  // automatically to channel-tier staff logins, never picked manually.
+  { id: "staff",     label: "Staff",             workspace: "Staff Workspace", dropdownHidden: true },
 ]
 // page ids each role may see (null ⇒ everything)
 // 2026-07-31: removed "faculty"/Professor per explicit user direction — this
@@ -121,6 +126,9 @@ const ROLE_PAGES = {
   admin:     null,
   placement: ["home", "pubprofile", "people", "companies", "intelligence", "chat", "outcomes", "settings"],
   recruiter: ["pubprofile", "companies", "outcomes"],
+  // Channel-tier staff logins (professor/dept_head/mentor created via Staff
+  // Access): roster + team chat only — no placement cell, no recruiter data.
+  staff:     ["home", "people", "chat"],
 }
 function roleAllows(role, pageId) {
   const allow = ROLE_PAGES[role]
@@ -561,7 +569,7 @@ function KPICard({ value, label, trend, trendDir = "up", context, action, color,
 }
 
 // ─── Sidebar (desktop) ────────────────────────────────────────────────────────
-function InstSidebar({ active, onNav, userData, members, tasks, role = "admin", onRole }) {
+function InstSidebar({ active, onNav, userData, members, tasks, role = "admin", onRole, roleLocked = false }) {
   const orgName = userData?.org_name || "Your Institution"
   const groups = navGroupsForRole(role)
   const roleMeta = ROLES.find(r => r.id === role) || ROLES[0]
@@ -602,14 +610,18 @@ function InstSidebar({ active, onNav, userData, members, tasks, role = "admin", 
             </div>
           </div>
         </div>
-        {/* Role switcher (UI scoping; RLS-enforced later) */}
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: ".16em", textTransform: "uppercase", color: T.ink5, fontFamily: MONO, marginBottom: 5 }}>View as</div>
-          <select value={role} onChange={e => onRole && onRole(e.target.value)}
-            style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: `1px solid ${T.borderM}`, borderRadius: 10, color: T.ink, fontSize: 12, fontWeight: 700, fontFamily: FONT, padding: "8px 10px", cursor: "pointer" }}>
-            {ROLES.map(r => <option key={r.id} value={r.id} style={{ background: T.bg }}>{r.label}</option>)}
-          </select>
-        </div>
+        {/* Role switcher — hidden entirely for real staff logins, whose role
+            is locked server-side (Staff Access, 2026-08-01): a placement-team
+            login must not be able to "view as" Institution Admin. */}
+        {!roleLocked && (
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: ".16em", textTransform: "uppercase", color: T.ink5, fontFamily: MONO, marginBottom: 5 }}>View as</div>
+            <select value={role} onChange={e => onRole && onRole(e.target.value)}
+              style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: `1px solid ${T.borderM}`, borderRadius: 10, color: T.ink, fontSize: 12, fontWeight: 700, fontFamily: FONT, padding: "8px 10px", cursor: "pointer" }}>
+              {ROLES.filter(r => !r.dropdownHidden).map(r => <option key={r.id} value={r.id} style={{ background: T.bg }}>{r.label}</option>)}
+            </select>
+          </div>
+        )}
         {/* Divider */}
         <div style={{ height: 1, background: T.border }} />
       </div>
@@ -2146,6 +2158,31 @@ function CanonicalRosterPanel({ canonical, openThreadFor }) {
     setActionId(null)
   }
 
+  // 2026-08-01: roster edit/remove
+  const [editingStudent, setEditingStudent] = useState(null)
+  const [editStudentForm, setEditStudentForm] = useState({ department: "", batch: "", rollNumber: "" })
+  function openStudentEdit(s) {
+    setEditingStudent(s)
+    setEditStudentForm({ department: s.department || "", batch: s.batch || "", rollNumber: s.roll_number || "" })
+  }
+  async function saveStudentEdit() {
+    if (!editingStudent) return
+    setActionId(editingStudent.id + "-edit")
+    try {
+      await collegeApi.updateStudent(institution.id, editingStudent.id, editStudentForm)
+      setEditingStudent(null)
+      await reload()
+    } catch (_) {}
+    setActionId(null)
+  }
+  async function removeStudent(s) {
+    if (!window.confirm(`Remove ${s.roll_number || "this student"} from the roster? Their Capabilio account, ELO, and history are untouched — only the college link is removed.`)) return
+    setActionId(s.id + "-remove")
+    try { await collegeApi.removeStudent(institution.id, s.id); await reload() }
+    catch (_) {}
+    setActionId(null)
+  }
+
   return (
     <div style={{
       background: "linear-gradient(180deg,rgba(255,255,255,0.052),rgba(255,255,255,0.026))",
@@ -2263,7 +2300,7 @@ function CanonicalRosterPanel({ canonical, openThreadFor }) {
                       </div>
                     )}
                   </td>
-                  <td style={{ padding: "8px", textAlign: "right" }}>
+                  <td style={{ padding: "8px", textAlign: "right", whiteSpace: "nowrap" }}>
                     {openThreadFor && (
                       <button
                         onClick={() => openThreadFor({ contextType: "student", contextId: s.id, subject: `Student: ${s.roll_number || s.id.slice(0, 8)}` })}
@@ -2272,6 +2309,14 @@ function CanonicalRosterPanel({ canonical, openThreadFor }) {
                         💬
                       </button>
                     )}
+                    <button onClick={() => openStudentEdit(s)} title="Edit roster details"
+                      style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 13, opacity: 0.75, marginLeft: 4 }}>
+                      ✏️
+                    </button>
+                    <button onClick={() => removeStudent(s)} title="Remove from roster" disabled={actionId === s.id + "-remove"}
+                      style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 13, opacity: 0.75, marginLeft: 4 }}>
+                      {actionId === s.id + "-remove" ? "…" : "🗑"}
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -2279,7 +2324,153 @@ function CanonicalRosterPanel({ canonical, openThreadFor }) {
           </table>
         </div>
       )}
+
+      {editingStudent && (
+        <Modal title={`Edit ${editingStudent.roll_number || "student"}`} onClose={() => setEditingStudent(null)}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <FieldInput label="Roll Number" value={editStudentForm.rollNumber} onChange={v => setEditStudentForm(f => ({ ...f, rollNumber: v }))} />
+            <FieldInput label="Department / Branch" value={editStudentForm.department} onChange={v => setEditStudentForm(f => ({ ...f, department: v }))} placeholder="e.g. CSE" />
+            <FieldInput label="Batch" value={editStudentForm.batch} onChange={v => setEditStudentForm(f => ({ ...f, batch: v }))} placeholder="e.g. B.tech 2026" />
+            <div style={{ fontSize: 11, color: T.ink4 }}>ELO and readiness scores can't be edited here — they only move through audited scoring routes.</div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <Btn variant="outline" onClick={() => setEditingStudent(null)}>Cancel</Btn>
+              <Btn onClick={saveStudentEdit} disabled={actionId === editingStudent.id + "-edit"}>
+                {actionId === editingStudent.id + "-edit" ? "Saving…" : "Save"}
+              </Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
+  )
+}
+
+// ─── Staff Access — coordination/admin layer (2026-08-01) ───────────────────
+// The college admin creates real login credentials for staff (placement
+// team, professors, mentors). Those accounts log into the org path with
+// their own email+password and get a role-locked view (see lockedRole in
+// the root component): placement_officer → placement pages only,
+// professor/dept_head/mentor → roster + team chat only. Only rendered for
+// (and only usable by, backend-enforced) the college admin.
+function StaffAccessPanel({ canonical }) {
+  const institutionId = canonical?.institution?.id
+  const [staff, setStaff] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showCreate, setShowCreate] = useState(false)
+  const [form, setForm] = useState({ name: "", email: "", password: "", role: "placement_officer", department: "" })
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState(null)
+  const [createdInfo, setCreatedInfo] = useState(null)
+  const [actionId, setActionId] = useState(null)
+
+  const ROLE_LABELS = {
+    placement_officer: "Placement Team", professor: "Professor",
+    dept_head: "Dept Head", mentor: "Mentor", college_admin: "College Admin",
+  }
+
+  const load = useCallback(async () => {
+    if (!institutionId) { setLoading(false); return }
+    setLoading(true)
+    try {
+      const res = await collegeApi.listStaff(institutionId)
+      setStaff(res?.staff || [])
+    } catch (_) {}
+    setLoading(false)
+  }, [institutionId])
+
+  useEffect(() => { load() }, [load])
+
+  async function create() {
+    setCreating(true); setCreateError(null)
+    try {
+      const res = await collegeApi.createStaffLogin(institutionId, {
+        name: form.name.trim(), email: form.email.trim(), password: form.password,
+        role: form.role, department: form.department.trim(),
+      })
+      setCreatedInfo({ email: form.email.trim(), password: form.password, role: res?.staff?.role || form.role })
+      setForm({ name: "", email: "", password: "", role: "placement_officer", department: "" })
+      setShowCreate(false)
+      await load()
+    } catch (err) {
+      setCreateError(err.message)
+    }
+    setCreating(false)
+  }
+
+  async function revoke(s) {
+    if (!window.confirm(`Revoke access for ${s.email || s.name}? They won't be able to use the org portal until re-added.`)) return
+    setActionId(s.id)
+    try { await collegeApi.revokeStaff(institutionId, s.id); await load() }
+    catch (_) {}
+    setActionId(null)
+  }
+
+  if (!institutionId) return null
+  if (loading) return null
+
+  return (
+    <Card style={{ marginTop: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <SectionHead title="Staff Access" />
+        <Btn onClick={() => { setShowCreate(s => !s); setCreateError(null) }} style={{ fontSize: 11, padding: "5px 10px" }}>
+          {showCreate ? "Cancel" : "+ Create Staff Login"}
+        </Btn>
+      </div>
+      <div style={{ fontSize: 11.5, color: T.ink4, marginTop: -6, marginBottom: 12 }}>
+        Create login credentials for your placement team and staff. Each login sees only its role's pages — a Placement Team login gets the placement portal and recruiter tools, never institution admin settings.
+      </div>
+
+      {createdInfo && (
+        <div style={{ padding: "12px 14px", background: T.greenL, border: `1px solid ${T.green}40`, borderRadius: 10, marginBottom: 12 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: T.green, marginBottom: 4 }}>✓ Login created — share these credentials securely (shown only once):</div>
+          <div style={{ fontSize: 12.5, fontFamily: MONO, color: T.ink }}>Email: {createdInfo.email}</div>
+          <div style={{ fontSize: 12.5, fontFamily: MONO, color: T.ink }}>Password: {createdInfo.password}</div>
+          <div style={{ fontSize: 11, color: T.ink4, marginTop: 4 }}>They log in at capabilio.online with these — no signup needed. Access: {ROLE_LABELS[createdInfo.role] || createdInfo.role}.</div>
+          <Btn variant="outline" onClick={() => setCreatedInfo(null)} style={{ fontSize: 10.5, padding: "3px 8px", marginTop: 8 }}>Dismiss</Btn>
+        </div>
+      )}
+
+      {showCreate && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14, padding: 12, background: T.bg, borderRadius: 10, border: `1px solid ${T.border}` }}>
+          <FieldInput label="Name" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} placeholder="e.g. Placement Officer Ramesh" />
+          <FieldInput label="Login Email" value={form.email} onChange={v => setForm(f => ({ ...f, email: v }))} placeholder="placement@yourcollege.edu" type="email" />
+          <FieldInput label="Password (min 8 characters)" value={form.password} onChange={v => setForm(f => ({ ...f, password: v }))} type="password" />
+          <FieldSelect label="Access Level" value={form.role} onChange={v => setForm(f => ({ ...f, role: v }))} options={[
+            { value: "placement_officer", label: "Placement Team — placement portal, recruiters, offers, drives" },
+            { value: "professor",         label: "Professor — roster + team chat only" },
+            { value: "dept_head",         label: "Dept Head — roster + team chat only" },
+            { value: "mentor",            label: "Mentor — roster + team chat only" },
+          ]} />
+          <FieldInput label="Department (optional)" value={form.department} onChange={v => setForm(f => ({ ...f, department: v }))} placeholder="e.g. CSE" />
+          {createError && <div style={{ fontSize: 12, color: T.red }}>{createError}</div>}
+          <Btn onClick={create} disabled={creating || !form.email.trim() || form.password.length < 8}>
+            {creating ? "Creating…" : "Create Login"}
+          </Btn>
+        </div>
+      )}
+
+      {staff.length === 0 ? (
+        <div style={{ fontSize: 12, color: T.ink4, padding: "8px 0" }}>No staff logins yet.</div>
+      ) : (
+        staff.map((s, i) => (
+          <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 0", borderBottom: i < staff.length - 1 ? `1px solid ${T.border}` : "none" }}>
+            <div>
+              <div style={{ fontSize: 12.5, color: T.ink, fontWeight: 600 }}>
+                {s.name || s.email || s.user_id.slice(0, 8)}
+                <span style={{ fontSize: 10.5, color: T.ink4, fontWeight: 400, marginLeft: 8 }}>{ROLE_LABELS[s.role] || s.role}{s.department ? ` · ${s.department}` : ""}</span>
+              </div>
+              <div style={{ fontSize: 11, color: s.status === "active" ? T.green : T.ink4 }}>{s.email} · {s.status}</div>
+            </div>
+            {s.status === "active" && (
+              <Btn variant="outline" onClick={() => revoke(s)} disabled={actionId === s.id}
+                style={{ fontSize: 11, padding: "4px 9px", borderColor: T.red, color: T.red }}>
+                {actionId === s.id ? "…" : "Revoke"}
+              </Btn>
+            )}
+          </div>
+        ))
+      )}
+    </Card>
   )
 }
 
@@ -2303,6 +2494,16 @@ function PeoplePage({ userData, user, members, membersLoading, membersError, rel
   const [linkError, setLinkError]         = useState(null)
   const [createdLink, setCreatedLink]     = useState(null)
   const [linkCopied, setLinkCopied]       = useState(false)
+
+  // Member edit modal (2026-08-01)
+  const [editingMember, setEditingMember] = useState(null)
+  const [editMemberForm, setEditMemberForm] = useState({ name: "", role: "student", department: "", batch: "" })
+  const setEM = (k, v) => setEditMemberForm(f => ({ ...f, [k]: v }))
+  const orgName = userData?.org_name || "your institution"
+  function openMemberEdit(m) {
+    setEditingMember(m)
+    setEditMemberForm({ name: m.name || "", role: m.role || "student", department: m.department || "", batch: m.batch || "" })
+  }
 
   async function handleCreateJoinLink() {
     setLinkCreating(true); setLinkError(null)
@@ -2379,6 +2580,42 @@ function PeoplePage({ userData, user, members, membersLoading, membersError, rel
     }
   }
 
+  // 2026-08-01: member edit/remove — same direct-supabase pattern as
+  // approve/deny above (org_members writes from this page all go through
+  // the client + audit log; consistent with the existing code, not a new path).
+  async function handleRemove(member) {
+    if (!window.confirm(`Remove ${member.name} from ${orgName}? They can rejoin via a new invite.`)) return
+    setActionLoading(member.id + "-remove")
+    const { error } = await supabase.from("org_members")
+      .update({ status: "removed" }).eq("id", member.id)
+    setActionLoading(null)
+    if (!error) {
+      await auditLog(user.id, user.id, userData?.name || "Admin",
+        `Removed ${member.name} from the roster`, "member.removed", "member", member.id, {}, "warning")
+      reloadMembers()
+    }
+  }
+
+  async function handleMemberEditSave() {
+    if (!editingMember) return
+    setActionLoading(editingMember.id + "-edit")
+    const { error } = await supabase.from("org_members")
+      .update({
+        name: editMemberForm.name.trim() || editingMember.name,
+        role: editMemberForm.role,
+        department: editMemberForm.department.trim(),
+        batch: editMemberForm.batch.trim(),
+      })
+      .eq("id", editingMember.id)
+    setActionLoading(null)
+    if (!error) {
+      await auditLog(user.id, user.id, userData?.name || "Admin",
+        `Edited member ${editingMember.name}`, "member.updated", "member", editingMember.id, {})
+      setEditingMember(null)
+      reloadMembers()
+    }
+  }
+
   async function handleInvite() {
     if (!form.name.trim() || !form.email.trim()) { setInviteError("Name and email are required."); return }
     setInviting(true); setInviteError(null)
@@ -2418,6 +2655,7 @@ function PeoplePage({ userData, user, members, membersLoading, membersError, rel
       )}
 
       {canonical?.institution && <CanonicalRosterPanel canonical={canonical} openThreadFor={openThreadFor} />}
+      {canonical?.institution && canonical?.role === "college_admin" && <StaffAccessPanel canonical={canonical} />}
 
       <div style={{ display: "flex", gap: 4, marginBottom: 16, overflowX: "auto", paddingBottom: 2 }}>
         {tabs.map(t => (
@@ -2474,6 +2712,16 @@ function PeoplePage({ userData, user, members, membersLoading, membersError, rel
                             {actionLoading === m.id + "-deny" ? "…" : "Deny"}
                           </Btn>
                         </>
+                      ) : m.status !== "removed" ? (
+                        <>
+                          <Btn variant="outline" style={{ fontSize: 11, padding: "5px 10px" }}
+                            onClick={() => openMemberEdit(m)}>Edit</Btn>
+                          <Btn variant="outline" style={{ fontSize: 11, padding: "5px 10px", borderColor: T.red, color: T.red }}
+                            disabled={actionLoading === m.id + "-remove"}
+                            onClick={() => handleRemove(m)}>
+                            {actionLoading === m.id + "-remove" ? "…" : "Remove"}
+                          </Btn>
+                        </>
                       ) : null}
                     </div>
                   </div>
@@ -2482,6 +2730,28 @@ function PeoplePage({ userData, user, members, membersLoading, membersError, rel
             })}
           </div>
         )
+      )}
+
+      {editingMember && (
+        <Modal title={`Edit ${editingMember.name}`} onClose={() => setEditingMember(null)}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <FieldInput label="Full Name" value={editMemberForm.name} onChange={v => setEM("name", v)} />
+            <FieldSelect label="Role" value={editMemberForm.role} onChange={v => setEM("role", v)} options={[
+              { value: "student",   label: "Student"    },
+              { value: "faculty",   label: "Faculty"    },
+              { value: "recruiter", label: "Recruiter"  },
+              { value: "mentor",    label: "Mentor"     },
+            ]} />
+            <FieldInput label="Department" value={editMemberForm.department} onChange={v => setEM("department", v)} placeholder="e.g. CSE" />
+            <FieldInput label="Batch" value={editMemberForm.batch} onChange={v => setEM("batch", v)} placeholder="e.g. B.tech 2026" />
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <Btn variant="outline" onClick={() => setEditingMember(null)}>Cancel</Btn>
+              <Btn onClick={handleMemberEditSave} disabled={actionLoading === editingMember.id + "-edit"}>
+                {actionLoading === editingMember.id + "-edit" ? "Saving…" : "Save"}
+              </Btn>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {showInvite && (
@@ -2775,6 +3045,11 @@ const POST_CATEGORY_BADGE = {
   "Candidate Spotlight":{ icon: "🌟", color: "#059669" },
 }
 
+// Stable no-op wrapper for embedded mode — must live at module level, NOT
+// inside EventsPage (see the Wrap comment there for the focus-loss bug an
+// inline definition caused).
+const EmbedPassthrough = ({ children }) => <>{children}</>
+
 // embedded=true (2026-07-31): renders composer+feed without its own
 // PageShell/header so CommunityPage can host it as its Posts tab — the
 // standalone sidebar "Posts" page was merged into Community per product
@@ -2791,6 +3066,7 @@ function EventsPage({ userData, user, embedded = false }) {
   const [imgPreview, setImgPreview] = useState(null)
   const [publishing, setPublishing] = useState(false)
   const [pubError, setPubError]     = useState(null)
+  const [editingPostId, setEditingPostId] = useState(null) // non-null = composer is editing this post
   const fileRef                     = useRef(null)
 
   const orgName  = userData?.org_name || "Your Institution"
@@ -2812,21 +3088,32 @@ function EventsPage({ userData, user, embedded = false }) {
       if (imgFile) {
         try { imageUrl = await uploadOrgPhoto(orgId, imgFile, "post") } catch (_) { /* skip image on failure */ }
       }
-      const today = new Date().toISOString().split("T")[0]
-      const { error: insertErr } = await supabase.from("org_events").insert({
-        org_id:      orgId,
-        title:       text.trim(),
-        description: imageUrl || "",
-        type:        "post",
-        category,
-        event_date:  today,
-        status:      "published",
-        created_by:  orgId,
-      })
-      if (insertErr) throw new Error(insertErr.message)
-      await auditLog(orgId, orgId, userData?.name || "Admin",
-        `Published a ${category.toLowerCase()} post`, "post.created", "post", "", { category })
-      setText(""); setImgFile(null); setImgPreview(null); setCategory(categoryOptions[0])
+      if (editingPostId) {
+        // Edit mode (2026-08-01): the composer updates the existing row.
+        // Image only replaced if a new one was picked — otherwise untouched.
+        const patch = { title: text.trim(), category }
+        if (imageUrl) patch.description = imageUrl
+        const { error: updateErr } = await supabase.from("org_events").update(patch).eq("id", editingPostId).eq("org_id", orgId)
+        if (updateErr) throw new Error(updateErr.message)
+        await auditLog(orgId, orgId, userData?.name || "Admin",
+          `Edited a ${category.toLowerCase()} post`, "post.updated", "post", editingPostId, { category })
+      } else {
+        const today = new Date().toISOString().split("T")[0]
+        const { error: insertErr } = await supabase.from("org_events").insert({
+          org_id:      orgId,
+          title:       text.trim(),
+          description: imageUrl || "",
+          type:        "post",
+          category,
+          event_date:  today,
+          status:      "published",
+          created_by:  orgId,
+        })
+        if (insertErr) throw new Error(insertErr.message)
+        await auditLog(orgId, orgId, userData?.name || "Admin",
+          `Published a ${category.toLowerCase()} post`, "post.created", "post", "", { category })
+      }
+      setText(""); setImgFile(null); setImgPreview(null); setCategory(categoryOptions[0]); setEditingPostId(null)
       reload()
     } catch (e) {
       setPubError(e.message)
@@ -2835,12 +3122,24 @@ function EventsPage({ userData, user, embedded = false }) {
     }
   }
 
+  function startEdit(post) {
+    setEditingPostId(post.id)
+    setText(post.title || "")
+    if (post.category && categoryOptions.includes(post.category)) setCategory(post.category)
+    // Bring the user to the composer so it's obvious edit mode is active.
+    try { window.scrollTo({ top: 0, behavior: "smooth" }) } catch {}
+  }
+
   async function handleDelete(post) {
     await supabase.from("org_events").delete().eq("id", post.id)
     reload()
   }
 
-  const Wrap = embedded ? ({ children }) => <>{children}</> : PageShell
+  // Wrapper must be a STABLE component type — defining it inline here
+  // recreated it every render, remounting the whole subtree per keystroke
+  // (textarea lost focus after every character). EmbedPassthrough is
+  // module-level, so identity is stable across renders.
+  const Wrap = embedded ? EmbedPassthrough : PageShell
   return (
     <Wrap>
       {!embedded && (
@@ -2936,8 +3235,13 @@ function EventsPage({ userData, user, embedded = false }) {
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 {pubError && <span style={{ fontSize: 11, color: T.red }}>{pubError}</span>}
+                {editingPostId && (
+                  <Btn variant="outline" onClick={() => { setEditingPostId(null); setText(""); setCategory(categoryOptions[0]) }} style={{ fontSize: 12 }}>
+                    Cancel edit
+                  </Btn>
+                )}
                 <Btn onClick={handlePublish} disabled={publishing || !text.trim()}>
-                  {publishing ? "Publishing…" : "Publish post"}
+                  {publishing ? (editingPostId ? "Saving…" : "Publishing…") : (editingPostId ? "Save changes" : "Publish post")}
                 </Btn>
               </div>
             </div>
@@ -3007,15 +3311,18 @@ function EventsPage({ userData, user, embedded = false }) {
                 }} />
               )}
 
+              {/* 2026-08-01: Like/Comment/Share were dead placeholders —
+                  replaced with real owner actions per product direction. */}
               <div style={{ display: "flex", gap: 16, marginTop: 14, paddingTop: 12, borderTop: `1px solid ${T.border}` }}>
-                <button style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: T.ink4, background: "none", border: "none", cursor: "pointer", fontFamily: FONT, padding: 0 }}>
-                  👍 Like
+                <button onClick={() => startEdit(post)}
+                  style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: T.ink4, background: "none", border: "none", cursor: "pointer", fontFamily: FONT, padding: 0 }}>
+                  ✏️ Revise
                 </button>
-                <button style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: T.ink4, background: "none", border: "none", cursor: "pointer", fontFamily: FONT, padding: 0 }}>
-                  💬 Comment
-                </button>
-                <button style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: T.ink4, background: "none", border: "none", cursor: "pointer", fontFamily: FONT, padding: 0 }}>
-                  ↗ Share
+                <button onClick={() => handleDelete(post)}
+                  style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: T.ink4, background: "none", border: "none", cursor: "pointer", fontFamily: FONT, padding: 0 }}
+                  onMouseEnter={e => e.currentTarget.style.color = T.red}
+                  onMouseLeave={e => e.currentTarget.style.color = T.ink4}>
+                  🗑 Take down
                 </button>
               </div>
             </div>
@@ -4210,6 +4517,7 @@ export default function InstitutionOS({ user, userData, onNavigate, initialPage 
     }
   }
 
+
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener("resize", handleResize)
@@ -4236,6 +4544,22 @@ export default function InstitutionOS({ user, userData, onNavigate, initialPage 
   const { data: events,        loading: eventsLoading,   error: eventsError,   reload: reloadEvents   } = useOrgEvents(user?.id)
   const { data: auditLogs,     loading: auditLoading,    reload: reloadAudit   } = useOrgAuditLog(user?.id, 50)
   const canonical = useCanonicalRoster()
+
+  // Staff Access (2026-08-01): real staff logins get their role LOCKED from
+  // the server-resolved institution_staff row — the "View as" dropdown is a
+  // convenience for the college admin only, never an escalation path for a
+  // placement-team or professor login. The backend independently enforces
+  // every route regardless (requireInstitutionAdmin etc.); this is the UI
+  // half. canonical.role comes from GET /institutions/mine.
+  const serverRole = canonical?.role
+  const lockedRole =
+    serverRole === "placement_officer" ? "placement"
+    : ["professor", "dept_head", "mentor"].includes(serverRole) ? "staff"
+    : null
+  const roleLocked = !!lockedRole
+  useEffect(() => {
+    if (lockedRole && role !== lockedRole) onRole(lockedRole)
+  }, [lockedRole]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function onNav(page) {
     setActivePage(page)
@@ -4278,7 +4602,7 @@ export default function InstitutionOS({ user, userData, onNavigate, initialPage 
       overflow: "hidden", fontFamily: FONT,
     }}>
       {!isMobile && (
-        <InstSidebar active={activePage} onNav={onNav} userData={userData} members={members} tasks={tasks} role={role} onRole={onRole} />
+        <InstSidebar active={activePage} onNav={onNav} userData={userData} members={members} tasks={tasks} role={role} onRole={onRole} roleLocked={roleLocked} />
       )}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, minWidth: 0 }}>
         {PAGE_MAP[activePage] || <HomePage {...shared} onVerify={handleVerify} />}

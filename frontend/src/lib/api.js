@@ -125,6 +125,8 @@ export const collegeApi = {
   exportReport:  (institutionId, format = "json") => request("GET", `/college/institutions/${institutionId}/export?format=${format}`),
   confirmPlacement: (institutionId, placementId) => request("POST", `/college/institutions/${institutionId}/placements/${placementId}/confirm`),
   approveStudent: (institutionId, studentId) => request("POST", `/college/institutions/${institutionId}/students/${studentId}/approve`),
+  updateStudent:  (institutionId, studentId, fields) => request("PATCH", `/college/institutions/${institutionId}/students/${studentId}`, fields),
+  removeStudent:  (institutionId, studentId) => request("DELETE", `/college/institutions/${institutionId}/students/${studentId}`),
   rejectStudent:  (institutionId, studentId) => request("POST", `/college/institutions/${institutionId}/students/${studentId}/reject`),
   shareStudent:   (institutionId, studentId, shared) => request("PATCH", `/college/institutions/${institutionId}/students/${studentId}/share`, { shared }),
 
@@ -151,6 +153,11 @@ export const collegeApi = {
     const qs = new URLSearchParams(params).toString()
     return request("GET", `/college/institutions/${institutionId}/placements${qs ? `?${qs}` : ""}`)
   },
+
+  // Staff access management (2026-08-01) — admin-created staff logins.
+  createStaffLogin: (institutionId, opts) => request("POST", `/college/institutions/${institutionId}/staff`, opts),
+  listStaff:        (institutionId) => request("GET", `/college/institutions/${institutionId}/staff`),
+  revokeStaff:      (institutionId, staffId) => request("PATCH", `/college/institutions/${institutionId}/staff/${staffId}/revoke`),
 
   // Coordination layer (2026-07-31) — placement drives.
   createDrive: (institutionId, opts) => request("POST", `/college/institutions/${institutionId}/drives`, opts),

@@ -1074,6 +1074,166 @@ router.patch(
   }
 )
 
+// ─────────────────────────────────────────────────────────────────────────
+// Staff access management (2026-08-01): the college admin creates real
+// login credentials for staff (placement team etc.). The created account
+// logs in normally through the org path; /institutions/mine resolves their
+// institution via institution_staff, and the frontend locks their view to
+// their role's pages (ROLE_PAGES in InstitutionOS.jsx). college_admin ONLY
+// — a placement officer must not be able to mint more credentials
+// (requireInstitutionAdmin also passes placement_officer, so this uses a
+// stricter inline check).
+// ─────────────────────────────────────────────────────────────────────────
+
+const STAFF_CREATABLE_ROLES = ["placement_officer", "professor", "dept_head", "mentor"]
+
+router.post("/institutions/:id/staff", requireAuth, async (req, res) => {
+  const institutionId = req.params.id
+  const callerRole = await getStaffRole(institutionId, req.user.id)
+  if (callerRole !== "college_admin") return res.status(403).json({ error: "Only the college admin can create staff logins" })
+
+  const { email, password, name, role = "placement_officer", department = "" } = req.body || {}
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: "A valid email is required" })
+  if (!password || password.length < 8) return res.status(400).json({ error: "Password must be at least 8 characters" })
+  if (!STAFF_CREATABLE_ROLES.includes(role)) return res.status(400).json({ error: `role must be one of: ${STAFF_CREATABLE_ROLES.join(", ")}` })
+
+  // 1) Create (or find) the auth user. email_confirm:true — the admin is
+  // vouching for this address; no confirmation email round-trip needed.
+  let userId
+  const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+    email, password, email_confirm: true,
+    user_metadata: { full_name: name || "", created_by_institution: institutionId },
+  })
+  if (createErr) {
+    // Existing account with this email — do NOT reset their password or
+    // attach them silently; that would let an admin hijack an arbitrary
+    // existing Capabilio account by knowing its email.
+    return res.status(409).json({ error: `An account with this email already exists. Ask them to log in, or use a different email. (${createErr.message})` })
+  }
+  userId = created.user.id
+
+  // 2) Minimal profile so the app treats them as an institution-path user.
+  const { data: inst } = await supabaseAdmin.from("institutions").select("name").eq("id", institutionId).single()
+  await supabaseAdmin.from("profiles").upsert({
+    id: userId, email, name: name || email.split("@")[0],
+    path: "institution", org_type: "college", org_name: inst?.name || "",
+    onboarding_complete: true, // staff logins skip the org-creation wizard — their institution already exists
+  }, { onConflict: "id" })
+
+  // 3) The staff row — this is what /institutions/mine resolves through.
+  const { error: staffErr } = await supabaseAdmin.from("institution_staff").insert({
+    institution_id: institutionId, user_id: userId, role,
+    department: department || null, scope: "all_departments", status: "active",
+    invited_by: req.user.id,
+  })
+  if (staffErr) return res.status(500).json({ error: staffErr.message })
+
+  await supabaseAdmin.from("activity_logs").insert({
+    institution_id: institutionId, actor_id: req.user.id,
+    action_code: "staff.credentials_created", entity_type: "institution_staff", entity_id: userId,
+    severity: "warning", details: { email, role },
+  })
+
+  res.status(200).json({ success: true, staff: { userId, email, role, name: name || "" } })
+})
+
+router.get("/institutions/:id/staff", requireAuth, requireInstitutionAdmin(), async (req, res) => {
+  const { data: staff, error } = await supabaseAdmin
+    .from("institution_staff")
+    .select("id, user_id, role, department, status, created_at")
+    .eq("institution_id", req.params.id)
+    .order("created_at", { ascending: false })
+  if (error) return res.status(500).json({ error: error.message })
+
+  const userIds = (staff || []).map((s) => s.user_id)
+  const { data: profiles } = userIds.length
+    ? await supabaseAdmin.from("profiles").select("id, name, email").in("id", userIds)
+    : { data: [] }
+  const byId = Object.fromEntries((profiles || []).map((p) => [p.id, p]))
+  res.status(200).json({
+    staff: (staff || []).map((s) => ({ ...s, name: byId[s.user_id]?.name || "", email: byId[s.user_id]?.email || "" })),
+  })
+})
+
+router.patch("/institutions/:id/staff/:staffId/revoke", requireAuth, async (req, res) => {
+  const callerRole = await getStaffRole(req.params.id, req.user.id)
+  if (callerRole !== "college_admin") return res.status(403).json({ error: "Only the college admin can revoke staff access" })
+
+  const { error } = await supabaseAdmin
+    .from("institution_staff")
+    .update({ status: "revoked" })
+    .eq("id", req.params.staffId)
+    .eq("institution_id", req.params.id)
+  if (error) return res.status(500).json({ error: error.message })
+
+  await supabaseAdmin.from("activity_logs").insert({
+    institution_id: req.params.id, actor_id: req.user.id,
+    action_code: "staff.access_revoked", entity_type: "institution_staff", entity_id: req.params.staffId,
+    severity: "warning",
+  })
+  res.status(200).json({ success: true })
+})
+
+// ── PATCH /institutions/:id/students/:studentId — edit roster fields ──────
+// 2026-08-01: admin-editable roster metadata only (department/batch/roll
+// number). Deliberately NOT elo_current/job_readiness_score — those are
+// score-of-record fields, only movable via the audited elo-adjustment route.
+router.patch(
+  "/institutions/:id/students/:studentId",
+  requireAuth,
+  requireInstitutionAdmin(),
+  async (req, res) => {
+    const { id: institutionId, studentId } = req.params
+    const { department, batch, rollNumber } = req.body || {}
+    const patch = {}
+    if (department !== undefined) patch.department = String(department || "").trim()
+    if (batch !== undefined) patch.batch = String(batch || "").trim()
+    if (rollNumber !== undefined) patch.roll_number = String(rollNumber || "").trim()
+    if (Object.keys(patch).length === 0) return res.status(400).json({ error: "Nothing to update" })
+
+    const { data: updated, error } = await supabaseAdmin
+      .from("institution_students")
+      .update(patch)
+      .eq("id", studentId)
+      .eq("institution_id", institutionId)
+      .select("id, department, batch, roll_number")
+      .single()
+    if (error) return res.status(500).json({ error: error.message })
+
+    await supabaseAdmin.from("activity_logs").insert({
+      institution_id: institutionId, actor_id: req.user.id,
+      action_code: "student.updated", entity_type: "institution_students", entity_id: studentId,
+      details: patch,
+    })
+    res.status(200).json({ student: updated })
+  }
+)
+
+// ── DELETE /institutions/:id/students/:studentId — remove from roster ─────
+// Removes the LINK row only — never touches the student's own account,
+// profile, ELO, or history. They can re-link later via onboarding/import.
+router.delete(
+  "/institutions/:id/students/:studentId",
+  requireAuth,
+  requireInstitutionAdmin(),
+  async (req, res) => {
+    const { id: institutionId, studentId } = req.params
+    const { error } = await supabaseAdmin
+      .from("institution_students")
+      .delete()
+      .eq("id", studentId)
+      .eq("institution_id", institutionId)
+    if (error) return res.status(500).json({ error: error.message })
+
+    await supabaseAdmin.from("activity_logs").insert({
+      institution_id: institutionId, actor_id: req.user.id,
+      action_code: "student.removed", entity_type: "institution_students", entity_id: studentId,
+      severity: "warning",
+    })
+    res.status(200).json({ success: true })
+  }
+)
+
 // ── POST /institutions/:id/students/:studentId/approve — workflow-queue action ──
 // Added 2026-07-31. Flips a self-linked or roster-imported student from
 // 'pending_admin' to 'active' — the missing other half of self-link's
