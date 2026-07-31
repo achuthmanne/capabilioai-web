@@ -1404,4 +1404,114 @@ router.post(
   }
 )
 
+// ─────────────────────────────────────────────────────────────────────────
+// Coordination layer (2026-07-31): placement drives — the entity the
+// design doc flagged as genuinely missing (jobs is company-wide, not
+// campus-specific; company_connections is a standing relationship, not a
+// time-boxed campaign). A drive optionally owns a linked chat channel
+// (context_type='drive' in institution_chat_threads) via collegeChat.js —
+// created here so the two stay in sync without collegeChat.js needing to
+// know anything about placement_drives.
+// ─────────────────────────────────────────────────────────────────────────
+
+// ── POST /institutions/:id/drives — create a drive ────────────────────────
+router.post("/institutions/:id/drives", requireAuth, requireInstitutionAdmin(), async (req, res) => {
+  const institutionId = req.params.id
+  const { title, recruiterId = null, jobId = null, eligibleBranches = [], minElo = null, createChannel = true } = req.body || {}
+  if (!title || !title.trim()) return res.status(400).json({ error: "title is required" })
+
+  let threadId = null
+  if (createChannel) {
+    // Best-effort: a drive is still useful without its channel if this insert
+    // fails for some reason (e.g. chat tables briefly unavailable) — never
+    // block drive creation on chat infrastructure.
+    try {
+      const { data: thread } = await supabaseAdmin
+        .from("institution_chat_threads")
+        .insert({
+          institution_id: institutionId, recruiter_id: recruiterId, subject: title.trim(),
+          created_by: req.user.id, context_type: "drive",
+        })
+        .select("id").single()
+      threadId = thread?.id || null
+      if (threadId) {
+        await supabaseAdmin.from("institution_chat_messages").insert({
+          thread_id: threadId, sender_id: req.user.id,
+          body: `Drive room created: ${title.trim()}`,
+        })
+      }
+    } catch (err) {
+      console.error("[college] drive channel create failed", err)
+    }
+  }
+
+  const { data: drive, error } = await supabaseAdmin
+    .from("placement_drives")
+    .insert({
+      institution_id: institutionId, recruiter_id: recruiterId, job_id: jobId, title: title.trim(),
+      eligible_branches: eligibleBranches, min_elo: minElo, thread_id: threadId, created_by: req.user.id,
+    })
+    .select().single()
+  if (error) return res.status(500).json({ error: error.message })
+
+  // Bind the channel's context_id back to the drive now that we have its id.
+  if (threadId) {
+    await supabaseAdmin.from("institution_chat_threads").update({ context_id: drive.id }).eq("id", threadId)
+  }
+
+  await notifyPlacementCell(institutionId, {
+    type: "drive_created", title: "New placement drive", body: title.trim(),
+    actorId: req.user.id, entityId: drive.id, entityType: "placement_drives",
+  })
+
+  res.status(200).json({ drive })
+})
+
+// ── GET /institutions/:id/drives — list drives for this institution ──────
+router.get("/institutions/:id/drives", requireAuth, requireInstitutionStaff(), async (req, res) => {
+  let query = supabaseAdmin.from("placement_drives").select("*").eq("institution_id", req.params.id)
+  if (req.query.status) query = query.eq("status", req.query.status)
+  const { data, error } = await query.order("created_at", { ascending: false }).limit(100)
+  if (error) return res.status(500).json({ error: error.message })
+  res.status(200).json({ drives: data || [] })
+})
+
+// ── PATCH /institutions/:id/drives/:driveId — update status ──────────────
+router.patch("/institutions/:id/drives/:driveId", requireAuth, requireInstitutionAdmin(), async (req, res) => {
+  const { status } = req.body || {}
+  if (!["planned", "active", "closed"].includes(status)) return res.status(400).json({ error: "Invalid status" })
+  const { data: drive, error } = await supabaseAdmin
+    .from("placement_drives").update({ status })
+    .eq("id", req.params.driveId).eq("institution_id", req.params.id)
+    .select().single()
+  if (error) return res.status(500).json({ error: error.message })
+  if (!drive) return res.status(404).json({ error: "Drive not found" })
+  res.status(200).json({ drive })
+})
+
+// ── GET /institutions/:id/drives/:driveId/eligible-students ──────────────
+// Same matching shape as /recruiter/search's non-authoritative sort signal,
+// applied here as an eligibility count/list for the placement cell's own
+// planning view (internal — does not require shared_with_recruiters, since
+// this is the college looking at its own roster, not a recruiter query).
+router.get("/institutions/:id/drives/:driveId/eligible-students", requireAuth, requireInstitutionStaff(), async (req, res) => {
+  const { data: drive } = await supabaseAdmin
+    .from("placement_drives").select("*").eq("id", req.params.driveId).eq("institution_id", req.params.id).maybeSingle()
+  if (!drive) return res.status(404).json({ error: "Drive not found" })
+
+  let query = supabaseAdmin
+    .from("institution_students")
+    .select("id, department, batch, roll_number, elo_current, job_readiness_score, status")
+    .eq("institution_id", req.params.id)
+    .in("status", ACTIVE_STATUSES)
+  if (Array.isArray(drive.eligible_branches) && drive.eligible_branches.length > 0) {
+    query = query.in("department", drive.eligible_branches)
+  }
+  if (drive.min_elo !== null) query = query.gte("elo_current", drive.min_elo)
+
+  const { data, error } = await query.order("elo_current", { ascending: false }).limit(500)
+  if (error) return res.status(500).json({ error: error.message })
+  res.status(200).json({ drive, students: data || [], count: (data || []).length })
+})
+
 export default router

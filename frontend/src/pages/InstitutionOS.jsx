@@ -1032,7 +1032,7 @@ function HomePage({ userData, user, onNav, members, tasks, events, auditLogs, au
 // (Recruiter portal) not built in this pass — this panel is specifically
 // the "placement cell visibility" half of the requirement: what recruiters
 // are doing with this college's shared students, visible to admins here.
-function RecruiterActivityPanel({ canonical }) {
+function RecruiterActivityPanel({ canonical, openThreadFor }) {
   const [invites, setInvites]   = useState([])
   const [interviews, setInterviews] = useState([])
   const [loading, setLoading]   = useState(true)
@@ -1119,14 +1119,24 @@ function RecruiterActivityPanel({ canonical }) {
               <div style={{ fontSize: 12.5, color: T.ink2 }}>
                 {iv.mode} interview · student {iv.student_id.slice(0, 8)}… · <span style={{ fontWeight: 600 }}>{iv.status.replace(/_/g, " ")}</span>
               </div>
-              {["scheduled", "consent_pending", "live"].includes(iv.status) && (
-                <div style={{ display: "flex", gap: 6 }}>
-                  <Btn variant="outline" onClick={() => setInterviewStatus(iv.id, "completed")} disabled={actionId === iv.id + "completed"}
-                    style={{ fontSize: 11, padding: "4px 9px" }}>Mark completed</Btn>
-                  <Btn variant="outline" onClick={() => setInterviewStatus(iv.id, "cancelled")} disabled={actionId === iv.id + "cancelled"}
-                    style={{ fontSize: 11, padding: "4px 9px", borderColor: T.red, color: T.red }}>Cancel</Btn>
-                </div>
-              )}
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                {["scheduled", "consent_pending", "live"].includes(iv.status) && (
+                  <>
+                    <Btn variant="outline" onClick={() => setInterviewStatus(iv.id, "completed")} disabled={actionId === iv.id + "completed"}
+                      style={{ fontSize: 11, padding: "4px 9px" }}>Mark completed</Btn>
+                    <Btn variant="outline" onClick={() => setInterviewStatus(iv.id, "cancelled")} disabled={actionId === iv.id + "cancelled"}
+                      style={{ fontSize: 11, padding: "4px 9px", borderColor: T.red, color: T.red }}>Cancel</Btn>
+                  </>
+                )}
+                {openThreadFor && (
+                  <button
+                    onClick={() => openThreadFor({ contextType: "interview", contextId: iv.id, recruiterId: iv.recruiter_id, subject: `Interview · student ${iv.student_id.slice(0, 8)}…` })}
+                    title="Message about this interview"
+                    style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 14, opacity: 0.75 }}>
+                    💬
+                  </button>
+                )}
+              </div>
             </div>
           ))
         )}
@@ -1142,7 +1152,41 @@ function RecruiterActivityPanel({ canonical }) {
 // threads the caller can see for this institution). Messages are
 // append-only — the thread itself is the audit trail requested for this
 // feature, nothing here supports editing or deleting a sent message.
-function ChatPanel({ canonical, user }) {
+// Small icon + label for a thread's bound operational context — the
+// coordination layer's core visual: every thread that isn't a plain
+// channel says what it's actually about.
+const CONTEXT_META = {
+  student:               { icon: "🎓", label: "Student" },
+  recruiter_relationship:{ icon: "🤝", label: "Recruiter" },
+  interview:              { icon: "🎤", label: "Interview" },
+  offer:                  { icon: "✉️", label: "Offer" },
+  approval:               { icon: "📋", label: "Approval" },
+  drive:                  { icon: "🏢", label: "Drive" },
+}
+const STATUS_TAG_COLOR = {
+  pending: "#F5A623", reviewed: "#5B8DEF", approved: "#2ECC71",
+  shortlisted: "#9B59B6", selected: "#16A085", offer_sent: "#16A085",
+}
+function ContextBadge({ contextType, statusTag }) {
+  if (!contextType && !statusTag) return null
+  const meta = CONTEXT_META[contextType]
+  return (
+    <div style={{ display: "flex", gap: 5, marginTop: 2 }}>
+      {meta && (
+        <span style={{ fontSize: 9.5, fontWeight: 700, color: T.ink4, background: T.bg, border: `1px solid ${T.border}`, borderRadius: 6, padding: "1px 6px" }}>
+          {meta.icon} {meta.label}
+        </span>
+      )}
+      {statusTag && (
+        <span style={{ fontSize: 9.5, fontWeight: 700, color: STATUS_TAG_COLOR[statusTag] || T.ink4, background: `${STATUS_TAG_COLOR[statusTag] || T.ink4}18`, borderRadius: 6, padding: "1px 6px", textTransform: "capitalize" }}>
+          {statusTag.replace(/_/g, " ")}
+        </span>
+      )}
+    </div>
+  )
+}
+
+function ChatPanel({ canonical, user, pendingThreadContext, onClearPendingThreadContext }) {
   const institutionId = canonical?.institution?.id
   const [threads, setThreads] = useState([])
   const [activeThreadId, setActiveThreadId] = useState(null)
@@ -1151,6 +1195,17 @@ function ChatPanel({ canonical, user }) {
   const [newSubject, setNewSubject] = useState("")
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
+  const [taskDraftFor, setTaskDraftFor] = useState(null)     // message id currently showing the "-> Task" mini-form
+  const [approvalDraftFor, setApprovalDraftFor] = useState(null)
+  const [actionDraftText, setActionDraftText] = useState("")
+  const [actionBusy, setActionBusy] = useState(false)
+
+  // A pending context from a "Message about this" launcher pre-fills the
+  // subject once, so the composer already reflects what this thread is
+  // about before the first message is even sent.
+  useEffect(() => {
+    if (pendingThreadContext && !activeThreadId) setNewSubject(pendingThreadContext.subject || "")
+  }, [pendingThreadContext, activeThreadId])
 
   const loadThreads = useCallback(async () => {
     if (!institutionId) { setLoading(false); return }
@@ -1177,8 +1232,14 @@ function ChatPanel({ canonical, user }) {
     if (!draft.trim()) return
     setSending(true)
     try {
-      const res = await collegeChatApi.startThread(institutionId, draft.trim(), { subject: newSubject.trim() || null })
+      const ctx = pendingThreadContext || {}
+      const res = await collegeChatApi.startThread(institutionId, draft.trim(), {
+        subject: newSubject.trim() || null,
+        contextType: ctx.contextType || null, contextId: ctx.contextId || null,
+        recruiterId: ctx.recruiterId || null,
+      })
       setDraft(""); setNewSubject("")
+      onClearPendingThreadContext && onClearPendingThreadContext()
       await loadThreads()
       if (res?.thread?.id) setActiveThreadId(res.thread.id)
     } catch (_) {}
@@ -1197,6 +1258,28 @@ function ChatPanel({ canonical, user }) {
     setSending(false)
   }
 
+  async function submitTask(messageId) {
+    if (!actionDraftText.trim()) return
+    setActionBusy(true)
+    try {
+      await collegeChatApi.createFollowup(activeThreadId, { title: actionDraftText.trim(), messageId })
+      setTaskDraftFor(null); setActionDraftText("")
+    } catch (_) {}
+    setActionBusy(false)
+  }
+  async function submitApproval(messageId) {
+    if (!actionDraftText.trim()) return
+    setActionBusy(true)
+    try {
+      const thread = threads.find((t) => t.id === activeThreadId)
+      await collegeChatApi.createApproval(activeThreadId, {
+        subject: actionDraftText.trim(), messageId, contextType: thread?.context_type || null, contextId: thread?.context_id || null,
+      })
+      setApprovalDraftFor(null); setActionDraftText("")
+    } catch (_) {}
+    setActionBusy(false)
+  }
+
   if (!institutionId) {
     return <EmptyState icon="💬" title="Not connected yet" sub="Team chat appears here once your institution is linked (visit Institution Home first)." />
   }
@@ -1209,6 +1292,7 @@ function ChatPanel({ canonical, user }) {
   // audiences — see collegeChat.js's tiered access for the enforcement side.
   const channels          = threads.filter(t => !t.recruiter_id)
   const recruiterThreads  = threads.filter(t => t.recruiter_id)
+  const activeThread      = threads.find((t) => t.id === activeThreadId)
 
   return (
     <div style={{ display: "flex", gap: 14, minHeight: 420 }}>
@@ -1228,7 +1312,8 @@ function ChatPanel({ canonical, user }) {
                 <div style={{ fontSize: 12, fontWeight: 600, color: T.ink }}>
                   # {t.subject || "General"}
                 </div>
-                <div style={{ fontSize: 10.5, color: T.ink4 }}>{timeSince(t.last_message_at)}</div>
+                <ContextBadge contextType={t.context_type} statusTag={t.status_tag} />
+                <div style={{ fontSize: 10.5, color: T.ink4, marginTop: 2 }}>{timeSince(t.last_message_at)}</div>
               </div>
             ))
           )}
@@ -1244,7 +1329,8 @@ function ChatPanel({ canonical, user }) {
                   <div style={{ fontSize: 12, fontWeight: 600, color: T.ink }}>
                     {t.subject || "Recruiter thread"}
                   </div>
-                  <div style={{ fontSize: 10.5, color: T.ink4 }}>{timeSince(t.last_message_at)}</div>
+                  <ContextBadge contextType={t.context_type} statusTag={t.status_tag} />
+                  <div style={{ fontSize: 10.5, color: T.ink4, marginTop: 2 }}>{timeSince(t.last_message_at)}</div>
                 </div>
               ))}
             </>
@@ -1252,19 +1338,50 @@ function ChatPanel({ canonical, user }) {
         </Card>
       </div>
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <Card style={{ flex: 1, display: "flex", flexDirection: "column", marginBottom: 10, minHeight: 300 }}>
+        {!activeThreadId && pendingThreadContext && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: T.skyL, border: `1px solid ${T.sky}30`, borderRadius: 8, padding: "7px 11px", marginBottom: 8, fontSize: 11.5, color: T.ink2 }}>
+            <span>{CONTEXT_META[pendingThreadContext.contextType]?.icon} Starting a thread about: <b>{pendingThreadContext.subject}</b></span>
+            <button onClick={() => { onClearPendingThreadContext && onClearPendingThreadContext(); setNewSubject("") }}
+              style={{ border: "none", background: "transparent", color: T.ink4, cursor: "pointer", fontSize: 13 }}>✕</button>
+          </div>
+        )}
+        {activeThread && <ContextBadge contextType={activeThread.context_type} statusTag={activeThread.status_tag} />}
+        <Card style={{ flex: 1, display: "flex", flexDirection: "column", marginBottom: 10, minHeight: 300, marginTop: activeThread ? 8 : 0 }}>
           {!activeThreadId ? (
             <EmptyState icon="✍️" title="Start a channel" sub="In-house team chat for your college's own staff — professors, placement officers, admins. Works only inside your institution's Capabilio workspace." />
           ) : (
             <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
               {messages.map((m) => (
-                <div key={m.id} style={{
-                  alignSelf: m.sender_id === user?.id ? "flex-end" : "flex-start",
-                  maxWidth: "75%", background: m.sender_id === user?.id ? T.skyL : T.surface2,
-                  border: `1px solid ${T.border}`, borderRadius: 10, padding: "8px 11px",
-                }}>
-                  <div style={{ fontSize: 12.5, color: T.ink }}>{m.body}</div>
-                  <div style={{ fontSize: 10, color: T.ink4, marginTop: 3 }}>{timeSince(m.created_at)}</div>
+                <div key={m.id} style={{ alignSelf: m.sender_id === user?.id ? "flex-end" : "flex-start", maxWidth: "75%" }}>
+                  <div style={{
+                    background: m.sender_id === user?.id ? T.skyL : T.surface2,
+                    border: `1px solid ${T.border}`, borderRadius: 10, padding: "8px 11px",
+                  }}>
+                    <div style={{ fontSize: 12.5, color: T.ink }}>{m.body}</div>
+                    <div style={{ fontSize: 10, color: T.ink4, marginTop: 3 }}>{timeSince(m.created_at)}</div>
+                  </div>
+                  {/* Coordination layer: convert a message into a real tracked
+                      task or approval — not just a UI label. */}
+                  <div style={{ display: "flex", gap: 8, marginTop: 3, fontSize: 10 }}>
+                    <button onClick={() => { setTaskDraftFor(m.id); setApprovalDraftFor(null); setActionDraftText("") }}
+                      style={{ border: "none", background: "transparent", color: T.ink4, cursor: "pointer" }}>→ Task</button>
+                    <button onClick={() => { setApprovalDraftFor(m.id); setTaskDraftFor(null); setActionDraftText("") }}
+                      style={{ border: "none", background: "transparent", color: T.ink4, cursor: "pointer" }}>→ Approval</button>
+                  </div>
+                  {taskDraftFor === m.id && (
+                    <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                      <input value={actionDraftText} onChange={(e) => setActionDraftText(e.target.value)} placeholder="Task title…"
+                        style={{ flex: 1, padding: "5px 8px", borderRadius: 6, background: T.bg, border: `1px solid ${T.border}`, color: T.ink, fontSize: 11 }} />
+                      <Btn onClick={() => submitTask(m.id)} disabled={actionBusy || !actionDraftText.trim()} style={{ fontSize: 10.5, padding: "4px 8px" }}>Add</Btn>
+                    </div>
+                  )}
+                  {approvalDraftFor === m.id && (
+                    <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                      <input value={actionDraftText} onChange={(e) => setActionDraftText(e.target.value)} placeholder="What needs approval?"
+                        style={{ flex: 1, padding: "5px 8px", borderRadius: 6, background: T.bg, border: `1px solid ${T.border}`, color: T.ink, fontSize: 11 }} />
+                      <Btn onClick={() => submitApproval(m.id)} disabled={actionBusy || !actionDraftText.trim()} style={{ fontSize: 10.5, padding: "4px 8px" }}>Request</Btn>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -1285,6 +1402,215 @@ function ChatPanel({ canonical, user }) {
         </div>
       </div>
     </div>
+  )
+}
+
+// ─── Approvals inbox — coordination layer (2026-07-31) ──────────────────────
+function ApprovalsPanel({ canonical, user }) {
+  const institutionId = canonical?.institution?.id
+  const [approvals, setApprovals] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [actionId, setActionId] = useState(null)
+
+  const load = useCallback(async () => {
+    if (!institutionId) { setLoading(false); return }
+    setLoading(true)
+    try {
+      const res = await collegeChatApi.listApprovals(institutionId, { status: "pending" })
+      setApprovals(res?.approvals || [])
+    } catch (_) {}
+    setLoading(false)
+  }, [institutionId])
+
+  useEffect(() => { load() }, [load])
+
+  async function decide(id, decision) {
+    setActionId(id)
+    try { await collegeChatApi.decideApproval(id, decision); await load() }
+    catch (_) {}
+    setActionId(null)
+  }
+
+  if (!institutionId) return <EmptyState icon="📋" title="Not connected yet" sub="Approvals appear here once your institution is linked." />
+  if (loading) return <Spinner />
+
+  return (
+    <Card>
+      <SectionHead title="Approvals Inbox" />
+      {approvals.length === 0 ? (
+        <EmptyState icon="✅" title="Nothing pending" sub="Approvals requested from chat threads (e.g. an offer or interview decision) show up here." />
+      ) : (
+        approvals.map((a, i) => (
+          <div key={a.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: i < approvals.length - 1 ? `1px solid ${T.border}` : "none" }}>
+            <div>
+              <div style={{ fontSize: 12.5, color: T.ink }}>{a.subject}</div>
+              <ContextBadge contextType={a.context_type} statusTag={null} />
+              <div style={{ fontSize: 10.5, color: T.ink4, marginTop: 2 }}>{timeSince(a.created_at)}</div>
+            </div>
+            <div style={{ display: "flex", gap: 6 }}>
+              <Btn onClick={() => decide(a.id, "approved")} disabled={actionId === a.id} style={{ fontSize: 11, padding: "4px 9px" }}>
+                {actionId === a.id ? "…" : "Approve"}
+              </Btn>
+              <Btn variant="outline" onClick={() => decide(a.id, "rejected")} disabled={actionId === a.id}
+                style={{ fontSize: 11, padding: "4px 9px", borderColor: T.red, color: T.red }}>Reject</Btn>
+            </div>
+          </div>
+        ))
+      )}
+    </Card>
+  )
+}
+
+// ─── Follow-up queue — coordination layer (2026-07-31) ──────────────────────
+function FollowupsPanel({ canonical, user }) {
+  const institutionId = canonical?.institution?.id
+  const [followups, setFollowups] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [actionId, setActionId] = useState(null)
+
+  const load = useCallback(async () => {
+    if (!institutionId) { setLoading(false); return }
+    setLoading(true)
+    try {
+      const res = await collegeChatApi.listFollowups(institutionId, { status: "open" })
+      setFollowups(res?.followups || [])
+    } catch (_) {}
+    setLoading(false)
+  }, [institutionId])
+
+  useEffect(() => { load() }, [load])
+
+  async function resolve(id, status) {
+    setActionId(id)
+    try { await collegeChatApi.updateFollowup(id, status); await load() }
+    catch (_) {}
+    setActionId(null)
+  }
+
+  if (!institutionId) return <EmptyState icon="📌" title="Not connected yet" sub="Follow-ups appear here once your institution is linked." />
+  if (loading) return <Spinner />
+
+  return (
+    <Card>
+      <SectionHead title="Follow-up Queue" />
+      {followups.length === 0 ? (
+        <EmptyState icon="🗒️" title="Nothing open" sub="Tasks created from chat threads (the '→ Task' action on any message) show up here." />
+      ) : (
+        followups.map((f, i) => (
+          <div key={f.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: i < followups.length - 1 ? `1px solid ${T.border}` : "none" }}>
+            <div>
+              <div style={{ fontSize: 12.5, color: T.ink }}>{f.title}</div>
+              <div style={{ fontSize: 10.5, color: T.ink4, marginTop: 2 }}>
+                {f.due_at ? `Due ${new Date(f.due_at).toLocaleDateString()} · ` : ""}{timeSince(f.created_at)}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 6 }}>
+              <Btn onClick={() => resolve(f.id, "done")} disabled={actionId === f.id} style={{ fontSize: 11, padding: "4px 9px" }}>
+                {actionId === f.id ? "…" : "Mark done"}
+              </Btn>
+              <Btn variant="outline" onClick={() => resolve(f.id, "dismissed")} disabled={actionId === f.id} style={{ fontSize: 11, padding: "4px 9px" }}>Dismiss</Btn>
+            </div>
+          </div>
+        ))
+      )}
+    </Card>
+  )
+}
+
+// ─── Drives / placement campaigns — coordination layer (2026-07-31) ────────
+// Connects recruiters, placement cell, and eligible students. Each drive
+// optionally owns a linked chat channel (context_type='drive'), created
+// server-side in college.js's POST /drives.
+function DrivesPanel({ canonical, openThreadFor }) {
+  const institutionId = canonical?.institution?.id
+  const [drives, setDrives] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showCreate, setShowCreate] = useState(false)
+  const [form, setForm] = useState({ title: "", eligibleBranches: "", minElo: "" })
+  const [creating, setCreating] = useState(false)
+  const [eligibleCounts, setEligibleCounts] = useState({})
+
+  const load = useCallback(async () => {
+    if (!institutionId) { setLoading(false); return }
+    setLoading(true)
+    try {
+      const res = await collegeApi.listDrives(institutionId)
+      setDrives(res?.drives || [])
+    } catch (_) {}
+    setLoading(false)
+  }, [institutionId])
+
+  useEffect(() => { load() }, [load])
+
+  async function create() {
+    if (!form.title.trim()) return
+    setCreating(true)
+    try {
+      await collegeApi.createDrive(institutionId, {
+        title: form.title.trim(),
+        eligibleBranches: form.eligibleBranches.trim() ? form.eligibleBranches.split(",").map((b) => b.trim()).filter(Boolean) : [],
+        minElo: form.minElo.trim() ? Number(form.minElo) : null,
+      })
+      setForm({ title: "", eligibleBranches: "", minElo: "" })
+      setShowCreate(false)
+      await load()
+    } catch (_) {}
+    setCreating(false)
+  }
+
+  async function checkEligible(driveId) {
+    try {
+      const res = await collegeApi.getDriveEligibleStudents(institutionId, driveId)
+      setEligibleCounts((c) => ({ ...c, [driveId]: res?.count ?? 0 }))
+    } catch (_) {}
+  }
+
+  if (!institutionId) return <EmptyState icon="🏢" title="Not connected yet" sub="Placement drives appear here once your institution is linked." />
+  if (loading) return <Spinner />
+
+  return (
+    <Card>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <SectionHead title="Placement Drives" />
+        <Btn onClick={() => setShowCreate((s) => !s)} style={{ fontSize: 11, padding: "5px 10px" }}>{showCreate ? "Cancel" : "+ New Drive"}</Btn>
+      </div>
+      {showCreate && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16, padding: 12, background: T.bg, borderRadius: 10, border: `1px solid ${T.border}` }}>
+          <input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder="Drive title (e.g. TCS Campus Drive — Aug 2026)"
+            style={{ padding: "8px 10px", borderRadius: 8, background: T.raised || T.bg, border: `1px solid ${T.border}`, color: T.ink, fontSize: 12 }} />
+          <input value={form.eligibleBranches} onChange={(e) => setForm((f) => ({ ...f, eligibleBranches: e.target.value }))} placeholder="Eligible branches, comma-separated (optional — blank = all)"
+            style={{ padding: "8px 10px", borderRadius: 8, background: T.raised || T.bg, border: `1px solid ${T.border}`, color: T.ink, fontSize: 12 }} />
+          <input value={form.minElo} onChange={(e) => setForm((f) => ({ ...f, minElo: e.target.value }))} placeholder="Minimum ELO (optional)" type="number"
+            style={{ padding: "8px 10px", borderRadius: 8, background: T.raised || T.bg, border: `1px solid ${T.border}`, color: T.ink, fontSize: 12 }} />
+          <Btn onClick={create} disabled={creating || !form.title.trim()} style={{ fontSize: 12, padding: "7px 12px" }}>{creating ? "Creating…" : "Create Drive"}</Btn>
+        </div>
+      )}
+      {drives.length === 0 ? (
+        <EmptyState icon="🏢" title="No drives yet" sub="A drive connects a recruiter, eligible students, and a coordination channel in one place." />
+      ) : (
+        drives.map((d, i) => (
+          <div key={d.id} style={{ padding: "10px 0", borderBottom: i < drives.length - 1 ? `1px solid ${T.border}` : "none" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: T.ink }}>{d.title}</div>
+                <div style={{ fontSize: 10.5, color: T.ink4, marginTop: 2, textTransform: "capitalize" }}>
+                  {d.status}{d.min_elo ? ` · min ELO ${d.min_elo}` : ""}{Array.isArray(d.eligible_branches) && d.eligible_branches.length ? ` · ${d.eligible_branches.join(", ")}` : " · all branches"}
+                  {eligibleCounts[d.id] !== undefined ? ` · ${eligibleCounts[d.id]} eligible` : ""}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => checkEligible(d.id)} title="Count eligible students"
+                  style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 13 }}>👥</button>
+                {d.thread_id && openThreadFor && (
+                  <button onClick={() => openThreadFor({ contextType: "drive", contextId: d.id, subject: d.title })}
+                    title="Open drive room" style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 13 }}>💬</button>
+                )}
+              </div>
+            </div>
+          </div>
+        ))
+      )}
+    </Card>
   )
 }
 
@@ -1332,9 +1658,14 @@ function NotificationCenterPanel() {
   )
 }
 
-function IntelligencePage({ userData, user, members, tasks, auditLogs, auditLoading, canonical }) {
+function IntelligencePage({ userData, user, members, tasks, auditLogs, auditLoading, canonical, openThreadFor, pendingThreadContext, clearPendingThreadContext }) {
   const [tab, setTab] = useState("pulse")
   const isCollege = (userData?.org_type || "college") !== "company"
+
+  // Coordination layer: a "Message about this" launcher elsewhere in
+  // InstitutionOS jumps here and stashes pendingThreadContext — land
+  // directly on Team Chat instead of making the user click the tab too.
+  useEffect(() => { if (pendingThreadContext) setTab("messages") }, [pendingThreadContext])
 
   const activeMembers = members.filter(m => m.status === "active")
   const placed        = members.filter(m => m.placement_company)
@@ -1358,8 +1689,12 @@ function IntelligencePage({ userData, user, members, tasks, auditLogs, auditLoad
     { value: "—",                         label: "Time to Hire", color: T.purple, context: "Track via integrations" },
   ]
 
-  const tabs = ["pulse", "elo", "placement", "recruiters", "messages", "notifications"]
-  const tabLabels = { pulse: "Live Pulse", elo: "ELO Distribution", placement: isCollege ? "Placement Funnel" : "Hiring Funnel", recruiters: "Recruiter Activity", messages: "Team Chat", notifications: "Notifications" }
+  const tabs = ["pulse", "elo", "placement", "recruiters", "drives", "messages", "approvals", "followups", "notifications"]
+  const tabLabels = {
+    pulse: "Live Pulse", elo: "ELO Distribution", placement: isCollege ? "Placement Funnel" : "Hiring Funnel",
+    recruiters: "Recruiter Activity", drives: "Drives", messages: "Team Chat",
+    approvals: "Approvals", followups: "Follow-ups", notifications: "Notifications",
+  }
 
   // ELO histogram from real members
   const eloRanges = [
@@ -1497,8 +1832,14 @@ function IntelligencePage({ userData, user, members, tasks, auditLogs, auditLoad
         </Card>
       )}
 
-      {tab === "recruiters" && <RecruiterActivityPanel canonical={canonical} />}
-      {tab === "messages" && <ChatPanel canonical={canonical} user={user} />}
+      {tab === "recruiters" && <RecruiterActivityPanel canonical={canonical} openThreadFor={openThreadFor} />}
+      {tab === "drives" && <DrivesPanel canonical={canonical} openThreadFor={openThreadFor} />}
+      {tab === "messages" && (
+        <ChatPanel canonical={canonical} user={user}
+          pendingThreadContext={pendingThreadContext} onClearPendingThreadContext={clearPendingThreadContext} />
+      )}
+      {tab === "approvals" && <ApprovalsPanel canonical={canonical} user={user} />}
+      {tab === "followups" && <FollowupsPanel canonical={canonical} user={user} />}
       {tab === "notifications" && <NotificationCenterPanel />}
     </PageShell>
   )
@@ -1769,7 +2110,7 @@ function TasksPage({ userData, user, tasks, tasksLoading, tasksError, reloadTask
 // row (useCanonicalRoster). Shows the auto-linked roster (self-link +
 // roster-import) with a pending-admin approval queue, independent of and
 // additive to the legacy org_members list below it.
-function CanonicalRosterPanel({ canonical }) {
+function CanonicalRosterPanel({ canonical, openThreadFor }) {
   const { institution, students, stats, branches, loading, filters, setFilters, reload } = canonical
   const [actionId, setActionId] = useState(null)
 
@@ -1876,6 +2217,7 @@ function CanonicalRosterPanel({ canonical }) {
                 <th style={{ padding: "6px 8px" }}>Status</th>
                 <th style={{ padding: "6px 8px" }}>Shared</th>
                 <th style={{ padding: "6px 8px" }}></th>
+                <th style={{ padding: "6px 8px" }}></th>
               </tr>
             </thead>
             <tbody>
@@ -1914,6 +2256,16 @@ function CanonicalRosterPanel({ canonical }) {
                       </div>
                     )}
                   </td>
+                  <td style={{ padding: "8px", textAlign: "right" }}>
+                    {openThreadFor && (
+                      <button
+                        onClick={() => openThreadFor({ contextType: "student", contextId: s.id, subject: `Student: ${s.roll_number || s.id.slice(0, 8)}` })}
+                        title="Message about this student"
+                        style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 14, opacity: 0.75 }}>
+                        💬
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -1924,7 +2276,7 @@ function CanonicalRosterPanel({ canonical }) {
   )
 }
 
-function PeoplePage({ userData, user, members, membersLoading, membersError, reloadMembers, canonical }) {
+function PeoplePage({ userData, user, members, membersLoading, membersError, reloadMembers, canonical, openThreadFor }) {
   const [tab, setTab]         = useState("all")
   const [search, setSearch]   = useState("")
   const [showInvite, setShowInvite] = useState(false)
@@ -2058,7 +2410,7 @@ function PeoplePage({ userData, user, members, membersLoading, membersError, rel
         </div>
       )}
 
-      {canonical?.institution && <CanonicalRosterPanel canonical={canonical} />}
+      {canonical?.institution && <CanonicalRosterPanel canonical={canonical} openThreadFor={openThreadFor} />}
 
       <div style={{ display: "flex", gap: 4, marginBottom: 16, overflowX: "auto", paddingBottom: 2 }}>
         {tabs.map(t => (
@@ -3303,7 +3655,7 @@ function RecruiterNetworkReceivedPage({ user }) {
 // step, POST .../placements/:id/confirm, already existed from Phase 1 — this
 // is what finally gives it rows to act on). Additive to the legacy
 // org_members-driven "Placement Records" list below, not a replacement.
-function CanonicalOffersPanel({ canonical }) {
+function CanonicalOffersPanel({ canonical, openThreadFor }) {
   const institutionId = canonical?.institution?.id
   const [offers, setOffers] = useState([])
   const [unconfirmed, setUnconfirmed] = useState([])
@@ -3379,12 +3731,22 @@ function CanonicalOffersPanel({ canonical }) {
           <EmptyState icon="✉️" title="No offers yet" sub="Offers recruiters send to your shared students appear here." />
         ) : (
           offers.slice(0, 20).map((o, i) => (
-            <div key={o.id} style={{ display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: i < offers.length - 1 ? `1px solid ${T.border}` : "none" }}>
+            <div key={o.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 0", borderBottom: i < offers.length - 1 ? `1px solid ${T.border}` : "none" }}>
               <div style={{ fontSize: 12.5, color: T.ink2 }}>
                 {o.role ? `${o.role} at ` : ""}{o.company}{o.ctc_lpa ? ` · ${o.ctc_lpa} LPA` : ""}
               </div>
-              <div style={{ fontSize: 11, color: o.status === "accepted" ? T.green : o.status === "declined" ? T.red : T.ink4, fontWeight: 600 }}>
-                {o.status}
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ fontSize: 11, color: o.status === "accepted" ? T.green : o.status === "declined" ? T.red : T.ink4, fontWeight: 600 }}>
+                  {o.status}
+                </div>
+                {openThreadFor && (
+                  <button
+                    onClick={() => openThreadFor({ contextType: "offer", contextId: o.id, subject: `Offer: ${o.role || "role"} at ${o.company}` })}
+                    title="Message about this offer"
+                    style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 14, opacity: 0.75 }}>
+                    💬
+                  </button>
+                )}
               </div>
             </div>
           ))
@@ -3394,7 +3756,7 @@ function CanonicalOffersPanel({ canonical }) {
   )
 }
 
-function OutcomesPage({ userData, members, canonical }) {
+function OutcomesPage({ userData, members, canonical, openThreadFor }) {
   const isCollege = (userData?.org_type || "college") !== "company"
   const placed = members.filter(m => m.placement_company)
   const active = members.filter(m => m.status === "active")
@@ -3410,7 +3772,7 @@ function OutcomesPage({ userData, members, canonical }) {
         <KPICard value={active.length || "—"} label="Active Members" color={T.amber} context="Eligible for placement" />
       </div>
 
-      {canonical?.institution && <CanonicalOffersPanel canonical={canonical} />}
+      {canonical?.institution && <CanonicalOffersPanel canonical={canonical} openThreadFor={openThreadFor} />}
 
       <Card>
         <SectionHead title={isCollege ? "Placement Records" : "Hire Records"} />
@@ -3868,6 +4230,19 @@ export default function InstitutionOS({ user, userData, onNavigate, initialPage 
   const [settingsTab, setSettingsTab] = useState("profile")
   const [role, setRole]             = useState("admin")
 
+  // Coordination layer (2026-07-31): "Message about this" launchers on the
+  // roster/offers/interviews screens set this, then jump to the
+  // Intelligence page's Team Chat tab, which reads it once to pre-bind a
+  // new thread's context_type/context_id — see ChatPanel below. Cleared by
+  // ChatPanel once consumed (either sent or dismissed) so it never leaks
+  // into a later, unrelated thread.
+  const [pendingThreadContext, setPendingThreadContext] = useState(null)
+  function openThreadFor(ctx) {
+    setPendingThreadContext(ctx)
+    setActivePage("intelligence")
+  }
+  function clearPendingThreadContext() { setPendingThreadContext(null) }
+
   function onRole(r) {
     setRole(r)
     // if current page isn't allowed for the new role, jump to its first allowed page
@@ -3916,7 +4291,7 @@ export default function InstitutionOS({ user, userData, onNavigate, initialPage 
     setActivePage("settings")
   }
 
-  const shared = { user, userData, onNav, members, membersLoading, membersError, reloadMembers, tasks, tasksLoading, tasksError, reloadTasks, events, eventsLoading, eventsError, reloadEvents, auditLogs, auditLoading, reloadAudit, canonical }
+  const shared = { user, userData, onNav, members, membersLoading, membersError, reloadMembers, tasks, tasksLoading, tasksError, reloadTasks, events, eventsLoading, eventsError, reloadEvents, auditLogs, auditLoading, reloadAudit, canonical, openThreadFor, pendingThreadContext, clearPendingThreadContext }
 
   const PAGE_MAP = {
     home:          <HomePage          {...shared} onVerify={handleVerify} />,
@@ -3929,7 +4304,7 @@ export default function InstitutionOS({ user, userData, onNavigate, initialPage 
     cohorts:       <CohortsPage       members={members} />,
     events:        <EventsPage        {...shared} />,
     companies:     <CompaniesPage     user={user} userData={userData} />,
-    outcomes:      <OutcomesPage      userData={userData} members={members} canonical={canonical} />,
+    outcomes:      <OutcomesPage      userData={userData} members={members} canonical={canonical} openThreadFor={openThreadFor} />,
     settings:      <SettingsPage      user={user} userData={userData} initialTab={settingsTab} reloadAudit={reloadAudit} auditLogs={auditLogs} auditLoading={auditLoading} />,
   }
 

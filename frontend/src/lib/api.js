@@ -151,6 +151,17 @@ export const collegeApi = {
     const qs = new URLSearchParams(params).toString()
     return request("GET", `/college/institutions/${institutionId}/placements${qs ? `?${qs}` : ""}`)
   },
+
+  // Coordination layer (2026-07-31) — placement drives.
+  createDrive: (institutionId, opts) => request("POST", `/college/institutions/${institutionId}/drives`, opts),
+  listDrives: (institutionId, params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return request("GET", `/college/institutions/${institutionId}/drives${qs ? `?${qs}` : ""}`)
+  },
+  updateDriveStatus: (institutionId, driveId, status) =>
+    request("PATCH", `/college/institutions/${institutionId}/drives/${driveId}`, { status }),
+  getDriveEligibleStudents: (institutionId, driveId) =>
+    request("GET", `/college/institutions/${institutionId}/drives/${driveId}/eligible-students`),
 }
 
 // ══════════════════════════════════════════
@@ -159,10 +170,33 @@ export const collegeApi = {
 // ══════════════════════════════════════════
 export const collegeChatApi = {
   listThreads:  (institutionId) => request("GET", `/college-chat/threads?institutionId=${institutionId}`),
+  // opts may now include contextType/contextId/statusTag/recruiterId/subject
+  // (coordination layer, 2026-07-31) — all optional, omitting them keeps
+  // the original plain-channel/recruiter-thread behavior.
   startThread:  (institutionId, firstMessage, opts = {}) =>
     request("POST", "/college-chat/threads", { institutionId, firstMessage, ...opts }),
+  updateThread: (threadId, opts) => request("PATCH", `/college-chat/threads/${threadId}`, opts),
   getMessages:  (threadId) => request("GET", `/college-chat/threads/${threadId}/messages`),
   sendMessage:  (threadId, body) => request("POST", `/college-chat/threads/${threadId}/messages`, { body }),
+
+  // Coordination layer (2026-07-31) — message-to-task / message-to-approval.
+  createFollowup: (threadId, opts) => request("POST", `/college-chat/threads/${threadId}/followups`, opts),
+  listFollowups: (institutionId, params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return request("GET", `/college-chat/followups?institutionId=${institutionId}${qs ? `&${qs}` : ""}`)
+  },
+  updateFollowup: (followupId, status) => request("PATCH", `/college-chat/followups/${followupId}`, { status }),
+
+  createApproval: (threadId, opts) => request("POST", `/college-chat/threads/${threadId}/approvals`, opts),
+  listApprovals: (institutionId, params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return request("GET", `/college-chat/approvals?institutionId=${institutionId}${qs ? `&${qs}` : ""}`)
+  },
+  decideApproval: (approvalId, decision) => request("PATCH", `/college-chat/approvals/${approvalId}/decide`, { decision }),
+
+  // Flagged (ENABLE_THREAD_EXPLICIT_PARTICIPANTS) — 404s until the backend flag is on.
+  addParticipant: (threadId, userId, roleInThread = "cc") =>
+    request("POST", `/college-chat/threads/${threadId}/participants`, { userId, roleInThread }),
 }
 
 // ══════════════════════════════════════════
