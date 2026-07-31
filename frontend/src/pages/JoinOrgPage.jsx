@@ -15,6 +15,16 @@ export default function JoinOrgPage({ token, user, onDone }) {
   const [orgName, setOrgName] = useState("")
   const [roleInfo, setRoleInfo] = useState(null)
   const [error, setError] = useState(null)
+  // 2026-08-01: Render's free tier spins the backend down after idle; the
+  // first request then takes 30-60s to cold-start. Without this hint the
+  // page looks frozen/broken to a student clicking a shared link. Purely
+  // cosmetic — the request keeps going, we just explain the wait.
+  const [slowHint, setSlowHint] = useState(false)
+  useEffect(() => {
+    if (status !== "loading") return
+    const t = setTimeout(() => setSlowHint(true), 6000)
+    return () => clearTimeout(t)
+  }, [status])
 
   useEffect(() => {
     if (!token) { setStatus("invalid"); return }
@@ -74,6 +84,11 @@ export default function JoinOrgPage({ token, user, onDone }) {
           <div style={{ fontSize: 18, fontWeight: 700, color: "#111827", marginBottom: 8 }}>
             {status === "joining" ? "Adding you to the roster…" : "Checking your invite…"}
           </div>
+          {status === "loading" && slowHint && (
+            <div style={{ fontSize: 12.5, color: "#6B7280", lineHeight: 1.6 }}>
+              Waking up the server — this can take up to a minute the first time. Hang tight, don't close this tab.
+            </div>
+          )}
           <div style={{ marginTop: 24, display: "flex", justifyContent: "center" }}>
             <div style={{ width: 28, height: 28, border: "3px solid #E5E7EB", borderTopColor: "#3D4EAC", borderRadius: "50%", animation: "join-org-spin 0.7s linear infinite" }} />
           </div>
