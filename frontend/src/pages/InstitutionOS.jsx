@@ -1198,37 +1198,63 @@ function ChatPanel({ canonical, user }) {
   }
 
   if (!institutionId) {
-    return <EmptyState icon="💬" title="Not connected yet" sub="Messages appear here once your institution is linked (visit Institution Home first)." />
+    return <EmptyState icon="💬" title="Not connected yet" sub="Team chat appears here once your institution is linked (visit Institution Home first)." />
   }
   if (loading) return <Spinner />
+
+  // Channels (internal, recruiter_id null — visible to all active staff:
+  // admin, placement officers, professors, dept heads, mentors) vs recruiter
+  // conversations (placement-cell <-> a specific recruiter). Grouped
+  // separately in the sidebar, Teams-style, since they have different
+  // audiences — see collegeChat.js's tiered access for the enforcement side.
+  const channels          = threads.filter(t => !t.recruiter_id)
+  const recruiterThreads  = threads.filter(t => t.recruiter_id)
 
   return (
     <div style={{ display: "flex", gap: 14, minHeight: 420 }}>
       <div style={{ width: 240, flexShrink: 0 }}>
         <Card style={{ marginBottom: 12 }}>
-          <SectionHead title="Threads" />
-          {threads.length === 0 ? (
-            <div style={{ fontSize: 11.5, color: T.ink4 }}>No conversations yet — start one below.</div>
+          <SectionHead title="Channels" />
+          <div style={{ fontSize: 10.5, color: T.ink4, marginTop: -8, marginBottom: 10 }}>Your college's own in-house team chat</div>
+          {channels.length === 0 ? (
+            <div style={{ fontSize: 11.5, color: T.ink4, marginBottom: 8 }}>No channels yet — start one below (e.g. "General", "Placement Team").</div>
           ) : (
-            threads.map((t) => (
+            channels.map((t) => (
               <div key={t.id} onClick={() => setActiveThreadId(t.id)}
                 style={{
                   padding: "8px 6px", borderRadius: 8, cursor: "pointer", marginBottom: 4,
                   background: activeThreadId === t.id ? T.skyL : "transparent",
                 }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: T.ink }}>
-                  {t.subject || (t.recruiter_id ? "Recruiter thread" : "Internal thread")}
+                  # {t.subject || "General"}
                 </div>
                 <div style={{ fontSize: 10.5, color: T.ink4 }}>{timeSince(t.last_message_at)}</div>
               </div>
             ))
+          )}
+          {recruiterThreads.length > 0 && (
+            <>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: T.ink4, margin: "12px 0 6px" }}>Recruiter conversations</div>
+              {recruiterThreads.map((t) => (
+                <div key={t.id} onClick={() => setActiveThreadId(t.id)}
+                  style={{
+                    padding: "8px 6px", borderRadius: 8, cursor: "pointer", marginBottom: 4,
+                    background: activeThreadId === t.id ? T.skyL : "transparent",
+                  }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: T.ink }}>
+                    {t.subject || "Recruiter thread"}
+                  </div>
+                  <div style={{ fontSize: 10.5, color: T.ink4 }}>{timeSince(t.last_message_at)}</div>
+                </div>
+              ))}
+            </>
           )}
         </Card>
       </div>
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         <Card style={{ flex: 1, display: "flex", flexDirection: "column", marginBottom: 10, minHeight: 300 }}>
           {!activeThreadId ? (
-            <EmptyState icon="✍️" title="Start a conversation" sub="Message your placement cell or a connected recruiter." />
+            <EmptyState icon="✍️" title="Start a channel" sub="In-house team chat for your college's own staff — professors, placement officers, admins. Works only inside your institution's Capabilio workspace." />
           ) : (
             <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
               {messages.map((m) => (
@@ -1245,13 +1271,13 @@ function ChatPanel({ canonical, user }) {
           )}
         </Card>
         {!activeThreadId && (
-          <input value={newSubject} onChange={(e) => setNewSubject(e.target.value)} placeholder="Subject (optional)"
+          <input value={newSubject} onChange={(e) => setNewSubject(e.target.value)} placeholder="Channel name (e.g. General, Placement Team)"
             style={{ padding: "8px 12px", borderRadius: 8, background: T.bg, border: `1px solid ${T.border}`, color: T.ink, fontSize: 12, marginBottom: 8 }} />
         )}
         <div style={{ display: "flex", gap: 8 }}>
           <input value={draft} onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") activeThreadId ? sendMessage() : startThread() }}
-            placeholder={activeThreadId ? "Write a message…" : "Start a new conversation…"}
+            placeholder={activeThreadId ? "Write a message…" : "First message to start this channel…"}
             style={{ flex: 1, padding: "9px 13px", borderRadius: 8, background: T.bg, border: `1px solid ${T.border}`, color: T.ink, fontSize: 13 }} />
           <Btn onClick={activeThreadId ? sendMessage : startThread} disabled={sending || !draft.trim()}>
             {sending ? "…" : "Send"}
@@ -1333,7 +1359,7 @@ function IntelligencePage({ userData, user, members, tasks, auditLogs, auditLoad
   ]
 
   const tabs = ["pulse", "elo", "placement", "recruiters", "messages", "notifications"]
-  const tabLabels = { pulse: "Live Pulse", elo: "ELO Distribution", placement: isCollege ? "Placement Funnel" : "Hiring Funnel", recruiters: "Recruiter Activity", messages: "Messages", notifications: "Notifications" }
+  const tabLabels = { pulse: "Live Pulse", elo: "ELO Distribution", placement: isCollege ? "Placement Funnel" : "Hiring Funnel", recruiters: "Recruiter Activity", messages: "Team Chat", notifications: "Notifications" }
 
   // ELO histogram from real members
   const eloRanges = [
@@ -3764,12 +3790,21 @@ function SettingsPage({ userData, user, initialTab = "profile", reloadAudit, aud
       {tab === "integrations" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ padding: "12px 16px", background: T.skyL, borderRadius: 10, border: `1px solid ${T.sky}30`, fontSize: 12, color: T.ink3, marginBottom: 4 }}>
-            🔌 Native integrations (Google Workspace, ATS, HRMS) launch in Q3 2026. Use the Capabilio API in the meantime.
+            🔌 Third-party sync (HRMS) launches in Q3 2026. Use the Capabilio API in the meantime — internal chat and team alerts are already built natively, see the Messages tab.
           </div>
+          {/* 2026-07-31: removed "Greenhouse ATS" per explicit product direction —
+              ATS (applicant tracking) is a company's internal hiring-pipeline
+              tool; institutions don't run one for their own students, and
+              Capabilio's live-profile/ELO model is a deliberate alternative to
+              resume/ATS-centric hiring, not a feed into one. Listing it here
+              was a copy-paste artifact, not a real institution-facing feature.
+              Also removed "Google Workspace" and "Microsoft Teams" — explicit
+              product direction is to build native in-house equivalents rather
+              than third-party integrations (the Messages tab's team channels
+              ARE the native Teams-equivalent; a native SSO/directory-sync
+              equivalent isn't built yet and isn't promised here). Kept Slack
+              and HRMS/ERP as still-relevant future third-party syncs. */}
           {[
-            { name: "Google Workspace",  icon: "🔵", status: "coming_soon", desc: "SSO + directory sync"          },
-            { name: "Greenhouse ATS",    icon: "🟢", status: "coming_soon", desc: "Applicant tracking sync"       },
-            { name: "Microsoft Teams",   icon: "🔷", status: "coming_soon", desc: "Notifications + announcements" },
             { name: "Slack",             icon: "🟡", status: "coming_soon", desc: "Team alerts and digests"       },
             { name: "HRMS / ERP",        icon: "⚫", status: "coming_soon", desc: "Student / employee data sync"  },
           ].map((intg, i) => (
