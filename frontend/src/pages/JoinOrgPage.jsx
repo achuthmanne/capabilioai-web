@@ -10,7 +10,7 @@
 import { useEffect, useState } from "react"
 import { orgApi } from "../lib/api"
 
-export default function JoinOrgPage({ token, user, onDone }) {
+export default function JoinOrgPage({ token, user, userData, onDone }) {
   const [status, setStatus] = useState("loading") // loading | preview | joining | joined | already | invalid
   const [orgName, setOrgName] = useState("")
   const [roleInfo, setRoleInfo] = useState(null)
@@ -37,6 +37,19 @@ export default function JoinOrgPage({ token, user, onDone }) {
         setRoleInfo({ role: res.role, department: res.department, batch: res.batch })
 
         if (user) {
+          // 2026-08-01 bugfix: a student-role invite link opened while signed
+          // in as a NON-student account (institution admin, company, etc.)
+          // used to silently add that account to the roster and bounce them
+          // back to their own dashboard — exactly what happened when the
+          // college admin test-clicked their own link. Block the claim and
+          // explain instead. userData?.path is authoritative when present;
+          // when it's still loading/absent (fresh signup) we proceed as
+          // before, since brand-new invite signups ARE students.
+          const accountPath = userData?.path
+          if (res.role === "student" && accountPath && accountPath !== "student") {
+            setStatus("wrongAccount")
+            return
+          }
           // Already logged in — claim immediately.
           setStatus("joining")
           const claim = await orgApi.claimJoinLink(token)
@@ -69,7 +82,7 @@ export default function JoinOrgPage({ token, user, onDone }) {
       }
     }
     resolve()
-  }, [token, user]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [token, user, userData?.path]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const wrap = { minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#F6F6F1", fontFamily: "'Inter', system-ui, sans-serif", padding: 24, gap: 20, textAlign: "center" }
   const card = { background: "#fff", border: "1px solid #E5E7EB", borderRadius: 20, padding: "40px 48px", maxWidth: 440, width: "100%", boxShadow: "0 4px 24px rgba(17,24,39,0.07)" }
@@ -93,6 +106,22 @@ export default function JoinOrgPage({ token, user, onDone }) {
             <div style={{ width: 28, height: 28, border: "3px solid #E5E7EB", borderTopColor: "#3D4EAC", borderRadius: "50%", animation: "join-org-spin 0.7s linear infinite" }} />
           </div>
           <style>{`@keyframes join-org-spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      </div>
+    )
+  }
+
+  if (status === "wrongAccount") {
+    return (
+      <div style={wrap}>
+        <div style={card}>
+          <div style={{ fontSize: 32, marginBottom: 16 }}>🎓</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: "#111827", marginBottom: 8 }}>This invite is for students</div>
+          <div style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.7, marginBottom: 24 }}>
+            You're signed in with a non-student account ({orgName ? `invite from ${orgName}` : "student invite"}).
+            To join as a student, open this link in a browser where you're logged out, or log out first and sign up with the student's own account.
+          </div>
+          <button onClick={() => onDone?.()} style={btn}>Back to my dashboard →</button>
         </div>
       </div>
     )

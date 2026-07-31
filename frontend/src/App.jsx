@@ -735,6 +735,14 @@ function App() {
   // /join-org/:token, so this is the only place left to actually claim it.
   useEffect(() => {
     if (!user) return
+    // 2026-08-01: same guard as JoinOrgPage — never claim a stashed student
+    // invite into a non-student account (e.g. an admin logging back in with
+    // a stale token in sessionStorage). userData absent = fresh signup, the
+    // intended case, proceed.
+    if (userData?.path && userData.path !== "student") {
+      try { sessionStorage.removeItem("capabilio_org_join_token") } catch {}
+      return
+    }
     let token
     try { token = sessionStorage.getItem("capabilio_org_join_token") } catch { return }
     if (!token) return
@@ -742,7 +750,7 @@ function App() {
     import("./lib/api").then(({ orgApi }) => {
       orgApi.claimJoinLink(token).catch(err => console.warn("[org-join] pending claim failed:", err.message))
     })
-  }, [user])
+  }, [user, userData?.path]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-complete a pending company-invite acceptance once the visitor is
   // logged in AND their profile has finished company onboarding (org_type ===
@@ -1018,6 +1026,7 @@ function App() {
       <JoinOrgPage
         token={orgToken}
         user={user}
+        userData={userData}
         onDone={() => {
           window.history.replaceState({}, "", "/")
           if (user) { window.location.reload(); return } // refresh so the new org_members row is picked up

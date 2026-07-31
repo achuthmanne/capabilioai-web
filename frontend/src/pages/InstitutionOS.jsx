@@ -96,6 +96,11 @@ const NAV_GROUPS = [
     label: "Intelligence",
     items: [
       { id: "intelligence", label: "Placement cell", mobileShow: true  },
+      // 2026-08-01: dedicated sidebar entry for the coordination layer's
+      // Team Chat — it was only reachable as a tab inside Placement cell
+      // and users couldn't find it. Same IntelligencePage, opened directly
+      // on the messages tab.
+      { id: "chat",         label: "Team Chat",      mobileShow: true  },
       { id: "settings",     label: "Student Readiness", mobileShow: false },
     ],
   },
@@ -114,7 +119,7 @@ const ROLES = [
 // org path has no professor role/workspace.
 const ROLE_PAGES = {
   admin:     null,
-  placement: ["home", "pubprofile", "people", "companies", "intelligence", "outcomes", "settings"],
+  placement: ["home", "pubprofile", "people", "companies", "intelligence", "chat", "outcomes", "settings"],
   recruiter: ["pubprofile", "companies", "outcomes"],
 }
 function roleAllows(role, pageId) {
@@ -1660,8 +1665,8 @@ function NotificationCenterPanel() {
   )
 }
 
-function IntelligencePage({ userData, user, members, tasks, auditLogs, auditLoading, canonical, openThreadFor, pendingThreadContext, clearPendingThreadContext }) {
-  const [tab, setTab] = useState("pulse")
+function IntelligencePage({ userData, user, members, tasks, auditLogs, auditLoading, canonical, openThreadFor, pendingThreadContext, clearPendingThreadContext, initialTab = "pulse" }) {
+  const [tab, setTab] = useState(initialTab)
   const isCollege = (userData?.org_type || "college") !== "company"
 
   // Coordination layer: a "Message about this" launcher elsewhere in
@@ -4250,6 +4255,10 @@ export default function InstitutionOS({ user, userData, onNavigate, initialPage 
     home:          <HomePage          {...shared} onVerify={handleVerify} />,
     pubprofile:    <InstitutionPublicProfile onAction={(a)=>{ if(a==='back') setActivePage('home') }} onBack={()=>setActivePage('home')} userData={userData} members={members} />,
     intelligence:  <IntelligencePage  {...shared} />,
+    // Same page as intelligence, mounted directly on the Team Chat tab.
+    // Distinct key not needed: PAGE_MAP renders only one entry at a time,
+    // so switching sidebar items remounts with the right initialTab.
+    chat:          <IntelligencePage  key="chat-page" {...shared} initialTab="messages" />,
     tasks:         <TasksPage         {...shared} />,
     people:        <PeoplePage        {...shared} />,
     community:     <CommunityPage userData={userData} user={user} />,
