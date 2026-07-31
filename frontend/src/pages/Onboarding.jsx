@@ -207,15 +207,15 @@ const FieldInput = ({ value, onChange, placeholder, type = "text", style }) => (
   />
 )
 
-const FieldSelect = ({ value, onChange, children }) => (
+const FieldSelect = ({ value, onChange, children, disabled = false }) => (
   <select
-    value={value} onChange={onChange}
+    value={value} onChange={onChange} disabled={disabled}
     style={{
       width: "100%", padding: "13px 16px", borderRadius: T.radius,
-      background: T.raised, border: "1px solid #E8E3DA",
+      background: disabled ? "rgba(0,0,0,0.04)" : T.raised, border: "1px solid #E8E3DA",
       color: value ? T.text : T.muted, fontSize: 14,
       fontFamily: T.body, outline: "none", boxSizing: "border-box",
-      cursor: "pointer",
+      cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.8 : 1,
     }}
   >
     {children}
@@ -467,6 +467,35 @@ const BRANCH_TO_CAREER_SLUG = {
   Pharmacy:   "pharmacy",
   MBA:        "mba",
   Other:      null,
+}
+
+// ─── Free-text department → Branch <select> code (2026-07-31) ───────
+// A college's "Get Invite Link" modal takes department as free text (e.g.
+// "Computer Science", InstitutionOS.jsx's linkForm.department) — not the
+// fixed codes the student Branch dropdown uses. This maps common phrasings
+// to a real option value so the invite-locked Branch field shows something
+// real instead of a blank "Select branch". Conservative: an unrecognized
+// department returns "" and the caller leaves Branch editable rather than
+// force-locking it to a guess.
+const DEPARTMENT_TO_BRANCH_CODE = [
+  [/comp(uter)?\s*sci|^cse$/i, "CSE"],
+  [/information\s*tech|^it$/i, "IT"],
+  [/^mca$/i, "MCA"],
+  [/data\s*sci|ai\s*&?\s*ds|ai\/ds/i, "AI_DS"],
+  [/artificial\s*intell|ai\s*&?\s*ml|ai\/ml|machine\s*learn/i, "AI_ML"],
+  [/electronics|^ece$/i, "ECE"],
+  [/electrical|^eee$/i, "EEE"],
+  [/mechanical|^mech$/i, "Mechanical"],
+  [/^civil$/i, "Civil"],
+  [/internet of things|^iot$/i, "IoT"],
+  [/pharma/i, "Pharmacy"],
+  [/^mba$|management/i, "MBA"],
+]
+function normalizeBranchCode(deptText) {
+  const t = (deptText || "").trim()
+  if (!t) return ""
+  for (const [re, code] of DEPARTMENT_TO_BRANCH_CODE) if (re.test(t)) return code
+  return ""
 }
 
 // ─── Payload builders ───────────────────────────────────────────────
@@ -1191,7 +1220,7 @@ function scoreRoleMatch(role, query) {
 // text field (same contract as the old FieldInput it replaces), so a
 // student whose college isn't in the AICTE-derived dataset yet can just
 // keep typing and that free text is what gets saved — no hard block.
-function CollegeSearchPicker({ value, onChange, placeholder }) {
+function CollegeSearchPicker({ value, onChange, placeholder, disabled = false }) {
   const [open, setOpen] = useState(false)
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
@@ -1210,6 +1239,7 @@ function CollegeSearchPicker({ value, onChange, placeholder }) {
   }, [])
 
   useEffect(() => {
+    if (disabled) return // locked via invite link — no need to search/suggest
     const q = (value || "").trim()
     clearTimeout(debounceRef.current)
     if (q.length < 2) { setResults([]); setLoading(false); return }
@@ -1233,7 +1263,7 @@ function CollegeSearchPicker({ value, onChange, placeholder }) {
       }
     }, 300)
     return () => clearTimeout(debounceRef.current)
-  }, [value])
+  }, [value, disabled])
 
   function handleSelect(c) {
     onChange(c.name)
@@ -1255,20 +1285,22 @@ function CollegeSearchPicker({ value, onChange, placeholder }) {
       <input
         ref={inputRef}
         value={value}
-        onChange={e => { onChange(e.target.value); setHighlighted(-1) }}
+        disabled={disabled}
+        onChange={e => { if (!disabled) { onChange(e.target.value); setHighlighted(-1) } }}
         onKeyDown={handleKeyDown}
-        onFocus={e => { e.target.style.borderColor = `${T.primary}60`; if (results.length > 0) setOpen(true) }}
+        onFocus={e => { if (!disabled) { e.target.style.borderColor = `${T.primary}60`; if (results.length > 0) setOpen(true) } }}
         onBlur={e => { e.target.style.borderColor = "#E8E3DA" }}
         placeholder={placeholder}
         autoComplete="off"
         style={{
           width: "100%", padding: "13px 16px", borderRadius: T.radius,
-          background: "rgba(0,0,0,0.02)", border: "1px solid #E8E3DA",
+          background: disabled ? "rgba(0,0,0,0.04)" : "rgba(0,0,0,0.02)", border: "1px solid #E8E3DA",
           color: T.text, fontSize: 14, fontFamily: T.body, outline: "none",
           boxSizing: "border-box", transition: "border-color 0.15s",
+          cursor: disabled ? "not-allowed" : "text", opacity: disabled ? 0.8 : 1,
         }}
       />
-      {open && (results.length > 0 || loading) && (
+      {!disabled && open && (results.length > 0 || loading) && (
         <div
           ref={dropRef}
           style={{
@@ -1609,9 +1641,25 @@ export default function Onboarding({ user, onComplete, onBack }) {
   // Student
   const [keyword, setKeyword] = useState("")
   const [selectedRole, setSelectedRole] = useState(null) // canonical {id,label,stream,arenaKey,slug,...}
-  // College / branch — pre-filled from signup user_metadata, editable
-  const [college, setCollege] = useState(user?.user_metadata?.college || "")
-  const [branch,  setBranch]  = useState(user?.user_metadata?.branch  || "")
+  // 2026-07-31: a student who arrived via a college's /join-org/:token invite
+  // link has JoinOrgPage stash {college, department, batch} into
+  // sessionStorage before signup (see JoinOrgPage.jsx). Read once at mount —
+  // computed with a lazy useState initializer so it's stable across
+  // re-renders and doesn't re-run the sessionStorage read every render.
+  const [orgJoinContext] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem("capabilio_org_join_context")
+      return raw ? JSON.parse(raw) : null
+    } catch { return null }
+  })
+  const collegeLocked = !!orgJoinContext?.college
+  const lockedBranchCode = normalizeBranchCode(orgJoinContext?.department)
+  const branchLocked = !!lockedBranchCode
+  // College / branch — pre-filled from signup user_metadata OR the invite
+  // link's college/department (invite takes precedence: it's the source of
+  // truth for who this student actually belongs to), editable unless locked.
+  const [college, setCollege] = useState(orgJoinContext?.college || user?.user_metadata?.college || "")
+  const [branch,  setBranch]  = useState(lockedBranchCode || user?.user_metadata?.branch  || "")
   const [resumeFile, setResumeFile] = useState(null)
   const [resumeText, setResumeText] = useState("")
   const [resumeStatus, setResumeStatus] = useState("idle")
@@ -1767,6 +1815,10 @@ export default function Onboarding({ user, onComplete, onBack }) {
       // Clear localStorage path flags — path is now in user_metadata
       localStorage.removeItem("capabilio_selected_path")
       localStorage.removeItem("preSelectedPath")
+      // orgJoinContext (college/branch lock) was already read into state via
+      // the lazy useState initializer above — safe to clear now so a second,
+      // unrelated signup later in the same browser session doesn't inherit it.
+      try { sessionStorage.removeItem("capabilio_org_join_context") } catch {}
       setCheckingUser(false)
     }
     init()
@@ -2639,13 +2691,14 @@ export default function Onboarding({ user, onComplete, onBack }) {
                 selectedRole={selectedRole}
               />
             </FieldRow>
-            {/* College + Branch — pre-filled from signup, editable */}
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16 }}>
+            {/* College + Branch — pre-filled from signup, editable unless a
+                college invite link locked them (collegeLocked/branchLocked) */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:collegeLocked ? 6 : 16 }}>
               <FieldRow label="College / University">
-                <CollegeSearchPicker value={college} onChange={setCollege} placeholder="e.g. VIT Vellore" />
+                <CollegeSearchPicker value={college} onChange={setCollege} placeholder="e.g. VIT Vellore" disabled={collegeLocked} />
               </FieldRow>
               <FieldRow label="Branch / Stream">
-                <FieldSelect value={branch} onChange={e=>setBranch(e.target.value)}>
+                <FieldSelect value={branch} onChange={e=>setBranch(e.target.value)} disabled={branchLocked}>
                   <option value="">Select branch</option>
                   <optgroup label="IT / CS">
                     <option value="CSE">CSE</option>
@@ -2669,6 +2722,11 @@ export default function Onboarding({ user, onComplete, onBack }) {
                 </FieldSelect>
               </FieldRow>
             </div>
+            {collegeLocked && (
+              <div style={{ fontSize: 11, color: T.muted, marginBottom: 16, marginTop: -6 }}>
+                🔒 Set by your college's invite link{branchLocked ? "" : " — branch wasn't recognized from the link, please pick yours"}. Contact your placement cell if this is wrong.
+              </div>
+            )}
             <FieldRow label="Resume upload — optional" hint={resumeStatus==="done"?"✓ Resume parsed successfully.":resumeStatus==="reading"?"Reading…":resumeStatus==="error"?"Uploaded but parsing was partial.":"Optional — used to personalise questions."}>
               <UploadBox file={resumeFile} status={resumeStatus} onUpload={handleFileUpload} label="Upload resume or profile PDF" hint="Personalises beginner-level questions around your foundation areas." color={T.primary} />
             </FieldRow>

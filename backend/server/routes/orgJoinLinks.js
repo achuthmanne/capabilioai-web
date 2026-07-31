@@ -19,6 +19,14 @@ import { supabaseAdmin } from "../lib/supabase.js"
 
 const router = Router()
 
+// 2026-07-31 bugfix: link generation was using req.protocol/req.get("host"),
+// which on Render is the BACKEND's own host (capabilio-web.onrender.com) —
+// there is no /join-org route on the backend, only on the frontend SPA, so
+// every generated link 404'd. /join-org/:token is a frontend React route
+// (see App.jsx), so the link must point at the frontend origin, matching the
+// same convention already used for company invites in orgCompanyLinks.js.
+const APP_URL = process.env.PUBLIC_APP_URL || "https://capabilio.online"
+
 function generateToken() {
   // 8-char URL-safe token, e.g. "k3f9xq2p" — short enough to read aloud,
   // long enough (36^8 ≈ 2.8×10^12 combinations) that guessing isn't practical.
@@ -46,7 +54,7 @@ router.post("/join-links", requireAuth, async (req, res) => {
     }).select().single()
 
     if (!error) {
-      return res.json({ success: true, link: data, url: `${req.protocol}://${req.get("host").replace(/^api\./, "")}/join-org/${token}` })
+      return res.json({ success: true, link: data, url: `${APP_URL}/join-org/${token}` })
     }
     if (error.code === "23505") { token = generateToken(); continue } // unique_violation on token — retry
     console.error("[org/join-links] create failed:", error.message)

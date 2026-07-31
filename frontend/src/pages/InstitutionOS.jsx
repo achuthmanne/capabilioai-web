@@ -105,14 +105,14 @@ const NAV = NAV_GROUPS.flatMap(g => g.items)
 const ROLES = [
   { id: "admin",     label: "Institution Admin", workspace: "Institution OS" },
   { id: "placement", label: "Placement Cell",    workspace: "Placement Cell" },
-  { id: "faculty",   label: "Professor",         workspace: "Faculty Workspace" },
   { id: "recruiter", label: "Recruiter",         workspace: "Recruiter Portal" },
 ]
 // page ids each role may see (null ⇒ everything)
+// 2026-07-31: removed "faculty"/Professor per explicit user direction — this
+// org path has no professor role/workspace.
 const ROLE_PAGES = {
   admin:     null,
   placement: ["home", "pubprofile", "people", "companies", "intelligence", "outcomes", "settings"],
-  faculty:   ["home", "people", "tasks", "cohorts", "events"],
   recruiter: ["pubprofile", "companies", "outcomes"],
 }
 function roleAllows(role, pageId) {

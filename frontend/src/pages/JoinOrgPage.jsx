@@ -34,6 +34,22 @@ export default function JoinOrgPage({ token, user, onDone }) {
         } else {
           // Not logged in — stash the token, send to signup/login.
           try { sessionStorage.setItem("capabilio_org_join_token", token) } catch {}
+          // 2026-07-31: also stash college + department so the signup flow can
+          // land the visitor straight on the student path's account-setup
+          // screen (Onboarding.jsx "search" step) with College/Branch already
+          // filled in and locked, instead of asking them to pick an account
+          // type and re-enter what the college's own link already tells us.
+          // Only forced for student-role links — faculty/admin/recruiter
+          // links have no equivalent single-screen destination, so those
+          // fall back to the normal account-type chooser.
+          try {
+            sessionStorage.setItem("capabilio_org_join_context", JSON.stringify({
+              college: res.orgName || "", department: res.department || "", batch: res.batch || "",
+            }))
+          } catch {}
+          if (res.role === "student") {
+            try { localStorage.setItem("capabilio_selected_path", "student") } catch {}
+          }
           setStatus("preview")
         }
       } catch (err) {

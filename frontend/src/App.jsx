@@ -1020,8 +1020,18 @@ function App() {
         user={user}
         onDone={() => {
           window.history.replaceState({}, "", "/")
-          if (user) window.location.reload() // refresh so the new org_members row is picked up
-          else setAppStage("accountType")
+          if (user) { window.location.reload(); return } // refresh so the new org_members row is picked up
+          // 2026-07-31: student-role invite links pre-set capabilio_selected_path
+          // ("student") in JoinOrgPage before this fires — skip the account-type
+          // chooser and go straight to signup, matching how LandingPage/
+          // AccountType already open the modal for a pre-known path.
+          let preSelected = null
+          try { preSelected = localStorage.getItem("capabilio_selected_path") } catch {}
+          if (preSelected === "student") {
+            setAuthMode("signup"); setShowAuth(true)
+          } else {
+            setAppStage("accountType")
+          }
         }}
       />
     )
