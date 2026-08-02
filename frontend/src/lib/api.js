@@ -165,6 +165,15 @@ export const collegeApi = {
   getNaacReport:    (institutionId, batch) => request("GET", `/college/institutions/${institutionId}/naac-report${batch ? `?batch=${encodeURIComponent(batch)}` : ""}`),
   getPlacementTrend:(institutionId) => request("GET", `/college/institutions/${institutionId}/placement-trend`),
 
+  // Groups (2026-08-02) — cohort/club/study-group membership, feeds task assignment.
+  listGroups:        (institutionId) => request("GET", `/college/institutions/${institutionId}/groups`),
+  createGroup:       (institutionId, opts) => request("POST", `/college/institutions/${institutionId}/groups`, opts),
+  updateGroup:       (institutionId, groupId, opts) => request("PATCH", `/college/institutions/${institutionId}/groups/${groupId}`, opts),
+  deleteGroup:       (institutionId, groupId) => request("DELETE", `/college/institutions/${institutionId}/groups/${groupId}`),
+  listGroupMembers:  (institutionId, groupId) => request("GET", `/college/institutions/${institutionId}/groups/${groupId}/members`),
+  addGroupMembers:   (institutionId, groupId, studentIds) => request("POST", `/college/institutions/${institutionId}/groups/${groupId}/members`, { studentIds }),
+  removeGroupMember: (institutionId, groupId, studentId) => request("DELETE", `/college/institutions/${institutionId}/groups/${groupId}/members/${studentId}`),
+
   // Coordination layer (2026-07-31) — placement drives.
   createDrive: (institutionId, opts) => request("POST", `/college/institutions/${institutionId}/drives`, opts),
   listDrives: (institutionId, params = {}) => {

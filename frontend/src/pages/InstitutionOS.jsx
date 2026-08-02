@@ -2067,7 +2067,7 @@ function IntelligencePage({ userData, user, members, tasks, auditLogs, auditLoad
 // ═══════════════════════════════════════════════════════════════════════════════
 // PAGE 3 — TASKS
 // ═══════════════════════════════════════════════════════════════════════════════
-function TasksPage({ userData, user, tasks, tasksLoading, tasksError, reloadTasks, members }) {
+function TasksPage({ userData, user, tasks, tasksLoading, tasksError, reloadTasks, members, canonical }) {
   const [tab, setTab]         = useState("active")
   const [showCreate, setShowCreate] = useState(false)
   const [saving, setSaving]   = useState(false)
@@ -2079,6 +2079,19 @@ function TasksPage({ userData, user, tasks, tasksLoading, tasksError, reloadTask
   const [attachment, setAttachment]   = useState(null)   // File object
   const [uploadProgress, setUploadProgress] = useState("")
 
+  // 2026-08-02: real Groups as a task-assignment target. org_tasks gained a
+  // nullable assigned_to_group_id column (migration institution_groups) —
+  // when a group is picked, we store the real FK instead of relying on
+  // free-text label matching. NOTE (honest gap, unresolved): org_tasks has
+  // no student-facing reader anywhere in the app yet, so this correctly
+  // records who a task targets but does not yet deliver it to a student's
+  // screen — same limitation as every other assign-to option here.
+  const [groups, setGroups] = useState([])
+  useEffect(() => {
+    if (!isCollege || !canonical?.institution?.id) return
+    collegeApi.listGroups(canonical.institution.id).then(res => setGroups(res?.groups || [])).catch(() => {})
+  }, [isCollege, canonical?.institution?.id])
+
   // Build structured assign-to options from real member batches + departments
   const assignOptions = useMemo(() => {
     const batches = [...new Set((members || []).filter(m => m.batch?.trim()).map(m => m.batch.trim()))]
@@ -2089,8 +2102,9 @@ function TasksPage({ userData, user, tasks, tasksLoading, tasksError, reloadTask
       { value: "All Members",   label: "🏢 All Members"         },
       ...batches.map(b  => ({ value: b,         label: `📚 ${b}` })),
       ...depts.map(d    => ({ value: d,         label: `🏫 ${d} Dept.` })),
+      ...groups.map(g   => ({ value: `group:${g.id}`, label: `🗂 ${g.name} (Group · ${g.memberCount} members)` })),
     ]
-  }, [members])
+  }, [members, groups])
 
   async function handlePublish() {
     if (!form.title.trim()) { setSaveError("Task title is required."); return }
@@ -2111,13 +2125,21 @@ function TasksPage({ userData, user, tasks, tasksLoading, tasksError, reloadTask
       setUploadProgress("")
     }
 
+    // A "group:<uuid>" value means the picker selected a real Group — store
+    // the FK (assigned_to_group_id) and keep assigned_to_label human-readable
+    // for the existing display code, rather than parsing the prefix there too.
+    const isGroupTarget = form.assignedTo?.startsWith("group:")
+    const groupId = isGroupTarget ? form.assignedTo.slice("group:".length) : null
+    const groupLabel = isGroupTarget ? assignOptions.find(o => o.value === form.assignedTo)?.label.replace(/^🗂 /, "").replace(/ \(Group.*\)$/, "") : null
+
     const { data: row, error } = await supabase.from("org_tasks").insert({
-      org_id:            user.id,
-      title:             form.title.trim(),
-      description:       form.description,
-      type:              form.type,
-      subject:           form.subject.trim(),
-      assigned_to_label: form.assignedTo || "All Students",
+      org_id:              user.id,
+      title:               form.title.trim(),
+      description:         form.description,
+      type:                form.type,
+      subject:             form.subject.trim(),
+      assigned_to_label:   isGroupTarget ? (groupLabel || "Group") : (form.assignedTo || "All Students"),
+      assigned_to_group_id: groupId,
       due_date:          form.dueDate || null,
       published_by:      user.id,
       published_by_name: userData?.name || "Admin",
@@ -3265,11 +3287,276 @@ function CommunityPage({ userData, user }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // PAGE 6 — GROUPS (simplified for v1)
 // ═══════════════════════════════════════════════════════════════════════════════
-function GroupsPage() {
+// 2026-08-02: real Groups feature, replacing the placeholder. Cohort/club/
+// study-group membership is many-to-many (institution_group_members), so a
+// student can sit in multiple groups at once — matches the original spec
+// ("members can be tagged to multiple groups"). Groups are consumed by
+// TasksPage as a real assignment target (assigned_to_group_id), not just a
+// standalone directory — see the "→ Task" workflow note below.
+const GROUP_TYPE_META = {
+  cohort:      { label: "Cohort",      icon: "🎓", color: T.sky },
+  club:        { label: "Club",        icon: "🏛", color: T.violet || T.gold },
+  study_group: { label: "Study Group", icon: "📚", color: T.green },
+  custom:      { label: "Custom",      icon: "🗂", color: T.ink4 },
+}
+
+function GroupsPage({ canonical, onNav }) {
+  const institution = canonical?.institution
+  const [groups, setGroups]       = useState([])
+  const [loading, setLoading]     = useState(true)
+  const [error, setError]         = useState(null)
+  const [showCreate, setShowCreate] = useState(false)
+  const [createForm, setCreateForm] = useState({ name: "", groupType: "cohort", description: "" })
+  const [creating, setCreating]   = useState(false)
+  const [createError, setCreateError] = useState(null)
+  const [openGroup, setOpenGroup] = useState(null) // group being viewed in detail
+
+  const loadGroups = useCallback(async () => {
+    if (!institution?.id) return
+    setLoading(true)
+    try {
+      const res = await collegeApi.listGroups(institution.id)
+      setGroups(res?.groups || [])
+      setError(null)
+    } catch (e) {
+      setError(e.message || "Could not load groups")
+    }
+    setLoading(false)
+  }, [institution?.id])
+
+  useEffect(() => { loadGroups() }, [loadGroups])
+
+  async function createGroup() {
+    if (!createForm.name.trim()) { setCreateError("Name is required"); return }
+    setCreating(true); setCreateError(null)
+    try {
+      await collegeApi.createGroup(institution.id, createForm)
+      setShowCreate(false)
+      setCreateForm({ name: "", groupType: "cohort", description: "" })
+      await loadGroups()
+    } catch (e) {
+      setCreateError(e.message || "Could not create group")
+    }
+    setCreating(false)
+  }
+
+  async function archiveGroup(g) {
+    if (!window.confirm(`Archive "${g.name}"? It will stop appearing here and in task assignment. Membership history is kept.`)) return
+    try { await collegeApi.updateGroup(institution.id, g.id, { archived: true }); await loadGroups() }
+    catch (_) {}
+  }
+
+  if (canonical?.loading && !institution) {
+    return <PageShell><PageHeader title="Groups" sub="Manage cohorts, clubs, and study groups" /><EmptyState icon="⏳" title="Loading…" sub="" /></PageShell>
+  }
+  if (!institution) {
+    return <PageShell><PageHeader title="Groups" sub="Manage cohorts, clubs, and study groups" /><EmptyState icon="🗂" title="No institution linked" sub="Groups become available once your institution workspace is set up." /></PageShell>
+  }
+
+  if (openGroup) {
+    return (
+      <GroupDetailPage
+        institution={institution}
+        group={openGroup}
+        allStudents={canonical.students || []}
+        onBack={() => { setOpenGroup(null); loadGroups() }}
+        onGoToTasks={() => onNav && onNav("tasks")}
+      />
+    )
+  }
+
   return (
     <PageShell>
-      <PageHeader title="Groups" sub="Manage batches, clubs, and study groups" />
-      <EmptyState icon="🗂" title="Groups coming soon" sub="Create cohort-based and interest-based groups. Members can be tagged to multiple groups for targeted task assignment." />
+      <PageHeader title="Groups" sub="Cohorts, clubs, and study groups — tag students into multiple groups and target tasks at them" />
+
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
+        <Btn onClick={() => setShowCreate(true)} style={{ fontSize: 12, padding: "8px 16px" }}>+ New Group</Btn>
+      </div>
+
+      {error && <div style={{ color: T.red, fontSize: 12, marginBottom: 12 }}>{error}</div>}
+
+      {loading ? (
+        <EmptyState icon="⏳" title="Loading groups…" sub="" />
+      ) : groups.length === 0 ? (
+        <EmptyState icon="🗂" title="No groups yet" sub="Create a cohort, club, or study group, then add students to it. Groups can be selected as a task-assignment target." />
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 14 }}>
+          {groups.map(g => {
+            const meta = GROUP_TYPE_META[g.group_type] || GROUP_TYPE_META.custom
+            return (
+              <div key={g.id} onClick={() => setOpenGroup(g)} style={{
+                background: "linear-gradient(180deg,rgba(255,255,255,0.052),rgba(255,255,255,0.026))",
+                border: `1px solid ${T.border}`, borderRadius: 16, padding: 16, cursor: "pointer",
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div style={{ fontSize: 20 }}>{meta.icon}</div>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: meta.color, background: `${meta.color}18`, padding: "3px 8px", borderRadius: 999 }}>{meta.label}</span>
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: T.ink, marginTop: 10 }}>{g.name}</div>
+                {g.description && <div style={{ fontSize: 11, color: T.ink4, marginTop: 4 }}>{g.description}</div>}
+                <div style={{ display: "flex", gap: 14, marginTop: 12, fontSize: 11, color: T.ink3 }}>
+                  <span>{g.memberCount} member{g.memberCount === 1 ? "" : "s"}</span>
+                  {g.avgElo != null && <span>avg ELO {g.avgElo}</span>}
+                </div>
+                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
+                  <Btn variant="ghost" onClick={(e) => { e.stopPropagation(); archiveGroup(g) }} style={{ fontSize: 10, padding: "3px 8px", color: T.red }}>Archive</Btn>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {showCreate && (
+        <Modal title="New Group" onClose={() => { setShowCreate(false); setCreateError(null) }} width={420}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <FieldInput label="Name" value={createForm.name} onChange={v => setCreateForm(f => ({ ...f, name: v }))} placeholder="e.g. Final Year CSE 2026" required />
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 6 }}>Type</label>
+              <select value={createForm.groupType} onChange={e => setCreateForm(f => ({ ...f, groupType: e.target.value }))}
+                style={{ width: "100%", padding: "9px 12px", border: `1px solid ${T.border}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: "rgba(255,255,255,0.05)" }}>
+                {Object.entries(GROUP_TYPE_META).map(([k, m]) => <option key={k} value={k}>{m.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 6 }}>Description (optional)</label>
+              <textarea value={createForm.description} onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))}
+                rows={2} style={{ width: "100%", padding: "9px 12px", border: `1px solid ${T.border}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: "rgba(255,255,255,0.05)", resize: "vertical", boxSizing: "border-box" }} />
+            </div>
+            {createError && <div style={{ color: T.red, fontSize: 11 }}>{createError}</div>}
+            <Btn onClick={createGroup} disabled={creating} style={{ fontSize: 12, padding: "9px 0" }}>
+              {creating ? "Creating…" : "Create Group"}
+            </Btn>
+          </div>
+        </Modal>
+      )}
+    </PageShell>
+  )
+}
+
+function GroupDetailPage({ institution, group, allStudents, onBack, onGoToTasks }) {
+  const [members, setMembers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState(null)
+  const [showAdd, setShowAdd] = useState(false)
+  const [search, setSearch]   = useState("")
+  const [selected, setSelected] = useState([])
+  const [adding, setAdding]   = useState(false)
+  const [removingId, setRemovingId] = useState(null)
+
+  const loadMembers = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await collegeApi.listGroupMembers(institution.id, group.id)
+      setMembers(res?.members || [])
+      setError(null)
+    } catch (e) { setError(e.message || "Could not load members") }
+    setLoading(false)
+  }, [institution.id, group.id])
+
+  useEffect(() => { loadMembers() }, [loadMembers])
+
+  const memberIds = new Set(members.map(m => m.id))
+  const candidates = (allStudents || [])
+    .filter(s => !memberIds.has(s.id))
+    .filter(s => !search || `${s.roll_number || ""} ${s.department || ""}`.toLowerCase().includes(search.toLowerCase()))
+
+  async function addSelected() {
+    if (selected.length === 0) return
+    setAdding(true)
+    try {
+      await collegeApi.addGroupMembers(institution.id, group.id, selected)
+      setSelected([]); setShowAdd(false); setSearch("")
+      await loadMembers()
+    } catch (_) {}
+    setAdding(false)
+  }
+
+  async function removeMember(studentId) {
+    setRemovingId(studentId)
+    try { await collegeApi.removeGroupMember(institution.id, group.id, studentId); await loadMembers() }
+    catch (_) {}
+    setRemovingId(null)
+  }
+
+  const meta = GROUP_TYPE_META[group.group_type] || GROUP_TYPE_META.custom
+
+  return (
+    <PageShell>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+        <Btn variant="ghost" onClick={onBack} style={{ fontSize: 12, padding: "4px 8px" }}>← Groups</Btn>
+      </div>
+      <PageHeader title={`${meta.icon} ${group.name}`} sub={`${meta.label}${group.description ? " · " + group.description : ""}`} />
+
+      <div style={{
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        background: "linear-gradient(180deg,rgba(255,255,255,0.052),rgba(255,255,255,0.026))",
+        border: `1px solid ${T.border}`, borderRadius: 14, padding: 14, marginBottom: 16,
+      }}>
+        <div style={{ fontSize: 12, color: T.ink3 }}>
+          {members.length} member{members.length === 1 ? "" : "s"} · this group can be selected as a target when creating a task in <b>Tasks</b>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Btn variant="outline" onClick={onGoToTasks} style={{ fontSize: 11, padding: "6px 12px" }}>Assign a Task →</Btn>
+          <Btn onClick={() => setShowAdd(true)} style={{ fontSize: 11, padding: "6px 12px" }}>+ Add Members</Btn>
+        </div>
+      </div>
+
+      {error && <div style={{ color: T.red, fontSize: 12, marginBottom: 12 }}>{error}</div>}
+
+      {loading ? (
+        <EmptyState icon="⏳" title="Loading members…" sub="" />
+      ) : members.length === 0 ? (
+        <EmptyState icon="👥" title="No members yet" sub="Add students from your roster to this group." />
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {members.map(m => (
+            <div key={m.id} style={{
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              padding: "10px 14px", borderRadius: 12, border: `1px solid ${T.border}`,
+            }}>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: T.ink }}>{m.roll_number || "—"}</div>
+                <div style={{ fontSize: 11, color: T.ink4 }}>{m.department || "—"} · {m.batch || "—"} · ELO {m.elo_current ?? "—"}</div>
+              </div>
+              <Btn variant="ghost" onClick={() => removeMember(m.id)} disabled={removingId === m.id} style={{ fontSize: 10, padding: "4px 8px", color: T.red }}>
+                {removingId === m.id ? "…" : "Remove"}
+              </Btn>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showAdd && (
+        <Modal title={`Add Members — ${group.name}`} onClose={() => { setShowAdd(false); setSelected([]); setSearch("") }} width={480}>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search roll number or department…"
+            style={{ width: "100%", padding: "9px 12px", border: `1px solid ${T.border}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: "rgba(255,255,255,0.05)", boxSizing: "border-box", marginBottom: 10 }} />
+          <div style={{ maxHeight: 320, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
+            {candidates.length === 0 && <div style={{ fontSize: 12, color: T.ink4, padding: 10 }}>No matching students outside this group.</div>}
+            {candidates.map(s => {
+              const checked = selected.includes(s.id)
+              return (
+                <label key={s.id} style={{
+                  display: "flex", alignItems: "center", gap: 10, padding: "8px 10px",
+                  borderRadius: 10, border: `1px solid ${checked ? T.gold : T.border}`,
+                  background: checked ? `${T.gold}12` : "transparent", cursor: "pointer",
+                }}>
+                  <input type="checkbox" checked={checked} onChange={() => {
+                    setSelected(sel => checked ? sel.filter(id => id !== s.id) : [...sel, s.id])
+                  }} />
+                  <div style={{ fontSize: 12 }}>
+                    <div style={{ fontWeight: 600, color: T.ink }}>{s.roll_number || s.id}</div>
+                    <div style={{ fontSize: 11, color: T.ink4 }}>{s.department || "—"} · {s.batch || "—"} · ELO {s.elo ?? "—"}</div>
+                  </div>
+                </label>
+              )
+            })}
+          </div>
+          <Btn onClick={addSelected} disabled={adding || selected.length === 0} style={{ fontSize: 12, padding: "9px 0", marginTop: 12, width: "100%" }}>
+            {adding ? "Adding…" : `Add ${selected.length || ""} to Group`}
+          </Btn>
+        </Modal>
+      )}
     </PageShell>
   )
 }
@@ -5027,7 +5314,7 @@ export default function InstitutionOS({ user, userData, onNavigate, initialPage 
     tasks:         <TasksPage         {...shared} />,
     people:        <PeoplePage        {...shared} />,
     community:     <CommunityPage userData={userData} user={user} />,
-    groups:        <GroupsPage />,
+    groups:        <GroupsPage canonical={canonical} onNav={onNav} />,
     cohorts:       <CohortsPage       members={members} />,
     events:        <EventsPage        {...shared} />,
     companies:     <CompaniesPage     user={user} userData={userData} />,

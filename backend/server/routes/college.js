@@ -1672,6 +1672,154 @@ router.get("/institutions/:id/placement-trend", requireAuth, requireInstitutionS
   res.status(200).json({ years })
 })
 
+// ── Groups (2026-08-02) — cohort-based and interest-based groups, replacing
+// the "coming soon" placeholder. Members can belong to multiple groups
+// (plain many-to-many via institution_group_members). Wired into task
+// assignment below via org_tasks.assigned_to_group_id — a real, queryable
+// target instead of a free-text label match.
+const GROUP_TYPES = ["cohort", "club", "study_group", "custom"]
+
+router.post("/institutions/:id/groups", requireAuth, requireInstitutionAdmin(), async (req, res) => {
+  const { id: institutionId } = req.params
+  const { name, groupType = "custom", description = "" } = req.body || {}
+  if (!name || !name.trim()) return res.status(400).json({ error: "name is required" })
+  if (!GROUP_TYPES.includes(groupType)) return res.status(400).json({ error: `groupType must be one of: ${GROUP_TYPES.join(", ")}` })
+
+  const { data: group, error } = await supabaseAdmin
+    .from("institution_groups")
+    .insert({ institution_id: institutionId, name: name.trim(), group_type: groupType, description, created_by: req.user.id })
+    .select()
+    .single()
+  if (error) return res.status(500).json({ error: error.message })
+
+  await supabaseAdmin.from("activity_logs").insert({
+    institution_id: institutionId, actor_id: req.user.id,
+    action_code: "group.created", entity_type: "institution_groups", entity_id: group.id, details: { name: group.name },
+  }).catch(() => {})
+
+  res.status(201).json({ group })
+})
+
+router.get("/institutions/:id/groups", requireAuth, requireInstitutionStaff(), async (req, res) => {
+  const { id: institutionId } = req.params
+  const { data: groups, error } = await supabaseAdmin
+    .from("institution_groups")
+    .select("id, name, group_type, description, archived, created_at")
+    .eq("institution_id", institutionId)
+    .eq("archived", false)
+    .order("created_at", { ascending: false })
+  if (error) return res.status(500).json({ error: error.message })
+  if (!groups || groups.length === 0) return res.status(200).json({ groups: [] })
+
+  // Member count + avg ELO per group — one batched query, not N+1.
+  const groupIds = groups.map(g => g.id)
+  const { data: memberRows } = await supabaseAdmin
+    .from("institution_group_members")
+    .select("group_id, student_id, institution_students(elo_current)")
+    .in("group_id", groupIds)
+
+  const statsByGroup = {}
+  for (const m of memberRows || []) {
+    statsByGroup[m.group_id] ??= { count: 0, eloSum: 0 }
+    statsByGroup[m.group_id].count++
+    statsByGroup[m.group_id].eloSum += Number(m.institution_students?.elo_current) || 0
+  }
+
+  res.status(200).json({
+    groups: groups.map(g => ({
+      ...g,
+      memberCount: statsByGroup[g.id]?.count || 0,
+      avgElo: statsByGroup[g.id]?.count ? Math.round(statsByGroup[g.id].eloSum / statsByGroup[g.id].count) : null,
+    })),
+  })
+})
+
+router.patch("/institutions/:id/groups/:groupId", requireAuth, requireInstitutionAdmin(), async (req, res) => {
+  const { id: institutionId, groupId } = req.params
+  const { name, description, archived } = req.body || {}
+  const patch = {}
+  if (name !== undefined) patch.name = name.trim()
+  if (description !== undefined) patch.description = description
+  if (archived !== undefined) patch.archived = !!archived
+  if (Object.keys(patch).length === 0) return res.status(400).json({ error: "Nothing to update" })
+
+  const { data: group, error } = await supabaseAdmin
+    .from("institution_groups")
+    .update(patch)
+    .eq("id", groupId)
+    .eq("institution_id", institutionId)
+    .select()
+    .single()
+  if (error) return res.status(500).json({ error: error.message })
+  res.status(200).json({ group })
+})
+
+router.delete("/institutions/:id/groups/:groupId", requireAuth, requireInstitutionAdmin(), async (req, res) => {
+  const { id: institutionId, groupId } = req.params
+  const { error } = await supabaseAdmin
+    .from("institution_groups")
+    .delete()
+    .eq("id", groupId)
+    .eq("institution_id", institutionId)
+  if (error) return res.status(500).json({ error: error.message })
+  res.status(200).json({ ok: true })
+})
+
+router.get("/institutions/:id/groups/:groupId/members", requireAuth, requireInstitutionStaff(), async (req, res) => {
+  const { id: institutionId, groupId } = req.params
+  // Ownership check — group must belong to this institution before listing.
+  const { data: group } = await supabaseAdmin.from("institution_groups").select("id").eq("id", groupId).eq("institution_id", institutionId).maybeSingle()
+  if (!group) return res.status(404).json({ error: "Group not found" })
+
+  const { data, error } = await supabaseAdmin
+    .from("institution_group_members")
+    .select("student_id, added_at, institution_students(id, roll_number, department, batch, elo_current, status)")
+    .eq("group_id", groupId)
+    .order("added_at", { ascending: false })
+  if (error) return res.status(500).json({ error: error.message })
+  res.status(200).json({ members: (data || []).map(m => ({ ...m.institution_students, addedAt: m.added_at })).filter(Boolean) })
+})
+
+router.post("/institutions/:id/groups/:groupId/members", requireAuth, requireInstitutionAdmin(), async (req, res) => {
+  const { id: institutionId, groupId } = req.params
+  const { studentIds = [] } = req.body || {}
+  if (!Array.isArray(studentIds) || studentIds.length === 0) return res.status(400).json({ error: "studentIds must be a non-empty array" })
+
+  const { data: group } = await supabaseAdmin.from("institution_groups").select("id").eq("id", groupId).eq("institution_id", institutionId).maybeSingle()
+  if (!group) return res.status(404).json({ error: "Group not found" })
+
+  // Only students that actually belong to this institution — never trust
+  // client-supplied IDs blindly, same pattern as the outcomes route above.
+  const { data: validStudents } = await supabaseAdmin
+    .from("institution_students")
+    .select("id")
+    .eq("institution_id", institutionId)
+    .in("id", studentIds)
+  const validIds = (validStudents || []).map(s => s.id)
+  if (validIds.length === 0) return res.status(400).json({ error: "None of the given studentIds belong to this institution" })
+
+  const { error } = await supabaseAdmin
+    .from("institution_group_members")
+    .upsert(validIds.map(studentId => ({ group_id: groupId, student_id: studentId, added_by: req.user.id })), { onConflict: "group_id,student_id", ignoreDuplicates: true })
+  if (error) return res.status(500).json({ error: error.message })
+
+  res.status(200).json({ added: validIds.length })
+})
+
+router.delete("/institutions/:id/groups/:groupId/members/:studentId", requireAuth, requireInstitutionAdmin(), async (req, res) => {
+  const { id: institutionId, groupId, studentId } = req.params
+  const { data: group } = await supabaseAdmin.from("institution_groups").select("id").eq("id", groupId).eq("institution_id", institutionId).maybeSingle()
+  if (!group) return res.status(404).json({ error: "Group not found" })
+
+  const { error } = await supabaseAdmin
+    .from("institution_group_members")
+    .delete()
+    .eq("group_id", groupId)
+    .eq("student_id", studentId)
+  if (error) return res.status(500).json({ error: error.message })
+  res.status(200).json({ ok: true })
+})
+
 // ── POST /institutions/:id/placements/:placementId/confirm ────────────────────
 // TPO/college_admin-only. This is the gate described in the design doc §9.8 —
 // a placement is not "real" for reporting purposes until this fires.
