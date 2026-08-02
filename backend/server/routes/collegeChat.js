@@ -263,7 +263,34 @@ router.get("/threads/:threadId/messages", requireAuth, async (req, res) => {
     .order("created_at", { ascending: true })
     .limit(200)
   if (error) return res.status(500).json({ error: error.message })
-  res.status(200).json({ thread, messages: data || [] })
+
+  // Attach a display name (and role, where known) to every message — the
+  // raw table only stores sender_id, so the UI was rendering an anonymous
+  // wall of bubbles. Batched (one query per lookup, not N+1 per message).
+  const messages = data || []
+  const senderIds = [...new Set(messages.map(m => m.sender_id).filter(Boolean))]
+  const sendersById = {}
+  if (senderIds.length > 0) {
+    const [{ data: inst }, { data: profs }, { data: staffRows }] = await Promise.all([
+      supabaseAdmin.from("institutions").select("admin_user_id").eq("id", thread.institution_id).maybeSingle(),
+      supabaseAdmin.from("profiles").select("id, name, org_name").in("id", senderIds),
+      supabaseAdmin.from("institution_staff").select("user_id, role").eq("institution_id", thread.institution_id).in("user_id", senderIds),
+    ])
+    const roleByUser = {}
+    for (const r of staffRows || []) roleByUser[r.user_id] = r.role
+    for (const p of profs || []) {
+      sendersById[p.id] = {
+        name: p.name || p.org_name || "Someone",
+        role: roleByUser[p.id] || (p.id === inst?.admin_user_id ? "college_admin" : null),
+      }
+    }
+  }
+  const enriched = messages.map(m => ({
+    ...m,
+    sender_name: sendersById[m.sender_id]?.name || "Someone",
+    sender_role: sendersById[m.sender_id]?.role || null,
+  }))
+  res.status(200).json({ thread, messages: enriched })
 })
 
 // ── POST /threads/:threadId/messages — send a message ────────────────────

@@ -1155,6 +1155,36 @@ router.get("/institutions/:id/staff", requireAuth, requireInstitutionAdmin(), as
   })
 })
 
+// ── GET /institutions/:id/staff/roster — @-mention list for Team Chat ─────
+// Deliberately separate from GET /staff above: that route is college_admin-
+// only and returns management-grade detail (department, status, created_at).
+// Any active staff member needs to see who they can @-mention in the shared
+// channel, so this is gated by requireInstitutionStaff() (not admin-only)
+// and returns just id/name/role — no email, no department.
+router.get("/institutions/:id/staff/roster", requireAuth, requireInstitutionStaff(), async (req, res) => {
+  const institutionId = req.params.id
+  const { data: inst } = await supabaseAdmin.from("institutions").select("admin_user_id, name").eq("id", institutionId).maybeSingle()
+  const { data: staff } = await supabaseAdmin
+    .from("institution_staff")
+    .select("user_id, role")
+    .eq("institution_id", institutionId)
+    .eq("status", "active")
+
+  const userIds = [...new Set([inst?.admin_user_id, ...(staff || []).map(s => s.user_id)].filter(Boolean))]
+  const { data: profiles } = userIds.length
+    ? await supabaseAdmin.from("profiles").select("id, name").in("id", userIds)
+    : { data: [] }
+  const nameById = Object.fromEntries((profiles || []).map(p => [p.id, p.name]))
+
+  const roster = []
+  if (inst?.admin_user_id) roster.push({ user_id: inst.admin_user_id, role: "college_admin", name: nameById[inst.admin_user_id] || "Admin" })
+  for (const s of staff || []) {
+    if (s.user_id === inst?.admin_user_id) continue // don't duplicate the admin
+    roster.push({ user_id: s.user_id, role: s.role, name: nameById[s.user_id] || "Staff member" })
+  }
+  res.status(200).json({ roster })
+})
+
 router.patch("/institutions/:id/staff/:staffId/revoke", requireAuth, async (req, res) => {
   const callerRole = await getStaffRole(req.params.id, req.user.id)
   if (callerRole !== "college_admin") return res.status(403).json({ error: "Only the college admin can revoke staff access" })

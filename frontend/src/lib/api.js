@@ -158,6 +158,7 @@ export const collegeApi = {
   createStaffLogin: (institutionId, opts) => request("POST", `/college/institutions/${institutionId}/staff`, opts),
   listStaff:        (institutionId) => request("GET", `/college/institutions/${institutionId}/staff`),
   revokeStaff:      (institutionId, staffId) => request("PATCH", `/college/institutions/${institutionId}/staff/${staffId}/revoke`),
+  getStaffRoster:   (institutionId) => request("GET", `/college/institutions/${institutionId}/staff/roster`),
 
   // Coordination layer (2026-07-31) — placement drives.
   createDrive: (institutionId, opts) => request("POST", `/college/institutions/${institutionId}/drives`, opts),

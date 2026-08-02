@@ -1219,6 +1219,37 @@ function ChatPanel({ canonical, user, pendingThreadContext, onClearPendingThread
   const [actionDraftText, setActionDraftText] = useState("")
   const [actionBusy, setActionBusy] = useState(false)
 
+  // ── @-mentions (2026-08-02) ──────────────────────────────────────────────
+  // Roster of everyone the admin can message: themselves plus any staff
+  // logins they've created (placement_officer/professor/dept_head/mentor via
+  // Staff Access). Names/roles only — the roster endpoint is intentionally
+  // separate from the college_admin-only staff-management one.
+  const [roster, setRoster] = useState([])
+  const [mentionOpen, setMentionOpen] = useState(false)
+  const [mentionQuery, setMentionQuery] = useState("")
+
+  useEffect(() => {
+    if (!institutionId) return
+    collegeApi.getStaffRoster(institutionId).then(res => setRoster(res?.roster || [])).catch(() => {})
+  }, [institutionId])
+
+  const ROLE_LABEL = { college_admin: "Admin", placement_officer: "Placement", dept_head: "Dept Head", professor: "Professor", mentor: "Mentor" }
+  const mentionMatches = mentionOpen
+    ? roster.filter(r => r.user_id !== user?.id && r.name.toLowerCase().includes(mentionQuery.toLowerCase())).slice(0, 6)
+    : []
+
+  function onDraftChange(value) {
+    setDraft(value)
+    const m = value.match(/@([A-Za-z0-9._' -]{0,30})$/)
+    if (m) { setMentionOpen(true); setMentionQuery(m[1]) }
+    else setMentionOpen(false)
+  }
+
+  function pickMention(name) {
+    setDraft(d => d.replace(/@([A-Za-z0-9._' -]{0,30})$/, `@${name} `))
+    setMentionOpen(false)
+  }
+
   // A pending context from a "Message about this" launcher pre-fills the
   // subject once, so the composer already reflects what this thread is
   // about before the first message is even sent.
@@ -1376,6 +1407,12 @@ function ChatPanel({ canonical, user, pendingThreadContext, onClearPendingThread
                     background: m.sender_id === user?.id ? T.skyL : T.surface2,
                     border: `1px solid ${T.border}`, borderRadius: 10, padding: "8px 11px",
                   }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 2 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: T.gold }}>
+                        {m.sender_id === user?.id ? "You" : (m.sender_name || "Someone")}
+                      </span>
+                      {m.sender_role && <span style={{ fontSize: 9.5, color: T.ink4 }}>{ROLE_LABEL[m.sender_role] || m.sender_role}</span>}
+                    </div>
                     <div style={{ fontSize: 12.5, color: T.ink }}>{m.body}</div>
                     <div style={{ fontSize: 10, color: T.ink4, marginTop: 3 }}>{timeSince(m.created_at)}</div>
                   </div>
@@ -1410,14 +1447,35 @@ function ChatPanel({ canonical, user, pendingThreadContext, onClearPendingThread
           <input value={newSubject} onChange={(e) => setNewSubject(e.target.value)} placeholder="Channel name (e.g. General, Placement Team)"
             style={{ padding: "8px 12px", borderRadius: 8, background: T.bg, border: `1px solid ${T.border}`, color: T.ink, fontSize: 12, marginBottom: 8 }} />
         )}
-        <div style={{ display: "flex", gap: 8 }}>
-          <input value={draft} onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") activeThreadId ? sendMessage() : startThread() }}
-            placeholder={activeThreadId ? "Write a message…" : "First message to start this channel…"}
-            style={{ flex: 1, padding: "9px 13px", borderRadius: 8, background: T.bg, border: `1px solid ${T.border}`, color: T.ink, fontSize: 13 }} />
-          <Btn onClick={activeThreadId ? sendMessage : startThread} disabled={sending || !draft.trim()}>
-            {sending ? "…" : "Send"}
-          </Btn>
+        <div style={{ position: "relative" }}>
+          {mentionOpen && mentionMatches.length > 0 && (
+            <div style={{
+              position: "absolute", bottom: "calc(100% + 6px)", left: 0, zIndex: 30,
+              minWidth: 220, background: "#161310", border: `1px solid ${T.border}`,
+              borderRadius: 10, boxShadow: "0 12px 32px rgba(0,0,0,0.45)", overflow: "hidden", padding: "4px 0",
+            }}>
+              {mentionMatches.map(r => (
+                <button key={r.user_id} onClick={() => pickMention(r.name)} style={{
+                  display: "flex", width: "100%", alignItems: "center", justifyContent: "space-between",
+                  padding: "8px 12px", background: "none", border: "none", cursor: "pointer", fontFamily: FONT, textAlign: "left",
+                }}
+                  onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
+                  onMouseLeave={e => e.currentTarget.style.background = "none"}>
+                  <span style={{ fontSize: 12.5, color: T.ink }}>{r.name}</span>
+                  <span style={{ fontSize: 10, color: T.ink4 }}>{ROLE_LABEL[r.role] || r.role}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 8 }}>
+            <input value={draft} onChange={(e) => onDraftChange(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !mentionOpen) activeThreadId ? sendMessage() : startThread() }}
+              placeholder={activeThreadId ? "Write a message… (@ to mention someone)" : "First message to start this channel…"}
+              style={{ flex: 1, padding: "9px 13px", borderRadius: 8, background: T.bg, border: `1px solid ${T.border}`, color: T.ink, fontSize: 13 }} />
+            <Btn onClick={activeThreadId ? sendMessage : startThread} disabled={sending || !draft.trim()}>
+              {sending ? "…" : "Send"}
+            </Btn>
+          </div>
         </div>
       </div>
     </div>
@@ -1721,10 +1779,12 @@ function IntelligencePage({ userData, user, members, tasks, auditLogs, auditLoad
     { range: "800–899 (Advanced)",   min: 800, max: 900,  color: T.sky    },
     { range: "700–799 (Proficient)", min: 700, max: 800,  color: T.blue   },
     { range: "600–699 (Developing)", min: 600, max: 700,  color: T.amber  },
-    { range: "< 600 (Beginner)",     min: 0,   max: 600,  color: T.red    },
+    { range: "400–599 (Beginner)",   min: 400, max: 600,  color: T.red    },
   ].map(r => ({
     ...r,
-    count: activeMembers.filter(m => (m.elo_rating || 0) >= r.min && (m.elo_rating || 0) < r.max).length,
+    // Students' ELO baseline is 400 (see arena/assessment ELO defaults) — a
+    // missing elo_rating means "not yet rated, sitting at the floor", not 0.
+    count: activeMembers.filter(m => (m.elo_rating || 400) >= r.min && (m.elo_rating || 400) < r.max).length,
   }))
   const maxCount = Math.max(...eloRanges.map(r => r.count), 1)
 
