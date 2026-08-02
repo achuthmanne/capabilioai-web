@@ -48,6 +48,9 @@ const Nexus              = lazy(() => import("./pages/Nexus"))
 const Pricing            = lazy(() => import("./pages/Pricing"))
 // ── Path-specific home dashboards ────────────────────────────────────────────
 const StudentHome        = lazy(() => import("./pages/StudentHome"))
+// 2026-08-02: student-facing task inbox — only shown in nav for students
+// GET /college/me/tasks reports as actually org-linked (see the fetch below).
+const StudentCollegePage = lazy(() => import("./pages/StudentCollegePage"))
 const ProfessionalHome   = lazy(() => import("./pages/ProfessionalHome"))
 const ExecutiveHome      = lazy(() => import("./pages/ExecutiveHome"))
 const StartupWorkspace   = lazy(() => import("./pages/StartupWorkspace"))
@@ -775,6 +778,11 @@ function App() {
   const [authMode,       setAuthMode]       = useState("login")
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const profileMenuRef = useRef(null)
+  // 2026-08-02: whether this student is linked to any org (college/company)
+  // via org_members — drives whether the "College" nav tab appears at all.
+  // null = not checked yet, so the tab stays hidden until we know for sure
+  // rather than flashing in and out.
+  const [collegeLinked, setCollegeLinked] = useState(null)
 
   useEffect(() => {
     if (window.location.pathname.startsWith("/portfolio/")) setCurrentPage("portfolio")
@@ -803,6 +811,22 @@ function App() {
       orgApi.claimJoinLink(token).catch(err => console.warn("[org-join] pending claim failed:", err.message))
     })
   }, [user, userData?.path]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 2026-08-02: resolve whether this student has any org_members link at all
+  // — determines whether the "College" nav tab appears (see STUDENT_HEADER_NAV
+  // below). Cheap, self-scoped, read-only; runs once userData confirms this
+  // is a student account so it never fires for professional/institution/
+  // authority logins the tab is irrelevant to.
+  useEffect(() => {
+    if (!user || (userData?.path && userData.path !== "student")) { setCollegeLinked(false); return }
+    let cancelled = false
+    import("./lib/api").then(({ collegeApi }) => {
+      collegeApi.getMyTasks()
+        .then(res => { if (!cancelled) setCollegeLinked(!!res?.linked) })
+        .catch(() => { if (!cancelled) setCollegeLinked(false) })
+    })
+    return () => { cancelled = true }
+  }, [user, userData?.path])
 
   // Auto-complete a pending company-invite acceptance once the visitor is
   // logged in AND their profile has finished company onboarding (org_type ===
@@ -1227,6 +1251,10 @@ function App() {
     { id: "skillstudio", label: "Skill Studio", page: "skillstudio",   prefix: "🎓" },
     { id: "launchpad",   label: "Launchpad",    page: "launchpad",     prefix: "🚀" },
     // "Challenges" nav removed — engineering domain challenges now live inside Arena → Common Challenges (stream-filtered)
+    // 2026-08-02: only shown once GET /college/me/tasks confirms this student
+    // is actually org-linked — collegeLinked starts null (unresolved) so this
+    // never flashes in and then disappears; it simply appears once known true.
+    ...(collegeLinked ? [{ id: "college", label: "College", page: "studentCollege", prefix: "🏫" }] : []),
   ]
 
   // Sprint 5 of EXECUTIVE_TECHNICAL_BLUEPRINT.md §14 / EXECUTIVE_PATH_INFORMATION_ARCHITECTURE.md:
@@ -1457,6 +1485,7 @@ function App() {
         <ErrorBoundary>
         <Suspense fallback={<PageLoader />}>
           {currentPage === "studentHome"      && <StudentHome      user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
+          {currentPage === "studentCollege"   && <StudentCollegePage onBack={() => { setCurrentPage("studentHome"); setActiveNavItem("home") }} />}
           {currentPage === "professionalHome" && <ProfessionalHome user={user} userData={userData} setUserData={setUserData} activeTab={activeTab} setActiveTab={setActiveTab} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} onNavigatePricing={() => { setCurrentPage("pricing"); setActiveNavItem("") }} />}
           {currentPage === "skills" && <Skills user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
           {currentPage === "company" && <Company user={user} />}

@@ -92,6 +92,10 @@ const NAV_GROUPS = [
       // same class of bug as the "settings" mislabel above) — this id has
       // always opened the Groups page; label now says what it is.
       { id: "groups",    label: "Groups", mobileShow: false },
+      // 2026-08-02: multi-campus support. Not added to ROLE_PAGES.placement/
+      // recruiter/staff, so it's admin-only automatically (those roles use
+      // an explicit allow-list that doesn't include "university").
+      { id: "university", label: "Campuses", mobileShow: false },
       { id: "companies", label: "Recruiter NDAs",   mobileShow: false },
     ],
   },
@@ -260,6 +264,15 @@ function useOrgAuditLog(orgId, limit = 20) {
 // most colleges haven't been created under the new schema yet), this hook
 // resolves to `institution: null` and every consumer below renders nothing
 // extra — the existing org_members-driven UI is completely unaffected.
+// 2026-08-02 (multi-campus support): remembers which campus institution a
+// university-group admin last chose, per-browser, so a page refresh doesn't
+// silently drop them back onto the auto-picked campus. Purely a UI
+// convenience — every backend route still independently re-verifies the
+// caller's institution_staff role on whatever id is requested, so a stale/
+// tampered value here can never grant access to a campus the user isn't
+// actually staff on.
+const CAMPUS_PREF_KEY = "capabilio_active_campus_id"
+
 function useCanonicalRoster() {
   const [institution, setInstitution] = useState(null)
   const [role, setRole]               = useState(null)
@@ -272,6 +285,15 @@ function useCanonicalRoster() {
     department: "", batch: "", status: "", search: "",
     role: "", minTasks: "", interviewStatus: "", shared: "", active: "",
   })
+  // Multi-campus (2026-08-02): which campus is currently active, plus the
+  // caller's university group (if any) and its member campuses — loaded
+  // independently of the main roster so a 404 here (the common case: no
+  // group exists yet) never blocks the rest of the dashboard.
+  const [activeInstitutionId, setActiveInstitutionId] = useState(() => {
+    try { return localStorage.getItem(CAMPUS_PREF_KEY) || null } catch (_) { return null }
+  })
+  const [universityGroup, setUniversityGroup] = useState(null)
+  const [campuses, setCampuses]               = useState([])
 
   const loadRoster = useCallback(async (institutionId, activeFilters) => {
     try {
@@ -291,30 +313,65 @@ function useCanonicalRoster() {
     }
   }, [])
 
+  const loadUniversityGroup = useCallback(async () => {
+    try {
+      const res = await collegeApi.getMyUniversityGroup()
+      setUniversityGroup(res?.group || null)
+      setCampuses(res?.campuses || [])
+    } catch (_) {
+      // No group yet is the default/common case, not an error worth surfacing.
+    }
+  }, [])
+
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await collegeApi.myInstitution()
+      // If the stored campus preference turns out to be one the caller no
+      // longer has access to, myInstitution() 403s and we fall through to
+      // the auto-picked institution below rather than getting stuck.
+      let res
+      try {
+        res = await collegeApi.myInstitution(activeInstitutionId || undefined)
+      } catch (err) {
+        if (activeInstitutionId && err.status === 403) {
+          res = await collegeApi.myInstitution()
+        } else {
+          throw err
+        }
+      }
       setInstitution(res.institution)
       setRole(res.role)
       setNotLinked(false)
-      await loadRoster(res.institution.id, filters)
+      setActiveInstitutionId(res.institution.id)
+      try { localStorage.setItem(CAMPUS_PREF_KEY, res.institution.id) } catch (_) {}
+      await Promise.all([loadRoster(res.institution.id, filters), loadUniversityGroup()])
     } catch (err) {
       if (err.status === 404) setNotLinked(true)
       setInstitution(null)
     } finally {
       setLoading(false)
     }
-  }, [loadRoster, filters])
+  }, [loadRoster, loadUniversityGroup, filters, activeInstitutionId])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load() }, [load]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const reload = useCallback(() => {
     if (institution?.id) return loadRoster(institution.id, filters)
     return load()
   }, [institution, filters, loadRoster, load])
 
-  return { institution, role, students, stats, branches, loading, notLinked, filters, setFilters, reload }
+  // Switches the whole dashboard onto a different campus institution. The
+  // backend re-checks institution_staff for this exact id independently, so
+  // this can only ever succeed for a campus the user is actually staff on.
+  const switchInstitution = useCallback((institutionId) => {
+    if (!institutionId || institutionId === institution?.id) return
+    setActiveInstitutionId(institutionId)
+  }, [institution?.id])
+
+  return {
+    institution, role, students, stats, branches, loading, notLinked, filters, setFilters, reload,
+    universityGroup, campuses, switchInstitution, reloadUniversityGroup: loadUniversityGroup,
+  }
 }
 
 function useOrgPosts(orgId) {
@@ -1743,9 +1800,15 @@ function DrivesPanel({ canonical, openThreadFor }) {
   const [drives, setDrives] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
-  const [form, setForm] = useState({ title: "", eligibleBranches: "", minElo: "" })
+  const [form, setForm] = useState({
+    title: "", eligibleBranches: "", minElo: "",
+    proctoringEnabled: false, assessmentUrl: "", assessmentInstructions: "", assessmentDurationMinutes: "",
+  })
   const [creating, setCreating] = useState(false)
   const [eligibleCounts, setEligibleCounts] = useState({})
+  const [sessionsFor, setSessionsFor] = useState(null) // drive object being viewed
+  const [sessions, setSessions] = useState([])
+  const [sessionsLoading, setSessionsLoading] = useState(false)
 
   const load = useCallback(async () => {
     if (!institutionId) { setLoading(false); return }
@@ -1767,8 +1830,12 @@ function DrivesPanel({ canonical, openThreadFor }) {
         title: form.title.trim(),
         eligibleBranches: form.eligibleBranches.trim() ? form.eligibleBranches.split(",").map((b) => b.trim()).filter(Boolean) : [],
         minElo: form.minElo.trim() ? Number(form.minElo) : null,
+        proctoringEnabled: form.proctoringEnabled,
+        assessmentUrl: form.assessmentUrl.trim() || null,
+        assessmentInstructions: form.assessmentInstructions.trim() || null,
+        assessmentDurationMinutes: form.assessmentDurationMinutes.trim() ? Number(form.assessmentDurationMinutes) : null,
       })
-      setForm({ title: "", eligibleBranches: "", minElo: "" })
+      setForm({ title: "", eligibleBranches: "", minElo: "", proctoringEnabled: false, assessmentUrl: "", assessmentInstructions: "", assessmentDurationMinutes: "" })
       setShowCreate(false)
       await load()
     } catch (_) {}
@@ -1780,6 +1847,16 @@ function DrivesPanel({ canonical, openThreadFor }) {
       const res = await collegeApi.getDriveEligibleStudents(institutionId, driveId)
       setEligibleCounts((c) => ({ ...c, [driveId]: res?.count ?? 0 }))
     } catch (_) {}
+  }
+
+  async function openSessions(drive) {
+    setSessionsFor(drive)
+    setSessionsLoading(true)
+    try {
+      const res = await collegeApi.listDriveSessions(institutionId, drive.id)
+      setSessions(res?.sessions || [])
+    } catch (_) { setSessions([]) }
+    setSessionsLoading(false)
   }
 
   if (!institutionId) return <EmptyState icon="🏢" title="Not connected yet" sub="Placement drives appear here once your institution is linked." />
@@ -1799,6 +1876,22 @@ function DrivesPanel({ canonical, openThreadFor }) {
             style={{ padding: "8px 10px", borderRadius: 8, background: T.raised || T.bg, border: `1px solid ${T.border}`, color: T.ink, fontSize: 12 }} />
           <input value={form.minElo} onChange={(e) => setForm((f) => ({ ...f, minElo: e.target.value }))} placeholder="Minimum ELO (optional)" type="number"
             style={{ padding: "8px 10px", borderRadius: 8, background: T.raised || T.bg, border: `1px solid ${T.border}`, color: T.ink, fontSize: 12 }} />
+
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: T.ink3, marginTop: 4, cursor: "pointer" }}>
+            <input type="checkbox" checked={form.proctoringEnabled} onChange={(e) => setForm((f) => ({ ...f, proctoringEnabled: e.target.checked }))} />
+            Proctored assessment (fullscreen + tab-switch monitoring during attempt)
+          </label>
+          {form.proctoringEnabled && (
+            <>
+              <input value={form.assessmentUrl} onChange={(e) => setForm((f) => ({ ...f, assessmentUrl: e.target.value }))} placeholder="Assessment link (e.g. Arena challenge URL, Google Form)"
+                style={{ padding: "8px 10px", borderRadius: 8, background: T.raised || T.bg, border: `1px solid ${T.border}`, color: T.ink, fontSize: 12 }} />
+              <input value={form.assessmentDurationMinutes} onChange={(e) => setForm((f) => ({ ...f, assessmentDurationMinutes: e.target.value }))} placeholder="Duration in minutes (optional)" type="number"
+                style={{ padding: "8px 10px", borderRadius: 8, background: T.raised || T.bg, border: `1px solid ${T.border}`, color: T.ink, fontSize: 12 }} />
+              <textarea value={form.assessmentInstructions} onChange={(e) => setForm((f) => ({ ...f, assessmentInstructions: e.target.value }))} placeholder="Instructions shown to students before they start (optional)" rows={2}
+                style={{ padding: "8px 10px", borderRadius: 8, background: T.raised || T.bg, border: `1px solid ${T.border}`, color: T.ink, fontSize: 12, resize: "vertical" }} />
+            </>
+          )}
+
           <Btn onClick={create} disabled={creating || !form.title.trim()} style={{ fontSize: 12, padding: "7px 12px" }}>{creating ? "Creating…" : "Create Drive"}</Btn>
         </div>
       )}
@@ -1809,15 +1902,22 @@ function DrivesPanel({ canonical, openThreadFor }) {
           <div key={d.id} style={{ padding: "10px 0", borderBottom: i < drives.length - 1 ? `1px solid ${T.border}` : "none" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: T.ink }}>{d.title}</div>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: T.ink }}>{d.title}{d.proctoring_enabled && <span title="Proctored assessment configured" style={{ marginLeft: 6 }}>🔒</span>}</div>
                 <div style={{ fontSize: 10.5, color: T.ink4, marginTop: 2, textTransform: "capitalize" }}>
                   {d.status}{d.min_elo ? ` · min ELO ${d.min_elo}` : ""}{Array.isArray(d.eligible_branches) && d.eligible_branches.length ? ` · ${d.eligible_branches.join(", ")}` : " · all branches"}
                   {eligibleCounts[d.id] !== undefined ? ` · ${eligibleCounts[d.id]} eligible` : ""}
+                </div>
+                <div style={{ fontSize: 10.5, color: T.sky, marginTop: 2 }}>
+                  {d.offersCount || 0} offer{d.offersCount === 1 ? "" : "s"} · {d.placedCount || 0} placed{d.avgCtcLpa != null ? ` · avg ₹${d.avgCtcLpa} LPA` : ""}
                 </div>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => checkEligible(d.id)} title="Count eligible students"
                   style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 13 }}>👥</button>
+                {d.proctoring_enabled && (
+                  <button onClick={() => openSessions(d)} title="View proctoring sessions"
+                    style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 13 }}>🔒</button>
+                )}
                 {d.thread_id && openThreadFor && (
                   <button onClick={() => openThreadFor({ contextType: "drive", contextId: d.id, subject: d.title })}
                     title="Open drive room" style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 13 }}>💬</button>
@@ -1826,6 +1926,35 @@ function DrivesPanel({ canonical, openThreadFor }) {
             </div>
           </div>
         ))
+      )}
+
+      {sessionsFor && (
+        <Modal title={`Proctoring — ${sessionsFor.title}`} onClose={() => setSessionsFor(null)} width={520}>
+          {sessionsLoading ? <Spinner /> : sessions.length === 0 ? (
+            <EmptyState icon="🔒" title="No attempts yet" sub="Students who start this drive's proctored assessment will show up here with their integrity signal." />
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {sessions.map((s) => (
+                <div key={s.id} style={{
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  padding: "10px 12px", borderRadius: 10, border: `1px solid ${T.border}`,
+                }}>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: T.ink }}>{s.institution_students?.roll_number || "—"}</div>
+                    <div style={{ fontSize: 10.5, color: T.ink4 }}>{s.institution_students?.department || "—"} · {s.status}</div>
+                  </div>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999,
+                    color: s.violation_count === 0 ? T.green : s.violation_count < 3 ? T.amber : T.red,
+                    background: s.violation_count === 0 ? `${T.green}18` : s.violation_count < 3 ? `${T.amber}18` : `${T.red}18`,
+                  }}>
+                    {s.violation_count} violation{s.violation_count === 1 ? "" : "s"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Modal>
       )}
     </Card>
   )
@@ -3570,6 +3699,236 @@ function GroupDetailPage({ institution, group, allStudents, onBack, onGoToTasks 
           <Btn onClick={addSelected} disabled={adding || selected.length === 0} style={{ fontSize: 12, padding: "9px 0", marginTop: 12, width: "100%" }}>
             {adding ? "Adding…" : `Add ${selected.length || ""} to Group`}
           </Btn>
+        </Modal>
+      )}
+    </PageShell>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PAGE — UNIVERSITY / MULTI-CAMPUS (2026-08-02)
+// institutions.id is unchanged everywhere else in the codebase — a
+// university_groups row just clusters several existing campus institutions
+// under one university-level admin. Attaching/creating a campus grants that
+// admin an institution_staff row on it, so every other existing route works
+// unmodified. See backend/server/routes/college.js for the full design note.
+// ═══════════════════════════════════════════════════════════════════════════════
+function UniversityPage({ canonical }) {
+  const institution = canonical?.institution
+  const universityGroup = canonical?.universityGroup
+  const campuses = canonical?.campuses || []
+
+  const [groupNameInput, setGroupNameInput] = useState("")
+  const [creatingGroup, setCreatingGroup]   = useState(false)
+  const [showAttach, setShowAttach]         = useState(false)
+  const [attachMode, setAttachMode]         = useState("new") // "new" | "existing"
+  const [attachForm, setAttachForm]         = useState({ name: "", type: "college", institutionId: "" })
+  const [attaching, setAttaching]           = useState(false)
+  const [formError, setFormError]           = useState(null)
+  const [overview, setOverview]             = useState(null)
+  const [overviewLoading, setOverviewLoading] = useState(false)
+
+  const loadOverview = useCallback(async (groupId) => {
+    if (!groupId) return
+    setOverviewLoading(true)
+    try {
+      const res = await collegeApi.getUniversityOverview(groupId)
+      setOverview(res)
+    } catch (_) {}
+    setOverviewLoading(false)
+  }, [])
+
+  useEffect(() => { if (universityGroup?.id) loadOverview(universityGroup.id) }, [universityGroup?.id, loadOverview])
+
+  async function createGroup() {
+    if (!groupNameInput.trim()) return
+    setCreatingGroup(true)
+    try {
+      await collegeApi.createUniversityGroup(groupNameInput.trim())
+      await canonical.reloadUniversityGroup()
+    } catch (e) {
+      setFormError(e.message || "Could not create university group")
+    }
+    setCreatingGroup(false)
+  }
+
+  async function attachCampus() {
+    setFormError(null)
+    if (attachMode === "existing" && !attachForm.institutionId.trim()) {
+      setFormError("Enter the campus's institution id or code")
+      return
+    }
+    if (attachMode === "new" && !attachForm.name.trim()) {
+      setFormError("Campus name is required")
+      return
+    }
+    setAttaching(true)
+    try {
+      const opts = attachMode === "existing"
+        ? { institutionId: attachForm.institutionId.trim() }
+        : { name: attachForm.name.trim(), type: attachForm.type }
+      await collegeApi.addCampusToGroup(universityGroup.id, opts)
+      setShowAttach(false)
+      setAttachForm({ name: "", type: "college", institutionId: "" })
+      await canonical.reloadUniversityGroup()
+      await loadOverview(universityGroup.id)
+    } catch (e) {
+      setFormError(e.message || "Could not attach campus")
+    }
+    setAttaching(false)
+  }
+
+  async function detachCampus(campus) {
+    if (!window.confirm(`Remove "${campus.name}" from this university group? Its data (students, drives, placements) is untouched — it just stops appearing in the rollup here.`)) return
+    try {
+      await collegeApi.removeCampusFromGroup(universityGroup.id, campus.id)
+      await canonical.reloadUniversityGroup()
+      await loadOverview(universityGroup.id)
+    } catch (_) {}
+  }
+
+  function switchTo(campus) {
+    if (canonical?.switchInstitution) canonical.switchInstitution(campus.id)
+  }
+
+  if (canonical?.loading && !institution) {
+    return <PageShell><PageHeader title="Campuses" sub="Manage multiple campuses under one university" /><EmptyState icon="⏳" title="Loading…" sub="" /></PageShell>
+  }
+  if (!institution) {
+    return <PageShell><PageHeader title="Campuses" sub="Manage multiple campuses under one university" /><EmptyState icon="🏛" title="No institution linked" sub="Set up your institution workspace first." /></PageShell>
+  }
+
+  if (!universityGroup) {
+    return (
+      <PageShell>
+        <PageHeader title="Campuses" sub="If your university has more than one campus, group them here to manage and compare them from one place" />
+        <div style={{
+          background: "linear-gradient(180deg,rgba(255,255,255,0.052),rgba(255,255,255,0.026))",
+          border: `1px solid ${T.border}`, borderRadius: 16, padding: 24, maxWidth: 480,
+        }}>
+          <div style={{ fontSize: 13, color: T.ink3, marginBottom: 14 }}>
+            This creates a university group with <strong style={{ color: T.ink }}>{institution.name}</strong> as its first campus.
+            You can attach or create more campuses afterward. Existing single-campus institutions are unaffected unless you do this.
+          </div>
+          <input value={groupNameInput} onChange={e => setGroupNameInput(e.target.value)}
+            placeholder="e.g. VIT University"
+            style={{ width: "100%", padding: "10px 12px", border: `1px solid ${T.borderM}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: "#181510", boxSizing: "border-box", marginBottom: 12 }} />
+          {formError && <div style={{ color: T.red, fontSize: 11, marginBottom: 10 }}>{formError}</div>}
+          <Btn onClick={createGroup} disabled={creatingGroup} style={{ fontSize: 12, padding: "10px 24px" }}>
+            {creatingGroup ? "Creating…" : "Create University Group"}
+          </Btn>
+        </div>
+      </PageShell>
+    )
+  }
+
+  return (
+    <PageShell>
+      <PageHeader title={universityGroup.name} sub="Cross-campus rollup — switch which campus your dashboard is scoped to, or attach another campus" />
+
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
+        <Btn onClick={() => setShowAttach(true)} style={{ fontSize: 12, padding: "8px 16px" }}>+ Attach Campus</Btn>
+      </div>
+
+      {overview && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 20 }}>
+          {[
+            ["Campuses", campuses.length],
+            ["Total students", overview.totals.students],
+            ["Total placed", overview.totals.placed],
+            ["Avg ELO", overview.totals.avgElo],
+          ].map(([label, value]) => (
+            <div key={label} style={{
+              background: "linear-gradient(180deg,rgba(255,255,255,0.052),rgba(255,255,255,0.026))",
+              border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px 16px",
+            }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: T.ink4, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: T.ink, marginTop: 4, fontFamily: MONO }}>{value}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      {overviewLoading && !overview && <div style={{ fontSize: 12, color: T.ink4, marginBottom: 12 }}>Loading rollup…</div>}
+
+      {campuses.length === 0 ? (
+        <EmptyState icon="🏛" title="No campuses attached yet" sub="Attach an existing campus you already administer, or create a brand-new one." />
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
+          {campuses.map(c => {
+            const campusStats = overview?.campuses?.find(oc => oc.id === c.id)
+            const isActive = c.id === institution.id
+            return (
+              <div key={c.id} style={{
+                background: isActive ? "linear-gradient(180deg,rgba(246,196,83,0.10),rgba(246,196,83,0.03))" : "linear-gradient(180deg,rgba(255,255,255,0.052),rgba(255,255,255,0.026))",
+                border: `1px solid ${isActive ? "#f6c45355" : T.border}`, borderRadius: 16, padding: 16,
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>{c.name}</div>
+                  {isActive && <span style={{ fontSize: 10, fontWeight: 700, color: "#f6c453", background: "#f6c45318", padding: "3px 8px", borderRadius: 999 }}>Active</span>}
+                </div>
+                <div style={{ fontSize: 11, color: T.ink4, marginTop: 4 }}>{c.type} · {c.verification_level || "unverified"}</div>
+                {campusStats && (
+                  <div style={{ display: "flex", gap: 14, marginTop: 12, fontSize: 11, color: T.ink3 }}>
+                    <span>{campusStats.students} students</span>
+                    <span>{campusStats.placed} placed</span>
+                    <span>avg ELO {campusStats.avgElo}</span>
+                  </div>
+                )}
+                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
+                  {!isActive ? (
+                    <Btn variant="ghost" onClick={() => switchTo(c)} style={{ fontSize: 10, padding: "3px 10px" }}>Switch to this campus</Btn>
+                  ) : <span />}
+                  <Btn variant="ghost" onClick={() => detachCampus(c)} style={{ fontSize: 10, padding: "3px 8px", color: T.red }}>Remove</Btn>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {showAttach && (
+        <Modal title="Attach Campus" onClose={() => { setShowAttach(false); setFormError(null) }} width={440}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", gap: 8 }}>
+              <Btn variant={attachMode === "new" ? "primary" : "outline"} onClick={() => setAttachMode("new")} style={{ fontSize: 11, padding: "6px 12px", flex: 1 }}>Create new campus</Btn>
+              <Btn variant={attachMode === "existing" ? "primary" : "outline"} onClick={() => setAttachMode("existing")} style={{ fontSize: 11, padding: "6px 12px", flex: 1 }}>Attach existing</Btn>
+            </div>
+            {attachMode === "new" ? (
+              <>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 6 }}>Campus name <span style={{ color: T.red }}>*</span></label>
+                  <input value={attachForm.name} onChange={e => setAttachForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="e.g. VIT Chennai" autoFocus
+                    style={{ width: "100%", padding: "10px 12px", border: `1px solid ${T.borderM}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: "#181510", boxSizing: "border-box" }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 6 }}>Type</label>
+                  <select value={attachForm.type} onChange={e => setAttachForm(f => ({ ...f, type: e.target.value }))}
+                    style={{ width: "100%", padding: "10px 12px", border: `1px solid ${T.borderM}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: "#181510", boxSizing: "border-box" }}>
+                    <option value="college">College</option>
+                    <option value="university">University</option>
+                  </select>
+                </div>
+                <div style={{ fontSize: 11, color: T.ink4 }}>Creates a brand-new campus institution, owned by you, and attaches it immediately. You'll need to import its roster separately.</div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 6 }}>Institution id or code <span style={{ color: T.red }}>*</span></label>
+                  <input value={attachForm.institutionId} onChange={e => setAttachForm(f => ({ ...f, institutionId: e.target.value }))}
+                    placeholder="Institution UUID" autoFocus
+                    style={{ width: "100%", padding: "10px 12px", border: `1px solid ${T.borderM}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: "#181510", boxSizing: "border-box" }} />
+                </div>
+                <div style={{ fontSize: 11, color: T.ink4 }}>You must already be an admin of that campus for this to work — it will not transfer a campus someone else administers.</div>
+              </>
+            )}
+            {formError && <div style={{ color: T.red, fontSize: 11 }}>{formError}</div>}
+            <div style={{ display: "flex", justifyContent: "center", marginTop: 4 }}>
+              <Btn onClick={attachCampus} disabled={attaching} style={{ fontSize: 12, padding: "10px 32px" }}>
+                {attaching ? "Attaching…" : "Attach Campus"}
+              </Btn>
+            </div>
+          </div>
         </Modal>
       )}
     </PageShell>
@@ -5330,6 +5689,7 @@ export default function InstitutionOS({ user, userData, onNavigate, initialPage 
     people:        <PeoplePage        {...shared} />,
     community:     <CommunityPage userData={userData} user={user} />,
     groups:        <GroupsPage canonical={canonical} onNav={onNav} />,
+    university:    <UniversityPage    canonical={canonical} />,
     cohorts:       <CohortsPage       members={members} />,
     events:        <EventsPage        {...shared} />,
     companies:     <CompaniesPage     user={user} userData={userData} />,

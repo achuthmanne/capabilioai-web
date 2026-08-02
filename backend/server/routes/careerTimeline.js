@@ -186,7 +186,19 @@ router.get("/pro/vault", requireAuth, async (req, res) => {
     if (req.query.startup_id) q = q.eq("startup_id", req.query.startup_id)
     const { data, error } = await q
     if (error) throw error
-    res.json(data || [])
+
+    // Trust & Verification Center, Phase 2 Step 2 (2026-08-02) — enrich with
+    // the linked proof_object's trust_level so the Vault UI can show a real
+    // "Verified" badge instead of a heuristic. One batched query, not N+1.
+    const docs = data || []
+    const proofIds = [...new Set(docs.map(d => d.proof_object_id).filter(Boolean))]
+    let trustById = {}
+    if (proofIds.length) {
+      const { data: proofs } = await supabaseAdmin
+        .from("proof_objects").select("id, trust_level").in("id", proofIds)
+      trustById = Object.fromEntries((proofs || []).map(p => [p.id, p.trust_level]))
+    }
+    res.json(docs.map(d => ({ ...d, trust_level: d.proof_object_id ? (trustById[d.proof_object_id] || null) : null })))
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 

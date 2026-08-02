@@ -136,7 +136,11 @@ export const collegeApi = {
   selfLink: () => request("POST", "/college/self-link"),
 
   // Staff-side: resolve "which institution am I looking at" for the signed-in user.
-  myInstitution: () => request("GET", "/college/institutions/mine"),
+  // 2026-08-02: optional institutionId lets a multi-campus university admin
+  // explicitly switch which campus their dashboard is scoped to. Omitting it
+  // keeps the original auto-picked behavior unchanged.
+  myInstitution: (institutionId) =>
+    request("GET", `/college/institutions/mine${institutionId ? `?institutionId=${institutionId}` : ""}`),
 
   getStudents: (institutionId, params = {}) => {
     const qs = new URLSearchParams(params).toString()
@@ -175,6 +179,9 @@ export const collegeApi = {
     request("POST", `/college/institutions/${institutionId}/students/${studentId}/offer`, opts),
   listOffers:    (institutionId) => request("GET", `/college/institutions/${institutionId}/offers`),
   respondToOffer: (offerId, response) => request("POST", `/college/offers/${offerId}/respond`, { response }),
+  // 2026-08-02: student-facing task inbox — self-scoped, no org/institution id needed.
+  getMyTasks:    () => request("GET", `/college/me/tasks`),
+  getMyDrives:   () => request("GET", `/college/me/drives`),
   listPlacements: (institutionId, params = {}) => {
     const qs = new URLSearchParams(params).toString()
     return request("GET", `/college/institutions/${institutionId}/placements${qs ? `?${qs}` : ""}`)
@@ -210,6 +217,22 @@ export const collegeApi = {
     request("PATCH", `/college/institutions/${institutionId}/drives/${driveId}`, { status }),
   getDriveEligibleStudents: (institutionId, driveId) =>
     request("GET", `/college/institutions/${institutionId}/drives/${driveId}/eligible-students`),
+  updateDrive: (institutionId, driveId, opts) =>
+    request("PATCH", `/college/institutions/${institutionId}/drives/${driveId}`, opts),
+
+  // Placement-day parity (2026-08-02) — proctored assessment sessions.
+  startDriveSession: (institutionId, driveId) =>
+    request("POST", `/college/institutions/${institutionId}/drives/${driveId}/sessions`),
+  logDriveViolation: (sessionId, type) => request("POST", `/college/drive-sessions/${sessionId}/violation`, { type }),
+  endDriveSession: (sessionId, status = "completed") => request("POST", `/college/drive-sessions/${sessionId}/end`, { status }),
+  listDriveSessions: (institutionId, driveId) => request("GET", `/college/institutions/${institutionId}/drives/${driveId}/sessions`),
+
+  // Multi-campus support (2026-08-02) — university-level grouping of campus institutions.
+  createUniversityGroup:  (name) => request("POST", "/college/university-groups", { name }),
+  getMyUniversityGroup:   () => request("GET", "/college/university-groups/mine"),
+  addCampusToGroup:       (groupId, opts) => request("POST", `/college/university-groups/${groupId}/campuses`, opts),
+  removeCampusFromGroup:  (groupId, institutionId) => request("DELETE", `/college/university-groups/${groupId}/campuses/${institutionId}`),
+  getUniversityOverview:  (groupId) => request("GET", `/college/university-groups/${groupId}/overview`),
 }
 
 // ══════════════════════════════════════════
@@ -284,6 +307,29 @@ export const vaultApi = {
   },
   getUrl:  (id) => request("GET", `/pro/vault/${id}/url`),
   remove:  (id) => request("DELETE", `/pro/vault/${id}`),
+}
+
+// ══════════════════════════════════════════
+// TRUST & VERIFICATION CENTER
+// 2026-08-02: this export was missing entirely — VaultTrustCenter.jsx already
+// imported `verificationApi` from this file, which resolved to undefined and
+// would have thrown the moment the component mounted. Adding it is what
+// makes that component load-bearing rather than a dead import.
+// ══════════════════════════════════════════
+export const verificationApi = {
+  providers: () => request("GET", "/verification/providers"),
+  auditMine: () => request("GET", "/verification/audit/mine"),
+  integrity: () => request("GET", "/verification/integrity"),
+  // opts: { file?: File, claim: object, documentId?: string, proofObjectId?: string }
+  verify: (providerId, opts = {}) => {
+    const fd = new FormData()
+    fd.append("providerId", providerId)
+    fd.append("claim", JSON.stringify(opts.claim || {}))
+    if (opts.file) fd.append("file", opts.file)
+    if (opts.documentId) fd.append("documentId", opts.documentId)
+    if (opts.proofObjectId) fd.append("proofObjectId", opts.proofObjectId)
+    return upload("/verification/verify", fd)
+  },
 }
 
 // ══════════════════════════════════════════

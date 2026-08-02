@@ -7,25 +7,28 @@
  * preview/status/method/timeline/evidence/hash sections, a Trust Provider
  * directory, and a global verification audit log.
  *
- * HONESTY NOTE (read before changing badge logic): `vault_documents` has no
- * link to `proof_objects` / `verification_audit_log` yet — that wiring is
- * Step 2 (see TRUST_VERIFICATION_TRACE_AND_ADR_2026-07-20.md, Phase 2 plan).
- * Every badge here is computed from a simple, honest heuristic
- * (`computeDocStatus`): a document is "Self-Claimed" if a real verification
- * provider exists for its type, "Unsupported" otherwise. Nothing is ever
- * shown as "Verified" unless a real verification actually ran and returned
- * verified — never fabricate a verified state for visual completeness. When
- * Step 2 lands, `computeDocStatus` becomes a lookup against a real
- * proof_object_id + its trust_level instead of this heuristic — that's the
- * ONLY function that should need to change.
+ * STEP 2 (2026-08-02, done): `vault_documents.proof_object_id` now links each
+ * document to a real `proof_objects` row (migration
+ * vault_documents_proof_object_link). `computeDocStatus` reads the real,
+ * persisted `trust_level` for that document — "Verified" is never shown
+ * unless a real verification actually ran and returned verified. The one
+ * exception is `lastAttempt` (this session's just-ran result), which is
+ * shown immediately without waiting for a reload, since the backend already
+ * persisted it by the time this component sees the response.
  *
- * "Request Verification" is not a placeholder — it calls the real
- * POST /api/verification/verify endpoint (lib/verification/pipeline.js)
- * against the certificate_ocr provider, which genuinely OCRs the file and
- * asks an LLM whether it matches the claimed name/issuer. It just can't yet
- * persist the result onto this document (no proof_object_id to attach it
- * to) — the result is shown honestly as a one-off attempt, not stored as
- * this document's permanent status, until Step 2.
+ * "Request Verification" calls the real POST /api/verification/verify
+ * endpoint against the certificate_ocr provider (genuinely OCRs the file and
+ * asks an LLM whether it matches the claimed name/issuer), passing this
+ * document's id — the backend creates-or-reuses a proof_object for it and
+ * persists the result there, so a page reload shows the same "Verified"
+ * status, not just this session.
+ *
+ * NOT wired into any page yet as of this pass — this component still needs
+ * to replace (or be added alongside) the ad-hoc `vaultFiles` JSON-array
+ * upload flow in Aura.jsx, which is a separate, larger migration (existing
+ * student/professional uploads live in that array, not in `vault_documents`
+ * at all) — deliberately out of scope here to avoid touching a working,
+ * load-bearing upload/resume-parsing flow in the same change.
  */
 import { useState, useEffect, useRef, useMemo } from "react"
 import { vaultApi, verificationApi } from "../lib/api"
@@ -69,12 +72,19 @@ const STATUS_META = {
   unsupported: { label: "Unsupported", icon: "—", color: T.slate, bg: T.slate2 },
 }
 
-// Step 1 heuristic — replace with a real proof_object/trust_level lookup in
-// Step 2 once vault_documents carries a proof_object_id.
+// Step 2: real lookup. `lastAttempt` (this session's just-ran result) wins
+// when present so the badge updates immediately without a reload; otherwise
+// this reads the persisted trust_level via doc.proof_object_id/doc.trust_level
+// (added by GET /pro/vault's join). trust_level only ever moves
+// self-claimed → verified at the DB level (see proof_objects' CHECK
+// constraint) — a "failed" status only ever exists as this-session feedback
+// from lastAttempt, never persisted, which is why a failed attempt doesn't
+// permanently brand a document.
 function computeDocStatus(doc, lastAttempt) {
   if (lastAttempt?.status === "verified") return "verified"
   if (lastAttempt?.status === "rejected") return "failed"
   if (lastAttempt?.status === "error") return "failed"
+  if (doc.proof_object_id) return doc.trust_level === "verified" ? "verified" : "self_claimed"
   return PROVIDER_FOR_DOC_TYPE[doc.doc_type] ? "self_claimed" : "unsupported"
 }
 
@@ -610,9 +620,12 @@ export default function VaultTrustCenter({ user }) {
       const { url } = await vaultApi.getUrl(doc.id)
       const blob = await fetch(url).then(r => r.blob())
       const file = new File([blob], doc.file_name, { type: doc.mime_type })
-      const result = await verificationApi.verify(providerId, { file, claim })
+      // documentId lets the backend create-or-reuse this doc's proof_object
+      // and persist the result onto it — not just a one-off in-memory check.
+      const result = await verificationApi.verify(providerId, { file, claim, documentId: doc.id })
       setAttempts(a => ({ ...a, [doc.id]: { ...result, at: new Date().toISOString() } }))
       loadAudit()
+      loadDocs() // pick up the newly-linked proof_object_id / trust_level
     } catch (e) {
       alert(`Verification check failed: ${e.message}`)
     } finally {

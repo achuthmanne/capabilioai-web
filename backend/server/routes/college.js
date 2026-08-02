@@ -456,7 +456,7 @@ router.patch(
 // and CCs the placement cell.
 router.post("/institutions/:id/students/:studentId/offer", requireAuth, requireRecruiter(), async (req, res) => {
   const { id: institutionId, studentId } = req.params
-  const { company, role = null, ctcLpa = null, offerDate = null } = req.body || {}
+  const { company, role = null, ctcLpa = null, offerDate = null, driveId = null } = req.body || {}
   if (!company || !company.trim()) return res.status(400).json({ error: "company is required" })
 
   const { data: student } = await supabaseAdmin
@@ -468,11 +468,22 @@ router.post("/institutions/:id/students/:studentId/offer", requireAuth, requireR
   if (!student) return res.status(404).json({ error: "Student not found" })
   if (!student.shared_with_recruiters) return res.status(403).json({ error: "This student is not shared with recruiters" })
 
+  // 2026-08-02: optional drive linkage, feeds drive-vs-drive comparison
+  // analytics (GET /institutions/:id/drives). Verified to actually belong to
+  // this institution before trusting it, same as every other cross-entity id.
+  let linkedDriveId = null
+  if (driveId) {
+    const { data: drive } = await supabaseAdmin
+      .from("placement_drives").select("id").eq("id", driveId).eq("institution_id", institutionId).maybeSingle()
+    linkedDriveId = drive?.id || null
+  }
+
   const { data: offer, error } = await supabaseAdmin
     .from("offers")
     .insert({
       student_id: studentId, institution_id: institutionId, recruiter_id: req.user.id,
       company: company.trim(), role, ctc_lpa: ctcLpa, offer_date: offerDate, status: "offered",
+      drive_id: linkedDriveId,
     })
     .select()
     .single()
@@ -612,6 +623,117 @@ router.post("/offers/:offerId/respond", requireAuth, async (req, res) => {
   res.status(200).json({ offer: updatedOffer, placement })
 })
 
+// ── GET /me/tasks — student-facing task inbox (2026-08-02) ─────────────────
+// Closes a real gap: org_tasks previously had ZERO student-facing reader
+// anywhere in the app — professors/admins could publish a task and target it
+// at a batch, department, or (as of the Groups feature) a specific group, but
+// no student could ever see it. Self-scoped (requireAuth only, no institution
+// middleware) — a student reads only their own inbox, resolved from their own
+// identity, never from a client-supplied id.
+//
+// Bridges two parallel "who is this student" tables that this codebase still
+// has (a pre-existing split, not something this route invents — see the
+// College Path schema-conflict note): org_tasks/assigned_to_label was built
+// against the legacy `org_members` (org_id/department/batch, populated by the
+// join-link flow), while the newer Groups feature targets the canonical
+// `institution_students` roster (populated by roster import / self-link).
+// A real student is very often present in both, so this checks both signals
+// rather than picking one and silently missing tasks assigned via the other.
+router.get("/me/tasks", requireAuth, async (req, res) => {
+  const userId = req.user.id
+
+  const { data: memberships } = await supabaseAdmin
+    .from("org_members")
+    .select("org_id, department, batch, role")
+    .eq("user_id", userId)
+
+  if (!memberships || memberships.length === 0) {
+    return res.status(200).json({ linked: false, tasks: [] })
+  }
+
+  // Group membership (canonical institution_students roster) — may be none
+  // if this student was never imported/self-linked into that table yet.
+  const { data: studentRow } = await supabaseAdmin
+    .from("institution_students")
+    .select("id")
+    .eq("student_user_id", userId)
+    .maybeSingle()
+
+  let myGroupIds = []
+  if (studentRow) {
+    const { data: groupRows } = await supabaseAdmin
+      .from("institution_group_members")
+      .select("group_id")
+      .eq("student_id", studentRow.id)
+    myGroupIds = (groupRows || []).map((g) => g.group_id)
+  }
+
+  const orgIds = [...new Set(memberships.map((m) => m.org_id).filter(Boolean))]
+  const { data: allTasks, error } = await supabaseAdmin
+    .from("org_tasks")
+    .select("id, org_id, title, description, type, subject, assigned_to_label, assigned_to_group_id, due_date, priority, status, attachment_url, attachment_name, published_by_name, created_at")
+    .in("org_id", orgIds)
+    .eq("status", "active")
+    .order("due_date", { ascending: true, nullsFirst: false })
+  if (error) return res.status(500).json({ error: error.message })
+
+  // Filter in-process (not worth a per-row OR-clause query — task volume per
+  // org is small, and this keeps the "does this task target me" logic in one
+  // readable place instead of split across SQL and JS).
+  const membershipByOrg = Object.fromEntries(memberships.map((m) => [m.org_id, m]))
+  const CATCH_ALL = new Set(["All Students", "All Faculty", "All Members"])
+  const myTasks = (allTasks || []).filter((t) => {
+    const m = membershipByOrg[t.org_id]
+    if (t.assigned_to_group_id) return myGroupIds.includes(t.assigned_to_group_id)
+    if (!t.assigned_to_label) return true
+    if (CATCH_ALL.has(t.assigned_to_label)) return true
+    if (m && (t.assigned_to_label === m.batch || t.assigned_to_label === m.department)) return true
+    return false
+  })
+
+  res.status(200).json({ linked: true, tasks: myTasks })
+})
+
+// ── GET /me/drives — student-facing view of their institution's active,
+// proctored drives (2026-08-02). Self-scoped like /me/tasks. Deliberately a
+// narrow field set — students never see min_elo/eligible_branches/recruiter
+// internals here, just what they need to start a proctored attempt.
+router.get("/me/drives", requireAuth, async (req, res) => {
+  const { data: student } = await supabaseAdmin
+    .from("institution_students")
+    .select("id, institution_id")
+    .eq("student_user_id", req.user.id)
+    .maybeSingle()
+  if (!student) return res.status(200).json({ linked: false, drives: [] })
+
+  const { data: drives, error } = await supabaseAdmin
+    .from("placement_drives")
+    .select("id, title, status, proctoring_enabled, assessment_url, assessment_instructions, assessment_duration_minutes")
+    .eq("institution_id", student.institution_id)
+    .eq("proctoring_enabled", true)
+    .in("status", ["planned", "active"])
+    .order("created_at", { ascending: false })
+  if (error) return res.status(500).json({ error: error.message })
+
+  // Attach this student's own session (if any) so the UI can show
+  // resume/completed state instead of always offering "Start".
+  const driveIds = (drives || []).map((d) => d.id)
+  let mySessions = {}
+  if (driveIds.length) {
+    const { data: sessions } = await supabaseAdmin
+      .from("drive_assessment_sessions")
+      .select("id, drive_id, status, violation_count")
+      .eq("student_id", student.id).in("drive_id", driveIds)
+    mySessions = Object.fromEntries((sessions || []).map((s) => [s.drive_id, s]))
+  }
+
+  res.status(200).json({
+    linked: true,
+    institutionId: student.institution_id,
+    drives: (drives || []).map((d) => ({ ...d, mySession: mySessions[d.id] || null })),
+  })
+})
+
 // ── Dependency-free CSV parser (small file sizes only — roster CSVs, not GB data) ──
 function parseCsv(text) {
   const lines = text.split(/\r\n|\n|\r/).filter((l) => l.trim().length > 0)
@@ -651,8 +773,35 @@ function parseCsv(text) {
 // Lets a staff member's dashboard resolve "which institution am I looking
 // at" without already knowing the institution's UUID/slug, which the old
 // org_members-based dashboard never needed (org_id was just req.user.id).
+// Added 2026-08-02 (multi-campus support). If ?institutionId= is supplied
+// AND the caller has an active institution_staff role (or owner/admin_user_id
+// match) for that specific institution, resolve that one explicitly instead
+// of the auto-picked institution below. This is what lets a university-group
+// admin managing several campuses switch which campus their dashboard is
+// scoped to. No param = fully unchanged existing behavior for every
+// single-institution admin, so this is purely additive.
 router.get("/institutions/mine", requireAuth, async (req, res) => {
   const userId = req.user.id
+  const requestedId = typeof req.query.institutionId === "string" && UUID_RE.test(req.query.institutionId)
+    ? req.query.institutionId
+    : null
+
+  if (requestedId) {
+    const role = await getStaffRole(requestedId, userId)
+    if (!role) return res.status(403).json({ error: "Not a staff member of this institution" })
+    const { data: institution, error } = await supabaseAdmin
+      .from("institutions")
+      .select("id, name, slug, type, email_domain, website, verification_level, status, plan, created_at, university_group_id")
+      .eq("id", requestedId)
+      .single()
+    if (error || !institution) return res.status(404).json({ error: "Institution not found" })
+    const { data: verification } = await supabaseAdmin
+      .from("institution_verification")
+      .select("*")
+      .eq("institution_id", institution.id)
+      .maybeSingle()
+    return res.status(200).json({ institution, verification: verification || null, role })
+  }
 
   const { data: ownedInstitution } = await supabaseAdmin
     .from("institutions")
@@ -1940,7 +2089,12 @@ router.post(
 // ── POST /institutions/:id/drives — create a drive ────────────────────────
 router.post("/institutions/:id/drives", requireAuth, requireInstitutionAdmin(), async (req, res) => {
   const institutionId = req.params.id
-  const { title, recruiterId = null, jobId = null, eligibleBranches = [], minElo = null, createChannel = true } = req.body || {}
+  const {
+    title, recruiterId = null, jobId = null, eligibleBranches = [], minElo = null, createChannel = true,
+    // Placement-day parity (2026-08-02) — optional proctoring config, set at
+    // creation or later via PATCH.
+    proctoringEnabled = false, assessmentUrl = null, assessmentInstructions = null, assessmentDurationMinutes = null,
+  } = req.body || {}
   if (!title || !title.trim()) return res.status(400).json({ error: "title is required" })
 
   let threadId = null
@@ -1973,6 +2127,8 @@ router.post("/institutions/:id/drives", requireAuth, requireInstitutionAdmin(), 
     .insert({
       institution_id: institutionId, recruiter_id: recruiterId, job_id: jobId, title: title.trim(),
       eligible_branches: eligibleBranches, min_elo: minElo, thread_id: threadId, created_by: req.user.id,
+      proctoring_enabled: !!proctoringEnabled, assessment_url: assessmentUrl, assessment_instructions: assessmentInstructions,
+      assessment_duration_minutes: assessmentDurationMinutes,
     })
     .select().single()
   if (error) return res.status(500).json({ error: error.message })
@@ -1991,25 +2147,160 @@ router.post("/institutions/:id/drives", requireAuth, requireInstitutionAdmin(), 
 })
 
 // ── GET /institutions/:id/drives — list drives for this institution ──────
+// 2026-08-02: enriched with per-drive comparison stats (offersCount,
+// avgCtcLpa, placedCount) — closes the "drive-vs-drive comparison" gap from
+// the TapTap audit. Two batched queries (offers + confirmed placements),
+// never N+1 per drive.
 router.get("/institutions/:id/drives", requireAuth, requireInstitutionStaff(), async (req, res) => {
   let query = supabaseAdmin.from("placement_drives").select("*").eq("institution_id", req.params.id)
   if (req.query.status) query = query.eq("status", req.query.status)
   const { data, error } = await query.order("created_at", { ascending: false }).limit(100)
   if (error) return res.status(500).json({ error: error.message })
-  res.status(200).json({ drives: data || [] })
+  const drives = data || []
+  if (drives.length === 0) return res.status(200).json({ drives: [] })
+
+  const driveIds = drives.map((d) => d.id)
+  const { data: offerRows } = await supabaseAdmin
+    .from("offers").select("id, drive_id, ctc_lpa, status")
+    .in("drive_id", driveIds)
+
+  // "Placed" for a drive means the same TPO-confirm gate every other
+  // placement stat in the app uses — never raw offer acceptance.
+  const offerIds = (offerRows || []).map((o) => o.id)
+  let placedByOfferId = new Set()
+  if (offerIds.length) {
+    const { data: placementRows } = await supabaseAdmin
+      .from("institution_placements").select("offer_id")
+      .in("offer_id", offerIds).eq("confirmation_status", "tpo_confirmed")
+    placedByOfferId = new Set((placementRows || []).map((p) => p.offer_id))
+  }
+
+  const statsByDrive = {}
+  for (const o of offerRows || []) {
+    statsByDrive[o.drive_id] ??= { offersCount: 0, ctcSum: 0, ctcCount: 0, placedCount: 0 }
+    statsByDrive[o.drive_id].offersCount++
+    if (o.ctc_lpa != null) { statsByDrive[o.drive_id].ctcSum += Number(o.ctc_lpa); statsByDrive[o.drive_id].ctcCount++ }
+    if (placedByOfferId.has(o.id)) statsByDrive[o.drive_id].placedCount++
+  }
+
+  res.status(200).json({
+    drives: drives.map((d) => {
+      const s = statsByDrive[d.id]
+      return {
+        ...d,
+        offersCount: s?.offersCount || 0,
+        placedCount: s?.placedCount || 0,
+        avgCtcLpa: s?.ctcCount ? Math.round((s.ctcSum / s.ctcCount) * 10) / 10 : null,
+      }
+    }),
+  })
 })
 
-// ── PATCH /institutions/:id/drives/:driveId — update status ──────────────
+// ── PATCH /institutions/:id/drives/:driveId — update status/proctoring config ──
 router.patch("/institutions/:id/drives/:driveId", requireAuth, requireInstitutionAdmin(), async (req, res) => {
-  const { status } = req.body || {}
-  if (!["planned", "active", "closed"].includes(status)) return res.status(400).json({ error: "Invalid status" })
+  const { status, proctoringEnabled, assessmentUrl, assessmentInstructions, assessmentDurationMinutes } = req.body || {}
+  const patch = {}
+  if (status !== undefined) {
+    if (!["planned", "active", "closed"].includes(status)) return res.status(400).json({ error: "Invalid status" })
+    patch.status = status
+  }
+  if (proctoringEnabled !== undefined) patch.proctoring_enabled = !!proctoringEnabled
+  if (assessmentUrl !== undefined) patch.assessment_url = assessmentUrl
+  if (assessmentInstructions !== undefined) patch.assessment_instructions = assessmentInstructions
+  if (assessmentDurationMinutes !== undefined) patch.assessment_duration_minutes = assessmentDurationMinutes
+  if (Object.keys(patch).length === 0) return res.status(400).json({ error: "Nothing to update" })
+
   const { data: drive, error } = await supabaseAdmin
-    .from("placement_drives").update({ status })
+    .from("placement_drives").update(patch)
     .eq("id", req.params.driveId).eq("institution_id", req.params.id)
     .select().single()
   if (error) return res.status(500).json({ error: error.message })
   if (!drive) return res.status(404).json({ error: "Drive not found" })
   res.status(200).json({ drive })
+})
+
+// ── Proctored/lockdown drive assessments (2026-08-02) ───────────────────────
+// Honestly scoped as integrity monitoring — fullscreen-exit / tab-switch /
+// copy-paste detection during a timed window — not live video invigilation
+// (that needs a third-party service, not fabricated here). One row per
+// student per drive (unique constraint), so re-entering an in-progress
+// session resumes it rather than creating a duplicate.
+
+// POST /institutions/:id/drives/:driveId/sessions — student starts a monitored attempt.
+router.post("/institutions/:id/drives/:driveId/sessions", requireAuth, async (req, res) => {
+  const { id: institutionId, driveId } = req.params
+  const { data: drive } = await supabaseAdmin
+    .from("placement_drives").select("id, proctoring_enabled").eq("id", driveId).eq("institution_id", institutionId).maybeSingle()
+  if (!drive) return res.status(404).json({ error: "Drive not found" })
+  if (!drive.proctoring_enabled) return res.status(400).json({ error: "This drive does not have a proctored assessment configured" })
+
+  const { data: student } = await supabaseAdmin
+    .from("institution_students").select("id").eq("institution_id", institutionId).eq("student_user_id", req.user.id).maybeSingle()
+  if (!student) return res.status(403).json({ error: "You are not linked to this institution's roster" })
+
+  const { data: session, error } = await supabaseAdmin
+    .from("drive_assessment_sessions")
+    .upsert(
+      { drive_id: driveId, institution_id: institutionId, student_id: student.id, status: "in_progress" },
+      { onConflict: "drive_id,student_id", ignoreDuplicates: false }
+    )
+    .select().single()
+  if (error) return res.status(500).json({ error: error.message })
+  res.status(200).json({ session })
+})
+
+// POST /drive-sessions/:sessionId/violation — log one integrity event.
+router.post("/drive-sessions/:sessionId/violation", requireAuth, async (req, res) => {
+  const { type } = req.body || {}
+  if (!type) return res.status(400).json({ error: "type is required" })
+
+  const { data: session } = await supabaseAdmin
+    .from("drive_assessment_sessions")
+    .select("id, student_id, violations, violation_count, institution_students(student_user_id)")
+    .eq("id", req.params.sessionId).maybeSingle()
+  if (!session) return res.status(404).json({ error: "Session not found" })
+  if (session.institution_students?.student_user_id !== req.user.id) return res.status(403).json({ error: "Forbidden" })
+
+  const violations = [...(session.violations || []), { type, at: new Date().toISOString() }].slice(-200)
+  const { data: updated, error } = await supabaseAdmin
+    .from("drive_assessment_sessions")
+    .update({ violations, violation_count: violations.length })
+    .eq("id", session.id)
+    .select().single()
+  if (error) return res.status(500).json({ error: error.message })
+  res.status(200).json({ session: updated })
+})
+
+// POST /drive-sessions/:sessionId/end — student marks their attempt done.
+router.post("/drive-sessions/:sessionId/end", requireAuth, async (req, res) => {
+  const { status = "completed" } = req.body || {}
+  if (!["completed", "abandoned"].includes(status)) return res.status(400).json({ error: "Invalid status" })
+
+  const { data: session } = await supabaseAdmin
+    .from("drive_assessment_sessions")
+    .select("id, institution_students(student_user_id)")
+    .eq("id", req.params.sessionId).maybeSingle()
+  if (!session) return res.status(404).json({ error: "Session not found" })
+  if (session.institution_students?.student_user_id !== req.user.id) return res.status(403).json({ error: "Forbidden" })
+
+  const { data: updated, error } = await supabaseAdmin
+    .from("drive_assessment_sessions")
+    .update({ status, ended_at: new Date().toISOString() })
+    .eq("id", session.id)
+    .select().single()
+  if (error) return res.status(500).json({ error: error.message })
+  res.status(200).json({ session: updated })
+})
+
+// GET /institutions/:id/drives/:driveId/sessions — placement cell integrity view.
+router.get("/institutions/:id/drives/:driveId/sessions", requireAuth, requireInstitutionStaff(), async (req, res) => {
+  const { data, error } = await supabaseAdmin
+    .from("drive_assessment_sessions")
+    .select("id, status, violation_count, violations, started_at, ended_at, institution_students(id, roll_number, department, batch)")
+    .eq("drive_id", req.params.driveId).eq("institution_id", req.params.id)
+    .order("violation_count", { ascending: false })
+  if (error) return res.status(500).json({ error: error.message })
+  res.status(200).json({ sessions: data || [] })
 })
 
 // ── GET /institutions/:id/drives/:driveId/eligible-students ──────────────
@@ -2035,6 +2326,235 @@ router.get("/institutions/:id/drives/:driveId/eligible-students", requireAuth, r
   const { data, error } = await query.order("elo_current", { ascending: false }).limit(500)
   if (error) return res.status(500).json({ error: error.message })
   res.status(200).json({ drive, students: data || [], count: (data || []).length })
+})
+
+// ── University Groups (multi-campus support) ──────────────────────────────
+// Added 2026-08-02. Design note: institutions.id keeps meaning exactly what
+// it always has everywhere else in the codebase (institution_students,
+// institution_groups, placement_drives, offers, institution_staff,
+// institution_chat_threads, institution_student_outcomes,
+// drive_assessment_sessions, institution_placements all key off it
+// unchanged). A university_groups row just clusters several existing
+// `institutions` rows ("campuses") under one university-level admin.
+// Per-campus dashboard access for that admin is granted via the SAME,
+// already-tested institution_staff mechanism every other admin uses — no
+// route above this section needed to change, and no new RLS bypass was
+// introduced (see is_university_group_admin() + get_advisors clean run,
+// 2026-08-02).
+//
+// Only the group's own admin_user_id can ever read/write it (RLS: three
+// policies scoped to admin_user_id = auth.uid()) — this is intentionally a
+// single-owner model, not a shared-team model, matching how institutions.
+// admin_user_id already works for a single campus today.
+
+router.post("/university-groups", requireAuth, async (req, res) => {
+  const userId = req.user.id
+  const name = (req.body?.name || "").trim()
+  if (!name) return res.status(400).json({ error: "name is required" })
+
+  // Idempotent: a user managing one university group is the practical model;
+  // if they already have one, hand it back rather than creating a duplicate.
+  const { data: existing } = await supabaseAdmin
+    .from("university_groups")
+    .select("id, name, created_at")
+    .eq("admin_user_id", userId)
+    .maybeSingle()
+  if (existing) return res.status(200).json({ group: existing, alreadyExisted: true })
+
+  const { data: group, error } = await supabaseAdmin
+    .from("university_groups")
+    .insert({ name, admin_user_id: userId })
+    .select("id, name, created_at")
+    .single()
+  if (error) return res.status(500).json({ error: error.message })
+  res.status(201).json({ group, alreadyExisted: false })
+})
+
+router.get("/university-groups/mine", requireAuth, async (req, res) => {
+  const userId = req.user.id
+  const { data: group, error } = await supabaseAdmin
+    .from("university_groups")
+    .select("id, name, created_at")
+    .eq("admin_user_id", userId)
+    .maybeSingle()
+  if (error) return res.status(500).json({ error: error.message })
+  if (!group) return res.status(200).json({ group: null, campuses: [] })
+
+  const { data: campuses, error: campusErr } = await supabaseAdmin
+    .from("institutions")
+    .select("id, name, slug, type, verification_level, status, created_at")
+    .eq("university_group_id", group.id)
+    .order("created_at", { ascending: true })
+  if (campusErr) return res.status(500).json({ error: campusErr.message })
+
+  res.status(200).json({ group, campuses: campuses || [] })
+})
+
+// Verifies the caller owns the given university group; used by all three
+// campus-management routes below instead of a route-level middleware since
+// the group id isn't an :id-style institution param the existing
+// require* helpers understand.
+async function requireGroupOwner(groupId, userId) {
+  const { data } = await supabaseAdmin
+    .from("university_groups")
+    .select("id")
+    .eq("id", groupId)
+    .eq("admin_user_id", userId)
+    .maybeSingle()
+  return !!data
+}
+
+router.post("/university-groups/:groupId/campuses", requireAuth, async (req, res) => {
+  const { groupId } = req.params
+  const userId = req.user.id
+  if (!UUID_RE.test(groupId)) return res.status(400).json({ error: "Invalid group id" })
+  if (!(await requireGroupOwner(groupId, userId))) {
+    return res.status(403).json({ error: "Not the admin of this university group" })
+  }
+
+  const { institutionId, name, type } = req.body || {}
+
+  // Path A: attach an institution the caller already administers.
+  if (institutionId) {
+    if (!UUID_RE.test(institutionId)) return res.status(400).json({ error: "Invalid institutionId" })
+    const role = await getStaffRole(institutionId, userId)
+    if (!role || !["college_admin", "placement_officer"].includes(role)) {
+      return res.status(403).json({ error: "You must already be an admin of this campus to attach it" })
+    }
+    const { data: updated, error } = await supabaseAdmin
+      .from("institutions")
+      .update({ university_group_id: groupId })
+      .eq("id", institutionId)
+      .select("id, name, slug, type, verification_level, status, created_at")
+      .single()
+    if (error) return res.status(500).json({ error: error.message })
+
+    // Belt-and-suspenders: make sure the university admin also has an
+    // explicit institution_staff row on this campus, so every existing
+    // requireInstitutionStaff/requireInstitutionAdmin route keeps working
+    // unmodified even if ownership of the campus later changes hands.
+    await supabaseAdmin
+      .from("institution_staff")
+      .upsert(
+        { institution_id: institutionId, user_id: userId, role: "college_admin", status: "active", scope: "all_departments" },
+        { onConflict: "institution_id,user_id,role", ignoreDuplicates: true }
+      )
+
+    return res.status(200).json({ campus: updated, created: false })
+  }
+
+  // Path B: create a brand-new campus institution and attach it in one step.
+  if (name && name.trim()) {
+    const campusType = /university/i.test(type || "") ? "university" : "college"
+    const baseSlug = slugifyInstitutionName(name)
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const slug = attempt === 0 ? baseSlug : `${baseSlug}-${Math.random().toString(36).slice(2, 6)}`
+      const { data: inserted, error } = await supabaseAdmin
+        .from("institutions")
+        .insert({ name: name.trim(), slug, type: campusType, admin_user_id: userId, university_group_id: groupId })
+        .select("id, name, slug, type, verification_level, status, created_at")
+        .single()
+      if (!error) return res.status(201).json({ campus: inserted, created: true })
+      if (error.code !== "23505") return res.status(500).json({ error: error.message })
+    }
+    return res.status(500).json({ error: "Could not allocate a unique campus slug, try a different name" })
+  }
+
+  res.status(400).json({ error: "Provide either institutionId (attach existing) or name (create new campus)" })
+})
+
+// Detach is non-destructive: the campus institution and all its data
+// (students, drives, offers, placements...) are untouched, it just stops
+// being grouped under this university admin's rollup view.
+router.delete("/university-groups/:groupId/campuses/:institutionId", requireAuth, async (req, res) => {
+  const { groupId, institutionId } = req.params
+  const userId = req.user.id
+  if (!(await requireGroupOwner(groupId, userId))) {
+    return res.status(403).json({ error: "Not the admin of this university group" })
+  }
+  const { data: campus } = await supabaseAdmin
+    .from("institutions")
+    .select("id, university_group_id")
+    .eq("id", institutionId)
+    .maybeSingle()
+  if (!campus || campus.university_group_id !== groupId) {
+    return res.status(404).json({ error: "Campus is not part of this university group" })
+  }
+  const { error } = await supabaseAdmin
+    .from("institutions")
+    .update({ university_group_id: null })
+    .eq("id", institutionId)
+  if (error) return res.status(500).json({ error: error.message })
+  res.status(200).json({ detached: true })
+})
+
+// GET /university-groups/:groupId/overview — cross-campus rollup, batched
+// (one query per stat across all campus ids, not N+1 per campus).
+router.get("/university-groups/:groupId/overview", requireAuth, async (req, res) => {
+  const { groupId } = req.params
+  const userId = req.user.id
+  if (!(await requireGroupOwner(groupId, userId))) {
+    return res.status(403).json({ error: "Not the admin of this university group" })
+  }
+
+  const { data: campuses, error: campusErr } = await supabaseAdmin
+    .from("institutions")
+    .select("id, name, slug, type, verification_level, status")
+    .eq("university_group_id", groupId)
+  if (campusErr) return res.status(500).json({ error: campusErr.message })
+  if (!campuses || campuses.length === 0) {
+    return res.status(200).json({ campuses: [], totals: { students: 0, placed: 0, avgElo: 0 } })
+  }
+  const institutionIds = campuses.map((c) => c.id)
+
+  const { data: students, error: studErr } = await supabaseAdmin
+    .from("institution_students")
+    .select("id, institution_id, elo_current")
+    .in("institution_id", institutionIds)
+    .in("status", ACTIVE_STATUSES)
+  if (studErr) return res.status(500).json({ error: studErr.message })
+
+  const { data: placements, error: placeErr } = await supabaseAdmin
+    .from("institution_placements")
+    .select("id, institution_id")
+    .in("institution_id", institutionIds)
+    .eq("confirmation_status", "tpo_confirmed")
+  if (placeErr) return res.status(500).json({ error: placeErr.message })
+
+  const byInstitution = Object.fromEntries(institutionIds.map((id) => [id, { students: 0, eloSum: 0, placed: 0 }]))
+  for (const s of students || []) {
+    const bucket = byInstitution[s.institution_id]
+    if (!bucket) continue
+    bucket.students += 1
+    bucket.eloSum += s.elo_current || 0
+  }
+  for (const p of placements || []) {
+    const bucket = byInstitution[p.institution_id]
+    if (bucket) bucket.placed += 1
+  }
+
+  const perCampus = campuses.map((c) => {
+    const b = byInstitution[c.id]
+    return {
+      ...c,
+      students: b.students,
+      placed: b.placed,
+      avgElo: b.students > 0 ? Math.round(b.eloSum / b.students) : 0,
+    }
+  })
+
+  const totalStudents = perCampus.reduce((sum, c) => sum + c.students, 0)
+  const totalPlaced = perCampus.reduce((sum, c) => sum + c.placed, 0)
+  const totalEloSum = perCampus.reduce((sum, c) => sum + c.avgElo * c.students, 0)
+
+  res.status(200).json({
+    campuses: perCampus,
+    totals: {
+      students: totalStudents,
+      placed: totalPlaced,
+      avgElo: totalStudents > 0 ? Math.round(totalEloSum / totalStudents) : 0,
+    },
+  })
 })
 
 export default router
