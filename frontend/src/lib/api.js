@@ -159,6 +159,11 @@ export const collegeApi = {
   listStaff:        (institutionId) => request("GET", `/college/institutions/${institutionId}/staff`),
   revokeStaff:      (institutionId, staffId) => request("PATCH", `/college/institutions/${institutionId}/staff/${staffId}/revoke`),
   getStaffRoster:   (institutionId) => request("GET", `/college/institutions/${institutionId}/staff/roster`),
+  recordOutcome:    (institutionId, opts) => request("POST", `/college/institutions/${institutionId}/outcomes`, opts),
+  listOutcomes:     (institutionId, academicYear) => request("GET", `/college/institutions/${institutionId}/outcomes${academicYear ? `?academicYear=${encodeURIComponent(academicYear)}` : ""}`),
+  deleteOutcome:    (institutionId, outcomeId) => request("DELETE", `/college/institutions/${institutionId}/outcomes/${outcomeId}`),
+  getNaacReport:    (institutionId, batch) => request("GET", `/college/institutions/${institutionId}/naac-report${batch ? `?batch=${encodeURIComponent(batch)}` : ""}`),
+  getPlacementTrend:(institutionId) => request("GET", `/college/institutions/${institutionId}/placement-trend`),
 
   // Coordination layer (2026-07-31) — placement drives.
   createDrive: (institutionId, opts) => request("POST", `/college/institutions/${institutionId}/drives`, opts),

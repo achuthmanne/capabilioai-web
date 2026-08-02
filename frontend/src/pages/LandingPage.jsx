@@ -629,14 +629,14 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       ],
     },
     institution: {
-      headline: <>One plan per campus.<br /><span style={{ color:D.amber, fontStyle:"italic" }}>Unlimited ROI.</span></>,
-      sub: "A bad hire costs ₹80,000+. One better placement decision pays for a year of Growth plan. Zero placement officer overhead.",
-      note: "Annual contracts available · Powered by Razorpay · GST applicable · Prices in INR",
-      plans: [
-        { label:"Starter",                price:null,              sub:"Up to 50 students / 50 employees", accent:"#6B6560", featured:false, features:["Verified profile + badge","Basic cohort / team view","Anonymous Rating System","3 job posts / month","Up to 2 admin accounts"], cta:"START FREE →", ctaStyle:{ background:D.glass, backdropFilter:"blur(12px)", color:D.text1, border:`1px solid ${D.border}` } },
-        { label:"Campus / Growth",        price:"₹2,499–3,999/mo", sub:"College ₹2,499 · Company ₹3,999", accent:D.amber, featured:true,  features:["Full cohort / team intelligence","Professor Task Engine (college)","Placement Command Center (college)","Culture DNA + ATS Integration (company)","Unlimited jobs · 500 students/employees","Alumni Intelligence (college)","Hiring Funnel Analytics (company)"], cta:"GET STARTED →", ctaStyle:{ background:`linear-gradient(135deg,${D.amber},#92580A)`, color:"#fff", boxShadow:"0 8px 28px rgba(217,119,6,0.4)" } },
-        { label:"University / Enterprise", price:"Custom",           sub:"Annual contract · Unlimited",      accent:"#92580A", featured:false, features:["Everything in Campus/Growth","Unlimited students / employees","Multi-campus admin (college)","Dedicated account manager","Custom API access","SLA + white-glove onboarding","Priority ELO candidate pool"], cta:"TALK TO SALES →", ctaStyle:{ background:"#1D4ED8", color:"#fff" } },
-      ],
+      headline: <>One plan per campus.<br /><span style={{ color:D.amber, fontStyle:"italic" }}>Priced for your institution.</span></>,
+      sub: "A bad hire costs ₹80,000+. One better placement decision pays for the year. Pricing is scoped to your student/employee count — talk to us.",
+      note: "Annual contracts · Custom scoping per institution · Powered by Razorpay · GST applicable",
+      // Deliberately no plan cards with numbers here (2026-08-02) — institution
+      // pricing is negotiated per-college, not a fixed self-serve tier like the
+      // other three paths. Showing a number here would undercut that negotiation
+      // before a conversation even starts.
+      plans: [],
     },
   }
 
@@ -1023,7 +1023,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
               { key:"student",      icon:"🎓", label:"Student",      tagline:"Prove skill, get first job",      from:"Free – ₹599/mo",      color:D.orange, glow:"rgba(255,87,1,0.22)"  },
               { key:"professional", icon:"💼", label:"Professional",  tagline:"Maintain relevance, grow salary",  from:"Free – ₹999/mo",      color:D.violet, glow:"rgba(139,92,246,0.22)" },
               { key:"executive",    icon:"✦",  label:"Executive",     tagline:"Monetize authority & time",        from:"₹1,499 – ₹7,999/mo", color:D.gold,   glow:"rgba(201,168,76,0.28)"  },
-              { key:"institution",  icon:"🏛️", label:"Organisation",  tagline:"College & company intelligence",   from:"Free – Custom",       color:D.amber,  glow:"rgba(217,119,6,0.22)"  },
+              { key:"institution",  icon:"🏛️", label:"Organisation",  tagline:"College & company intelligence",   from:"Custom pricing",       color:D.amber,  glow:"rgba(217,119,6,0.22)"  },
             ].map(tile => {
               const isActive = pricingFlow===tile.key
               return (
@@ -1056,6 +1056,21 @@ export default function LandingPage({ onGetStarted, onLogin }) {
                   <h3 style={{ fontSize:"clamp(20px,3.5vw,34px)", lineHeight:1.1, color:D.text1, marginBottom:10, letterSpacing:"-0.03em", fontWeight:800 }}>{p.headline}</h3>
                   <p style={{ fontSize:14, color:D.text2, maxWidth:560, margin:"0 auto", lineHeight:1.8 }}>{p.sub}</p>
                 </div>
+                {pricingFlow==="institution" ? (
+                  <div style={{
+                    maxWidth:560, margin:"0 auto 24px", textAlign:"center",
+                    background:D.glass, backdropFilter:"blur(24px)",
+                    border:`1px solid ${D.amber}40`, borderRadius:22, padding:"40px 32px",
+                  }}>
+                    <div style={{ fontSize:11, fontWeight:800, color:D.amber, letterSpacing:2, textTransform:"uppercase", marginBottom:10, fontFamily:"'DM Mono',monospace" }}>Organisation</div>
+                    <div style={{ fontSize:28, fontWeight:900, color:D.text1, marginBottom:12 }}>Custom pricing</div>
+                    <div style={{ fontSize:13.5, color:D.text2, lineHeight:1.7, marginBottom:26 }}>Scoped to your institution's size and needs. We'll walk your placement cell through a live demo on your own data before talking numbers.</div>
+                    <button
+                      onClick={() => openPath("institution","pricing-talk-to-us-cta")}
+                      style={{ padding:"14px 32px", border:"none", borderRadius:12, fontSize:13, fontWeight:800, cursor:"pointer", letterSpacing:"0.04em", fontFamily:"'DM Mono',monospace", background:`linear-gradient(135deg,${D.amber},#92580A)`, color:"#fff", boxShadow:"0 8px 28px rgba(217,119,6,0.4)" }}
+                    >TALK TO US →</button>
+                  </div>
+                ) : (
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))", gap:22, marginBottom:24 }}>
                   {p.plans.map((plan,i) => (
                     <div key={i} className="plan-card-anim" style={{
@@ -1095,6 +1110,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
                     </div>
                   ))}
                 </div>
+                )}
                 <div style={{ textAlign:"center", fontSize:11, color:D.text3, fontFamily:"'DM Mono',monospace", lineHeight:1.8 }}>{p.note}</div>
               </div>
             )

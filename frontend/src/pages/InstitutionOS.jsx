@@ -1045,6 +1045,143 @@ function HomePage({ userData, user, onNav, members, tasks, events, auditLogs, au
 // ═══════════════════════════════════════════════════════════════════════════════
 // PAGE 2 — INTELLIGENCE
 // ═══════════════════════════════════════════════════════════════════════════════
+// ─── NAAC/NBA Report — real Criterion 5.2 style report (2026-08-02) ────────
+// Placed % is read from institution_placements where confirmation_status=
+// 'tpo_confirmed' (the same gate every other placement stat in this app
+// uses — never raw offer acceptance). Higher-studies/entrepreneurship % come
+// from institution_student_outcomes, recorded per-student from the roster's
+// 🎓 button (see CanonicalRosterPanel). If those are empty, the report is
+// honest about it rather than hiding the columns — a TPO needs to see "0
+// recorded" to know they still need to fill it in, not think it's missing.
+function NaacReportPanel({ canonical }) {
+  const institutionId = canonical?.institution?.id
+  const [batchFilter, setBatchFilter] = useState("")
+  const [report, setReport] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [trend, setTrend] = useState(null)
+
+  const load = useCallback(async () => {
+    if (!institutionId) { setLoading(false); return }
+    setLoading(true); setError(null)
+    try {
+      const res = await collegeApi.getNaacReport(institutionId, batchFilter.trim() || undefined)
+      setReport(res)
+    } catch (e) { setError(e.message || "Could not load report") }
+    setLoading(false)
+  }, [institutionId, batchFilter])
+
+  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    if (!institutionId) return
+    collegeApi.getPlacementTrend(institutionId).then(res => setTrend(res?.years || [])).catch(() => setTrend([]))
+  }, [institutionId])
+
+  function exportCsv() {
+    if (!report?.batches?.length) return
+    const rows = [["Batch", "Department", "Total", "Placed", "Placed %", "Higher Studies", "Higher Studies %", "Entrepreneurship", "Entrepreneurship %", "Avg CTC (LPA)"]]
+    for (const b of report.batches) {
+      for (const d of b.departments) {
+        rows.push([b.batch, d.department, d.total, d.placed, d.placedPct, d.higherStudies, d.higherStudiesPct, d.entrepreneurship, d.entrepreneurshipPct, d.avgCtcLpa ?? ""])
+      }
+      rows.push([b.batch, "TOTAL", b.totals.total, b.totals.placed, b.totals.placedPct, b.totals.higherStudies, b.totals.higherStudiesPct, b.totals.entrepreneurship, b.totals.entrepreneurshipPct, ""])
+    }
+    const csv = rows.map(r => r.join(",")).join("\n")
+    const blob = new Blob([csv], { type: "text/csv" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url; a.download = `naac-report-${canonical?.institution?.name || "institution"}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  if (!institutionId) return <EmptyState icon="🎓" title="Not connected yet" sub="The NAAC report appears here once your institution is linked." />
+
+  return (
+    <Card>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4, flexWrap: "wrap", gap: 8 }}>
+        <SectionHead title="NAAC / NBA Report" />
+        <div style={{ display: "flex", gap: 8 }}>
+          <input value={batchFilter} onChange={e => setBatchFilter(e.target.value)} placeholder="Filter one batch (optional)"
+            style={{ padding: "6px 10px", borderRadius: 8, background: T.bg, border: `1px solid ${T.border}`, color: T.ink, fontSize: 11.5, width: 170 }} />
+          <Btn variant="outline" onClick={exportCsv} disabled={!report?.batches?.length} style={{ fontSize: 11, padding: "5px 10px" }}>Export CSV</Btn>
+          <Btn variant="outline" onClick={() => window.print()} disabled={!report?.batches?.length} style={{ fontSize: 11, padding: "5px 10px" }}>Print / Save PDF</Btn>
+        </div>
+      </div>
+      <div style={{ fontSize: 11, color: T.ink4, marginBottom: 14 }}>
+        Placement % is TPO-confirmed only. Higher-studies and entrepreneurship % come from outcomes recorded on the roster (🎓 button per student) — record those before generating your submission copy.
+      </div>
+
+      {trend && trend.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: T.ink, marginBottom: 10 }}>Placements over time (year confirmed)</div>
+          {(() => {
+            const maxP = Math.max(...trend.map(y => y.placements), 1)
+            return (
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 110 }}>
+                {trend.map(y => (
+                  <div key={y.year} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                    <div style={{ fontSize: 11, color: T.ink4 }}>{y.placements}</div>
+                    <div style={{ width: "70%", height: `${Math.max((y.placements / maxP) * 80, 4)}px`, background: T.sky, borderRadius: "4px 4px 0 0" }} />
+                    <div style={{ fontSize: 10.5, color: T.ink3, fontWeight: 600 }}>{y.year}</div>
+                    {y.avgCtcLpa != null && <div style={{ fontSize: 9.5, color: T.ink4 }}>{y.avgCtcLpa} LPA avg</div>}
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
+        </div>
+      )}
+
+      {loading ? <Spinner /> : error ? (
+        <div style={{ padding: 16, color: T.red, fontSize: 13 }}>{error}</div>
+      ) : !report?.batches?.length ? (
+        <EmptyState icon="🎓" title="No students to report on yet" sub="Once students are linked to this institution, batch/department breakdowns appear here." />
+      ) : (
+        report.batches.map(b => (
+          <div key={b.batch} style={{ marginBottom: 24 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: T.ink, marginBottom: 8 }}>Batch: {b.batch}</div>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <thead>
+                  <tr style={{ textAlign: "left", color: T.ink4, borderBottom: `1px solid ${T.border}` }}>
+                    <th style={{ padding: "6px 8px" }}>Department</th>
+                    <th style={{ padding: "6px 8px" }}>Total</th>
+                    <th style={{ padding: "6px 8px" }}>Placed</th>
+                    <th style={{ padding: "6px 8px" }}>Higher Studies</th>
+                    <th style={{ padding: "6px 8px" }}>Entrepreneurship</th>
+                    <th style={{ padding: "6px 8px" }}>Avg CTC (LPA)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {b.departments.map(d => (
+                    <tr key={d.department} style={{ borderBottom: `1px solid ${T.border}` }}>
+                      <td style={{ padding: "8px" }}>{d.department}</td>
+                      <td style={{ padding: "8px" }}>{d.total}</td>
+                      <td style={{ padding: "8px", color: T.green, fontWeight: 600 }}>{d.placed} ({d.placedPct}%)</td>
+                      <td style={{ padding: "8px", color: T.sky, fontWeight: 600 }}>{d.higherStudies} ({d.higherStudiesPct}%)</td>
+                      <td style={{ padding: "8px", color: T.amber, fontWeight: 600 }}>{d.entrepreneurship} ({d.entrepreneurshipPct}%)</td>
+                      <td style={{ padding: "8px" }}>{d.avgCtcLpa ?? "—"}</td>
+                    </tr>
+                  ))}
+                  <tr style={{ fontWeight: 700 }}>
+                    <td style={{ padding: "8px" }}>Total</td>
+                    <td style={{ padding: "8px" }}>{b.totals.total}</td>
+                    <td style={{ padding: "8px", color: T.green }}>{b.totals.placed} ({b.totals.placedPct}%)</td>
+                    <td style={{ padding: "8px", color: T.sky }}>{b.totals.higherStudies} ({b.totals.higherStudiesPct}%)</td>
+                    <td style={{ padding: "8px", color: T.amber }}>{b.totals.entrepreneurship} ({b.totals.entrepreneurshipPct}%)</td>
+                    <td style={{ padding: "8px" }}>—</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))
+      )}
+    </Card>
+  )
+}
+
 // ─── Recruiter Activity — placement-cell visibility, added 2026-07-31 ──────
 // Read-only view of recruiter_invites + interviews for this institution
 // (Phase 3). A recruiter-facing search/invite UI is a separate surface
@@ -1766,9 +1903,10 @@ function IntelligencePage({ userData, user, members, tasks, auditLogs, auditLoad
     { value: "—",                         label: "Time to Hire", color: T.purple, context: "Track via integrations" },
   ]
 
-  const tabs = ["pulse", "elo", "placement", "recruiters", "drives", "messages", "approvals", "followups", "notifications"]
+  const tabs = ["pulse", "elo", "placement", ...(isCollege ? ["naac"] : []), "recruiters", "drives", "messages", "approvals", "followups", "notifications"]
   const tabLabels = {
     pulse: "Live Pulse", elo: "ELO Distribution", placement: isCollege ? "Placement Funnel" : "Hiring Funnel",
+    naac: "NAAC Report",
     recruiters: "Recruiter Activity", drives: "Drives", messages: "Team Chat",
     approvals: "Approvals", followups: "Follow-ups", notifications: "Notifications",
   }
@@ -1855,17 +1993,18 @@ function IntelligencePage({ userData, user, members, tasks, auditLogs, auditLoad
 
       {tab === "elo" && canonical?.branches?.length > 0 && (
         <Card style={{ marginTop: 16 }}>
-          <SectionHead title="Readiness Heatmap (by branch)" />
+          <SectionHead title="Department Benchmark" />
           <div style={{ fontSize: 11, color: T.ink4, marginBottom: 10 }}>
-            Live, from your canonical roster — avg job-readiness score and placement rate per branch.
+            Live, from your canonical roster — ranked by placement rate. All-batch, all-time (see NAAC Report for a per-batch, per-year breakdown).
           </div>
           <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(4, canonical.branches.length)}, 1fr)`, gap: 8 }}>
-            {canonical.branches.map((b) => {
+            {[...canonical.branches].sort((a, b) => (b.placedPct || 0) - (a.placedPct || 0)).map((b, i) => {
               const readiness = b.avgJobReadiness || 0
               const heat = readiness >= 70 ? T.green : readiness >= 40 ? T.amber : T.red
               return (
-                <div key={b.department} style={{ border: `1px solid ${heat}40`, background: `${heat}14`, borderRadius: 12, padding: 12 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: T.ink }}>{b.department}</div>
+                <div key={b.department} style={{ position: "relative", border: `1px solid ${heat}40`, background: `${heat}14`, borderRadius: 12, padding: 12 }}>
+                  <div style={{ position: "absolute", top: 8, right: 10, fontSize: 10, fontWeight: 800, color: T.ink4, fontFamily: MONO }}>#{i + 1}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: T.ink, paddingRight: 20 }}>{b.department}</div>
                   <div style={{ fontSize: 22, fontWeight: 800, color: heat, fontFamily: MONO, marginTop: 4 }}>{readiness}%</div>
                   <div style={{ fontSize: 10.5, color: T.ink4 }}>{b.students} students · {b.placedPct}% placed · ELO {b.avgElo}</div>
                 </div>
@@ -1911,6 +2050,7 @@ function IntelligencePage({ userData, user, members, tasks, auditLogs, auditLoad
         </Card>
       )}
 
+      {tab === "naac" && <NaacReportPanel canonical={canonical} />}
       {tab === "recruiters" && <RecruiterActivityPanel canonical={canonical} openThreadFor={openThreadFor} />}
       {tab === "drives" && <DrivesPanel canonical={canonical} openThreadFor={openThreadFor} />}
       {tab === "messages" && (
@@ -2243,6 +2383,35 @@ function CanonicalRosterPanel({ canonical, openThreadFor }) {
     setActionId(null)
   }
 
+  // 2026-08-02: outcome recording (higher studies / entrepreneurship) — feeds
+  // the NAAC report. Placement itself is never edited here — that only ever
+  // moves through the TPO-confirm gate on the offers/placements flow.
+  const [outcomeStudent, setOutcomeStudent] = useState(null)
+  const [outcomeForm, setOutcomeForm] = useState({ academicYear: "", outcomeType: "higher_studies", institutionName: "", program: "", ventureName: "", sector: "" })
+  const [outcomeSaving, setOutcomeSaving] = useState(false)
+  const [outcomeError, setOutcomeError] = useState(null)
+  function openOutcome(s) {
+    setOutcomeStudent(s)
+    setOutcomeForm({ academicYear: "", outcomeType: "higher_studies", institutionName: "", program: "", ventureName: "", sector: "" })
+    setOutcomeError(null)
+  }
+  async function saveOutcome() {
+    if (!outcomeStudent) return
+    if (!/^\d{4}-\d{2,4}$/.test(outcomeForm.academicYear)) { setOutcomeError("Academic year format: 2025-26"); return }
+    setOutcomeSaving(true); setOutcomeError(null)
+    try {
+      const details = outcomeForm.outcomeType === "higher_studies"
+        ? { institution: outcomeForm.institutionName, program: outcomeForm.program }
+        : { venture_name: outcomeForm.ventureName, sector: outcomeForm.sector }
+      await collegeApi.recordOutcome(institution.id, {
+        studentId: outcomeStudent.id, academicYear: outcomeForm.academicYear,
+        outcomeType: outcomeForm.outcomeType, details,
+      })
+      setOutcomeStudent(null)
+    } catch (e) { setOutcomeError(e.message || "Could not save outcome") }
+    setOutcomeSaving(false)
+  }
+
   return (
     <div style={{
       background: "linear-gradient(180deg,rgba(255,255,255,0.052),rgba(255,255,255,0.026))",
@@ -2369,6 +2538,10 @@ function CanonicalRosterPanel({ canonical, openThreadFor }) {
                         💬
                       </button>
                     )}
+                    <button onClick={() => openOutcome(s)} title="Record higher-studies / entrepreneurship outcome (NAAC)"
+                      style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 13, opacity: 0.75, marginLeft: 4 }}>
+                      🎓
+                    </button>
                     <button onClick={() => openStudentEdit(s)} title="Edit roster details"
                       style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 13, opacity: 0.75, marginLeft: 4 }}>
                       ✏️
@@ -2397,6 +2570,39 @@ function CanonicalRosterPanel({ canonical, openThreadFor }) {
               <Btn onClick={saveStudentEdit} disabled={actionId === editingStudent.id + "-edit"}>
                 {actionId === editingStudent.id + "-edit" ? "Saving…" : "Save"}
               </Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {outcomeStudent && (
+        <Modal title={`Record outcome — ${outcomeStudent.roll_number || "student"}`} onClose={() => setOutcomeStudent(null)}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ fontSize: 11, color: T.ink4 }}>For NAAC/NBA reporting only — never affects placement status, which stays gated by the offer-confirmation flow.</div>
+            <FieldInput label="Academic year (e.g. 2025-26)" value={outcomeForm.academicYear} onChange={v => setOutcomeForm(f => ({ ...f, academicYear: v }))} placeholder="2025-26" />
+            <div>
+              <div style={{ fontSize: 11.5, color: T.ink3, marginBottom: 4 }}>Outcome type</div>
+              <select value={outcomeForm.outcomeType} onChange={e => setOutcomeForm(f => ({ ...f, outcomeType: e.target.value }))}
+                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, background: T.bg, border: `1px solid ${T.border}`, color: T.ink, fontSize: 13 }}>
+                <option value="higher_studies">Higher studies</option>
+                <option value="entrepreneurship">Entrepreneurship</option>
+              </select>
+            </div>
+            {outcomeForm.outcomeType === "higher_studies" ? (
+              <>
+                <FieldInput label="Institution" value={outcomeForm.institutionName} onChange={v => setOutcomeForm(f => ({ ...f, institutionName: v }))} placeholder="e.g. IIT Bombay" />
+                <FieldInput label="Program" value={outcomeForm.program} onChange={v => setOutcomeForm(f => ({ ...f, program: v }))} placeholder="e.g. M.Tech CSE" />
+              </>
+            ) : (
+              <>
+                <FieldInput label="Venture name" value={outcomeForm.ventureName} onChange={v => setOutcomeForm(f => ({ ...f, ventureName: v }))} placeholder="e.g. Acme Labs" />
+                <FieldInput label="Sector" value={outcomeForm.sector} onChange={v => setOutcomeForm(f => ({ ...f, sector: v }))} placeholder="e.g. Fintech" />
+              </>
+            )}
+            {outcomeError && <div style={{ fontSize: 11.5, color: T.red }}>{outcomeError}</div>}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <Btn variant="outline" onClick={() => setOutcomeStudent(null)}>Cancel</Btn>
+              <Btn onClick={saveOutcome} disabled={outcomeSaving}>{outcomeSaving ? "Saving…" : "Save"}</Btn>
             </div>
           </div>
         </Modal>

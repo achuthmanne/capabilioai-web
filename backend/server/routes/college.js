@@ -1487,6 +1487,191 @@ router.get("/institutions/:id/export", requireAuth, requireInstitutionAdmin(), a
   res.status(200).json({ students })
 })
 
+// ── Student outcomes (higher studies / entrepreneurship) — feeds the NAAC
+// report below. Placement itself is NOT recorded here — institution_placements
+// (TPO-confirmed) is the only source of truth for "placed", per the existing
+// gate at POST /placements/:placementId/confirm. This only fills the two
+// outcome types NAAC Criterion 5.2 needs that nothing else tracks. (2026-08-02)
+const OUTCOME_TYPES = ["higher_studies", "entrepreneurship"]
+
+router.post("/institutions/:id/outcomes", requireAuth, requireInstitutionAdmin(), async (req, res) => {
+  const { id: institutionId } = req.params
+  const { studentId, academicYear, outcomeType, details = {} } = req.body || {}
+  if (!studentId) return res.status(400).json({ error: "studentId is required" })
+  if (!academicYear || !/^\d{4}-\d{2,4}$/.test(academicYear)) return res.status(400).json({ error: "academicYear is required, format e.g. 2025-26" })
+  if (!OUTCOME_TYPES.includes(outcomeType)) return res.status(400).json({ error: `outcomeType must be one of: ${OUTCOME_TYPES.join(", ")}` })
+
+  // Ownership check — never trust studentId belongs to this institution.
+  const { data: student } = await supabaseAdmin
+    .from("institution_students")
+    .select("id")
+    .eq("id", studentId)
+    .eq("institution_id", institutionId)
+    .maybeSingle()
+  if (!student) return res.status(404).json({ error: "Student not found in this institution" })
+
+  const { data: outcome, error } = await supabaseAdmin
+    .from("institution_student_outcomes")
+    .upsert(
+      { institution_id: institutionId, student_id: studentId, academic_year: academicYear, outcome_type: outcomeType, details, recorded_by: req.user.id },
+      { onConflict: "student_id,academic_year,outcome_type" }
+    )
+    .select()
+    .single()
+  if (error) return res.status(500).json({ error: error.message })
+
+  await supabaseAdmin.from("activity_logs").insert({
+    institution_id: institutionId, actor_id: req.user.id,
+    action_code: "outcome.recorded", entity_type: "institution_student_outcomes", entity_id: outcome.id,
+    details: { studentId, academicYear, outcomeType },
+  }).catch(() => {})
+
+  res.status(200).json({ outcome })
+})
+
+router.get("/institutions/:id/outcomes", requireAuth, requireInstitutionStaff(), async (req, res) => {
+  const { id: institutionId } = req.params
+  let query = supabaseAdmin
+    .from("institution_student_outcomes")
+    .select("id, student_id, academic_year, outcome_type, details, created_at")
+    .eq("institution_id", institutionId)
+  if (req.query.academicYear) query = query.eq("academic_year", req.query.academicYear)
+  const { data, error } = await query.order("created_at", { ascending: false }).limit(500)
+  if (error) return res.status(500).json({ error: error.message })
+  res.status(200).json({ outcomes: data || [] })
+})
+
+router.delete("/institutions/:id/outcomes/:outcomeId", requireAuth, requireInstitutionAdmin(), async (req, res) => {
+  const { id: institutionId, outcomeId } = req.params
+  const { error } = await supabaseAdmin
+    .from("institution_student_outcomes")
+    .delete()
+    .eq("id", outcomeId)
+    .eq("institution_id", institutionId)
+  if (error) return res.status(500).json({ error: error.message })
+  res.status(200).json({ ok: true })
+})
+
+// ── GET /institutions/:id/naac-report — real NAAC Criterion 5.2 style report ──
+// Placement % + higher-studies % + entrepreneurship % + avg CTC, per
+// department, per batch (and institution-wide totals). "Placed" is read from
+// institution_placements where confirmation_status='tpo_confirmed' — the
+// same authoritative gate every other placement stat in this file uses, not
+// raw offer acceptance. Optional ?batch= scopes to one graduating cohort;
+// omitted, the report groups every batch it finds separately so a TPO can
+// pull a multi-year submission in one call.
+router.get("/institutions/:id/naac-report", requireAuth, requireInstitutionStaff(), async (req, res) => {
+  const { id: institutionId } = req.params
+  const { batch } = req.query
+
+  let studentQuery = supabaseAdmin
+    .from("institution_students")
+    .select("id, department, batch, status")
+    .eq("institution_id", institutionId)
+    .in("status", ["active", "placed", "graduated"])
+  if (batch) studentQuery = studentQuery.eq("batch", batch)
+  const { data: students, error: studentErr } = await studentQuery
+  if (studentErr) return res.status(500).json({ error: studentErr.message })
+  if (!students || students.length === 0) return res.status(200).json({ batches: [] })
+
+  const studentIds = students.map(s => s.id)
+  const [{ data: placements }, { data: outcomes }] = await Promise.all([
+    supabaseAdmin
+      .from("institution_placements")
+      .select("student_id, ctc_lpa, confirmation_status")
+      .eq("institution_id", institutionId)
+      .eq("confirmation_status", "tpo_confirmed")
+      .in("student_id", studentIds),
+    supabaseAdmin
+      .from("institution_student_outcomes")
+      .select("student_id, outcome_type")
+      .eq("institution_id", institutionId)
+      .in("student_id", studentIds),
+  ])
+
+  const placedByStudent = new Map((placements || []).map(p => [p.student_id, p.ctc_lpa]))
+  const higherStudiesSet = new Set((outcomes || []).filter(o => o.outcome_type === "higher_studies").map(o => o.student_id))
+  const entrepreneurshipSet = new Set((outcomes || []).filter(o => o.outcome_type === "entrepreneurship").map(o => o.student_id))
+
+  // Group by batch, then department.
+  const byBatch = {}
+  for (const s of students) {
+    const b = s.batch || "Unspecified batch"
+    const d = s.department || "Unspecified department"
+    byBatch[b] ??= {}
+    byBatch[b][d] ??= { total: 0, placed: 0, higherStudies: 0, entrepreneurship: 0, ctcSum: 0, ctcCount: 0 }
+    const row = byBatch[b][d]
+    row.total++
+    if (placedByStudent.has(s.id)) {
+      row.placed++
+      const ctc = placedByStudent.get(s.id)
+      if (ctc != null) { row.ctcSum += Number(ctc); row.ctcCount++ }
+    }
+    if (higherStudiesSet.has(s.id)) row.higherStudies++
+    if (entrepreneurshipSet.has(s.id)) row.entrepreneurship++
+  }
+
+  const pct = (n, total) => total > 0 ? Math.round((n / total) * 1000) / 10 : 0
+
+  const batches = Object.entries(byBatch).map(([batchLabel, depts]) => {
+    const departments = Object.entries(depts).map(([department, r]) => ({
+      department, total: r.total,
+      placed: r.placed, placedPct: pct(r.placed, r.total),
+      higherStudies: r.higherStudies, higherStudiesPct: pct(r.higherStudies, r.total),
+      entrepreneurship: r.entrepreneurship, entrepreneurshipPct: pct(r.entrepreneurship, r.total),
+      avgCtcLpa: r.ctcCount > 0 ? Math.round((r.ctcSum / r.ctcCount) * 100) / 100 : null,
+    }))
+    const totals = departments.reduce((acc, d) => ({
+      total: acc.total + d.total, placed: acc.placed + d.placed,
+      higherStudies: acc.higherStudies + d.higherStudies, entrepreneurship: acc.entrepreneurship + d.entrepreneurship,
+    }), { total: 0, placed: 0, higherStudies: 0, entrepreneurship: 0 })
+    return {
+      batch: batchLabel, departments,
+      totals: {
+        ...totals,
+        placedPct: pct(totals.placed, totals.total),
+        higherStudiesPct: pct(totals.higherStudies, totals.total),
+        entrepreneurshipPct: pct(totals.entrepreneurship, totals.total),
+      },
+    }
+  })
+
+  res.status(200).json({ generatedAt: new Date().toISOString(), batches })
+})
+
+// ── GET /institutions/:id/placement-trend — year-over-year, calendar-year ────
+// Distinct from the NAAC report above (which groups by graduating batch):
+// this groups TPO-confirmed placements by the calendar year they were
+// confirmed in, for a "placements over time" trend line — the multi-year
+// growth story a TPO/Principal wants to see, not tied to any one cohort.
+router.get("/institutions/:id/placement-trend", requireAuth, requireInstitutionStaff(), async (req, res) => {
+  const { id: institutionId } = req.params
+  const { data: placements, error } = await supabaseAdmin
+    .from("institution_placements")
+    .select("confirmed_at, ctc_lpa")
+    .eq("institution_id", institutionId)
+    .eq("confirmation_status", "tpo_confirmed")
+    .not("confirmed_at", "is", null)
+  if (error) return res.status(500).json({ error: error.message })
+
+  const byYear = {}
+  for (const p of placements || []) {
+    const year = new Date(p.confirmed_at).getFullYear()
+    byYear[year] ??= { count: 0, ctcSum: 0, ctcCount: 0 }
+    byYear[year].count++
+    if (p.ctc_lpa != null) { byYear[year].ctcSum += Number(p.ctc_lpa); byYear[year].ctcCount++ }
+  }
+
+  const years = Object.entries(byYear)
+    .map(([year, r]) => ({
+      year: Number(year), placements: r.count,
+      avgCtcLpa: r.ctcCount > 0 ? Math.round((r.ctcSum / r.ctcCount) * 100) / 100 : null,
+    }))
+    .sort((a, b) => a.year - b.year)
+
+  res.status(200).json({ years })
+})
+
 // ── POST /institutions/:id/placements/:placementId/confirm ────────────────────
 // TPO/college_admin-only. This is the gate described in the design doc §9.8 —
 // a placement is not "real" for reporting purposes until this fires.
