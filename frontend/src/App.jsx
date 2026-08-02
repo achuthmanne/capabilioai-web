@@ -93,7 +93,7 @@ const PATH_META = {
 // Never blocks free text: selecting a suggestion just fills the field,
 // exactly like typing does, so a college missing from the AICTE-derived
 // dataset is still saved as entered.
-function CollegeAutocomplete({ value, setValue, accent, inputStyle, setError, onSelect }) {
+function CollegeAutocomplete({ value, setValue, accent, inputStyle, setError, onSelect, disabled = false }) {
   const [results, setResults]   = useState([])
   const [open, setOpen]         = useState(false)
   const inputRef = useRef(null)
@@ -110,6 +110,7 @@ function CollegeAutocomplete({ value, setValue, accent, inputStyle, setError, on
   }, [])
 
   useEffect(() => {
+    if (disabled) return
     const q = (value || "").trim()
     clearTimeout(debounceRef.current)
     if (q.length < 2) { setResults([]); return }
@@ -135,13 +136,14 @@ function CollegeAutocomplete({ value, setValue, accent, inputStyle, setError, on
       <input
         ref={inputRef}
         value={value}
+        disabled={disabled}
         onChange={e => { setValue(e.target.value); setError?.("") }}
-        onFocus={e => { e.target.style.borderColor = accent; if (results.length > 0) setOpen(true) }}
+        onFocus={e => { if (disabled) return; e.target.style.borderColor = accent; if (results.length > 0) setOpen(true) }}
         onBlur={e => { e.target.style.borderColor = "#E8E3DA" }}
         type="text" placeholder="College / University name" autoComplete="off"
-        style={inputStyle}
+        style={disabled ? { ...inputStyle, background: "#F0EEE9", color: "#6B6560", cursor: "not-allowed" } : inputStyle}
       />
-      {open && results.length > 0 && (
+      {!disabled && open && results.length > 0 && (
         <div
           ref={dropRef}
           style={{
@@ -206,7 +208,50 @@ function pwStrength(pw) {
   return { checks, passed, level, color, pct }
 }
 
+// Invite links carry a free-text department name (e.g. "Computer Science")
+// that doesn't line up 1:1 with the fixed codes the Branch dropdown below
+// uses. This maps common phrasings to a real option value so an invite-locked
+// signup shows something real instead of a blank "Select branch". Mirrors
+// Onboarding.jsx's normalizeBranchCode — kept as a local copy since the two
+// pages don't share a module. Conservative: unrecognized text returns "" and
+// the caller leaves Branch editable rather than force-locking a guess.
+const AUTH_DEPARTMENT_TO_BRANCH_CODE = [
+  [/comp(uter)?\s*sci|^cse$/i, "CSE"],
+  [/information\s*tech|^it$/i, "IT"],
+  [/^mca$/i, "MCA"],
+  [/data\s*sci|ai\s*&?\s*ds|ai\/ds/i, "AI_DS"],
+  [/artificial\s*intell|ai\s*&?\s*ml|ai\/ml|machine\s*learn/i, "AI_ML"],
+  [/electronics|^ece$/i, "ECE"],
+  [/electrical|^eee$/i, "EEE"],
+  [/mechanical|^mech$/i, "Mechanical"],
+  [/^civil$/i, "Civil"],
+  [/internet of things|^iot$/i, "IoT"],
+  [/pharma/i, "Pharmacy"],
+  [/^mba$|management/i, "MBA"],
+]
+function normalizeAuthBranchCode(deptText) {
+  const t = (deptText || "").trim()
+  if (!t) return ""
+  for (const [re, code] of AUTH_DEPARTMENT_TO_BRANCH_CODE) if (re.test(t)) return code
+  return ""
+}
+
 function AuthModal({ show, onClose, mode, setMode }) {
+  // College invite links (JoinOrgPage.jsx) stash {college, department, batch}
+  // in sessionStorage before bouncing an unauthenticated student here to sign
+  // up. Read once — lazy initializer keeps it stable across re-renders. Left
+  // in sessionStorage (not cleared) so Onboarding.jsx can read the same key
+  // afterwards; Onboarding is the one that clears it once the flow completes.
+  const [orgJoinContext] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem("capabilio_org_join_context")
+      return raw ? JSON.parse(raw) : null
+    } catch { return null }
+  })
+  const collegeLocked = !!orgJoinContext?.college
+  const lockedBranchCode = normalizeAuthBranchCode(orgJoinContext?.department)
+  const branchLocked = !!lockedBranchCode
+
   // ── Shared fields ────────────────────────────────────────────────
   const [email,    setEmail]    = useState("")
   const [password, setPassword] = useState("")
@@ -244,7 +289,9 @@ function AuthModal({ show, onClose, mode, setMode }) {
   useEffect(() => {
     if (show) {
       setEmail(""); setPassword(""); setConfirm(""); setShowPw(false); setShowCfm(false)
-      setFirst(""); setLast(""); setCollege(""); setBranch("")
+      setFirst(""); setLast("")
+      setCollege(orgJoinContext?.college || "")
+      setBranch(lockedBranchCode || "")
       setRefCode(""); setRefValid(null); setRefData(null)
       setCompany(""); setJobTitle(""); setLinkedinUrl(""); setExperience("")
       setOrgName(""); setExecTitle("")
@@ -478,10 +525,10 @@ function AuthModal({ show, onClose, mode, setMode }) {
           {inp(first, setFirst, "text", "First name")}
           {inp(last,  setLast,  "text", "Last name")}
         </div>
-        <CollegeAutocomplete value={college} setValue={setCollege} accent={accent} inputStyle={inputStyle} setError={setError} />
-        <select value={branch} onChange={e=>{setBranch(e.target.value);setError("")}}
-          style={{ ...inputStyle, color: branch ? "#1A1714" : "#A8A29E" }}
-          onFocus={e=>e.target.style.borderColor=accent}
+        <CollegeAutocomplete value={college} setValue={setCollege} accent={accent} inputStyle={inputStyle} setError={setError} disabled={collegeLocked} />
+        <select value={branch} onChange={e=>{setBranch(e.target.value);setError("")}} disabled={branchLocked}
+          style={{ ...inputStyle, color: branch ? "#1A1714" : "#A8A29E", ...(branchLocked ? { background: "#F0EEE9", cursor: "not-allowed" } : {}) }}
+          onFocus={e=>{ if (!branchLocked) e.target.style.borderColor=accent }}
           onBlur={e=>e.target.style.borderColor="#E8E3DA"}>
           <option value="">Select your branch / stream</option>
           <optgroup label="IT / CS Streams">
@@ -511,6 +558,11 @@ function AuthModal({ show, onClose, mode, setMode }) {
             <option value="Other">Other</option>
           </optgroup>
         </select>
+        {collegeLocked && (
+          <div style={{ fontSize:11.5, color:"#92400E", background:"rgba(201,168,76,0.08)", border:"1px solid rgba(201,168,76,0.3)", borderRadius:8, padding:"7px 10px", marginTop:-4 }}>
+            🔒 Set by your college's invite link{branchLocked ? "" : " — branch wasn't recognized from the link, please pick yours"}. Contact your placement cell if this is wrong.
+          </div>
+        )}
       </>
     )
   }

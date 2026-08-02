@@ -2655,7 +2655,7 @@ function PeoplePage({ userData, user, members, membersLoading, membersError, rel
       )}
 
       {canonical?.institution && <CanonicalRosterPanel canonical={canonical} openThreadFor={openThreadFor} />}
-      {canonical?.institution && canonical?.role === "college_admin" && <StaffAccessPanel canonical={canonical} />}
+      {/* Staff Access (creating staff logins) moved to Settings → Staff Access tab. */}
 
       <div style={{ display: "flex", gap: 4, marginBottom: 16, overflowX: "auto", paddingBottom: 2 }}>
         {tabs.map(t => (
@@ -3050,6 +3050,59 @@ const POST_CATEGORY_BADGE = {
 // inline definition caused).
 const EmbedPassthrough = ({ children }) => <>{children}</>
 
+// Per-post ⋯ menu (2026-08-02). Houses the actions that used to sit exposed
+// under every post (Edit/Delete) plus a couple of genuinely useful,
+// non-copied extras — inspired by, not cloned from, the LinkedIn-style
+// reference the product ask pointed at. Module-level component (same
+// stable-identity reasoning as EmbedPassthrough) since it's instantiated
+// once per post in a list.
+function PostThreeDotMenu({ onEdit, onDelete, onCopyLink }) {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef(null)
+  useEffect(() => {
+    if (!open) return
+    const handle = e => { if (!rootRef.current?.contains(e.target)) setOpen(false) }
+    document.addEventListener("mousedown", handle)
+    return () => document.removeEventListener("mousedown", handle)
+  }, [open])
+  const item = (label, fn, danger = false) => (
+    <button
+      onClick={() => { setOpen(false); fn() }}
+      style={{
+        display: "block", width: "100%", textAlign: "left", padding: "9px 14px",
+        background: "none", border: "none", cursor: "pointer", fontFamily: FONT,
+        fontSize: 12.5, color: danger ? T.red : T.ink2,
+      }}
+      onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
+      onMouseLeave={e => e.currentTarget.style.background = "none"}
+    >{label}</button>
+  )
+  return (
+    <div ref={rootRef} style={{ position: "relative" }}>
+      <button onClick={() => setOpen(o => !o)} title="Post options" style={{
+        background: "none", border: "none", color: T.ink4, fontSize: 16,
+        cursor: "pointer", padding: "2px 6px", borderRadius: 6, lineHeight: 1,
+      }}
+        onMouseEnter={e => e.currentTarget.style.color = T.ink}
+        onMouseLeave={e => e.currentTarget.style.color = T.ink4}
+      >⋯</button>
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 40,
+          minWidth: 172, background: "#161310", border: `1px solid ${T.border}`,
+          borderRadius: 12, boxShadow: "0 12px 32px rgba(0,0,0,0.45)", overflow: "hidden",
+          padding: "4px 0",
+        }}>
+          {item("📋 Copy to share", onCopyLink)}
+          <div style={{ height: 1, background: T.border, margin: "4px 0" }} />
+          {item("✏️ Edit post", onEdit)}
+          {item("🗑 Delete post", onDelete, true)}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // embedded=true (2026-07-31): renders composer+feed without its own
 // PageShell/header so CommunityPage can host it as its Posts tab — the
 // standalone sidebar "Posts" page was merged into Community per product
@@ -3133,6 +3186,95 @@ function EventsPage({ userData, user, embedded = false }) {
   async function handleDelete(post) {
     await supabase.from("org_events").delete().eq("id", post.id)
     reload()
+  }
+
+  // ── Engagement row (2026-08-02) ─────────────────────────────────────────
+  // Replaces the exposed Revise/Take-down row with a Like/Comment/Share-
+  // shaped row using fresh terminology, backed by two small real tables
+  // (org_event_acknowledgements, org_event_comments) — not faked counters.
+  // Edit/Delete moved into PostThreeDotMenu above.
+  const [ackState, setAckState]         = useState({})   // { [postId]: { count, mine } }
+  const [discussOpenId, setDiscussOpenId] = useState(null)
+  const [comments, setComments]         = useState({})   // { [postId]: [...] }
+  const [commentDraft, setCommentDraft] = useState({})   // { [postId]: text }
+  const [shareMsgId, setShareMsgId]     = useState(null)
+
+  useEffect(() => {
+    if (!posts || posts.length === 0) { setAckState({}); return }
+    let cancelled = false
+    ;(async () => {
+      const ids = posts.map(p => p.id)
+      const { data } = await supabase.from("org_event_acknowledgements").select("event_id, user_id").in("event_id", ids)
+      if (cancelled) return
+      const next = {}
+      for (const id of ids) next[id] = { count: 0, mine: false }
+      for (const row of data || []) {
+        if (!next[row.event_id]) next[row.event_id] = { count: 0, mine: false }
+        next[row.event_id].count += 1
+        if (row.user_id === user?.id) next[row.event_id].mine = true
+      }
+      setAckState(next)
+    })()
+    return () => { cancelled = true }
+  }, [posts, user?.id])
+
+  async function toggleAck(post) {
+    const cur = ackState[post.id] || { count: 0, mine: false }
+    const nextMine = !cur.mine
+    setAckState(s => ({ ...s, [post.id]: { count: cur.count + (nextMine ? 1 : -1), mine: nextMine } }))
+    try {
+      if (nextMine) {
+        const { error } = await supabase.from("org_event_acknowledgements").insert({ event_id: post.id, user_id: user.id })
+        if (error) throw error
+      } else {
+        const { error } = await supabase.from("org_event_acknowledgements").delete().eq("event_id", post.id).eq("user_id", user.id)
+        if (error) throw error
+      }
+    } catch (_) {
+      setAckState(s => ({ ...s, [post.id]: cur })) // revert on failure
+    }
+  }
+
+  async function toggleDiscuss(post) {
+    const willOpen = discussOpenId !== post.id
+    setDiscussOpenId(willOpen ? post.id : null)
+    if (willOpen && !comments[post.id]) {
+      const { data } = await supabase
+        .from("org_event_comments")
+        .select("id, body, user_id, created_at, profiles:user_id(name)")
+        .eq("event_id", post.id)
+        .order("created_at", { ascending: true })
+      setComments(c => ({ ...c, [post.id]: data || [] }))
+    }
+  }
+
+  async function submitComment(post) {
+    const body = (commentDraft[post.id] || "").trim()
+    if (!body) return
+    const { data, error } = await supabase
+      .from("org_event_comments")
+      .insert({ event_id: post.id, user_id: user.id, body })
+      .select("id, body, user_id, created_at, profiles:user_id(name)")
+      .single()
+    if (!error && data) {
+      setComments(c => ({ ...c, [post.id]: [...(c[post.id] || []), data] }))
+      setCommentDraft(d => ({ ...d, [post.id]: "" }))
+    }
+  }
+
+  // The app is a single-page, state-driven client with no per-institution
+  // or per-post URL routing yet (no react-router), so there is no real,
+  // externally-openable deep link to hand out. Rather than paste a URL that
+  // silently 404s for whoever receives it, share the post content itself
+  // plus the app's base URL — honest about what actually exists today.
+  function copyPostLink(post) {
+    const shareText = `${orgName} on Capabilio:\n\n${post.title || ""}\n\n${window.location.origin}`
+    const done = () => { setShareMsgId(post.id); setTimeout(() => setShareMsgId(null), 2000) }
+    if (navigator.share) {
+      navigator.share({ title: orgName, text: shareText }).catch(() => {})
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(shareText).then(done).catch(() => {})
+    }
   }
 
   // Wrapper must be a STABLE component type — defining it inline here
@@ -3290,14 +3432,11 @@ function EventsPage({ userData, user, embedded = false }) {
                     </span>
                   )})()
                 )}
-                <button onClick={() => handleDelete(post)} style={{
-                  background: "none", border: "none", color: T.ink4, fontSize: 14,
-                  cursor: "pointer", padding: "2px 6px", borderRadius: 6,
-                }}
-                  onMouseEnter={e => e.currentTarget.style.color = T.red}
-                  onMouseLeave={e => e.currentTarget.style.color = T.ink4}
-                  title="Delete post"
-                >✕</button>
+                <PostThreeDotMenu
+                  onEdit={() => startEdit(post)}
+                  onDelete={() => handleDelete(post)}
+                  onCopyLink={() => copyPostLink(post)}
+                />
               </div>
 
               <div style={{ marginTop: 14, fontSize: 13.5, color: T.ink2, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
@@ -3311,20 +3450,52 @@ function EventsPage({ userData, user, embedded = false }) {
                 }} />
               )}
 
-              {/* 2026-08-01: Like/Comment/Share were dead placeholders —
-                  replaced with real owner actions per product direction. */}
-              <div style={{ display: "flex", gap: 16, marginTop: 14, paddingTop: 12, borderTop: `1px solid ${T.border}` }}>
-                <button onClick={() => startEdit(post)}
-                  style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: T.ink4, background: "none", border: "none", cursor: "pointer", fontFamily: FONT, padding: 0 }}>
-                  ✏️ Revise
+              {/* 2026-08-02: real Like/Comment/Share-equivalent row — same
+                  shape, fresh terminology, backed by real tables (no faked
+                  counts). Edit/Delete live in the ⋯ menu above now. */}
+              <div style={{ display: "flex", gap: 18, marginTop: 14, paddingTop: 12, borderTop: `1px solid ${T.border}`, position: "relative" }}>
+                <button onClick={() => toggleAck(post)}
+                  style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: ackState[post.id]?.mine ? T.gold : T.ink4, background: "none", border: "none", cursor: "pointer", fontFamily: FONT, padding: 0 }}>
+                  🙌 Appreciate{ackState[post.id]?.count > 0 ? ` · ${ackState[post.id].count}` : ""}
                 </button>
-                <button onClick={() => handleDelete(post)}
-                  style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: T.ink4, background: "none", border: "none", cursor: "pointer", fontFamily: FONT, padding: 0 }}
-                  onMouseEnter={e => e.currentTarget.style.color = T.red}
-                  onMouseLeave={e => e.currentTarget.style.color = T.ink4}>
-                  🗑 Take down
+                <button onClick={() => toggleDiscuss(post)}
+                  style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: discussOpenId === post.id ? T.gold : T.ink4, background: "none", border: "none", cursor: "pointer", fontFamily: FONT, padding: 0 }}>
+                  💬 Discuss{comments[post.id]?.length > 0 ? ` · ${comments[post.id].length}` : ""}
                 </button>
+                <button onClick={() => copyPostLink(post)}
+                  style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: T.ink4, background: "none", border: "none", cursor: "pointer", fontFamily: FONT, padding: 0 }}>
+                  ↗️ Pass it on
+                </button>
+                {shareMsgId === post.id && (
+                  <span style={{ fontSize: 11, color: T.green, marginLeft: "auto", alignSelf: "center" }}>Link copied</span>
+                )}
               </div>
+
+              {discussOpenId === post.id && (
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${T.border}` }}>
+                  {(comments[post.id] || []).length === 0 && (
+                    <div style={{ fontSize: 12, color: T.ink4, marginBottom: 10 }}>No replies yet — start the discussion.</div>
+                  )}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
+                    {(comments[post.id] || []).map(c => (
+                      <div key={c.id} style={{ fontSize: 12.5, color: T.ink2, lineHeight: 1.5 }}>
+                        <span style={{ fontWeight: 700, color: T.ink }}>{c.profiles?.name || (c.user_id === user?.id ? (userData?.name || "You") : "Member")}: </span>
+                        {c.body}
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input
+                      value={commentDraft[post.id] || ""}
+                      onChange={e => setCommentDraft(d => ({ ...d, [post.id]: e.target.value }))}
+                      onKeyDown={e => { if (e.key === "Enter") submitComment(post) }}
+                      placeholder="Write a reply…"
+                      style={{ flex: 1, padding: "8px 12px", borderRadius: 10, border: `1px solid ${T.border}`, background: "rgba(255,255,255,0.05)", color: T.ink, fontSize: 12.5, fontFamily: FONT, outline: "none" }}
+                    />
+                    <Btn onClick={() => submitComment(post)} disabled={!(commentDraft[post.id] || "").trim()} style={{ fontSize: 11.5, padding: "6px 14px" }}>Reply</Btn>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -4145,15 +4316,11 @@ function MediaTab({ user, userData }) {
         url={coverUrl} aspect="4/1" uploading={coverUploading} inputRef={coverRef}
         onPick={f => handleUpload(f, "cover")}
       />
-
-      <div style={{ padding: "10px 14px", background: "rgba(116,168,255,.08)", border: `1px solid rgba(116,168,255,.20)`, borderRadius: 10, fontSize: 12, color: T.sky }}>
-        ℹ️ Photos are stored in Supabase and appear immediately on your public profile. Requires <code>org-media</code> storage bucket — run the migration SQL if uploads fail.
-      </div>
     </div>
   )
 }
 
-function SettingsPage({ userData, user, initialTab = "profile", reloadAudit, auditLogs, auditLoading }) {
+function SettingsPage({ userData, user, initialTab = "profile", reloadAudit, auditLogs, auditLoading, canonical }) {
   const [tab, setTab]         = useState(initialTab)
   const [saving, setSaving]   = useState(false)
   const [saved, setSaved]     = useState(false)
@@ -4282,17 +4449,25 @@ function SettingsPage({ userData, user, initialTab = "profile", reloadAudit, aud
     { level: 4, label: "Full Verification",    done: vLevel >= 4, note: "Manual review — usually within 24h" },
   ]
 
+  // Staff Access (creating placement_officer/professor/dept_head/mentor
+  // logins) is a college_admin-only capability — only surface the tab for
+  // that role, same gate the panel itself used when it lived on People.
+  const canManageStaff = !!(canonical?.institution && canonical?.role === "college_admin")
+  const settingsTabs = ["profile", "media", "verification", "integrations", ...(canManageStaff ? ["staff"] : []), "audit"]
+
   return (
     <PageShell>
       <PageHeader title="Settings" sub="Organisation profile, verification, and integrations" />
 
       <div style={{ display: "flex", gap: 4, marginBottom: 20, flexWrap: "wrap" }}>
-        {["profile", "media", "verification", "integrations", "audit"].map(t => (
-          <button key={t} onClick={() => setTab(t)} style={tabStyle(tab === t)}>{t.charAt(0).toUpperCase() + t.slice(1)}</button>
+        {settingsTabs.map(t => (
+          <button key={t} onClick={() => setTab(t)} style={tabStyle(tab === t)}>{t === "staff" ? "Staff Access" : t.charAt(0).toUpperCase() + t.slice(1)}</button>
         ))}
       </div>
 
       {tab === "media" && <MediaTab user={user} userData={userData} />}
+
+      {tab === "staff" && canManageStaff && <StaffAccessPanel canonical={canonical} />}
 
       {tab === "profile" && (
         <Card>
@@ -4591,7 +4766,7 @@ export default function InstitutionOS({ user, userData, onNavigate, initialPage 
     events:        <EventsPage        {...shared} />,
     companies:     <CompaniesPage     user={user} userData={userData} />,
     outcomes:      <OutcomesPage      userData={userData} members={members} canonical={canonical} openThreadFor={openThreadFor} />,
-    settings:      <SettingsPage      user={user} userData={userData} initialTab={settingsTab} reloadAudit={reloadAudit} auditLogs={auditLogs} auditLoading={auditLoading} />,
+    settings:      <SettingsPage      user={user} userData={userData} initialTab={settingsTab} reloadAudit={reloadAudit} auditLogs={auditLogs} auditLoading={auditLoading} canonical={canonical} />,
   }
 
   return (
