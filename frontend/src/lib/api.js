@@ -18,6 +18,8 @@ async function getToken() {
   return session?.access_token || null
 }
 
+const sleep = (ms) => new Promise(r => setTimeout(r, ms))
+
 async function request(method, path, body = null, opts = {}) {
   const token = await getToken()
   const headers = { "Content-Type": "application/json", ...(opts.headers || {}) }
@@ -27,16 +29,40 @@ async function request(method, path, body = null, opts = {}) {
   if (body && method !== "GET") config.body = JSON.stringify(body)
 
   const url = path.startsWith("http") ? path : `${BASE}/api${path}`
-  const res = await fetch(url, config)
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
-    const error = new Error(err.error || err.message || `Request failed: ${res.status}`)
-    error.status = res.status
-    error.data = err // full parsed error body (e.g. company/create's 409 { error, company }) for callers that need more than .message
-    throw error
+  // 2026-08-02: Render's backend can take a moment to respond to the first
+  // request after being idle (free/starter tier cold start) or during a
+  // brief deploy restart — the browser's fetch() throws a bare network
+  // error ("Failed to fetch") in that window, before the request ever
+  // reaches our server. That's what surfaced as Groups' "Failed to fetch"
+  // on create. This retries ONLY on that network-level failure (never on a
+  // real HTTP error response — a 400/403/500 means the server DID respond
+  // and retrying won't help and could double-submit a non-idempotent POST).
+  // Two retries with a short backoff covers a cold start without making the
+  // user manually resubmit the form.
+  let lastNetworkErr
+  for (let attempt = 0; attempt <= 2; attempt++) {
+    let res
+    try {
+      res = await fetch(url, config)
+    } catch (networkErr) {
+      lastNetworkErr = networkErr
+      if (attempt < 2) { await sleep(attempt === 0 ? 700 : 1800); continue }
+      const error = new Error("Could not reach the server — it may be starting up. Please try again in a few seconds.")
+      error.status = 0
+      error.cause = lastNetworkErr
+      throw error
+    }
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
+      const error = new Error(err.error || err.message || `Request failed: ${res.status}`)
+      error.status = res.status
+      error.data = err // full parsed error body (e.g. company/create's 409 { error, company }) for callers that need more than .message
+      throw error
+    }
+    return res.json()
   }
-  return res.json()
 }
 
 async function upload(path, formData) {
