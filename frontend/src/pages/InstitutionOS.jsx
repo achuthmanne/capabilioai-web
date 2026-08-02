@@ -88,7 +88,10 @@ const NAV_GROUPS = [
       { id: "people",    label: "Students",         badgeProp: "pendingMembers", mobileShow: true },
       { id: "tasks",     label: "Workflow queue",   badgeProp: "activeTasks",    mobileShow: true },
       { id: "cohorts",   label: "At-risk cases",    mobileShow: false },
-      { id: "groups",    label: "Document approvals", mobileShow: false },
+      // 2026-08-02: was mislabeled "Document approvals" (stale copy-paste,
+      // same class of bug as the "settings" mislabel above) — this id has
+      // always opened the Groups page; label now says what it is.
+      { id: "groups",    label: "Groups", mobileShow: false },
       { id: "companies", label: "Recruiter NDAs",   mobileShow: false },
     ],
   },
@@ -3409,24 +3412,36 @@ function GroupsPage({ canonical, onNav }) {
 
       {showCreate && (
         <Modal title="New Group" onClose={() => { setShowCreate(false); setCreateError(null) }} width={420}>
+          {/* 2026-08-02: solid (non-translucent) field backgrounds — the shared
+              Modal/Card are deliberately semi-transparent everywhere else in
+              the app, but that let the page content behind bleed through the
+              input boxes here and made typed text hard to read. Scoped fix,
+              this modal only — not touching the shared Modal/Card component. */}
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <FieldInput label="Name" value={createForm.name} onChange={v => setCreateForm(f => ({ ...f, name: v }))} placeholder="e.g. Final Year CSE 2026" required />
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 6 }}>Name <span style={{ color: T.red }}>*</span></label>
+              <input value={createForm.name} onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="e.g. Final Year CSE 2026" autoFocus
+                style={{ width: "100%", padding: "10px 12px", border: `1px solid ${T.borderM}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: "#181510", boxSizing: "border-box" }} />
+            </div>
             <div>
               <label style={{ fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 6 }}>Type</label>
               <select value={createForm.groupType} onChange={e => setCreateForm(f => ({ ...f, groupType: e.target.value }))}
-                style={{ width: "100%", padding: "9px 12px", border: `1px solid ${T.border}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: "rgba(255,255,255,0.05)" }}>
+                style={{ width: "100%", padding: "10px 12px", border: `1px solid ${T.borderM}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: "#181510", boxSizing: "border-box" }}>
                 {Object.entries(GROUP_TYPE_META).map(([k, m]) => <option key={k} value={k}>{m.label}</option>)}
               </select>
             </div>
             <div>
               <label style={{ fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 6 }}>Description (optional)</label>
               <textarea value={createForm.description} onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))}
-                rows={2} style={{ width: "100%", padding: "9px 12px", border: `1px solid ${T.border}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: "rgba(255,255,255,0.05)", resize: "vertical", boxSizing: "border-box" }} />
+                rows={2} style={{ width: "100%", padding: "10px 12px", border: `1px solid ${T.borderM}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: "#181510", resize: "vertical", boxSizing: "border-box" }} />
             </div>
             {createError && <div style={{ color: T.red, fontSize: 11 }}>{createError}</div>}
-            <Btn onClick={createGroup} disabled={creating} style={{ fontSize: 12, padding: "9px 0" }}>
-              {creating ? "Creating…" : "Create Group"}
-            </Btn>
+            <div style={{ display: "flex", justifyContent: "center", marginTop: 4 }}>
+              <Btn onClick={createGroup} disabled={creating} style={{ fontSize: 12, padding: "10px 32px" }}>
+                {creating ? "Creating…" : "Create Group"}
+              </Btn>
+            </div>
           </div>
         </Modal>
       )}
@@ -3530,7 +3545,7 @@ function GroupDetailPage({ institution, group, allStudents, onBack, onGoToTasks 
       {showAdd && (
         <Modal title={`Add Members — ${group.name}`} onClose={() => { setShowAdd(false); setSelected([]); setSearch("") }} width={480}>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search roll number or department…"
-            style={{ width: "100%", padding: "9px 12px", border: `1px solid ${T.border}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: "rgba(255,255,255,0.05)", boxSizing: "border-box", marginBottom: 10 }} />
+            style={{ width: "100%", padding: "10px 12px", border: `1px solid ${T.borderM}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: "#181510", boxSizing: "border-box", marginBottom: 10 }} />
           <div style={{ maxHeight: 320, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
             {candidates.length === 0 && <div style={{ fontSize: 12, color: T.ink4, padding: 10 }}>No matching students outside this group.</div>}
             {candidates.map(s => {
