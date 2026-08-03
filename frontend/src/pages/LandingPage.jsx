@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
+import * as THREE from "three"
 import EchoPitchDemoPlayer from "./EchoPitchDemoPlayer"
 
 // ─── Design tokens ─────────────────────────────────────────────────────────
@@ -24,6 +25,123 @@ const D = {
   amberDim:   "rgba(217,119,6,0.12)",
   green:      "#16A34A",
   blue:       "#3B82F6",
+}
+
+// ─── HeroParticleField ───────────────────────────────────────────────────
+// Ambient three.js particle field for the hero background. Purely decorative
+// (pointer-events disabled), respects prefers-reduced-motion, and cleans up
+// its WebGL context on unmount so it never leaks across route/flow changes.
+function HeroParticleField() {
+  const mountRef = useRef(null)
+
+  useEffect(() => {
+    const mount = mountRef.current
+    if (!mount) return
+
+    const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches
+    const isSmallScreen = window.innerWidth < 768
+
+    let width = mount.clientWidth
+    let height = mount.clientHeight
+    if (width === 0 || height === 0) return
+
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true })
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
+    renderer.setSize(width, height)
+    renderer.domElement.style.display = "block"
+    mount.appendChild(renderer.domElement)
+
+    const scene = new THREE.Scene()
+    const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100)
+    camera.position.z = 5.2
+
+    const PALETTE = [
+      [1.0, 0.341, 0.004],   // D.orange  #FF5701
+      [0.788, 0.659, 0.298], // D.gold    #C9A84C
+      [0.545, 0.361, 0.965], // D.violet  #8B5CF6
+    ]
+    const count = isSmallScreen ? 90 : 200
+    const positions = new Float32Array(count * 3)
+    const colors = new Float32Array(count * 3)
+    for (let i = 0; i < count; i++) {
+      positions[i * 3]     = (Math.random() - 0.5) * 11
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 7
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 6
+      const c = PALETTE[i % PALETTE.length]
+      colors[i * 3] = c[0]; colors[i * 3 + 1] = c[1]; colors[i * 3 + 2] = c[2]
+    }
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3))
+    geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3))
+    const material = new THREE.PointsMaterial({
+      size: 0.055,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.7,
+      sizeAttenuation: true,
+      depthWrite: false,
+    })
+    const points = new THREE.Points(geometry, material)
+    scene.add(points)
+
+    renderer.render(scene, camera)
+
+    let frameId = null
+    let targetX = 0, targetY = 0, camX = 0, camY = 0
+
+    const handlePointerMove = (e) => {
+      const rect = mount.getBoundingClientRect()
+      targetX = ((e.clientX - rect.left) / rect.width - 0.5) * 2
+      targetY = ((e.clientY - rect.top) / rect.height - 0.5) * 2
+    }
+
+    const animate = () => {
+      frameId = requestAnimationFrame(animate)
+      points.rotation.y += 0.0008
+      points.rotation.x += 0.0002
+      camX += (targetX * 0.35 - camX) * 0.02
+      camY += (-targetY * 0.25 - camY) * 0.02
+      camera.position.x = camX
+      camera.position.y = camY
+      camera.lookAt(scene.position)
+      renderer.render(scene, camera)
+    }
+
+    if (!prefersReducedMotion) {
+      window.addEventListener("mousemove", handlePointerMove)
+      animate()
+    }
+
+    const handleResize = () => {
+      if (!mount) return
+      width = mount.clientWidth
+      height = mount.clientHeight
+      if (width === 0 || height === 0) return
+      camera.aspect = width / height
+      camera.updateProjectionMatrix()
+      renderer.setSize(width, height)
+      if (prefersReducedMotion) renderer.render(scene, camera)
+    }
+    window.addEventListener("resize", handleResize)
+
+    return () => {
+      if (frameId) cancelAnimationFrame(frameId)
+      window.removeEventListener("mousemove", handlePointerMove)
+      window.removeEventListener("resize", handleResize)
+      geometry.dispose()
+      material.dispose()
+      renderer.dispose()
+      if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement)
+    }
+  }, [])
+
+  return (
+    <div
+      ref={mountRef}
+      aria-hidden="true"
+      style={{ position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }}
+    />
+  )
 }
 
 // ─── EloSparkline ──────────────────────────────────────────────────────────
@@ -743,7 +861,8 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       </nav>
 
       {/* ── HERO ────────────────────────────────────────────────────── */}
-      <section style={{ padding:"72px 0 88px" }}>
+      <section style={{ padding:"72px 0 88px", position:"relative", overflow:"hidden" }}>
+        <HeroParticleField />
         <div className="lp-container">
           <div className="lp-grid-hero">
             <div className="lp-fade-up">
