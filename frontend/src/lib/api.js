@@ -233,6 +233,11 @@ export const collegeApi = {
   addCampusToGroup:       (groupId, opts) => request("POST", `/college/university-groups/${groupId}/campuses`, opts),
   removeCampusFromGroup:  (groupId, institutionId) => request("DELETE", `/college/university-groups/${groupId}/campuses/${institutionId}`),
   getUniversityOverview:  (groupId) => request("GET", `/college/university-groups/${groupId}/overview`),
+
+  // Jobs tab (2026-08-03) — college_admin only for create/edit; any staff can view.
+  listJobs:   (institutionId) => request("GET", `/college/institutions/${institutionId}/jobs`),
+  createJob:  (institutionId, opts) => request("POST", `/college/institutions/${institutionId}/jobs`, opts),
+  updateJob:  (institutionId, jobId, opts) => request("PATCH", `/college/institutions/${institutionId}/jobs/${jobId}`, opts),
 }
 
 // ══════════════════════════════════════════
@@ -454,7 +459,12 @@ export const jobsApi = {
     return request("GET", `/jobs/list${qs ? `?${qs}` : ""}`)
   },
   getJob:       (id) => request("GET", `/jobs/${id}`),
+  // 2026-08-03: create()/mine()/update() now hit a real, gated, working
+  // backend (see recruiterComms.js) — create() previously 500'd on every
+  // call (missing DB column) and had zero frontend caller.
   create:       (data) => request("POST", "/jobs", data),
+  mine:         () => request("GET", "/jobs/mine"),
+  update:       (id, data) => request("PATCH", `/jobs/${id}`, data),
   apply:        (jobId) => request("POST", `/jobs/${jobId}/apply`),
   applications: () => request("GET", "/jobs/applications"),
   saveJob:      (jobId, action = "save") => request("POST", "/jobs/save", { job_id: jobId, action }),

@@ -38,6 +38,38 @@ function optionalAuth(req, res, next) {
     .catch(() => next())
 }
 
+// Added 2026-08-03 (Jobs tab fix). Same account model college.js's
+// requireRecruiter() uses (org_type='company' = a recruiter), kept as its
+// own local copy rather than a cross-file import since every route file in
+// this codebase defines its own gate functions independently.
+function requireRecruiter() {
+  return async (req, res, next) => {
+    const { data: profile } = await supabaseAdmin
+      .from("profiles").select("org_type").eq("id", req.user.id).maybeSingle()
+    if (profile?.org_type !== "company") {
+      return res.status(403).json({ error: "Requires a company/recruiter account" })
+    }
+    next()
+  }
+}
+
+// Explicit allowlist — never spread req.body directly into an insert (see
+// the project's "never trust client input" rule). Only real columns on
+// public.jobs are listed; institution_id is deliberately absent here since
+// this route is for a company's own account-level postings — it's set only
+// by the college-scoped route in college.js, never from this generic body.
+const JOB_WRITABLE_FIELDS = [
+  "title", "company", "company_logo", "company_desc", "jd_full", "jd_summary", "jd_text",
+  "required_skills", "essential_skills", "good_to_have", "technologies",
+  "location", "job_type", "work_mode", "salary_min", "salary_max",
+  "salary_currency", "experience_min", "experience_max", "domain", "skills", "min_elo",
+]
+function pickJobFields(body) {
+  const out = {}
+  for (const k of JOB_WRITABLE_FIELDS) if (body?.[k] !== undefined) out[k] = body[k]
+  return out
+}
+
 // ══════════════════════════════════════════
 // JOBS
 // ══════════════════════════════════════════
@@ -127,14 +159,57 @@ Return JSON: {"why_match": "...", "why_gap": "..."}`
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
-router.post("/jobs", requireAuth, async (req, res) => {
+// 2026-08-03: was broken (inserted a `posted_by` column that never existed
+// on this table — every call 500'd, confirmed dead code, zero frontend
+// caller). Fixed to the real `posted_by_user_id` column (see migration
+// jobs_institution_and_poster_columns) and gated to company/recruiter
+// accounts only — previously ANY authenticated user could call this with no
+// role check at all. Uses an explicit field allowlist, never raw req.body.
+router.post("/jobs", requireAuth, requireRecruiter(), async (req, res) => {
   try {
+    if (!req.body?.title?.trim()) return res.status(400).json({ error: "title is required" })
     const { data, error } = await supabaseAdmin.from("jobs").insert({
-      ...req.body,
-      posted_by: req.user.id,
-      is_active: true,
+      ...pickJobFields(req.body),
+      posted_by_user_id: req.user.id,
+      // Both booleans set — this table has two independent "is this job
+      // live" columns (`active` used by RLS + some direct-client reads in
+      // ExecutiveHome.jsx/ExecutiveAnalytics.jsx, `is_active` used by this
+      // route's own /jobs/list and college.js's reads). Pre-existing schema
+      // duplication, not introduced here — setting both keeps every read
+      // path consistent rather than silently hiding this posting from half of them.
+      active: true, is_active: true,
       is_verified: false,
+      posted_at: new Date().toISOString(),
     }).select().single()
+    if (error) throw error
+    res.json({ success: true, job: data })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// Recruiter's own postings — powers a "manage my jobs" list. Own-account
+// scoped via posted_by_user_id, same ownership model as the insert above.
+router.get("/jobs/mine", requireAuth, requireRecruiter(), async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin.from("jobs")
+      .select("*")
+      .eq("posted_by_user_id", req.user.id)
+      .order("created_at", { ascending: false })
+    if (error) throw error
+    res.json({ jobs: data || [] })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// Edit/deactivate — re-verifies ownership server-side (never trusts a job id
+// alone), same allowlist as create plus the active-toggle fields.
+router.patch("/jobs/:id", requireAuth, requireRecruiter(), async (req, res) => {
+  try {
+    const { data: existing } = await supabaseAdmin.from("jobs").select("posted_by_user_id").eq("id", req.params.id).maybeSingle()
+    if (!existing || existing.posted_by_user_id !== req.user.id) {
+      return res.status(404).json({ error: "Job not found" })
+    }
+    const updates = pickJobFields(req.body)
+    if (typeof req.body?.isActive === "boolean") { updates.active = req.body.isActive; updates.is_active = req.body.isActive }
+    const { data, error } = await supabaseAdmin.from("jobs").update(updates).eq("id", req.params.id).select().single()
     if (error) throw error
     res.json({ success: true, job: data })
   } catch (e) { res.status(500).json({ error: e.message }) }

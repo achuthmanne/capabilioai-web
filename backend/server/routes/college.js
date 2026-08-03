@@ -145,6 +145,28 @@ function requireInstitutionStaff() {
   }
 }
 
+// Added 2026-08-03 (Jobs tab). Stricter than requireInstitutionAdmin() —
+// that one also passes placement_officer, but per explicit product decision
+// job posting is college_admin only (placement officers can still see jobs
+// via the GET route below, gated by requireInstitutionStaff, just not
+// create/edit them).
+function requireCollegeAdminOnly() {
+  return async (req, res, next) => {
+    try {
+      const institutionId = req.params.id || req.params.institutionId
+      const role = await getStaffRole(institutionId, req.user.id)
+      if (role !== "college_admin") {
+        return res.status(403).json({ error: "Requires college_admin role" })
+      }
+      req.institutionRole = role
+      next()
+    } catch (err) {
+      console.error("[college] requireCollegeAdminOnly", err)
+      res.status(500).json({ error: "Internal error checking institution access" })
+    }
+  }
+}
+
 function requireInstitutionAdmin() {
   return async (req, res, next) => {
     try {
@@ -2555,6 +2577,66 @@ router.get("/university-groups/:groupId/overview", requireAuth, async (req, res)
       avgElo: totalStudents > 0 ? Math.round(totalEloSum / totalStudents) : 0,
     },
   })
+})
+
+// ── Jobs (2026-08-03) — colleges posting jobs into the shared `jobs` table ──
+// Same table Launchpad already reads for the student job feed (see
+// backend/server/routes/recruiterComms.js's GET /jobs/list) — a college
+// posting here needs zero new student-facing feed work, it just appears
+// there automatically via institution_id being set. Explicit field
+// allowlist (never raw req.body), matching the same JOB_WRITABLE_FIELDS
+// shape recruiterComms.js uses for the company side, kept as an independent
+// local copy since institution_id must NEVER be settable by the generic
+// company route — only derived here from the verified :id param.
+const COLLEGE_JOB_WRITABLE_FIELDS = [
+  "title", "company", "company_logo", "company_desc", "jd_full", "jd_summary", "jd_text",
+  "required_skills", "essential_skills", "good_to_have", "technologies",
+  "location", "job_type", "work_mode", "salary_min", "salary_max",
+  "salary_currency", "experience_min", "experience_max", "domain", "skills", "min_elo",
+]
+function pickCollegeJobFields(body) {
+  const out = {}
+  for (const k of COLLEGE_JOB_WRITABLE_FIELDS) if (body?.[k] !== undefined) out[k] = body[k]
+  return out
+}
+
+router.post("/institutions/:id/jobs", requireAuth, requireCollegeAdminOnly(), async (req, res) => {
+  if (!req.body?.title?.trim()) return res.status(400).json({ error: "title is required" })
+  const { data: institution } = await supabaseAdmin.from("institutions").select("name").eq("id", req.params.id).maybeSingle()
+  const { data, error } = await supabaseAdmin.from("jobs").insert({
+    ...pickCollegeJobFields(req.body),
+    company: req.body.company?.trim() || institution?.name || "",
+    institution_id: req.params.id,
+    posted_by_user_id: req.user.id,
+    // See recruiterComms.js's POST /jobs for why both booleans are set —
+    // pre-existing schema duplication (active vs is_active), not introduced here.
+    active: true, is_active: true,
+    is_verified: false,
+    posted_at: new Date().toISOString(),
+  }).select().single()
+  if (error) return res.status(500).json({ error: error.message })
+  res.status(201).json({ job: data })
+})
+
+router.get("/institutions/:id/jobs", requireAuth, requireInstitutionStaff(), async (req, res) => {
+  const { data, error } = await supabaseAdmin.from("jobs")
+    .select("*")
+    .eq("institution_id", req.params.id)
+    .order("created_at", { ascending: false })
+  if (error) return res.status(500).json({ error: error.message })
+  res.status(200).json({ jobs: data || [] })
+})
+
+router.patch("/institutions/:id/jobs/:jobId", requireAuth, requireCollegeAdminOnly(), async (req, res) => {
+  const { data: existing } = await supabaseAdmin.from("jobs").select("institution_id").eq("id", req.params.jobId).maybeSingle()
+  if (!existing || existing.institution_id !== req.params.id) {
+    return res.status(404).json({ error: "Job not found for this institution" })
+  }
+  const updates = pickCollegeJobFields(req.body)
+  if (typeof req.body?.isActive === "boolean") { updates.active = req.body.isActive; updates.is_active = req.body.isActive }
+  const { data, error } = await supabaseAdmin.from("jobs").update(updates).eq("id", req.params.jobId).select().single()
+  if (error) return res.status(500).json({ error: error.message })
+  res.status(200).json({ job: data })
 })
 
 export default router

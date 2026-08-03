@@ -10,7 +10,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { supabase } from "../lib/supabase"
-import { orgApi, collegeApi, collegeChatApi, nexusApi } from "../lib/api"
+import { orgApi, collegeApi, collegeChatApi, nexusApi, jobsApi } from "../lib/api"
 import { verificationLevel, VERIFICATION_LEVEL_LABEL } from "../lib/orgVerification"
 import InstitutionPublicProfile from "./InstitutionPublicProfile"
 
@@ -96,6 +96,12 @@ const NAV_GROUPS = [
       // recruiter/staff, so it's admin-only automatically (those roles use
       // an explicit allow-list that doesn't include "university").
       { id: "university", label: "Campuses", mobileShow: false },
+      // 2026-08-03: colleges post job openings here (shared `jobs` table —
+      // students already see these on Launchpad, no new student feed
+      // needed). Also opens for org_type='company' accounts, showing their
+      // own account-level postings instead — same nav slot, JobsPage
+      // branches on isCollege internally.
+      { id: "jobs", label: "Jobs", mobileShow: false },
       { id: "companies", label: "Recruiter NDAs",   mobileShow: false },
     ],
   },
@@ -3706,6 +3712,239 @@ function GroupDetailPage({ institution, group, allStudents, onBack, onGoToTasks 
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// PAGE — JOBS (2026-08-03)
+// Colleges post into the shared `jobs` table (institution_id-scoped) —
+// Launchpad already reads every row there for the student feed, so a
+// college's posting appears to students automatically, no separate feed to
+// build. Company accounts (org_type='company') use the same nav slot but a
+// different, account-scoped API (jobsApi.mine/create/update) since they
+// have no institution_staff concept at all — just their own profile.
+// ═══════════════════════════════════════════════════════════════════════════════
+const JOB_TYPE_OPTIONS = ["Full-time", "Internship", "Part-time", "Contract"]
+const WORK_MODE_OPTIONS = ["On-site", "Remote", "Hybrid"]
+
+function JobsPage({ canonical, userData }) {
+  const isCollege = (userData?.org_type || "college") !== "company"
+  const institution = canonical?.institution
+  // College side: only college_admin (never placement_officer) may post/edit —
+  // matches the backend's requireCollegeAdminOnly() gate exactly. Staff below
+  // that level still see the list (read-only) since the GET route allows any
+  // active staff member.
+  const canManage = isCollege ? canonical?.role === "college_admin" : true
+
+  const [jobs, setJobs]           = useState([])
+  const [loading, setLoading]     = useState(true)
+  const [error, setError]         = useState(null)
+  const [showCreate, setShowCreate] = useState(false)
+  const [editingJob, setEditingJob] = useState(null)
+  const [form, setForm] = useState({
+    title: "", location: "", jobType: "Full-time", workMode: "On-site",
+    salaryMin: "", salaryMax: "", jdSummary: "", jdFull: "",
+  })
+  const [saving, setSaving]     = useState(false)
+  const [saveError, setSaveError] = useState(null)
+
+  const loadJobs = useCallback(async () => {
+    if (isCollege && !institution?.id) return
+    setLoading(true)
+    try {
+      const res = isCollege ? await collegeApi.listJobs(institution.id) : await jobsApi.mine()
+      setJobs(res?.jobs || [])
+      setError(null)
+    } catch (e) {
+      setError(e.message || "Could not load jobs")
+    }
+    setLoading(false)
+  }, [isCollege, institution?.id])
+
+  useEffect(() => { loadJobs() }, [loadJobs])
+
+  function resetForm() {
+    setForm({ title: "", location: "", jobType: "Full-time", workMode: "On-site", salaryMin: "", salaryMax: "", jdSummary: "", jdFull: "" })
+    setEditingJob(null)
+    setSaveError(null)
+  }
+
+  function openEdit(job) {
+    setEditingJob(job)
+    setForm({
+      title: job.title || "", location: job.location || "",
+      jobType: job.job_type || "Full-time", workMode: job.work_mode || "On-site",
+      salaryMin: job.salary_min ?? "", salaryMax: job.salary_max ?? "",
+      jdSummary: job.jd_summary || "", jdFull: job.jd_full || "",
+    })
+    setShowCreate(true)
+  }
+
+  async function saveJob() {
+    if (!form.title.trim()) { setSaveError("Title is required"); return }
+    setSaving(true); setSaveError(null)
+    const payload = {
+      title: form.title.trim(),
+      location: form.location.trim() || null,
+      job_type: form.jobType,
+      work_mode: form.workMode,
+      salary_min: form.salaryMin ? Number(form.salaryMin) : null,
+      salary_max: form.salaryMax ? Number(form.salaryMax) : null,
+      jd_summary: form.jdSummary.trim() || null,
+      jd_full: form.jdFull.trim() || null,
+    }
+    try {
+      if (editingJob) {
+        if (isCollege) await collegeApi.updateJob(institution.id, editingJob.id, payload)
+        else await jobsApi.update(editingJob.id, payload)
+      } else {
+        if (isCollege) await collegeApi.createJob(institution.id, payload)
+        else await jobsApi.create(payload)
+      }
+      setShowCreate(false)
+      resetForm()
+      await loadJobs()
+    } catch (e) {
+      setSaveError(e.message || "Could not save job")
+    }
+    setSaving(false)
+  }
+
+  async function toggleActive(job) {
+    try {
+      if (isCollege) await collegeApi.updateJob(institution.id, job.id, { isActive: !job.is_active })
+      else await jobsApi.update(job.id, { isActive: !job.is_active })
+      await loadJobs()
+    } catch (_) {}
+  }
+
+  if (isCollege && canonical?.loading && !institution) {
+    return <PageShell><PageHeader title="Jobs" sub="Post job openings for your students" /><EmptyState icon="⏳" title="Loading…" sub="" /></PageShell>
+  }
+  if (isCollege && !institution) {
+    return <PageShell><PageHeader title="Jobs" sub="Post job openings for your students" /><EmptyState icon="💼" title="No institution linked" sub="Jobs become available once your institution workspace is set up." /></PageShell>
+  }
+
+  return (
+    <PageShell>
+      <PageHeader
+        title="Jobs"
+        sub={isCollege ? "Post openings directly to your students — these appear in their job feed automatically" : "Manage your job postings"}
+      />
+
+      {canManage && (
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
+          <Btn onClick={() => { resetForm(); setShowCreate(true) }} style={{ fontSize: 12, padding: "8px 16px" }}>+ Post Job</Btn>
+        </div>
+      )}
+      {isCollege && !canManage && (
+        <div style={{ fontSize: 11.5, color: T.ink4, marginBottom: 14 }}>Only the college admin can post or edit jobs — you can view what's live below.</div>
+      )}
+
+      {error && <div style={{ color: T.red, fontSize: 12, marginBottom: 12 }}>{error}</div>}
+
+      {loading ? (
+        <EmptyState icon="⏳" title="Loading jobs…" sub="" />
+      ) : jobs.length === 0 ? (
+        <EmptyState icon="💼" title="No jobs posted yet" sub={canManage ? "Post your first opening — students will see it in their job feed." : "Nothing posted yet."} />
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
+          {jobs.map(j => (
+            <div key={j.id} style={{
+              background: "linear-gradient(180deg,rgba(255,255,255,0.052),rgba(255,255,255,0.026))",
+              border: `1px solid ${T.border}`, borderRadius: 16, padding: 16,
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>{j.title}</div>
+                <span style={{ fontSize: 10, fontWeight: 700, color: j.is_active ? T.green : T.ink4, background: j.is_active ? `${T.green}18` : "rgba(255,255,255,0.06)", padding: "3px 8px", borderRadius: 999 }}>
+                  {j.is_active ? "Live" : "Inactive"}
+                </span>
+              </div>
+              <div style={{ fontSize: 11, color: T.ink4, marginTop: 4 }}>{[j.job_type, j.work_mode, j.location].filter(Boolean).join(" · ")}</div>
+              {(j.salary_min || j.salary_max) && (
+                <div style={{ fontSize: 11, color: T.ink3, marginTop: 6 }}>
+                  ₹{j.salary_min ? `${j.salary_min}L` : "—"}{j.salary_max ? ` – ${j.salary_max}L` : ""}
+                </div>
+              )}
+              {j.jd_summary && <div style={{ fontSize: 11.5, color: T.ink3, marginTop: 8, lineHeight: 1.5 }}>{j.jd_summary}</div>}
+              {canManage && (
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+                  <Btn variant="ghost" onClick={() => openEdit(j)} style={{ fontSize: 10, padding: "3px 8px" }}>Edit</Btn>
+                  <Btn variant="ghost" onClick={() => toggleActive(j)} style={{ fontSize: 10, padding: "3px 8px", color: j.is_active ? T.red : T.green }}>
+                    {j.is_active ? "Deactivate" : "Reactivate"}
+                  </Btn>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showCreate && (
+        <Modal title={editingJob ? "Edit Job" : "Post Job"} onClose={() => { setShowCreate(false); resetForm() }} width={480}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 6 }}>Title <span style={{ color: T.red }}>*</span></label>
+              <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                placeholder="e.g. Software Engineer Intern" autoFocus
+                style={{ width: "100%", padding: "10px 12px", border: `1px solid ${T.borderM}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: "#181510", boxSizing: "border-box" }} />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 6 }}>Job Type</label>
+                <select value={form.jobType} onChange={e => setForm(f => ({ ...f, jobType: e.target.value }))}
+                  style={{ width: "100%", padding: "10px 12px", border: `1px solid ${T.borderM}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: "#181510", boxSizing: "border-box" }}>
+                  {JOB_TYPE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 6 }}>Work Mode</label>
+                <select value={form.workMode} onChange={e => setForm(f => ({ ...f, workMode: e.target.value }))}
+                  style={{ width: "100%", padding: "10px 12px", border: `1px solid ${T.borderM}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: "#181510", boxSizing: "border-box" }}>
+                  {WORK_MODE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 6 }}>Location</label>
+              <input value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))}
+                placeholder="e.g. Bengaluru, India"
+                style={{ width: "100%", padding: "10px 12px", border: `1px solid ${T.borderM}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: "#181510", boxSizing: "border-box" }} />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 6 }}>Salary Min (LPA)</label>
+                <input type="number" value={form.salaryMin} onChange={e => setForm(f => ({ ...f, salaryMin: e.target.value }))}
+                  style={{ width: "100%", padding: "10px 12px", border: `1px solid ${T.borderM}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: "#181510", boxSizing: "border-box" }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 6 }}>Salary Max (LPA)</label>
+                <input type="number" value={form.salaryMax} onChange={e => setForm(f => ({ ...f, salaryMax: e.target.value }))}
+                  style={{ width: "100%", padding: "10px 12px", border: `1px solid ${T.borderM}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: "#181510", boxSizing: "border-box" }} />
+              </div>
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 6 }}>Short Summary</label>
+              <textarea value={form.jdSummary} onChange={e => setForm(f => ({ ...f, jdSummary: e.target.value }))}
+                rows={2} placeholder="One or two lines students see on the job card"
+                style={{ width: "100%", padding: "10px 12px", border: `1px solid ${T.borderM}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: "#181510", resize: "vertical", boxSizing: "border-box" }} />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 6 }}>Full Description (optional)</label>
+              <textarea value={form.jdFull} onChange={e => setForm(f => ({ ...f, jdFull: e.target.value }))}
+                rows={4}
+                style={{ width: "100%", padding: "10px 12px", border: `1px solid ${T.borderM}`, borderRadius: 10, fontSize: 13, color: T.ink, fontFamily: FONT, outline: "none", background: "#181510", resize: "vertical", boxSizing: "border-box" }} />
+            </div>
+            {saveError && <div style={{ color: T.red, fontSize: 11 }}>{saveError}</div>}
+            <div style={{ display: "flex", justifyContent: "center", marginTop: 4 }}>
+              <Btn onClick={saveJob} disabled={saving} style={{ fontSize: 12, padding: "10px 32px" }}>
+                {saving ? "Saving…" : editingJob ? "Save Changes" : "Post Job"}
+              </Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </PageShell>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // PAGE — UNIVERSITY / MULTI-CAMPUS (2026-08-02)
 // institutions.id is unchanged everywhere else in the codebase — a
 // university_groups row just clusters several existing campus institutions
@@ -5690,6 +5929,7 @@ export default function InstitutionOS({ user, userData, onNavigate, initialPage 
     community:     <CommunityPage userData={userData} user={user} />,
     groups:        <GroupsPage canonical={canonical} onNav={onNav} />,
     university:    <UniversityPage    canonical={canonical} />,
+    jobs:          <JobsPage          canonical={canonical} userData={userData} />,
     cohorts:       <CohortsPage       members={members} />,
     events:        <EventsPage        {...shared} />,
     companies:     <CompaniesPage     user={user} userData={userData} />,
