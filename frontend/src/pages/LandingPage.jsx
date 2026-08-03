@@ -27,11 +27,12 @@ const D = {
   blue:       "#3B82F6",
 }
 
-// ─── HeroParticleField ───────────────────────────────────────────────────
-// Ambient three.js particle field for the hero background. Purely decorative
-// (pointer-events disabled), respects prefers-reduced-motion, and cleans up
-// its WebGL context on unmount so it never leaks across route/flow changes.
-function HeroParticleField() {
+// ─── PageParticleField ─────────────────────────────────────────────────
+// Ambient three.js particle field, fixed behind the entire page (not just
+// the hero). Purely decorative (pointer-events disabled), stays subtle so
+// it never fights section content for attention, respects
+// prefers-reduced-motion, and cleans up its WebGL context on unmount.
+function PageParticleField() {
   const mountRef = useRef(null)
 
   useEffect(() => {
@@ -60,12 +61,15 @@ function HeroParticleField() {
       [0.788, 0.659, 0.298], // D.gold    #C9A84C
       [0.545, 0.361, 0.965], // D.violet  #8B5CF6
     ]
-    const count = isSmallScreen ? 90 : 200
+    // Deliberately sparse — this now sits behind the ENTIRE page (fixed),
+    // not just the hero, so density/opacity are tuned down to stay ambient
+    // and never compete with section content or reduce text contrast.
+    const count = isSmallScreen ? 55 : 130
     const positions = new Float32Array(count * 3)
     const colors = new Float32Array(count * 3)
     for (let i = 0; i < count; i++) {
-      positions[i * 3]     = (Math.random() - 0.5) * 11
-      positions[i * 3 + 1] = (Math.random() - 0.5) * 7
+      positions[i * 3]     = (Math.random() - 0.5) * 13
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 8.5
       positions[i * 3 + 2] = (Math.random() - 0.5) * 6
       const c = PALETTE[i % PALETTE.length]
       colors[i * 3] = c[0]; colors[i * 3 + 1] = c[1]; colors[i * 3 + 2] = c[2]
@@ -74,10 +78,10 @@ function HeroParticleField() {
     geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3))
     geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3))
     const material = new THREE.PointsMaterial({
-      size: 0.055,
+      size: 0.05,
       vertexColors: true,
       transparent: true,
-      opacity: 0.7,
+      opacity: 0.4,
       sizeAttenuation: true,
       depthWrite: false,
     })
@@ -139,9 +143,45 @@ function HeroParticleField() {
     <div
       ref={mountRef}
       aria-hidden="true"
-      style={{ position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }}
+      style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }}
     />
   )
+}
+
+// ─── useReveal ─────────────────────────────────────────────────────────────
+// Scroll-triggered entrance hook — returns [ref, isVisible] for a section to
+// spread onto itself directly (avoids wrapping every section in an extra
+// element). Uses IntersectionObserver (no per-frame scroll-listener cost),
+// fires once per mount (unobserves itself after first intersection so it
+// never re-triggers on scroll-up), and reports visible=true immediately when
+// prefers-reduced-motion is set so motion-sensitive users see content as-is.
+function useReveal() {
+  const ref = useRef(null)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const node = ref.current
+    if (!node) return
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) {
+      setVisible(true)
+      return
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setVisible(true)
+            observer.unobserve(node)
+          }
+        })
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -60px 0px" }
+    )
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
+
+  return [ref, visible]
 }
 
 // ─── EloSparkline ──────────────────────────────────────────────────────────
@@ -219,6 +259,35 @@ function PortfolioCard({ task }) {
   )
 }
 
+// ─── FAQItem ───────────────────────────────────────────────────────────────
+function FAQItem({ q, a }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div style={{
+      background: open ? "rgba(255,87,1,0.04)" : D.glass,
+      border:`1px solid ${open ? D.orangeMid : D.border}`,
+      borderRadius:18, overflow:"hidden", backdropFilter:"blur(20px)",
+      transition:"background 200ms, border-color 200ms",
+    }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width:"100%", textAlign:"left", padding:"18px 20px", background:"none", border:"none", cursor:"pointer",
+          display:"flex", alignItems:"center", justifyContent:"space-between", gap:16, fontFamily:"inherit",
+        }}
+      >
+        <span style={{ fontSize:15, fontWeight:700, color:D.text1, lineHeight:1.4 }}>{q}</span>
+        <span style={{ color:open?D.orange:D.text3, fontSize:13, flexShrink:0, transition:"transform 200ms", transform:open?"rotate(45deg)":"rotate(0)" }}>＋</span>
+      </button>
+      {open && (
+        <div style={{ padding:"0 20px 20px" }}>
+          <div style={{ fontSize:14, color:D.text2, lineHeight:1.75 }}>{a}</div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── SectionLabel ──────────────────────────────────────────────────────────
 function SectionLabel({ children }) {
   return (
@@ -233,9 +302,11 @@ function SectionLabel({ children }) {
 function PrimaryButton({ children, onClick }) {
   return (
     <button onClick={onClick}
-      style={{ padding:"14px 22px", borderRadius:14, border:"1px solid rgba(255,87,1,0.5)", background:"linear-gradient(135deg,#FF5701,#E04800)", color:"#FFFFFF", fontSize:12, fontWeight:800, cursor:"pointer", fontFamily:"'DM Mono',monospace", letterSpacing:"0.06em", boxShadow:"0 8px 32px rgba(255,87,1,0.38), 0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.18)", transition:"all 200ms cubic-bezier(0.16,1,0.3,1)" }}
-      onMouseEnter={e => { e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow="0 14px 40px rgba(255,87,1,0.5), 0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2)" }}
-      onMouseLeave={e => { e.currentTarget.style.transform="translateY(0)"; e.currentTarget.style.boxShadow="0 8px 32px rgba(255,87,1,0.38), 0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.18)" }}
+      style={{ padding:"14px 22px", borderRadius:14, border:"1px solid rgba(255,87,1,0.5)", background:"linear-gradient(135deg,#FF5701,#E04800)", color:"#FFFFFF", fontSize:12, fontWeight:800, cursor:"pointer", fontFamily:"'DM Mono',monospace", letterSpacing:"0.06em", boxShadow:"0 8px 32px rgba(255,87,1,0.38), 0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.18)", transition:"transform 150ms cubic-bezier(0.16,1,0.3,1), box-shadow 200ms cubic-bezier(0.16,1,0.3,1)" }}
+      onMouseEnter={e => { e.currentTarget.style.transform="translateY(-2px) scale(1.015)"; e.currentTarget.style.boxShadow="0 14px 40px rgba(255,87,1,0.5), 0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2)" }}
+      onMouseLeave={e => { e.currentTarget.style.transform="translateY(0) scale(1)"; e.currentTarget.style.boxShadow="0 8px 32px rgba(255,87,1,0.38), 0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.18)" }}
+      onMouseDown={e => { e.currentTarget.style.transform="translateY(0) scale(0.97)" }}
+      onMouseUp={e => { e.currentTarget.style.transform="translateY(-2px) scale(1.015)" }}
     >{children}</button>
   )
 }
@@ -245,8 +316,10 @@ function GhostButton({ children, onClick }) {
   return (
     <button onClick={onClick}
       style={{ padding:"14px 22px", borderRadius:14, border:`1px solid ${D.border}`, background:D.glass, backdropFilter:"blur(12px)", color:D.text2, fontSize:12, fontWeight:800, cursor:"pointer", fontFamily:"'DM Mono',monospace", letterSpacing:"0.06em", transition:"all 200ms cubic-bezier(0.16,1,0.3,1)" }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor=D.orangeMid; e.currentTarget.style.color=D.orange; e.currentTarget.style.background="rgba(255,87,1,0.08)" }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor=D.border; e.currentTarget.style.color=D.text2; e.currentTarget.style.background=D.glass }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor=D.orangeMid; e.currentTarget.style.color=D.orange; e.currentTarget.style.background="rgba(255,87,1,0.08)"; e.currentTarget.style.transform="translateY(-1px)" }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor=D.border; e.currentTarget.style.color=D.text2; e.currentTarget.style.background=D.glass; e.currentTarget.style.transform="translateY(0)" }}
+      onMouseDown={e => { e.currentTarget.style.transform="translateY(0) scale(0.97)" }}
+      onMouseUp={e => { e.currentTarget.style.transform="translateY(-1px) scale(1)" }}
     >{children}</button>
   )
 }
@@ -254,17 +327,24 @@ function GhostButton({ children, onClick }) {
 // ─── PathOptionCard ────────────────────────────────────────────────────────
 function PathOptionCard({ item, isActive, onClick }) {
   const c = item.color || D.orange
+  const [hov, setHov] = useState(false)
   return (
-    <button onClick={onClick} style={{
-      textAlign:"left", padding:"14px 16px",
-      background: isActive ? `${c}12` : D.glass,
-      border:`1px solid ${isActive ? `${c}40` : D.border}`,
-      borderRadius:16, cursor:"pointer",
-      backdropFilter:"blur(16px)",
-      transition:"all 200ms cubic-bezier(0.16,1,0.3,1)",
-      fontFamily:"inherit",
-      boxShadow: isActive ? `0 8px 28px ${c}25, inset 0 1px 0 rgba(255,255,255,0.08)` : `0 2px 12px rgba(0,0,0,0.3)`,
-    }}>
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        textAlign:"left", padding:"14px 16px",
+        background: isActive ? `${c}12` : hov ? D.glassHover : D.glass,
+        border:`1px solid ${isActive ? `${c}40` : hov ? D.borderBright : D.border}`,
+        borderRadius:16, cursor:"pointer",
+        backdropFilter:"blur(16px)",
+        transition:"transform 180ms cubic-bezier(0.16,1,0.3,1), background 180ms, border-color 180ms, box-shadow 180ms",
+        fontFamily:"inherit",
+        transform: isActive ? "translateY(0)" : hov ? "translateY(-2px)" : "translateY(0)",
+        boxShadow: isActive ? `0 8px 28px ${c}25, inset 0 1px 0 rgba(255,255,255,0.08)` : hov ? `0 8px 24px rgba(0,0,0,0.35)` : `0 2px 12px rgba(0,0,0,0.3)`,
+      }}
+    >
       <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, color:isActive ? c : D.text1, marginBottom:4, fontWeight:700 }}>{item.label}</div>
       <div style={{ fontSize:11, color:isActive ? `${c}AA` : D.text3, fontWeight:600, fontFamily:"'DM Mono',monospace" }}>{item.subtitle}</div>
     </button>
@@ -274,23 +354,33 @@ function PathOptionCard({ item, isActive, onClick }) {
 // ─── FeatureCard ───────────────────────────────────────────────────────────
 function FeatureCard({ item }) {
   const [hov, setHov] = useState(false)
+  const [spot, setSpot] = useState({ x: 50, y: 50 })
   return (
     <div
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
+      onMouseMove={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect()
+        setSpot({ x: ((e.clientX - rect.left) / rect.width) * 100, y: ((e.clientY - rect.top) / rect.height) * 100 })
+      }}
       style={{
         background: hov ? D.glassHover : D.glass,
         border:`1px solid ${hov ? D.borderBright : D.border}`,
-        borderRadius:22, padding:24,
+        borderRadius:22, padding:24, position:"relative", overflow:"hidden",
         backdropFilter:"blur(24px)",
         boxShadow: hov ? `0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px ${D.borderBright}, 0 0 40px rgba(255,87,1,0.08)` : `0 4px 24px rgba(0,0,0,0.3)`,
         transform: hov ? "translateY(-4px)" : "translateY(0)",
-        transition:"all 240ms cubic-bezier(0.16,1,0.3,1)",
+        transition:"transform 240ms cubic-bezier(0.16,1,0.3,1), box-shadow 240ms cubic-bezier(0.16,1,0.3,1), background 240ms, border-color 240ms",
       }}
     >
-      <div style={{ width:46, height:46, background:"rgba(255,87,1,0.12)", border:"1px solid rgba(255,87,1,0.22)", borderRadius:14, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, marginBottom:16, boxShadow:"0 4px 16px rgba(255,87,1,0.12)" }}>{item.icon}</div>
-      <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:20, fontWeight:700, color:D.text1, marginBottom:8 }}>{item.title}</div>
-      <div style={{ fontSize:14, color:D.text2, lineHeight:1.75 }}>{item.desc}</div>
+      <div aria-hidden style={{
+        position:"absolute", inset:0, pointerEvents:"none", borderRadius:22,
+        opacity: hov ? 1 : 0, transition:"opacity 300ms ease",
+        background:`radial-gradient(280px circle at ${spot.x}% ${spot.y}%, rgba(255,87,1,0.10), transparent 60%)`,
+      }} />
+      <div style={{ width:46, height:46, background:"rgba(255,87,1,0.12)", border:"1px solid rgba(255,87,1,0.22)", borderRadius:14, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, marginBottom:16, boxShadow:"0 4px 16px rgba(255,87,1,0.12)", position:"relative" }}>{item.icon}</div>
+      <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:20, fontWeight:700, color:D.text1, marginBottom:8, position:"relative" }}>{item.title}</div>
+      <div style={{ fontSize:14, color:D.text2, lineHeight:1.75, position:"relative" }}>{item.desc}</div>
     </div>
   )
 }
@@ -298,12 +388,17 @@ function FeatureCard({ item }) {
 // ─── PathCard ──────────────────────────────────────────────────────────────
 function PathCard({ icon, title, desc, badge, badgeColor = "#FF5701", featured, onClick }) {
   const [hov, setHov] = useState(false)
+  const [spot, setSpot] = useState({ x: 50, y: 50 })
   const bColors = { "#FF5701":D.orange, purple:D.violet, green:D.green, amber:D.amber }
   const bc = bColors[badgeColor] || D.orange
   return (
     <div onClick={onClick}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
+      onMouseMove={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect()
+        setSpot({ x: ((e.clientX - rect.left) / rect.width) * 100, y: ((e.clientY - rect.top) / rect.height) * 100 })
+      }}
       style={{
         background: hov ? D.glassHover : D.glass,
         border:`1px solid ${hov || featured ? D.borderBright : D.border}`,
@@ -311,9 +406,14 @@ function PathCard({ icon, title, desc, badge, badgeColor = "#FF5701", featured, 
         backdropFilter:"blur(24px)",
         boxShadow: hov ? `0 24px 60px rgba(0,0,0,0.5), 0 0 40px rgba(255,87,1,0.08)` : featured ? `0 12px 40px rgba(0,0,0,0.4), 0 0 24px rgba(255,87,1,0.06)` : `0 4px 24px rgba(0,0,0,0.3)`,
         transform: hov ? "translateY(-3px)" : "translateY(0)",
-        transition:"all 240ms cubic-bezier(0.16,1,0.3,1)", position:"relative"
+        transition:"transform 240ms cubic-bezier(0.16,1,0.3,1), box-shadow 240ms cubic-bezier(0.16,1,0.3,1), background 240ms, border-color 240ms", position:"relative"
       }}
     >
+      <div aria-hidden style={{
+        position:"absolute", inset:0, pointerEvents:"none", borderRadius:22,
+        opacity: hov ? 1 : 0, transition:"opacity 300ms ease",
+        background:`radial-gradient(320px circle at ${spot.x}% ${spot.y}%, rgba(255,255,255,0.05), transparent 60%)`,
+      }} />
       {featured && <div style={{ position:"absolute", top:0, right:20, background:"linear-gradient(135deg,#FF5701,#E04800)", color:"#fff", fontSize:10, fontWeight:700, padding:"6px 10px", borderRadius:"0 0 10px 10px", letterSpacing:"0.12em", fontFamily:"'DM Mono',monospace", textTransform:"uppercase", boxShadow:"0 4px 14px rgba(255,87,1,0.3)" }}>Popular</div>}
       {featured && <div style={{ position:"absolute", inset:0, borderRadius:22, background:"linear-gradient(135deg, rgba(255,87,1,0.06), transparent 60%)", pointerEvents:"none" }} />}
       <div style={{ width:48, height:48, background:D.orangeDim, border:"1px solid rgba(255,87,1,0.2)", borderRadius:14, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, marginBottom:18 }}>{icon}</div>
@@ -327,20 +427,30 @@ function PathCard({ icon, title, desc, badge, badgeColor = "#FF5701", featured, 
 // ─── NetworkCard ───────────────────────────────────────────────────────────
 function NetworkCard({ item }) {
   const [hov, setHov] = useState(false)
+  const [spot, setSpot] = useState({ x: 50, y: 50 })
   return (
     <div
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
+      onMouseMove={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect()
+        setSpot({ x: ((e.clientX - rect.left) / rect.width) * 100, y: ((e.clientY - rect.top) / rect.height) * 100 })
+      }}
       style={{
         background: hov ? D.glassHover : D.glass,
         border:`1px solid ${hov ? D.borderBright : D.border}`,
-        borderRadius:20, padding:18,
+        borderRadius:20, padding:18, position:"relative", overflow:"hidden",
         backdropFilter:"blur(20px)",
         boxShadow: hov ? `0 16px 48px rgba(0,0,0,0.5), 0 0 0 1px ${D.borderBright}` : `0 4px 20px rgba(0,0,0,0.3)`,
         transform: hov ? "translateY(-3px)" : "translateY(0)",
-        transition:"all 220ms cubic-bezier(0.16,1,0.3,1)",
+        transition:"transform 220ms cubic-bezier(0.16,1,0.3,1), box-shadow 220ms cubic-bezier(0.16,1,0.3,1), background 220ms, border-color 220ms",
       }}
     >
+      <div aria-hidden style={{
+        position:"absolute", inset:0, pointerEvents:"none", borderRadius:20,
+        opacity: hov ? 1 : 0, transition:"opacity 300ms ease",
+        background:`radial-gradient(240px circle at ${spot.x}% ${spot.y}%, ${item.color}18, transparent 60%)`,
+      }} />
       <div style={{ display:"flex", gap:10, marginBottom:14 }}>
         <div style={{ width:42, height:42, borderRadius:12, background:`${item.color}18`, border:`1px solid ${item.color}30`, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'DM Sans',sans-serif", fontSize:16, color:item.color, flexShrink:0, fontWeight:700, boxShadow:`0 0 16px ${item.color}20` }}>{item.name[0]}</div>
         <div style={{ flex:1, minWidth:0 }}>
@@ -715,6 +825,15 @@ export default function LandingPage({ onGetStarted, onLogin }) {
     { name:"BITS Pilani",     role:"Premier Institution", co:"Est. 1964",      followers:"45K",   posts:67, color:D.amber,  type:"Institution" },
   ]
 
+  const FAQ_ITEMS = [
+    { q:"What actually is ELO here, and how is it different from a resume claim?", a:"It's the same rating-system idea as chess.com — a number that only moves when you complete real, scored Arena tasks. Students start at 400. It rises when you solve harder problems well, and it can drop if you're inactive for an extended stretch. Nobody can type in a higher number; there's no field for it." },
+    { q:"Is Capabilio free to start?", a:"Yes. Every path — Student, Professional, Executive (invite-only), and Organisation — has a free tier you can start on with no card required. Paid plans unlock more daily Arena tasks, AI interview sessions, and market intelligence reports; they're not required to build a verified profile." },
+    { q:"How does verification actually work for professionals?", a:"You upload a resume or LinkedIn URL and our AI extracts your career timeline and skills. Your employment history is then cross-matched against UAN/EPFO records. If something can't be verified this way, it's shown on your public profile as \"self-claimed\" rather than presented as fact — we don't hide the difference." },
+    { q:"Can recruiters or anyone else see my data without my consent?", a:"No. Your Vault (documents, certificates, offer letters) is private by default — you generate a share link and choose what's visible on it. Your public profile only ever shows what you've explicitly made public: your ELO, portfolio tasks, and verified badges." },
+    { q:"What happens if I stop doing Arena tasks for a while?", a:"Your ELO can decay if you're inactive for 7+ days, the same way a chess rating drifts without play — it's designed to reflect current skill, not a one-time score you can bank and coast on. Professionals on paid plans have access to Forge's low-effort \"Quiet Mode\" challenges specifically to prevent this without daily grinding." },
+    { q:"How is the Executive path different from LinkedIn?", a:"It's invite-only and identity-verified — you can't self-onboard. Every claim on a Legacy Profile (funding rounds, board seats, exits) is cross-checked against news and company data rather than self-reported, and the Time Market/Signal Rooms/Venture Radar are built for monetizing verified authority, not for follower-count posting." },
+  ]
+
   const PRICING = {
     student: {
       headline: <>Pick your pace.<br /><span style={{ color:D.orange, fontStyle:"italic" }}>Invest in your career.</span></>,
@@ -789,8 +908,24 @@ export default function LandingPage({ onGetStarted, onLogin }) {
     </div>
   )
 
+  // ── Scroll-reveal refs — one per below-the-fold section (hero excluded,
+  // it already animates on load via .lp-fade-up)
+  const [pathsRevealRef,    pathsVisible]    = useReveal()
+  const [problemRevealRef,  problemVisible]  = useReveal()
+  const [eloRevealRef,      eloVisible]      = useReveal()
+  const [featuresRevealRef, featuresVisible] = useReveal()
+  const [echoRevealRef,     echoVisible]     = useReveal()
+  const [portfolioRevealRef,portfolioVisible]= useReveal()
+  const [pricingRevealRef,  pricingVisible]  = useReveal()
+  const [networkRevealRef,  networkVisible]  = useReveal()
+  const [ctaRevealRef,      ctaVisible]      = useReveal()
+  const [faqRevealRef,      faqVisible]      = useReveal()
+
   return (
     <div style={{ minHeight:"100vh", background:D.bg, color:D.text1, overflowX:"hidden", fontFamily:"'DM Sans',sans-serif", position:"relative" }}>
+
+      {/* ── Global ambient particle field (whole page, fixed) ───────── */}
+      <PageParticleField />
 
       {/* ── Global ambient glow orbs ───────────────────────────────── */}
       <div aria-hidden style={{ position:"fixed", inset:0, pointerEvents:"none", zIndex:0, overflow:"hidden" }}>
@@ -810,6 +945,9 @@ export default function LandingPage({ onGetStarted, onLogin }) {
         .lp-fade-up   { animation:lpFadeUp 0.5s ease both; }
         .lp-fade-up-2 { animation:lpFadeUp 0.65s ease both; }
         @keyframes lpFadeUp { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
+        .lp-reveal { opacity:0; transform:translateY(28px); transition:opacity 0.7s cubic-bezier(0.16,1,0.3,1), transform 0.7s cubic-bezier(0.16,1,0.3,1); }
+        .lp-reveal.visible { opacity:1; transform:translateY(0); }
+        @media (prefers-reduced-motion: reduce) { .lp-reveal { opacity:1; transform:none; transition:none; } }
         @media (max-width:1024px) { .lp-grid-hero,.lp-grid-2,.lp-grid-3,.lp-grid-4 { grid-template-columns:1fr; } }
         @media (max-width:720px)  { .lp-container { padding-left:18px; padding-right:18px; } }
 
@@ -861,8 +999,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       </nav>
 
       {/* ── HERO ────────────────────────────────────────────────────── */}
-      <section style={{ padding:"72px 0 88px", position:"relative", overflow:"hidden" }}>
-        <HeroParticleField />
+      <section style={{ padding:"72px 0 88px", position:"relative" }}>
         <div className="lp-container">
           <div className="lp-grid-hero">
             <div className="lp-fade-up">
@@ -916,7 +1053,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       </section>
 
       {/* ── PATHS ───────────────────────────────────────────────────── */}
-      <section id="how-it-works" style={{ padding:"10px 0 88px" }}>
+      <section id="how-it-works" ref={pathsRevealRef} className={`lp-reveal${pathsVisible?" visible":""}`} style={{ padding:"10px 0 88px", background:`radial-gradient(60% 320px at 50% 0%, ${flow.color}0F, transparent 70%)` }}>
         <div className="lp-container">
           <div style={{ textAlign:"center", marginBottom:40 }}>
             <SectionLabel>Choose your path</SectionLabel>
@@ -934,7 +1071,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       </section>
 
       {/* ── PROBLEM ─────────────────────────────────────────────────── */}
-      <section style={{ padding:"0 0 88px" }}>
+      <section ref={problemRevealRef} className={`lp-reveal${problemVisible?" visible":""}`} style={{ padding:"0 0 88px", background:"radial-gradient(50% 300px at 85% 0%, rgba(220,38,38,0.05), transparent 70%)" }}>
         <div className="lp-container">
           <div style={{ background:D.glass, border:`1px solid ${D.border}`, borderRadius:30, padding:"38px 26px", backdropFilter:"blur(24px)", boxShadow:`0 24px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)` }}>
             <div style={{ textAlign:"center", marginBottom:36 }}>
@@ -957,7 +1094,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       </section>
 
       {/* ── ELO ─────────────────────────────────────────────────────── */}
-      <section style={{ padding:"0 0 88px" }}>
+      <section ref={eloRevealRef} className={`lp-reveal${eloVisible?" visible":""}`} style={{ padding:"0 0 88px", background:"radial-gradient(55% 340px at 15% 40%, rgba(255,87,1,0.06), transparent 70%)" }}>
         <div className="lp-container">
           <div className="lp-grid-2" style={{ alignItems:"center" }}>
             <div>
@@ -1003,7 +1140,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       </section>
 
       {/* ── FEATURES ────────────────────────────────────────────────── */}
-      <section style={{ padding:"0 0 88px" }}>
+      <section ref={featuresRevealRef} className={`lp-reveal${featuresVisible?" visible":""}`} style={{ padding:"0 0 88px", background:`radial-gradient(55% 340px at 85% 20%, ${flow.color}0C, transparent 70%)` }}>
         <div className="lp-container">
           <div style={{ textAlign:"center", marginBottom:40 }}>
             <SectionLabel>Platform modules</SectionLabel>
@@ -1043,7 +1180,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
           the demo runs generic product narration with no profile photo
           (EchoPitchDemoPlayer only draws a portrait when avatarUrl is
           passed — see its header comment). */}
-      <section style={{ padding:"0 0 88px" }}>
+      <section ref={echoRevealRef} className={`lp-reveal${echoVisible?" visible":""}`} style={{ padding:"0 0 88px" }}>
         <div className="lp-container">
           <div style={{ background:"radial-gradient(circle at 20% 15%, rgba(0,210,255,0.08), rgba(3,3,8,0) 55%)",
             border:"1px solid rgba(255,255,255,0.1)", borderRadius:30, padding:"44px 30px",
@@ -1075,7 +1212,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       </section>
 
       {/* ── PORTFOLIO / PATH-SPECIFIC PROOF ─────────────────────────── */}
-      <section style={{ padding:"0 0 88px" }}>
+      <section ref={portfolioRevealRef} className={`lp-reveal${portfolioVisible?" visible":""}`} style={{ padding:"0 0 88px" }}>
         <div className="lp-container">
           {activeFlow==="executive" ? (
             <div style={{ background:`linear-gradient(135deg, rgba(201,168,76,0.06), rgba(3,3,8,0) 60%)`, border:`1px solid rgba(201,168,76,0.2)`, borderRadius:30, padding:"38px 26px", backdropFilter:"blur(24px)", boxShadow:`0 24px 80px rgba(0,0,0,0.5), 0 0 60px rgba(201,168,76,0.06)` }}>
@@ -1128,7 +1265,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       </section>
 
       {/* ── PRICING ─────────────────────────────────────────────────── */}
-      <section style={{ padding:"0 0 88px" }}>
+      <section ref={pricingRevealRef} className={`lp-reveal${pricingVisible?" visible":""}`} style={{ padding:"0 0 88px", background:`radial-gradient(55% 340px at 50% 0%, ${({student:D.orange,professional:D.violet,executive:D.gold,institution:D.amber})[pricingFlow]}0C, transparent 70%)` }}>
         <div className="lp-container">
           <div style={{ textAlign:"center", marginBottom:44 }}>
             <SectionLabel>Pricing</SectionLabel>
@@ -1238,7 +1375,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       </section>
 
       {/* ── NETWORK ─────────────────────────────────────────────────── */}
-      <section style={{ padding:"0 0 88px" }}>
+      <section ref={networkRevealRef} className={`lp-reveal${networkVisible?" visible":""}`} style={{ padding:"0 0 88px", background:"radial-gradient(55% 340px at 15% 20%, rgba(201,168,76,0.05), transparent 70%)" }}>
         <div className="lp-container">
           <div style={{ textAlign:"center", marginBottom:36 }}>
             <SectionLabel>Executive network</SectionLabel>
@@ -1251,7 +1388,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       </section>
 
       {/* ── FINAL CTA ───────────────────────────────────────────────── */}
-      <section style={{ padding:"0 0 88px" }}>
+      <section ref={ctaRevealRef} className={`lp-reveal${ctaVisible?" visible":""}`} style={{ padding:"0 0 88px" }}>
         <div className="lp-container">
           <div style={{
             background:"linear-gradient(135deg, rgba(255,87,1,0.12), rgba(3,3,8,0.95) 50%, rgba(139,92,246,0.08))",
@@ -1275,6 +1412,19 @@ export default function LandingPage({ onGetStarted, onLogin }) {
                 <span key={i} style={{ fontSize:12, color:D.text3, fontWeight:700, fontFamily:"'DM Mono',monospace", letterSpacing:"0.02em" }}>✓ {f}</span>
               ))}
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── FAQ ─────────────────────────────────────────────────────── */}
+      <section ref={faqRevealRef} className={`lp-reveal${faqVisible?" visible":""}`} style={{ padding:"0 0 88px", background:"radial-gradient(50% 300px at 50% 0%, rgba(255,87,1,0.05), transparent 70%)" }}>
+        <div className="lp-container" style={{ maxWidth:820 }}>
+          <div style={{ textAlign:"center", marginBottom:36 }}>
+            <SectionLabel>Frequently asked</SectionLabel>
+            <h2 style={{ fontSize:"clamp(28px,4.5vw,44px)", lineHeight:1.08, color:D.text1, marginBottom:12, letterSpacing:"-0.04em", fontWeight:800 }}>Questions people<br /><span style={{ color:D.orange, fontStyle:"italic" }}>actually ask.</span></h2>
+          </div>
+          <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+            {FAQ_ITEMS.map((item,i) => <FAQItem key={i} q={item.q} a={item.a} />)}
           </div>
         </div>
       </section>
