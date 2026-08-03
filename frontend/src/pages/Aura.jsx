@@ -2827,6 +2827,14 @@ function CertBadge({ c }) {
 }
 
 // ─── Education Panel ───────────────────────────────────────────────────────────
+// Redesigned 2026-08-03 as a genuine vertical timeline (matching the visual
+// grammar CareerTimeline already established — gradient node + connecting
+// line + shadowed card — but in an emerald palette so Education and Career
+// stay visually distinct from each other, not a copy). The entry tagged
+// _source==="profile" is the one SettingsPanel.jsx's ProfileSection keeps in
+// sync with profiles.college whenever the student edits their college name
+// there — shown with a distinct "🏫 Current College" pill so it reads as
+// the authoritative, always-up-to-date entry rather than one more manual row.
 function EducationPanel({ education, onSave }) {
   const [items, setItems] = useState(education||[])
   const [editing, setEditing] = useState(null)
@@ -2844,6 +2852,10 @@ function EducationPanel({ education, onSave }) {
   }
 
   const inp = {width:"100%",padding:"8px 11px",border:`1px solid ${T.border}`,borderRadius:8,background:"#FAF7F2",color:T.ink,fontSize:13,outline:"none",boxSizing:"border-box",marginTop:4}
+  // Most-recent-first isn't meaningful without real dates on every entry, but
+  // the profile-synced "current college" entry should always lead the
+  // timeline — it's the one thing guaranteed to be live and accurate.
+  const ordered = [...items].sort((a,b)=>(a?._source==="profile"?-1:0)-(b?._source==="profile"?-1:0))
 
   return (
     <Card style={{marginBottom:20}}>
@@ -2851,7 +2863,7 @@ function EducationPanel({ education, onSave }) {
         <SectionLabel color="#1A7A4A">🎓 Education</SectionLabel>
         <button onClick={openNew} style={{padding:"6px 14px",background:"#FF5701",color:"#fff",border:"none",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>+ Add Education</button>
       </div>
-      <p style={{fontSize:12,color:T.ink3,margin:"0 0 14px"}}>Degrees, diplomas, and schooling — auto-filled from your resume, or add manually.</p>
+      <p style={{fontSize:12,color:T.ink3,margin:"0 0 14px"}}>Your college auto-syncs here from Settings — add other degrees, diplomas, or schooling manually.</p>
 
       {editing!==null&&(
         <div style={{background:"#FAF7F2",border:`1.5px solid ${T.border}`,borderRadius:12,padding:"16px",marginBottom:14}}>
@@ -2868,27 +2880,67 @@ function EducationPanel({ education, onSave }) {
         </div>
       )}
 
-      {items.length===0&&editing===null&&(
-        <div style={{textAlign:"center",padding:"20px 16px",color:T.ink4,fontSize:13,border:`1.5px dashed ${T.border}`,borderRadius:10}}>
-          No education yet — upload a resume or add your degree manually
+      {ordered.length===0&&editing===null&&(
+        <div style={{textAlign:"center",padding:"36px 20px"}}>
+          <div style={{width:56,height:56,borderRadius:14,background:"linear-gradient(135deg,#E9FBF3 0%,#F0FFF8 100%)",border:"1.5px solid rgba(16,185,129,0.16)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,margin:"0 auto 14px"}}>🎓</div>
+          <div style={{fontSize:13,color:T.ink4}}>No education yet — set your college in Settings, or add a degree manually</div>
         </div>
       )}
-      {items.map((ed,i)=>(
-        <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderBottom:i<items.length-1?`1px solid ${T.border}`:"none"}}>
-          <span style={{fontSize:20}}>🎓</span>
-          <div style={{flex:1}}>
-            <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-              <div style={{fontSize:13,fontWeight:700,color:T.ink}}>{ed.institution||"Institution"}</div>
-              {ed._source==="resume"&&<CertBadge c={ed}/>}
+      {ordered.map((ed,i)=>{
+        const isCurrent = ed._source==="profile"
+        const initial = (ed.institution||"?").charAt(0).toUpperCase()
+        return (
+          <div key={i} style={{display:"flex",gap:0}}>
+            {/* Left: gradient node + connecting line */}
+            <div style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",width:56,paddingTop:2}}>
+              <div style={{
+                width:44,height:44,borderRadius:12,
+                background:isCurrent
+                  ? "linear-gradient(135deg,#10B981 0%,#34D399 100%)"
+                  : "linear-gradient(135deg,#E9FBF3 0%,#F0FFF8 100%)",
+                border:isCurrent ? "none" : "1.5px solid rgba(16,185,129,0.18)",
+                display:"flex",alignItems:"center",justifyContent:"center",
+                fontSize:16,fontWeight:900,
+                color:isCurrent ? "#fff" : T.green,
+                fontFamily:"'DM Sans',serif",
+                boxShadow:isCurrent ? "0 3px 12px rgba(16,185,129,0.35)" : "0 2px 8px rgba(16,185,129,0.10)",
+                flexShrink:0,
+              }}>
+                {isCurrent ? "🏫" : initial}
+              </div>
+              {i<ordered.length-1&&<div style={{width:2,flex:1,background:"linear-gradient(to bottom, rgba(16,185,129,0.20) 0%, rgba(16,185,129,0.04) 100%)",marginTop:6,minHeight:28,borderRadius:2}}/>}
             </div>
-            <div style={{fontSize:11,color:T.ink4}}>{[ed.degree,ed.field].filter(Boolean).join(" · ")}{ed.year?` · ${ed.year}`:""}</div>
+
+            {/* Right: card */}
+            <div style={{flex:1,paddingLeft:16,paddingBottom:i<ordered.length-1?24:4}}>
+              <div style={{
+                background:isCurrent ? "linear-gradient(135deg,#F0FFF8 0%,#FAFFFC 100%)" : "#FAFAFE",
+                border:`1.5px solid ${isCurrent ? "rgba(16,185,129,0.22)" : "rgba(16,185,129,0.12)"}`,
+                borderRadius:14,padding:"14px 16px",
+                boxShadow:isCurrent ? "0 3px 14px rgba(16,185,129,0.10)" : "0 2px 12px rgba(16,185,129,0.05)",
+              }}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
+                  <div>
+                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:3}}>
+                      <span style={{fontFamily:"'DM Sans',serif",fontSize:15,fontWeight:700,color:T.ink}}>{ed.institution||"Institution"}</span>
+                      {isCurrent && <span style={{display:"inline-flex",alignItems:"center",gap:3,padding:"2px 9px",borderRadius:100,background:T.green2,color:T.green,fontSize:10,fontWeight:700,fontFamily:"'DM Mono',monospace",letterSpacing:"0.06em",textTransform:"uppercase"}}>● CURRENT COLLEGE</span>}
+                      {ed._source==="resume"&&<CertBadge c={ed}/>}
+                    </div>
+                    <div style={{fontSize:11,color:T.ink4,fontFamily:"'DM Mono',monospace",letterSpacing:"0.02em"}}>
+                      {[ed.degree,ed.field].filter(Boolean).join(" · ")}{ed.year?` · ${ed.year}`:""}
+                      {!ed.degree && !ed.field && !ed.year && isCurrent && "Synced from Settings — add degree details anytime"}
+                    </div>
+                  </div>
+                  <div style={{display:"flex",gap:6,flexShrink:0}}>
+                    <button onClick={()=>openEdit(items.indexOf(ed))} style={{padding:"4px 10px",fontSize:11,border:"1px solid rgba(16,185,129,0.18)",borderRadius:6,background:"rgba(16,185,129,0.06)",color:T.green,cursor:"pointer",fontWeight:700}}>Edit</button>
+                    {!isCurrent && <button onClick={()=>del(items.indexOf(ed))} style={{padding:"4px 10px",fontSize:11,border:"none",background:"rgba(220,38,38,0.07)",color:"#DC2626",borderRadius:6,cursor:"pointer"}}>✕</button>}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-          <div style={{display:"flex",gap:6}}>
-            <button onClick={()=>openEdit(i)} style={{padding:"4px 10px",fontSize:11,border:`1px solid ${T.border}`,borderRadius:6,background:"transparent",color:T.ink3,cursor:"pointer"}}>Edit</button>
-            <button onClick={()=>del(i)} style={{padding:"4px 10px",fontSize:11,border:"none",background:"rgba(220,38,38,0.07)",color:"#DC2626",borderRadius:6,cursor:"pointer"}}>✕</button>
-          </div>
-        </div>
-      ))}
+        )
+      })}
     </Card>
   )
 }

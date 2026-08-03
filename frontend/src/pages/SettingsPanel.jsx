@@ -273,14 +273,35 @@ function InfoBox({ icon, text, color=T.blue, bg=T.blue2 }) {
   )
 }
 
+// 2026-08-03: whenever a student updates their college name here, it also
+// upserts a matching entry (tagged _source:"profile") into userData.education
+// — the same array Aura's EducationPanel timeline renders — so the two
+// never diverge. Never touches resume-imported or manually-added degree
+// entries; only owns the single "profile"-tagged slot. Clearing the field
+// removes that entry rather than leaving a blank one in the timeline.
+function upsertProfileEducation(existingEducation, collegeName) {
+  const list = Array.isArray(existingEducation) ? existingEducation : []
+  const trimmed = (collegeName || "").trim()
+  const idx = list.findIndex(e => e?._source === "profile")
+  if (!trimmed) {
+    if (idx === -1) return list
+    const next = [...list]; next.splice(idx, 1); return next
+  }
+  const entry = { ...(idx !== -1 ? list[idx] : {}), institution: trimmed, _source: "profile" }
+  if (idx === -1) return [...list, entry]
+  const next = [...list]; next[idx] = entry; return next
+}
+
 // ── Section: Profile ──────────────────────────────────────────────────────────
 function ProfileSection({ userData, save, setUserData }) {
+  const isStudent = userData?.path === "student"
   const [form, setForm] = useState({
     displayName: userData?.displayName || userData?.display_name || "",
     headline:    userData?.headline || "",
     bio:         userData?.bio || "",
     location:    userData?.location || "",
     website:     userData?.website || "",
+    college:     userData?.college || "",
   })
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -297,6 +318,10 @@ function ProfileSection({ userData, save, setUserData }) {
         bio:         form.bio,
         location:    form.location,
         website:     form.website,
+      }
+      if (isStudent) {
+        patch.college = form.college.trim()
+        patch.education = upsertProfileEducation(userData?.education, form.college)
       }
       if (save) await save(patch)
       if (setUserData) setUserData(d => ({ ...d, ...patch }))
@@ -341,6 +366,14 @@ function ProfileSection({ userData, save, setUserData }) {
           </div>
         </div>
       </Card>
+
+      {isStudent && (
+        <Card style={{ marginBottom:14 }}>
+          <FieldLabel>College / University</FieldLabel>
+          <Input value={form.college} onChange={f("college")} placeholder="e.g. VIT Vellore" />
+          <div style={{ marginTop:3, fontSize:11, color:T.ink4 }}>Updates here also show up in your Education timeline on the Aura dashboard automatically.</div>
+        </Card>
+      )}
 
       <InfoBox
         icon="🖼️"
