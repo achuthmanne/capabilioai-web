@@ -603,7 +603,7 @@ function AuthModal({ show, onClose, mode, setMode }) {
           {/* Left panel */}
           <div style={{ flex:"0 0 36%", background: pm ? pm.bg : "#F6F6F1", display:"flex", flexDirection:"column", justifyContent:"space-between", padding:"36px 28px", borderRight:"1px solid #E8E3DA" }}>
             <div>
-              <div style={{ fontFamily:"'DM Sans',serif", fontSize:22, fontWeight:800, color:"#1A1714", marginBottom:16 }}>Capabilio AI</div>
+              <img src="/capabilio-logo-dark.png" alt="Capabilio AI" style={{ height:24, width:"auto", display:"block", marginBottom:16 }} />
               {pm && (
                 <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:"#fff", border:`1px solid ${accent}30`, borderRadius:999, padding:"6px 14px", marginBottom:16 }}>
                   <span style={{ fontSize:14 }}>{pm.icon}</span>
@@ -1354,9 +1354,7 @@ function App() {
         boxShadow: "0 1px 8px rgba(0,0,0,0.05)",
         gap: 12,
       }}>
-        <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 18, fontWeight: 800, color: "#1A1714", letterSpacing: "-0.3px", flexShrink: 0 }}>
-          Capabilio <span style={{ color: navAccent, fontStyle: "italic" }}>AI</span>
-        </span>
+        <img src="/capabilio-logo-dark.png" alt="Capabilio AI" style={{ height: 22, width: "auto", display: "block", flexShrink: 0 }} />
 
         {(navPath === "student" || navPath === "authority" || navPath === "professional") && (
           <nav style={{ display: "flex", alignItems: "center", gap: 2, flex: 1, justifyContent: "flex-start", marginLeft: 8, overflowX: "auto" }}>

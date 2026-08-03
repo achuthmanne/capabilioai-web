@@ -2584,13 +2584,12 @@ export default function Portfolio({ username: usernameProp }) {
 
         {/* Footer */}
         <div style={{textAlign:"center",padding:"20px 0",borderTop:`1px solid ${C.border}`}}>
-          <div style={{fontSize:12,color:C.ink4}}>
+          <div style={{fontSize:12,color:C.ink4,display:"flex",alignItems:"center",justifyContent:"center",gap:6,flexWrap:"wrap"}}>
             Powered by{" "}
-            <a href="https://capabilio.online" target="_blank" rel="noreferrer"
-              style={{color:C.blue,fontWeight:700,textDecoration:"none"}}>
-              Capabilio AI
+            <a href="https://capabilio.online" target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center"}}>
+              <img src="/capabilio-logo-light.png" alt="Capabilio AI" style={{height:14,width:"auto",display:"block"}} />
             </a>
-            {ud.createdAt&&<span style={{marginLeft:10}}>· Member since {fmt(ud.createdAt)}</span>}
+            {ud.createdAt&&<span>· Member since {fmt(ud.createdAt)}</span>}
           </div>
         </div>
       </div>

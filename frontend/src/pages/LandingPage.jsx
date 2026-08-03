@@ -259,6 +259,24 @@ function PortfolioCard({ task }) {
   )
 }
 
+// ─── TrustBadge ────────────────────────────────────────────────────────────
+// Text/icon badges only — deliberately NOT scraped/hotlinked government
+// emblem images (Startup India / Udyam / MCA marks include protected
+// government insignia with usage restrictions we can't verify from here).
+// If official badge artwork from the company's own registration dashboard
+// is dropped into frontend/public later, swap the icon span for an <img>.
+function TrustBadge({ icon, label, sub }) {
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:10, background:D.glass, border:`1px solid ${D.border}`, borderRadius:14, padding:"10px 16px", backdropFilter:"blur(12px)" }}>
+      <span style={{ fontSize:18, flexShrink:0 }}>{icon}</span>
+      <div>
+        <div style={{ fontSize:12, fontWeight:800, color:D.text1, letterSpacing:"0.02em" }}>{label}</div>
+        {sub && <div style={{ fontSize:10, color:D.text3, fontFamily:"'DM Mono',monospace", marginTop:1 }}>{sub}</div>}
+      </div>
+    </div>
+  )
+}
+
 // ─── FAQItem ───────────────────────────────────────────────────────────────
 function FAQItem({ q, a }) {
   const [open, setOpen] = useState(false)
@@ -978,9 +996,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       {/* ── NAV ─────────────────────────────────────────────────────── */}
       <nav style={{ position:"sticky", top:0, zIndex:50, background:"rgba(3,3,8,0.82)", backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", borderBottom:`1px solid ${D.border}` }}>
         <div className="lp-container" style={{ minHeight:68, display:"flex", alignItems:"center", justifyContent:"space-between", gap:16, flexWrap:"wrap", paddingTop:10, paddingBottom:10 }}>
-          <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:22, fontWeight:800, color:D.text1, letterSpacing:"-0.03em" }}>
-            Capabilio <span style={{ color:D.orange }}>AI</span>
-          </div>
+          <img src="/capabilio-logo-light.png" alt="Capabilio AI" style={{ height:28, width:"auto", display:"block" }} />
 
           {/* ── Live user count pill ────────────── */}
           <div style={{ display:"flex", alignItems:"center", gap:8, background:"rgba(22,163,74,0.08)", border:"1px solid rgba(22,163,74,0.22)", borderRadius:999, padding:"7px 14px", backdropFilter:"blur(12px)" }}>
@@ -1429,10 +1445,24 @@ export default function LandingPage({ onGetStarted, onLogin }) {
         </div>
       </section>
 
+      {/* ── TRUST / COMPLIANCE BADGES ─────────────────────────────────
+          Capabilio Ventures Private Limited — real, held registrations
+          (confirmed by the founder). Deliberately shown as plain labels
+          with no certificate/registration numbers and no copied government
+          emblem artwork, since we can't verify those specific numbers or
+          image-usage rights from here. */}
+      <section style={{ padding:"0 0 44px" }}>
+        <div className="lp-container" style={{ display:"flex", flexWrap:"wrap", gap:12, justifyContent:"center" }}>
+          <TrustBadge icon="🚀" label="DPIIT Recognised" sub="Startup India" />
+          <TrustBadge icon="🏭" label="Udyam Registered" sub="MSME, Govt. of India" />
+          <TrustBadge icon="🏛️" label="MCA Incorporated" sub="Ministry of Corporate Affairs" />
+        </div>
+      </section>
+
       {/* ── FOOTER ──────────────────────────────────────────────────── */}
       <footer style={{ borderTop:`1px solid ${D.border}`, padding:"28px 0 44px" }}>
         <div className="lp-container" style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
-          <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:20, fontWeight:700, color:D.text1 }}>Capabilio <span style={{ color:D.orange }}>AI</span></div>
+          <img src="/capabilio-logo-light.png" alt="Capabilio AI" style={{ height:22, width:"auto", display:"block" }} />
           <div style={{ fontSize:12, color:D.text3, fontFamily:"'DM Mono',monospace", textAlign:"center" }}>
             Hiring team?{" "}
             <a href="https://recruiter.capabilio.online" target="_blank" rel="noopener noreferrer" style={{ color:D.orange, textDecoration:"none", fontWeight:700 }}>

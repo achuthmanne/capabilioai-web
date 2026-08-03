@@ -4465,9 +4465,7 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
         <div style={{ width: 216, background: "#111110", display: "flex", flexDirection: "column", flexShrink: 0, height: "100%", overflow: "hidden", borderRight: "1px solid rgba(0,0,0,0.02)" }}>
           {/* Logo + Domain */}
           <div style={{ padding: "16px 14px 12px", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-            <div style={{ fontSize: 15, fontWeight: 800, color: "#fff", letterSpacing: "-0.3px" }}>
-              Capabilio <span style={{ color: domain.color }}>AI</span>
-            </div>
+            <img src="/capabilio-logo-light.png" alt="Capabilio AI" style={{ height: 20, width: "auto", display: "block" }} />
             <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8, padding: "7px 9px", background: `${domain.color}1A`, borderRadius: 7, border: `1px solid ${domain.color}30` }}>
               <span style={{ fontSize: 16 }}>{domain.icon}</span>
               <div>
