@@ -287,6 +287,11 @@ function AuthModal({ show, onClose, mode, setMode }) {
   const [loading,  setLoading]  = useState(false)
 
   const selectedPath = (() => { try { return localStorage.getItem("capabilio_selected_path") } catch { return null } })()
+  // 2026-08-03: Student/Job Seeker split — set by AccountType.jsx only when
+  // selectedPath==="student". Job seekers skip the college/branch
+  // requirement below (they may not currently be enrolled anywhere).
+  const studentStage = (() => { try { return localStorage.getItem("capabilio_student_stage") } catch { return null } })()
+  const isJobSeeker = (!selectedPath || selectedPath === "student") && studentStage === "job_seeker"
   const pw = pwStrength(password)
 
   useEffect(() => {
@@ -342,9 +347,15 @@ function AuthModal({ show, onClose, mode, setMode }) {
           signupMeta = { ...signupMeta, institution_name: instName.trim(), institution_type: instType, city: instCity.trim(), website: instWebsite.trim(), admin_name: fullName, path: "institution" }
         } else {
           // Student (default)
-          if (!college.trim()) { setError("College name is required");  setLoading(false); return }
-          if (!branch)         { setError("Please select your branch"); setLoading(false); return }
-          signupMeta = { ...signupMeta, college: college.trim(), branch, path: "student" }
+          if (!isJobSeeker) {
+            if (!college.trim()) { setError("College name is required");  setLoading(false); return }
+            if (!branch)         { setError("Please select your branch"); setLoading(false); return }
+          }
+          signupMeta = {
+            ...signupMeta,
+            college: college.trim(), branch, path: "student",
+            ...(studentStage ? { student_stage: studentStage } : {}),
+          }
         }
 
         const { data, error: signUpError } = await supabase.auth.signUp({
@@ -408,6 +419,7 @@ function AuthModal({ show, onClose, mode, setMode }) {
     if (selectedPath === "professional") return !!(base && company && jobTitle)
     if (selectedPath === "executive")    return !!(base && orgName && execTitle)
     if (selectedPath === "institution")  return !!(base && instName && instCity)
+    if (isJobSeeker) return !!base
     return !!(base && college && branch)
   })() : !!(email && password)
 
@@ -528,12 +540,17 @@ function AuthModal({ show, onClose, mode, setMode }) {
           {inp(first, setFirst, "text", "First name")}
           {inp(last,  setLast,  "text", "Last name")}
         </div>
+        {isJobSeeker && (
+          <div style={{ fontSize:11.5, color:"#4B5563", marginTop:-4, marginBottom:2 }}>
+            Optional for job seekers — add your most recent college if you'd like it on your profile.
+          </div>
+        )}
         <CollegeAutocomplete value={college} setValue={setCollege} accent={accent} inputStyle={inputStyle} setError={setError} disabled={collegeLocked} />
         <select value={branch} onChange={e=>{setBranch(e.target.value);setError("")}} disabled={branchLocked}
           style={{ ...inputStyle, color: branch ? "#1A1714" : "#A8A29E", ...(branchLocked ? { background: "#F0EEE9", cursor: "not-allowed" } : {}) }}
           onFocus={e=>{ if (!branchLocked) e.target.style.borderColor=accent }}
           onBlur={e=>e.target.style.borderColor="#E8E3DA"}>
-          <option value="">Select your branch / stream</option>
+          <option value="">{isJobSeeker ? "Select your branch / stream (optional)" : "Select your branch / stream"}</option>
           <optgroup label="IT / CS Streams">
             <option value="CSE">Computer Science Engineering (CSE)</option>
             <option value="IT">Information Technology (IT)</option>
@@ -1146,8 +1163,17 @@ function App() {
       <>
         {appStage === "accountType" ? (
           <AccountType
-            onSelect={type => {
-              try { localStorage.setItem("capabilio_selected_path", type) } catch {}
+            onSelect={(type, extra) => {
+              try {
+                localStorage.setItem("capabilio_selected_path", type)
+                // 2026-08-03: Student/Job Seeker split — extra.studentStage is
+                // only ever set when type==="student". Stored under its own
+                // key (not overloading capabilio_selected_path) so Onboarding
+                // can read it independently; cleared alongside the path key
+                // once onboarding consumes it (see Onboarding.jsx).
+                if (extra?.studentStage) localStorage.setItem("capabilio_student_stage", extra.studentStage)
+                else localStorage.removeItem("capabilio_student_stage")
+              } catch {}
               setAuthMode("signup"); setShowAuth(true)
             }}
             onLogin={() => { setAuthMode("login"); setShowAuth(true) }}
@@ -1358,6 +1384,14 @@ function App() {
         )}
 
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          {/* 2026-08-03: Student/Job Seeker split — light framing chip only,
+              does not gate any page/route (that's handled elsewhere: College
+              tab visibility, self-link, Arena prompt tone). */}
+          {navPath === "student" && userData?.studentStage === "job_seeker" && (
+            <div style={{ padding: "4px 10px", background: "#FFF1E8", border: `1px solid ${navAccent}30`, borderRadius: 100, fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 700, color: navAccent, letterSpacing: "0.02em" }}>
+              🎯 Job Seeker
+            </div>
+          )}
           {!isAuthority && navPath === "professional" && proNavElo ? (
             <div style={{ padding: "4px 10px", background: `${navAccent}10`, border: `1px solid ${navAccent}30`, borderRadius: 100, fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 700, color: navAccent }}>
               ELO {(proNavElo.overall_elo ?? proNavElo.elo).toLocaleString()}

@@ -133,7 +133,7 @@ async function callDailyAPI(serverUrl, payload) {
   throw new Error("No valid mission in response")
 }
 
-async function fetchMissions({ keyword, domainKey, eloRating, skillGraph, weakAreas, path, skillCoverage, recentSkills, slotIndex, completedMissions }, retries = 1) {
+async function fetchMissions({ keyword, domainKey, eloRating, skillGraph, weakAreas, path, studentStage, skillCoverage, recentSkills, slotIndex, completedMissions }, retries = 1) {
   const safeGraph = (skillGraph || []).map(n => ({ label: String(n.label || ""), value: Number(n.value || 50) }))
   const payload   = {
     keyword:          keyword || "Software Development",
@@ -142,6 +142,7 @@ async function fetchMissions({ keyword, domainKey, eloRating, skillGraph, weakAr
     skillGraph:       safeGraph,
     weakAreas:        (weakAreas || []).map(String),
     path:             path || "student",
+    studentStage:     studentStage || null,
     completedTopics:  [],
     skillCoverage:    skillCoverage || {},
     recentSkills:     (recentSkills || []).map(String),
@@ -307,10 +308,12 @@ export function useArenaMissions() {
     const weakAreas  = ud?.skill_gaps || ud?.weak_areas || []
     const skillGraph = ud?.skill_graph || []
     const path       = ud?.path || ud?.path_type || "student"
+    // 2026-08-03: Student/Job Seeker split — only meaningful when path is student.
+    const studentStage = ud?.student_stage || ud?.studentStage || null
     const recentSkills      = await loadRecentSkills(u.id)
     const completedMissions = await loadCompletedMissions(u.id)
 
-    const { mission, error: fetchError } = await fetchMissions({ keyword, domainKey, eloRating, skillGraph, weakAreas, path, skillCoverage: coverage, recentSkills, slotIndex: idx, completedMissions })
+    const { mission, error: fetchError } = await fetchMissions({ keyword, domainKey, eloRating, skillGraph, weakAreas, path, studentStage, skillCoverage: coverage, recentSkills, slotIndex: idx, completedMissions })
     const slot = mission
       // domainKey MUST be stamped here — reconcileSlots' stale-domain check
       // (s.task.domainKey !== userDomain) reads this field to auto-invalidate

@@ -586,8 +586,15 @@ export async function resolveDomainContext(genModel, domainKey, keyword) {
 }
 
 // ── Build a domain-aware prompt ───────────────────────────────────────────────
-function buildDomainPrompt({ ctx, domainKey, keyword, difficulty, weakAreas, eloGain, avoidSkills, path, completedMissions, eloRating }) {
+function buildDomainPrompt({ ctx, domainKey, keyword, difficulty, weakAreas, eloGain, avoidSkills, path, completedMissions, eloRating, studentStage }) {
   const isStudent = path === "student"
+  // 2026-08-03: Student/Job Seeker split. A job seeker is actively
+  // interviewing, not learning fundamentals — the "keep it simple, one
+  // skill only" beginner framing below is right for someone still enrolled,
+  // but undersells a job seeker's actual hiring bar. Does not touch ELO/
+  // difficulty CAPPING logic (still capped by the caller before this runs),
+  // only the prompt tone/scope guidance sent to the model.
+  const isJobSeeker = isStudent && studentStage === "job_seeker"
 
   // Student path: use beginner scenarios; professional path: use advanced ones
   const scenarioPool = (isStudent && ctx.studentScenarioTypes) ? ctx.studentScenarioTypes : ctx.scenarioTypes
@@ -598,8 +605,10 @@ function buildDomainPrompt({ ctx, domainKey, keyword, difficulty, weakAreas, elo
   const starter  = ctx.starterCode.replace(/\{company\}/g, company)
   const weakStr  = (weakAreas || []).slice(0, 3).join(", ") || "core fundamentals"
 
-  // Cap difficulty for students — never throw Hard at a beginner
-  const effectiveDifficulty = isStudent && difficulty === "Hard" ? "Medium" : difficulty
+  // Cap difficulty for students — never throw Hard at a beginner. Job
+  // seekers are exempt from this cap (see isJobSeeker above): they're
+  // interviewing against a real hiring bar, not learning fundamentals.
+  const effectiveDifficulty = isStudent && !isJobSeeker && difficulty === "Hard" ? "Medium" : difficulty
   const effectiveTime = effectiveDifficulty === "Hard" ? 55 : effectiveDifficulty === "Medium" ? 30 : 20
 
   // Completed mission exclusion — prevents repeating titles the user already finished
@@ -607,7 +616,12 @@ function buildDomainPrompt({ ctx, domainKey, keyword, difficulty, weakAreas, elo
     ? `\nSTRICTLY AVOID — user has already completed these missions. Your mission MUST cover a different skill/scenario:\n${(completedMissions || []).slice(0, 30).map(t => `  - "${t}"`).join("\n")}`
     : ""
 
-  const studentNote = isStudent ? `
+  const studentNote = isJobSeeker ? `
+JOB SEEKER PATH — HIRING-BAR RULES:
+- This user has finished/left formal study and is actively interviewing for real roles right now
+- Mirror the actual bar a company would set for an entry-level hire in ${keyword} — realistic scope and multi-step reasoning are fine, do not water it down to a classroom exercise
+- Difficulty: ${effectiveDifficulty} — do not artificially soften it just because the path is "student"
+- Time limit: ${effectiveTime} minutes` : isStudent ? `
 STUDENT PATH — BEGINNER RULES:
 - This user is a FRESHER or entry-level job seeker with minimal hands-on experience
 - The challenge must be learnable by someone new to ${keyword} — do NOT assume any professional experience
@@ -663,7 +677,7 @@ Return a single JSON object:
 }`
 }
 
-export async function geminiGenerateMission({ keyword, domainKey, eloRating, difficulty, weakAreas, path, recentSkills, eloGain, completedMissions }) {
+export async function geminiGenerateMission({ keyword, domainKey, eloRating, difficulty, weakAreas, path, recentSkills, eloGain, completedMissions, studentStage }) {
   const genai    = client()
   const genModel = genai.getGenerativeModel({ model: GEMINI_FLASH })
 
@@ -676,7 +690,7 @@ export async function geminiGenerateMission({ keyword, domainKey, eloRating, dif
   // domainManifest.js), or the generic swe fallback as a last resort.
   const ctx = await resolveDomainContext(genModel, domainKey, keyword)
 
-  const prompt = buildDomainPrompt({ ctx, domainKey, keyword, difficulty, weakAreas, eloGain, avoidSkills, path, completedMissions, eloRating })
+  const prompt = buildDomainPrompt({ ctx, domainKey, keyword, difficulty, weakAreas, eloGain, avoidSkills, path, completedMissions, eloRating, studentStage })
 
   const result = await genModel.generateContent({
     contents: [{ role: "user", parts: [{ text: prompt }] }],

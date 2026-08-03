@@ -255,11 +255,18 @@ router.post("/daily", async (req, res) => {
     eloRating=800, weakAreas=[], path="student",
     recentSkills=[], completedMissions=[],
     requestedSlots=1, slotIndex=0,
+    // 2026-08-03: Student/Job Seeker split. studentStage is only meaningful
+    // when path==="student" — sent by the frontend from userData.studentStage.
+    studentStage=null,
   } = req.body
+  const isJobSeeker = path === "student" && studentStage === "job_seeker"
 
-  // Student path: cap difficulty at Medium even if ELO says otherwise
+  // Student path: cap difficulty at Medium-Hard even if ELO says otherwise.
+  // Job seekers are exempt — they're interviewing against a real hiring bar,
+  // not learning fundamentals, so ELO alone decides their difficulty same as
+  // the professional path.
   const rawDiff  = eloRating < 700 ? "Easy" : eloRating < 1000 ? "Medium" : eloRating < 1300 ? "Medium-Hard" : "Hard"
-  const diff     = path === "student" && rawDiff === "Hard" ? "Medium-Hard" : rawDiff
+  const diff     = path === "student" && !isJobSeeker && rawDiff === "Hard" ? "Medium-Hard" : rawDiff
   const difficulty = diff.split("-")[0]
   // 2026-07-27 P0 fix: this preview badge ("+N ELO" shown before the mission
   // is even started) used to be `eloRating * 0.02..0.05`, which for a Hard
@@ -299,7 +306,7 @@ router.post("/daily", async (req, res) => {
   try {
     const mission = await geminiGenerateMission({
       keyword, domainKey, eloRating, difficulty,
-      weakAreas, path, recentSkills, eloGain,
+      weakAreas, path, recentSkills, eloGain, studentStage,
       completedMissions: (completedMissions || []).slice(0, 30),
     })
     console.log(`[arena/daily] Gemini: generated mission for ${keyword} ELO:${eloRating} slot:${slotIndex}`)
@@ -323,7 +330,7 @@ router.post("/daily", async (req, res) => {
       { role: "user",   content:
 `Domain: ${keyword} | ELO: ${eloRating} | Difficulty: ${difficulty} | Path: ${path}
 Weak areas: ${weakAreas.slice(0,3).join(", ")||"fundamentals"}
-${path === "student" ? "STUDENT PATH: fresher/entry-level user — keep scope simple and beginner-appropriate, ONE skill only." : ""}
+${isJobSeeker ? "JOB SEEKER PATH: actively interviewing for real roles — mirror the real hiring bar for this role, do not water it down to a classroom exercise." : path === "student" ? "STUDENT PATH: fresher/entry-level user — keep scope simple and beginner-appropriate, ONE skill only." : ""}
 ${completedMissions.length ? `Avoid repeating these already-completed missions: ${completedMissions.slice(0,10).join(", ")}` : ""}
 
 Primary tools for this role: ${ctx.tools}

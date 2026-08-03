@@ -500,7 +500,7 @@ function normalizeBranchCode(deptText) {
 
 // ─── Payload builders ───────────────────────────────────────────────
 const buildStudentSavePayload = ({ path, user, username, data }) => {
-  const { keyword, college, branch, result, resumeData, resumeFileObj, resumeBase64, selectedRole } = data
+  const { keyword, college, branch, result, resumeData, resumeFileObj, resumeBase64, selectedRole, studentStage } = data
   const analysis = result?.analysis || {}
   const score = safeNumber(result?.score, 0)
   const total = safeNumber(result?.total, 25)
@@ -542,6 +542,10 @@ const buildStudentSavePayload = ({ path, user, username, data }) => {
     username, path: "student", keyword: keyword || "", onboardingComplete: true, onboarding_complete: true,
     college: college || user.user_metadata?.college || "",
     branch:  branch  || user.user_metadata?.branch  || "",
+    // Student/Job Seeker split (2026-08-03) — already valid snake_case, no
+    // CAMEL_TO_SNAKE mapping needed (see db.js). null/undefined dropped by
+    // toSnake automatically, so pre-split flows are unaffected.
+    ...(studentStage ? { student_stage: studentStage } : {}),
     // Canonical role — set when student picks from the role picker (not free-text)
     ...(selectedRole ? {
       roleId:    selectedRole.id,
@@ -1652,6 +1656,14 @@ export default function Onboarding({ user, onComplete, onBack }) {
       return raw ? JSON.parse(raw) : null
     } catch { return null }
   })
+  // 2026-08-03: Student/Job Seeker split. Read from user_metadata (set by
+  // AuthModal at signUp() time — see App.jsx) with a localStorage fallback
+  // for any path that reaches here without going through signUp's metadata
+  // (defensive only; the normal flow always has it in user_metadata by now).
+  const [studentStage] = useState(() => {
+    if (user?.user_metadata?.student_stage) return user.user_metadata.student_stage
+    try { return localStorage.getItem("capabilio_student_stage") || null } catch { return null }
+  })
   const collegeLocked = !!orgJoinContext?.college
   const lockedBranchCode = normalizeBranchCode(orgJoinContext?.department)
   const branchLocked = !!lockedBranchCode
@@ -1815,6 +1827,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
       // Clear localStorage path flags — path is now in user_metadata
       localStorage.removeItem("capabilio_selected_path")
       localStorage.removeItem("preSelectedPath")
+      localStorage.removeItem("capabilio_student_stage")
       // orgJoinContext (college/branch lock) was already read into state via
       // the lazy useState initializer above — safe to clear now so a second,
       // unrelated signup later in the same browser session doesn't inherit it.
@@ -2105,7 +2118,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
       if (resumeFile && resumeFile.size < 3 * 1024 * 1024) {
         try { resumeBase64 = await fileToBase64(resumeFile) } catch {}
       }
-      const payload = buildUserSavePayload({ path:"student", user: { ...user, displayName: getUserDisplayName() }, username, data:{ keyword, college, branch, result, resumeData, resumeFileObj: resumeFile, resumeBase64, selectedRole } })
+      const payload = buildUserSavePayload({ path:"student", user: { ...user, displayName: getUserDisplayName() }, username, data:{ keyword, college, branch, result, resumeData, resumeFileObj: resumeFile, resumeBase64, selectedRole, studentStage } })
       // ✅ Use Supabase via userDoc (user.id, not user.uid)
       // ⚠️  Do NOT set onboarding_complete here — that would fire the real-time
       // listener in App.jsx and unmount Onboarding before the plan step shows.
@@ -2129,7 +2142,11 @@ export default function Onboarding({ user, onComplete, onBack }) {
       // onboarding" posture as the college-directory typeahead above. A
       // student whose college isn't registered yet (the common case) simply
       // stays unlinked; nothing about the existing save above changes.
-      collegeApi.selfLink().catch(() => {})
+      // 2026-08-03: skip entirely for job seekers — self-link matches
+      // profile.college against a registered institution and creates a
+      // pending_admin institution_students row, which only makes sense for
+      // someone actually currently enrolled there.
+      if (studentStage !== "job_seeker") collegeApi.selfLink().catch(() => {})
     } catch (err) { console.warn("Profile save failed:", err) }
     setSavingResult(false)
     // Show RecoPopup only AFTER save is complete — prevents it appearing while
@@ -2679,8 +2696,10 @@ export default function Onboarding({ user, onComplete, onBack }) {
           <Card accent={pt.accentBd}>
             <BackBtn onClick={()=>{ setPath(null); transition("path") }} />
             <PathBanner pathKey="student" stepIndex={0} />
-            <H2>What role are you preparing for?</H2>
-            <Sub>We'll calibrate 25 beginner-level questions to your exact target role. Your ELO baseline starts at 400.</Sub>
+            <H2>What role are you {studentStage === "job_seeker" ? "targeting" : "preparing for"}?</H2>
+            <Sub>{studentStage === "job_seeker"
+              ? "We'll calibrate 25 beginner-level questions to your exact target role and get you job-ready fast. Your ELO baseline starts at 400."
+              : "We'll calibrate 25 beginner-level questions to your exact target role. Your ELO baseline starts at 400."}</Sub>
             {apiError && <div style={{ background:`${T.red}10`,border:`1px solid ${T.red}30`,borderRadius:T.radius,padding:"12px 14px",color:"#F87171",fontSize:13,marginBottom:16 }}>{apiError}</div>}
             {/* Role picker — primary input. Branch auto-derives from selected role. */}
             <FieldRow label="🎯 Target role">
@@ -2694,7 +2713,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
             {/* College + Branch — pre-filled from signup, editable unless a
                 college invite link locked them (collegeLocked/branchLocked) */}
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:collegeLocked ? 6 : 16 }}>
-              <FieldRow label="College / University">
+              <FieldRow label={studentStage === "job_seeker" ? "College / University (optional)" : "College / University"}>
                 <CollegeSearchPicker value={college} onChange={setCollege} placeholder="e.g. VIT Vellore" disabled={collegeLocked} />
               </FieldRow>
               <FieldRow label="Branch / Stream">

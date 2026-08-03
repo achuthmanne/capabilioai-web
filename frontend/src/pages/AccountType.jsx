@@ -1,7 +1,32 @@
 import { useState } from "react"
 
+// 2026-08-03: Student/Job Seeker split. Deliberately NOT a 5th top-level
+// path — path stays "student" for both (ELO baseline 400, PLANS_BY_PATH,
+// nav routing, Arena's difficulty defaults all stay exactly as they are
+// today, per the design decision this session). This is a second, optional
+// question asked only after "Student" is picked, captured as
+// profiles.student_stage ("enrolled" | "job_seeker"). onSelect's signature
+// is extended with an optional second arg rather than changed, so every
+// other card (professional/authority/institution) calls it exactly as
+// before.
+const STUDENT_STAGES = [
+  {
+    id: "enrolled",
+    icon: "🏫",
+    title: "Currently Enrolled",
+    desc: "Still in college — link your institution, get campus drives, and track placement-cell tasks.",
+  },
+  {
+    id: "job_seeker",
+    icon: "🎯",
+    title: "Job Seeker",
+    desc: "Graduated or between programs and actively job hunting — skip the campus setup and go straight to Arena, Aura, and job-ready assessments.",
+  },
+]
+
 export default function AccountType({ onSelect, onLogin, onBack }) {
   const [hovered, setHovered] = useState(null)
+  const [showStudentSplit, setShowStudentSplit] = useState(false)
 
   const PATHS = [
     {
@@ -302,6 +327,58 @@ export default function AccountType({ onSelect, onLogin, onBack }) {
           </p>
         </div>
 
+        {showStudentSplit ? (
+          <div className="acc-fade-up" style={{ marginBottom: 36 }}>
+            <button
+              onClick={() => setShowStudentSplit(false)}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 20,
+                padding: "8px 14px", background: "#FFFFFF", border: "1px solid rgba(17,24,39,0.1)",
+                borderRadius: 999, color: "#4B5563", fontSize: 12, fontWeight: 700,
+                letterSpacing: "0.06em", cursor: "pointer", fontFamily: "'DM Mono', monospace",
+              }}
+            >
+              ← BACK TO PATHS
+            </button>
+            <div
+              className="acc-grid"
+              style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}
+            >
+              {STUDENT_STAGES.map((s) => (
+                <div
+                  key={s.id}
+                  className="acc-card"
+                  onClick={() => onSelect?.("student", { studentStage: s.id })}
+                  style={{
+                    background: "#FFFFFF",
+                    border: "1px solid rgba(17,24,39,0.08)",
+                    borderRadius: 22,
+                    padding: 26,
+                    cursor: "pointer",
+                    boxShadow: "0 8px 24px rgba(17,24,39,0.05)",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 50, height: 50, background: "#FFF1E8",
+                      border: "1px solid rgba(255,87,1,0.14)", borderRadius: 14,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 24, marginBottom: 18,
+                    }}
+                  >
+                    {s.icon}
+                  </div>
+                  <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 22, fontWeight: 700, color: "#FFFFFF", marginBottom: 10 }}>
+                    {s.title}
+                  </div>
+                  <p style={{ fontSize: 14, color: "#4B5563", lineHeight: 1.75, margin: 0 }}>
+                    {s.desc}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
         <div
           className="acc-grid acc-fade-up"
           style={{
@@ -321,7 +398,7 @@ export default function AccountType({ onSelect, onLogin, onBack }) {
                 className="acc-card"
                 onMouseEnter={() => setHovered(p.id)}
                 onMouseLeave={() => setHovered(null)}
-                onClick={() => onSelect?.(p.id)}
+                onClick={() => p.id === "student" ? setShowStudentSplit(true) : onSelect?.(p.id)}
                 style={{
                   background: "#FFFFFF",
                   border: `1px solid ${isActive ? "rgba(255,87,1,0.22)" : "rgba(17,24,39,0.08)"}`,
@@ -446,6 +523,7 @@ export default function AccountType({ onSelect, onLogin, onBack }) {
             )
           })}
         </div>
+        )}
 
         <div
           className="acc-fade-up"

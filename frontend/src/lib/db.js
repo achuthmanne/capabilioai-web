@@ -219,6 +219,10 @@ const toCompat = (data) => {
     // back to targetRole on read, so every component reading userData.targetRole
     // (Home hero, Skill Gap Analysis, Orbit gap cards) always saw undefined.
     targetRole:           data.target_role          || data.targetRole          || null,
+    // Student/Job Seeker onboarding split (2026-08-03) — sub-classification
+    // within path="student" only; null for every other path and for
+    // pre-existing student profiles created before this field existed.
+    studentStage:         data.student_stage        || data.studentStage        || null,
     // Privacy/consent toggles (Career OS Tranche 3) — real columns now,
     // default true (visible) matches the pre-existing frontend assumption.
     searchable:           data.searchable        ?? true,
@@ -265,7 +269,7 @@ export const userDoc = {
     const CORE_COLS = ['id','email','display_name','username','path','keyword',
       'elo_rating','arena_completed','arena_streak','onboarding_complete',
       'subscription','updated_at','domain_key','target_role',
-      'college','branch','career_track_slug']
+      'college','branch','career_track_slug','student_stage']
     const core = {}
     for (const k of CORE_COLS) { if (normalised[k] !== undefined) core[k] = normalised[k] }
     const { error: err2 } = await supabase.from('profiles').upsert(core, { onConflict: 'id' })
