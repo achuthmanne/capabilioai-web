@@ -42,6 +42,38 @@ function parseUsername(githubUrl="") {
   return githubUrl.replace(/.*github\.com\//, "").replace(/\/.*/, "").trim()
 }
 
+// Real, filename-presence-only technology detection — one root directory
+// listing per repo, no file-content fetches. Deliberately conservative: only
+// flags a technology when the file that conventionally proves it actually
+// exists in that exact repo.
+const TECH_SIGNALS = [
+  { file: "package.json",        tag: "Node.js" },
+  { file: "requirements.txt",    tag: "Python" },
+  { file: "pyproject.toml",      tag: "Python" },
+  { file: "Dockerfile",          tag: "Docker" },
+  { file: "docker-compose.yml",  tag: "Docker Compose" },
+  { file: "go.mod",              tag: "Go" },
+  { file: "Cargo.toml",          tag: "Rust" },
+  { file: "pom.xml",             tag: "Java (Maven)" },
+  { file: "build.gradle",        tag: "Java/Kotlin (Gradle)" },
+  { file: "Gemfile",             tag: "Ruby" },
+  { file: "composer.json",       tag: "PHP" },
+  { file: "tsconfig.json",       tag: "TypeScript" },
+  { file: ".github",             tag: "CI/CD (GitHub Actions)" },
+]
+
+async function detectTechStack(fullName) {
+  if (!fullName) return []
+  try {
+    const r = await fetch(`https://api.github.com/repos/${fullName}/contents`, { headers: ghHeaders() })
+    if (!r.ok) return []
+    const items = await r.json()
+    if (!Array.isArray(items)) return []
+    const names = new Set(items.map(i => i.name))
+    return TECH_SIGNALS.filter(sig => names.has(sig.file)).map(sig => sig.tag)
+  } catch { return [] }
+}
+
 // Deterministic per-user code — no separate table/column needed to store it,
 // it's re-derivable from userId at any time. Short enough to comfortably fit
 // a GitHub bio (160 char limit) alongside other bio text.
@@ -105,7 +137,20 @@ router.post("/analyze", async (req, res) => {
     const topRepos = [...repos]
       .sort((a,b) => (b.stargazers_count||0)-(a.stargazers_count||0))
       .slice(0,6)
-      .map(r => ({ name:r.name, desc:r.description||"", stars:r.stargazers_count||0, forks:r.forks_count||0, lang:r.language||null, updated:timeAgo(r.pushed_at), url:r.html_url }))
+      .map(r => ({ name:r.name, fullName:r.full_name, desc:r.description||"", stars:r.stargazers_count||0, forks:r.forks_count||0, lang:r.language||null, updated:timeAgo(r.pushed_at), url:r.html_url }))
+
+    // ── Real per-repo technology detection (Phase 2) ─────────────────────
+    // Only the top 3 repos (by stars) get this — each costs one extra
+    // GitHub API call (root file listing only, no file-content fetches), so
+    // 3 is a deliberate ceiling to keep total calls-per-analyze bounded
+    // given the unauthenticated 60-req/hr limit shared across every user
+    // hitting this route when GITHUB_TOKEN isn't set. Detection is filename
+    // presence only — real, verifiable signals (package.json genuinely
+    // exists in that repo), never an AI guess.
+    await Promise.all(topRepos.slice(0,3).map(async (r) => {
+      r.techStack = await detectTechStack(r.fullName)
+    }))
+    topRepos.forEach(r => { delete r.fullName })
 
     const totalStars = repos.reduce((s,r)=>s+(r.stargazers_count||0),0)
     const totalForks  = repos.reduce((s,r)=>s+(r.forks_count||0),0)
