@@ -75,14 +75,29 @@ const README_NAMES = new Set(["readme.md","readme","readme.rst","readme.txt"])
 // clearly has a .github/workflows folder and a README. `skipped:true` lets
 // the UI say "detection skipped — try again shortly" instead of implying
 // the repo has no CI/README/stack when we simply couldn't check.
+// BUG FIX (2026-08-04, real-world test #2): `skipped` used to only get set
+// on a 403/429 — any OTHER failure mode (401 from a bad/expired
+// GITHUB_TOKEN, a 5xx from GitHub, a thrown network error) fell through to
+// `skipped:false` with empty results, which the UI then rendered as "no
+// tech/README found" — i.e. a confident-looking wrong answer for a repo
+// that plainly has both. Every failure path now sets skipped:true and logs
+// the real status/reason server-side, so (a) the UI always shows the honest
+// "detection skipped" state instead of implying nothing exists, and (b)
+// whoever has Render log access can see WHY (rate limit vs bad token vs
+// GitHub outage) instead of guessing.
 async function inspectRepoRoot(fullName) {
   if (!fullName) return { techStack: [], hasReadme: false, skipped: false }
   try {
     const r = await fetch(`https://api.github.com/repos/${fullName}/contents`, { headers: ghHeaders() })
-    if (r.status === 403 || r.status === 429) return { techStack: [], hasReadme: false, skipped: true }
-    if (!r.ok) return { techStack: [], hasReadme: false, skipped: false }
+    if (!r.ok) {
+      console.error(`[github/analyze] inspectRepoRoot(${fullName}) failed: HTTP ${r.status} ${r.statusText}`)
+      return { techStack: [], hasReadme: false, skipped: true }
+    }
     const items = await r.json()
-    if (!Array.isArray(items)) return { techStack: [], hasReadme: false, skipped: false }
+    if (!Array.isArray(items)) {
+      console.error(`[github/analyze] inspectRepoRoot(${fullName}) failed: non-array response`)
+      return { techStack: [], hasReadme: false, skipped: true }
+    }
     const names = new Set(items.map(i => i.name))
     const lowerNames = new Set(items.map(i => (i.name||"").toLowerCase()))
     return {
@@ -90,7 +105,10 @@ async function inspectRepoRoot(fullName) {
       hasReadme: [...lowerNames].some(n => README_NAMES.has(n)),
       skipped: false,
     }
-  } catch { return { techStack: [], hasReadme: false, skipped: false } }
+  } catch (e) {
+    console.error(`[github/analyze] inspectRepoRoot(${fullName}) threw:`, e.message)
+    return { techStack: [], hasReadme: false, skipped: true }
+  }
 }
 
 // BUG FIX (2026-08-04, real-world test): total commit count used to be a
@@ -106,7 +124,10 @@ async function getRepoCommitCount(fullName) {
   if (!fullName) return null
   try {
     const r = await fetch(`https://api.github.com/repos/${fullName}/commits?per_page=1`, { headers: ghHeaders() })
-    if (!r.ok) return null
+    if (!r.ok) {
+      console.error(`[github/analyze] getRepoCommitCount(${fullName}) failed: HTTP ${r.status} ${r.statusText}`)
+      return null
+    }
     const link = r.headers.get("link") || ""
     const match = link.match(/[?&]page=(\d+)>;\s*rel="last"/)
     if (match) return Number(match[1])
@@ -114,7 +135,10 @@ async function getRepoCommitCount(fullName) {
     // commits actually returned (0 or 1), not "unknown".
     const body = await r.json().catch(() => [])
     return Array.isArray(body) ? body.length : null
-  } catch { return null }
+  } catch (e) {
+    console.error(`[github/analyze] getRepoCommitCount(${fullName}) threw:`, e.message)
+    return null
+  }
 }
 
 // BUG FIX (2026-08-04, real-world test): language breakdown used to count
@@ -129,10 +153,16 @@ async function getRepoLanguageBytes(fullName) {
   if (!fullName) return {}
   try {
     const r = await fetch(`https://api.github.com/repos/${fullName}/languages`, { headers: ghHeaders() })
-    if (!r.ok) return {}
+    if (!r.ok) {
+      console.error(`[github/analyze] getRepoLanguageBytes(${fullName}) failed: HTTP ${r.status} ${r.statusText}`)
+      return {}
+    }
     const data = await r.json()
     return (data && typeof data === "object") ? data : {}
-  } catch { return {} }
+  } catch (e) {
+    console.error(`[github/analyze] getRepoLanguageBytes(${fullName}) threw:`, e.message)
+    return {}
+  }
 }
 
 // Deterministic per-user code — no separate table/column needed to store it,
@@ -257,11 +287,23 @@ router.post("/analyze", async (req, res) => {
       ])
       r.techStack = rootInfo.techStack
       r.hasReadme = rootInfo.hasReadme
-      r.detectionSkipped = rootInfo.skipped
-      r._commitCount = typeof commitCount === "number" ? commitCount : null   // internal, stripped before sending to client
-      r._langBytes = langBytes || {}                                          // internal, stripped before sending to client
-      if (typeof commitCount === "number") { verifiedCommitTotal += commitCount; anyVerifiedCommitCount = true }
-      for (const [lang, bytes] of Object.entries(langBytes)) langByteTotals[lang] = (langByteTotals[lang]||0) + bytes
+      // BUG FIX (2026-08-04, real-world test #2): detectionSkipped used to
+      // only reflect inspectRepoRoot's own outcome — a real repo could have
+      // its commit-count and language-bytes calls BOTH fail (bad/expired
+      // GITHUB_TOKEN, GitHub 5xx, rate limit hit mid-batch) while root
+      // happened to succeed (or vice versa), and the UI would silently show
+      // whichever half succeeded as if it were the whole truth — e.g. "18
+      // commits (est.)" with no visible reason why real numbers weren't
+      // used. Now ANY of the three sub-fetches failing marks the repo
+      // skipped, so the "⏳ Detection skipped" badge (Aura.jsx) always shows
+      // up when the data on screen isn't fully real.
+      const commitOk = typeof commitCount === "number"
+      const langOk = langBytes && Object.keys(langBytes).length > 0
+      r.detectionSkipped = rootInfo.skipped || !commitOk || !langOk
+      r._commitCount = commitOk ? commitCount : null   // internal, stripped before sending to client
+      r._langBytes = langBytes || {}                    // internal, stripped before sending to client
+      if (commitOk) { verifiedCommitTotal += commitCount; anyVerifiedCommitCount = true }
+      for (const [lang, bytes] of Object.entries(langBytes||{})) langByteTotals[lang] = (langByteTotals[lang]||0) + bytes
     }))
     // Persist the internal cache fields on cached hits too (so they survive
     // into the next save unchanged), then strip fullName + underscore-
@@ -279,8 +321,14 @@ router.post("/analyze", async (req, res) => {
     // (accurate — matches what GitHub's own repo page shows) blended with
     // the coarse one-vote-per-repo fallback for everything outside the top
     // 3, weighted down so it can't dominate the accurate portion.
+    // languagesAreExact (2026-08-04, real-world test #2): the UI previously
+    // had no way to tell whether a 100%-one-language result was real or the
+    // coarse single-vote fallback kicking in because every real /languages
+    // call failed — this flag lets Aura.jsx label it "(estimated)" so a
+    // fallback never LOOKS as authoritative as a real byte-weighted mix.
     let languages
     const langByteTotal = Object.values(langByteTotals).reduce((a,b)=>a+b,0)
+    const languagesAreExact = langByteTotal > 0
     if (langByteTotal > 0) {
       const combined = { ...langByteTotals }
       const topNNames = new Set(topN.map(r=>r.name))
@@ -386,6 +434,12 @@ Return JSON exactly matching this schema:
       totalCommits: estimatedCommits,
       commitsAreExact,
       languages,
+      languagesAreExact,
+      // True when at least one of the top-3 repos couldn't be fully
+      // inspected (bad/expired GITHUB_TOKEN, GitHub rate limit, or a
+      // transient GitHub error) — lets the UI explain WHY numbers are
+      // estimates instead of silently showing them as if they were real.
+      anyDetectionSkipped: topN.some(r => r.detectionSkipped),
       topRepos: topReposForClient,
       fingerprint,
       scores,

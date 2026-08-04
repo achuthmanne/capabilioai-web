@@ -5753,6 +5753,11 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
                       <button onClick={()=>fetchGithubFingerprint(null,true)} disabled={githubLoading} style={{background:"transparent",border:"none",color:T.indigo,fontSize:11,cursor:githubLoading?"default":"pointer",textDecoration:"underline",padding:0,fontWeight:600}}>Refresh</button>
                     </div>
                   )}
+                  {!githubData.isExampleData && githubData.anyDetectionSkipped && (
+                    <div style={{background:T.amber2,border:`1.5px solid rgba(184,98,10,0.25)`,borderRadius:12,padding:"10px 16px",marginBottom:16,color:T.amber,fontSize:12,fontWeight:700,lineHeight:1.6}}>
+                      ⏳ GitHub couldn't be fully checked this time (rate limit or a temporary API issue) — commit counts, language mix, and tech detection below are estimates, not verified numbers. Try Refresh in a few minutes for the real data.
+                    </div>
+                  )}
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:20}}>
                     <Card style={{borderLeft:`4px solid ${T.green}`}}>
                       <div style={{display:"flex",gap:14,alignItems:"flex-start",marginBottom:16}}>
@@ -5827,7 +5832,7 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
                     </div>
                   </div>
                   <Card style={{marginBottom:16}}>
-                    <SectionLabel color="rgba(142,68,173,1)">🧬 Language DNA</SectionLabel>
+                    <SectionLabel color="rgba(142,68,173,1)">🧬 Language DNA{githubData.languagesAreExact===false?" (estimated)":""}</SectionLabel>
                     <div style={{display:"flex",height:14,borderRadius:99,overflow:"hidden",margin:"12px 0",gap:2}}>
                       {(githubData.languages||[]).map((l,i)=><div key={i} style={{flex:l.pct,background:LCOLS[l.lang]||T.ink4,minWidth:l.pct>3?2:0}}/>)}
                     </div>
