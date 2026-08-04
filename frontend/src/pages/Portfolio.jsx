@@ -1365,7 +1365,7 @@ export default function Portfolio({ username: usernameProp }) {
     }
   }, [])
 
-  const refs = { overview:useRef(), summary:useRef(), activity:useRef(), skills:useRef(), challenges:useRef(), interviews:useRef(), experience:useRef(), certificates:useRef(), testimonials:useRef() }
+  const refs = { overview:useRef(), summary:useRef(), activity:useRef(), skills:useRef(), challenges:useRef(), interviews:useRef(), experience:useRef(), certificates:useRef(), testimonials:useRef(), codeDna:useRef() }
 
   useEffect(()=>{
     supabase.auth.getSession().then(({data})=>{
@@ -1489,6 +1489,11 @@ export default function Portfolio({ username: usernameProp }) {
         uanVerified:           !!row.uan_verified,
         yearsOfExperience:     row.years_of_experience ?? null,
         verifiedCertsCount:    row.verified_certifications_count ?? null,
+        // GitHub / Code DNA recruiter view (2026-08-05) — {verification,
+        // capabilitySignals, repoInterview, createdAt, title} or undefined
+        // when the candidate hasn't analyzed a GitHub profile / it isn't
+        // portfolio-visible. See backend/server/routes/portfolioPublic.js.
+        codeDna:               row.codeDna || null,
       }
 
       const rawSkillGraph = ud.skillGraph || []
@@ -1695,6 +1700,7 @@ export default function Portfolio({ username: usernameProp }) {
             (ud.experiences?.length>0||ud.resumeProjects?.length>0)&&{k:"experience",l:"Timeline"},
             ud.certificates?.length>0&&{k:"certificates",l:"Certificates"},
             ud.testimonials?.length>0&&{k:"testimonials",l:"Reviews"},
+            ud.codeDna&&{k:"codeDna",l:"GitHub"},
           ].filter(Boolean).map(({k,l})=>(
             <button key={k} onClick={()=>scrollTo(k)}
               style={{padding:"6px 14px",borderRadius:99,border:"none",
@@ -2564,6 +2570,76 @@ export default function Portfolio({ username: usernameProp }) {
                 {ud.testimonials.map((t,i)=>(
                   <TestimonialCard key={i} t={t}/>
                 ))}
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* ══ GITHUB / CODE DNA (recruiter view) ═══════════════════════════════
+            2026-08-05: what recruiters actually look for in a candidate's
+            GitHub is less about star counts and follower numbers (popularity,
+            not skill) and more about: is this genuinely their own work, is
+            there real engineering practice behind it (README/CI/tests), and
+            can they explain what they built. This section shows exactly
+            that — the same curated view already used by Capabilio's internal
+            recruiter tools — and deliberately never exposes raw repo names,
+            star counts, or language percentages. ═══════════════════════════ */}
+        {ud.codeDna&&(
+          <div ref={refs.codeDna} className="ps">
+            <Card accent={C.green}>
+              <SectionTitle icon="⌥" title="GitHub Verification"
+                sub="What we check, and why it matters more than stars or followers"
+                accent={C.green}/>
+
+              <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:16}}>
+                <div style={{
+                  display:"inline-flex",alignItems:"center",gap:6,
+                  padding:"6px 14px",borderRadius:99,fontSize:12,fontWeight:700,
+                  background:ud.codeDna.verification?.startsWith("Verified")?"rgba(0,229,160,0.12)":"rgba(255,184,0,0.12)",
+                  color:ud.codeDna.verification?.startsWith("Verified")?C.green:C.amber,
+                  border:`1px solid ${ud.codeDna.verification?.startsWith("Verified")?C.green:C.amber}40`,
+                }}>
+                  {ud.codeDna.verification?.startsWith("Verified")?"✓":"◐"} {ud.codeDna.verification}
+                </div>
+                {(ud.githubUrl||ud.githubUsername)&&(
+                  <a href={ud.githubUrl||`https://github.com/${ud.githubUsername}`} target="_blank" rel="noreferrer"
+                    style={{fontSize:12,color:C.blue,textDecoration:"none",fontWeight:600}}>
+                    View profile ↗
+                  </a>
+                )}
+              </div>
+
+              {ud.codeDna.capabilitySignals?.length>0 && (
+                <div style={{marginBottom:ud.codeDna.repoInterview?18:4}}>
+                  <div style={{fontSize:10,color:C.ink4,fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>
+                    Real signals from analyzed code — not self-reported
+                  </div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                    {ud.codeDna.capabilitySignals.filter(s=>s.value).map((s,i)=>(
+                      <div key={i} style={{display:"flex",alignItems:"center",gap:6,background:"rgba(0,229,160,0.08)",border:`1px solid ${C.green}30`,borderRadius:8,padding:"7px 12px",fontSize:12,color:C.ink2,fontWeight:600}}>
+                        <span style={{color:C.green}}>✓</span>{s.label}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {ud.codeDna.repoInterview&&(
+                <div style={{background:C.bgInner,border:`1px solid ${C.border}`,borderRadius:12,padding:"14px 16px"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                    <span style={{fontSize:13}}>🎤</span>
+                    <span style={{fontSize:12,fontWeight:800,color:C.ink}}>Can explain their own code</span>
+                    <span style={{fontSize:9,color:C.ink4,fontWeight:700,background:"rgba(255,255,255,0.06)",borderRadius:6,padding:"2px 7px"}}>AI-ASSESSED</span>
+                  </div>
+                  <div style={{fontSize:13,fontWeight:700,color:ud.codeDna.repoInterview.verdict==="Genuine understanding"?C.green:ud.codeDna.repoInterview.verdict==="Doesn't match stated project"?C.red:C.amber,marginBottom:4}}>
+                    {ud.codeDna.repoInterview.verdict}
+                  </div>
+                  {ud.codeDna.repoInterview.summary&&<div style={{fontSize:12,color:C.ink3,lineHeight:1.6}}>{ud.codeDna.repoInterview.summary}</div>}
+                </div>
+              )}
+
+              <div style={{marginTop:16,paddingTop:14,borderTop:`1px solid ${C.border}`,fontSize:11,color:C.ink4,lineHeight:1.7}}>
+                We deliberately don't show star counts, follower numbers, or activity graphs here — those measure popularity and luck, not skill. What's shown above is: confirmed ownership, real engineering practice (documentation, CI/CD, working tooling) detected in the actual code, and whether the candidate can genuinely explain what they built.
               </div>
             </Card>
           </div>

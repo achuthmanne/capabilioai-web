@@ -92,7 +92,7 @@ const VERIFICATION_BY_PUBLISH_STATE = {
 // intelligence / architecture intelligence — deferred, not built) —
 // fabricating those signals to fill out a checklist would be worse than
 // omitting them.
-function buildCodeDnaRecruiterView(proof) {
+export function buildCodeDnaRecruiterView(proof) {
   const scores = proof.source_ref?.scores || {}
   const verified = proof.trust_level === "verified"
   const signal = (score, threshold=55) => typeof score === "number" ? score >= threshold : null
@@ -129,7 +129,12 @@ function buildCodeDnaRecruiterView(proof) {
     verification: verified ? "Verified (GitHub ownership confirmed)" : "Self-Selected (GitHub ownership unconfirmed)",
     capabilitySignals,
     repoInterview,
-    createdAt: proof.completed_at,
+    // 2026-08-05: prefer source_ref.analyzedAt — codeDnaRepo.upsertProfile
+    // (lib/codeDna/repository.js) never explicitly sets completed_at, so it
+    // could be null/stale for this proof_type; analyzedAt is set fresh on
+    // every successful /analyze and is the field that actually reflects
+    // "when was this last real".
+    createdAt: proof.source_ref?.analyzedAt || proof.completed_at || null,
     title: proof.title || null,
   }
 }

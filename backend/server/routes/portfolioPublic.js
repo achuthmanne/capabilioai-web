@@ -37,6 +37,8 @@
  */
 import { Router } from "express"
 import { supabaseAdmin } from "../lib/supabase.js"
+import { buildCodeDnaRecruiterView } from "../lib/arena-v2/portfolio/recruiterEvidence.js"
+import { SOURCE as CODE_DNA_SOURCE, PROOF_TYPE as CODE_DNA_PROOF_TYPE } from "../lib/codeDna/repository.js"
 
 const router = Router()
 
@@ -238,6 +240,37 @@ router.get("/portfolio/lookup/:identifier", async (req, res) => {
       safe.verified_certifications_count = (certs || []).length
     } else {
       safe.verified_certifications_count = null
+    }
+
+    // GitHub / Code DNA (2026-08-05) — recruiter-facing summary of the
+    // candidate's GitHub verification status, capability signals, and AI
+    // Repository Interview verdict. Reuses the SAME curated builder already
+    // used by the internal recruiter evidence endpoint
+    // (arenaV2Portfolio.js's /candidates/:userId/evidence), never a second,
+    // independently-drifting presentation of the same underlying data. Per
+    // that builder's own rule, raw GitHub analytics (repo names, star
+    // counts, language %s) are never included — only plain-language
+    // verification/capability signals, consistent with this whole
+    // endpoint's field-whitelist discipline.
+    //
+    // Deliberately NOT gated on the portfolio's `verified` flag above —
+    // GitHub verification is its own separate, real check (the bio-code
+    // ownership proof in routes/github.js), independent of whatever
+    // verified the rest of the profile. Only gated on the proof_objects
+    // row's own `is_portfolio_visible` flag (true by default) or ownership.
+    try {
+      const { data: codeDnaRow } = await supabaseAdmin
+        .from("proof_objects")
+        .select("*")
+        .eq("user_id", row.id)
+        .eq("source", CODE_DNA_SOURCE)
+        .eq("proof_type", CODE_DNA_PROOF_TYPE)
+        .maybeSingle()
+      if (codeDnaRow && (isOwner || codeDnaRow.is_portfolio_visible !== false)) {
+        safe.codeDna = buildCodeDnaRecruiterView(codeDnaRow)
+      }
+    } catch (e) {
+      console.error("[portfolio/lookup] codeDna fetch failed:", e.message)
     }
 
     res.json({ profile: safe })
