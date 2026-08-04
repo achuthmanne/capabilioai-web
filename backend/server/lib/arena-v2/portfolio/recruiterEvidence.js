@@ -78,7 +78,40 @@ const VERIFICATION_BY_PUBLISH_STATE = {
  *   'auto_published' or 'self_selected' in practice)
  * @returns {object} the recruiter-facing view
  */
+// Code DNA (2026-08-04, Phase 1): proof_type='code_dna_profile' rows
+// (source='github_code_dna') are shaped completely differently from Arena/
+// SkillStudio challenge proofs — no skill/score/validator_result the way a
+// challenge submission has. Recruiters must NEVER see raw GitHub analytics
+// (repo names, star counts, language %s) per product requirement — only
+// plain-language capability signals. Only signals we can honestly derive
+// from what's actually computed today (builder/documentation/consistency
+// heuristic scores — see routes/github.js) are included; "can explain
+// software", "can debug software", "can architect software", "can learn
+// independently" are NOT included because nothing in this codebase measures
+// them yet (would require the AI repository interview / architecture
+// intelligence / commit intelligence features — deferred, not built) —
+// fabricating those signals to fill out a checklist would be worse than
+// omitting them.
+function buildCodeDnaRecruiterView(proof) {
+  const scores = proof.source_ref?.scores || {}
+  const verified = proof.trust_level === "verified"
+  const signal = (score, threshold=55) => typeof score === "number" ? score >= threshold : null
+  const capabilitySignals = [
+    { label: "Can build software",   value: signal(scores.builder) },
+    { label: "Can document work",    value: signal(scores.documentation) },
+    { label: "Can maintain software", value: signal(scores.consistency) },
+  ].filter(s => s.value !== null)
+  return {
+    kind: "code_dna",
+    verification: verified ? "Verified (GitHub ownership confirmed)" : "Self-Selected (GitHub ownership unconfirmed)",
+    capabilitySignals,
+    createdAt: proof.completed_at,
+    title: proof.title || null,
+  }
+}
+
 export function buildRecruiterEvidenceViewFromProof(proof) {
+  if (proof.proof_type === "code_dna_profile") return buildCodeDnaRecruiterView(proof)
   // Arena V2 Pilot Phase addition (additive only — every field below is new,
   // nothing above was removed or renamed, so this stays backward-compatible
   // with any existing consumer): recruiters asked to see evidence, not just

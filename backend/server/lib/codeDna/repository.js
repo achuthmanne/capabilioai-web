@@ -1,0 +1,67 @@
+// Code DNA (GitHub) proof-object persistence.
+//
+// Deliberately NOT reused from lib/arena-v2/proofObjects/repository.js —
+// that module's insert() upserts with { onConflict: "source,source_ref",
+// ignoreDuplicates: true }, which is correct for immutable one-per-submission
+// Arena/SkillStudio proofs but wrong here: Code DNA is a "current snapshot"
+// per user (re-analysis should REPLACE the stored data, not no-op on
+// conflict and silently keep serving a stale snapshot). This module does a
+// real update-on-conflict upsert scoped to (user_id, source, proof_type),
+// backed by the UNIQUE(user_id, source, proof_type) constraint added in the
+// proof_objects_code_dna_support migration (2026-08-04).
+import { supabaseAdmin } from "../supabase.js"
+
+export const SOURCE = "github_code_dna"
+export const PROOF_TYPE = "code_dna_profile"
+
+// Upserts the user's current Code DNA snapshot. Never throws into the
+// caller's response path on its own — callers should catch and log, since a
+// persistence failure must not block the user from seeing their analysis.
+export async function upsertProfile(userId, { username, analysis, scores }) {
+  const row = {
+    user_id: userId,
+    source: SOURCE,
+    proof_type: PROOF_TYPE,
+    domain: "General",
+    title: `Code DNA — ${username}`,
+    source_ref: { username, analysis, scores, analyzedAt: new Date().toISOString() },
+    score: scores?.builder ?? null,
+    is_portfolio_visible: true,
+    is_recruiter_visible: true,
+    publish_state: "self_selected",
+    // Never set to 'verified' here — only markVerified() (called after a
+    // real bio-code ownership check passes) may do that.
+  }
+  const { data, error } = await supabaseAdmin
+    .from("proof_objects")
+    .upsert(row, { onConflict: "user_id,source,proof_type" })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function markVerified(userId) {
+  const { data, error } = await supabaseAdmin
+    .from("proof_objects")
+    .update({ trust_level: "verified" })
+    .eq("user_id", userId)
+    .eq("source", SOURCE)
+    .eq("proof_type", PROOF_TYPE)
+    .select()
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
+export async function getProfile(userId) {
+  const { data, error } = await supabaseAdmin
+    .from("proof_objects")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("source", SOURCE)
+    .eq("proof_type", PROOF_TYPE)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}

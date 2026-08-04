@@ -3141,6 +3141,8 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
   const [selectedDecaySkills, setSelectedDecaySkills] = useState([])
   const [practiceSkill, setPracticeSkill]             = useState("")
   const [githubUrl, setGithubUrl]             = useState("")
+  const [githubVerifying, setGithubVerifying] = useState(false)
+  const [githubVerifyMsg, setGithubVerifyMsg] = useState(null) // {verified, code, message}
 
   // ── Arena history loaded from Supabase arena_history table ──────────────
   // This replaces all reads from userData.arenaSubmissions (Firebase-era field
@@ -3885,9 +3887,9 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
       }
     }
 
-    setGithubLoading(true); setGithubError("")
+    setGithubLoading(true); setGithubError(""); setGithubVerifyMsg(null)
     try {
-      const res=await fetch(`${API}/api/github/analyze`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({githubUrl:ghUrl,keyword:userData?.keyword||"Developer"})})
+      const res=await fetch(`${API}/api/github/analyze`,{method:"POST",headers:await vHeaders(),body:JSON.stringify({githubUrl:ghUrl,keyword:userData?.keyword||"Developer"})})
       const ct=res.headers.get("content-type")||""
       const data=ct.includes("application/json") ? await res.json() : null
       if(!res.ok || !data || data.error){
@@ -3902,6 +3904,27 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
       setGithubData(null)
     }
     setGithubLoading(false)
+  }
+
+  // Ownership verification (Phase 1): the user adds a deterministic code to
+  // their GitHub bio, then we confirm it's there via the public API. On
+  // success the backend flips the stored proof_objects row to
+  // trust_level='verified' — the local `verified` flag below is just so the
+  // UI can show "Verified" immediately without a full re-analyze.
+  const verifyGithubOwnership = async () => {
+    const ghUrl=(githubUrl||userData?.githubUrl||userData?.personalInfo?.githubUrl||"").trim()
+    if(!ghUrl){ setGithubVerifyMsg({verified:false,message:"Analyze a GitHub profile first."}); return }
+    setGithubVerifying(true)
+    try {
+      const res=await fetch(`${API}/api/github/verify-ownership`,{method:"POST",headers:await vHeaders(),body:JSON.stringify({githubUrl:ghUrl})})
+      const data=await res.json().catch(()=>({}))
+      if(!res.ok) throw new Error(data?.error||`Verification failed (${res.status})`)
+      setGithubVerifyMsg(data)
+      if(data.verified) setGithubData(prev => prev ? {...prev, verified:true} : prev)
+    } catch(e) {
+      setGithubVerifyMsg({verified:false, message:e.message})
+    }
+    setGithubVerifying(false)
   }
 
   // Derived data — resumeSkills must be declared before skillGraph uses it
@@ -5735,7 +5758,10 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
                       <div style={{display:"flex",gap:14,alignItems:"flex-start",marginBottom:16}}>
                         <img src={githubData.avatar} alt="" style={{width:56,height:56,borderRadius:"50%",border:`2px solid ${T.border}`}}/>
                         <div>
-                          <div style={{fontSize:18,fontWeight:900,color:T.ink}}>{githubData.username}</div>
+                          <div style={{fontSize:18,fontWeight:900,color:T.ink,display:"flex",alignItems:"center",gap:8}}>
+                            {githubData.username}
+                            {githubData.verified&&<span title="GitHub ownership verified" style={{fontSize:11,fontWeight:800,color:T.green,background:T.green2,borderRadius:999,padding:"2px 8px"}}>✓ Verified</span>}
+                          </div>
                           <Badge color={T.green} bg={T.green2}>{fp.fingerprintTitle}</Badge>
                           <div style={{fontSize:11,color:T.ink3,marginTop:4}}>{githubData.bio||fp.specialization}</div>
                         </div>
@@ -5744,7 +5770,19 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
                       <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
                         {(fp.patterns||[]).map((p,i)=><Badge key={i} color={T.green} bg={T.green2}>{p}</Badge>)}
                       </div>
-                      {fp.standoutFact&&<div style={{background:T.amber2,border:`1px solid rgba(184,98,10,0.15)`,borderRadius:10,padding:"10px 14px",fontSize:12,color:T.amber,lineHeight:1.5}}>⭐ {fp.standoutFact}</div>}
+                      {fp.standoutFact&&<div style={{background:T.amber2,border:`1px solid rgba(184,98,10,0.15)`,borderRadius:10,padding:"10px 14px",fontSize:12,color:T.amber,lineHeight:1.5,marginBottom:githubData.isExampleData||githubData.verified?0:12}}>⭐ {fp.standoutFact}</div>}
+                      {!githubData.isExampleData&&!githubData.verified&&(
+                        <div style={{marginTop:12,paddingTop:12,borderTop:`1px solid ${T.border}`}}>
+                          <button onClick={verifyGithubOwnership} disabled={githubVerifying} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,padding:"7px 12px",fontSize:11,fontWeight:700,color:T.ink2,cursor:githubVerifying?"default":"pointer"}}>
+                            {githubVerifying?"Checking…":"🔒 Verify GitHub ownership"}
+                          </button>
+                          {githubVerifyMsg&&(
+                            <div style={{fontSize:11,color:githubVerifyMsg.verified?T.green:T.ink3,marginTop:8,lineHeight:1.6}}>
+                              {githubVerifyMsg.verified?"✓ Ownership confirmed.":githubVerifyMsg.message}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </Card>
                     <div style={{display:"flex",flexDirection:"column",gap:14}}>
                       <Card style={{borderTop:`3px solid ${authCol}`}}>
@@ -5769,6 +5807,23 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
                           </Card>
                         ))}
                       </div>
+                      {githubData.scores&&(
+                        <>
+                          <div style={{fontSize:9,color:T.ink4,marginTop:2}}>Estimates from public repo data — not verified measurements</div>
+                          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+                            {[{label:"Builder",value:githubData.scores.builder,icon:"🏗️"},{label:"Documentation",value:githubData.scores.documentation,icon:"📝"},{label:"Consistency",value:githubData.scores.consistency,icon:"📈"}].map((s,i)=>{
+                              const col=s.value>=70?T.green:s.value>=40?T.amber:T.ink4
+                              return (
+                                <Card key={i} style={{textAlign:"center",padding:"12px"}}>
+                                  <div style={{fontSize:14,marginBottom:3}}>{s.icon}</div>
+                                  <div style={{fontSize:17,fontWeight:900,color:col,fontFamily:"'DM Mono',monospace"}}>{s.value}</div>
+                                  <div style={{fontSize:8.5,color:T.ink4,textTransform:"uppercase",letterSpacing:"0.06em",marginTop:2}}>{s.label}</div>
+                                </Card>
+                              )
+                            })}
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                   <Card style={{marginBottom:16}}>
