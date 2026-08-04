@@ -64,24 +64,75 @@ const TECH_SIGNALS = [
 
 const README_NAMES = new Set(["readme.md","readme","readme.rst","readme.txt"])
 
-// Returns { techStack, hasReadme } from ONE root-listing call — README
-// detection piggybacks on the same response already fetched for tech
+// Returns { techStack, hasReadme, skipped } from ONE root-listing call —
+// README detection piggybacks on the same response already fetched for tech
 // detection, so it costs nothing extra. hasReadme is a real presence check,
 // not a quality judgement (we don't fetch/score README content).
+//
+// BUG FIX (2026-08-04, real-world test): this used to silently return empty
+// results on ANY failure, including a 403 rate-limit — which looks
+// identical in the UI to "genuinely nothing detected" even when the repo
+// clearly has a .github/workflows folder and a README. `skipped:true` lets
+// the UI say "detection skipped — try again shortly" instead of implying
+// the repo has no CI/README/stack when we simply couldn't check.
 async function inspectRepoRoot(fullName) {
-  if (!fullName) return { techStack: [], hasReadme: false }
+  if (!fullName) return { techStack: [], hasReadme: false, skipped: false }
   try {
     const r = await fetch(`https://api.github.com/repos/${fullName}/contents`, { headers: ghHeaders() })
-    if (!r.ok) return { techStack: [], hasReadme: false }
+    if (r.status === 403 || r.status === 429) return { techStack: [], hasReadme: false, skipped: true }
+    if (!r.ok) return { techStack: [], hasReadme: false, skipped: false }
     const items = await r.json()
-    if (!Array.isArray(items)) return { techStack: [], hasReadme: false }
+    if (!Array.isArray(items)) return { techStack: [], hasReadme: false, skipped: false }
     const names = new Set(items.map(i => i.name))
     const lowerNames = new Set(items.map(i => (i.name||"").toLowerCase()))
     return {
       techStack: TECH_SIGNALS.filter(sig => names.has(sig.file)).map(sig => sig.tag),
       hasReadme: [...lowerNames].some(n => README_NAMES.has(n)),
+      skipped: false,
     }
-  } catch { return { techStack: [], hasReadme: false } }
+  } catch { return { techStack: [], hasReadme: false, skipped: false } }
+}
+
+// BUG FIX (2026-08-04, real-world test): total commit count used to be a
+// crude repo-count-scaled guess (public_repos*18 + stars*0.4) — for an
+// account with one large, long-lived repo (303 real commits) that formula
+// returned 18, off by 17x. GitHub's REST API doesn't return a total commit
+// count directly, but there's a well-known real technique: request 1 commit
+// per page and read the `Link` response header's `rel="last"` page number —
+// that page number IS the total commit count. One extra call per repo,
+// exact (not estimated), bounded to the same top-3 repos already being
+// inspected above so it doesn't add a new cost category.
+async function getRepoCommitCount(fullName) {
+  if (!fullName) return null
+  try {
+    const r = await fetch(`https://api.github.com/repos/${fullName}/commits?per_page=1`, { headers: ghHeaders() })
+    if (!r.ok) return null
+    const link = r.headers.get("link") || ""
+    const match = link.match(/[?&]page=(\d+)>;\s*rel="last"/)
+    if (match) return Number(match[1])
+    // No Link header at all means there's only one page — i.e. exactly the
+    // commits actually returned (0 or 1), not "unknown".
+    const body = await r.json().catch(() => [])
+    return Array.isArray(body) ? body.length : null
+  } catch { return null }
+}
+
+// BUG FIX (2026-08-04, real-world test): language breakdown used to count
+// ONE vote per repo for that repo's single GitHub-guessed "primary
+// language" field — with one repo, that always collapses to 100% of
+// whatever GitHub picked, ignoring the real byte-weighted mix GitHub's own
+// repo page shows (e.g. a JS-primary repo can genuinely be 91% JS / 4%
+// PLpgSQL / 2% TypeScript / 2% HTML by bytes). Real fix: fetch the actual
+// per-repo language byte counts via /languages and aggregate real bytes,
+// bounded to the same top-3 repos already being inspected.
+async function getRepoLanguageBytes(fullName) {
+  if (!fullName) return {}
+  try {
+    const r = await fetch(`https://api.github.com/repos/${fullName}/languages`, { headers: ghHeaders() })
+    if (!r.ok) return {}
+    const data = await r.json()
+    return (data && typeof data === "object") ? data : {}
+  } catch { return {} }
 }
 
 // Deterministic per-user code — no separate table/column needed to store it,
@@ -129,11 +180,11 @@ router.post("/analyze", async (req, res) => {
     const user  = await ur.json()
     const repos = rr.ok ? await rr.json() : []
 
+    // Coarse fallback (one vote per repo for GitHub's single "primary
+    // language" guess) — used only for repos OUTSIDE the top 3 that get a
+    // real byte-weighted breakdown below, so larger accounts still get some
+    // signal from their long tail without an API call per repo.
     const lc  = {}; repos.forEach(r => { if (r.language) lc[r.language] = (lc[r.language]||0)+1 })
-    const tot = Object.values(lc).reduce((a,b)=>a+b,0) || 1
-    const languages = Object.entries(lc)
-      .map(([lang,count]) => ({ lang, pct: Math.round((count/tot)*100) }))
-      .sort((a,b) => b.pct-a.pct).slice(0,8)
 
     const timeAgo = (iso) => {
       if (!iso) return "—"
@@ -152,30 +203,72 @@ router.post("/analyze", async (req, res) => {
       // just never surfaced before. Real data the owner tagged, not inferred.
       .map(r => ({ name:r.name, fullName:r.full_name, desc:r.description||"", stars:r.stargazers_count||0, forks:r.forks_count||0, lang:r.language||null, updated:timeAgo(r.pushed_at), url:r.html_url, topics:Array.isArray(r.topics)?r.topics.slice(0,5):[] }))
 
-    // ── Real per-repo technology + README detection (Phase 2/3) ──────────
-    // Only the top 3 repos (by stars) get this — each costs one extra
-    // GitHub API call (root file listing only, no file-content fetches), so
-    // 3 is a deliberate ceiling to keep total calls-per-analyze bounded
-    // given the unauthenticated 60-req/hr limit shared across every user
-    // hitting this route when GITHUB_TOKEN isn't set. Detection is filename
-    // presence only — real, verifiable signals (package.json genuinely
-    // exists in that repo), never an AI guess. README detection piggybacks
-    // on this same call at zero extra cost.
-    await Promise.all(topRepos.slice(0,3).map(async (r) => {
-      const { techStack, hasReadme } = await inspectRepoRoot(r.fullName)
-      r.techStack = techStack
-      r.hasReadme = hasReadme
+    // ── Real per-repo intelligence (Phase 2/3/4) ──────────────────────────
+    // Only the top 3 repos (by stars) get this — each costs up to 3 extra
+    // GitHub API calls (root listing, commit-count via Link header,
+    // language bytes), so 3 is a deliberate ceiling to keep total
+    // calls-per-analyze bounded given the unauthenticated 60-req/hr limit
+    // shared across every user hitting this route when GITHUB_TOKEN isn't
+    // set (strongly recommended to configure — see file header). Tech/
+    // README detection is filename presence only; commit counts and
+    // language bytes are exact real values from GitHub, not estimates.
+    const topN = topRepos.slice(0,3)
+    const langByteTotals = {}
+    let verifiedCommitTotal = 0
+    let anyVerifiedCommitCount = false
+    await Promise.all(topN.map(async (r) => {
+      const [rootInfo, commitCount, langBytes] = await Promise.all([
+        inspectRepoRoot(r.fullName),
+        getRepoCommitCount(r.fullName),
+        getRepoLanguageBytes(r.fullName),
+      ])
+      r.techStack = rootInfo.techStack
+      r.hasReadme = rootInfo.hasReadme
+      r.detectionSkipped = rootInfo.skipped
+      if (typeof commitCount === "number") { verifiedCommitTotal += commitCount; anyVerifiedCommitCount = true }
+      for (const [lang, bytes] of Object.entries(langBytes)) langByteTotals[lang] = (langByteTotals[lang]||0) + bytes
     }))
     topRepos.forEach(r => { delete r.fullName })
 
+    // Language breakdown: real byte-weighted mix from the top-3 repos
+    // (accurate — matches what GitHub's own repo page shows) blended with
+    // the coarse one-vote-per-repo fallback for everything outside the top
+    // 3, weighted down so it can't dominate the accurate portion.
+    let languages
+    const langByteTotal = Object.values(langByteTotals).reduce((a,b)=>a+b,0)
+    if (langByteTotal > 0) {
+      const combined = { ...langByteTotals }
+      const topNNames = new Set(topN.map(r=>r.name))
+      const fallbackWeight = langByteTotal * 0.15 // remaining repos count for at most 15% of the mix
+      const fallbackTotal = Object.entries(lc).reduce((s,[,c])=>s+c, 0) || 1
+      repos.forEach(r => {
+        if (r.language && !topNNames.has(r.name)) combined[r.language] = (combined[r.language]||0) + (fallbackWeight/fallbackTotal)
+      })
+      const combinedTotal = Object.values(combined).reduce((a,b)=>a+b,0) || 1
+      languages = Object.entries(combined)
+        .map(([lang,bytes]) => ({ lang, pct: Math.round((bytes/combinedTotal)*100) }))
+        .filter(l => l.pct > 0)
+        .sort((a,b) => b.pct-a.pct).slice(0,8)
+    } else {
+      // Real language-bytes call failed for all top-3 repos (e.g. rate
+      // limited) — fall back entirely to the coarse per-repo method rather
+      // than showing nothing.
+      const fallbackTotal = Object.values(lc).reduce((a,b)=>a+b,0) || 1
+      languages = Object.entries(lc)
+        .map(([lang,count]) => ({ lang, pct: Math.round((count/fallbackTotal)*100) }))
+        .sort((a,b) => b.pct-a.pct).slice(0,8)
+    }
+
     const totalStars = repos.reduce((s,r)=>s+(r.stargazers_count||0),0)
     const totalForks  = repos.reduce((s,r)=>s+(r.forks_count||0),0)
-    // GitHub's public REST API doesn't expose a total-commit count without
-    // walking every repo's commit history (expensive, and rate-limit-costly
-    // per repo) — this is a repo-count-scaled estimate, not a real count,
-    // and is only ever surfaced as a rough "Commits" stat card, never as a
-    // verified/authoritative figure.
-    const estimatedCommits = Math.round((user.public_repos||0) * 18 + totalStars * 0.4)
+    // Commits: exact counts for the top-3 repos (via the Link-header trick)
+    // plus a scaled estimate for any remaining repos beyond those 3 — so an
+    // account with all its activity in 1-3 repos (the common case) now
+    // shows a real, correct number instead of the old wildly-off guess.
+    const remainingRepoCount = Math.max(0, (user.public_repos||0) - topN.length)
+    const estimatedRemainder = Math.round(remainingRepoCount * 18)
+    const estimatedCommits = anyVerifiedCommitCount ? (verifiedCommitTotal + estimatedRemainder) : Math.round((user.public_repos||0) * 18 + totalStars * 0.4)
+    const commitsAreExact = anyVerifiedCommitCount && remainingRepoCount === 0
 
     const recentPushDays = repos.length
       ? Math.min(...repos.map(r => r.pushed_at ? Math.floor((Date.now()-new Date(r.pushed_at).getTime())/86400000) : 9999))
@@ -188,8 +281,16 @@ router.post("/analyze", async (req, res) => {
     // same discipline as the AI-derived fingerprint below. Full architecture/
     // commit-intelligence/behavior-pattern scoring is a larger, separate
     // build (deferred — see capabilio-coordination-layer memory note).
+    // BUG FIX (2026-08-04, real-world test): documentation score used to be
+    // description-presence-only across ALL repos, which showed 0 for an
+    // account whose one repo has a real README (visibly linked in GitHub's
+    // own sidebar) but no one-line repo description set. Now blends in the
+    // real hasReadme signal from the top-3 repos we actually checked.
     const reposWithDesc = repos.filter(r => r.description && r.description.trim().length>0).length
-    const documentationScore = repos.length ? Math.round((reposWithDesc/repos.length)*100) : 0
+    const descScore = repos.length ? (reposWithDesc/repos.length)*100 : 0
+    const readmeChecked = topN.filter(r => !r.detectionSkipped)
+    const readmeScore = readmeChecked.length ? (readmeChecked.filter(r=>r.hasReadme).length/readmeChecked.length)*100 : null
+    const documentationScore = Math.round(readmeScore==null ? descScore : (descScore*0.6 + readmeScore*0.4))
     const builderScore = Math.max(0, Math.min(100, Math.round((user.public_repos||0)*2.5 + totalStars*0.6 + languages.length*5)))
     const activeWithin90 = repos.filter(r => r.pushed_at && (Date.now()-new Date(r.pushed_at).getTime())/86400000 <= 90).length
     const consistencyScore = Math.max(0, Math.min(100, Math.round((recentPushDays===9999?0:Math.max(0,100-recentPushDays))*0.6 + Math.min(activeWithin90,5)*8)))
@@ -232,6 +333,7 @@ Return JSON exactly matching this schema:
       totalStars,
       totalForks,
       totalCommits: estimatedCommits,
+      commitsAreExact,
       languages,
       topRepos,
       fingerprint,
