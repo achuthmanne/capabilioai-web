@@ -397,7 +397,41 @@ router.post("/analyze", async (req, res) => {
     const builderScore = Math.max(0, Math.min(100, Math.round((user.public_repos||0)*2.5 + totalStars*0.6 + languages.length*5)))
     const activeWithin90 = repos.filter(r => r.pushed_at && (Date.now()-new Date(r.pushed_at).getTime())/86400000 <= 90).length
     const consistencyScore = Math.max(0, Math.min(100, Math.round((recentPushDays===9999?0:Math.max(0,100-recentPushDays))*0.6 + Math.min(activeWithin90,5)*8)))
-    const scores = { builder: builderScore, documentation: documentationScore, consistency: consistencyScore }
+
+    // Tech Breadth + Tooling Maturity (2026-08-05) — two more identity
+    // scores from the original spec, computed ONLY from data already
+    // fetched above (no new API calls), same honesty discipline as the
+    // three existing scores. Deliberately did NOT add a "community/
+    // engagement" score from followers/stars — that measures popularity,
+    // not skill, and this platform's core principle is skill-first
+    // evaluation; conflating GitHub star count with capability would cut
+    // against that, so it's left out rather than added just to round out a
+    // number of scores.
+    //
+    // techBreadthScore: real language diversity + real detected tech-stack
+    // diversity across the checked top repos + tagged topics — a developer
+    // working across genuinely different tools/languages scores higher than
+    // one doing the same thing repeatedly. Always computable (languages
+    // always has at least the coarse fallback), so never null.
+    const uniqueTech = new Set(readmeChecked.flatMap(r => r.techStack||[]))
+    const uniqueTopics = new Set(topRepos.flatMap(r => r.topics||[])) // GitHub-tagged metadata, not detection-dependent — safe across all topRepos
+    const techBreadthScore = Math.max(0, Math.min(100, Math.round(languages.length*10 + uniqueTech.size*8 + Math.min(uniqueTopics.size,5)*4)))
+
+    // toolingScore: real CI/CD + containerization + README + config-file
+    // presence across the top repos we actually managed to check — signals
+    // professional engineering practice, distinct from Documentation (which
+    // is about explaining the work) and Builder (which is about volume).
+    // null (not 0) when nothing could be checked this run — same pattern as
+    // documentationScore's readmeScore, so a rate-limited/skipped run never
+    // silently reads as "no tooling found."
+    const toolingScore = readmeChecked.length ? Math.max(0, Math.min(100, Math.round(
+      (readmeChecked.some(r=>(r.techStack||[]).some(t=>t.includes("CI/CD")))?30:0) +
+      (readmeChecked.some(r=>(r.techStack||[]).some(t=>t.includes("Docker")))?20:0) +
+      (readmeChecked.some(r=>r.hasReadme)?20:0) +
+      Math.min(readmeChecked.reduce((s,r)=>s+(r.techStack||[]).length,0),6)*5
+    ))) : null
+
+    const scores = { builder: builderScore, documentation: documentationScore, consistency: consistencyScore, techBreadth: techBreadthScore, tooling: toolingScore }
 
     // BUG FIX (2026-08-04, real-world test #3): confidenceScore used to be
     // scored purely off breadth signals (repo count / followers / stars) —

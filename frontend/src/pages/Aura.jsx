@@ -5870,7 +5870,7 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
                         <>
                           <div style={{fontSize:9,color:T.ink4,marginTop:2}}>Estimates from public repo data — not verified measurements</div>
                           <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
-                            {[{label:"Builder",value:githubData.scores.builder,icon:"🏗️"},{label:"Documentation",value:githubData.scores.documentation,icon:"📝"},{label:"Consistency",value:githubData.scores.consistency,icon:"📈"}].map((s,i)=>{
+                            {[{label:"Builder",value:githubData.scores.builder,icon:"🏗️"},{label:"Documentation",value:githubData.scores.documentation,icon:"📝"},{label:"Consistency",value:githubData.scores.consistency,icon:"📈"},{label:"Tech Breadth",value:githubData.scores.techBreadth,icon:"🧩"},{label:"Tooling",value:githubData.scores.tooling,icon:"🛠️"}].filter(s=>s.value!=null).map((s,i)=>{
                               const col=s.value>=70?T.green:s.value>=40?T.amber:T.ink4
                               return (
                                 <Card key={i} style={{textAlign:"center",padding:"12px"}}>

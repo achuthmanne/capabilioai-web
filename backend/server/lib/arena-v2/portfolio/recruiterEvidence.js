@@ -100,6 +100,13 @@ function buildCodeDnaRecruiterView(proof) {
     { label: "Can build software",   value: signal(scores.builder) },
     { label: "Can document work",    value: signal(scores.documentation) },
     { label: "Can maintain software", value: signal(scores.consistency) },
+    // 2026-08-05: techBreadth/tooling are legitimately skill-relevant (real
+    // language/tool diversity, real CI/CD-and-config presence) so they're
+    // included here. Deliberately did NOT add a followers/stars-based
+    // signal — that's popularity, not skill, and would contradict this
+    // platform's skill-first evaluation principle.
+    { label: "Works across multiple technologies", value: signal(scores.techBreadth) },
+    { label: "Uses professional tooling (CI/CD, config)", value: signal(scores.tooling) },
   ].filter(s => s.value !== null)
 
   // AI Repository Interview (2026-08-04): a text Q&A comprehension check —
