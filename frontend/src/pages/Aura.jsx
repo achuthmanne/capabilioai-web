@@ -2577,10 +2577,19 @@ function ProfileLinksForm({ userData, save, setUserData }) {
 
   const handleSave = async () => {
     setSaving(true)
+    // BUG FIX (2026-08-04): this used to also send "personalInfo.linkedinUrl"-style
+    // dotted-string keys, which are not valid Postgres column names — db.js's
+    // toSnake() has no dot-path handling, so those keys passed through literally
+    // and (per db.js's own documented "unknown column kills the ENTIRE update"
+    // behavior) likely made every save from this form fail outright. githubUrl/
+    // linkedInUrl/portfolioUrl are now properly mapped in db.js's CAMEL_TO_SNAKE,
+    // so the flat keys alone are sufficient — Aura's Code DNA tab and
+    // fetchGithubFingerprint both already read the flat githubUrl, not the
+    // personalInfo.* nested path.
     const updates = {
-      linkedInUrl: linkedin.trim(), "personalInfo.linkedinUrl": linkedin.trim(),
-      githubUrl:   github.trim(),   "personalInfo.githubUrl":   github.trim(),
-      portfolioUrl: portfolio.trim(),"personalInfo.portfolioUrl": portfolio.trim(),
+      linkedInUrl: linkedin.trim(),
+      githubUrl:   github.trim(),
+      portfolioUrl: portfolio.trim(),
     }
     await save(updates)
     if (setUserData) setUserData(p => ({...p,...updates}))
@@ -3804,63 +3813,93 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[activeTab])
 
-  // ========== GITHUB CODE DNA: with mock fallback so it always works ==========
-  const fetchGithubFingerprint = async (urlOverride) => {
-    const ghUrl=(urlOverride||githubUrl||userData?.personalInfo?.githubUrl||"").trim()
+  // ========== GITHUB CODE DNA ==========
+  // BUG FIX (2026-08-04): this used to silently swap in fabricated per-username
+  // stats (generateExampleGithubData below) on ANY failure — network error, 404,
+  // rate limit, even a genuine parse bug — and cleared githubError so the fake
+  // card looked identical to a real one. That's a real trust problem: a user
+  // could believe their own fabricated-looking "authenticity score" was real.
+  // Now: real failures show a real error. The example generator still exists,
+  // but only fires when the user explicitly clicks "Show me an example" — and
+  // the resulting card is visibly marked as example data (isExampleData flag,
+  // rendered as a banner in the Code DNA tab), never silently substituted.
+  const generateExampleGithubData=(username)=>{
+    const hash=(str)=>{let h=0;for(let i=0;i<str.length;i++) h=((h<<5)-h)+str.charCodeAt(i);return Math.abs(h)}
+    const seed=hash(username)
+    const langOptions=["JavaScript","TypeScript","Python","Java","Go","Rust","C#","Swift"]
+    const topLangs=[...new Set(Array(4).fill().map((_,i)=>langOptions[(seed+i*3)%langOptions.length]))]
+    const langPcts=topLangs.map((lang,i)=>{const pct=i===0?Math.floor(35+(seed%25)):i===1?Math.floor(25+(seed%15)):i===2?Math.floor(15+(seed%10)):10;return {lang,pct}})
+    const authScore=Math.floor(65+(seed%35))
+    return {
+      isExampleData:true,
+      username,
+      avatar:`https://github.com/${username}.png`,
+      bio:`${topLangs[0]} developer focused on clean architecture and open source`,
+      publicRepos:Math.floor(12+(seed%60)),
+      followers:Math.floor(3+(seed%250)),
+      totalCommits:Math.floor(150+(seed%1000)),
+      languages:langPcts,
+      topRepos:[
+        {name:`${username}/main-project`,stars:Math.floor(8+(seed%80)),forks:Math.floor(3+(seed%25)),url:`https://github.com/${username}`,desc:`Core ${topLangs[0]} project with clean architecture`,lang:topLangs[0],updated:"3 days ago"},
+        {name:`${username}/utils-lib`,stars:Math.floor(4+(seed%40)),forks:Math.floor(1+(seed%15)),url:`https://github.com/${username}`,desc:`Utility library for ${topLangs[1]} projects`,lang:topLangs[1],updated:"last week"},
+        {name:`${username}/experiments`,stars:Math.floor(2+(seed%20)),forks:Math.floor(1+(seed%8)),url:`https://github.com/${username}`,desc:"Experimental code and learning exercises",lang:topLangs[2]||topLangs[0],updated:"2 weeks ago"},
+      ],
+      fingerprint:{
+        authenticityScore:authScore,
+        fingerprintTitle:authScore>=80?`${topLangs[0]} Architect`:authScore>=65?`${topLangs[0]} Practitioner`:`${topLangs[0]} Developer`,
+        dna:`Example only — not your real data. A profile like this would show a consistent focus on ${topLangs[0]} with growing expertise in ${topLangs[1]}.`,
+        patterns:["Regular commit cadence","Meaningful commit messages","Diverse project portfolio"],
+        specialization:`${topLangs[0]} / ${topLangs[1]} specialist`,
+        codingStyle:"Modular, well-structured code",
+        verificationStatus:"Example data (unverified)",
+        standoutFact:`Has ${Math.floor(5+(seed%15))} repositories with meaningful documentation.`
+      }
+    }
+  }
+
+  const showGithubExample = (urlOverride) => {
+    const ghUrl=(urlOverride||githubUrl||"").trim()
+    const username=ghUrl.split("github.com/").pop()?.split("/")[0]?.replace(/[^a-zA-Z0-9-_]/g,"")||"example-user"
+    setGithubError("")
+    setGithubData(generateExampleGithubData(username))
+  }
+
+  // Basic caching: a real GitHub fetch persists into profiles.github_data
+  // (see success branch below). If we already have a cached result for the
+  // SAME username less than 12h old, reuse it instead of spending another
+  // call against GitHub's unauthenticated 60-req/hr limit (shared across
+  // every Capabilio user hitting this route unless GITHUB_TOKEN is set on
+  // the server). forceRefresh bypasses this for the explicit Refresh action.
+  const CACHE_TTL_MS = 12*60*60*1000
+  const fetchGithubFingerprint = async (urlOverride, forceRefresh=false) => {
+    const ghUrl=(urlOverride||githubUrl||userData?.githubUrl||userData?.personalInfo?.githubUrl||"").trim()
     if(!ghUrl){setGithubError("Please enter a GitHub profile URL"); return}
     if(!ghUrl.includes("github.com")){setGithubError("Please enter a valid GitHub profile URL (e.g. https://github.com/username)"); return}
-    setGithubLoading(true); setGithubError("")
+    const username=ghUrl.replace(/.*github\.com\//,"").replace(/\/.*/,"").trim()
 
-    const generateMockGithubData=(username)=>{
-      const hash=(str)=>{let h=0;for(let i=0;i<str.length;i++) h=((h<<5)-h)+str.charCodeAt(i);return Math.abs(h)}
-      const seed=hash(username)
-      const langOptions=["JavaScript","TypeScript","Python","Java","Go","Rust","C#","Swift"]
-      const topLangs=[...new Set(Array(4).fill().map((_,i)=>langOptions[(seed+i*3)%langOptions.length]))]
-      const totalPct=100
-      const langPcts=topLangs.map((lang,i)=>{const pct=i===0?Math.floor(35+(seed%25)):i===1?Math.floor(25+(seed%15)):i===2?Math.floor(15+(seed%10)):10;return {lang,pct}})
-      const authScore=Math.floor(65+(seed%35))
-      return {
-        username,
-        avatar:`https://github.com/${username}.png`,
-        bio:`${topLangs[0]} developer focused on clean architecture and open source`,
-        publicRepos:Math.floor(12+(seed%60)),
-        followers:Math.floor(3+(seed%250)),
-        totalCommits:Math.floor(150+(seed%1000)),
-        languages:langPcts,
-        topRepos:[
-          {name:`${username}/main-project`,stars:Math.floor(8+(seed%80)),forks:Math.floor(3+(seed%25)),url:`https://github.com/${username}`,desc:`Core ${topLangs[0]} project with clean architecture`,lang:topLangs[0],updated:"3 days ago"},
-          {name:`${username}/utils-lib`,stars:Math.floor(4+(seed%40)),forks:Math.floor(1+(seed%15)),url:`https://github.com/${username}`,desc:`Utility library for ${topLangs[1]} projects`,lang:topLangs[1],updated:"last week"},
-          {name:`${username}/experiments`,stars:Math.floor(2+(seed%20)),forks:Math.floor(1+(seed%8)),url:`https://github.com/${username}`,desc:"Experimental code and learning exercises",lang:topLangs[2]||topLangs[0],updated:"2 weeks ago"},
-        ],
-        fingerprint:{
-          authenticityScore:authScore,
-          fingerprintTitle:authScore>=80?`${topLangs[0]} Architect`:authScore>=65?`${topLangs[0]} Practitioner`:`${topLangs[0]} Developer`,
-          dna:`Your GitHub profile shows a consistent focus on ${topLangs[0]} with growing expertise in ${topLangs[1]}. Commit patterns suggest genuine hands-on development work.`,
-          patterns:["Regular commit cadence","Meaningful commit messages","Diverse project portfolio"],
-          specialization:`${topLangs[0]} / ${topLangs[1]} specialist`,
-          codingStyle:"Modular, well-structured code",
-          verificationStatus:authScore>=80?"Strong ownership indicators":authScore>=65?"Likely self-authored":"Mixed contribution confidence",
-          standoutFact:`Has ${Math.floor(5+(seed%15))} repositories with meaningful documentation.`
-        }
+    if(!forceRefresh){
+      const cached=userData?.githubData
+      if(cached?.username?.toLowerCase()===username.toLowerCase() && cached?.analyzedAt){
+        const age=Date.now()-new Date(cached.analyzedAt).getTime()
+        if(age>=0 && age<CACHE_TTL_MS){ setGithubData(cached); setGithubError(""); return }
       }
     }
 
+    setGithubLoading(true); setGithubError("")
     try {
       const res=await fetch(`${API}/api/github/analyze`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({githubUrl:ghUrl,keyword:userData?.keyword||"Developer"})})
-      if(res.status===404) throw new Error("GitHub endpoint not found – using AI simulation")
-      if(!res.ok) throw new Error(`Server error (${res.status})`)
       const ct=res.headers.get("content-type")||""
-      if(!ct.includes("application/json")) throw new Error(`Non-JSON response (${res.status}) – using AI simulation`)
-      const data=await res.json()
-      if(data.error) throw new Error(data.error)
-      setGithubData(data)
-      if(!userData?.personalInfo?.githubUrl) save({"personalInfo.githubUrl":ghUrl})
+      const data=ct.includes("application/json") ? await res.json() : null
+      if(!res.ok || !data || data.error){
+        throw new Error(data?.error || `Couldn't reach GitHub (server responded ${res.status}). Please try again in a moment.`)
+      }
+      const withMeta = { ...data, analyzedAt:new Date().toISOString() }
+      setGithubData(withMeta)
+      save({ githubUrl: ghUrl, githubData: withMeta })
     } catch(e) {
-      console.warn("GitHub API failed, using simulation:",e.message)
-      const username=ghUrl.split("github.com/").pop()?.split("/")[0]?.replace(/[^a-zA-Z0-9-_]/g,"")||"user"
-      setGithubData(generateMockGithubData(username))
-      setGithubError("") // Clear error — show mock data instead
-      if(!userData?.personalInfo?.githubUrl) save({"personalInfo.githubUrl":ghUrl})
+      console.error("[Code DNA] GitHub analysis failed:", e.message)
+      setGithubError(e.message || "Something went wrong analysing this profile. Please try again.")
+      setGithubData(null)
     }
     setGithubLoading(false)
   }
@@ -5650,12 +5689,20 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
                 {["https://github.com/torvalds","https://github.com/gaearon"].map((ex,i)=><button key={i} onClick={()=>setGithubUrl(ex)} style={{background:"transparent",border:"none",color:T.indigo,fontSize:11,cursor:"pointer",textDecoration:"underline",padding:0}}>{ex}</button>)}
               </div>
             </Card>
-            {githubError&&<div style={{background:T.red2,border:`1.5px solid rgba(192,57,43,0.2)`,borderRadius:12,padding:"14px 18px",marginBottom:20,color:T.red,fontSize:13}}>⚠️ {githubError}</div>}
+            {githubError&&(
+              <div style={{background:T.red2,border:`1.5px solid rgba(192,57,43,0.2)`,borderRadius:12,padding:"14px 18px",marginBottom:20,color:T.red,fontSize:13}}>
+                ⚠️ {githubError}
+                <div style={{marginTop:8}}>
+                  <button onClick={()=>showGithubExample()} style={{background:"transparent",border:"none",color:T.indigo,fontSize:12,cursor:"pointer",textDecoration:"underline",padding:0,fontWeight:600}}>See what a Code DNA card looks like (example data) →</button>
+                </div>
+              </div>
+            )}
             {!githubData&&!githubLoading&&!githubError&&(
               <div style={{textAlign:"center",padding:"50px 20px"}}>
                 <div style={{fontSize:52,marginBottom:16}}>🧬</div>
                 <div style={{fontSize:15,fontWeight:600,color:T.ink3,marginBottom:8}}>Enter your GitHub URL above to get started</div>
-                <div style={{fontSize:13,color:T.ink4}}>We&apos;ll scan your public repos and generate your unique Code DNA fingerprint</div>
+                <div style={{fontSize:13,color:T.ink4,marginBottom:14}}>We&apos;ll scan your public repos and generate your unique Code DNA fingerprint</div>
+                <button onClick={()=>showGithubExample("https://github.com/example-user")} style={{background:"transparent",border:"none",color:T.indigo,fontSize:12,cursor:"pointer",textDecoration:"underline",padding:0,fontWeight:600}}>See what a Code DNA card looks like (example data) →</button>
               </div>
             )}
             {githubLoading&&(
@@ -5669,8 +5716,20 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
               const fp=githubData.fingerprint||{}
               const LCOLS={"JavaScript":"#f7df1e","TypeScript":"#3178c6","Python":"#3776ab","Java":"#f89820","Go":"#00ADD8","Rust":"#dea584","C++":"#f34b7d","C#":"#9b4f96","Ruby":"#cc342d","PHP":"#777bb4","Swift":"#fa7343","Kotlin":"#7F52FF","HTML":"#e34c26","CSS":"#563d7c","Shell":"#89e051"}
               const authCol=fp.authenticityScore>=80?T.green:fp.authenticityScore>=60?T.amber:T.red
+              const cacheAgeMs=githubData.analyzedAt?Date.now()-new Date(githubData.analyzedAt).getTime():null
+              const cacheAgeLabel=cacheAgeMs==null?null:cacheAgeMs<3600000?"just now":cacheAgeMs<86400000?`${Math.floor(cacheAgeMs/3600000)}h ago`:`${Math.floor(cacheAgeMs/86400000)}d ago`
               return (
                 <div>
+                  {githubData.isExampleData ? (
+                    <div style={{background:T.amber2,border:`1.5px solid rgba(184,98,10,0.25)`,borderRadius:12,padding:"10px 16px",marginBottom:16,color:T.amber,fontSize:12,fontWeight:700}}>
+                      🧪 Example data — not a real fetch. Paste your own GitHub URL above to analyze your real profile.
+                    </div>
+                  ) : cacheAgeLabel && (
+                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,fontSize:11,color:T.ink4}}>
+                      <span>Last analyzed {cacheAgeLabel}</span>
+                      <button onClick={()=>fetchGithubFingerprint(null,true)} disabled={githubLoading} style={{background:"transparent",border:"none",color:T.indigo,fontSize:11,cursor:githubLoading?"default":"pointer",textDecoration:"underline",padding:0,fontWeight:600}}>Refresh</button>
+                    </div>
+                  )}
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:20}}>
                     <Card style={{borderLeft:`4px solid ${T.green}`}}>
                       <div style={{display:"flex",gap:14,alignItems:"flex-start",marginBottom:16}}>

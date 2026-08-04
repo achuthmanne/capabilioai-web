@@ -61,7 +61,16 @@ const CAMEL_TO_SNAKE = {
   // Social
   githubUsername:       'github_username',
   githubData:           'github_data',
+  githubUrl:            'github_url',            // BUG FIX (2026-08-04): was unmapped, fell through
+                                                   // toSnake()'s else-branch and wrote a literal
+                                                   // "githubUrl" column — only worked by accident
+                                                   // because a duplicate quoted "githubUrl" column
+                                                   // also exists live. Now properly normalised onto
+                                                   // the real snake_case column toCompat() already reads.
   linkedInUrl:          'linkedin_url',
+  portfolioUrl:         'portfolio_url',          // same class of bug — was unmapped, no duplicate
+                                                   // quoted column existed for this one, so every
+                                                   // portfolioUrl save has likely been silently failing.
   // Portfolio/vault
   vaultFiles:           'vault_files',
   purchasedThemes:      'purchased_themes',
@@ -185,6 +194,7 @@ const toCompat = (data) => {
     githubData:           data.github_data          || data.githubData          || null,
     linkedInUrl:          data.linkedin_url         || data.linkedInUrl         || '',
     githubUrl:            data.github_url           || data.githubUrl           || '',
+    portfolioUrl:         data.portfolio_url        || data.portfolioUrl        || '',
     // Portfolio/vault
     vaultFiles:           data.vault_files          || data.vaultFiles          || [],
     purchasedThemes:      data.purchased_themes     || data.purchasedThemes     || {},
