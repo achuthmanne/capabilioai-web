@@ -5853,9 +5853,11 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
                             <div style={{display:"flex",gap:8,fontSize:11,color:T.ink4}}><span>⭐{r.stars}</span><span>🍴{r.forks}</span></div>
                           </div>
                           {r.desc&&<div style={{fontSize:11,color:T.ink3,lineHeight:1.5,marginBottom:8}}>{r.desc.slice(0,80)}{r.desc.length>80?"...":""}</div>}
-                          {r.techStack&&r.techStack.length>0&&(
+                          {((r.techStack&&r.techStack.length>0)||r.hasReadme||(r.topics&&r.topics.length>0))&&(
                             <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:8}}>
-                              {r.techStack.map((t,ti)=><span key={ti} style={{fontSize:9.5,fontWeight:700,color:T.indigo,background:"rgba(61,78,172,0.08)",border:"1px solid rgba(61,78,172,0.16)",borderRadius:6,padding:"2px 6px"}}>{t}</span>)}
+                              {r.hasReadme&&<span style={{fontSize:9.5,fontWeight:700,color:T.green,background:T.green2,borderRadius:6,padding:"2px 6px"}}>📄 README</span>}
+                              {(r.techStack||[]).map((t,ti)=><span key={`t${ti}`} style={{fontSize:9.5,fontWeight:700,color:T.indigo,background:"rgba(61,78,172,0.08)",border:"1px solid rgba(61,78,172,0.16)",borderRadius:6,padding:"2px 6px"}}>{t}</span>)}
+                              {(r.topics||[]).map((t,ti)=><span key={`tp${ti}`} style={{fontSize:9.5,fontWeight:700,color:T.ink3,background:T.cream2,borderRadius:6,padding:"2px 6px"}}>#{t}</span>)}
                             </div>
                           )}
                           <div style={{display:"flex",alignItems:"center",gap:6}}>

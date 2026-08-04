@@ -62,16 +62,26 @@ const TECH_SIGNALS = [
   { file: ".github",             tag: "CI/CD (GitHub Actions)" },
 ]
 
-async function detectTechStack(fullName) {
-  if (!fullName) return []
+const README_NAMES = new Set(["readme.md","readme","readme.rst","readme.txt"])
+
+// Returns { techStack, hasReadme } from ONE root-listing call — README
+// detection piggybacks on the same response already fetched for tech
+// detection, so it costs nothing extra. hasReadme is a real presence check,
+// not a quality judgement (we don't fetch/score README content).
+async function inspectRepoRoot(fullName) {
+  if (!fullName) return { techStack: [], hasReadme: false }
   try {
     const r = await fetch(`https://api.github.com/repos/${fullName}/contents`, { headers: ghHeaders() })
-    if (!r.ok) return []
+    if (!r.ok) return { techStack: [], hasReadme: false }
     const items = await r.json()
-    if (!Array.isArray(items)) return []
+    if (!Array.isArray(items)) return { techStack: [], hasReadme: false }
     const names = new Set(items.map(i => i.name))
-    return TECH_SIGNALS.filter(sig => names.has(sig.file)).map(sig => sig.tag)
-  } catch { return [] }
+    const lowerNames = new Set(items.map(i => (i.name||"").toLowerCase()))
+    return {
+      techStack: TECH_SIGNALS.filter(sig => names.has(sig.file)).map(sig => sig.tag),
+      hasReadme: [...lowerNames].some(n => README_NAMES.has(n)),
+    }
+  } catch { return { techStack: [], hasReadme: false } }
 }
 
 // Deterministic per-user code — no separate table/column needed to store it,
@@ -137,18 +147,24 @@ router.post("/analyze", async (req, res) => {
     const topRepos = [...repos]
       .sort((a,b) => (b.stargazers_count||0)-(a.stargazers_count||0))
       .slice(0,6)
-      .map(r => ({ name:r.name, fullName:r.full_name, desc:r.description||"", stars:r.stargazers_count||0, forks:r.forks_count||0, lang:r.language||null, updated:timeAgo(r.pushed_at), url:r.html_url }))
+      // topics: GitHub's own repo-topics field — already present on every
+      // object returned by the repos-list call above, zero extra API cost,
+      // just never surfaced before. Real data the owner tagged, not inferred.
+      .map(r => ({ name:r.name, fullName:r.full_name, desc:r.description||"", stars:r.stargazers_count||0, forks:r.forks_count||0, lang:r.language||null, updated:timeAgo(r.pushed_at), url:r.html_url, topics:Array.isArray(r.topics)?r.topics.slice(0,5):[] }))
 
-    // ── Real per-repo technology detection (Phase 2) ─────────────────────
+    // ── Real per-repo technology + README detection (Phase 2/3) ──────────
     // Only the top 3 repos (by stars) get this — each costs one extra
     // GitHub API call (root file listing only, no file-content fetches), so
     // 3 is a deliberate ceiling to keep total calls-per-analyze bounded
     // given the unauthenticated 60-req/hr limit shared across every user
     // hitting this route when GITHUB_TOKEN isn't set. Detection is filename
     // presence only — real, verifiable signals (package.json genuinely
-    // exists in that repo), never an AI guess.
+    // exists in that repo), never an AI guess. README detection piggybacks
+    // on this same call at zero extra cost.
     await Promise.all(topRepos.slice(0,3).map(async (r) => {
-      r.techStack = await detectTechStack(r.fullName)
+      const { techStack, hasReadme } = await inspectRepoRoot(r.fullName)
+      r.techStack = techStack
+      r.hasReadme = hasReadme
     }))
     topRepos.forEach(r => { delete r.fullName })
 
