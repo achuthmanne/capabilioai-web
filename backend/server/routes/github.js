@@ -201,9 +201,12 @@ router.post("/analyze", async (req, res) => {
       // topics: GitHub's own repo-topics field — already present on every
       // object returned by the repos-list call above, zero extra API cost,
       // just never surfaced before. Real data the owner tagged, not inferred.
-      .map(r => ({ name:r.name, fullName:r.full_name, desc:r.description||"", stars:r.stargazers_count||0, forks:r.forks_count||0, lang:r.language||null, updated:timeAgo(r.pushed_at), url:r.html_url, topics:Array.isArray(r.topics)?r.topics.slice(0,5):[] }))
+      // pushedAtIso is kept (not just the human "3d ago" string) so a future
+      // re-analysis can tell whether a repo genuinely changed — see caching
+      // below.
+      .map(r => ({ name:r.name, fullName:r.full_name, desc:r.description||"", stars:r.stargazers_count||0, forks:r.forks_count||0, lang:r.language||null, updated:timeAgo(r.pushed_at), pushedAtIso:r.pushed_at||null, url:r.html_url, topics:Array.isArray(r.topics)?r.topics.slice(0,5):[] }))
 
-    // ── Real per-repo intelligence (Phase 2/3/4) ──────────────────────────
+    // ── Real per-repo intelligence, now with per-repo caching (Phase 2/3/4/5) ──
     // Only the top 3 repos (by stars) get this — each costs up to 3 extra
     // GitHub API calls (root listing, commit-count via Link header,
     // language bytes), so 3 is a deliberate ceiling to keep total
@@ -212,11 +215,41 @@ router.post("/analyze", async (req, res) => {
     // set (strongly recommended to configure — see file header). Tech/
     // README detection is filename presence only; commit counts and
     // language bytes are exact real values from GitHub, not estimates.
+    //
+    // Caching (2026-08-04): before spending those 3 calls, check the user's
+    // last stored analysis for the SAME repo with the SAME pushed_at
+    // timestamp — if it hasn't been pushed to since we last checked, the
+    // repo's file structure/commit count/language mix genuinely cannot have
+    // changed, so reuse the cached values instead of re-fetching. This is a
+    // real correctness-preserving cache (any push invalidates it), not a
+    // time-based guess — it cuts the dominant cost of a "Refresh" click
+    // (which previously always re-did all 9 extra calls even if nothing
+    // about the repos had changed) down to near-zero on repeat use.
+    let prevByRepoName = {}
+    try {
+      const prevRow = await codeDnaRepo.getProfile(req.user.id)
+      const prevTopRepos = prevRow?.source_ref?.analysis?.topRepos
+      if (Array.isArray(prevTopRepos)) {
+        prevByRepoName = Object.fromEntries(prevTopRepos.filter(r=>r?.name).map(r => [r.name, r]))
+      }
+    } catch (e) { console.error("[github/analyze] cache lookup failed:", e.message) }
+
     const topN = topRepos.slice(0,3)
     const langByteTotals = {}
     let verifiedCommitTotal = 0
     let anyVerifiedCommitCount = false
     await Promise.all(topN.map(async (r) => {
+      const cached = prevByRepoName[r.name]
+      const cacheValid = cached && cached.pushedAtIso && cached.pushedAtIso === r.pushedAtIso && !cached.detectionSkipped && cached._langBytes
+      if (cacheValid) {
+        r.techStack = cached.techStack || []
+        r.hasReadme = !!cached.hasReadme
+        r.detectionSkipped = false
+        r.fromCache = true
+        if (typeof cached._commitCount === "number") { verifiedCommitTotal += cached._commitCount; anyVerifiedCommitCount = true }
+        for (const [lang, bytes] of Object.entries(cached._langBytes)) langByteTotals[lang] = (langByteTotals[lang]||0) + bytes
+        return
+      }
       const [rootInfo, commitCount, langBytes] = await Promise.all([
         inspectRepoRoot(r.fullName),
         getRepoCommitCount(r.fullName),
@@ -225,10 +258,22 @@ router.post("/analyze", async (req, res) => {
       r.techStack = rootInfo.techStack
       r.hasReadme = rootInfo.hasReadme
       r.detectionSkipped = rootInfo.skipped
+      r._commitCount = typeof commitCount === "number" ? commitCount : null   // internal, stripped before sending to client
+      r._langBytes = langBytes || {}                                          // internal, stripped before sending to client
       if (typeof commitCount === "number") { verifiedCommitTotal += commitCount; anyVerifiedCommitCount = true }
       for (const [lang, bytes] of Object.entries(langBytes)) langByteTotals[lang] = (langByteTotals[lang]||0) + bytes
     }))
-    topRepos.forEach(r => { delete r.fullName })
+    // Persist the internal cache fields on cached hits too (so they survive
+    // into the next save unchanged), then strip fullName + underscore-
+    // prefixed internal fields from what actually gets stored/sent — the
+    // client never needs raw language-byte maps or internal commit counts.
+    topN.forEach(r => {
+      if (r.fromCache) {
+        const cached = prevByRepoName[r.name]
+        r._commitCount = cached._commitCount
+        r._langBytes = cached._langBytes
+      }
+    })
 
     // Language breakdown: real byte-weighted mix from the top-3 repos
     // (accurate — matches what GitHub's own repo page shows) blended with
@@ -322,6 +367,12 @@ Return JSON exactly matching this schema:
       standoutFact: ai.standoutFact || "",
     }
 
+    // Client never needs fullName (internal lookup key) or the underscore-
+    // prefixed cache fields (raw commit count / language bytes per repo) —
+    // those are kept only in the persisted copy below so the NEXT /analyze
+    // call can reuse them via prevByRepoName.
+    const topReposForClient = topRepos.map(({ fullName, _commitCount, _langBytes, fromCache, ...rest }) => rest)
+
     const responseBody = {
       username: user.login,
       avatar: user.avatar_url,
@@ -335,17 +386,22 @@ Return JSON exactly matching this schema:
       totalCommits: estimatedCommits,
       commitsAreExact,
       languages,
-      topRepos,
+      topRepos: topReposForClient,
       fingerprint,
       scores,
     }
 
-    // Persist as the user's current Code DNA snapshot. Never blocks or fails
-    // the response — a persistence hiccup shouldn't stop the user seeing
-    // their own analysis, it just means it won't be cached/recruiter-visible
-    // until the next successful save.
+    // Persist as the user's current Code DNA snapshot. Stores the FULL
+    // topRepos (including fullName + the internal _commitCount/_langBytes
+    // cache fields on the top-3) so the next /analyze call can skip re-
+    // fetching any repo whose pushed_at hasn't changed — see the caching
+    // block above. Never blocks or fails the response — a persistence
+    // hiccup shouldn't stop the user seeing their own analysis, it just
+    // means it won't be cached/recruiter-visible until the next successful
+    // save.
     try {
-      await codeDnaRepo.upsertProfile(req.user.id, { username: user.login, analysis: responseBody, scores })
+      const analysisForCache = { ...responseBody, topRepos }
+      await codeDnaRepo.upsertProfile(req.user.id, { username: user.login, analysis: analysisForCache, scores })
     } catch (persistErr) {
       console.error("[github/analyze] proof_objects persist failed:", persistErr.message)
     }
