@@ -1,11 +1,19 @@
 // Routes: POST /api/verify/* (Digilocker, EPFO, Certification)
-// EPFO /confirm now does real employer-name matching against profiles.experiences
+// EPFO (2026-08-05): real integration via AuthBridge/TruthScreen's Employee
+// PF Verification API (see lib/authbridgeEpfo.js) — replaces the old fully-
+// fabricated stub (which generated fake "EPFO data" from the user's own
+// resume and matched it against itself) AND replaces the separate Eko-based
+// supabase/functions/verify-uan integration (confirmed by the product owner
+// not to be working in practice; left deployed but no longer called from
+// any frontend flow). Both Student (Aura.jsx) and Professional (Orbit.jsx)
+// paths now share these same two routes.
 import { Router }        from "express"
 import multer            from "multer"
 import { createRequire } from "module"
 import { supabase } from "../lib/supabase.js"
 import { requireAuth } from "../lib/auth.js"
-import { matchEpfoToExperiences, normalizeCompany } from "../lib/employerMatch.js"
+import { matchEmployerNames } from "../lib/employerMatch.js"
+import { searchCompany as authbridgeSearchCompany, employmentSearch as authbridgeEmploymentSearch, isAuthBridgeConfigured } from "../lib/authbridgeEpfo.js"
 import { groq, GROQ_FAST }            from "../lib/groq.js"
 import { gemini, geminiExtractImage } from "../lib/gemini.js"
 
@@ -23,10 +31,11 @@ const hasGemini = () => process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY
 // user from the JWT (req.user.id) — never from a client-supplied `uid` in the
 // body. Previously these were unauthenticated and trusted body `uid`, so anyone
 // could stamp epfo_verified onto any account.
-// NOTE: DigiLocker/EPFO/certification are still STUBS (any OTP != "000000"
-// passes). The "verified" badge must not be presented as a real, production
-// verification until the real integrations replace these stubs — tracked as an
-// external-integration blocker.
+// NOTE: DigiLocker/certification (the plain /certification route, not
+// /certification-file) are still STUBS (any OTP != "000000" passes). EPFO is
+// now real (AuthBridge) — see above. The "verified" badge for DigiLocker/
+// plain-certification must not be presented as real until those are also
+// replaced — tracked as an external-integration blocker.
 
 // ─── Digilocker (stub) ───────────────────────────────────────────────────────
 router.post("/digilocker/init", requireAuth, async (req, res) => {
@@ -42,101 +51,130 @@ router.post("/digilocker/confirm", requireAuth, async (req, res) => {
   })
 })
 
-// ─── EPFO init (stub — OTP trigger) ─────────────────────────────────────────
-router.post("/epfo/init", requireAuth, async (req, res) => {
-  const { uan } = req.body
-  if (!uan || String(uan).length < 10)
-    return res.json({ success: false, error: "Invalid UAN (must be 12 digits)" })
-  res.json({ success: true, txnId: `epfo_${Date.now()}`, message: "OTP sent to UAN-linked mobile number" })
-})
-
-// ─── EPFO confirm — employer matching ────────────────────────────────────────
-router.post("/epfo/confirm", requireAuth, async (req, res) => {
-  const { otp, uan } = req.body
-  const uid = req.user.id   // PC-5: bind to the authenticated user, not body uid
-
-  if (otp === "000000")
-    return res.json({ verified: false, error: "Invalid OTP" })
-
-  // ── 1. Fetch this user's experiences from profiles ──────────────────────
-  let experiences = []
-  if (uid) {
-    const { data: profile, error } = await supabase()
-      .from("profiles")
-      .select("experiences")
-      .eq("id", uid)
-      .single()
-
-    if (!error && profile?.experiences) {
-      experiences = Array.isArray(profile.experiences) ? profile.experiences : []
-    }
-  }
-
-  // ── 2. Build smart stub EPFO employment history ──────────────────────────
-  //    EPFO returns: legal registered names (ALL CAPS, full suffix, no abbrev)
-  //    We simulate this from the user's actual experience company names
-  //    so the matching can be properly exercised.
-  const professionalExps = experiences.filter(e => !_isProject(e))
-
-  const epfoEmployers = professionalExps.length > 0
-    ? professionalExps.map(exp => ({
-        legal_name:      toLegalName(exp.company || exp.displayCompany || "UNKNOWN COMPANY"),
-        estab_code:      `EST${Math.floor(Math.random() * 900000 + 100000)}`,
-        date_of_joining: exp.startDate || exp.start_date || null,
-        date_of_exit:    (exp.isCurrent || exp.current) ? null : (exp.endDate || exp.end_date || null),
-        member_id:       `MEM${Math.random().toString(36).slice(2, 10).toUpperCase()}`,
-      }))
-    : [
-        // Generic fallback if no experiences exist yet
-        { legal_name: "SAMPLE TECHNOLOGIES PRIVATE LIMITED", estab_code: "EST123456", date_of_joining: "2022-01-01", date_of_exit: null },
-      ]
-
-  // ── 3. Run employer matching ────────────────────────────────────────────
-  let updatedExperiences = experiences
-  let matchLog = []
+// ─── EPFO: search-company (STEP 1) ───────────────────────────────────────────
+// Fuzzy company-name search against AuthBridge's EPFO-registered company
+// index. Frontend calls this first (pre-filled with an experience entry's
+// claimed company name) and lets the user pick the correct EPFO-registered
+// legal name from the results before calling /epfo/confirm.
+router.post("/epfo/search-company", requireAuth, async (req, res) => {
+  const query = (req.body?.companyName || req.body?.query || "").trim()
+  if (!query) return res.status(400).json({ error: "companyName is required" })
+  if (!isAuthBridgeConfigured())
+    return res.status(503).json({ error: "Employment verification is not configured yet. Try again later." })
 
   try {
-    const result = await matchEpfoToExperiences(epfoEmployers, experiences, true)
-    updatedExperiences = result.updatedExperiences
-    matchLog = result.matchLog
+    const companies = await authbridgeSearchCompany(query)
+    res.json({ companies })
   } catch (err) {
-    console.error("[EPFO match error]", err.message)
-    // Non-fatal — still mark as EPFO verified at account level, no per-entry changes
+    console.error("[epfo/search-company]", err.message)
+    res.status(502).json({ error: err.message || "Company search failed — try again." })
+  }
+})
+
+// ─── EPFO confirm (STEP 2) — real employment verification ───────────────────
+// Confirms whether the authenticated user is a known EPFO-registered
+// employee of a specific (exact) company name, and — only on a genuine match
+// — promotes the corresponding profiles.experiences[expIndex] entry to
+// verified. The client never sets verificationStatus itself; this is the
+// only path that may write "verified" onto an experience entry, same
+// discipline as /certification-file and /education-file above.
+router.post("/epfo/confirm", requireAuth, async (req, res) => {
+  const uid = req.user.id   // PC-5: bind to the authenticated user, not body uid
+  const { expIndex, companyName, personName: personNameOverride, verificationYear } = req.body || {}
+
+  if (!isAuthBridgeConfigured())
+    return res.status(503).json({ verified: false, error: "Employment verification is not configured yet. Try again later." })
+  if (!companyName?.trim())
+    return res.status(400).json({ verified: false, error: "companyName is required — pick one from /epfo/search-company first" })
+  if (!Number.isInteger(expIndex) || expIndex < 0)
+    return res.status(400).json({ verified: false, error: "expIndex is required" })
+
+  // ── 1. Load this user's experiences + display name ──────────────────────
+  const { data: profile, error: fetchErr } = await supabase()
+    .from("profiles")
+    .select("experiences, display_name, full_name, name")
+    .eq("id", uid)
+    .single()
+  if (fetchErr) return res.status(500).json({ verified: false, error: fetchErr.message })
+
+  const experiences = Array.isArray(profile?.experiences) ? profile.experiences : []
+  const exp = experiences[expIndex]
+  if (!exp) return res.status(404).json({ verified: false, error: "Experience entry not found" })
+  if (_isProject(exp))
+    return res.status(400).json({ verified: false, error: "This entry looks like a project, not an employer — EPFO verification only applies to real jobs." })
+
+  const personName = (personNameOverride || profile?.display_name || profile?.full_name || profile?.name || "").trim()
+  if (!personName)
+    return res.status(400).json({ verified: false, error: "Add your name to your profile before verifying employment, or pass personName explicitly." })
+
+  // ── 2. Call AuthBridge's real employment-search API ──────────────────────
+  let result
+  try {
+    result = await authbridgeEmploymentSearch({ companyName: companyName.trim(), personName, verificationYear })
+  } catch (err) {
+    console.error("[epfo/confirm] AuthBridge call failed:", err.message)
+    return res.status(502).json({ verified: false, error: err.message || "Employment verification failed — try again." })
   }
 
-  // ── 4. Persist updated experiences to profiles ───────────────────────────
-  if (uid && updatedExperiences !== experiences) {
-    const { error: saveErr } = await supabase()
-      .from("profiles")
-      .update({ experiences: updatedExperiences, epfo_verified: true })
-      .eq("id", uid)
-
-    if (saveErr) console.error("[EPFO save error]", saveErr.message)
+  if (!result.matched) {
+    return res.json({ verified: false, reason: "No matching employment record found at this company for this name." })
   }
 
-  // ── 5. Build per-experience verification summary for the client ──────────
-  const verificationSummary = updatedExperiences.map(exp => ({
-    company:            exp.company,
-    verificationStatus: exp.verificationStatus || "self-claimed",
-    verificationSource: exp.verificationSource || null,
-    legalName:          exp.legalName          || null,
-    matchConfidence:    exp.matchConfidence     || null,
-  }))
+  // ── 3. Person-name sanity check ──────────────────────────────────────────
+  // AuthBridge returned SOME employees at this company — confirm our
+  // person's name is actually among them (loose containment, since EPFO
+  // records commonly differ in spacing/initials from a profile's display name).
+  const normPerson = personName.toLowerCase().replace(/[^a-z\s]/g, " ").replace(/\s+/g, " ").trim()
+  const nameMatches = result.employeeNames.some(n => {
+    const norm = n.toLowerCase().replace(/[^a-z\s]/g, " ").replace(/\s+/g, " ").trim()
+    return norm === normPerson || norm.includes(normPerson) || normPerson.includes(norm)
+  })
+  if (!nameMatches) {
+    return res.json({
+      verified: false,
+      reason: `AuthBridge found employees at this company, but none matched the name "${personName}".`,
+      employeeNamesFound: result.employeeNames,
+    })
+  }
 
-  const verifiedCount = verificationSummary.filter(e => e.verificationStatus === "verified").length
+  // ── 4. Cross-check the claimed (resume) company name against the real
+  //      EPFO-registered legal name AuthBridge just confirmed — reuses the
+  //      existing brand-vs-legal-name fuzzy matcher (employerMatch.js),
+  //      finally fed real data instead of the old stub's self-referential
+  //      fake data.
+  const nameMatch = matchEmployerNames(result.employerName, exp.company || exp.displayCompany || "")
+  const matchConfidence = Math.round(Math.max(nameMatch.confidence, 0.75) * 100) // floor at 75 — we already have a real, confirmed EPFO record; the resume-name gap alone shouldn't tank confidence below that
+
+  // ── 5. Persist: promote this one experience entry to verified ────────────
+  const updatedExperiences = experiences.map((e, i) => i === expIndex ? {
+    ...e,
+    verificationStatus: "verified",
+    verificationSource: "AuthBridge/EPFO",
+    legalName:          result.employerName,
+    epfoEstablishmentId: result.establishmentId,
+    verifiedAt:          new Date().toISOString(),
+    matchConfidence,
+  } : e)
+
+  const { error: saveErr } = await supabase()
+    .from("profiles")
+    .update({
+      experiences:      updatedExperiences,
+      uan_verified:      true,
+      uan_verified_at:   new Date().toISOString(),
+      epfo_raw:          result.raw,
+    })
+    .eq("id", uid)
+
+  if (saveErr) return res.status(500).json({ verified: false, error: saveErr.message })
 
   res.json({
     verified: true,
     data: {
-      uan,
-      epfoVerified:        true,
-      verifiedAt:          new Date().toISOString(),
+      employerName:     result.employerName,
+      establishmentId:  result.establishmentId,
+      matchConfidence,
       updatedExperiences,
-      verificationSummary,
-      verifiedCount,
-      totalProfessional:   professionalExps.length,
-      epfoEmployers,       // expose for debug / future use
-      matchLog,
     },
   })
 })
@@ -353,17 +391,6 @@ router.post("/education-file", requireAuth, upload.single("document"), async (re
 })
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-/** Convert a brand/short company name to EPFO-style legal name */
-function toLegalName(company) {
-  const cleaned = company.trim()
-  // If it already looks like a legal name (has Pvt/Ltd/Private etc.), uppercase it
-  if (/pvt|ltd|private|limited|llp|inc|corp/i.test(cleaned)) {
-    return cleaned.toUpperCase()
-  }
-  // Otherwise append " PRIVATE LIMITED" to simulate EPFO registration
-  return `${cleaned.toUpperCase()} PRIVATE LIMITED`
-}
 
 /** Mirror of frontend isProjectEntry — keep in sync */
 function _isProject(e) {

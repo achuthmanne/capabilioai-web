@@ -860,10 +860,19 @@ function VerificationSection({ userData, user, onUpdate }) {
   const [step, setStep]         = useState(1)
   const [loading, setLoading]   = useState(false)
   const [error, setError]       = useState("")
-  const [uan, setUan]           = useState("")
   const [digiId, setDigiId]     = useState("")
   const [otp, setOtp]           = useState("")
   const [txnId, setTxnId]       = useState("")
+  // EPFO (2026-08-05): AuthBridge company-search + confirm flow, replacing
+  // the old UAN+OTP stub — see routes/verify.js's /epfo/search-company and
+  // /epfo/confirm.
+  const experiences              = userData?.experiences || []
+  const [epfoExpIndex, setEpfoExpIndex] = useState(null)
+  const [companyQuery, setCompanyQuery] = useState("")
+  const [companyCandidates, setCompanyCandidates] = useState([])
+  const [selectedCompany, setSelectedCompany] = useState("")
+  const [personName, setPersonName] = useState(userData?.displayName || userData?.display_name || "")
+  const [epfoResult, setEpfoResult] = useState(null)
   const [certProvider, setCertProvider] = useState(CERT_PROVIDERS[0])
   const [certId, setCertId]     = useState("")
   const [certs, setCerts]       = useState(userData?.certifications || [])
@@ -872,8 +881,19 @@ function VerificationSection({ userData, user, onUpdate }) {
   // DB column, see db.js), so staying in sync here avoids clobbering entries added by the other panel.
   useEffect(()=>setCerts(userData?.certifications || []),[userData?.certifications])
   const educationDone = userData?.educationVerified
-  const epfoDone      = userData?.epfoVerified
-  const close = () => { setModal(null); setStep(1); setError(""); setOtp(""); setUan(""); setDigiId(""); setTxnId("") }
+  // 2026-08-05 bug fix: userData.epfoVerified was never actually backed by a
+  // real DB column (db.js's CAMEL_TO_SNAKE map explicitly no-ops writes for
+  // it, and nothing maps it on read either — confirmed live: profiles only
+  // has uan_verified/uan_verified_at/epfo_raw, no epfo_verified at all). It
+  // only ever reflected transient client-session state from the moment of
+  // the old stub's fake "verification", never anything persisted. Compute
+  // the real signal directly from the experiences array instead, which IS
+  // what /epfo/confirm actually persists and immediately applies here.
+  const epfoDone      = experiences.some(e => e.verificationStatus === "verified" && e.verificationSource === "AuthBridge/EPFO")
+  const close = () => {
+    setModal(null); setStep(1); setError(""); setOtp(""); setDigiId(""); setTxnId("")
+    setEpfoExpIndex(null); setCompanyQuery(""); setCompanyCandidates([]); setSelectedCompany(""); setEpfoResult(null)
+  }
   const inp = { width:"100%", padding:"10px 14px", background:T.cream, border:`1.5px solid ${T.border}`,
     borderRadius:10, color:T.ink, fontSize:13, fontFamily:"'DM Sans',sans-serif", outline:"none", boxSizing:"border-box" }
   const initDigiLocker = async () => {
@@ -896,31 +916,45 @@ function VerificationSection({ userData, user, onUpdate }) {
     } catch { setError("Server error.") }
     setLoading(false)
   }
-  const initEPFO = async () => {
-    if (!uan.trim()||uan.length<12) { setError("Enter valid 12-digit UAN"); return }
-    setLoading(true); setError("")
+  // Picking an experience prefills the company search with its claimed name
+  // and auto-searches — the user rarely needs to type anything.
+  const pickEpfoExperience = async (idx) => {
+    setEpfoExpIndex(idx); setSelectedCompany(""); setCompanyCandidates([]); setError("")
+    const exp = experiences[idx]
+    const q = exp?.company || exp?.displayCompany || ""
+    setCompanyQuery(q)
+    if (q.trim()) await searchEpfoCompany(q)
+  }
+  const searchEpfoCompany = async (qOverride) => {
+    const q = (qOverride ?? companyQuery).trim()
+    if (!q) { setError("Enter a company name to search"); return }
+    setLoading(true); setError(""); setCompanyCandidates([])
     try {
-      const res = await fetch(`${API}/api/verify/epfo/init`,{method:"POST",headers:await vHeaders(),body:JSON.stringify({uan})}).then(r=>r.json())
-      if (res.txnId||res.success) { setTxnId(res.txnId||"mock-txn"); setStep(2) }
-      else setError(res.error||"UAN not found.")
+      const res = await fetch(`${API}/api/verify/epfo/search-company`,{method:"POST",headers:await vHeaders(),body:JSON.stringify({companyName:q})}).then(r=>r.json())
+      if (res.companies) {
+        setCompanyCandidates(res.companies)
+        if (res.companies.length === 0) setError("No EPFO-registered companies found matching that name — try a shorter or different spelling.")
+      } else setError(res.error || "Company search failed.")
     } catch { setError("Server error.") }
     setLoading(false)
   }
   const confirmEPFO = async () => {
-    if (!otp.trim()) { setError("Enter OTP"); return }
+    if (epfoExpIndex === null) { setError("Pick which job to verify"); return }
+    if (!selectedCompany) { setError("Pick the matching company from the list"); return }
+    if (!personName.trim()) { setError("Enter your name as it appears on EPFO records"); return }
     setLoading(true); setError("")
     try {
-      const res = await fetch(`${API}/api/verify/epfo/confirm`,{method:"POST",headers:await vHeaders(),body:JSON.stringify({otp,txnId,uan})}).then(r=>r.json())
+      const res = await fetch(`${API}/api/verify/epfo/confirm`,{method:"POST",headers:await vHeaders(),body:JSON.stringify({
+        expIndex: epfoExpIndex, companyName: selectedCompany, personName: personName.trim(),
+      })}).then(r=>r.json())
       if (res.verified) {
-        const updates = { epfoVerified:true, epfoData:res.data||{}, uan }
-        // Apply per-experience verification statuses returned from employer matching
+        setEpfoResult(res.data)
         if (res.data?.updatedExperiences?.length) {
-          updates.experiences = res.data.updatedExperiences
+          await onUpdate({ experiences: res.data.updatedExperiences })
         }
-        await onUpdate(updates)
         setStep(3)
       }
-      else setError(res.error||"Invalid OTP.")
+      else setError(res.reason || res.error || "Couldn't confirm this employment — check the name and company, or try a different job entry.")
     } catch { setError("Server error.") }
     setLoading(false)
   }
@@ -1033,22 +1067,57 @@ function VerificationSection({ userData, user, onUpdate }) {
               {step===1&&(<>
                 <div style={{fontSize:24,marginBottom:10}}>🏢</div>
                 <div style={{fontSize:16,fontWeight:700,color:T.ink,marginBottom:4}}>Verify Employment</div>
-                <div style={{fontSize:12,color:T.ink3,marginBottom:20}}>Enter your 12-digit UAN number.</div>
-                <input value={uan} onChange={e=>setUan(e.target.value.replace(/\D/g,""))} placeholder="12-digit UAN" style={inp} maxLength={12}/>
-                {error&&<div style={{fontSize:11,color:T.red,marginTop:8}}>{error}</div>}
-                <button onClick={initEPFO} disabled={loading} style={{width:"100%",padding:"11px",background:T.green,border:"none",borderRadius:10,color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",marginTop:16}}>{loading?"Sending...":"Send OTP →"}</button>
+                <div style={{fontSize:12,color:T.ink3,marginBottom:16}}>Pick a job from your timeline, then confirm the matching EPFO-registered company.</div>
+                {experiences.length===0
+                  ? <div style={{fontSize:12,color:T.ink4}}>Add a job to your Career Timeline first — EPFO verification checks against a specific employer.</div>
+                  : <>
+                    <label style={{fontSize:11,color:T.ink3,fontWeight:600,display:"block",marginBottom:6}}>Which job?</label>
+                    <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:14}}>
+                      {experiences.map((e,i)=>(
+                        <button key={i} onClick={()=>pickEpfoExperience(i)}
+                          style={{textAlign:"left",padding:"9px 12px",borderRadius:8,cursor:"pointer",
+                            background:epfoExpIndex===i?T.green2:T.cream,
+                            border:`1.5px solid ${epfoExpIndex===i?T.green:T.border}`,
+                            fontSize:12,color:T.ink,fontWeight:epfoExpIndex===i?700:500}}>
+                          {e.company||e.displayCompany||"Company"}{e.role?` — ${e.role}`:""}
+                          {e.verificationStatus==="verified"&&<span style={{marginLeft:6,color:T.green,fontSize:10}}>✓ verified</span>}
+                        </button>
+                      ))}
+                    </div>
+                    {epfoExpIndex!==null&&<>
+                      <label style={{fontSize:11,color:T.ink3,fontWeight:600,display:"block",marginBottom:6}}>Search EPFO-registered company name</label>
+                      <div style={{display:"flex",gap:6,marginBottom:10}}>
+                        <input value={companyQuery} onChange={e=>setCompanyQuery(e.target.value)} placeholder="e.g. Capabilio" style={{...inp,flex:1}}/>
+                        <button onClick={()=>searchEpfoCompany()} disabled={loading} style={{padding:"0 16px",background:T.green,border:"none",borderRadius:10,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>{loading?"…":"Search"}</button>
+                      </div>
+                      {companyCandidates.length>0&&(
+                        <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10,maxHeight:180,overflowY:"auto"}}>
+                          {companyCandidates.map((c,i)=>(
+                            <button key={i} onClick={()=>{setSelectedCompany(c);setStep(2)}}
+                              style={{textAlign:"left",padding:"8px 12px",borderRadius:8,cursor:"pointer",
+                                background:T.cream,border:`1.5px solid ${T.border}`,fontSize:11,color:T.ink2}}>
+                              {c}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </>}
+                    {error&&<div style={{fontSize:11,color:T.red,marginTop:4}}>{error}</div>}
+                  </>}
               </>)}
               {step===2&&(<>
-                <div style={{fontSize:24,marginBottom:10}}>📱</div>
-                <div style={{fontSize:16,fontWeight:700,color:T.ink,marginBottom:4}}>Enter OTP</div>
-                <input value={otp} onChange={e=>setOtp(e.target.value)} placeholder="6-digit OTP" style={inp} maxLength={6}/>
+                <div style={{fontSize:24,marginBottom:10}}>👤</div>
+                <div style={{fontSize:16,fontWeight:700,color:T.ink,marginBottom:4}}>Confirm your name</div>
+                <div style={{fontSize:12,color:T.ink3,marginBottom:14}}>Matching against <strong>{selectedCompany}</strong>. Use the name your EPFO records are under (may differ slightly from your profile name).</div>
+                <input value={personName} onChange={e=>setPersonName(e.target.value)} placeholder="Full name" style={inp}/>
                 {error&&<div style={{fontSize:11,color:T.red,marginTop:8}}>{error}</div>}
                 <button onClick={confirmEPFO} disabled={loading} style={{width:"100%",padding:"11px",background:T.green,border:"none",borderRadius:10,color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",marginTop:16}}>{loading?"Verifying...":"Verify →"}</button>
-                <button onClick={()=>setStep(1)} style={{width:"100%",padding:"8px",background:"transparent",border:"none",color:T.ink4,fontSize:12,cursor:"pointer",marginTop:8}}>← Back</button>
+                <button onClick={()=>{setStep(1);setSelectedCompany("")}} style={{width:"100%",padding:"8px",background:"transparent",border:"none",color:T.ink4,fontSize:12,cursor:"pointer",marginTop:8}}>← Back</button>
               </>)}
               {step===3&&(<div style={{textAlign:"center",padding:"20px 0"}}>
                 <div style={{fontSize:48,marginBottom:14}}>🎉</div>
                 <div style={{fontSize:18,fontWeight:700,color:T.green,marginBottom:8}}>Employment Verified!</div>
+                {epfoResult?.employerName&&<div style={{fontSize:12,color:T.ink3,marginBottom:12}}>Confirmed at {epfoResult.employerName}</div>}
                 <button onClick={close} style={{width:"100%",padding:"11px",background:T.green,border:"none",borderRadius:10,color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}}>Done ✓</button>
               </div>)}
             </>)}

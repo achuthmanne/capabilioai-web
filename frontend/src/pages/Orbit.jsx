@@ -909,12 +909,30 @@ function TimelineTab({ud,user,onSave,onNavigate}){
 function VaultTab({ud,user,onSave}){
   const[uploading,setUploading]=useState(false)
   const[uanModal,setUanModal]=useState(false)
-  const[uan,setUan]=useState(ud?.phone||"")   // phone number for EPFO lookup
+  // EPFO (2026-08-05): switched from the Eko/UAN edge function (confirmed by
+  // the product owner not to be working in practice — left deployed but no
+  // longer called) to AuthBridge's real company-search + confirm flow, the
+  // same integration Aura.jsx's Student path now uses — see
+  // routes/verify.js's /epfo/search-company and /epfo/confirm, and
+  // lib/authbridgeEpfo.js.
+  const experiences=ud?.experiences||[]
+  const[epfoStep,setEpfoStep]=useState(1)
+  const[epfoExpIndex,setEpfoExpIndex]=useState(null)
+  const[companyQuery,setCompanyQuery]=useState("")
+  const[companyCandidates,setCompanyCandidates]=useState([])
+  const[selectedCompany,setSelectedCompany]=useState("")
+  const[personName,setPersonName]=useState(ud?.displayName||ud?.display_name||"")
   const[verifying,setVerifying]=useState(false)
   const[vResult,setVResult]=useState(null)
   const files=ud?.vaultFiles||[]
   const ref=useRef()
   const uid=user?.id||user?.uid
+
+  const authHeaders=async()=>{
+    const session=await import("../lib/supabase").then(m=>m.supabase.auth.getSession())
+    const token=session?.data?.session?.access_token||""
+    return {"Content-Type":"application/json","Authorization":`Bearer ${token}`}
+  }
 
   const upload=async f=>{
     setUploading(true)
@@ -931,27 +949,48 @@ function VaultTab({ud,user,onSave}){
     }
     setUploading(false)
   }
-  const verifyUAN=async()=>{
-    const cleaned=uan.replace(/\D/g,"").replace(/^91/,"")
-    if(cleaned.length!==10){setVResult({error:"Enter a valid 10-digit EPFO-registered mobile number."});return}
+  const closeUanModal=()=>{
+    setUanModal(false);setEpfoStep(1);setEpfoExpIndex(null)
+    setCompanyQuery("");setCompanyCandidates([]);setSelectedCompany("");setVResult(null)
+  }
+  const pickEpfoExperience=async(idx)=>{
+    setEpfoExpIndex(idx);setSelectedCompany("");setCompanyCandidates([]);setVResult(null)
+    const exp=experiences[idx]
+    const q=exp?.company||exp?.displayCompany||""
+    setCompanyQuery(q)
+    if(q.trim())await searchEpfoCompany(q)
+  }
+  const searchEpfoCompany=async(qOverride)=>{
+    const q=(qOverride??companyQuery).trim()
+    if(!q){setVResult({error:"Enter a company name to search"});return}
+    setVerifying(true);setVResult(null);setCompanyCandidates([])
+    try{
+      const res=await fetch(`${API}/api/verify/epfo/search-company`,{method:"POST",headers:await authHeaders(),body:JSON.stringify({companyName:q})}).then(r=>r.json())
+      if(res.companies){
+        setCompanyCandidates(res.companies)
+        if(res.companies.length===0)setVResult({error:"No EPFO-registered companies found matching that name — try a shorter or different spelling."})
+      }else setVResult({error:res.error||"Company search failed."})
+    }catch{setVResult({error:"Server error."})}
+    setVerifying(false)
+  }
+  const confirmEpfoEmployment=async()=>{
+    if(epfoExpIndex===null){setVResult({error:"Pick which job to verify"});return}
+    if(!selectedCompany){setVResult({error:"Pick the matching company from the list"});return}
+    if(!personName.trim()){setVResult({error:"Enter your name as it appears on EPFO records"});return}
     setVerifying(true);setVResult(null)
     try{
-      const session=await import("../lib/supabase").then(m=>m.supabase.auth.getSession())
-      const token=session?.data?.session?.access_token||""
-      const res=await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-uan`,{
-        method:"POST",
-        headers:{"Content-Type":"application/json","Authorization":`Bearer ${token}`},
-        body:JSON.stringify({phone:cleaned,user_id:uid})
-      })
-      const d=await res.json()
-      if(d.ok){
-        const best=(d.uan_details||[]).sort((a,b)=>(b.source_score||0)-(a.source_score||0))[0]
-        setVResult({verified:true,name:best?.employee_name,uan:best?.uan,employer:best?.employer_name})
-        await onSave({uanNumber:best?.uan||"",uanVerified:true,uanVerifiedAt:new Date().toISOString()})
+      const res=await fetch(`${API}/api/verify/epfo/confirm`,{method:"POST",headers:await authHeaders(),body:JSON.stringify({
+        expIndex:epfoExpIndex,companyName:selectedCompany,personName:personName.trim(),
+      })}).then(r=>r.json())
+      if(res.verified){
+        setVResult({verified:true,employer:res.data?.employerName})
+        const updates={uanVerified:true,uanVerifiedAt:new Date().toISOString()}
+        if(res.data?.updatedExperiences?.length)updates.experiences=res.data.updatedExperiences
+        await onSave(updates)
       }else{
-        setVResult({error:d.error||"Verification failed. Check the mobile number and retry."})
+        setVResult({error:res.reason||res.error||"Couldn't confirm this employment — check the name and company, or try a different job entry."})
       }
-    }catch(e){setVResult({error:"Verification service unavailable. Try again."})}
+    }catch{setVResult({error:"Server error."})}
     setVerifying(false)
   }
 
@@ -989,15 +1028,53 @@ function VaultTab({ud,user,onSave}){
         <Tag color={c.done?DS.green:DS.ink4} bg={c.done?DS.gBg:DS.surface2} border={c.done?DS.gBd:DS.border}>{c.impact}</Tag>
       </div>)}
     </Card>
-    <Modal show={uanModal} onClose={()=>setUanModal(false)} title="Verify Employment via EPFO/UAN">
-      <div style={{marginBottom:12,padding:"9px 13px",background:DS.blBg,border:`1px solid ${DS.blBd}`,borderRadius:DS.r,fontSize:12,color:DS.blue}}>ℹ️ Enter the mobile number registered with your EPFO / UAN account. Your employment history will be fetched from the government EPFO database via Eko.</div>
-      <Inp label="EPFO-Registered Mobile Number" value={uan} onChange={v=>setUan(v.replace(/\D/g,"").slice(0,10))} placeholder="10-digit mobile number" mono/>
-      {vResult&&<div style={{marginBottom:12,marginTop:10,padding:"9px 13px",background:vResult.verified?DS.gBg:DS.rBg,border:`1px solid ${vResult.verified?DS.gBd:DS.rBd}`,borderRadius:DS.r,fontSize:12,color:vResult.verified?DS.green:DS.red}}>
+    <Modal show={uanModal} onClose={closeUanModal} title="Verify Employment via EPFO">
+      <div style={{marginBottom:12,padding:"9px 13px",background:DS.blBg,border:`1px solid ${DS.blBd}`,borderRadius:DS.r,fontSize:12,color:DS.blue}}>ℹ️ Pick a job from your timeline, confirm the matching EPFO-registered company, then confirm your name.</div>
+      {epfoStep===1&&(<>
+        {experiences.length===0
+          ? <div style={{fontSize:12,color:DS.ink4}}>Add a job to your career timeline first — EPFO verification checks against a specific employer.</div>
+          : <>
+            <div style={{fontSize:11,color:DS.ink3,fontWeight:600,marginBottom:6}}>Which job?</div>
+            <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:14}}>
+              {experiences.map((e,i)=>(
+                <button key={i} onClick={()=>pickEpfoExperience(i)}
+                  style={{textAlign:"left",padding:"9px 12px",borderRadius:DS.r,cursor:"pointer",
+                    background:epfoExpIndex===i?DS.gBg:DS.surface2,
+                    border:`1.5px solid ${epfoExpIndex===i?DS.green:DS.border}`,
+                    fontSize:12,color:DS.ink,fontWeight:epfoExpIndex===i?700:500}}>
+                  {e.company||e.displayCompany||"Company"}{e.role?` — ${e.role}`:""}
+                  {e.verificationStatus==="verified"&&<span style={{marginLeft:6,color:DS.green,fontSize:10}}>✓ verified</span>}
+                </button>
+              ))}
+            </div>
+            {epfoExpIndex!==null&&<>
+              <Inp label="Search EPFO-registered company name" value={companyQuery} onChange={setCompanyQuery} placeholder="e.g. Capabilio"/>
+              <Btn onClick={()=>searchEpfoCompany()} loading={verifying} variant="ghost" style={{marginTop:8,marginBottom:10}}>Search</Btn>
+              {companyCandidates.length>0&&(
+                <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10,maxHeight:180,overflowY:"auto"}}>
+                  {companyCandidates.map((c,i)=>(
+                    <button key={i} onClick={()=>{setSelectedCompany(c);setEpfoStep(2)}}
+                      style={{textAlign:"left",padding:"8px 12px",borderRadius:DS.r,cursor:"pointer",
+                        background:DS.surface2,border:`1px solid ${DS.border}`,fontSize:11,color:DS.ink2}}>
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>}
+          </>}
+      </>)}
+      {epfoStep===2&&(<>
+        <div style={{fontSize:12,color:DS.ink3,marginBottom:10}}>Matching against <strong>{selectedCompany}</strong>. Use the name your EPFO records are under (may differ slightly from your profile name).</div>
+        <Inp label="Full Name" value={personName} onChange={setPersonName} placeholder="Full name"/>
+        <Btn onClick={confirmEpfoEmployment} loading={verifying} full style={{marginTop:12}}>{verifying?"Verifying…":"Verify →"}</Btn>
+        <Btn onClick={()=>{setEpfoStep(1);setSelectedCompany("")}} variant="ghost" full style={{marginTop:6}}>← Back</Btn>
+      </>)}
+      {vResult&&<div style={{marginBottom:4,marginTop:10,padding:"9px 13px",background:vResult.verified?DS.gBg:DS.rBg,border:`1px solid ${vResult.verified?DS.gBd:DS.rBd}`,borderRadius:DS.r,fontSize:12,color:vResult.verified?DS.green:DS.red}}>
         {vResult.verified
-          ?<>✓ Employment verified — {vResult.name}{vResult.employer?` at ${vResult.employer}`:""}{vResult.uan?` · UAN ${vResult.uan}`:""}</>
-          :vResult.error||"Could not verify. Check the mobile number and retry."}
+          ?<>✓ Employment verified{vResult.employer?` at ${vResult.employer}`:""}</>
+          :vResult.error||"Could not verify."}
       </div>}
-      <Btn onClick={verifyUAN} loading={verifying} full style={{marginTop:12}}>{verifying?"Contacting EPFO via Eko…":"Fetch EPFO Records →"}</Btn>
     </Modal>
   </div>
 }
