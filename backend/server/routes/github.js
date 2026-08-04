@@ -19,6 +19,13 @@ import crypto from "crypto"
 import { groq, GROQ_FAST } from "../lib/groq.js"
 import { requireAuth } from "../lib/auth.js"
 import * as codeDnaRepo from "../lib/codeDna/repository.js"
+import { supabaseAdmin } from "../lib/supabase.js"
+// makeSlug is the same normalization skillGraph.js's own routes use for
+// user_skills.slug — reused here (not reimplemented) so cross-verify's
+// matching logic can't silently drift from how that table's slugs are
+// actually generated. skillGraph.js exports it explicitly for this kind of
+// reuse (see its own file header on avoiding a second parallel schema).
+import { makeSlug } from "./skillGraph.js"
 
 const router = Router()
 router.use(requireAuth)
@@ -628,6 +635,66 @@ router.get("/repo-interview", async (req, res) => {
     const row = await codeDnaRepo.getProfile(req.user.id)
     return res.json({ repoInterview: row?.source_ref?.repoInterview || null })
   } catch (e) { console.error("[github/repo-interview:get]", e.message); res.status(500).json({ error: e.message }) }
+})
+
+// ─── Cross-Verification against Arena/SkillStudio/Portfolio (2026-08-05) ───
+// Checks whether Code DNA's real, GitHub-derived tech signals (languages +
+// detected tooling across the top repos actually checked) also show up in
+// user_skills — the single canonical, RLS-protected skill table this
+// platform already writes to from Arena, SkillStudio, resume parsing, and
+// manual entry (see routes/skillGraph.js's own header comment on avoiding a
+// second parallel schema; deliberately reusing THAT table rather than
+// re-deriving skill data from Arena/SkillStudio proof_objects rows
+// separately, which would risk drifting out of sync with what the Skills
+// page itself shows).
+//
+// Purely additive/informational, NOT a trust or scoring signal: a tech
+// signal with no matching user_skills entry is labeled "not yet reflected",
+// never "mismatch" or a negative flag — GitHub is necessarily incomplete
+// evidence (private repos, work done outside personal GitHub, pair/mob
+// programming not reflected in commit authorship, etc. are all invisible
+// here), so absence of a match must never be read as absence of skill.
+// This route only reads; it never writes to user_skills or touches ELO.
+router.get("/cross-verify", async (req, res) => {
+  try {
+    const row = await codeDnaRepo.getProfile(req.user.id)
+    const analysis = row?.source_ref?.analysis
+    if (!analysis) return res.status(400).json({ error: "Analyze a GitHub profile first." })
+
+    const signalNames = new Set()
+    ;(analysis.languages||[]).forEach(l => l.lang && signalNames.add(l.lang))
+    ;(analysis.topRepos||[]).forEach(r => (r.techStack||[]).forEach(t => t && signalNames.add(t)))
+    if (!signalNames.size) return res.json({ corroborated: [], newSignals: [] })
+
+    const { data: userSkills, error } = await supabaseAdmin
+      .from("user_skills")
+      .select("name,slug,level_score,verified,source")
+      .eq("user_id", req.user.id)
+    if (error) throw error
+
+    const bySlug = new Map((userSkills||[]).filter(s=>s.slug).map(s => [s.slug, s]))
+    const findMatch = (name) => {
+      const slug = makeSlug(name)
+      if (bySlug.has(slug)) return bySlug.get(slug)
+      // Loose containment match for near-variants the exact slug won't catch
+      // (e.g. GitHub's "TypeScript" vs a user_skills entry slugged from
+      // "CSS/Tailwind" wouldn't match, but "Node.js"→"nodejs" vs a
+      // "node"-slugged entry should).
+      return (userSkills||[]).find(s => s.slug && (s.slug.includes(slug) || slug.includes(s.slug))) || null
+    }
+
+    const results = [...signalNames].map(name => {
+      const match = findMatch(name)
+      return match
+        ? { signal: name, status: "corroborated", matchedSkill: match.name, levelScore: match.level_score, verified: !!match.verified, source: match.source }
+        : { signal: name, status: "new_signal" }
+    })
+
+    return res.json({
+      corroborated: results.filter(r => r.status === "corroborated"),
+      newSignals: results.filter(r => r.status === "new_signal").map(r => r.signal),
+    })
+  } catch (e) { console.error("[github/cross-verify]", e.message); res.status(500).json({ error: e.message }) }
 })
 
 export default router

@@ -3155,6 +3155,11 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
   const [riSubmitting, setRiSubmitting]       = useState(false)
   const [riError, setRiError]                 = useState("")
   const [riLoadedFor, setRiLoadedFor]         = useState(null)   // username we've already fetched past results for
+  // Cross-Verification (2026-08-05) — compares Code DNA's detected tech
+  // signals against user_skills (Arena/SkillStudio/resume/manual). Purely
+  // informational, lazy-loaded once per analyzed username.
+  const [crossVerify, setCrossVerify]         = useState(null)   // {corroborated:[], newSignals:[]}
+  const [cvLoadedFor, setCvLoadedFor]         = useState(null)
 
   // ── Arena history loaded from Supabase arena_history table ──────────────
   // This replaces all reads from userData.arenaSubmissions (Firebase-era field
@@ -3953,6 +3958,21 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
       } catch (e) { console.error("[repo-interview] load failed:", e.message) }
     })()
   }, [githubData?.username, githubData?.isExampleData, riLoadedFor])
+
+  // Cross-Verification — same lazy-load-once-per-username pattern as the
+  // repo interview above.
+  useEffect(() => {
+    const uname = githubData?.username
+    if (!uname || githubData?.isExampleData || cvLoadedFor === uname) return
+    setCvLoadedFor(uname)
+    ;(async () => {
+      try {
+        const res = await fetch(`${API}/api/github/cross-verify`, { headers: await vHeaders() })
+        const data = await res.json().catch(()=>({}))
+        if (res.ok) setCrossVerify(data)
+      } catch (e) { console.error("[cross-verify] load failed:", e.message) }
+    })()
+  }, [githubData?.username, githubData?.isExampleData, cvLoadedFor])
 
   const startRepoInterview = async () => {
     setRiError(""); setRiGenerating(true); setRepoInterview(null)
@@ -6006,6 +6026,38 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
                       </Card>
                     )
                   })()}
+                  {!githubData.isExampleData && crossVerify && ((crossVerify.corroborated?.length||0) + (crossVerify.newSignals?.length||0) > 0) && (
+                    <Card style={{marginTop:16}}>
+                      <SectionLabel color={T.green}>🔗 Cross-Verification</SectionLabel>
+                      <div style={{fontSize:11,color:T.ink4,marginTop:2,marginBottom:12,lineHeight:1.6}}>
+                        Comparing Code DNA's detected tech against your Skills (built from Arena, Skill Studio, resume, and manual entries). Informational only — a tech signal with no match here just means it isn't reflected in your Skills yet, not that you lack it.
+                      </div>
+                      {crossVerify.corroborated?.length>0 && (
+                        <div style={{marginBottom:crossVerify.newSignals?.length?14:0}}>
+                          <div style={{fontSize:9.5,fontWeight:800,color:T.ink4,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:8}}>Corroborated by your Skills</div>
+                          <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                            {crossVerify.corroborated.map((c,i)=>(
+                              <div key={i} title={c.verified?"Verified skill":undefined} style={{display:"flex",alignItems:"center",gap:6,background:T.green2,border:"1px solid rgba(26,122,74,0.15)",borderRadius:8,padding:"6px 10px",fontSize:11}}>
+                                <span style={{fontWeight:700,color:T.ink}}>{c.signal}</span>
+                                <span style={{color:T.ink4}}>↔ {c.matchedSkill}</span>
+                                {c.verified && <span style={{color:T.green,fontWeight:700}}>✓</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {crossVerify.newSignals?.length>0 && (
+                        <div>
+                          <div style={{fontSize:9.5,fontWeight:800,color:T.ink4,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:8}}>Seen in code, not yet in your Skills</div>
+                          <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                            {crossVerify.newSignals.map((s,i)=>(
+                              <span key={i} style={{background:T.cream,border:`1px solid ${T.border}`,borderRadius:8,padding:"6px 10px",fontSize:11,fontWeight:700,color:T.ink2}}>{s}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </Card>
+                  )}
                 </div>
               )
             })()}
