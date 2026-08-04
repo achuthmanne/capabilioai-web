@@ -3143,6 +3143,18 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
   const [githubUrl, setGithubUrl]             = useState("")
   const [githubVerifying, setGithubVerifying] = useState(false)
   const [githubVerifyMsg, setGithubVerifyMsg] = useState(null) // {verified, code, message}
+  // AI Repository Interview (2026-08-04) — text-based, grounded in the real
+  // analyzed repo. repoInterview holds a COMPLETED result (from a past run,
+  // loaded lazily, or just-submitted); riQuestions/riAnswers/riStep drive an
+  // in-progress session before it's submitted.
+  const [repoInterview, setRepoInterview]     = useState(null)   // {repoName, transcript, evaluation, completedAt}
+  const [riQuestions, setRiQuestions]         = useState(null)   // [{id,question,testsSignal}] while in progress
+  const [riAnswers, setRiAnswers]             = useState({})     // {questionId: answerText}
+  const [riStep, setRiStep]                   = useState(0)
+  const [riGenerating, setRiGenerating]       = useState(false)
+  const [riSubmitting, setRiSubmitting]       = useState(false)
+  const [riError, setRiError]                 = useState("")
+  const [riLoadedFor, setRiLoadedFor]         = useState(null)   // username we've already fetched past results for
 
   // ── Arena history loaded from Supabase arena_history table ──────────────
   // This replaces all reads from userData.arenaSubmissions (Firebase-era field
@@ -3925,6 +3937,48 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
       setGithubVerifyMsg({verified:false, message:e.message})
     }
     setGithubVerifying(false)
+  }
+
+  // AI Repository Interview — lazily load a past result once we know which
+  // GitHub profile is analyzed (real data only, never for example data).
+  useEffect(() => {
+    const uname = githubData?.username
+    if (!uname || githubData?.isExampleData || riLoadedFor === uname) return
+    setRiLoadedFor(uname)
+    ;(async () => {
+      try {
+        const res = await fetch(`${API}/api/github/repo-interview`, { headers: await vHeaders() })
+        const data = await res.json().catch(()=>({}))
+        if (res.ok && data?.repoInterview) setRepoInterview(data.repoInterview)
+      } catch (e) { console.error("[repo-interview] load failed:", e.message) }
+    })()
+  }, [githubData?.username, githubData?.isExampleData, riLoadedFor])
+
+  const startRepoInterview = async () => {
+    setRiError(""); setRiGenerating(true); setRepoInterview(null)
+    try {
+      const res = await fetch(`${API}/api/github/repo-interview/generate`, { method:"POST", headers: await vHeaders() })
+      const data = await res.json().catch(()=>({}))
+      if (!res.ok) throw new Error(data?.error || `Could not generate questions (${res.status})`)
+      setRiQuestions(data.questions || [])
+      setRiAnswers({}); setRiStep(0)
+    } catch (e) { setRiError(e.message) }
+    setRiGenerating(false)
+  }
+
+  const submitRepoInterview = async () => {
+    if (!riQuestions?.length) return
+    setRiSubmitting(true); setRiError("")
+    try {
+      const answers = riQuestions.map(q => ({ questionId: q.id, answer: riAnswers[q.id] || "" }))
+      const repoName = githubData?.topRepos?.[0]?.name || ""
+      const res = await fetch(`${API}/api/github/repo-interview/submit`, { method:"POST", headers: await vHeaders(), body: JSON.stringify({ repoName, questions: riQuestions, answers }) })
+      const data = await res.json().catch(()=>({}))
+      if (!res.ok) throw new Error(data?.error || `Could not submit interview (${res.status})`)
+      setRepoInterview(data.repoInterview)
+      setRiQuestions(null); setRiAnswers({}); setRiStep(0)
+    } catch (e) { setRiError(e.message) }
+    setRiSubmitting(false)
   }
 
   // Derived data — resumeSkills must be declared before skillGraph uses it
@@ -5874,6 +5928,84 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
                       ))}
                     </div>
                   </Card>
+                  {!githubData.isExampleData && (githubData.topRepos||[]).length>0 && (() => {
+                    // overallVerdict is the long-form string the model returns
+                    // ("Genuine understanding" | "Partial understanding" |
+                    // "Vague or generic" | "Doesn't match stated project");
+                    // per-question feedback uses short codes ("Genuine" |
+                    // "Partial" | "Vague" | "Mismatch") — two small mapping
+                    // helpers instead of overloading one function for both.
+                    const verdictCol = v => v==="Genuine understanding"?T.green : v==="Doesn't match stated project"?T.red : T.amber
+                    const verdictBg  = v => v==="Genuine understanding"?T.green2 : v==="Doesn't match stated project"?T.red2 : T.amber2
+                    const qCol = v => v==="Genuine"?T.green : v==="Mismatch"?T.red : T.amber
+                    const q = riQuestions?.[riStep]
+                    return (
+                      <Card style={{marginTop:16}}>
+                        <SectionLabel color={T.blue}>🎤 AI Repository Interview</SectionLabel>
+                        <div style={{fontSize:11,color:T.ink4,marginTop:2,marginBottom:12,lineHeight:1.6}}>
+                          AI-generated questions about your real analyzed repo — a comprehension check for recruiters, not a coding test or an authoritative score.
+                        </div>
+                        {riError && <div style={{fontSize:11,color:T.red,marginBottom:10}}>{riError}</div>}
+
+                        {!riQuestions && !repoInterview && (
+                          <button onClick={startRepoInterview} disabled={riGenerating} style={{background:T.indigo,color:"#fff",border:"none",borderRadius:8,padding:"9px 16px",fontSize:12,fontWeight:700,cursor:riGenerating?"default":"pointer"}}>
+                            {riGenerating?"Generating questions…":"Start Interview"}
+                          </button>
+                        )}
+
+                        {riQuestions && q && (
+                          <div>
+                            <div style={{fontSize:10,color:T.ink4,marginBottom:6}}>Question {riStep+1} of {riQuestions.length}{q.testsSignal?` · tests: ${q.testsSignal}`:""}</div>
+                            <div style={{fontSize:14,fontWeight:700,color:T.ink,marginBottom:10,lineHeight:1.6}}>{q.question}</div>
+                            <textarea
+                              value={riAnswers[q.id]||""}
+                              onChange={e=>setRiAnswers(prev=>({...prev,[q.id]:e.target.value}))}
+                              placeholder="Type your answer…"
+                              rows={4}
+                              style={{width:"100%",boxSizing:"border-box",border:`1px solid ${T.border}`,borderRadius:8,padding:"10px 12px",fontSize:12,color:T.ink,fontFamily:"inherit",resize:"vertical",marginBottom:10}}
+                            />
+                            <div style={{display:"flex",gap:8}}>
+                              {riStep>0 && (
+                                <button onClick={()=>setRiStep(s=>s-1)} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,padding:"8px 14px",fontSize:12,fontWeight:700,color:T.ink2,cursor:"pointer"}}>Back</button>
+                              )}
+                              {riStep<riQuestions.length-1 ? (
+                                <button onClick={()=>setRiStep(s=>s+1)} style={{background:T.indigo,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Next</button>
+                              ) : (
+                                <button onClick={submitRepoInterview} disabled={riSubmitting} style={{background:T.green,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:700,cursor:riSubmitting?"default":"pointer"}}>
+                                  {riSubmitting?"Submitting…":"Submit Interview"}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {repoInterview && !riQuestions && (
+                          <div>
+                            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                              <Badge color={verdictCol(repoInterview.evaluation?.overallVerdict)} bg={verdictBg(repoInterview.evaluation?.overallVerdict)}>{repoInterview.evaluation?.overallVerdict||"Assessed"}</Badge>
+                              <span style={{fontSize:10,color:T.ink4}}>AI-assessed, not a verified fact</span>
+                            </div>
+                            {repoInterview.evaluation?.summary && <p style={{fontSize:12,color:T.ink2,lineHeight:1.7,margin:"0 0 14px"}}>{repoInterview.evaluation.summary}</p>}
+                            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:14}}>
+                              {(repoInterview.transcript||[]).map((t,i) => {
+                                const fb = (repoInterview.evaluation?.questionFeedback||[]).find(f=>f.questionId===t.questionId)
+                                return (
+                                  <div key={i} style={{background:T.cream,border:`1px solid ${T.border}`,borderRadius:10,padding:"12px 14px"}}>
+                                    <div style={{fontSize:12,fontWeight:700,color:T.ink,marginBottom:4}}>{t.question}</div>
+                                    <div style={{fontSize:11.5,color:T.ink3,lineHeight:1.6,marginBottom:fb?6:0}}>{t.answer||<em>No answer given</em>}</div>
+                                    {fb && <div style={{fontSize:10.5,color:qCol(fb.verdict)}}>{fb.verdict}{fb.note?` — ${fb.note}`:""}</div>}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                            <button onClick={startRepoInterview} disabled={riGenerating} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,padding:"8px 14px",fontSize:12,fontWeight:700,color:T.ink2,cursor:riGenerating?"default":"pointer"}}>
+                              {riGenerating?"Generating…":"Retake Interview"}
+                            </button>
+                          </div>
+                        )}
+                      </Card>
+                    )
+                  })()}
                 </div>
               )
             })()}

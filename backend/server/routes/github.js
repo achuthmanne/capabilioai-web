@@ -34,6 +34,16 @@ function extractJson(raw) {
   try { return JSON.parse(candidate) } catch { return {} }
 }
 
+// Same idea as extractJson but for a top-level JSON ARRAY response (used by
+// repo-interview question generation) — grabs the first [...] block instead
+// of the first {...} block.
+function extractJsonArray(raw) {
+  if (!raw) return []
+  const fenced = raw.match(/```json\s*([\s\S]*?)```/) || raw.match(/```\s*([\s\S]*?)```/)
+  const candidate = fenced ? fenced[1] : (raw.match(/(\[[\s\S]*\])/) || [])[1] || raw
+  try { const v = JSON.parse(candidate); return Array.isArray(v) ? v : [] } catch { return [] }
+}
+
 function ghHeaders() {
   return { Accept:"application/vnd.github.v3+json", ...(process.env.GITHUB_TOKEN?{Authorization:`token ${process.env.GITHUB_TOKEN}`}:{}) }
 }
@@ -478,6 +488,112 @@ Return JSON exactly matching this schema:
 
     return res.json(responseBody)
   } catch (e) { console.error("[github/analyze]", e.message); res.status(500).json({ error: e.message }) }
+})
+
+// ─── AI Repository Interview (2026-08-04) ──────────────────────────────────
+// Recruiter-facing verification: can the candidate coherently explain their
+// OWN real repository? Deliberately NOT a video/webcam flow like the general
+// AIInterviewPanel (frontend/src/pages/Aura.jsx) — that's a separate, skill-
+// based mock interview unrelated to any specific repo. This is text-based
+// and grounded ONLY in real signals already gathered by /analyze (tech
+// stack, README presence, topics, language mix, commit count) — the model
+// is explicitly told not to invent file/function names we never fetched
+// (we only ever fetched a root directory listing, not file contents).
+//
+// SAFEGUARD (per project AI-integration policy): this is a probabilistic
+// comprehension check, never an authoritative pass/fail. It does NOT touch
+// scores.builder/documentation/consistency, does NOT touch ELO, and is
+// stored as a clearly separate `repoInterview` sub-object — never folded
+// into the scored fields used elsewhere. The recruiter view labels it
+// "AI-assessed" explicitly (see recruiterEvidence.js).
+//
+// Same trust model as the existing AIInterviewPanel (Aura.jsx): the client
+// echoes back the question text alongside each answer for grading, rather
+// than the server re-fetching/validating question identity server-side.
+// Acceptable here for the same reason it's acceptable there — this is
+// informational, not a gate on any critical scoring/entitlement decision.
+router.post("/repo-interview/generate", async (req, res) => {
+  try {
+    const row = await codeDnaRepo.getProfile(req.user.id)
+    const analysis = row?.source_ref?.analysis
+    const repo = analysis?.topRepos?.[0]
+    if (!analysis || !repo) return res.status(400).json({ error: "Analyze a GitHub profile first, then generate interview questions." })
+
+    const depthNote = repo.detectionSkipped
+      ? "\nNote: technical detection was skipped for this repo (rate limit) — keep questions general/project-level, do not assume a specific tech stack or README exists."
+      : ""
+
+    const prompt = `You are preparing a short verification interview for a candidate about their OWN real GitHub repository. Ask questions ONLY about what's given below — never invent file names, functions, or implementation details that aren't listed. The goal is letting a recruiter judge genuine hands-on understanding, not trivia.
+
+Repository: ${repo.name}
+Description: ${repo.desc || "none given"}
+Primary language mix: ${(analysis.languages||[]).map(l=>`${l.lang} ${l.pct}%`).join(", ") || "unknown"}
+Detected tooling/tech stack: ${(repo.techStack||[]).join(", ") || "none detected"}
+README present: ${repo.hasReadme ? "yes" : "no"}
+Topics tagged: ${(repo.topics||[]).join(", ") || "none"}
+Total commits: ${analysis.totalCommits}${analysis.commitsAreExact ? " (verified exact count)" : " (estimate)"}${depthNote}
+
+Generate exactly 4 questions grounded ONLY in the above: one about why they chose their tech stack/languages, one asking them to walk through what the project actually does, one about how they'd improve or scale it, one about their commit history/consistency on it. Return ONLY a valid JSON array, no prose:
+[{"id":1,"question":"...","testsSignal":"<which real signal above this checks>"}, ... exactly 4 items]`
+
+    const raw = await groq([{ role:"user", content: prompt }], { model: GROQ_FAST, max_tokens: 500, json: true })
+    let questions = extractJsonArray(raw).slice(0,4).map((q,i) => ({
+      id: q.id ?? i+1,
+      question: String(q.question || "").trim(),
+      testsSignal: String(q.testsSignal || "").trim(),
+    })).filter(q => q.question)
+
+    if (!questions.length) {
+      // Fallback: same real-data grounding, no AI dependency — never leave
+      // the user stuck if Groq is unavailable/rate-limited.
+      questions = [
+        { id: 1, question: `Why did you choose ${(analysis.languages||[])[0]?.lang || "this"} language mix for ${repo.name}?`, testsSignal: "tech stack choice" },
+        { id: 2, question: `Walk me through what ${repo.name} actually does, end to end.`, testsSignal: "project comprehension" },
+        { id: 3, question: `If you had another month on ${repo.name}, what would you improve or scale first, and why?`, testsSignal: "improvement judgment" },
+        { id: 4, question: `Your commit history on ${repo.name} shows ${analysis.totalCommits} commits — what does that history look like in practice (steady work, big pushes, refactors)?`, testsSignal: "commit consistency" },
+      ]
+    }
+    return res.json({ repoName: repo.name, questions })
+  } catch (e) { console.error("[github/repo-interview/generate]", e.message); res.status(500).json({ error: e.message }) }
+})
+
+router.post("/repo-interview/submit", async (req, res) => {
+  const { repoName, questions, answers } = req.body || {}
+  try {
+    if (!repoName || !Array.isArray(questions) || !questions.length) return res.status(400).json({ error: "Missing repoName/questions" })
+    if (!Array.isArray(answers) || !answers.length) return res.status(400).json({ error: "Missing answers" })
+
+    const byId = new Map(questions.map(q => [q.id, q]))
+    const qa = answers
+      .map(a => { const q = byId.get(a.questionId); return q ? `Q: ${q.question}\nA: ${String(a.answer||"").trim()||"(no answer given)"}` : null })
+      .filter(Boolean).join("\n\n")
+
+    const prompt = `You are assessing whether a candidate genuinely understands their OWN real GitHub repository "${repoName}", based on their answers below. This is a comprehension check, not a coding test — judge coherence, specificity, and whether the answer plausibly reflects real hands-on experience with what they described, not writing quality.
+
+${qa}
+
+Return ONLY valid JSON, no prose:
+{"overallVerdict":"<one of: Genuine understanding | Partial understanding | Vague or generic | Doesn't match stated project>","summary":"<1-2 sentence plain-language assessment>","questionFeedback":[{"questionId":<id>,"verdict":"<Genuine|Partial|Vague|Mismatch>","note":"<short specific reason>"}]}`
+
+    const raw = await groq([{ role:"user", content: prompt }], { model: GROQ_FAST, max_tokens: 500, json: true })
+    const ai = extractJson(raw)
+    const evaluation = {
+      overallVerdict: ai.overallVerdict || "Partial understanding",
+      summary: ai.summary || "",
+      questionFeedback: Array.isArray(ai.questionFeedback) ? ai.questionFeedback : [],
+    }
+
+    const transcript = answers.map(a => ({ questionId: a.questionId, question: byId.get(a.questionId)?.question || "", answer: String(a.answer||"").trim() }))
+    const saved = await codeDnaRepo.saveRepoInterview(req.user.id, { repoName, questions, transcript, evaluation })
+    return res.json({ repoInterview: saved.source_ref?.repoInterview })
+  } catch (e) { console.error("[github/repo-interview/submit]", e.message); res.status(500).json({ error: e.message }) }
+})
+
+router.get("/repo-interview", async (req, res) => {
+  try {
+    const row = await codeDnaRepo.getProfile(req.user.id)
+    return res.json({ repoInterview: row?.source_ref?.repoInterview || null })
+  } catch (e) { console.error("[github/repo-interview:get]", e.message); res.status(500).json({ error: e.message }) }
 })
 
 export default router

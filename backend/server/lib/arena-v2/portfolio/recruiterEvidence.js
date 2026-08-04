@@ -85,11 +85,11 @@ const VERIFICATION_BY_PUBLISH_STATE = {
 // (repo names, star counts, language %s) per product requirement — only
 // plain-language capability signals. Only signals we can honestly derive
 // from what's actually computed today (builder/documentation/consistency
-// heuristic scores — see routes/github.js) are included; "can explain
-// software", "can debug software", "can architect software", "can learn
-// independently" are NOT included because nothing in this codebase measures
-// them yet (would require the AI repository interview / architecture
-// intelligence / commit intelligence features — deferred, not built) —
+// heuristic scores, plus the AI Repository Interview added below — see
+// routes/github.js) are included; "can debug software", "can architect
+// software", "can learn independently" are still NOT included because
+// nothing in this codebase measures them yet (would require commit-message
+// intelligence / architecture intelligence — deferred, not built) —
 // fabricating those signals to fill out a checklist would be worse than
 // omitting them.
 function buildCodeDnaRecruiterView(proof) {
@@ -101,10 +101,27 @@ function buildCodeDnaRecruiterView(proof) {
     { label: "Can document work",    value: signal(scores.documentation) },
     { label: "Can maintain software", value: signal(scores.consistency) },
   ].filter(s => s.value !== null)
+
+  // AI Repository Interview (2026-08-04): a text Q&A comprehension check —
+  // see routes/github.js's /repo-interview/* routes. Surfaced as its own
+  // labeled field rather than folded into capabilitySignals' true/false
+  // checklist, because it's a richer plain-language verdict + summary a
+  // recruiter can actually read, not a binary. Always carries aiAssessed:
+  // true so it's never confused with the (also-unverified, but at least
+  // deterministic-formula) heuristic scores above — this is a probabilistic
+  // LLM judgment, not a measurement.
+  const ri = proof.source_ref?.repoInterview
+  const repoInterview = ri?.evaluation ? {
+    verdict: ri.evaluation.overallVerdict || null,
+    summary: ri.evaluation.summary || null,
+    aiAssessed: true,
+  } : null
+
   return {
     kind: "code_dna",
     verification: verified ? "Verified (GitHub ownership confirmed)" : "Self-Selected (GitHub ownership unconfirmed)",
     capabilitySignals,
+    repoInterview,
     createdAt: proof.completed_at,
     title: proof.title || null,
   }
