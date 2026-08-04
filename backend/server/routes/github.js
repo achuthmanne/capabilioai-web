@@ -389,15 +389,31 @@ router.post("/analyze", async (req, res) => {
     const consistencyScore = Math.max(0, Math.min(100, Math.round((recentPushDays===9999?0:Math.max(0,100-recentPushDays))*0.6 + Math.min(activeWithin90,5)*8)))
     const scores = { builder: builderScore, documentation: documentationScore, consistency: consistencyScore }
 
+    // BUG FIX (2026-08-04, real-world test #3): confidenceScore used to be
+    // scored purely off breadth signals (repo count / followers / stars) —
+    // a real, substantial single-repo account (e.g. 307 verified commits,
+    // 5 real languages, README present, CI configured) scored the same LOW
+    // confidence as a genuinely thin one, because the prompt never told the
+    // model anything about DEPTH. Now passes the real per-repo depth signals
+    // already computed above (verified commit count when we have it, tech
+    // stack breadth, README presence) and explicitly instructs the model to
+    // weigh depth alongside breadth — a small, focused single-repo project
+    // with real commit history and real tooling should NOT score as "Simple
+    // and Limited" just because it's one repo with no stars/followers.
+    const depthRepo = topN.find(r => !r.detectionSkipped) || topN[0]
     const aiRaw = await groq([{ role:"user", content:
 `Analyse this public GitHub profile for a ${keyword} role. Base your answer only on the data given — do not invent facts. Return ONLY valid JSON, no prose.
 User: ${user.login} | Public repos: ${user.public_repos} | Followers: ${user.followers} | Total stars: ${totalStars}
 Top languages: ${languages.map(l=>`${l.lang}(${l.pct}%)`).join(", ") || "unknown"}
 Repo names: ${topRepos.map(r=>r.name).join(", ") || "none"}
 Most recent push: ${recentPushDays===9999?"unknown":`${recentPushDays} days ago`}
+Total commits: ${estimatedCommits}${commitsAreExact?" (verified exact count via GitHub API)":" (estimate)"}
+Primary repo depth signal: ${depthRepo ? `${depthRepo.name} — tech stack: ${(depthRepo.techStack||[]).join(", ")||"none detected"}, README: ${depthRepo.hasReadme?"present":"not found"}${depthRepo.detectionSkipped?" (detection was skipped this run — do not penalize for missing signals here)":""}` : "no repo data available"}
+
+IMPORTANT on confidenceScore: this is a reading-confidence score, not a popularity score. A developer with ONE substantial repo, a verified high commit count, real tooling (README/CI/config files), and a coherent tech stack should score confidently even with zero followers/stars — depth of real, verified work matters more than breadth of social signals. Only score low when the data is genuinely thin (few commits, no real tooling, single trivial file) — not merely because there's one repo or no followers.
 
 Return JSON exactly matching this schema:
-{"fingerprintTitle":"<short role-flavoured title, e.g. 'Python Backend Practitioner'>","dna":"<2-3 sentence plain-language summary of what the public data suggests about this developer's focus and habits>","patterns":["<short observed pattern>","...", "up to 4"],"specialization":"<primary tech focus, 2-5 words>","codingStyle":"<short phrase>","standoutFact":"<one specific, data-grounded observation, or empty string if nothing stands out>","confidenceScore":<0-100, your confidence that this profile reflects genuine hands-on work, based only on repo count/diversity/recency/stars — NOT a verification, just a reading confidence>}` }], { model: GROQ_FAST, max_tokens: 500, json: true })
+{"fingerprintTitle":"<short role-flavoured title, e.g. 'Python Backend Practitioner'>","dna":"<2-3 sentence plain-language summary of what the public data suggests about this developer's focus and habits>","patterns":["<short observed pattern>","...", "up to 4"],"specialization":"<primary tech focus, 2-5 words>","codingStyle":"<short phrase>","standoutFact":"<one specific, data-grounded observation, or empty string if nothing stands out>","confidenceScore":<0-100, weighing real depth (verified commits, tech stack, README/CI) alongside breadth (repos/followers/stars) as instructed above — NOT a verification, just a reading confidence>}` }], { model: GROQ_FAST, max_tokens: 500, json: true })
     const ai = extractJson(aiRaw)
 
     const confidenceScore = Math.max(0, Math.min(100, Number(ai.confidenceScore) || 50))
