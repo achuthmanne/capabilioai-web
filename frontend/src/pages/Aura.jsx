@@ -21,6 +21,7 @@ import EchoPitchHero from "./EchoPitchHero"
 import CareerTimelinePro from "../components/CareerTimeline"
 import { interviewApi, skillsApi, profileApi, professionalEloApi, weeklyCheckApi }  from "../lib/api"
 import SettingsPanel from "./SettingsPanel"
+import { namesLikelyMismatch, mismatchWarning } from "../lib/nameMatch"
 
 // ─── DESIGN TOKENS — Glassmorphic Cosmos dark theme ─────────────────────────
 const T = {
@@ -2628,7 +2629,28 @@ function StudentProjectsPanel({ projects, onSave }) {
   useEffect(()=>setItems(projects||[]),[projects])
 
   const openNew = () => { setForm({ emoji:"🔧", name:"", role:"", description:"", problem:"", outcome:"", technologies:[], githubUrl:"", liveUrl:"", status:"" }); setEditing("new") }
-  const openEdit = i => { setForm({...items[i]}); setEditing(i) }
+  // 2026-08-05 bug fix: resume-extracted projects (Aura.jsx's resume parser,
+  // ~line 3496) are stored with a different field naming scheme —
+  // {title, techStack, url} — than this form's own fields —
+  // {name, technologies, githubUrl}. openEdit used to spread the raw item
+  // straight into `form`, so editing a resume-sourced project showed a
+  // blank Project Name, blank Technologies, and blank GitHub URL even
+  // though the data existed under the other names. Normalize on open so
+  // every field the form actually binds to is populated regardless of
+  // which naming scheme the item was saved with; unrecognized/extra keys
+  // (_source, resumeFile, url) are preserved via the spread so save()
+  // doesn't lose provenance data.
+  const openEdit = i => {
+    const raw = items[i]
+    setForm({
+      ...raw,
+      name: raw.name || raw.title || "",
+      technologies: Array.isArray(raw.technologies) && raw.technologies.length ? raw.technologies : (raw.techStack || []),
+      githubUrl: raw.githubUrl || (raw.url && /github\.com/i.test(raw.url) ? raw.url : "") || "",
+      liveUrl: raw.liveUrl || raw.demoUrl || (raw.url && !/github\.com/i.test(raw.url) ? raw.url : "") || "",
+    })
+    setEditing(i)
+  }
   const del = async i => { const next=[...items]; next.splice(i,1); setItems(next); await onSave(next) }
 
   const save = async () => {
@@ -2710,7 +2732,7 @@ function StudentProjectsPanel({ projects, onSave }) {
           <span style={{fontSize:20}}>{p.emoji||"🔧"}</span>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:13,fontWeight:700,color:T.ink}}>{p.name||p.title||"Project"}</div>
-            <div style={{fontSize:11,color:T.ink4}}>{p.role&&<span style={{marginRight:8}}>◈ {p.role}</span>}{(p.technologies||[]).slice(0,3).join(", ")}</div>
+            <div style={{fontSize:11,color:T.ink4}}>{p.role&&<span style={{marginRight:8}}>◈ {p.role}</span>}{(p.technologies?.length?p.technologies:(p.techStack||[])).slice(0,3).join(", ")}</div>
           </div>
           <div style={{display:"flex",gap:6,flexShrink:0}}>
             <button onClick={()=>openEdit(i)} style={{padding:"4px 10px",fontSize:11,border:`1px solid ${T.border}`,borderRadius:6,background:"transparent",color:T.ink3,cursor:"pointer"}}>Edit</button>
@@ -2848,6 +2870,14 @@ function EducationPanel({ education, onSave }) {
   const [items, setItems] = useState(education||[])
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState({})
+  // 2026-08-05: mirrors StudentCertificatesPanel's verify flow exactly, now
+  // pointed at /api/verify/education-file — degrees sat as permanently
+  // "self-claimed" with no way to strengthen them even though the identical
+  // OCR-verification mechanism already existed for certificates.
+  const [verifyingIdx, setVerifyingIdx] = useState(null)
+  const [verifyMsg, setVerifyMsg] = useState({})
+  const verifyFileRef = useRef(null)
+  const [pendingVerifyIdx, setPendingVerifyIdx] = useState(null)
 
   useEffect(()=>setItems(education||[]),[education])
 
@@ -2858,6 +2888,29 @@ function EducationPanel({ education, onSave }) {
     const entry = editing==="new" ? {...form,_source:"manual"} : {...items[editing],...form}
     const next = editing==="new" ? [...items,entry] : items.map((x,i)=>i===editing?entry:x)
     setItems(next); setEditing(null); await onSave(next)
+  }
+
+  // The client never sets verificationStatus itself — same rule as
+  // certificates. It just reflects whatever the server (which owns this
+  // decision) returns after a real OCR/text-match check.
+  const requestVerify = i => { setPendingVerifyIdx(i); verifyFileRef.current?.click() }
+  const onVerifyFileChosen = async e => {
+    const file = e.target.files[0]; const i = pendingVerifyIdx
+    if (!file || i === null) return
+    setVerifyingIdx(i); setVerifyMsg(m=>({...m,[i]:""}))
+    try {
+      const fd = new FormData(); fd.append("document", file); fd.append("eduIndex", String(i))
+      const res = await fetch(`${API}/api/verify/education-file`, { method:"POST", headers:await vHeaders(), body:fd }).then(r=>r.json())
+      if (res.verified && res.education) {
+        setItems(res.education)
+        await onSave(res.education)
+        setVerifyMsg(m=>({...m,[i]:"✅ Verified"}))
+      } else {
+        setVerifyMsg(m=>({...m,[i]:`❌ ${res.reason || res.error || "Could not verify — try a clearer file."}`}))
+      }
+    } catch { setVerifyMsg(m=>({...m,[i]:"❌ Server error — try again."}))}
+    setVerifyingIdx(null)
+    if (verifyFileRef.current) verifyFileRef.current.value = ""
   }
 
   const inp = {width:"100%",padding:"8px 11px",border:`1px solid ${T.border}`,borderRadius:8,background:"#FAF7F2",color:T.ink,fontSize:13,outline:"none",boxSizing:"border-box",marginTop:4}
@@ -2898,6 +2951,7 @@ function EducationPanel({ education, onSave }) {
       {ordered.map((ed,i)=>{
         const isCurrent = ed._source==="profile"
         const initial = (ed.institution||"?").charAt(0).toUpperCase()
+        const realIdx = items.indexOf(ed)
         return (
           <div key={i} style={{display:"flex",gap:0}}>
             {/* Left: gradient node + connecting line */}
@@ -2933,16 +2987,26 @@ function EducationPanel({ education, onSave }) {
                     <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:3}}>
                       <span style={{fontFamily:"'DM Sans',serif",fontSize:15,fontWeight:700,color:T.ink}}>{ed.institution||"Institution"}</span>
                       {isCurrent && <span style={{display:"inline-flex",alignItems:"center",gap:3,padding:"2px 9px",borderRadius:100,background:T.green2,color:T.green,fontSize:10,fontWeight:700,fontFamily:"'DM Mono',monospace",letterSpacing:"0.06em",textTransform:"uppercase"}}>● CURRENT COLLEGE</span>}
-                      {ed._source==="resume"&&<CertBadge c={ed}/>}
+                      {/* 2026-08-05: shown unconditionally now (was resume-only) so
+                          verified/self-claimed status is always visible, matching
+                          StudentCertificatesPanel's behavior. */}
+                      <CertBadge c={ed}/>
                     </div>
                     <div style={{fontSize:11,color:T.ink4,fontFamily:"'DM Mono',monospace",letterSpacing:"0.02em"}}>
                       {[ed.degree,ed.field].filter(Boolean).join(" · ")}{ed.year?` · ${ed.year}`:""}
                       {!ed.degree && !ed.field && !ed.year && isCurrent && "Synced from Settings — add degree details anytime"}
                     </div>
+                    {verifyMsg[realIdx]&&<div style={{fontSize:11,marginTop:3,color:verifyMsg[realIdx].startsWith("✅")?T.green:T.red}}>{verifyMsg[realIdx]}</div>}
                   </div>
                   <div style={{display:"flex",gap:6,flexShrink:0}}>
-                    <button onClick={()=>openEdit(items.indexOf(ed))} style={{padding:"4px 10px",fontSize:11,border:"1px solid rgba(16,185,129,0.18)",borderRadius:6,background:"rgba(16,185,129,0.06)",color:T.green,cursor:"pointer",fontWeight:700}}>Edit</button>
-                    {!isCurrent && <button onClick={()=>del(items.indexOf(ed))} style={{padding:"4px 10px",fontSize:11,border:"none",background:"rgba(220,38,38,0.07)",color:"#DC2626",borderRadius:6,cursor:"pointer"}}>✕</button>}
+                    {ed.verificationStatus!=="verified"&&ed.institution&&(
+                      <button onClick={()=>requestVerify(realIdx)} disabled={verifyingIdx===realIdx}
+                        style={{padding:"4px 10px",fontSize:11,border:`1px solid ${T.green}40`,borderRadius:6,background:T.green2,color:T.green,cursor:verifyingIdx===realIdx?"not-allowed":"pointer",fontWeight:600}}>
+                        {verifyingIdx===realIdx?"Checking…":"⬆ Verify"}
+                      </button>
+                    )}
+                    <button onClick={()=>openEdit(realIdx)} style={{padding:"4px 10px",fontSize:11,border:"1px solid rgba(16,185,129,0.18)",borderRadius:6,background:"rgba(16,185,129,0.06)",color:T.green,cursor:"pointer",fontWeight:700}}>Edit</button>
+                    {!isCurrent && <button onClick={()=>del(realIdx)} style={{padding:"4px 10px",fontSize:11,border:"none",background:"rgba(220,38,38,0.07)",color:"#DC2626",borderRadius:6,cursor:"pointer"}}>✕</button>}
                   </div>
                 </div>
               </div>
@@ -2950,6 +3014,7 @@ function EducationPanel({ education, onSave }) {
           </div>
         )
       })}
+      <input ref={verifyFileRef} type="file" accept=".pdf,image/*" onChange={onVerifyFileChosen} style={{display:"none"}}/>
     </Card>
   )
 }
@@ -3435,6 +3500,23 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
       const formData=new FormData(); formData.append("resume",file)
       // Use /professional/parse-resume — richer schema with responsibilities[], roleSkills[], projects[]
       const extractData=await fetch(`${API}/api/professional/parse-resume`,{method:"POST",body:formData}).then(r=>r.json())
+
+      // 2026-08-05: identity-mismatch check — a resume for a different
+      // person was previously silently parsed and applied to the account.
+      // Deterministic token-overlap check (lib/nameMatch.js), not an AI
+      // judgment — either the extracted name shares a token with the
+      // account name or it doesn't. Only blocks when both names are
+      // present and genuinely unrelated; never blocks on a missing/
+      // unparseable name (can't accuse without two real names to compare).
+      const accountName = userData?.displayName || userData?.display_name || user?.user_metadata?.full_name || user?.user_metadata?.name || ""
+      if (extractData?.name && accountName && namesLikelyMismatch(accountName, extractData.name)) {
+        const proceed = window.confirm(mismatchWarning("resume", accountName, extractData.name))
+        if (!proceed) {
+          setResumeUploading(false); setResumeStatus("")
+          if (resumeFileInputRef?.current) resumeFileInputRef.current.value = ""
+          return
+        }
+      }
       setResumeStatus("Parsing career history with AI…")
 
       // /professional/parse-resume returns { experiences:[], skills:[], projects:[], certifications:[], summary:"" }
@@ -3911,6 +3993,17 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
       const data=ct.includes("application/json") ? await res.json() : null
       if(!res.ok || !data || data.error){
         throw new Error(data?.error || `Couldn't reach GitHub (server responded ${res.status}). Please try again in a moment.`)
+      }
+      // 2026-08-05: same identity-mismatch check as resume upload, using
+      // GitHub's own profile "name" field (added server-side above). Many
+      // GitHub users legitimately leave this blank or use a handle/company
+      // name — data.name is null in those cases and namesLikelyMismatch
+      // never flags a missing name, so this only triggers when GitHub DOES
+      // have a real name set and it shares no token with the account name.
+      const accountNameGh = userData?.displayName || userData?.display_name || user?.user_metadata?.full_name || user?.user_metadata?.name || ""
+      if (data.name && accountNameGh && namesLikelyMismatch(accountNameGh, data.name)) {
+        const proceed = window.confirm(mismatchWarning("GitHub profile", accountNameGh, data.name))
+        if (!proceed) { setGithubLoading(false); return }
       }
       const withMeta = { ...data, analyzedAt:new Date().toISOString() }
       setGithubData(withMeta)

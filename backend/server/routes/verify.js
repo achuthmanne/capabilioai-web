@@ -256,6 +256,102 @@ router.post("/certification-file", requireAuth, upload.single("certificate"), as
   }
 })
 
+// ─── Education — degree/marksheet file upload verification ──────────────────
+// Same real pattern as /certification-file above (mirrored, not duplicated
+// logic-wise — same extraction + Groq match-check approach), applied to
+// `profiles.education[]` instead of `certifications[]`. Added 2026-08-05 in
+// response to a direct product ask: certificates already had a real "upload
+// proof, get verified" path; education never did, so every degree sat as
+// "self-claimed" forever with no way to strengthen it. Same honesty caveat
+// as certification-file: this is OCR/text-match against what the user
+// claimed, not a registrar/DigiLocker-grade check (DigiLocker integration
+// above is still a stub) — "verified" here means "a real degree/marksheet
+// document was uploaded and its content matches the claimed institution and
+// degree," nothing stronger.
+router.post("/education-file", requireAuth, upload.single("document"), async (req, res) => {
+  try {
+    const uid = req.user.id
+    if (!req.file) return res.status(400).json({ verified: false, error: "No file uploaded" })
+    const eduIndex = parseInt(req.body.eduIndex, 10)
+    if (!Number.isInteger(eduIndex) || eduIndex < 0)
+      return res.status(400).json({ verified: false, error: "eduIndex is required" })
+
+    const { data: profile, error: fetchErr } = await supabase()
+      .from("profiles").select("education").eq("id", uid).single()
+    if (fetchErr) return res.status(500).json({ verified: false, error: fetchErr.message })
+
+    const eduList = Array.isArray(profile?.education) ? profile.education : []
+    const edu = eduList[eduIndex]
+    if (!edu) return res.status(404).json({ verified: false, error: "Education entry not found" })
+
+    const claimedInstitution = edu.institution || edu.school || ""
+    const claimedDegree      = [edu.degree, edu.field].filter(Boolean).join(" in ")
+    if (!claimedInstitution) return res.status(400).json({ verified: false, error: "This entry has no institution to match against" })
+
+    const buffer = req.file.buffer
+    const mime   = req.file.mimetype || ""
+    let extractedText = ""
+
+    if (mime === "application/pdf") {
+      try { const r = await parsePdf(buffer); extractedText = r.text || "" }
+      catch (e) { console.warn("[education-file] pdf-parse failed:", e.message) }
+    }
+    if (extractedText.trim().length < 10 && mime.startsWith("image/") && hasGemini()) {
+      try {
+        const base64 = buffer.toString("base64")
+        const r = await geminiExtractImage(base64, mime,
+          "Extract ALL visible text from this degree certificate or marksheet image, verbatim. Return ONLY the raw text, no commentary.")
+        extractedText = (typeof r === "string" ? r : (r?.raw || r?.text || JSON.stringify(r || {}))) || ""
+      } catch (e) { console.warn("[education-file] Gemini image extract failed:", e.message) }
+    }
+
+    if (extractedText.trim().length < 10) {
+      return res.json({ verified: false, error: "Could not read this file — try a clearer PDF or image of the degree certificate/marksheet." })
+    }
+
+    let match = { match: false, confidence: 0, reason: "" }
+    try {
+      const raw = await groq([
+        { role: "system", content: "You verify academic credentials. Return ONLY valid JSON, no markdown." },
+        { role: "user", content:
+          `A user claims this education:\nInstitution: ${claimedInstitution}\nDegree: ${claimedDegree || "(not specified)"}\n\n` +
+          `Here is the text extracted from the degree certificate/marksheet file they uploaded:\n"""${extractedText.slice(0, 3000)}"""\n\n` +
+          `Does the extracted text plausibly confirm this specific institution and degree (allow for reasonable naming/formatting differences, but the institution must genuinely match — do not pass an unrelated document)? ` +
+          `Return JSON: {"match":true|false,"confidence":0-100,"reason":"one short sentence"}` },
+      ], { model: GROQ_FAST, max_tokens: 300, json: true })
+      match = JSON.parse(raw)
+    } catch (e) {
+      console.warn("[education-file] match check failed:", e.message)
+      return res.status(500).json({ verified: false, error: "Verification check failed — try again." })
+    }
+
+    if (!match.match || (match.confidence || 0) < 60) {
+      return res.json({
+        verified: false,
+        confidence: match.confidence || 0,
+        reason: match.reason || "The uploaded file doesn't clearly match the claimed institution/degree — check the details or upload a clearer copy.",
+      })
+    }
+
+    const updatedEdu = eduList.map((e, i) => i === eduIndex ? {
+      ...e,
+      verificationStatus: "verified",
+      verificationSource: "Degree Upload",
+      verifiedAt: new Date().toISOString(),
+      matchConfidence: match.confidence,
+    } : e)
+
+    const { error: saveErr } = await supabase()
+      .from("profiles").update({ education: updatedEdu }).eq("id", uid)
+    if (saveErr) return res.status(500).json({ verified: false, error: saveErr.message })
+
+    res.json({ verified: true, confidence: match.confidence, reason: match.reason, education: updatedEdu })
+  } catch (e) {
+    console.error("[education-file]", e.message)
+    res.status(500).json({ verified: false, error: e.message })
+  }
+})
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /** Convert a brand/short company name to EPFO-style legal name */

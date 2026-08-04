@@ -503,6 +503,15 @@ Return JSON exactly matching this schema:
 
     const responseBody = {
       username: user.login,
+      // 2026-08-05: GitHub's own profile "name" field (distinct from the
+      // login/username) — real, unmodified data from the GitHub API,
+      // exposed so the frontend can run an identity-mismatch check before
+      // applying this analysis to an account (a GitHub profile belonging to
+      // someone else was previously analyzable with no check at all). Null
+      // when the GitHub user hasn't set a display name — many legitimately
+      // don't, so the frontend check must treat null as "can't judge",
+      // never as a mismatch.
+      name: user.name || null,
       avatar: user.avatar_url,
       bio: user.bio || "",
       location: user.location || "",

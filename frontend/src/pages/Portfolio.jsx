@@ -1016,9 +1016,12 @@ function ProjectCard({ p, last }) {
           <div style={{ fontSize: 12, color: C.ink3, marginTop: 3, lineHeight: 1.55 }}>
             {p.description || p.summary || ""}
           </div>
-          {(p.technologies || p.tech || []).length > 0 && (
+          {/* techStack is the field resume-extracted projects actually use
+              (see Aura.jsx's resume parser) — added as a fallback so those
+              projects' tech chips render too, not just manually-added ones. */}
+          {(p.technologies || p.tech || p.techStack || []).length > 0 && (
             <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 7 }}>
-              {(p.technologies || p.tech || []).slice(0, 6).map((t, j) => (
+              {(p.technologies || p.tech || p.techStack || []).slice(0, 6).map((t, j) => (
                 <span key={j} style={{ fontSize: 10, color: C.blue, background: C.blue3, padding: "2px 7px", borderRadius: 99, fontWeight: 600 }}>{t}</span>
               ))}
             </div>
@@ -1451,6 +1454,21 @@ export default function Portfolio({ username: usernameProp }) {
         return
       }
 
+      // 2026-08-05 bug fix: profiles has BOTH a camelCase "resumeProjects"
+      // column and a snake_case "resume_projects" column (confirmed live in
+      // DB — an orphaned/legacy duplicate, not something to migrate away
+      // right now). The dashboard's save path (Aura.jsx) writes real data
+      // into resume_projects, leaving resumeProjects permanently `[]`. Every
+      // `row.camelCase || row.snake_case || []` pattern below silently
+      // picked the empty array because `[] || x` evaluates to `[]` — empty
+      // arrays are truthy in JS. Real user data (2 saved projects) was
+      // therefore always discarded before it reached the public Portfolio
+      // page. Fix: prefer whichever side actually has entries.
+      const firstNonEmptyArr = (...candidates) => {
+        for (const c of candidates) if (Array.isArray(c) && c.length > 0) return c
+        return []
+      }
+
       const ud={
         uid:           row.id,
         displayName:   row.display_name   ||row.displayName    ||row.full_name||row.name
@@ -1465,13 +1483,13 @@ export default function Portfolio({ username: usernameProp }) {
         arenaStreak:   row.arena_streak   ??row.arenaStreak    ??0,
         arenaCompleted:row.arena_completed??row.arenaCompleted  ??0,
         jobReadiness:  row.job_readiness  ??row.jobReadiness   ??0,
-        skillGraph:    row.skill_graph    ||row.skillGraph     ||[],
+        skillGraph:    firstNonEmptyArr(row.skill_graph, row.skillGraph),
         skills:        row.skills         ||[],
         strengths:     row.strengths      ||[],
         weakAreas:     row.weak_areas     ||row.weakAreas      ||[],
         profileSummary:row.profile_summary||row.profileSummary ||"",
         experiences:   row.experiences   ||[],
-        resumeProjects:row.resumeProjects||row.resume_projects ||[],
+        resumeProjects:firstNonEmptyArr(row.resumeProjects, row.resume_projects),
         education:     row.education     ||[],
         githubUsername:row.githubUsername||row.github_username ||"",
         linkedInUrl:   row.linkedInUrl   ||row.linkedin_url    ||"",
@@ -1479,8 +1497,8 @@ export default function Portfolio({ username: usernameProp }) {
         avatarUrl:     row.profilePhotoURL||row.profile_photo_url||row.avatarUrl||"",
         location:      row.location      ||row.city            ||"",
         createdAt:     row.createdAt     ||row.created_at      ||"",
-        certificates:  row.certificates  ||row.certifications  ||[],
-        testimonials:  row.testimonials  ||row.recommendations ||[],
+        certificates:  firstNonEmptyArr(row.certificates, row.certifications),
+        testimonials:  firstNonEmptyArr(row.testimonials, row.recommendations),
         portfolioUrl:  row.portfolioUrl  ||row.portfolio_url   ||"",
         websiteUrl:    row.websiteUrl    ||row.website_url     ||"",
         jobRole:       row.keyword       ||row.job_role        ||"",
@@ -2529,16 +2547,25 @@ export default function Portfolio({ username: usernameProp }) {
           <div className="ps">
             <Card>
               <SectionTitle icon="🎓" title="Education" accent={C.blue}/>
-              {ud.education.map((e,i)=>(
-                <TLine key={i}
-                  icon="🏫"
-                  title={`${e.degree||e.course||"Degree"} — ${e.institution||e.school||"Institution"}`}
-                  sub={e.field||e.specialization||""}
-                  time={e.endDate||e.end_date||e.year}
-                  last={i===ud.education.length-1}
-                  meta={<span style={{fontSize:12,color:C.ink4}}>{e.year||e.endDate||e.end_date||""}</span>}
-                />
-              ))}
+              {ud.education.map((e,i)=>{
+                // 2026-08-05: education is year-granularity, not a specific
+                // day — passing endDate/year into TLine's `time` prop ran it
+                // through fmt() (new Date(iso).toLocaleDateString(...)),
+                // which renders "Invalid Date" for anything that isn't a
+                // real ISO date string (e.g. a bare year like "2025" or a
+                // "2021-2025" range). Show the year via `meta` only — no
+                // `time` prop, no fmt() call, no fabricated day/month.
+                const yearLabel = e.year || (e.endDate||e.end_date||"").toString().slice(0,4) || ""
+                return (
+                  <TLine key={i}
+                    icon="🏫"
+                    title={`${e.degree||e.course||"Degree"} — ${e.institution||e.school||"Institution"}`}
+                    sub={e.field||e.specialization||""}
+                    last={i===ud.education.length-1}
+                    meta={yearLabel && <span style={{fontSize:12,color:C.ink4}}>📅 {yearLabel}</span>}
+                  />
+                )
+              })}
             </Card>
           </div>
         )}
