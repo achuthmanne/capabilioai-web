@@ -6058,6 +6058,48 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
                       )}
                     </Card>
                   )}
+                  {!githubData.isExampleData && ((githubData.repoTimeline?.length||0)>0 || githubData.accountCreatedAt) && (() => {
+                    const fmtDate = iso => { if(!iso) return ""; try { return new Date(iso).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}) } catch { return "" } }
+                    const events = [
+                      ...(githubData.accountCreatedAt ? [{date:githubData.accountCreatedAt, label:"GitHub account created", type:"account"}] : []),
+                      ...(githubData.repoTimeline||[]).filter(r=>r.createdAt).map(r=>({date:r.createdAt, label:`Started ${r.name}`, type:"repo", sub:r.language})),
+                    ].sort((a,b)=>new Date(b.date)-new Date(a.date))
+                    const shown = events.slice(0,10)
+                    const history = (githubData.scoreHistory||[]).slice(-6)
+                    return (
+                      <Card style={{marginTop:16}}>
+                        <SectionLabel color={T.indigo}>🕓 Developer Identity Timeline</SectionLabel>
+                        <div style={{fontSize:11,color:T.ink4,marginTop:2,marginBottom:12,lineHeight:1.6}}>
+                          Real dates from GitHub — account creation and when each project started. No commit-by-commit history is shown here, since only a total commit count is verified, not a real per-period breakdown.
+                        </div>
+                        <div style={{display:"flex",flexDirection:"column",gap:0}}>
+                          {shown.map((e,i)=>(
+                            <div key={i} style={{display:"flex",gap:10,padding:"8px 0",borderBottom:i<shown.length-1?`1px solid ${T.border}`:"none"}}>
+                              <div style={{width:8,height:8,borderRadius:"50%",marginTop:5,flexShrink:0,background:e.type==="account"?T.indigo:T.blue}}/>
+                              <div style={{flex:1}}>
+                                <div style={{fontSize:12,fontWeight:700,color:T.ink}}>{e.label}</div>
+                                <div style={{fontSize:10.5,color:T.ink4,marginTop:1}}>{fmtDate(e.date)}{e.sub?` · ${e.sub}`:""}</div>
+                              </div>
+                            </div>
+                          ))}
+                          {events.length>shown.length && <div style={{fontSize:10.5,color:T.ink4,marginTop:6}}>+ {events.length-shown.length} earlier event(s)</div>}
+                        </div>
+                        {history.length>1 && (
+                          <div style={{marginTop:16,paddingTop:14,borderTop:`1px solid ${T.border}`}}>
+                            <div style={{fontSize:9.5,fontWeight:800,color:T.ink4,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:8}}>Analysis history (this account, over time)</div>
+                            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                              {history.slice().reverse().map((h,i)=>(
+                                <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:11,color:T.ink3}}>
+                                  <span>{fmtDate(h.analyzedAt)}</span>
+                                  <span>{h.totalCommits}{h.commitsAreExact?"":"~"} commits · Builder {h.scores?.builder ?? "—"}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </Card>
+                    )
+                  })()}
                 </div>
               )
             })()}

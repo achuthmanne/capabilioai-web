@@ -14,17 +14,42 @@ import { supabaseAdmin } from "../supabase.js"
 export const SOURCE = "github_code_dna"
 export const PROOF_TYPE = "code_dna_profile"
 
+const MAX_SCORE_HISTORY = 20
+
 // Upserts the user's current Code DNA snapshot. Never throws into the
 // caller's response path on its own — callers should catch and log, since a
 // persistence failure must not block the user from seeing their analysis.
+//
+// BUG FIX (2026-08-05, found while building the identity timeline): this
+// used to build source_ref from scratch on every call — `{ username,
+// analysis, scores, analyzedAt }` — which silently WIPED any `repoInterview`
+// previously saved by saveRepoInterview() on every re-analyze (Refresh
+// button, or an automatic re-run), even though nothing about the interview
+// changed. Now reads the existing row first and carries `repoInterview`
+// forward untouched. Also appends a small `scoreHistory` entry each run
+// (capped at the most recent 20), giving the Developer Identity Timeline
+// real progression data going forward — this can't be backfilled for past
+// analyses since we never stored it before, but every analysis from now on
+// contributes a real, dated data point rather than nothing.
 export async function upsertProfile(userId, { username, analysis, scores }) {
+  const existing = await getProfile(userId)
+  const analyzedAt = new Date().toISOString()
+  const prevHistory = Array.isArray(existing?.source_ref?.scoreHistory) ? existing.source_ref.scoreHistory : []
+  const scoreHistory = [
+    ...prevHistory,
+    { analyzedAt, totalCommits: analysis?.totalCommits ?? null, commitsAreExact: !!analysis?.commitsAreExact, publicRepos: analysis?.publicRepos ?? null, followers: analysis?.followers ?? null, scores },
+  ].slice(-MAX_SCORE_HISTORY)
+
   const row = {
     user_id: userId,
     source: SOURCE,
     proof_type: PROOF_TYPE,
     domain: "General",
     title: `Code DNA — ${username}`,
-    source_ref: { username, analysis, scores, analyzedAt: new Date().toISOString() },
+    source_ref: {
+      username, analysis, scores, analyzedAt, scoreHistory,
+      ...(existing?.source_ref?.repoInterview ? { repoInterview: existing.source_ref.repoInterview } : {}),
+    },
     score: scores?.builder ?? null,
     is_portfolio_visible: true,
     is_recruiter_visible: true,

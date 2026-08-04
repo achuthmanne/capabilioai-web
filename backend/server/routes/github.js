@@ -488,12 +488,27 @@ Return JSON exactly matching this schema:
     // call can reuse them via prevByRepoName.
     const topReposForClient = topRepos.map(({ fullName, _commitCount, _langBytes, fromCache, ...rest }) => rest)
 
+    // Developer Identity Timeline (2026-08-05) — built entirely from data
+    // already fetched in THIS call, no new API calls. `user.created_at` and
+    // each repo's `created_at`/`pushed_at`/`stargazers_count` come straight
+    // off the same /users and /users/:username/repos responses already
+    // parsed above — just never extracted into the response before. Covers
+    // ALL fetched repos (up to 30), not just the top-3 deep-inspected ones,
+    // since creation/push dates cost nothing extra to expose. Deliberately
+    // does NOT attempt a commits-per-month graph — we only have a total
+    // commit count (exact for the top-3, estimated otherwise), never a
+    // real per-period breakdown, so faking one would violate the same
+    // honesty discipline as the scores above.
+    const repoTimeline = repos.map(r => ({ name: r.name, createdAt: r.created_at||null, pushedAt: r.pushed_at||null, stars: r.stargazers_count||0, language: r.language||null }))
+
     const responseBody = {
       username: user.login,
       avatar: user.avatar_url,
       bio: user.bio || "",
       location: user.location || "",
       company: user.company || "",
+      accountCreatedAt: user.created_at || null,
+      repoTimeline,
       publicRepos: user.public_repos,
       followers: user.followers,
       totalStars,
@@ -522,7 +537,12 @@ Return JSON exactly matching this schema:
     // save.
     try {
       const analysisForCache = { ...responseBody, topRepos }
-      await codeDnaRepo.upsertProfile(req.user.id, { username: user.login, analysis: analysisForCache, scores })
+      const saved = await codeDnaRepo.upsertProfile(req.user.id, { username: user.login, analysis: analysisForCache, scores })
+      // scoreHistory only exists after a successful save (it's computed
+      // inside upsertProfile from the previous row) — attach it to the
+      // response so the frontend has real progression data without a
+      // second round-trip. Silently omitted if persistence failed below.
+      responseBody.scoreHistory = saved?.source_ref?.scoreHistory || []
     } catch (persistErr) {
       console.error("[github/analyze] proof_objects persist failed:", persistErr.message)
     }
