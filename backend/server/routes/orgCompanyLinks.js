@@ -44,7 +44,7 @@ async function sendInviteEmail({ institutionOrgId, companyEmail, companyName, in
   return sendEmail({
     to: companyEmail.trim(),
     subject: `${institutionName} invited you to their Talent Network on Capabilio`,
-    html: `<p>Hi,</p><p><strong>${institutionName}</strong> has invited your company to connect on Capabilio's Talent Network.</p><p>Review and accept or decline here: <a href="${inviteUrl}">${inviteUrl}</a></p><p>If you accept, you'll see student ELO scores and placement performance — never personal contact details. Reaching a student always goes through the college, never directly.</p>`,
+    html: `<p>Hi,</p><p><strong>${institutionName}</strong> has invited your company to connect on Capabilio's Talent Network.</p><p>Review and accept or decline here: <a href="${inviteUrl}">${inviteUrl}</a></p><p>If you accept, you'll see this institution's verified student performance and placement data — never personal contact details. Reaching a student always goes through the college, never directly.</p><p style="color:#6B7280;font-size:12px;margin-top:16px">This creates a separate Talent Network account on Capabilio's institution-partnership site — it is not the same as a Capabilio Recruiter account at recruiter.capabilio.online.</p>`,
   })
 }
 
