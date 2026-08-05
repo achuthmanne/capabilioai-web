@@ -260,10 +260,17 @@ export default function Pricing({ user, userData, setUserData, onBack }) {
       const plan = pathPlans.find(p => p.id === planId)
       openCheckout({
         orderId, amount, currency, keyId,
-        name: "Capabilio",
-        description: `${plan?.label} Plan`,
+        // 2026-08-05: removed `name`/`description` here — useRazorpay.js's
+        // openCheckout never destructured either param, so they were
+        // silently ignored (the hook builds its own description and always
+        // uses "Capabilio AI" as the checkout name). Left them out rather
+        // than "fixing" values nothing reads, to avoid the same confusion
+        // recurring. Added userPhone so the checkout's contact field
+        // reflects the real logged-in user instead of Razorpay's own
+        // browser-based autofill (see useRazorpay.js for the full story).
         userEmail: user?.email,
         userName: userData?.name || user?.user_metadata?.full_name,
+        userPhone: user?.phone || userData?.phone || "",
         onSuccess: async (paymentData) => {
           const verifyRes = await fetch(`${SERVER}/api/verify-payment`, {
             method: "POST",

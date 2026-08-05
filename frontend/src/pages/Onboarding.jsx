@@ -2409,6 +2409,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
         currency:  order.currency,
         userEmail: user?.email || "",
         userName:  user?.user_metadata?.full_name || user?.user_metadata?.name || "",
+        userPhone: user?.phone || "",
         onSuccess: async () => {
           // Re-stamp path so onComplete()'s fresh read always finds the correct value
           if (user?.id && path) {

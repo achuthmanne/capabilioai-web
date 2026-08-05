@@ -2442,6 +2442,7 @@ function UpgradeModal({ planId, user, userData, onSuccess, onClose }) {
         currency:  order.currency || "INR",
         userEmail: user?.email || "",
         userName:  userData?.displayName || user?.displayName || "",
+        userPhone: user?.phone || userData?.phone || "",
         onSuccess: (data) => {
           setStep("success")
           onSuccess?.(data.planId || planId)

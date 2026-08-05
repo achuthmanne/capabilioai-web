@@ -162,10 +162,13 @@ export default function TemplateGallery({ user, userData, onClose }) {
         key: order.keyId,
         amount: order.amount * 100,
         currency: "INR",
-        name: "Capabilio",
+        name: "Capabilio AI",
         description: `Portfolio Template: ${template.name}`,
         order_id: order.orderId,
-        prefill: { email: userData?.email || "" },
+        // 2026-08-05: added name/contact so this checkout doesn't fall back
+        // to Razorpay's own browser-based "returning customer" autofill for
+        // the contact field — same fix as useRazorpay.js.
+        prefill: { name: userData?.name || userData?.displayName || "", email: userData?.email || "", contact: user?.phone || userData?.phone || "" },
         theme: { color: "#6366F1" },
         handler: async (response) => {
           const verifyRes = await fetch(API + "/api/theme/verify-payment", {

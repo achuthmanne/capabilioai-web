@@ -34,7 +34,7 @@ export function useRazorpay() {
 
   const openCheckout = useCallback(async ({
     planId, amount, orderId, currency = "INR",
-    userEmail = "", userName = "",
+    userEmail = "", userName = "", userPhone = "",
     onSuccess, onError,
   }) => {
     const loaded = await loadScript()
@@ -62,10 +62,20 @@ export function useRazorpay() {
       amount,
       currency,
       order_id:    orderId,
-      name:        "Capabilio",
+      name:        "Capabilio AI",
       description,
       image:       "https://capabilio.online/logo192.png",
-      prefill: { name: userName, email: userEmail },
+      // 2026-08-05 BUG FIX: prefill.contact was never set, so Razorpay
+      // Checkout fell back to its own "returning customer" autofill — it
+      // recognizes the browser via cookies tied to this key_id and shows
+      // whatever phone number last completed a checkout on that browser
+      // (in practice, whoever last tested payments, not the logged-in
+      // user). Explicitly passing contact — even as an empty string when
+      // no phone is on file — overrides that autofill instead of leaving
+      // it to guess. userPhone is threaded through from the caller (see
+      // Pricing.jsx/Onboarding.jsx/Arena.jsx), sourced from the real
+      // logged-in user's auth/profile phone, never hardcoded.
+      prefill: { name: userName, email: userEmail, contact: userPhone },
       theme: { color: themeColor },
       modal: { ondismiss: () => onError?.("Payment cancelled.") },
       handler: async (response) => {
