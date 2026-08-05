@@ -158,6 +158,7 @@ import collegeChatRoutes         from "./server/routes/collegeChat.js"  // Colle
 import orgVerificationRoutes     from "./server/routes/orgVerification.js" // Institution OS bugfix — server-side profiles.verificationStatus write (PC-7 compliant)
 import orgJoinLinksRoutes        from "./server/routes/orgJoinLinks.js"    // Self-serve student join links — org_members, replaces one-by-one admin invite for ~1000-student rosters
 import orgCompanyLinksRoutes     from "./server/routes/orgCompanyLinks.js" // Talent Network <-> real company org account linkage + NDA workflow
+import partnerBridgeRoutes       from "./server/routes/partnerBridge.js"   // Service-to-service bridge for the standalone capabilio-recruiter app (shared-secret auth, not per-user JWT) -- see route file header comment
 import companyRoutes             from "./server/routes/company.js"        // Career OS Workstream 5 — /api/pro/v1/company/*, COMPANY_MODULE_V1_ENABLED-gated (404s while off)
 import portfolioPublicRoutes     from "./server/routes/portfolioPublic.js" // Career OS Tranche 6 Priority 6A — /api/portfolio/lookup/:id, narrow field-whitelisted replacement for Portfolio.jsx's old client-side select("*") reads
 import opsDashboardRoutes        from "./server/routes/opsDashboard.js"    // Career OS Tranche 11 — /api/admin/ops/dashboard, requireAdmin-gated read-only monitoring snapshot
@@ -375,6 +376,7 @@ app.use("/api/college-chat",  collegeChatRoutes)         // threads/{,:id/messag
 app.use("/api/org",           orgVerificationRoutes)    // verify-email — server-side PC-7-compliant write to profiles.verificationStatus
 app.use("/api/org",           orgJoinLinksRoutes)       // join-links (CRUD), join/:token (resolve + claim) — self-serve student onboarding
 app.use("/api/org",           orgCompanyLinksRoutes)    // company-links (invite w/ real-account matching), received, accept-nda, decline
+app.use("/api/partner",       partnerBridgeRoutes)      // candidates, institutions -- service-to-service bridge for capabilio-recruiter (shared-secret auth)
 app.use("/api/pro/v1/company", companyRoutes)           // Career OS Workstream 5 — Company module user-facing API (flag-gated, 404s while off)
 
 // ─── Start ────────────────────────────────────────────────────────────────────
