@@ -1,0 +1,44 @@
+name: Company Registry Sync
+
+# 2026-08-05 — nightly incremental refresh of public.company_registry (MCA
+# company master data via data.gov.in). The product owner flagged that new
+# companies register with the MCA every day and the registry (used for
+# employer-name matching in EPFO/AuthBridge verification, see
+# lib/employerMatch.js + routes/companyRegistry.js) previously had no
+# refresh mechanism at all — it was a one-off manual script.
+#
+# Runs as a CI job rather than an in-process cron inside the web service
+# deliberately: it avoids competing with live user traffic for the web
+# service's CPU/memory, and a stuck run here can't take the API down. Each
+# run is bounded (see DEFAULT_INCREMENTAL_MAX_PAGES in
+# lib/companyRegistrySync.js) so it always finishes well inside GitHub
+# Actions' job timeout — no HTTP request is ever held open.
+#
+# Requires two repo secrets (Settings → Secrets and variables → Actions):
+#   DATA_GOV_IN_API_KEY      — from https://data.gov.in → My Account → API Key
+#   SUPABASE_SERVICE_ROLE_KEY — same value already used in Render's env
+#   SUPABASE_URL              — same value already used in Render's env
+# This workflow does nothing (fails fast with a clear error) until those are
+# added — it does not run against production without them.
+
+on:
+  schedule:
+    - cron: "17 2 * * *" # 02:17 UTC nightly — off the top of the hour, avoids GH Actions' documented peak-load delays
+  workflow_dispatch: {} # allows a manual "Run workflow" trigger from the Actions tab for testing
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - name: Run incremental company registry sync
+        env:
+          DATA_GOV_IN_API_KEY: ${{ secrets.DATA_GOV_IN_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node backend/scripts/importCompanyRegistry.js --incremental

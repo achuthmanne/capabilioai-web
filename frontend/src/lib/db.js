@@ -109,6 +109,12 @@ const CAMEL_TO_SNAKE = {
   analyticsEnabled:     'analytics_enabled',
   certVisible:           'cert_visible',
   vaultVisible:          'vault_visible',
+  // 2026-08-05: recruiter_discoverable_opt_in migration — without this
+  // explicit mapping, toSnake()'s else-branch would pass "recruiterDiscoverable"
+  // through UNCHANGED (it only auto-passes keys that are ALREADY snake_case),
+  // and PostgREST would reject the whole update with "column not found" —
+  // same failure class as the certVisible/vaultVisible bug fixed above.
+  recruiterDiscoverable: 'recruiter_discoverable',
   // BUG FIX (2026-07-27): buildStudentSavePayload (Onboarding.jsx) sends
   // roleId/roleLabel/roleSlug/roleStream/arenaKey whenever a student picks a
   // canonical role from RoleSearchPicker — none of these had a mapping here,
@@ -239,6 +245,11 @@ const toCompat = (data) => {
     analyticsEnabled:     data.analytics_enabled ?? true,
     certVisible:          data.cert_visible      ?? true,
     vaultVisible:         data.vault_visible     ?? true,
+    // 2026-08-05: opt-in recruiter search (recruiter_discoverable_opt_in
+    // migration) — deliberately defaults FALSE, unlike the toggles above.
+    // Product decision: recruiter visibility is a stricter trust boundary
+    // than `searchable` (Pulse/peer search, default true).
+    recruiterDiscoverable: data.recruiter_discoverable ?? false,
   }
 }
 

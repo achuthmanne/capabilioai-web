@@ -1,0 +1,43 @@
+name: Re-engagement Digest
+
+# 2026-08-05 — daily automated re-engagement nudges (streak-break risk,
+# Professional ELO decay risk, stale-skill warnings). See
+# backend/server/lib/reengagementSignals.js for the full rationale — this
+# closes the "product is 100% pull-based, no automated re-engagement exists"
+# gap flagged in a product review. Writes into the existing `notifications`
+# table (already used by recruiterComms.js/pulseNexus.js, read by Nexus.jsx
+# and the platform-wide bell in components/Header.jsx) and, where the user
+# has an email on file, sends a companion email via the existing Resend
+# wrapper (lib/email.js).
+#
+# Runs as its own CI job for the same reason company-registry-sync.yml does:
+# keeps this off the live web service's CPU/memory so a slow or stuck run
+# never affects real user traffic.
+#
+# Requires repo secrets (Settings → Secrets and variables → Actions):
+#   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY — same values already in Render
+#   RESEND_API_KEY — optional; without it, notifications still write to the
+#     in-app feed/bell, just without the companion email (lib/email.js fails
+#     soft when this is unset, same as everywhere else it's used)
+
+on:
+  schedule:
+    - cron: "0 3 * * *" # 03:00 UTC daily — after the company registry sync, off the top of the hour
+  workflow_dispatch: {}
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - name: Send re-engagement digest
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: node backend/scripts/sendReengagementDigest.js

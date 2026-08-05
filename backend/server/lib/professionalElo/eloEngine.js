@@ -50,7 +50,11 @@ export const MAX_ELO = 2400
 const MAX_PULSE_DELTA = 40
 const PER_QUESTION_BASE = 4 // before difficulty scaling
 
-const INACTIVITY_GRACE_DAYS = 14 // product rule 5 — decay starts day 15
+// Exported (2026-08-05) so the re-engagement digest (lib/reengagementSignals.js)
+// can warn users BEFORE decay starts, using the exact same threshold this
+// engine enforces, instead of a second guessed number that could drift out
+// of sync with the real rule.
+export const INACTIVITY_GRACE_DAYS = 14 // product rule 5 — decay starts day 15
 const DECAY_PER_DAY = 2
 const MAX_DECAY_DAYS = 30 // bounds a single catch-up application (product rule 6)
 

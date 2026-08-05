@@ -701,6 +701,11 @@ function ProofSection({ userData, save, setUserData }) {
   })
   const [certVisible, setCertVisible] = useState(userData?.certVisible !== false)
   const [vaultVisible, setVaultVisible] = useState(userData?.vaultVisible !== false)
+  // 2026-08-05: opt-in recruiter search discoverability. Note the inverted
+  // default vs. certVisible/vaultVisible above (`!== false` = defaults ON) —
+  // this one is `=== true` = defaults OFF, matching profiles.recruiter_discoverable's
+  // real default of false (product decision: opt-in, not opt-out).
+  const [recruiterDiscoverable, setRecruiterDiscoverable] = useState(userData?.recruiterDiscoverable === true)
   // Code DNA visibility (2026-08-05) — lives on the proof_objects row, not a
   // plain profiles column like certVisible/vaultVisible above, so it needs
   // its own fetch/save via GET+POST /api/github/visibility rather than
@@ -741,6 +746,7 @@ function ProofSection({ userData, save, setUserData }) {
         github_url:   form.githubUrl,
         certVisible,
         vaultVisible,
+        recruiterDiscoverable,
       }
       const ok = save ? await save(patch) : true
       if (ok === false) { setError(true); setTimeout(() => setError(false), 3500); return }
@@ -806,6 +812,14 @@ function ProofSection({ userData, save, setUserData }) {
           onChange={setVaultVisible}
           label="🗄️ Show Vault Projects"
           desc="Display your Vault files and projects on your public Portfolio"
+        />
+      </div>
+      <div style={{ marginBottom:10 }}>
+        <Toggle
+          value={recruiterDiscoverable}
+          onChange={setRecruiterDiscoverable}
+          label="🎯 Discoverable to Recruiters"
+          desc="Let recruiters find your profile through Capabilio's candidate search (by skill, ELO, domain, verification status). Off by default — your profile stays link-only until you turn this on."
         />
       </div>
       {codeDnaHasAnalysis && (

@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useRef, useState } from "react"
+import { nexusApi } from "../lib/api"
 
 export default function Header({
   user,
@@ -128,13 +129,61 @@ export default function Header({
   const userMenuTabs = auraTabs.map(t => ({ icon: t.icon, label: t.label, tab: t.id }))
 
   // ── notifications ──────────────────────────────────────────────────────────
-  const notifications = [
-    { icon: "⚡", text: `ELO updated to ${eloRating}`,                                  time: "Just now",   color: "#6366F1", unread: true  },
-    { icon: "🔥", text: arenaStreak > 0 ? `${arenaStreak}-day streak!` : "Start a task today", time: "Today", color: "#F59E0B", unread: true },
-    { icon: "💼", text: "New jobs matched to your profile",                              time: "2 hours ago",color: "#10B981", unread: false },
-    { icon: "🎯", text: "New Arena tasks available",                                     time: "1 hour ago", color: "#8B5CF6", unread: true  },
-  ]
-  const unreadCount = notifications.filter(n => n.unread).length
+  // 2026-08-05 BUG FIX: this used to be 4 hardcoded fake rows shown to every
+  // user regardless of what actually happened on their account — the bell
+  // never reflected reality. The real `notifications` table + GET/POST
+  // /api/nexus/notifications routes already existed (used by Nexus.jsx's
+  // Notifications tab and by recruiterComms.js/pulseNexus.js as writers) —
+  // this was just never wired up here despite being the platform's most
+  // visible, cross-path notification surface. Now reads the real feed, which
+  // also makes the new re-engagement digest (streak-break / ELO-decay /
+  // stale-skill nudges — see backend/scripts/sendReengagementDigest.js)
+  // actually visible to users instead of only existing in the database.
+  const [notifications, setNotifications] = useState([])
+  const NOTIF_META = {
+    connection_request:  { icon: "🤝", color: "#6366F1" },
+    connection_accepted: { icon: "✅", color: "#10B981" },
+    recruiter_message:   { icon: "💬", color: "#6366F1" },
+    post_acknowledge:    { icon: "👏", color: "#8B5CF6" },
+    post_signal:         { icon: "⚡", color: "#6366F1" },
+    interview_scheduled: { icon: "📅", color: "#F59E0B" },
+    offer_received:      { icon: "🎁", color: "#10B981" },
+    offer_response:      { icon: "🎁", color: "#10B981" },
+    new_application:     { icon: "💼", color: "#10B981" },
+    new_follower:        { icon: "👤", color: "#6366F1" },
+    streak_break_risk:   { icon: "🔥", color: "#F59E0B" },
+    elo_decay_risk:      { icon: "⚡", color: "#DC2626" },
+    skill_stale:         { icon: "🧠", color: "#8B5CF6" },
+  }
+  const DEFAULT_NOTIF_META = { icon: "🔔", color: "#6366F1" }
+
+  function relTime(iso) {
+    const diffMs = Date.now() - new Date(iso).getTime()
+    const mins = Math.floor(diffMs / 60000)
+    if (mins < 1) return "Just now"
+    if (mins < 60) return `${mins}m ago`
+    const hrs = Math.floor(mins / 60)
+    if (hrs < 24) return `${hrs}h ago`
+    const days = Math.floor(hrs / 24)
+    return `${days}d ago`
+  }
+
+  const loadNotifications = () => {
+    if (!user) return
+    nexusApi.notifications().then(d => setNotifications(Array.isArray(d) ? d : [])).catch(() => {})
+  }
+
+  useEffect(() => { loadNotifications() }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Refresh on open so the bell doesn't show stale data from a stale mount.
+  useEffect(() => { if (showNotifications) loadNotifications() }, [showNotifications]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const unreadCount = notifications.filter(n => !n.is_read).length
+
+  const markAllRead = () => {
+    if (unreadCount === 0) return
+    setNotifications(ns => ns.map(n => ({ ...n, is_read: true })))
+    nexusApi.markRead().catch(() => {})
+  }
 
   useEffect(() => {
     if (unreadCount !== prevNotifCount) {
@@ -496,34 +545,48 @@ export default function Header({
                     display:"flex", justifyContent:"space-between", alignItems:"center",
                   }}>
                     <span style={{ fontSize:14, fontWeight:700, color:"#1A1714" }}>Notifications</span>
-                    <button style={{ border:"none", background:"transparent", color:"#FF5701", fontSize:11, fontWeight:700, cursor:"pointer" }}>
+                    <button onClick={markAllRead} disabled={unreadCount === 0}
+                      style={{ border:"none", background:"transparent", color: unreadCount === 0 ? "#A8A29E" : "#FF5701", fontSize:11, fontWeight:700, cursor: unreadCount === 0 ? "default" : "pointer" }}>
                       Mark all read
                     </button>
                   </div>
 
-                  {notifications.map((item, i) => (
-                    <div key={i} className="cg-notif-row"
-                      style={{ background: item.unread ? "rgba(255,87,1,0.04)" : "transparent" }}>
-                      <div style={{
-                        width:34, height:34, borderRadius:10,
-                        background:`${item.color}1A`,
-                        display:"flex", alignItems:"center", justifyContent:"center",
-                        fontSize:15, flexShrink:0,
-                      }}>
-                        {item.icon}
-                      </div>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:12, color:"#3D3935", lineHeight:1.5, marginBottom:2 }}>{item.text}</div>
-                        <div style={{ fontSize:10, color:"#A8A29E" }}>{item.time}</div>
-                      </div>
-                      {item.unread && (
-                        <div style={{ width:7, height:7, borderRadius:"50%", background:item.color, marginTop:5, flexShrink:0 }} />
-                      )}
+                  {notifications.length === 0 && (
+                    <div style={{ padding:"22px 16px", textAlign:"center", fontSize:12, color:"#A8A29E" }}>
+                      No notifications yet.
                     </div>
-                  ))}
+                  )}
+
+                  {notifications.slice(0, 8).map((item) => {
+                    const meta = NOTIF_META[item.type] || DEFAULT_NOTIF_META
+                    return (
+                      <div key={item.id} className="cg-notif-row"
+                        style={{ background: !item.is_read ? "rgba(255,87,1,0.04)" : "transparent" }}>
+                        <div style={{
+                          width:34, height:34, borderRadius:10,
+                          background:`${meta.color}1A`,
+                          display:"flex", alignItems:"center", justifyContent:"center",
+                          fontSize:15, flexShrink:0,
+                        }}>
+                          {meta.icon}
+                        </div>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontSize:12, color:"#3D3935", lineHeight:1.5, marginBottom:2, fontWeight: item.is_read ? 400 : 600 }}>{item.title || item.body}</div>
+                          {item.title && item.body && (
+                            <div style={{ fontSize:11, color:"#6B6560", lineHeight:1.4, marginBottom:2 }}>{item.body}</div>
+                          )}
+                          <div style={{ fontSize:10, color:"#A8A29E" }}>{relTime(item.created_at)}</div>
+                        </div>
+                        {!item.is_read && (
+                          <div style={{ width:7, height:7, borderRadius:"50%", background:meta.color, marginTop:5, flexShrink:0 }} />
+                        )}
+                      </div>
+                    )
+                  })}
 
                   <div style={{ padding:"11px 16px", textAlign:"center", borderTop:"1px solid #E8E3DA" }}>
-                    <button style={{ border:"none", background:"transparent", color:"#FF5701", fontSize:12, fontWeight:700, cursor:"pointer" }}>
+                    <button onClick={() => { setShowNotifications(false); onNavigate?.("nexus") }}
+                      style={{ border:"none", background:"transparent", color:"#FF5701", fontSize:12, fontWeight:700, cursor:"pointer" }}>
                       View all →
                     </button>
                   </div>

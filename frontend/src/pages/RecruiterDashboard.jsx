@@ -172,6 +172,33 @@ export default function RecruiterDashboard({ user, userData, onNavigate }) {
           ))}
         </div>
 
+        {/* ── Candidate search entry point ───────────────────────── */}
+        {/* 2026-08-05: recruiters previously had no discovery mechanism at
+            all — only pre-existing links (applications, referrals). See
+            CandidateSearch.jsx + backend/server/routes/recruiterSearch.js. */}
+        <Card
+          onClick={() => onNavigate?.("candidateSearch")}
+          style={{
+            display: "flex", alignItems: "center", gap: 12,
+            padding: "16px 18px", marginBottom: 24,
+            background: C.indigoL, borderColor: C.indigo,
+          }}
+        >
+          <div style={{
+            width: 40, height: 40, borderRadius: 10, background: "#fff",
+            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0,
+          }}>
+            🔍
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: C.ink }}>Find Candidates</div>
+            <div style={{ fontSize: 12, color: C.ink3, marginTop: 2 }}>
+              Search by skill, ELO, domain, or verification status
+            </div>
+          </div>
+          <span style={{ color: C.indigo, fontSize: 18 }}>→</span>
+        </Card>
+
         {/* ── Urgent actions ─────────────────────────────────────── */}
         <div style={{ marginBottom: 24 }}>
           <SectionLabel>Needs Your Attention</SectionLabel>

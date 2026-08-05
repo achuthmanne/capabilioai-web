@@ -5,6 +5,7 @@ import { supabase } from "./lib/supabase"
 import { userDoc } from "./lib/db"
 import { Analytics as PH, identifyUser, resetAnalytics } from "./lib/analytics"
 import { FLAGS } from "./config/featureFlags"
+import { nexusApi } from "./lib/api"
 
 import PathNav     from "./components/PathNav"
 import { PageLoader } from "./components/CapUI"
@@ -72,6 +73,7 @@ const InstitutionOS      = lazy(() => import("./pages/InstitutionOS"))
 const Company             = lazy(() => import("./pages/Company"))
 const RecruiterDashboard = lazy(() => import("./pages/RecruiterDashboard"))
 const HiringPipeline     = lazy(() => import("./pages/HiringPipeline"))
+const CandidateSearch    = lazy(() => import("./pages/CandidateSearch")) // 2026-08-05 — opt-in candidate discovery, GET /api/recruiter/search
 const JobPostings        = lazy(() => import("./pages/JobPostings"))
 // ── Internal-only admin tools — never in nav, reached by direct URL only ──
 const AdminQuestionBank  = lazy(() => import("./pages/AdminQuestionBank"))
@@ -795,6 +797,19 @@ function App() {
   const [authMode,       setAuthMode]       = useState("login")
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const profileMenuRef = useRef(null)
+  // 2026-08-05: real notification bell for the actual live top bar. Found
+  // (while building this) that components/Header.jsx already had a bell UI
+  // wired to real-looking data, but that whole component is dead code —
+  // never imported anywhere (confirmed via grep; App.jsx renders this inline
+  // <header> instead). The `notifications` table + GET/POST
+  // /api/nexus/notifications routes are real and already used by
+  // Nexus.jsx's Notifications tab and written to by recruiterComms.js/
+  // pulseNexus.js — this just surfaces that existing feed platform-wide,
+  // and is what the re-engagement digest (lib/reengagementSignals.js)
+  // writes into so its nudges are actually visible to users.
+  const [notifications, setNotifications] = useState([])
+  const [showNotifications, setShowNotifications] = useState(false)
+  const notifMenuRef = useRef(null)
   // 2026-08-02: whether this student is linked to any org (college/company)
   // via org_members — drives whether the "College" nav tab appears at all.
   // null = not checked yet, so the tab stays hidden until we know for sure
@@ -982,6 +997,53 @@ function App() {
     document.addEventListener("mousedown", handler)
     return () => document.removeEventListener("mousedown", handler)
   }, [profileMenuOpen])
+
+  useEffect(() => {
+    if (!showNotifications) return
+    const handler = (e) => {
+      if (notifMenuRef.current && !notifMenuRef.current.contains(e.target)) {
+        setShowNotifications(false)
+      }
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [showNotifications])
+
+  const loadNotifications = () => {
+    if (!user) return
+    nexusApi.notifications().then(d => setNotifications(Array.isArray(d) ? d : [])).catch(() => {})
+  }
+  useEffect(() => { loadNotifications() }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (showNotifications) loadNotifications() }, [showNotifications]) // eslint-disable-line react-hooks/exhaustive-deps
+  const unreadNotifCount = notifications.filter(n => !n.is_read).length
+  const markAllNotificationsRead = () => {
+    if (unreadNotifCount === 0) return
+    setNotifications(ns => ns.map(n => ({ ...n, is_read: true })))
+    nexusApi.markRead().catch(() => {})
+  }
+  const NOTIF_TYPE_META = {
+    connection_request:  { icon: "🤝", color: "#6366F1" },
+    connection_accepted: { icon: "✅", color: "#10B981" },
+    recruiter_message:   { icon: "💬", color: "#6366F1" },
+    post_acknowledge:    { icon: "👏", color: "#8B5CF6" },
+    post_signal:         { icon: "⚡", color: "#6366F1" },
+    interview_scheduled: { icon: "📅", color: "#F59E0B" },
+    offer_received:      { icon: "🎁", color: "#10B981" },
+    offer_response:      { icon: "🎁", color: "#10B981" },
+    new_application:     { icon: "💼", color: "#10B981" },
+    new_follower:        { icon: "👤", color: "#6366F1" },
+    streak_break_risk:   { icon: "🔥", color: "#F59E0B" },
+    elo_decay_risk:      { icon: "⚡", color: "#DC2626" },
+    skill_stale:         { icon: "🧠", color: "#8B5CF6" },
+  }
+  const notifRelTime = (iso) => {
+    const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
+    if (mins < 1) return "Just now"
+    if (mins < 60) return `${mins}m ago`
+    const hrs = Math.floor(mins / 60)
+    if (hrs < 24) return `${hrs}h ago`
+    return `${Math.floor(hrs / 24)}d ago`
+  }
 
   useEffect(() => {
     if (user && currentPage) PH.pageViewed(currentPage)
@@ -1400,6 +1462,71 @@ function App() {
             </div>
           ) : null}
 
+          <div ref={notifMenuRef} style={{ position: "relative" }}>
+            <button
+              onClick={() => setShowNotifications(o => !o)}
+              style={{
+                position: "relative", display: "flex", alignItems: "center", justifyContent: "center",
+                width: 34, height: 34, borderRadius: 99, border: "1px solid #E8E3DA",
+                background: showNotifications ? `${navAccent}10` : "#fff", cursor: "pointer",
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B6560" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              {unreadNotifCount > 0 && (
+                <span style={{
+                  position: "absolute", top: -2, right: -2, minWidth: 16, height: 16, padding: "0 3px",
+                  borderRadius: 99, background: "#DC2626", color: "#fff", fontSize: 10, fontWeight: 800,
+                  display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Mono', monospace",
+                }}>
+                  {unreadNotifCount > 9 ? "9+" : unreadNotifCount}
+                </span>
+              )}
+            </button>
+
+            {showNotifications && (
+              <div style={{
+                position: "absolute", top: "calc(100% + 8px)", right: 0, width: 340,
+                background: "#fff", border: "1px solid #E8E3DA", borderRadius: 12,
+                boxShadow: "0 8px 24px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)",
+                maxHeight: 420, overflowY: "auto", zIndex: 200,
+              }}>
+                <div style={{ padding: "12px 14px", borderBottom: "1px solid #F3F4F6", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: "#fff" }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#1A1714", fontFamily: "'DM Sans', sans-serif" }}>Notifications</span>
+                  <button onClick={markAllNotificationsRead} disabled={unreadNotifCount === 0}
+                    style={{ border: "none", background: "transparent", color: unreadNotifCount === 0 ? "#A8A29E" : navAccent, fontSize: 11, fontWeight: 700, cursor: unreadNotifCount === 0 ? "default" : "pointer" }}>
+                    Mark all read
+                  </button>
+                </div>
+                {notifications.length === 0 && (
+                  <div style={{ padding: "22px 14px", textAlign: "center", fontSize: 12, color: "#A8A29E" }}>No notifications yet.</div>
+                )}
+                {notifications.slice(0, 10).map((n) => {
+                  const meta = NOTIF_TYPE_META[n.type] || { icon: "🔔", color: navAccent }
+                  return (
+                    <div key={n.id} style={{ display: "flex", gap: 10, padding: "10px 14px", borderBottom: "1px solid #F9F7F3", background: !n.is_read ? `${meta.color}08` : "transparent" }}>
+                      <div style={{ width: 30, height: 30, borderRadius: 9, background: `${meta.color}18`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>{meta.icon}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, color: "#3D3935", fontWeight: n.is_read ? 400 : 600, lineHeight: 1.4 }}>{n.title || n.body}</div>
+                        {n.title && n.body && <div style={{ fontSize: 11, color: "#6B6560", lineHeight: 1.4, marginTop: 1 }}>{n.body}</div>}
+                        <div style={{ fontSize: 10, color: "#A8A29E", marginTop: 3 }}>{notifRelTime(n.created_at)}</div>
+                      </div>
+                      {!n.is_read && <div style={{ width: 6, height: 6, borderRadius: 99, background: meta.color, marginTop: 5, flexShrink: 0 }} />}
+                    </div>
+                  )
+                })}
+                <div style={{ padding: "10px 14px", textAlign: "center", borderTop: "1px solid #E8E3DA" }}>
+                  <button onClick={() => { setShowNotifications(false); setCurrentPage("nexus"); setActiveNavItem("nexus") }}
+                    style={{ border: "none", background: "transparent", color: navAccent, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                    View all →
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div ref={profileMenuRef} style={{ position: "relative" }}>
             <button
               onClick={() => setProfileMenuOpen(o => !o)}
@@ -1693,6 +1820,7 @@ function App() {
           {currentPage === "recruiterHome" && <RecruiterDashboard user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
           {currentPage === "pipeline"      && <HiringPipeline     user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
           {currentPage === "jobPostings"   && <JobPostings        user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
+          {currentPage === "candidateSearch" && <CandidateSearch  user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
         </Suspense>
         </ErrorBoundary>
       </div>

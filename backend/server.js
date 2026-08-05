@@ -131,6 +131,7 @@ import questionBankAdminRoutes   from "./server/routes/questionBankAdmin.js" // 
 import forgeRoutes               from "./server/routes/forge.js"
 import aiInterviewRoutes         from "./server/routes/aiInterview.js"
 import recruiterCommsRoutes      from "./server/routes/recruiterComms.js"
+import recruiterSearchRoutes     from "./server/routes/recruiterSearch.js" // GET /api/recruiter/search — opt-in candidate discovery (profiles.recruiter_discoverable), replaces "recruiters can only view a link they already have"
 // mentorHub.js is DEAD CODE — it queries mentor_profiles/mentor_bookings/
 // mentor_payouts tables that did not exist when it was written, and calls
 // supabaseAdmin.raw() (not a real method). Zero call sites in frontend/src
@@ -344,6 +345,7 @@ app.use("/api/admin/question-bank", questionBankAdminRoutes) // admin/question-b
 app.use("/api",              forgeRoutes)               // pro/forge
 app.use("/api",              aiInterviewRoutes)         // pro/interview
 app.use("/api",              recruiterCommsRoutes)      // jobs, recruiter/messages, offers
+app.use("/api",              recruiterSearchRoutes)     // recruiter/search — opt-in candidate discovery
 // app.use("/api",              mentorHubRoutes)         // DEAD CODE — see import comment above. Unmounted, not deleted.
 app.use("/api/pro/v1/mentor", mentorMarketplaceRoutes)  // Career OS Workstream 4 — mentor marketplace user-facing API (flag-gated)
 // 2026-07-29 ROUTING FIX: this was mounted at bare "/api" (same bug as the
