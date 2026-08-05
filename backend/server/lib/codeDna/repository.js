@@ -51,8 +51,15 @@ export async function upsertProfile(userId, { username, analysis, scores }) {
       ...(existing?.source_ref?.repoInterview ? { repoInterview: existing.source_ref.repoInterview } : {}),
     },
     score: scores?.builder ?? null,
-    is_portfolio_visible: true,
-    is_recruiter_visible: true,
+    // 2026-08-05: BUG FIX — this used to hardcode both flags to `true` on
+    // EVERY upsert, meaning a user who explicitly hid Code DNA via
+    // setVisibility() would have it silently re-published the next time
+    // they hit Refresh/re-analyze. Now preserves whatever's already there,
+    // only defaulting to true for a brand-new row (first-ever analysis) —
+    // matches the existing certVisible pattern's expectation that a privacy
+    // choice, once made, sticks.
+    is_portfolio_visible: existing ? existing.is_portfolio_visible : true,
+    is_recruiter_visible: existing ? existing.is_recruiter_visible : true,
     publish_state: "self_selected",
     // Never set to 'verified' here — only markVerified() (called after a
     // real bio-code ownership check passes) may do that.
@@ -62,6 +69,29 @@ export async function upsertProfile(userId, { username, analysis, scores }) {
     .upsert(row, { onConflict: "user_id,source,proof_type" })
     .select()
     .single()
+  if (error) throw error
+  return data
+}
+
+// 2026-08-05: lets the user hide/show Code DNA on their public
+// portfolio/recruiter view, matching the existing certVisible pattern for
+// certificates. Independent of re-analysis — flipping this never touches
+// the underlying analysis data, and re-analysis (above) now preserves
+// whatever this last set.
+export async function setVisibility(userId, { isPortfolioVisible, isRecruiterVisible }) {
+  const updates = {}
+  if (typeof isPortfolioVisible === "boolean") updates.is_portfolio_visible = isPortfolioVisible
+  if (typeof isRecruiterVisible === "boolean") updates.is_recruiter_visible = isRecruiterVisible
+  if (Object.keys(updates).length === 0) throw new Error("No visibility flags provided")
+
+  const { data, error } = await supabaseAdmin
+    .from("proof_objects")
+    .update(updates)
+    .eq("user_id", userId)
+    .eq("source", SOURCE)
+    .eq("proof_type", PROOF_TYPE)
+    .select()
+    .maybeSingle()
   if (error) throw error
   return data
 }

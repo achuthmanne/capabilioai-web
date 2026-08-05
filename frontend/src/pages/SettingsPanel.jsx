@@ -14,6 +14,8 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { supabase } from "../lib/supabase"
 import { getPlan } from "../config/plans"
 
+const API = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
+
 // ── Design tokens (mirrors Aura.jsx T) ───────────────────────────────────────
 const T = {
   cream:   "#FAF7F2",
@@ -699,6 +701,31 @@ function ProofSection({ userData, save, setUserData }) {
   })
   const [certVisible, setCertVisible] = useState(userData?.certVisible !== false)
   const [vaultVisible, setVaultVisible] = useState(userData?.vaultVisible !== false)
+  // Code DNA visibility (2026-08-05) — lives on the proof_objects row, not a
+  // plain profiles column like certVisible/vaultVisible above, so it needs
+  // its own fetch/save via GET+POST /api/github/visibility rather than
+  // riding along in the normal save(patch) call. Was previously hardcoded
+  // always-visible with no user control at all — see
+  // lib/codeDna/repository.js's setVisibility().
+  const [codeDnaVisible, setCodeDnaVisible] = useState(true)
+  const [codeDnaHasAnalysis, setCodeDnaHasAnalysis] = useState(false)
+  const codeDnaInitialRef = useRef(true)
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const res = await fetch(`${API}/api/github/visibility`, {
+          headers: { Authorization: `Bearer ${session?.access_token}` },
+        }).then(r => r.json())
+        if (cancelled) return
+        setCodeDnaVisible(res.isPortfolioVisible !== false)
+        codeDnaInitialRef.current = res.isPortfolioVisible !== false
+        setCodeDnaHasAnalysis(!!res.hasAnalysis)
+      } catch { /* non-fatal — toggle just stays at its default */ }
+    })()
+    return () => { cancelled = true }
+  }, [])
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -718,6 +745,20 @@ function ProofSection({ userData, save, setUserData }) {
       const ok = save ? await save(patch) : true
       if (ok === false) { setError(true); setTimeout(() => setError(false), 3500); return }
       if (setUserData) setUserData(d => ({ ...d, ...patch }))
+      // Separate call — proof_objects, not profiles — only fired if the
+      // toggle actually changed, and only if there's an analysis to toggle
+      // (setVisibility() 404s otherwise, which is expected/harmless here).
+      if (codeDnaHasAnalysis && codeDnaVisible !== codeDnaInitialRef.current) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+          await fetch(`${API}/api/github/visibility`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
+            body: JSON.stringify({ isPortfolioVisible: codeDnaVisible, isRecruiterVisible: codeDnaVisible }),
+          })
+          codeDnaInitialRef.current = codeDnaVisible
+        } catch { /* non-fatal — profile save above already succeeded */ }
+      }
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
     } finally {
@@ -767,6 +808,16 @@ function ProofSection({ userData, save, setUserData }) {
           desc="Display your Vault files and projects on your public Portfolio"
         />
       </div>
+      {codeDnaHasAnalysis && (
+        <div style={{ marginBottom:10 }}>
+          <Toggle
+            value={codeDnaVisible}
+            onChange={setCodeDnaVisible}
+            label="🧬 Show Code DNA"
+            desc="Display your GitHub capability signals and AI Repository Interview on your public Portfolio. Analyzing your GitHub makes this visible by default — turn off anytime."
+          />
+        </div>
+      )}
       <InfoBox icon="🔒" text="Enforced server-side on non-owner profile reads (GET /api/pro/profile/:uid) — turning these off actually removes the data from the response, not just hides it in the UI." />
 
       <div style={{ marginTop:20, display:"flex", justifyContent:"flex-end" }}>
@@ -777,114 +828,94 @@ function ProofSection({ userData, save, setUserData }) {
 }
 
 // ── Section: UAN / EPFO Verification ─────────────────────────────────────────
-// Calls verify-uan Edge Function → Eko Employee Details API
-// (POST https://staging.eko.in:25004/ekoapi/v3/tools/kyc/advance-employment)
-// Lookup is by phone number → returns uan_details[] + recent_employment_details
+// 2026-08-05: switched from the Eko/UAN edge function (verify-uan →
+// staging.eko.in advance-employment lookup) — confirmed by the product owner
+// not to work in practice — to AuthBridge's real company-search + confirm
+// flow. Same integration Aura.jsx (Student) and Orbit.jsx VaultTab
+// (Professional) already use — see routes/verify.js's
+// /epfo/search-company + /epfo/confirm and lib/authbridgeEpfo.js. This is a
+// deliberate feature reduction, not a bug: AuthBridge only confirms
+// "this person worked at this company" (name + establishment match), it
+// does not return UAN, gender, DOB, or a bulk employment-history list the
+// old Eko flow displayed — those fields are dropped rather than fabricated.
 function UANVerificationSection({ userData, user, save, setUserData }) {
-  const defaultPhone = user?.phone || userData?.phone || ""
-  const [phone,  setPhone]  = useState(defaultPhone.replace(/^(\+91|91)/, ""))
-  const [step,   setStep]   = useState(userData?.uan_verified ? "verified" : "form")
-  const [result, setResult] = useState(null)   // { uan_details, recent_employment_details }
-  const [error,  setError]  = useState(null)
-  const [saving, setSaving] = useState(false)
+  const experiences = userData?.experiences || []
+  const [epfoStep, setEpfoStep] = useState(1)
+  const [epfoExpIndex, setEpfoExpIndex] = useState(null)
+  const [companyQuery, setCompanyQuery] = useState("")
+  const [companyCandidates, setCompanyCandidates] = useState([])
+  const [selectedCompany, setSelectedCompany] = useState("")
+  const [personName, setPersonName] = useState(userData?.displayName || userData?.display_name || "")
+  const [verifying, setVerifying] = useState(false)
+  const [result, setResult] = useState(null) // { verified, employer } | { error }
 
-  // ── Profile fields for comparison ─────────────────────────────────────────
-  const profileName   = userData?.displayName || userData?.display_name || ""
-  const profileGender = userData?.gender || ""
-  const profileDob    = userData?.dob    || ""
-  const profileUan    = userData?.uan_number || ""
+  const isVerified = experiences.some(e => e.verificationStatus === "verified" && e.verificationSource === "AuthBridge/EPFO")
 
-  function matchIcon(a, b) {
-    if (!a || !b) return { icon: "—", color: T.ink3 }
-    return a.toLowerCase().trim() === b.toLowerCase().trim()
-      ? { icon: "✓ Match",    color: T.green }
-      : { icon: "≠ Mismatch", color: T.amber }
+  async function authHeaders() {
+    const { data: { session } } = await supabase.auth.getSession()
+    return { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` }
   }
 
-  const fieldRow = (label, profileVal, epfoVal) => {
-    const m = matchIcon(profileVal, epfoVal)
-    return (
-      <div key={label} style={{
-        display:"grid", gridTemplateColumns:"110px 1fr 1fr 88px",
-        gap:8, alignItems:"center", padding:"9px 0",
-        borderBottom:`1px solid ${T.border}`, fontSize:12,
-      }}>
-        <span style={{ color:T.ink4, fontWeight:600 }}>{label}</span>
-        <span style={{ color:T.ink2 }}>{profileVal || <em style={{color:T.ink3}}>—</em>}</span>
-        <span style={{ color:T.indigo, fontWeight:700 }}>{epfoVal || <em style={{color:T.ink3}}>—</em>}</span>
-        <span style={{ color:m.color, fontWeight:700, fontSize:10 }}>{m.icon}</span>
-      </div>
-    )
+  function resetFlow() {
+    setEpfoStep(1); setEpfoExpIndex(null); setCompanyQuery("")
+    setCompanyCandidates([]); setSelectedCompany(""); setResult(null)
   }
 
-  // ── Lookup via Edge Function ──────────────────────────────────────────────
-  async function handleVerify() {
-    setError(null)
-    const cleaned = phone.replace(/\D/g,"").replace(/^91/,"")
-    if (!/^\d{10}$/.test(cleaned)) {
-      setError("Enter a valid 10-digit Indian mobile number.")
-      return
-    }
-    setStep("loading")
+  async function pickEpfoExperience(idx) {
+    setEpfoExpIndex(idx); setSelectedCompany(""); setCompanyCandidates([]); setResult(null)
+    const exp = experiences[idx]
+    const q = exp?.company || exp?.displayCompany || ""
+    setCompanyQuery(q)
+    if (q.trim()) await searchEpfoCompany(q)
+  }
+
+  async function searchEpfoCompany(qOverride) {
+    const q = (qOverride ?? companyQuery).trim()
+    if (!q) { setResult({ error: "Enter a company name to search" }); return }
+    setVerifying(true); setResult(null); setCompanyCandidates([])
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-uan`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":  "application/json",
-            "Authorization": `Bearer ${session?.access_token}`,
-          },
-          body: JSON.stringify({ phone: cleaned, user_id: user.id }),
-        }
-      )
-      const json = await res.json()
-      if (!json.ok) { setError(json.error || "Verification failed."); setStep("form"); return }
-      setResult(json)
-      setStep("result")
-    } catch (e) {
-      setError(String(e))
-      setStep("form")
-    }
+      const res = await fetch(`${API}/api/verify/epfo/search-company`, {
+        method: "POST", headers: await authHeaders(), body: JSON.stringify({ companyName: q }),
+      }).then(r => r.json())
+      if (res.companies) {
+        setCompanyCandidates(res.companies)
+        if (res.companies.length === 0) setResult({ error: "No EPFO-registered companies found matching that name — try a shorter or different spelling." })
+      } else {
+        setResult({ error: res.error || "Company search failed." })
+      }
+    } catch { setResult({ error: "Server error." }) }
+    setVerifying(false)
   }
 
-  // ── Confirm: sync mismatches → mark verified ──────────────────────────────
-  async function handleAccept() {
-    if (!result) return
-    setSaving(true)
-    // Pick best UAN record (highest source_score)
-    const best = (result.uan_details || []).sort((a, b) => (b.source_score||0) - (a.source_score||0))[0] || {}
-    const patch = {
-      uan_number:      best.uan          || profileUan,
-      uan_verified:    true,
-      uan_verified_at: new Date().toISOString(),
-    }
-    // Sync mismatches from EPFO → profile
-    if (best.employee_name && profileName !== best.employee_name)
-      patch.displayName = best.employee_name
-    if (best.gender && profileGender !== best.gender)
-      patch.gender = best.gender
-    if (best.dob && profileDob !== best.dob)
-      patch.dob = best.dob
-
-    if (save) await save(patch)
-    if (setUserData) setUserData(d => ({ ...d, ...patch }))
-    setSaving(false)
-    setStep("verified")
+  async function confirmEpfoEmployment() {
+    if (epfoExpIndex === null) { setResult({ error: "Pick which job to verify" }); return }
+    if (!selectedCompany) { setResult({ error: "Pick the matching company from the list" }); return }
+    if (!personName.trim()) { setResult({ error: "Enter your name as it appears on EPFO records" }); return }
+    setVerifying(true); setResult(null)
+    try {
+      const res = await fetch(`${API}/api/verify/epfo/confirm`, {
+        method: "POST", headers: await authHeaders(),
+        body: JSON.stringify({ expIndex: epfoExpIndex, companyName: selectedCompany, personName: personName.trim() }),
+      }).then(r => r.json())
+      if (res.verified) {
+        setResult({ verified: true, employer: res.data?.employerName })
+        const patch = { uanVerified: true, uanVerifiedAt: new Date().toISOString() }
+        if (res.data?.updatedExperiences?.length) patch.experiences = res.data.updatedExperiences
+        if (save) await save(patch)
+        if (setUserData) setUserData(d => ({ ...d, ...patch }))
+      } else {
+        setResult({ error: res.reason || res.error || "Couldn't confirm this employment — check the name and company, or try a different job entry." })
+      }
+    } catch { setResult({ error: "Server error." }) }
+    setVerifying(false)
   }
 
   // ─── VERIFIED STATE ───────────────────────────────────────────────────────
-  if (step === "verified") {
-    const uanList  = userData?.epfo_raw?.uan_details  || result?.uan_details  || []
-    const recent   = userData?.epfo_raw?.recent_employment_details || result?.recent_employment_details || {}
-    const best     = uanList.sort((a, b) => (b.source_score||0) - (a.source_score||0))[0] || {}
-
+  if (isVerified && epfoStep === 1 && !companyCandidates.length && epfoExpIndex === null) {
+    const verifiedExp = experiences.find(e => e.verificationStatus === "verified" && e.verificationSource === "AuthBridge/EPFO")
     return (
       <div>
-        <SectionTitle icon="🏛️" title="Employment Verification" subtitle="Identity confirmed via EPFO / Eko" />
-
-        {/* Badge */}
+        <SectionTitle icon="🏛️" title="Employment Verification" subtitle="Confirmed via AuthBridge / EPFO" />
         <div style={{
           background:"linear-gradient(135deg,#1A1714,#1A1714)", borderRadius:14,
           padding:"18px 22px", marginBottom:16, color:"#fff",
@@ -894,7 +925,7 @@ function UANVerificationSection({ userData, user, save, setUserData }) {
           <div>
             <div style={{ fontSize:14, fontWeight:800 }}>EPFO Verified</div>
             <div style={{ fontSize:11, color:"rgba(255,255,255,0.55)", marginTop:3 }}>
-              UAN {userData?.uan_number || best.uan || "—"} · Verified via Eko
+              {verifiedExp?.legalName || verifiedExp?.company || "—"} · Verified via AuthBridge
             </div>
           </div>
           <span style={{
@@ -902,250 +933,114 @@ function UANVerificationSection({ userData, user, save, setUserData }) {
             background:T.green, color:"#fff", borderRadius:99, letterSpacing:0.5,
           }}>EPFO VERIFIED</span>
         </div>
-
-        {/* Best record summary */}
-        {best.employee_name && (
-          <Card style={{ marginBottom:14 }}>
-            <div style={{ fontSize:11, fontWeight:800, color:T.ink3, textTransform:"uppercase", letterSpacing:1.2, marginBottom:10 }}>
-              EPFO Record
-            </div>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-              {[
-                ["Name",   best.employee_name],
-                ["Gender", best.gender],
-                ["DOB",    best.dob],
-                ["UAN",    best.uan],
-              ].filter(([,v]) => v).map(([l,v]) => (
-                <div key={l}>
-                  <div style={{ fontSize:10, color:T.ink4, fontWeight:600 }}>{l}</div>
-                  <div style={{ fontSize:12, fontWeight:700, color:T.ink, marginTop:2 }}>{v}</div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
-
-        {/* Current employer from recent_employment_details */}
-        {recent.establishment_name && (
-          <Card style={{ marginBottom:14 }}>
-            <div style={{ fontSize:11, fontWeight:800, color:T.ink3, textTransform:"uppercase", letterSpacing:1.2, marginBottom:10 }}>
-              Recent Employer
-            </div>
-            <div style={{ fontWeight:800, fontSize:14, color:T.ink, marginBottom:6 }}>
-              {recent.establishment_name}
-            </div>
-            <div style={{ fontSize:11, color:T.ink4, display:"flex", flexWrap:"wrap", gap:12 }}>
-              {recent.joining_date && <span>Joined: {recent.joining_date}</span>}
-              {recent.exit_date    && <span>Exit: {recent.exit_date}</span>}
-              {recent.establishment_id && <span>Est. ID: {recent.establishment_id}</span>}
-              <span style={{
-                color: recent.employed ? T.green : T.ink4,
-                fontWeight: 700,
-              }}>
-                {recent.employed ? "● Currently Employed" : "○ Not currently employed"}
-              </span>
-            </div>
-          </Card>
-        )}
-
-        {/* All UAN records (employment history) */}
-        {uanList.length > 0 && (
-          <Card>
-            <div style={{ fontSize:11, fontWeight:800, color:T.ink3, textTransform:"uppercase", letterSpacing:1.2, marginBottom:12 }}>
-              All Employment Records ({uanList.length})
-            </div>
-            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-              {uanList.map((u, i) => (
-                <div key={i} style={{
-                  padding:"10px 14px", borderRadius:10,
-                  background:`${T.indigo}06`, border:`1px solid ${T.indigo}14`,
-                }}>
-                  <div style={{ fontWeight:800, fontSize:13, color:T.ink }}>{u.employer_name || "—"}</div>
-                  <div style={{ fontSize:11, color:T.ink4, marginTop:3, display:"flex", flexWrap:"wrap", gap:10 }}>
-                    <span>UAN: {u.uan}</span>
-                    {u.joining_date && <span>Joined: {u.joining_date}</span>}
-                    {u.exit_date    && <span>Exit: {u.exit_date}</span>}
-                    {u.member_id    && <span>Member ID: {u.member_id}</span>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
-
-        <div style={{ marginTop:12 }}>
-          <button onClick={() => { setStep("form"); setResult(null) }}
-            style={{
-              fontSize:11, color:T.ink4, background:"none",
-              border:`1px solid ${T.border}`, borderRadius:8,
-              padding:"5px 12px", cursor:"pointer",
-            }}>
-            Re-verify with a different number
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  // ─── LOADING ──────────────────────────────────────────────────────────────
-  if (step === "loading") {
-    return (
-      <div>
-        <SectionTitle icon="🏛️" title="Employment Verification" subtitle="Querying EPFO records via Eko…" />
-        <div style={{ padding:48, textAlign:"center", color:T.ink4, fontSize:13 }}>
-          <div style={{ fontSize:30, marginBottom:12, animation:"spin 1.2s linear infinite", display:"inline-block" }}>⟳</div>
-          <div style={{ fontWeight:600 }}>Contacting EPFO via Eko API…</div>
-          <div style={{ fontSize:11, marginTop:6, color:T.ink3 }}>Usually takes 5–15 seconds</div>
-        </div>
-      </div>
-    )
-  }
-
-  // ─── RESULT: field comparison ─────────────────────────────────────────────
-  if (step === "result" && result) {
-    const uanList = result.uan_details || []
-    const recent  = result.recent_employment_details || {}
-    const best    = [...uanList].sort((a,b) => (b.source_score||0)-(a.source_score||0))[0] || {}
-
-    return (
-      <div>
-        <SectionTitle icon="🏛️" title="Employment Verification" subtitle="Review EPFO data before confirming" />
-
-        <InfoBox icon="ℹ️" text={`Found ${uanList.length} EPFO record(s) linked to this number. Review each field — any mismatch will be corrected from the official EPFO data.`} />
-
-        {/* Field comparison table */}
-        <Card style={{ marginBottom:16 }}>
-          <div style={{
-            display:"grid", gridTemplateColumns:"110px 1fr 1fr 88px",
-            gap:8, padding:"6px 0 10px", borderBottom:`1px solid ${T.border}`,
-            fontSize:10, fontWeight:800, color:T.ink4, textTransform:"uppercase", letterSpacing:1,
+        <InfoBox icon="ℹ️" text="AuthBridge confirms your name against government EPFO establishment records for the selected employer. You can verify additional jobs from your career timeline below." />
+        <button onClick={() => { setEpfoExpIndex(-1); resetFlow(); setEpfoExpIndex(null) }}
+          style={{
+            fontSize:11, color:T.ink4, background:"none",
+            border:`1px solid ${T.border}`, borderRadius:8,
+            padding:"5px 12px", cursor:"pointer", marginTop:12,
           }}>
-            <span>Field</span><span>Your Profile</span><span>EPFO (Best Match)</span><span>Status</span>
-          </div>
-          {fieldRow("Full Name",    profileName,   best.employee_name)}
-          {fieldRow("Gender",       profileGender, best.gender)}
-          {fieldRow("Date of Birth",profileDob,    best.dob)}
-          {fieldRow("UAN",          profileUan,    best.uan)}
+          Verify another job
+        </button>
+      </div>
+    )
+  }
+
+  // ─── STEP 2: confirm name ─────────────────────────────────────────────────
+  if (epfoStep === 2) {
+    return (
+      <div>
+        <SectionTitle icon="🏛️" title="Employment Verification" subtitle="Confirm your name" />
+        <InfoBox icon="ℹ️" text={`Matching against ${selectedCompany}. Use the name your EPFO records are under — it may differ slightly from your profile name.`} />
+        <Card style={{ marginBottom:16 }}>
+          <FieldLabel>Full Name</FieldLabel>
+          <Input value={personName} onChange={setPersonName} placeholder="Full name" />
         </Card>
-
-        {/* Recent employer */}
-        {recent.establishment_name && (
-          <Card style={{ marginBottom:16 }}>
-            <div style={{ fontSize:11, fontWeight:800, color:T.ink3, textTransform:"uppercase", letterSpacing:1.2, marginBottom:8 }}>
-              Recent Employer
-            </div>
-            <div style={{ fontWeight:800, fontSize:13, color:T.ink }}>{recent.establishment_name}</div>
-            <div style={{ fontSize:11, color:T.ink4, marginTop:4, display:"flex", flexWrap:"wrap", gap:10 }}>
-              {recent.joining_date && <span>Joined: {recent.joining_date}</span>}
-              {recent.exit_date    && <span>Exit: {recent.exit_date}</span>}
-              <span style={{ color: recent.employed ? T.green : T.ink4, fontWeight:600 }}>
-                {recent.employed ? "Currently employed" : "No longer at this org"}
-              </span>
-            </div>
-          </Card>
+        {result?.error && (
+          <div style={{ background:T.red2, border:`1px solid ${T.red}30`, borderRadius:10, padding:"10px 14px", color:T.red, fontSize:12, fontWeight:600, marginBottom:14 }}>
+            {result.error}
+          </div>
         )}
-
-        {/* All records */}
-        {uanList.length > 1 && (
-          <Card style={{ marginBottom:16 }}>
-            <div style={{ fontSize:11, fontWeight:800, color:T.ink3, textTransform:"uppercase", letterSpacing:1.2, marginBottom:10 }}>
-              All Employers ({uanList.length} records)
-            </div>
-            {uanList.map((u, i) => (
-              <div key={i} style={{
-                padding:"8px 12px", borderRadius:8, marginBottom:6,
-                background:`${T.indigo}05`, border:`1px solid ${T.indigo}12`,
-              }}>
-                <div style={{ fontWeight:700, fontSize:12, color:T.ink }}>{u.employer_name || "—"}</div>
-                <div style={{ fontSize:11, color:T.ink4, marginTop:2 }}>
-                  {u.joining_date || "?"} → {u.exit_date || "Present"}
-                  {u.establishment_id ? ` · Est. ${u.establishment_id}` : ""}
-                </div>
-              </div>
-            ))}
-          </Card>
-        )}
-
-        <InfoBox icon="⚠️" text="Mismatched fields will be updated to match official EPFO data. Matching fields stay untouched." />
-
-        <div style={{ display:"flex", gap:10, marginTop:16, justifyContent:"flex-end" }}>
-          <button onClick={() => setStep("form")}
-            style={{
-              padding:"9px 18px", borderRadius:10, border:`1px solid ${T.border}`,
-              background:"#fff", color:T.ink2, fontSize:13, cursor:"pointer",
-            }}>
-            Cancel
+        <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+          <button onClick={() => setEpfoStep(1)}
+            style={{ padding:"9px 18px", borderRadius:10, border:`1px solid ${T.border}`, background:"#fff", color:T.ink2, fontSize:13, cursor:"pointer" }}>
+            ← Back
           </button>
-          <button onClick={handleAccept} disabled={saving}
+          <button onClick={confirmEpfoEmployment} disabled={verifying}
             style={{
               padding:"9px 24px", borderRadius:10, border:"none",
               background:T.green, color:"#fff", fontSize:13,
-              fontWeight:700, cursor:saving ? "not-allowed" : "pointer", opacity:saving?0.7:1,
+              fontWeight:700, cursor:verifying ? "not-allowed" : "pointer", opacity:verifying?0.7:1,
             }}>
-            {saving ? "Saving…" : "✅ Confirm & Verify"}
+            {verifying ? "Verifying…" : "✅ Verify"}
           </button>
         </div>
       </div>
     )
   }
 
-  // ─── FORM ─────────────────────────────────────────────────────────────────
+  // ─── STEP 1: pick job + company ───────────────────────────────────────────
   return (
     <div>
-      <SectionTitle icon="🏛️" title="Employment Verification" subtitle="Verify your identity & employment history via EPFO / Eko API" />
+      <SectionTitle icon="🏛️" title="Employment Verification" subtitle="Verify a job from your timeline against government EPFO records" />
+      <InfoBox icon="ℹ️" text="Pick a job from your career timeline, confirm the matching EPFO-registered company, then confirm your name." />
 
-      <InfoBox icon="ℹ️" text="Enter your EPFO-registered mobile number. Eko will look up your UAN records from the government EPFO database and return your employment history." />
-
-      {error && (
-        <div style={{
-          background:T.red2, border:`1px solid ${T.red}30`, borderRadius:10,
-          padding:"10px 14px", color:T.red, fontSize:12, fontWeight:600, marginBottom:14,
-        }}>
-          {error}
+      {result?.error && (
+        <div style={{ background:T.red2, border:`1px solid ${T.red}30`, borderRadius:10, padding:"10px 14px", color:T.red, fontSize:12, fontWeight:600, marginBottom:14 }}>
+          {result.error}
         </div>
       )}
 
-      <Card style={{ marginBottom:16 }}>
-        <FieldLabel>Mobile Number (EPFO-registered)</FieldLabel>
-        <Input
-          value={phone}
-          onChange={setPhone}
-          placeholder="10-digit mobile number"
-          type="tel"
-          maxLength={10}
-        />
-        <div style={{ fontSize:10, color:T.ink4, marginTop:5 }}>
-          This must be the mobile number linked to your EPFO / UAN account.
-          Your UAN, name, gender, DOB, and employment history will be fetched via Eko.
-        </div>
-      </Card>
+      {experiences.length === 0 ? (
+        <Card><div style={{ fontSize:12, color:T.ink4 }}>Add a job to your career timeline first — EPFO verification checks against a specific employer.</div></Card>
+      ) : (
+        <Card style={{ marginBottom:16 }}>
+          <FieldLabel>Which job?</FieldLabel>
+          <div style={{ display:"flex", flexDirection:"column", gap:6, marginTop:6, marginBottom:epfoExpIndex!==null?14:0 }}>
+            {experiences.map((e, i) => (
+              <button key={i} onClick={() => pickEpfoExperience(i)}
+                style={{
+                  textAlign:"left", padding:"9px 12px", borderRadius:10, cursor:"pointer",
+                  background: epfoExpIndex===i ? T.indigo3 : "#fff",
+                  border:`1.5px solid ${epfoExpIndex===i ? T.indigo : T.border}`,
+                  fontSize:12, color:T.ink, fontWeight: epfoExpIndex===i ? 700 : 500,
+                }}>
+                {e.company || e.displayCompany || "Company"}{e.role ? ` — ${e.role}` : ""}
+                {e.verificationStatus === "verified" && <span style={{ marginLeft:6, color:T.green, fontSize:10 }}>✓ verified</span>}
+              </button>
+            ))}
+          </div>
 
-      {/* What gets verified */}
-      <div style={{ marginBottom:16 }}>
-        <div style={{ fontSize:11, fontWeight:700, color:T.ink3, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>
-          What we fetch from EPFO
-        </div>
-        <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-          {["UAN","Employee Name","Gender","Date of Birth","Employer Name","Joining Date","Exit Date","Member ID","Confidence Score"].map(f => (
-            <span key={f} style={{
-              fontSize:11, padding:"4px 10px", borderRadius:20,
-              background:T.indigo3, color:T.indigo, fontWeight:600,
-            }}>{f}</span>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ display:"flex", justifyContent:"flex-end" }}>
-        <button onClick={handleVerify}
-          style={{
-            padding:"10px 28px", borderRadius:10, border:"none",
-            background:`linear-gradient(135deg,${T.indigo},${T.blue})`,
-            color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer",
-            boxShadow:`0 4px 14px ${T.indigo}38`,
-          }}>
-          🔍 Fetch EPFO Records
-        </button>
-      </div>
+          {epfoExpIndex !== null && (
+            <>
+              <FieldLabel>Search EPFO-registered company name</FieldLabel>
+              <Input value={companyQuery} onChange={setCompanyQuery} placeholder="e.g. Capabilio" />
+              <button onClick={() => searchEpfoCompany()} disabled={verifying}
+                style={{
+                  marginTop:8, marginBottom: companyCandidates.length ? 10 : 0,
+                  padding:"8px 16px", borderRadius:8, border:`1px solid ${T.border}`,
+                  background:"#fff", color:T.ink2, fontSize:12, fontWeight:600,
+                  cursor:verifying ? "not-allowed" : "pointer",
+                }}>
+                {verifying ? "Searching…" : "Search"}
+              </button>
+              {companyCandidates.length > 0 && (
+                <div style={{ display:"flex", flexDirection:"column", gap:6, maxHeight:180, overflowY:"auto" }}>
+                  {companyCandidates.map((c, i) => (
+                    <button key={i} onClick={() => { setSelectedCompany(c); setEpfoStep(2) }}
+                      style={{
+                        textAlign:"left", padding:"8px 12px", borderRadius:8, cursor:"pointer",
+                        background:"#fff", border:`1px solid ${T.border}`, fontSize:11, color:T.ink2,
+                      }}>
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </Card>
+      )}
     </div>
   )
 }

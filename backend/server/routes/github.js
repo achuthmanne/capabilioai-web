@@ -666,6 +666,36 @@ router.get("/repo-interview", async (req, res) => {
   } catch (e) { console.error("[github/repo-interview:get]", e.message); res.status(500).json({ error: e.message }) }
 })
 
+// ─── Code DNA visibility (2026-08-05) ────────────────────────────────────────
+// Lets the user control whether their Code DNA (capability signals + AI
+// Repository Interview) shows up on their public portfolio / to recruiters —
+// matches the existing certVisible pattern for certificates. Was previously
+// hardcoded always-on with no user control at all; see
+// lib/codeDna/repository.js's setVisibility() for the fix.
+router.get("/visibility", async (req, res) => {
+  try {
+    const row = await codeDnaRepo.getProfile(req.user.id)
+    if (!row) return res.json({ isPortfolioVisible: true, isRecruiterVisible: true, hasAnalysis: false })
+    res.json({
+      isPortfolioVisible: row.is_portfolio_visible !== false,
+      isRecruiterVisible: row.is_recruiter_visible !== false,
+      hasAnalysis: true,
+    })
+  } catch (e) { console.error("[github/visibility:get]", e.message); res.status(500).json({ error: e.message }) }
+})
+
+router.post("/visibility", async (req, res) => {
+  try {
+    const { isPortfolioVisible, isRecruiterVisible } = req.body || {}
+    const updated = await codeDnaRepo.setVisibility(req.user.id, { isPortfolioVisible, isRecruiterVisible })
+    if (!updated) return res.status(404).json({ error: "Analyze your GitHub profile at least once before changing visibility." })
+    res.json({
+      isPortfolioVisible: updated.is_portfolio_visible !== false,
+      isRecruiterVisible: updated.is_recruiter_visible !== false,
+    })
+  } catch (e) { console.error("[github/visibility:post]", e.message); res.status(500).json({ error: e.message }) }
+})
+
 // ─── Cross-Verification against Arena/SkillStudio/Portfolio (2026-08-05) ───
 // Checks whether Code DNA's real, GitHub-derived tech signals (languages +
 // detected tooling across the top repos actually checked) also show up in

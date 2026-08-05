@@ -5928,6 +5928,18 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
             <Card style={{marginBottom:20,borderTop:`3px solid ${T.green}`}}>
               <SectionLabel color={T.green}>🐙 GitHub Profile URL</SectionLabel>
               <div style={{fontSize:12,color:T.ink3,marginBottom:14,marginTop:4}}>Paste your GitHub profile URL to analyze your repos, languages, commit patterns and generate your Code DNA.</div>
+              {/* 2026-08-05: heads-up before the first-ever analysis — Code
+                  DNA becomes visible on the public Portfolio by default the
+                  moment analysis succeeds (is_portfolio_visible/
+                  is_recruiter_visible default true). Shown as long as no
+                  analysis has been saved yet; disappears once one exists,
+                  since the toggle in Settings → Proof & Portfolio takes over
+                  from there. */}
+              {!userData?.githubData && (
+                <div style={{background:T.indigo3,border:`1.5px solid rgba(61,78,172,0.18)`,borderRadius:10,padding:"9px 13px",marginBottom:14,fontSize:11,color:T.indigo,lineHeight:1.5}}>
+                  ℹ️ Analyzing your GitHub makes Code DNA visible on your public portfolio by default. You can hide it anytime in Settings → Proof & Portfolio.
+                </div>
+              )}
               <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
                 <input
                   value={githubUrl||(userData?.personalInfo?.githubUrl||"")}
