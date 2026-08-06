@@ -13,6 +13,7 @@ import ErrorBoundary from "./components/ErrorBoundary"
 import CopilotWidget from "./components/CopilotWidget"
 
 // ── Always needed for auth flow — keep static ────────────────────────────────
+import MyTasks      from "./pages/MyTasks"
 import LandingPage  from "./pages/LandingPage"
 import AccountType  from "./pages/AccountType"
 import Onboarding   from "./pages/Onboarding"
@@ -1338,6 +1339,7 @@ function App() {
     { id: "pulse",       label: "Pulse",        page: "pulse",       prefix: "⚡" },
     { id: "skillstudio", label: "Skill Studio", page: "skillstudio",   prefix: "🎓" },
     { id: "launchpad",   label: "Launchpad",    page: "launchpad",     prefix: "🚀" },
+    { id: "myTasks",     label: "Tasks",        page: "myTasks",       prefix: "📋" },
     // "Challenges" nav removed — engineering domain challenges now live inside Arena → Common Challenges (stream-filtered)
     // 2026-08-02: only shown once GET /college/me/tasks confirms this student
     // is actually org-linked — collegeLinked starts null (unresolved) so this
@@ -1373,6 +1375,7 @@ function App() {
     { id: "launchpad", label: "Launchpad", page: "launchpad",        prefix: "🚀" },
     { id: "pulse",     label: "Pulse",     page: "pulse",            prefix: "📰" },
     { id: "nexus",     label: "Connect",   page: "nexus",            prefix: "🤝" },
+    { id: "myTasks",   label: "Tasks",     page: "myTasks",          prefix: "📋" },
     ...(FLAGS.career_os_company ? [{ id: "company", label: "Company", page: "company", prefix: "🏢" }] : []),
     { id: "aura",      label: "Profile",   page: "aura",             prefix: "👤" },
   ] : [
@@ -1381,6 +1384,7 @@ function App() {
     { id: "launchpad", label: "Launchpad", page: "launchpad",        prefix: "🚀" },
     { id: "pulse",     label: "Pulse",     page: "pulse",            prefix: "📰" },
     { id: "nexus",     label: "Connect",   page: "nexus",            prefix: "🤝" },
+    { id: "myTasks",   label: "Tasks",     page: "myTasks",          prefix: "📋" },
     { id: "aura",      label: "Profile",   page: "aura",             prefix: "👤" },
   ]
 
@@ -1689,6 +1693,7 @@ function App() {
               userData={userData} setUserData={setUserData} />
           )}
           {currentPage === "nexus"     && <Nexus user={user} userData={userData} setUserData={setUserData} />}
+          {currentPage === "myTasks"   && <MyTasks />}
           {currentPage === "arena"     && <Arena user={user} userData={userData} setUserData={setUserData} onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }} onNavigatePricing={() => setCurrentPage("pricing")} />}
           {currentPage === "arenaV2MLPilot" && (
             <ArenaV2MLPilot

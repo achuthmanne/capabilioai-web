@@ -745,6 +745,20 @@ export const skillStudioContentAdminApi = {
   regenerate:  (id, notes) => request("POST", `/admin/skill-studio-content/${id}/regenerate`, { notes }),
 }
 
+// ══════════════════════════════════════════
+// CANDIDATE TASKS (recruiter-assigned, via capabilio-recruiter partner
+// bridge — 2026-08-06). NOT the same feature as collegeApi.getMyTasks()
+// above, which is an institution-assigned task inbox on this app's own DB.
+// This one is for tasks a recruiter on the separate capabilio-recruiter
+// product assigns to a candidate; see backend/server/routes/
+// candidateTasks.js for the bridge call.
+// ══════════════════════════════════════════
+export const candidateTasksApi = {
+  list:   () => request("GET", "/candidate/tasks"),
+  submit: (id, submissionText, submissionUrl) =>
+    request("POST", `/candidate/tasks/${id}/submit`, { submissionText, submissionUrl }),
+}
+
 // Skill Rating v2 (2026-07-26) — verification-gated certification bonus.
 export const certificationsApi = {
   list: () => request("GET", "/pro/certifications"),

@@ -122,6 +122,7 @@ import ttsRoutes              from "./server/routes/tts.js"
 // ── Professional Path modules ─────────────────────────────────────────────────
 import professionalProfileRoutes from "./server/routes/professionalProfile.js"
 import careerTimelineRoutes      from "./server/routes/careerTimeline.js"
+import candidateTasksRoutes      from "./server/routes/candidateTasks.js"
 import skillGraphRoutes          from "./server/routes/skillGraph.js"
 import weeklyPulseRoutes         from "./server/routes/weeklyPulse.js"
 import homeV1Routes              from "./server/routes/homeV1.js" // Career OS Workstream 1 — pro/v1/home/*
@@ -328,6 +329,7 @@ app.use("/api/tts",          ttsRoutes)          // speak — Deepgram Aura-2 TT
 // ── Professional Path ─────────────────────────────────────────────────────────
 app.use("/api",              professionalProfileRoutes) // pro/profile, pro/epfo, pro/visibility
 app.use("/api",              careerTimelineRoutes)      // pro/timeline, pro/vault
+app.use("/api",              candidateTasksRoutes)      // candidate/tasks — recruiter-assigned tasks via partner bridge (2026-08-06)
 app.use("/api",              skillGraphRoutes)          // pro/skills
 app.use("/api",              weeklyPulseRoutes)         // pro/weekly — Weekly Career Check
 app.use("/api",              professionalEloRoutes)     // pro/elo/professional — Professional ELO status+history (2026-07-25 product decision)
