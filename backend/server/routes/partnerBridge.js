@@ -16,18 +16,27 @@
  *   this app's env, every request here 503s rather than silently allowing
  *   unauthenticated access.
  * - GET /candidates reuses the exact same privacy-gated query as
- *   recruiterSearch.js (profiles.recruiter_discoverable = true only, same
- *   field whitelist -- never email/phone/vault/resume data). This is the
- *   same trust boundary as the in-app recruiter search, just reached from a
- *   different caller.
+ *   recruiterSearch.js (profiles.recruiter_discoverable = true AND
+ *   employment_status <> 'active_hidden', same field whitelist -- never
+ *   email/phone/vault/resume data). This is the same trust boundary as the
+ *   in-app recruiter search, just reached from a different caller. Updated
+ *   2026-08-06 (employment_status_recruiter_visibility migration) to add
+ *   the employment_status gate alongside recruiter_discoverable -- see
+ *   recruiterSearch.js's header comment for why both are required.
  * - GET /institutions lists only non-sensitive institution display info.
- * - There is intentionally NO write/connect endpoint yet. org_company_links'
- *   existing consent model (college invites a company, the COMPANY accepts
- *   via an emailed token) doesn't have a symmetric "company requests a
- *   college, college accepts" path built in this app's frontend yet -- so a
- *   bridge-initiated connection request would have no UI on the institution
- *   side to action it. That's a real product/UX gap to close in a follow-up,
- *   not something to fake with a write that silently goes nowhere.
+ * - GET/POST /company-invites lets a recruiter-side company READ the
+ *   institution invites addressed to it (org_company_links, status=
+ *   'invited') and ACCEPT/DECLINE them, without needing a profiles row in
+ *   this app's Supabase project. This does NOT reuse company_user_id (which
+ *   only ever points at a same-DB profiles.id) -- it writes a separate
+ *   partner_company_ref/accepted_via pair added in
+ *   org_company_links_partner_bridge_migration.sql. First-to-accept wins:
+ *   a link already claimed via this app's own /company-invite/:token flow
+ *   (company_user_id set) can't also be claimed here, and vice versa is
+ *   enforced by the status='invited' guard on both paths.
+ * - There is still NO endpoint for the reverse direction (a recruiter
+ *   requesting a college that hasn't invited them) -- that has no UI on the
+ *   institution side to action it yet. Real product gap, not faked here.
  */
 import { Router } from "express"
 import { supabaseAdmin } from "../lib/supabase.js"
@@ -57,6 +66,7 @@ const RESULT_FIELDS = [
   "path_type", "years_of_experience", "location",
   "role_elo", "professional_elo", "aura_score",
   "uan_verified", "education_verified",
+  "employment_status", "notice_period_ends_at",
 ].join(", ")
 
 router.get("/candidates", async (req, res) => {
@@ -87,6 +97,7 @@ router.get("/candidates", async (req, res) => {
       .from("profiles")
       .select(RESULT_FIELDS, { count: "exact" })
       .eq("recruiter_discoverable", true)
+      .neq("employment_status", "active_hidden") // second mandatory gate — see file header
       .is("org_type", null)
 
     if (matchingUserIds) query = query.in("id", matchingUserIds)
@@ -145,6 +156,121 @@ router.get("/institutions", async (req, res) => {
     res.json({ institutions })
   } catch (err) {
     console.error("[partner-bridge/institutions]", err.message)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// ─── Recruiter: list institution invites addressed to this company ─────────
+// Matched by company_email (what the institution typed when inviting) OR
+// partner_accepted_by (for invites this same bridge already accepted, so a
+// re-fetch shows current status). Case-insensitive exact match, not a
+// substring search -- ilike with no wildcards.
+router.get("/company-invites", async (req, res) => {
+  try {
+    const email = (req.query.email || "").trim()
+    if (!email) return res.status(400).json({ error: "email query param is required." })
+
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 100)
+    const safeEmail = email.replace(/[,()]/g, "") // keep the .or() filter string well-formed
+
+    const { data, error } = await supabaseAdmin
+      .from("org_company_links")
+      .select("id, institution_org_id, company_name, company_email, company_website, company_address, company_size, industry, notes, status, visibility, created_at, linked_at, accepted_via")
+      .or(`company_email.ilike.${safeEmail},partner_accepted_by.ilike.${safeEmail}`)
+      .order("created_at", { ascending: false })
+      .limit(limit)
+    if (error) return res.status(500).json({ error: error.message })
+
+    const orgIds = [...new Set((data || []).map((l) => l.institution_org_id))]
+    let orgNames = {}
+    if (orgIds.length) {
+      const { data: profiles } = await supabaseAdmin.from("profiles").select("id, org_name, name").in("id", orgIds)
+      orgNames = Object.fromEntries((profiles || []).map((p) => [p.id, p.org_name || p.name || "An institution"]))
+    }
+
+    res.json({
+      invites: (data || []).map((l) => ({ ...l, institution_name: orgNames[l.institution_org_id] || "An institution" })),
+    })
+  } catch (err) {
+    console.error("[partner-bridge/company-invites]", err.message)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// ─── Recruiter: accept an institution invite ────────────────────────────────
+router.post("/company-invites/:id/accept", async (req, res) => {
+  try {
+    const partnerCompanyId = String(req.body?.partnerCompanyId || "").trim()
+    const acceptedByEmail = String(req.body?.acceptedByEmail || "").trim()
+    if (!partnerCompanyId)
+      return res.status(400).json({ error: "partnerCompanyId is required." })
+
+    const { data: link, error: fetchErr } = await supabaseAdmin
+      .from("org_company_links")
+      .select("id, status, company_user_id")
+      .eq("id", req.params.id)
+      .single()
+    if (fetchErr || !link) return res.status(404).json({ error: "Invite not found." })
+    if (link.company_user_id)
+      return res.status(409).json({ error: "This invite was already accepted through a Capabilio company account." })
+    if (link.status !== "invited")
+      return res.status(409).json({ error: `This invite was already ${link.status}.` })
+
+    // Re-assert status='invited' in the WHERE clause as an optimistic-
+    // concurrency guard against two simultaneous accept calls racing on the
+    // same row -- .single() on the result means "someone else already
+    // claimed it between our SELECT and this UPDATE" surfaces as a 409, not
+    // a silent double-accept.
+    const { data: updated, error } = await supabaseAdmin
+      .from("org_company_links")
+      .update({
+        status: "active",
+        linked_at: new Date().toISOString(),
+        nda_signed_at: new Date().toISOString(),
+        partner_company_ref: partnerCompanyId,
+        partner_accepted_by: acceptedByEmail || null,
+        accepted_via: "partner_bridge",
+      })
+      .eq("id", req.params.id)
+      .eq("status", "invited")
+      .select()
+      .maybeSingle()
+    if (error) return res.status(500).json({ error: error.message })
+    if (!updated) return res.status(409).json({ error: "This invite was just actioned by someone else — refresh and check its status." })
+
+    console.log(`[partner-bridge] company-invite ${req.params.id} accepted (partner_company_ref=${partnerCompanyId})`)
+    res.json({ success: true, link: updated })
+  } catch (err) {
+    console.error("[partner-bridge/company-invites/accept]", err.message)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// ─── Recruiter: decline an institution invite ───────────────────────────────
+router.post("/company-invites/:id/decline", async (req, res) => {
+  try {
+    const { data: link } = await supabaseAdmin
+      .from("org_company_links")
+      .select("id, status")
+      .eq("id", req.params.id)
+      .single()
+    if (!link) return res.status(404).json({ error: "Invite not found." })
+    if (link.status !== "invited")
+      return res.status(409).json({ error: `This invite was already ${link.status}.` })
+
+    const { data: updated, error } = await supabaseAdmin
+      .from("org_company_links")
+      .update({ status: "rejected" })
+      .eq("id", req.params.id)
+      .eq("status", "invited")
+      .select()
+      .maybeSingle()
+    if (error) return res.status(500).json({ error: error.message })
+    if (!updated) return res.status(409).json({ error: "This invite was just actioned by someone else — refresh and check its status." })
+
+    res.json({ success: true })
+  } catch (err) {
+    console.error("[partner-bridge/company-invites/decline]", err.message)
     res.status(500).json({ error: err.message })
   }
 })

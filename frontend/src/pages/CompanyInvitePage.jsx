@@ -131,8 +131,9 @@ export default function CompanyInvitePage({ token, user, userData, onDone, onSig
         <div style={{ fontSize: 36, marginBottom: 12 }}>🎉</div>
         <div style={badge}>🎓 {institutionName}</div>
         <div style={{ fontSize: 20, fontWeight: 800, color: "#111827", marginBottom: 8 }}>Connected!</div>
-        <div style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.7, marginBottom: 24 }}>You'll see student ELO scores and placement performance — never contact details. Reach students only through {institutionName}.</div>
-        <button onClick={() => onDone?.()} style={btnPrimary}>Go to Recruiter Network →</button>
+        <div style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.7, marginBottom: 8 }}>You'll see {institutionName}'s verified student performance and placement data — never contact details. Reach students only through {institutionName}.</div>
+        <div style={{ fontSize: 11, color: "#9CA3AF", lineHeight: 1.6, marginBottom: 24 }}>This is a separate Talent Network account, not your Capabilio Recruiter dashboard.</div>
+        <button onClick={() => onDone?.()} style={btnPrimary}>Go to Talent Network →</button>
       </div></div>
     )
   }
@@ -174,9 +175,12 @@ export default function CompanyInvitePage({ token, user, userData, onDone, onSig
       <div style={{ fontSize: 36, marginBottom: 12 }}>🏢</div>
       <div style={badge}>🎓 {institutionName}</div>
       <div style={{ fontSize: 20, fontWeight: 800, color: "#111827", marginBottom: 8 }}>Invited you to their Talent Network</div>
-      <div style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.7, marginBottom: 20 }}>
-        As <strong>{companyName}</strong>, if you accept you'll see verified student ELO scores and placement performance.
+      <div style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.7, marginBottom: 12 }}>
+        As <strong>{companyName}</strong>, if you accept you'll see {institutionName}'s verified student performance and placement data.
         Personal contact details are never shared at any access level — reaching a student always goes through {institutionName}.
+      </div>
+      <div style={{ fontSize: 11, color: "#9CA3AF", lineHeight: 1.6, marginBottom: 8 }}>
+        This creates a Talent Network account, separate from a Capabilio Recruiter account at recruiter.capabilio.online.
       </div>
       {error && <div style={{ fontSize: 12, color: "#DC2626", marginBottom: 12 }}>{error}</div>}
       {user ? (

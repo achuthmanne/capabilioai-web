@@ -706,6 +706,17 @@ function ProofSection({ userData, save, setUserData }) {
   // this one is `=== true` = defaults OFF, matching profiles.recruiter_discoverable's
   // real default of false (product decision: opt-in, not opt-out).
   const [recruiterDiscoverable, setRecruiterDiscoverable] = useState(userData?.recruiterDiscoverable === true)
+  // 2026-08-06: employment status — a SECOND, mandatory gate on top of
+  // recruiterDiscoverable above. Product rule: an actively-employed
+  // professional must never be visible to recruiters, even if they once
+  // flipped "Discoverable to Recruiters" on and forgot about it. Defaults
+  // to 'active_hidden' regardless of userData, matching profiles.
+  // employment_status's real DB default — recruiter search now requires
+  // BOTH recruiter_discoverable=true AND employment_status IN
+  // ('notice_period','discoverable') server-side (recruiterSearch.js,
+  // partnerBridge.js), so leaving this at the default hides you from
+  // search results even with the toggle above turned on.
+  const [employmentStatus, setEmploymentStatus] = useState(userData?.employmentStatus || "active_hidden")
   // Code DNA visibility (2026-08-05) — lives on the proof_objects row, not a
   // plain profiles column like certVisible/vaultVisible above, so it needs
   // its own fetch/save via GET+POST /api/github/visibility rather than
@@ -747,6 +758,7 @@ function ProofSection({ userData, save, setUserData }) {
         certVisible,
         vaultVisible,
         recruiterDiscoverable,
+        employmentStatus,
       }
       const ok = save ? await save(patch) : true
       if (ok === false) { setError(true); setTimeout(() => setError(false), 3500); return }
@@ -822,6 +834,27 @@ function ProofSection({ userData, save, setUserData }) {
           desc="Let recruiters find your profile through Capabilio's candidate search (by skill, ELO, domain, verification status). Off by default — your profile stays link-only until you turn this on."
         />
       </div>
+      {recruiterDiscoverable && (
+        <div style={{ marginBottom:10, padding:14, borderRadius:10, border:`1.5px solid ${T.border}`, background:"#FAFAF8" }}>
+          <FieldLabel>Employment status shown to recruiters</FieldLabel>
+          <select
+            value={employmentStatus}
+            onChange={e => setEmploymentStatus(e.target.value)}
+            style={{
+              width:"100%", padding:"9px 12px", borderRadius:9,
+              border:`1.5px solid ${T.border}`, fontSize:13,
+              color:T.ink, background:"#fff", outline:"none",
+            }}
+          >
+            <option value="active_hidden">Actively employed — stay hidden from recruiter search</option>
+            <option value="notice_period">In notice period — visible to recruiters</option>
+            <option value="discoverable">Open to offers — visible to recruiters</option>
+          </select>
+          <div style={{ marginTop:6, fontSize:11, color:T.ink4 }}>
+            This is required in addition to the toggle above — leaving it at "Actively employed" keeps you out of recruiter search results even with discoverability turned on. This protects you from being cold-approached while employed.
+          </div>
+        </div>
+      )}
       {codeDnaHasAnalysis && (
         <div style={{ marginBottom:10 }}>
           <Toggle

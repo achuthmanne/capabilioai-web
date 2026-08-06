@@ -36,6 +36,18 @@ const VISIBILITY_COLUMNS = {
 
 const APP_URL = process.env.PUBLIC_APP_URL || "https://capabilio.online"
 
+// PRODUCT DECISION 2026-08-06: invites are app-only now — a company must
+// accept/decline inside its own product (this app's /company-invite/:token
+// page for a same-DB "company" account, OR recruiter.capabilio.online's
+// College Connections page via the partner bridge, see
+// backend/server/routes/partnerBridge.js's /company-invites routes). Email
+// delivery is intentionally disabled: previously this function sent an
+// email with a direct accept/decline link, but that bypassed the "connect
+// happens in the application, not via an email link" requirement. The
+// function is kept (unused) rather than deleted so re-enabling email later
+// (e.g. as a notification-only "you have a pending invite, log in to
+// review it" nudge, no direct accept link) is a one-line change, not a
+// rewrite.
 async function sendInviteEmail({ institutionOrgId, companyEmail, companyName, inviteToken }) {
   if (!companyEmail.trim()) return { sent: false, reason: "no_email_provided" }
   const { data: inviterProfile } = await supabaseAdmin.from("profiles").select("org_name, name").eq("id", institutionOrgId).single()
@@ -44,8 +56,15 @@ async function sendInviteEmail({ institutionOrgId, companyEmail, companyName, in
   return sendEmail({
     to: companyEmail.trim(),
     subject: `${institutionName} invited you to their Talent Network on Capabilio`,
-    html: `<p>Hi,</p><p><strong>${institutionName}</strong> has invited your company to connect on Capabilio's Talent Network.</p><p>Review and accept or decline here: <a href="${inviteUrl}">${inviteUrl}</a></p><p>If you accept, you'll see student ELO scores and placement performance — never personal contact details. Reaching a student always goes through the college, never directly.</p>`,
+    html: `<p>Hi,</p><p><strong>${institutionName}</strong> has invited your company to connect on Capabilio's Talent Network.</p><p>Review and accept or decline here: <a href="${inviteUrl}">${inviteUrl}</a></p><p>If you accept, you'll see this institution's verified student performance and placement data — never personal contact details. Reaching a student always goes through the college, never directly.</p><p style="color:#6B7280;font-size:12px;margin-top:16px">This creates a separate Talent Network account on Capabilio's institution-partnership site — it is not the same as a Capabilio Recruiter account at recruiter.capabilio.online.</p>`,
   })
+}
+
+// Always returns "not sent, disabled" without making a network call — see
+// the product-decision comment above sendInviteEmail. Same return shape as
+// sendInviteEmail() so callers don't need to branch.
+function skipInviteEmail() {
+  return { sent: false, reason: "email_disabled_app_only" }
 }
 
 // ─── College: invite a company (matches a real account if one exists) ───────
@@ -88,9 +107,7 @@ router.post("/company-links", requireAuth, async (req, res) => {
 
   if (error) return res.status(500).json({ error: error.message })
 
-  const emailResult = await sendInviteEmail({
-    institutionOrgId, companyEmail: company_email, companyName: company_name.trim(), inviteToken,
-  })
+  const emailResult = skipInviteEmail()
 
   res.json({ success: true, link: row, matchedExistingAccount: !!companyUserId, emailSent: emailResult.sent, emailReason: emailResult.reason })
 })
@@ -163,20 +180,19 @@ router.delete("/company-links/:id", requireAuth, async (req, res) => {
   res.json({ success: true })
 })
 
-// ─── College: resend the invite email (same token, no new consent state) ────
+// ─── College: "resend" — app-only now, so there's no email to resend. Kept
+// as a no-op success response (rather than removing the route) so the
+// existing "Resend Invite" button in InstitutionOS.jsx doesn't 404; it just
+// confirms the invite is still pending and tells the college the company
+// needs to check their own recruiter application, not an inbox.
 router.post("/company-links/:id/resend", requireAuth, async (req, res) => {
   const { data: link } = await supabaseAdmin.from("org_company_links").select("*").eq("id", req.params.id).single()
   if (!link || link.institution_org_id !== req.user.id)
     return res.status(404).json({ error: "Link not found" })
   if (link.status !== "invited")
     return res.status(409).json({ error: `Can't resend — this invite was already ${link.status}.` })
-  if (!link.company_email)
-    return res.status(400).json({ error: "This company has no contact email on file." })
 
-  const emailResult = await sendInviteEmail({
-    institutionOrgId: link.institution_org_id, companyEmail: link.company_email,
-    companyName: link.company_name, inviteToken: link.invite_token,
-  })
+  const emailResult = skipInviteEmail()
   res.json({ success: true, emailSent: emailResult.sent, emailReason: emailResult.reason })
 })
 

@@ -4774,7 +4774,7 @@ function CollegeCompaniesPage({ userData, user }) {
 
   // Performance-only tiers — email/phone are never exposed at any level.
   // "Full access" means fuller performance data, not contact details.
-  const visibilityLabel = { roster: "Roster (name, dept, batch)", elo: "Roster + ELO scores", placements: "+ Placement outcomes", full: "Full performance profile" }
+  const visibilityLabel = { roster: "Roster (name, dept, batch)", elo: "Roster + skill scores", placements: "+ Placement outcomes", full: "Full performance profile" }
   const visibilityColor = { roster: T.ink3, elo: T.amber, placements: T.sky, full: T.green }
   const statusColor     = { invited: T.amber, active: T.green, paused: T.ink4, rejected: T.red }
 
@@ -5152,7 +5152,7 @@ function RecruiterNetworkReceivedPage({ user }) {
 
   // Performance-only tiers — no tier ever includes email/phone/contact info.
   // Reaching a specific student always goes through the college, not directly.
-  const visibilityLabel = { roster: "Roster (name, dept, batch)", elo: "Roster + ELO scores", placements: "+ Placement outcomes", full: "Full performance profile" }
+  const visibilityLabel = { roster: "Roster (name, dept, batch)", elo: "Roster + skill scores", placements: "+ Placement outcomes", full: "Full performance profile" }
   const statusColor = { invited: T.amber, active: T.green, paused: T.ink4, rejected: T.red }
   const pendingCount = links.filter(l => l.status === "invited").length
 

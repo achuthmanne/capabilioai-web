@@ -22,6 +22,14 @@
  * selected — never email, phone, vault files, or raw resume/interview data.
  * Every filter below is applied server-side; nothing here trusts a client
  * to have already filtered anything.
+ *
+ * UPDATED 2026-08-06 (employment_status_recruiter_visibility migration):
+ * recruiter_discoverable alone is no longer sufficient. A profile must ALSO
+ * have employment_status IN ('notice_period', 'discoverable') — i.e. NOT
+ * 'active_hidden' (the default). Product rule: an actively-employed
+ * professional must never be visible to a recruiter, even if they left
+ * recruiter_discoverable on from a previous job search. This is a second,
+ * independent gate — both conditions are required, not either/or.
  */
 import { Router } from "express"
 import { supabaseAdmin } from "../lib/supabase.js"
@@ -49,6 +57,7 @@ const RESULT_FIELDS = [
   "path_type", "years_of_experience", "location",
   "role_elo", "professional_elo", "aura_score",
   "uan_verified", "education_verified",
+  "employment_status", "notice_period_ends_at", // so the UI can label "Notice period" vs "Open to offers" — never surfaces active_hidden rows since the query filters those out entirely
 ].join(", ")
 
 router.get("/recruiter/search", requireAuth, requireRecruiter(), async (req, res) => {
@@ -79,6 +88,7 @@ router.get("/recruiter/search", requireAuth, requireRecruiter(), async (req, res
       .from("profiles")
       .select(RESULT_FIELDS, { count: "exact" })
       .eq("recruiter_discoverable", true)
+      .neq("employment_status", "active_hidden") // second mandatory gate — see file header
       .is("org_type", null) // exclude company/college/recruiter accounts — candidates only
 
     if (matchingUserIds) query = query.in("id", matchingUserIds)

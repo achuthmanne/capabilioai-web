@@ -115,6 +115,12 @@ const CAMEL_TO_SNAKE = {
   // and PostgREST would reject the whole update with "column not found" —
   // same failure class as the certVisible/vaultVisible bug fixed above.
   recruiterDiscoverable: 'recruiter_discoverable',
+  // 2026-08-06: employment_status_recruiter_visibility migration — same
+  // failure class as recruiterDiscoverable above if left unmapped. This is
+  // the mandatory second gate on recruiter visibility (see
+  // employment_status_recruiter_visibility_migration.sql and
+  // SettingsPanel.jsx's employmentStatus state).
+  employmentStatus: 'employment_status',
   // BUG FIX (2026-07-27): buildStudentSavePayload (Onboarding.jsx) sends
   // roleId/roleLabel/roleSlug/roleStream/arenaKey whenever a student picks a
   // canonical role from RoleSearchPicker — none of these had a mapping here,
@@ -250,6 +256,11 @@ const toCompat = (data) => {
     // Product decision: recruiter visibility is a stricter trust boundary
     // than `searchable` (Pulse/peer search, default true).
     recruiterDiscoverable: data.recruiter_discoverable ?? false,
+    // 2026-08-06: mandatory second gate on recruiter visibility — see the
+    // employmentStatus mapping above. Defaults to the safest state
+    // ('active_hidden') if the column is somehow null, never to something
+    // that would make a profile visible by accident.
+    employmentStatus:      data.employment_status ?? 'active_hidden',
   }
 }
 
