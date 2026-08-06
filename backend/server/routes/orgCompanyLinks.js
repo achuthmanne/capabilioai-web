@@ -14,6 +14,7 @@ import crypto from "crypto"
 import { requireAuth } from "../lib/auth.js"
 import { supabaseAdmin } from "../lib/supabase.js"
 import { sendEmail } from "../lib/email.js"
+import { fetchLinkStudents } from "../lib/orgStudentVisibility.js"
 
 const router = Router()
 
@@ -23,17 +24,12 @@ function generateInviteToken() {
 
 // PII is never exposed to a connected company through this feature, at any
 // visibility tier — "full" means fuller PERFORMANCE data, not contact info.
-// A company that wants to reach a specific student must go through the
-// college (out of scope for this pass — no messaging UI yet, but the data
-// layer below guarantees email/phone can never leak via this path regardless
-// of what gets built on top of it later).
-const VISIBILITY_COLUMNS = {
-  roster:     ["id", "name", "role", "department", "batch", "status"],
-  elo:        ["id", "name", "role", "department", "batch", "status", "elo_rating"],
-  placements: ["id", "name", "role", "department", "batch", "status", "elo_rating", "placement_company", "placement_ctc"],
-  full:       ["id", "name", "role", "department", "batch", "status", "elo_rating", "placement_company", "placement_ctc", "joined_at"],
-}
-
+// 2026-08-06: "a company that wants to reach a specific student must go
+// through the college" is now actually built — see
+// recruiter_student_access_requests + partnerBridge.js's request-access
+// routes + college.js's placement-cell decide routes. Column tiers now live
+// in ../lib/orgStudentVisibility.js (shared with the recruiter-side partner
+// bridge route) instead of being duplicated here.
 const APP_URL = process.env.PUBLIC_APP_URL || "https://capabilio.online"
 
 // PRODUCT DECISION 2026-08-06: invites are app-only now — a company must
@@ -279,17 +275,96 @@ router.get("/company-links/:id/students", requireAuth, async (req, res) => {
   if (link.status !== "active")
     return res.status(403).json({ error: "This link is not active yet — the NDA must be accepted first." })
 
-  const columns = VISIBILITY_COLUMNS[link.visibility] || VISIBILITY_COLUMNS.roster
-  const { data: students, error } = await supabaseAdmin
-    .from("org_members")
-    .select(columns.join(","))
-    .eq("org_id", link.institution_org_id)
-    .eq("role", "student")
-    .in("status", ["active", "placed"])
-    .order("elo_rating", { ascending: false })
+  const { students, error } = await fetchLinkStudents(link)
+  if (error) return res.status(500).json({ error })
+  res.json({ students, visibility: link.visibility })
+})
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Placement cell: approve/deny a recruiter's request to contact one specific
+// student — 2026-08-06. Same identity pattern as the rest of this file
+// (req.user.id === org_company_links.institution_org_id, PC-5), so this is
+// scoped to the logged-in institution admin's OWN connections only; there is
+// no way to see or decide a request belonging to a different college.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// GET /company-links/access-requests?status=pending — across ALL of this
+// institution's company links, not just one. status defaults to "pending"
+// (the placement-cell queue); pass status=all to see the full history.
+router.get("/company-links/access-requests", requireAuth, async (req, res) => {
+  const institutionOrgId = req.user.id
+  const statusFilter = req.query.status || "pending"
+
+  const { data: links } = await supabaseAdmin
+    .from("org_company_links")
+    .select("id, company_name")
+    .eq("institution_org_id", institutionOrgId)
+  const linkIds = (links || []).map((l) => l.id)
+  if (linkIds.length === 0) return res.json({ requests: [] })
+  const nameByLink = Object.fromEntries((links || []).map((l) => [l.id, l.company_name]))
+
+  let query = supabaseAdmin
+    .from("recruiter_student_access_requests")
+    .select("id, org_company_link_id, student_id, requested_by_email, reason, status, created_at, decided_at")
+    .in("org_company_link_id", linkIds)
+    .order("created_at", { ascending: false })
+  if (statusFilter !== "all") query = query.eq("status", statusFilter)
+
+  const { data: requests, error } = await query
   if (error) return res.status(500).json({ error: error.message })
-  res.json({ students: students || [], visibility: link.visibility })
+
+  const studentIds = [...new Set((requests || []).map((r) => r.student_id))]
+  let studentNames = {}
+  if (studentIds.length) {
+    const { data: students } = await supabaseAdmin.from("profiles").select("id, name, display_name").in("id", studentIds)
+    studentNames = Object.fromEntries((students || []).map((s) => [s.id, s.display_name || s.name || "A student"]))
+  }
+
+  res.json({
+    requests: (requests || []).map((r) => ({
+      ...r,
+      company_name: nameByLink[r.org_company_link_id] || "A company",
+      student_name: studentNames[r.student_id] || "A student",
+    })),
+  })
+})
+
+// POST /company-links/access-requests/:id/decide — body: { decision: "approved"|"denied" }
+router.post("/company-links/access-requests/:id/decide", requireAuth, async (req, res) => {
+  const institutionOrgId = req.user.id
+  const decision = req.body?.decision
+  if (!["approved", "denied"].includes(decision)) {
+    return res.status(400).json({ error: 'decision must be "approved" or "denied".' })
+  }
+
+  const { data: reqRow } = await supabaseAdmin
+    .from("recruiter_student_access_requests")
+    .select("id, org_company_link_id, status")
+    .eq("id", req.params.id)
+    .single()
+  if (!reqRow) return res.status(404).json({ error: "Request not found." })
+
+  // Ownership check: the request's link must belong to THIS institution.
+  const { data: link } = await supabaseAdmin
+    .from("org_company_links")
+    .select("id, institution_org_id")
+    .eq("id", reqRow.org_company_link_id)
+    .single()
+  if (!link || link.institution_org_id !== institutionOrgId) {
+    return res.status(404).json({ error: "Request not found." })
+  }
+
+  const { data: updated, error } = await supabaseAdmin
+    .from("recruiter_student_access_requests")
+    .update({ status: decision, decided_by: institutionOrgId, decided_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq("id", req.params.id)
+    .eq("status", "pending") // optimistic-concurrency guard, same pattern as the invite accept/decline routes above
+    .select()
+    .maybeSingle()
+  if (error) return res.status(500).json({ error: error.message })
+  if (!updated) return res.status(409).json({ error: "This request was already decided." })
+
+  res.json({ success: true, request: updated })
 })
 
 export default router

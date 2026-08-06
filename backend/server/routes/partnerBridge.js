@@ -40,6 +40,7 @@
  */
 import { Router } from "express"
 import { supabaseAdmin } from "../lib/supabase.js"
+import { fetchLinkStudents } from "../lib/orgStudentVisibility.js"
 
 const router = Router()
 
@@ -271,6 +272,173 @@ router.post("/company-invites/:id/decline", async (req, res) => {
     res.json({ success: true })
   } catch (err) {
     console.error("[partner-bridge/company-invites/decline]", err.message)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Recruiter -> connected-college roster + per-student access requests
+// Added 2026-08-06 — closes the "reverse direction" gap noted in the file
+// header above. A recruiter can now:
+//   1. List its own ACTIVE college connections (GET /company-links)
+//   2. View that college's tier-scoped aggregate roster (GET .../students)
+//   3. Request contact access to ONE specific student (POST .../request-access)
+//   4. Check the status of its own requests (GET .../access-requests)
+// Approval itself happens on the college side (backend/server/routes/
+// college.js's placement-cell decide route) — nothing here can self-approve.
+// See recruiter_student_access_requests_migration.sql for the schema.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Matches the same email-based identity pattern as /company-invites above —
+// a recruiter has no profiles row here, so "which links are mine" is
+// resolved by matching the email they authenticate as on capabilio-recruiter
+// against company_email (set at invite time) or partner_accepted_by (set
+// when they accepted through this same bridge).
+router.get("/company-links", async (req, res) => {
+  try {
+    const email = (req.query.email || "").trim()
+    if (!email) return res.status(400).json({ error: "email query param is required." })
+    const safeEmail = email.replace(/[,()]/g, "")
+
+    const { data, error } = await supabaseAdmin
+      .from("org_company_links")
+      .select("id, institution_org_id, company_name, status, visibility, linked_at")
+      .or(`company_email.ilike.${safeEmail},partner_accepted_by.ilike.${safeEmail}`)
+      .eq("status", "active")
+      .order("linked_at", { ascending: false })
+    if (error) return res.status(500).json({ error: error.message })
+
+    const orgIds = [...new Set((data || []).map((l) => l.institution_org_id))]
+    let orgNames = {}
+    if (orgIds.length) {
+      const { data: profiles } = await supabaseAdmin.from("profiles").select("id, org_name, name").in("id", orgIds)
+      orgNames = Object.fromEntries((profiles || []).map((p) => [p.id, p.org_name || p.name || "An institution"]))
+    }
+
+    res.json({ links: (data || []).map((l) => ({ ...l, institution_name: orgNames[l.institution_org_id] || "An institution" })) })
+  } catch (err) {
+    console.error("[partner-bridge/company-links]", err.message)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// Aggregate, tier-scoped roster — identical query/columns to the company-side
+// /org/company-links/:id/students route, via the same fetchLinkStudents
+// helper. No individual student is contactable from this data alone.
+router.get("/company-links/:linkId/students", async (req, res) => {
+  try {
+    const { data: link } = await supabaseAdmin
+      .from("org_company_links")
+      .select("id, institution_org_id, status, visibility")
+      .eq("id", req.params.linkId)
+      .single()
+    if (!link) return res.status(404).json({ error: "Link not found." })
+    if (link.status !== "active") return res.status(403).json({ error: "This connection is not active." })
+
+    const { students, error } = await fetchLinkStudents(link)
+    if (error) return res.status(500).json({ error })
+    res.json({ students, visibility: link.visibility })
+  } catch (err) {
+    console.error("[partner-bridge/company-links/students]", err.message)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /company-links/:linkId/students/:studentId/request-access
+// Body: { partnerCompanyId, requestedByEmail, reason }
+// Creates (or resets to pending, if previously denied) a per-student request.
+// This does NOT grant anything by itself — decide happens on the college
+// side. studentId is verified to actually belong to this link's institution
+// before a row is created, so a recruiter can't request access to an
+// arbitrary profiles.id unrelated to this college.
+router.post("/company-links/:linkId/students/:studentId/request-access", async (req, res) => {
+  try {
+    const { data: link } = await supabaseAdmin
+      .from("org_company_links")
+      .select("id, institution_org_id, status")
+      .eq("id", req.params.linkId)
+      .single()
+    if (!link) return res.status(404).json({ error: "Link not found." })
+    if (link.status !== "active") return res.status(403).json({ error: "This connection is not active." })
+
+    const { data: member } = await supabaseAdmin
+      .from("org_members")
+      .select("id, user_id")
+      .eq("org_id", link.institution_org_id)
+      .eq("user_id", req.params.studentId)
+      .eq("role", "student")
+      .maybeSingle()
+    if (!member) return res.status(404).json({ error: "This student isn't part of that college's roster." })
+
+    const partnerCompanyId = String(req.body?.partnerCompanyId || "").trim()
+    const requestedByEmail = String(req.body?.requestedByEmail || "").trim()
+    const reason = String(req.body?.reason || "").trim() || null
+
+    const { data: upserted, error } = await supabaseAdmin
+      .from("recruiter_student_access_requests")
+      .upsert(
+        {
+          org_company_link_id: link.id,
+          student_id: req.params.studentId,
+          requested_by_partner_ref: partnerCompanyId || null,
+          requested_by_email: requestedByEmail || null,
+          reason,
+          status: "pending",
+          decided_by: null,
+          decided_at: null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "org_company_link_id,student_id" }
+      )
+      .select()
+      .single()
+    if (error) return res.status(500).json({ error: error.message })
+
+    res.json({ request: upserted })
+  } catch (err) {
+    console.error("[partner-bridge/request-access]", err.message)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// GET /company-links/:linkId/access-requests — a recruiter's own requests
+// for this link, so the UI can show pending/approved/denied per student.
+router.get("/company-links/:linkId/access-requests", async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("recruiter_student_access_requests")
+      .select("id, student_id, status, reason, created_at, decided_at")
+      .eq("org_company_link_id", req.params.linkId)
+    if (error) return res.status(500).json({ error: error.message })
+    res.json({ requests: data || [] })
+  } catch (err) {
+    console.error("[partner-bridge/access-requests]", err.message)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// GET /access-requests/:studentId/status?linkId=X — single-row status check.
+// Used by capabilio-recruiter-backend to gate task assignment: it must see
+// status === "approved" here before it's allowed to insert into its own
+// tasks_challenges table for this student. Returns "none" (not "denied")
+// when no request row exists at all, so callers can tell "never asked"
+// apart from "asked and refused".
+router.get("/access-requests/:studentId/status", async (req, res) => {
+  try {
+    const linkId = String(req.query.linkId || "").trim()
+    if (!linkId) return res.status(400).json({ error: "linkId query param is required." })
+
+    const { data, error } = await supabaseAdmin
+      .from("recruiter_student_access_requests")
+      .select("status")
+      .eq("org_company_link_id", linkId)
+      .eq("student_id", req.params.studentId)
+      .maybeSingle()
+    if (error) return res.status(500).json({ error: error.message })
+
+    res.json({ status: data?.status || "none" })
+  } catch (err) {
+    console.error("[partner-bridge/access-requests/status]", err.message)
     res.status(500).json({ error: err.message })
   }
 })

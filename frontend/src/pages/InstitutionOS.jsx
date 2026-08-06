@@ -4704,6 +4704,48 @@ function CollegeCompaniesPage({ userData, user }) {
   const [rowActionId, setRowActionId] = useState(null)   // id + "-resend" | "-delete" while in flight
   const [rowMsg, setRowMsg]           = useState(null)   // { id, text } transient status per row
 
+  // ── Access Requests (2026-08-06) — a connected company can request contact
+  // access to ONE specific student from your roster (via College Performance
+  // on their side). Nothing about that request grants access by itself; you
+  // are the sole approval authority here. This is intentionally separate from
+  // the visibility tiers above: visibility controls AGGREGATE data a company
+  // can see across your whole roster, this controls whether they may contact
+  // one named individual student at all.
+  const [accessRequests, setAccessRequests]   = useState([])
+  const [reqLoading, setReqLoading]           = useState(true)
+  const [reqError, setReqError]               = useState(null)
+  const [reqStatusFilter, setReqStatusFilter] = useState("pending")
+  const [decidingId, setDecidingId]           = useState(null)
+
+  const loadAccessRequests = useCallback(async (status) => {
+    setReqLoading(true); setReqError(null)
+    try {
+      const res = await orgApi.listAccessRequests(status)
+      setAccessRequests(res.requests || [])
+    } catch (err) {
+      setReqError(err.message)
+    } finally {
+      setReqLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { loadAccessRequests(reqStatusFilter) }, [loadAccessRequests, reqStatusFilter])
+
+  async function handleDecideAccess(reqRow, decision) {
+    setDecidingId(reqRow.id)
+    try {
+      await orgApi.decideAccessRequest(reqRow.id, decision)
+      await auditLog(user.id, user.id, userData?.name || "Admin",
+        `${decision === "approved" ? "Approved" : "Denied"} ${reqRow.company_name || "a company"}'s request to contact ${reqRow.student_name || "a student"}`,
+        decision === "approved" ? "access_request.approved" : "access_request.denied", "access_request", reqRow.id)
+      loadAccessRequests(reqStatusFilter)
+    } catch (err) {
+      setReqError(err.message)
+    } finally {
+      setDecidingId(null)
+    }
+  }
+
   function openEdit(c) {
     setEditingLink(c)
     setEditForm({
@@ -4870,14 +4912,66 @@ function CollegeCompaniesPage({ userData, user }) {
       )}
 
       <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
-        {["active", "inactive"].map(t => (
+        {["active", "inactive", "requests"].map(t => (
           <button key={t} onClick={() => setTab(t)} style={tabStyle(tab === t)}>
-            {t === "active" ? `Active / Invited (${companies.filter(c => c.status === "active" || c.status === "invited").length})` : `Paused / Rejected (${companies.filter(c => c.status === "paused" || c.status === "rejected").length})`}
+            {t === "active" ? `Active / Invited (${companies.filter(c => c.status === "active" || c.status === "invited").length})`
+              : t === "inactive" ? `Paused / Rejected (${companies.filter(c => c.status === "paused" || c.status === "rejected").length})`
+              : `Access Requests${accessRequests.length && reqStatusFilter === "pending" ? ` (${accessRequests.length})` : ""}`}
           </button>
         ))}
       </div>
 
-      {loading ? <Spinner /> : error ? <ErrorBanner msg={error} onRetry={reload} /> : (
+      {tab === "requests" ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ fontSize: 12, color: T.ink3, lineHeight: 1.6 }}>
+            When a connected company wants to contact a specific student directly — sending a task, a message, or viewing their full portfolio — they request your approval here first. Nothing happens until you decide. Students are never notified or asked to opt in themselves; this is entirely your call as placement cell.
+          </div>
+          <div style={{ display: "flex", gap: 4 }}>
+            {["pending", "approved", "denied"].map(s => (
+              <button key={s} onClick={() => setReqStatusFilter(s)} style={tabStyle(reqStatusFilter === s)}>
+                {s.charAt(0).toUpperCase() + s.slice(1)}
+              </button>
+            ))}
+          </div>
+          {reqLoading ? <Spinner /> : reqError ? <ErrorBanner msg={reqError} onRetry={() => loadAccessRequests(reqStatusFilter)} /> : (
+            accessRequests.length === 0 ? (
+              <EmptyState icon="🔐" title={`No ${reqStatusFilter} requests`}
+                sub={reqStatusFilter === "pending" ? "Companies' contact requests for individual students will show up here." : `No requests have been ${reqStatusFilter} yet.`} />
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {accessRequests.map(r => (
+                  <Card key={r.id} style={{ padding: "14px 16px" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>
+                          {r.company_name || "A connected company"} wants to contact <span style={{ color: T.sky }}>{r.student_name || "a student"}</span>
+                        </div>
+                        <div style={{ fontSize: 11, color: T.ink4, marginTop: 4 }}>
+                          Requested {timeSince(r.created_at)}{r.reason ? ` · "${r.reason}"` : ""}
+                        </div>
+                      </div>
+                      {r.status === "pending" ? (
+                        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                          <Btn variant="outline" disabled={decidingId === r.id} onClick={() => handleDecideAccess(r, "denied")} style={{ fontSize: 11, padding: "6px 14px", borderColor: T.red, color: T.red }}>
+                            {decidingId === r.id ? "…" : "Decline"}
+                          </Btn>
+                          <Btn disabled={decidingId === r.id} onClick={() => handleDecideAccess(r, "approved")} style={{ fontSize: 11, padding: "6px 14px" }}>
+                            {decidingId === r.id ? "…" : "Approve"}
+                          </Btn>
+                        </div>
+                      ) : (
+                        <Chip color={r.status === "approved" ? T.green : T.red} bg={`${r.status === "approved" ? T.green : T.red}15`}>
+                          {r.status === "approved" ? "✓ Approved" : "✗ Declined"}
+                        </Chip>
+                      )}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )
+          )}
+        </div>
+      ) : loading ? <Spinner /> : error ? <ErrorBanner msg={error} onRetry={reload} /> : (
         filtered.length === 0 ? (
           <EmptyState icon="🏢" title="No companies yet"
             sub="Invite your first company partner to give them access to your talent pool."
