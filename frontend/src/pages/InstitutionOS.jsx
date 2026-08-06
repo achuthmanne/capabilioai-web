@@ -4747,6 +4747,7 @@ function CollegeCompaniesPage({ userData, user }) {
   // whether the company's address is valid. Don't blame the address for that.
   function emailFailureText(reason) {
     switch (reason) {
+      case "email_disabled_app_only": return "Invite sent. No email is sent — the company connects by accepting it inside their Capabilio Recruiter dashboard."
       case "not_configured": return "Invite saved, but email sending isn't set up yet — ask your Capabilio admin to configure the email provider."
       case "no_email_provided": return "This company has no contact email on file — add one to send an invite."
       case "provider_error": return "Invite saved, but the email provider rejected the send. Double-check the address, then try again."
@@ -4775,7 +4776,13 @@ function CollegeCompaniesPage({ userData, user }) {
   // Performance-only tiers — email/phone are never exposed at any level.
   // "Full access" means fuller performance data, not contact details.
   const visibilityLabel = { roster: "Roster (name, dept, batch)", elo: "Roster + skill scores", placements: "+ Placement outcomes", full: "Full performance profile" }
-  const visibilityColor = { roster: T.ink3, elo: T.amber, placements: T.sky, full: T.green }
+  // NOTE: these four are used as `${visibilityColor[vis]}15` to build a translucent
+  // background (works for hex colors, e.g. "#74a8ff" -> "#74a8ff15"). ink3 is an
+  // rgba(...) string, not hex -- appending "15" to it produced invalid CSS, so the
+  // "roster" button silently fell back to the browser's default white button
+  // background with near-white text on top of it (an invisible/blank-looking pill).
+  // Fixed by using T.ink (the hex form of the same cream tone) instead of T.ink3.
+  const visibilityColor = { roster: T.ink, elo: T.amber, placements: T.sky, full: T.green }
   const statusColor     = { invited: T.amber, active: T.green, paused: T.ink4, rejected: T.red }
 
   async function handleInvite() {
