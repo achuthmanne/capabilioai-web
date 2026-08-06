@@ -795,7 +795,7 @@ function RecoPopup({ weakAreas, onContinue }) {
 }
 
 // ─── Result Modal (Student) ─────────────────────────────────────────
-function ResultModal({ result, keyword, questions, onGoToDashboard, savingResult }) {
+function ResultModal({ result, keyword, questions, onGoToDashboard, savingResult, saveError }) {
   const [tab, setTab] = useState("overview")
   const [vis, setVis] = useState(false)
   useEffect(() => { const t = setTimeout(() => setVis(true), 30); return () => clearTimeout(t) }, [])
@@ -920,8 +920,13 @@ function ResultModal({ result, keyword, questions, onGoToDashboard, savingResult
         </div>
         {/* Footer CTA */}
         <div style={{ padding:"16px 24px 24px",borderTop:`1px solid ${T.primary}15`,flexShrink:0 }}>
+          {saveError && (
+            <div style={{ marginBottom:12, padding:"12px 14px", background:"#FFF1E8", border:"1px solid rgba(255,87,1,0.25)", borderRadius:T.radius, color:T.primary, fontSize:13, fontWeight:500, lineHeight:1.5 }}>
+              ⚠ {saveError}
+            </div>
+          )}
           <PrimaryBtn onClick={onGoToDashboard} loading={savingResult}>
-            🚀 Go to My Dashboard →
+            {saveError ? "↻ Try Again" : "🚀 Go to My Dashboard →"}
           </PrimaryBtn>
         </div>
       </div>
@@ -1738,6 +1743,13 @@ export default function Onboarding({ user, onComplete, onBack }) {
   const [result, setResult] = useState(null)
   const [apiError, setApiError] = useState("")
   const [savingResult, setSavingResult] = useState(false)
+  // 2026-08-06: userDoc.set()/update() never throw -- they log and return a
+  // boolean. This flow used to `await` them and ignore the result entirely,
+  // so a total save failure (e.g. an expired/deleted auth session) was
+  // completely invisible: the user sailed straight into RecoPopup and a
+  // dashboard showing default/empty state, with no error anywhere. This
+  // captures the real outcome so a hard failure blocks progress instead.
+  const [saveError, setSaveError] = useState(null)
   const [showResultModal, setShowResultModal] = useState(false)
   const [showRecoPopup, setShowRecoPopup] = useState(false)
   const timerRef = useRef(null)
@@ -2112,6 +2124,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
   const handleGoToDashboard = async () => {
     if (!result||savingResult) return
     setSavingResult(true)
+    setSaveError(null)
     try {
       const username = slugifyUsername(getUserDisplayName())
       let resumeBase64 = ""
@@ -2123,17 +2136,30 @@ export default function Onboarding({ user, onComplete, onBack }) {
       // ⚠️  Do NOT set onboarding_complete here — that would fire the real-time
       // listener in App.jsx and unmount Onboarding before the plan step shows.
       // onComplete() (called after plan confirmation) stamps the flag.
-      await userDoc.set(user.id, { ...payload, onboarding_complete: false })
+      const setOk = await userDoc.set(user.id, { ...payload, onboarding_complete: false })
 
       // ── Guaranteed override: the handle_new_user trigger creates profiles with
       // elo_rating=800 and path='professional'. Always explicitly overwrite the
       // critical fields after the main upsert, even if it partially failed.
       const guaranteedElo = getStudentDisplayElo({ score: result?.score || 0, total: result?.total || 25 })
-      await userDoc.update(user.id, {
+      const updateOk = await userDoc.update(user.id, {
         eloRating: guaranteedElo,
         path:      "student",
         keyword:   keyword || payload.keyword || "",
       })
+
+      // Both userDoc.set() and userDoc.update() log their own errors but
+      // never throw -- they return false on failure. If BOTH failed, nothing
+      // at all was persisted (e.g. an expired/deleted auth session, or an
+      // RLS rejection) and it would be wrong to let the user proceed into a
+      // dashboard that has no real data behind it. A partial success (one
+      // of the two went through) still gets the critical fields written, so
+      // only a total failure blocks here.
+      if (!setOk && !updateOk) {
+        setSaveError("We couldn't save your assessment — your session may have expired. Please refresh the page and log in again, then retry.")
+        setSavingResult(false)
+        return
+      }
 
       // College Path auto-alignment (added 2026-07-31): server-verified,
       // best-effort attempt to link this student to their college's
@@ -2147,7 +2173,12 @@ export default function Onboarding({ user, onComplete, onBack }) {
       // pending_admin institution_students row, which only makes sense for
       // someone actually currently enrolled there.
       if (studentStage !== "job_seeker") collegeApi.selfLink().catch(() => {})
-    } catch (err) { console.warn("Profile save failed:", err) }
+    } catch (err) {
+      console.warn("Profile save failed:", err)
+      setSaveError("Something went wrong saving your assessment. Please try again.")
+      setSavingResult(false)
+      return
+    }
     setSavingResult(false)
     // Show RecoPopup only AFTER save is complete — prevents it appearing while
     // the spinner is still running (race condition fix).
@@ -2859,7 +2890,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
             </div>
           </div>
         </div>
-        {showResultModal&&result&&<ResultModal result={result} keyword={keyword} questions={questions} onGoToDashboard={handleGoToDashboard} savingResult={savingResult} />}
+        {showResultModal&&result&&<ResultModal result={result} keyword={keyword} questions={questions} onGoToDashboard={handleGoToDashboard} savingResult={savingResult} saveError={saveError} />}
         {showRecoPopup&&<RecoPopup weakAreas={result?.analysis?.weakAreas||[]} onContinue={()=>{ setShowRecoPopup(false); setStep("plan") }} />}
       </Screen>
     )

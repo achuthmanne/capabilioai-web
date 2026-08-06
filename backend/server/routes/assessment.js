@@ -147,6 +147,17 @@ router.post("/generate-mcq", async (req, res) => {
       return null // will be filtered out; Groq fallback batch fills the gap
     }
 
+    // 2026-08-06: the LLM sometimes returns duplicate/near-duplicate option
+    // text (observed: a pandas .mean() question came back with three "0"s
+    // and a "None" instead of a correct "2.0" plus distinct wrong numbers).
+    // A question where two options are identical (or identical once
+    // whitespace/case is normalized) is unanswerable-by-design and worse
+    // than just showing fewer questions — drop it, same "skip rather than
+    // show broken content" posture as the missing-options check above.
+    const normalizedOptions = q.options.map(o => o.trim().toLowerCase())
+    const hasDuplicateOption = new Set(normalizedOptions).size !== normalizedOptions.length
+    if (hasDuplicateOption) return null
+
     // Clamp correct index
     if (typeof q.correct !== "number" || q.correct < 0 || q.correct >= q.options.length) {
       q.correct = 0
@@ -180,11 +191,13 @@ ${isNonItDomain ? `This is an engineering/core domain role. Do NOT generate gene
 STRICT OUTPUT RULES:
 - Return ONLY a raw JSON object. No markdown, no code fences, no explanation text.
 - Top-level key must be "questions" with an array of exactly ${count} question objects.
-- Each question: {"id":1,"type":"mcq","category":"<exact skill>","question":"...","options":["a","b","c","d"],"correct":0,"explanation":"..."}
+- Each question: {"id":1,"type":"mcq","category":"<exact skill>","question":"...","code":null,"options":["a","b","c","d"],"correct":0,"explanation":"..."}
 - "options" MUST be an array of exactly 4 plain strings. Never omit.
 - "correct" is 0-based index of the right answer.
 - "category" must be one of the exact skill names given.
-- Do NOT prefix options with "A)", "1.", etc.`,
+- Do NOT prefix options with "A)", "1.", etc.
+- For ANY question that shows a code snippet (code_output type, or any other type that references code): put ONLY the code itself in the "code" field (raw code, real newlines, no markdown fences), and keep "question" as just the prose prompt (e.g. "What is the output of the following code?") with NO code embedded in it. Never inline code into the "question" string. For every other question type, "code" must be null.
+- Each option's text must be genuinely distinct from every other option in the same question — never repeat the same value (e.g. never return two options that are both "0"). If a question type would need numeric distractors, use plausible but different wrong numbers, not duplicates.`,
       },
       {
         role: "user",
