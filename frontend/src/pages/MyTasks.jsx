@@ -104,18 +104,56 @@ function TaskCard({ task, onSubmit }) {
   )
 }
 
+// How-it-works explainer — shown whenever there are no tasks to display,
+// whether that's because no recruiter has been granted access yet, or
+// (2026-08-07) because the request itself failed for a technical reason
+// (e.g. the partner bridge being unreachable/misconfigured). Students should
+// never see a raw error string or an env-var name here — this is a candidate
+// -facing page, not a debug console. Genuine failures are still logged to
+// the browser console (see `load()` below) so support/engineering can
+// diagnose them from a bug report, they're just never rendered on-screen.
+function HowItWorks() {
+  const steps = [
+    { icon: "🔍", title: "Recruiters browse Capabilio", body: "Companies search for candidates by skill, domain, and how active they are in Arena, Skill Studio, and AI interviews — not by resume keywords." },
+    { icon: "🤝", title: "They request access to you", body: "When a recruiter wants to work with a specific candidate, they request contact access. For students, your college's placement cell reviews and approves that request first." },
+    { icon: "📋", title: "Real work shows up here", body: "Once access is approved, a recruiter can assign you an actual work sample tied to a role they're hiring for. A human reviews every submission — nothing here is auto-graded." },
+  ]
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ color: "#8a8578", fontSize: 14, textAlign: "center", padding: "12px 0 4px" }}>
+        No tasks yet — here&apos;s how a recruiter task ends up in this list.
+      </div>
+      {steps.map((s) => (
+        <div key={s.title} style={{ display: "flex", gap: 14, alignItems: "flex-start", background: "#fff", border: "1px solid #E8E3DA", borderRadius: 14, padding: "16px 18px" }}>
+          <span style={{ fontSize: 22, lineHeight: 1 }}>{s.icon}</span>
+          <div>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: "#20180E" }}>{s.title}</div>
+            <div style={{ fontSize: 12.5, color: "#4A4436", marginTop: 3, lineHeight: 1.55 }}>{s.body}</div>
+          </div>
+        </div>
+      ))}
+      <div style={{ fontSize: 12, color: "#8a8578", textAlign: "center", marginTop: 4 }}>
+        The best way to show up in a recruiter&apos;s search: keep practicing in Arena and Skill Studio.
+      </div>
+    </div>
+  )
+}
+
 export default function MyTasks() {
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
 
   const load = useCallback(async () => {
-    setLoading(true); setError(null)
+    setLoading(true)
     try {
       const res = await candidateTasksApi.list()
       setTasks(res.tasks || [])
     } catch (e) {
-      setError(e.message)
+      // Never surface this to the candidate (see HowItWorks comment above) —
+      // log for diagnosis and fall back to the same empty/explainer state a
+      // genuinely task-free candidate would see.
+      console.error("[MyTasks] couldn't load tasks:", e.message)
+      setTasks([])
     } finally {
       setLoading(false)
     }
@@ -139,14 +177,8 @@ export default function MyTasks() {
 
       {loading ? (
         <div style={{ color: "#8a8578", fontSize: 13, textAlign: "center", padding: "40px 0" }}>Loading...</div>
-      ) : error ? (
-        <div style={{ color: "#E0574F", fontSize: 13, textAlign: "center", padding: "30px 20px", background: "#FBE9E8", border: "1px solid #E0574F30", borderRadius: 12 }}>
-          Couldn't load your tasks: {error}
-        </div>
       ) : tasks.length === 0 ? (
-        <div style={{ color: "#8a8578", fontSize: 14, textAlign: "center", padding: "50px 0" }}>
-          No tasks assigned yet. When a recruiter sends you real work, it'll show up here.
-        </div>
+        <HowItWorks />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {tasks.map((t) => <TaskCard key={t.id} task={t} onSubmit={handleSubmit} />)}
