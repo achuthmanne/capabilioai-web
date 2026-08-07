@@ -2647,6 +2647,7 @@ function CanonicalRosterPanel({ canonical, openThreadFor }) {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
             <thead>
               <tr style={{ textAlign: "left", color: T.ink4, borderBottom: `1px solid ${T.border}` }}>
+                <th style={{ padding: "6px 8px" }}>Name</th>
                 <th style={{ padding: "6px 8px" }}>Roll No.</th>
                 <th style={{ padding: "6px 8px" }}>Branch</th>
                 <th style={{ padding: "6px 8px" }}>Batch</th>
@@ -2664,14 +2665,14 @@ function CanonicalRosterPanel({ canonical, openThreadFor }) {
             <tbody>
               {students.map(s => (
                 <tr key={s.id} style={{ borderBottom: `1px solid ${T.border}` }}>
-                  <td style={{ padding: "8px" }}>
-                    {s.studentUserId ? (
-                      <button onClick={() => setViewingStudentId(s.studentUserId)} title="View full profile"
-                        style={{ background: "none", border: "none", padding: 0, font: "inherit", color: T.sky, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}>
-                        {s.roll_number || "View profile"}
-                      </button>
-                    ) : (s.roll_number || "—")}
-                  </td>
+                  <td style={{ padding: "8px", fontWeight: 600, color: T.ink }}>{s.name || "—"}</td>
+                  {/* 2026-08-08: roll number now shows only what the student
+                      themselves entered on their own Settings page (or, for
+                      rows edited before that field existed, what staff set
+                      via the pencil-edit modal) -- previously this cell
+                      doubled as the "View profile" link when empty, which
+                      hid the real fact that no roll number was on file. */}
+                  <td style={{ padding: "8px" }}>{s.roll_number || "—"}</td>
                   <td style={{ padding: "8px" }}>{s.department || "—"}</td>
                   <td style={{ padding: "8px" }}>{s.batch || "—"}</td>
                   <td style={{ padding: "8px" }}>{s.careerRole || "—"}</td>
@@ -2705,11 +2706,20 @@ function CanonicalRosterPanel({ canonical, openThreadFor }) {
                     )}
                   </td>
                   <td style={{ padding: "8px", textAlign: "right", whiteSpace: "nowrap" }}>
+                    {/* 2026-08-08: moved out of the Roll No. cell -- that
+                        cell now only ever shows the real roll number (or
+                        "—"), so "View profile" needed its own action here. */}
+                    {s.studentUserId && (
+                      <button onClick={() => setViewingStudentId(s.studentUserId)} title="View full profile"
+                        style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 14, opacity: 0.75 }}>
+                        👤
+                      </button>
+                    )}
                     {openThreadFor && (
                       <button
                         onClick={() => openThreadFor({ contextType: "student", contextId: s.id, subject: `Student: ${s.roll_number || s.id.slice(0, 8)}` })}
                         title="Message about this student"
-                        style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 14, opacity: 0.75 }}>
+                        style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 14, opacity: 0.75, marginLeft: 4 }}>
                         💬
                       </button>
                     )}

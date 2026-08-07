@@ -304,6 +304,12 @@ function ProfileSection({ userData, save, setUserData }) {
     location:    userData?.location || "",
     website:     userData?.website || "",
     college:     userData?.college || "",
+    // 2026-08-08: self-service roll number -- previously the institution
+    // roster's Roll No. column had no way for a student to fill it in
+    // themselves at all; only institution staff could set it, manually,
+    // per student. Read live by college.js's roster route the same way
+    // branch/ELO/career track already are.
+    rollNumber:  userData?.rollNumber || userData?.roll_number || "",
   })
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -324,6 +330,8 @@ function ProfileSection({ userData, save, setUserData }) {
       if (isStudent) {
         patch.college = form.college.trim()
         patch.education = upsertProfileEducation(userData?.education, form.college)
+        patch.rollNumber = form.rollNumber.trim()
+        patch.roll_number = form.rollNumber.trim()
       }
       if (save) await save(patch)
       if (setUserData) setUserData(d => ({ ...d, ...patch }))
@@ -374,6 +382,14 @@ function ProfileSection({ userData, save, setUserData }) {
           <FieldLabel>College / University</FieldLabel>
           <Input value={form.college} onChange={f("college")} placeholder="e.g. VIT Vellore" />
           <div style={{ marginTop:3, fontSize:11, color:T.ink4 }}>Updates here also show up in your Education timeline on the Aura dashboard automatically.</div>
+        </Card>
+      )}
+
+      {isStudent && (
+        <Card style={{ marginBottom:14 }}>
+          <FieldLabel>Roll Number</FieldLabel>
+          <Input value={form.rollNumber} onChange={f("rollNumber")} placeholder="e.g. 21A91A0501" />
+          <div style={{ marginTop:3, fontSize:11, color:T.ink4 }}>Shown to your college's placement team on their student roster. Leave blank if your college hasn't assigned one yet.</div>
         </Card>
       )}
 

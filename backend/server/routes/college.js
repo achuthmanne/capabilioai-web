@@ -1195,11 +1195,20 @@ router.get("/institutions/:id/students", requireAuth, requireInstitutionStaff(),
   // columns via the shared canonicalElo()/resolveCareerName() helpers so
   // every audience — student, recruiter, institution admin — sees the same
   // real number and role for a given candidate.
+  // 2026-08-08: added display_name/username (roster had no name column at
+  // all -- previously showed a Roll No. cell only), branch/job_readiness/
+  // roll_number -- all three now read LIVE from the student's own profile
+  // (same "prefer live profiles data over the cached institution_students
+  // snapshot" pattern as elo_rating/career above) instead of only ever
+  // being set once by institution staff. roll_number specifically has a
+  // brand-new self-service field on the student's own Settings page
+  // (profiles.roll_number, previously didn't exist anywhere) -- a student
+  // filling that in should show up here without any institution-side action.
   const userIds = data.map((s) => s.student_user_id).filter(Boolean)
   const [{ data: profileRows }, { data: interviewRows }] = await Promise.all([
     userIds.length
       ? supabaseAdmin.from("profiles").select(
-          "id, job_role, target_role, arena_completed, elo_rating, role_elo, professional_elo, aura_score, path_type, career_track_slug, keyword, domain"
+          "id, display_name, username, job_role, target_role, arena_completed, elo_rating, role_elo, professional_elo, aura_score, path_type, career_track_slug, keyword, domain, branch, job_readiness, roll_number"
         ).in("id", userIds)
       : Promise.resolve({ data: [] }),
     userIds.length
@@ -1216,9 +1225,18 @@ router.get("/institutions/:id/students", requireAuth, requireInstitutionStaff(),
   let enriched = data.map(({ student_user_id, elo_current, ...rest }) => {
     const profile = profileById[student_user_id] || {}
     const elo = profile.id ? canonicalElo(profile) : (elo_current || 0)
+    const liveReadiness = Number(profile.job_readiness)
     return {
       ...rest,
       studentUserId: student_user_id || null,
+      name: profile.display_name || profile.username || null,
+      // Live overrides -- prefer the student's own current profile data over
+      // the institution_students snapshot, falling back to the snapshot only
+      // when the student hasn't set/changed it (so a manually-corrected
+      // roster entry isn't silently blanked out by an empty profile field).
+      department: profile.branch || rest.department,
+      roll_number: profile.roll_number || rest.roll_number,
+      job_readiness_score: Number.isFinite(liveReadiness) ? liveReadiness : rest.job_readiness_score,
       elo_current: elo,
       performanceTier: performanceTier(elo),
       careerRole: profile.id ? (resolveCareerName(profile, trackNameBySlug) || profile.job_role) : (rest.careerRole || null),
