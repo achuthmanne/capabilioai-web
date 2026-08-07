@@ -257,17 +257,104 @@ router.get("/candidates", async (req, res) => {
   }
 })
 
-// ─── Recruiter: full candidate portfolio (2026-08-07) ───────────────────────
+// Grade bands — copied verbatim from frontend/src/pages/Portfolio.jsx's
+// gradeFor() so a recruiter sees the exact same letter grade the candidate
+// sees on their own portfolio for the same score. arena_history.grade
+// exists as a column but is never actually written (confirmed null on
+// every real row) — the UI has always computed this client-side, so we do
+// the same here rather than trust an unpopulated column.
+function gradeFor(score) {
+  const s = score || 0
+  if (s >= 90) return "A+"
+  if (s >= 80) return "A"
+  if (s >= 70) return "B+"
+  if (s >= 60) return "B"
+  if (s >= 50) return "C"
+  return "D"
+}
+
+// 2026-08-08: skill percentages shown on a candidate's own Aura dashboard
+// do NOT come from the `skill_graph` TABLE alone (that table is empty for
+// plenty of real candidates who nonetheless have real Aura skill data) --
+// they come from `profiles.skill_graph`, a separate JSONB column seeded
+// from resume parsing at onboarding ([{label, value}, ...] or
+// [{label, skill, score, value}, ...] shapes both appear in real rows).
+// The `skill_graph` TABLE is where Arena/Forge write live, proof-backed,
+// verified scores as a candidate actually does work (see arena.js's
+// GET /skill-graph header comment). Recruiters should see whichever is
+// higher per skill name, same as Aura.jsx's own
+// Math.max(skillGraphScore, arenaEntry) merge -- a verified in-table score
+// should never be shadowed by a stale resume estimate, but a candidate
+// with real resume-estimated skills and no table rows yet (very common for
+// new signups) shouldn't show "no skill data" either, which is what this
+// endpoint was doing before this fix.
+function mergeSkillSources(tableRows, profileSkillGraph) {
+  const byLabel = new Map()
+  for (const row of profileSkillGraph || []) {
+    const label = (row.label || row.skill || "").trim()
+    if (!label) continue
+    const value = Math.round(row.value ?? row.score ?? 0)
+    byLabel.set(label.toLowerCase(), { skill_name: label, elo_value: value, source: "resume", verification_state: "unverified" })
+  }
+  for (const row of tableRows || []) {
+    const label = (row.skill_name || "").trim()
+    if (!label) continue
+    const key = label.toLowerCase()
+    const existing = byLabel.get(key)
+    // A verified/live table row always wins over a resume estimate for the
+    // same skill name, even if its number happens to be lower -- it's
+    // proof-backed, the resume number is a self-reported guess.
+    if (!existing || existing.source === "resume") {
+      byLabel.set(key, {
+        skill_name: label, elo_value: row.elo_value, domain: row.domain,
+        verification_state: row.verification_state, last_proof_date: row.last_proof_date, source: "arena",
+      })
+    }
+  }
+  return [...byLabel.values()].sort((a, b) => (b.elo_value || 0) - (a.elo_value || 0))
+}
+
+// Employment history has no dedicated table for the student path --
+// profiles.experiences (jsonb) is it (same store recruiterComms.js's
+// offer-accept flow writes to). There's no field distinguishing an
+// internship from a regular job on this shape, so this infers it from the
+// role/description text -- an honest heuristic, not a claim of certainty;
+// the frontend should treat `employmentType` as a label, not verified fact
+// (verificationStatus, already on each entry, is the actual trust signal).
+function withEmploymentType(exp) {
+  const hay = `${exp.role || ""} ${exp.description || ""}`.toLowerCase()
+  return { ...exp, employmentType: /\bintern(ship)?\b/.test(hay) ? "internship" : "employment" }
+}
+
+// ─── Recruiter: full candidate portfolio (2026-08-07, evidence rebuild 2026-08-08) ───
 // GET /candidates/:id was missing entirely -- capabilio-recruiter's
 // Candidate Discovery card had no way to open a real profile at all (its
 // only "profile" page was a legacy, disconnected Firestore-backed screen
 // that never had data for a Supabase-sourced candidate). This is the real
-// equivalent of capabilio-web's own Aura dashboard, reached by a recruiter:
-// skills (full list, not just top 3), Arena history (only entries the
-// candidate marked visible_in_portfolio -- this endpoint must respect that
-// flag same as the candidate's own public Portfolio page does, a recruiter
-// is not a more-privileged viewer than the public), completed AI interviews,
-// verified certifications, and published portfolio artifacts.
+// equivalent of capabilio-web's own Aura dashboard, reached by a recruiter.
+//
+// 2026-08-08: rebuilt per explicit request for "complete transparency ...
+// with evidence and proof rather than claiming like resumes":
+//   - `proofOfSkills` (was `careerTimeline`) -- each completed, portfolio-
+//     visible Arena challenge now includes the FULL evidence trail: the
+//     task scenario/objective the candidate was given, what they actually
+//     submitted (user_answer), and the AI feedback explaining the score --
+//     not just a title and a number. Same visible_in_portfolio gate as
+//     before -- a recruiter is not a more-privileged viewer than the
+//     public Portfolio page.
+//   - `careerTimeline` now means what the name actually says: employment
+//     history (and internships, inferred via withEmploymentType) from
+//     profiles.experiences -- previously this key held Arena challenge
+//     history, which was a mislabel this request called out directly.
+//   - `codeDna` -- new. A candidate's GitHub-derived profile (from
+//     proof_objects, source='github_code_dna'), gated on the SAME
+//     is_recruiter_visible flag that column already exists for. Returns
+//     null if the candidate never ran Code DNA or opted it out of
+//     recruiter visibility -- never fabricated.
+//   - `skills` now merges profiles.skill_graph (resume-seeded estimate)
+//     with the skill_graph table (live, proof-backed) -- see
+//     mergeSkillSources() above for why neither alone was sufficient.
+//
 // Re-applies the exact same discoverability gate as the list endpoint --
 // knowing a candidate's id (e.g. from an old link) must not bypass
 // recruiter_discoverable/employment_status/org_type.
@@ -276,7 +363,7 @@ router.get("/candidates/:id", async (req, res) => {
     const { id } = req.params
     const { data: profile, error } = await supabaseAdmin
       .from("profiles")
-      .select(RESULT_FIELDS)
+      .select(`${RESULT_FIELDS}, skill_graph, experiences`)
       .eq("id", id)
       .eq("recruiter_discoverable", true)
       .neq("employment_status", "active_hidden")
@@ -286,17 +373,18 @@ router.get("/candidates/:id", async (req, res) => {
     if (!profile) return res.status(404).json({ error: "Candidate not found or not visible to recruiters." })
 
     const [
-      { data: skills },
+      { data: skillRows },
       { data: arenaRows },
       { data: interviewRows },
       { data: certRows },
       { data: artifactRows },
+      { data: codeDnaRow },
     ] = await Promise.all([
       supabaseAdmin.from("skill_graph")
         .select("skill_name, domain, elo_value, verification_state, last_proof_date")
         .eq("user_id", id).eq("is_current", true).order("elo_value", { ascending: false }),
       supabaseAdmin.from("arena_history")
-        .select("id, title, domain, skill_name, difficulty, score, elo_delta, type, challenge_type, summary, completed_at")
+        .select("id, title, domain, skill_name, difficulty, score, elo_delta, type, challenge_type, summary, completed_at, scenario, objective, expected_output, user_answer, feedback")
         .eq("user_id", id).eq("visible_in_portfolio", true)
         .not("completed_at", "is", null).order("completed_at", { ascending: false }).limit(50),
       supabaseAdmin.from("interview_sessions")
@@ -308,14 +396,39 @@ router.get("/candidates/:id", async (req, res) => {
       supabaseAdmin.from("av2_portfolio_artifacts")
         .select("id, artifact_type, storage_url, created_at")
         .eq("user_id", id).eq("publish_state", "published").order("created_at", { ascending: false }),
+      supabaseAdmin.from("proof_objects")
+        .select("source_ref, score, completed_at")
+        .eq("user_id", id).eq("source", "github_code_dna").eq("proof_type", "code_dna_profile")
+        .eq("is_recruiter_visible", true).maybeSingle(),
     ])
 
     const trackNameBySlug = await resolveCareerBySlug([profile.career_track_slug])
     const elo = canonicalElo(profile)
+    const { skill_graph: profileSkillGraph, experiences, ...profileRest } = profile
+
+    const ref = codeDnaRow?.source_ref || null
+    const codeDna = ref ? {
+      username: ref.username || null,
+      avatar: ref.analysis?.avatar || null,
+      bio: ref.analysis?.bio || null,
+      publicRepos: ref.analysis?.publicRepos ?? null,
+      followers: ref.analysis?.followers ?? null,
+      totalCommits: ref.analysis?.totalCommits ?? null,
+      languages: ref.analysis?.languages || [],
+      topRepos: ref.analysis?.topRepos || [],
+      scores: ref.scores || null,
+      standoutFact: ref.analysis?.standoutFact || null,
+      specialization: ref.analysis?.specialization || null,
+      score: codeDnaRow.score ?? null,
+      analyzedAt: ref.analyzedAt || codeDnaRow.completed_at || null,
+    } : null
+
     res.json({
-      candidate: { ...profile, elo, performance_tier: performanceTier(elo), career: resolveCareerName(profile, trackNameBySlug) },
-      skills: skills || [],
-      careerTimeline: arenaRows || [],
+      candidate: { ...profileRest, elo, performance_tier: performanceTier(elo), career: resolveCareerName(profile, trackNameBySlug) },
+      skills: mergeSkillSources(skillRows, profileSkillGraph),
+      proofOfSkills: (arenaRows || []).map((r) => ({ ...r, grade: gradeFor(r.score) })),
+      careerTimeline: (experiences || []).filter((e) => e && e.company).map(withEmploymentType),
+      codeDna,
       interviewsCompleted: interviewRows || [],
       certifications: certRows || [],
       portfolioArtifacts: artifactRows || [],
