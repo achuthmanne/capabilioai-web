@@ -73,7 +73,14 @@ function requireRecruiter() {
 }
 
 const RESULT_FIELDS = [
-  "id", "username", "display_name", "avatar_url", "headline",
+  "id", "username", "display_name", "avatar_url",
+  // 2026-08-08: avatar_url is empty on every real profile checked so far --
+  // the actual upload flow (Aura.jsx's handleAvatarUpload -> db.js's
+  // CAMEL_TO_SNAKE) writes to profile_photo_url, never avatar_url. Select
+  // both and prefer whichever is actually populated (see enriched map
+  // below) instead of trusting avatar_url alone, which silently showed no
+  // photo for every candidate.
+  "profile_photo_url", "headline",
   "current_role_title", "current_company", "domain", "target_role",
   "path_type", "years_of_experience", "location",
   "role_elo", "professional_elo", "aura_score", "elo_rating", "keyword", "career_track_slug",
@@ -148,6 +155,7 @@ router.get("/recruiter/search", requireAuth, requireRecruiter(), async (req, res
       const elo = canonicalElo(c)
       return {
         ...c,
+        avatar_url: c.avatar_url || c.profile_photo_url || null,
         elo,
         performance_tier: performanceTier(elo),
         career: resolveCareerName(c, trackNameBySlug),

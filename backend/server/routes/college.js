@@ -1306,11 +1306,15 @@ router.get("/institutions/:id/students/:studentUserId", requireAuth, requireInst
 
     const { data: profile, error } = await supabaseAdmin
       .from("profiles")
-      .select("id, display_name, username, avatar_url, headline, current_role_title, current_company, domain, target_role, path_type, location, role_elo, professional_elo, aura_score, elo_rating, keyword, career_track_slug, uan_verified, education_verified")
+      // avatar_url is empty on every real profile -- the actual upload flow
+      // writes to profile_photo_url (see the same fix in partnerBridge.js/
+      // recruiterSearch.js). Select both, prefer whichever is populated.
+      .select("id, display_name, username, avatar_url, profile_photo_url, headline, current_role_title, current_company, domain, target_role, path_type, location, role_elo, professional_elo, aura_score, elo_rating, keyword, career_track_slug, uan_verified, education_verified")
       .eq("id", studentUserId)
       .maybeSingle()
     if (error) return res.status(500).json({ error: error.message })
     if (!profile) return res.status(404).json({ error: "Student profile not found." })
+    profile.avatar_url = profile.avatar_url || profile.profile_photo_url || null
 
     const [{ data: skills }, { data: arenaRows }, { data: interviewRows }, { data: certRows }, { data: artifactRows }, trackNameBySlug] = await Promise.all([
       supabaseAdmin.from("skill_graph").select("skill_name, domain, elo_value, verification_state, last_proof_date")
