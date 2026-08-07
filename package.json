@@ -12,6 +12,9 @@
     "start": "node backend/server.js",
     "test:arena-v2": "node --test $(find backend/server/lib/arena-v2 -name '*.test.js')",
     "test:arena-v2-frontend": "node --test $(find frontend/src/arena-v2 -name '*.test.js')",
+    "test:backend-lib": "node --test $(find backend/server/lib -name '*.test.js' -not -path '*/arena-v2/*')",
+    "test:frontend-unit": "node --test $(find frontend/src -name '*.test.js')",
+    "test:routes": "node --test $(find backend/server/routes/__tests__ -name '*.test.js')",
     "lint": "eslint frontend/src backend/server --ext .js,.jsx",
     "format": "prettier --write \"frontend/src/**/*.{js,jsx}\" \"backend/server/**/*.js\""
   },

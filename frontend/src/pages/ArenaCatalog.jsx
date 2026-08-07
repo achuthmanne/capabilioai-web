@@ -328,7 +328,7 @@ function Spinner({ color = T.indigo, size = 14 }) {
 
 // ─── CHALLENGE CARD ───────────────────────────────────────────────────────────
 
-function ChallengeCard({ challenge, onOpen, saved, onSave, userSolveStatus }) {
+function ChallengeCard({ challenge, onOpen, saved, onSave, userSolveStatus, opening }) {
   const [hovering, setHovering] = useState(false)
   const tc   = TYPE_CONFIG[challenge.type] || { label: challenge.type, icon: "📋", color: T.ink3 }
   const dc   = DIFF_CONFIG[challenge.difficulty] || DIFF_CONFIG.Medium
@@ -435,16 +435,17 @@ function ChallengeCard({ challenge, onOpen, saved, onSave, userSolveStatus }) {
 
         {/* Open */}
         <button
-          onClick={() => onOpen(challenge)}
+          onClick={() => !opening && onOpen(challenge)}
+          disabled={opening}
           style={{
             padding: "7px 18px", borderRadius: 9, border: "none",
             background: hovering ? tc.color : T.indigo,
             color: "#fff", fontSize: 11, fontWeight: 800,
-            cursor: "pointer", fontFamily: "inherit",
-            transition: "background 0.15s",
+            cursor: opening ? "default" : "pointer", fontFamily: "inherit",
+            transition: "background 0.15s", opacity: opening ? 0.7 : 1,
           }}
         >
-          {solveStatus === "solved" ? "Retry →" : "Open →"}
+          {opening ? "Opening…" : solveStatus === "solved" ? "Retry →" : "Open →"}
         </button>
       </div>
     </div>
@@ -465,6 +466,7 @@ export default function ArenaCatalog({ user, userData, onOpenChallenge, filterCa
   const [saves,          setSaves]          = useState(new Set())
   const [solveStatus,    setSolveStatus]    = useState({})
   const [dataSource,     setDataSource]     = useState("loading") // "supabase" | "inline"
+  const [openingId,      setOpeningId]      = useState(null) // challenge.id currently being hydrated
 
   // Career track: filters problems to the user's stream
   const { track: careerTrack, categories: careerCategories, loading: careerLoading } = useCareerTrack()
@@ -476,8 +478,29 @@ export default function ArenaCatalog({ user, userData, onOpenChallenge, filterCa
     async function load() {
       setLoading(true)
       try {
-        // Build query — filter by career categories if a track is selected
-        let q = problemsDb.from("problems").select("*").order("difficulty", { ascending: true })
+        // Build query — filter by career categories if a track is selected.
+        //
+        // 2026-08-07: was `select("*")` with no column list — flagged in the
+        // 2026-07-13 SRE audit as an 11MB+/student payload on tracks like
+        // MBA/Pharmacy (measured against production). `constraints`,
+        // `examples`, `test_cases`, and `editorial` are the full solve-time
+        // content (worked test cases + solution writeup) and are only ever
+        // needed once a student actually opens a specific problem — they're
+        // now fetched on demand in `onOpen` below instead of for every row
+        // in the browse list. `statement` is kept here because the card list
+        // renders a 2-line preview of it (ChallengeCard's `description`) —
+        // dropping it would blank out every card's preview text, a visible
+        // regression, not a bandwidth fix. This does not add pagination:
+        // the file's own header comment documents "100% client-side
+        // filtering, no round-trips" as a deliberate design choice, and true
+        // pagination would break that (a difficulty/category filter could
+        // show empty results if the match isn't in the loaded page). Career
+        // track scoping (`.in("category", careerCategories)` below) already
+        // bounds the row count to the student's own stream.
+        let q = problemsDb
+          .from("problems")
+          .select("id,slug,title,statement,category,difficulty,languages,tags,acceptance_rate")
+          .order("difficulty", { ascending: true })
         if (careerCategories && careerCategories.length > 0) {
           q = q.in("category", careerCategories)
         }
@@ -485,17 +508,21 @@ export default function ArenaCatalog({ user, userData, onOpenChallenge, filterCa
 
         if (cancelled) return
         if (!error && data && data.length > 0) {
-          // Normalize `problems` row shape → internal challenge shape
+          // Normalize `problems` row shape → internal challenge shape.
+          // constraints/examples/test_cases/editorial are intentionally
+          // left empty here — see comment above; hydrateFullProblem()
+          // fetches them when a card is actually opened.
           const normalized = data.map(p => ({
             id:                  p.id,
             slug:                p.slug,
             title:               p.title,
             description:         p.statement,   // problems uses `statement`
             statement:           p.statement,
-            constraints:         p.constraints,
-            examples:            p.examples || [],
-            test_cases:          p.test_cases || [],
-            editorial:           p.editorial,
+            constraints:         "",
+            examples:            [],
+            test_cases:          [],
+            editorial:           "",
+            _fullContentLoaded:  false,
             type:                (p.category || "dsa").toLowerCase(),
             category:            p.category,
             difficulty:          p.difficulty,
@@ -624,6 +651,38 @@ export default function ArenaCatalog({ user, userData, onOpenChallenge, filterCa
       })
     }
   }, [user?.id, saves])
+
+  // Fetches the solve-time-only fields (constraints/examples/test_cases/
+  // editorial) that the list query above deliberately no longer selects.
+  // Only needed for real `problems`-table rows — INLINE_CHALLENGES fallback
+  // data already has full content and needs no round-trip. Merges the
+  // result into allChallenges so re-opening the same card later is free.
+  const hydrateFullProblem = useCallback(async (challenge) => {
+    if (dataSource !== "supabase" || challenge._fullContentLoaded) return challenge
+    setOpeningId(challenge.id)
+    try {
+      const { data, error } = await problemsDb
+        .from("problems")
+        .select("constraints,examples,test_cases,editorial")
+        .eq("id", challenge.id)
+        .single()
+      if (error || !data) return challenge // open with what we already have rather than block the student
+      const hydrated = {
+        ...challenge,
+        constraints: data.constraints || "",
+        examples: data.examples || [],
+        test_cases: data.test_cases || [],
+        editorial: data.editorial || "",
+        _fullContentLoaded: true,
+      }
+      setAllChallenges(prev => prev.map(c => (c.id === challenge.id ? hydrated : c)))
+      return hydrated
+    } catch {
+      return challenge
+    } finally {
+      setOpeningId(null)
+    }
+  }, [dataSource])
 
   const setFilter = (key, val) => setFilters(prev => ({ ...prev, [key]: val }))
   const clearFilters = () => setFilters(INITIAL_FILTERS)
@@ -797,7 +856,9 @@ export default function ArenaCatalog({ user, userData, onOpenChallenge, filterCa
               saved={saves.has(c.id)}
               onSave={handleSave}
               userSolveStatus={solveStatus}
-              onOpen={(challenge) => {
+              opening={openingId === c.id}
+              onOpen={async (rawChallenge) => {
+                const challenge = await hydrateFullProblem(rawChallenge)
                 // Derive sandbox from category/type
                 const cat = (challenge.type || challenge.category || "dsa").toLowerCase()
                 const sandbox = challenge.sandbox_type || (

@@ -6,6 +6,26 @@ name: CI
 # existing codebase predates the ESLint config added alongside this workflow
 # and would otherwise surface a large pre-existing backlog unrelated to any
 # single PR. Tighten this (make lint blocking) once that backlog is triaged.
+#
+# 2026-08-07: widened test coverage. Before this change, CI only ran
+# test:arena-v2 — 1 suite out of 72 .test.js files in the repo. Everything
+# added below was verified green locally first:
+#   - test:arena-v2-frontend and the frontend/src/api schema-version test
+#     existed as working scripts/files but were never actually invoked by
+#     CI — just wired in now, not new tests.
+#   - test:backend-lib is every other backend/server/lib suite (302 tests,
+#     all pure-unit/mocked, no live external services) — added as blocking,
+#     same bar as test:arena-v2.
+#   - test:routes (backend/server/routes/__tests__) is added NON-BLOCKING,
+#     same reasoning as the lint step below: 3 of its 81 tests currently
+#     fail against real pre-existing bugs unrelated to this change
+#     (opsDashboardRouting 200-vs-404 routing-shadow regression,
+#     pulseNoMockData market-insights honesty-labeling, and
+#     questionBankAdminRouting incorrectly 403-ing an unrelated route for a
+#     non-admin user — the last one fails safe, over-restrictive rather than
+#     under-restrictive, but is still a real bug). Fixing those is a
+#     separate, focused task, not something to bundle into a CI-coverage
+#     change — tracked here so it isn't lost. Make this blocking once triaged.
 
 on:
   pull_request:
@@ -25,5 +45,10 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run test:arena-v2
+      - run: npm run test:arena-v2-frontend
+      - run: npm run test:backend-lib
+      - run: npm run test:frontend-unit
+      - name: Route tests (non-blocking — 3 pre-existing failures, see header comment)
+        run: npm run test:routes || true
       - name: Lint (non-blocking)
         run: npm run lint || true
