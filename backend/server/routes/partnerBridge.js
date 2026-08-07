@@ -182,6 +182,12 @@ const RESULT_FIELDS = [
   "role_elo", "professional_elo", "aura_score", "elo_rating", "keyword", "career_track_slug",
   "uan_verified", "education_verified",
   "employment_status", "notice_period_ends_at",
+  // 2026-08-08: added for the Candidate Discovery card redesign (folding in
+  // Talent Time Machine's card, which was removed -- it read from a
+  // disconnected legacy Firestore collection and fabricated its ELO
+  // history with Math.random(), not real data). These three are real,
+  // already-tracked fields the student's own Aura dashboard shows.
+  "arena_completed", "arena_streak", "job_readiness",
 ].join(", ")
 
 router.get("/candidates", async (req, res) => {
@@ -232,6 +238,11 @@ router.get("/candidates", async (req, res) => {
 
     const ids = (candidates || []).map((c) => c.id)
     let skillsByUser = {}
+    // 2026-08-08: kept alongside skillsByUser (plain skill_name strings,
+    // unchanged shape -- existing consumers filter/render on it directly)
+    // -- this one carries the real elo_value too, for the card's skill
+    // bars (folded in from the removed Talent Time Machine page).
+    let skillDetailsByUser = {}
     if (ids.length > 0) {
       const { data: skillRows } = await supabaseAdmin
         .from("skill_graph")
@@ -242,6 +253,10 @@ router.get("/candidates", async (req, res) => {
       for (const row of skillRows || []) {
         if (!skillsByUser[row.user_id]) skillsByUser[row.user_id] = []
         if (skillsByUser[row.user_id].length < 3) skillsByUser[row.user_id].push(row.skill_name)
+        if (!skillDetailsByUser[row.user_id]) skillDetailsByUser[row.user_id] = []
+        if (skillDetailsByUser[row.user_id].length < 3) {
+          skillDetailsByUser[row.user_id].push({ skill_name: row.skill_name, elo_value: row.elo_value })
+        }
       }
     }
 
@@ -250,6 +265,7 @@ router.get("/candidates", async (req, res) => {
     console.log(`[partner-bridge] ${partnerName} fetched ${candidates?.length || 0} candidates`)
     const enriched = (candidates || []).map((c) => {
       const elo = canonicalElo(c)
+      const readiness = Number(c.job_readiness)
       return {
         ...c,
         avatar_url: c.avatar_url || c.profile_photo_url || null,
@@ -257,6 +273,10 @@ router.get("/candidates", async (req, res) => {
         performance_tier: performanceTier(elo),
         career: resolveCareerName(c, trackNameBySlug),
         topSkills: skillsByUser[c.id] || [],
+        topSkillsDetailed: skillDetailsByUser[c.id] || [],
+        taskCount: c.arena_completed || 0,
+        streak: c.arena_streak || 0,
+        jobReadiness: Number.isFinite(readiness) ? readiness : null,
       }
     })
     res.json({ candidates: enriched, total: count ?? enriched.length, limit, offset })
