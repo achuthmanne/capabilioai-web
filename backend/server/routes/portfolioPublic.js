@@ -216,14 +216,45 @@ router.get("/portfolio/lookup/:identifier", async (req, res) => {
 
     const isOwner = !!viewer?.id && viewer.id === row.id
 
+    // 2026-08-08: institution staff bypass — placement cell / college admin
+    // need to open a linked student's real portfolio from the roster (see
+    // college.js's GET /institutions/:id/students), even when that student
+    // hasn't completed the separate "verified" review this gate otherwise
+    // requires for the general public. This is scoped, not a general
+    // bypass: it only applies when the viewer is an ACTIVE staff member of
+    // an institution the student is actually linked to via
+    // institution_students (the same relationship the roster itself is
+    // built on) -- an institution can't use this to view a student they
+    // have no roster relationship with.
+    let isInstitutionStaffViewer = false
+    if (!isOwner && viewer?.id && row.verified !== true) {
+      const { data: links } = await supabaseAdmin
+        .from("institution_students")
+        .select("institution_id")
+        .eq("student_user_id", row.id)
+      const institutionIds = [...new Set((links || []).map((l) => l.institution_id))]
+      if (institutionIds.length) {
+        const { data: staffRow } = await supabaseAdmin
+          .from("institution_staff")
+          .select("id")
+          .eq("user_id", viewer.id)
+          .eq("status", "active")
+          .in("institution_id", institutionIds)
+          .limit(1)
+          .maybeSingle()
+        isInstitutionStaffViewer = !!staffRow
+      }
+    }
+
     // Visibility gate — replicates what the old RLS row policy would have
     // allowed a non-owner to see (verified=true), now actually enforced at
-    // the column level too via the whitelist above.
-    if (!isOwner && row.verified !== true) {
+    // the column level too via the whitelist above. Institution staff of a
+    // linked institution are treated the same as the owner here.
+    if (!isOwner && !isInstitutionStaffViewer && row.verified !== true) {
       return res.status(404).json({ error: "Portfolio not found." })
     }
 
-    const includeCerts = isOwner || row.cert_visible !== false
+    const includeCerts = isOwner || isInstitutionStaffViewer || row.cert_visible !== false
 
     const safe = toPortfolioSafeFields(row, { includeCerts })
 

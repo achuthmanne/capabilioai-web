@@ -1230,6 +1230,10 @@ router.get("/institutions/:id/students", requireAuth, requireInstitutionStaff(),
       ...rest,
       studentUserId: student_user_id || null,
       name: profile.display_name || profile.username || null,
+      // 2026-08-08: needed so the roster can link out to the student's real
+      // public portfolio (/portfolio/:username) instead of an internal
+      // summary modal -- see the trailing-action "Portfolio" button.
+      username: profile.username || null,
       // Live overrides -- prefer the student's own current profile data over
       // the institution_students snapshot, falling back to the snapshot only
       // when the student hasn't set/changed it (so a manually-corrected

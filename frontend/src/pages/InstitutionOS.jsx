@@ -2549,7 +2549,7 @@ function CanonicalRosterPanel({ canonical, openThreadFor }) {
   // GET /institutions/:id/students/:studentUserId this session added,
   // opened in a lightweight modal rather than a full page navigation so the
   // roster's filters/scroll position stay intact behind it.
-  const [viewingStudentId, setViewingStudentId] = useState(null)
+  const [viewingPortfolioUsername, setViewingPortfolioUsername] = useState(null)
 
   // 2026-08-02: outcome recording (higher studies / entrepreneurship) — feeds
   // the NAAC report. Placement itself is never edited here — that only ever
@@ -2706,13 +2706,18 @@ function CanonicalRosterPanel({ canonical, openThreadFor }) {
                     )}
                   </td>
                   <td style={{ padding: "8px", textAlign: "right", whiteSpace: "nowrap" }}>
-                    {/* 2026-08-08: moved out of the Roll No. cell -- that
-                        cell now only ever shows the real roll number (or
-                        "—"), so "View profile" needed its own action here. */}
-                    {s.studentUserId && (
-                      <button onClick={() => setViewingStudentId(s.studentUserId)} title="View full profile"
+                    {/* 2026-08-08: replaced the internal "View profile"
+                        summary modal with a link to the student's actual
+                        public Portfolio page -- per explicit request, so
+                        placement cell / college admin see the complete,
+                        real profile (proof of skills, career timeline,
+                        Code DNA, everything) instead of a smaller internal
+                        summary. Opens in-page as a popup (PortfolioModal
+                        below), not a full navigation away from the roster. */}
+                    {s.username && (
+                      <button onClick={() => setViewingPortfolioUsername(s.username)} title="View student portfolio"
                         style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 14, opacity: 0.75 }}>
-                        👤
+                        🔗
                       </button>
                     )}
                     {openThreadFor && (
@@ -2743,11 +2748,10 @@ function CanonicalRosterPanel({ canonical, openThreadFor }) {
         </div>
       )}
 
-      {viewingStudentId && (
-        <StudentDetailModal
-          institutionId={institution.id}
-          studentUserId={viewingStudentId}
-          onClose={() => setViewingStudentId(null)}
+      {viewingPortfolioUsername && (
+        <PortfolioModal
+          username={viewingPortfolioUsername}
+          onClose={() => setViewingPortfolioUsername(null)}
         />
       )}
 
@@ -2804,109 +2808,39 @@ function CanonicalRosterPanel({ canonical, openThreadFor }) {
   )
 }
 
-// ─── Student full-profile drilldown modal (2026-08-07) ──────────────────────
-// Opened from CanonicalRosterPanel's roll-number link. Mirrors what a
-// recruiter sees via partnerBridge.js's GET /candidates/:id and what the
-// student sees on their own Aura dashboard — same canonical ELO/career
-// (see college.js's GET /institutions/:id/students/:studentUserId), same
-// visible_in_portfolio-gated Arena history. An institution admin isn't a
-// more-privileged viewer than either of those audiences.
-function StudentDetailModal({ institutionId, studentUserId, onClose }) {
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true); setError(null)
-    collegeApi.getStudentDetail(institutionId, studentUserId)
-      .then((res) => { if (!cancelled) setData(res) })
-      .catch((err) => { if (!cancelled) setError(err.message || "Couldn't load this student.") })
-      .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true }
-  }, [institutionId, studentUserId])
-
-  const c = data?.candidate
-  const displayName = c?.display_name || c?.username || "Student"
-
+// ─── Student portfolio popup (2026-08-07, replaced 2026-08-08) ─────────────
+// Opened from CanonicalRosterPanel's trailing-action 🔗 button.
+// 2026-08-08: replaces the original StudentDetailModal (a hand-built
+// summary hitting GET /institutions/:id/students/:studentUserId, still
+// used by other callers -- that route itself is untouched). Per explicit
+// request, the roster now links straight to the student's REAL public
+// Portfolio page (frontend/src/pages/Portfolio.jsx, route /portfolio/:username)
+// instead of a smaller internal re-implementation -- placement cell/college
+// admin see the exact same complete profile (proof of skills, real career
+// timeline, Code DNA) the student and any recruiter see. Rendered as an
+// in-page popup (iframe in a Modal), not a full navigation away from the
+// roster. The iframe request carries the admin's own session automatically
+// (same-origin, shared localStorage) -- backend/server/routes/portfolioPublic.js
+// grants active institution staff of a linked institution access even to an
+// otherwise-unverified student's portfolio (see the isInstitutionStaffViewer
+// check there), since this is a legitimate roster relationship, not a
+// general public bypass.
+function PortfolioModal({ username, onClose }) {
+  const portfolioPath = `/portfolio/${encodeURIComponent(username)}`
   return (
-    <Modal title={loading ? "Loading…" : displayName} onClose={onClose} width={620}>
-      {loading ? (
-        <div style={{ padding: "24px 0", textAlign: "center", color: T.ink4, fontSize: 12.5 }}>Loading student profile…</div>
-      ) : error ? (
-        <div style={{ padding: "24px 0", textAlign: "center", color: T.red, fontSize: 12.5 }}>{error}</div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ display: "flex", gap: 14, alignItems: "flex-start", flexWrap: "wrap" }}>
-            {c.avatar_url ? (
-              <img src={c.avatar_url} alt={displayName} style={{ width: 56, height: 56, borderRadius: 14, objectFit: "cover" }} />
-            ) : (
-              <div style={{ width: 56, height: 56, borderRadius: 14, background: T.bg, border: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 18, color: T.sky }}>
-                {displayName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
-              </div>
-            )}
-            <div style={{ flex: 1, minWidth: 180 }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: T.ink }}>{displayName}</div>
-              <div style={{ fontSize: 12, color: T.ink3, marginTop: 2 }}>
-                {[data.student.department, data.student.batch, data.student.roll_number].filter(Boolean).join(" · ") || "—"}
-              </div>
-              {c.career && <div style={{ fontSize: 12, color: T.sky, marginTop: 3, fontWeight: 600 }}>🎯 {c.career}</div>}
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <div style={{ textAlign: "center", padding: "6px 14px", background: T.bg, borderRadius: 10, border: `1px solid ${T.border}` }}>
-                <div style={{ fontWeight: 800, fontSize: 18, color: T.sky }}>{c.elo}</div>
-                <div style={{ fontSize: 9.5, color: T.ink4 }}>ELO · {c.performance_tier}</div>
-              </div>
-              <div style={{ textAlign: "center", padding: "6px 14px", background: T.bg, borderRadius: 10, border: `1px solid ${T.border}` }}>
-                <div style={{ fontWeight: 800, fontSize: 18, color: T.green }}>{data.student.job_readiness_score != null ? `${data.student.job_readiness_score}%` : "—"}</div>
-                <div style={{ fontSize: 9.5, color: T.ink4 }}>Job Ready</div>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: T.ink, marginBottom: 8 }}>Skills</div>
-            {data.skills.length === 0 ? (
-              <div style={{ fontSize: 12, color: T.ink4 }}>No skill data yet.</div>
-            ) : (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {data.skills.map((s) => (
-                  <span key={s.skill_name} title={`ELO ${s.elo_value}`} style={{ fontSize: 11, fontWeight: 600, padding: "4px 10px", background: T.bg, border: `1px solid ${T.border}`, borderRadius: 7, color: T.ink2 }}>
-                    {s.skill_name} · {s.elo_value}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: T.ink, marginBottom: 8 }}>Career Timeline</div>
-            {data.careerTimeline.length === 0 ? (
-              <div style={{ fontSize: 12, color: T.ink4 }}>No completed challenges shared to portfolio yet.</div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {data.careerTimeline.slice(0, 8).map((e) => (
-                  <div key={e.id} style={{ display: "flex", justifyContent: "space-between", padding: "7px 10px", background: T.bg, borderRadius: 8, fontSize: 12 }}>
-                    <span style={{ color: T.ink2 }}>{e.title || e.skill_name || "Challenge"}</span>
-                    {typeof e.score === "number" && <span style={{ color: T.green, fontWeight: 700 }}>{e.score}%</span>}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: T.ink, marginBottom: 6 }}>AI Interviews</div>
-              <div style={{ fontSize: 12, color: T.ink3 }}>{data.interviewsCompleted.length === 0 ? "None completed yet." : `${data.interviewsCompleted.length} completed`}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: T.ink, marginBottom: 6 }}>Certifications</div>
-              <div style={{ fontSize: 12, color: T.ink3 }}>{data.certifications.length === 0 ? "None verified yet." : data.certifications.map((cc) => cc.cert_name).join(", ")}</div>
-            </div>
-          </div>
-        </div>
-      )}
+    <Modal title="Student Portfolio" onClose={onClose} width={860}>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+        <a href={portfolioPath} target="_blank" rel="noreferrer" style={{ fontSize: 11.5, color: T.sky, fontWeight: 600 }}>
+          Open in new tab ↗
+        </a>
+      </div>
+      <div style={{ border: `1px solid ${T.border}`, borderRadius: 12, overflow: "hidden", height: "70vh", background: T.bg }}>
+        <iframe
+          src={portfolioPath}
+          title={`${username} — portfolio`}
+          style={{ width: "100%", height: "100%", border: "none" }}
+        />
+      </div>
     </Modal>
   )
 }
