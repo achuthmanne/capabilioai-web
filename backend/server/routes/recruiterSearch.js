@@ -31,18 +31,16 @@
  * recruiter_discoverable on from a previous job search. This is a second,
  * independent gate — both conditions are required, not either/or.
  *
- * UPDATED 2026-08-07 — PRODUCT DECISION: raw ELO (role_elo, professional_elo,
- * aura_score) is no longer returned in the response. Explicit instruction:
- * "ELO should be only visible to users not recruiters ... recruiters can see
- * user portfolio and user skills and user performance not ELO because
- * recruiters don't understand about ELO thing." The three ELO columns are
- * still SELECTED server-side (needed to compute the qualitative tier below
- * and to keep the minElo filter working), they are just stripped from every
- * candidate object before it's sent. Response now carries performance_tier
- * (Beginner/Intermediate/Advanced/Expert — same bands as
- * capabilio-recruiter's eloLevel() and orgStudentVisibility.js's
- * performanceTier()) computed from the candidate's strongest of the three
- * scores, plus topSkills (names only, already had no raw numbers).
+ * UPDATED 2026-08-07 — raw ELO briefly stripped from the response here, then
+ * REVERSED same day per explicit instruction: "i want recruiters to see the
+ * student ELO and student choosen career, so then recruiters can see what
+ * student is proven" (confirmed as a full reversal across every
+ * recruiter-facing surface). role_elo/professional_elo/aura_score are back
+ * in the response as-is. performance_tier is kept as an additive derived
+ * field alongside the raw numbers (Beginner/Intermediate/Advanced/Expert —
+ * same bands as capabilio-recruiter's eloLevel() and
+ * orgStudentVisibility.js's performanceTier()) since some UI already reads
+ * it; it's a convenience label, not a replacement for the raw score.
  */
 import { Router } from "express"
 import { supabaseAdmin } from "../lib/supabase.js"
@@ -149,9 +147,8 @@ router.get("/recruiter/search", requireAuth, requireRecruiter(), async (req, res
     }
 
     const enriched = (candidates || []).map(c => {
-      const { role_elo, professional_elo, aura_score, ...rest } = c
-      const tierScore = Math.max(role_elo || 0, professional_elo || 0, aura_score || 0)
-      return { ...rest, performance_tier: performanceTier(tierScore), topSkills: skillsByUser[c.id] || [] }
+      const tierScore = Math.max(c.role_elo || 0, c.professional_elo || 0, c.aura_score || 0)
+      return { ...c, performance_tier: performanceTier(tierScore), topSkills: skillsByUser[c.id] || [] }
     })
     res.json({ candidates: enriched, total: count ?? enriched.length, limit, offset })
   } catch (err) {

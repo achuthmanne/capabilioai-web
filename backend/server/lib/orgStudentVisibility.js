@@ -16,26 +16,21 @@
  * 2026-08-07: added top_skills/challenges_completed to the "elo"/
  * "placements"/"full" tiers (not "roster").
  *
- * 2026-08-07 (later same day) — PRODUCT DECISION, supersedes the note this
- * replaces: raw ELO must never be returned to a recruiter/company consumer
- * of this function. Explicit instruction: "ELO should be only visible to
- * users not recruiters ... recruiters can see user portfolio and user
- * skills and user performance not ELO because recruiters don't understand
- * about ELO thing." orgCompanyLinks.js's route that calls this function is
- * itself the institution's *preview of what the connected company/recruiter
- * sees* — so this shared function is correctly scoped as "the
- * recruiter-visible view" for both callers, and raw elo_rating /
- * skill_graph.elo_value are now stripped from every returned row regardless
- * of tier. In their place: performance_tier (a qualitative label — Beginner/
- * Intermediate/Advanced/Expert, same bands as capabilio-recruiter's existing
- * eloLevel() helper in CandidateProfile.jsx, so the two systems agree) and
- * top_skills now carries skill_name only (no elo_value). Also added
- * ai_interview_completed (from interview_sessions.completed_at) as a
- * portfolio signal, per: "recruiter has to see the user portfolio where
- * user generate their portfolios through tasks/ AI Interviews/ and other
- * things." elo_rating is still SELECTED from org_members internally (it's
- * needed to compute the tier and to preserve the existing sort-by-strongest
- * ordering) — it is simply never included in the object returned to callers.
+ * 2026-08-07 (same day, PRODUCT DECISION #1): raw ELO briefly stripped from
+ * every response here, replaced with a performance_tier label only.
+ *
+ * 2026-08-07 (same day, PRODUCT DECISION #2 — supersedes #1): reversed.
+ * Explicit instruction: "i want recruiters to see the student ELO and
+ * student choosen career, so then recruiters can see what student is
+ * proven" — confirmed as a full reversal across every recruiter-facing
+ * surface, not just this roster. Raw elo_rating and skill_graph.elo_value
+ * are back in every returned row. performance_tier is kept alongside the
+ * raw number (additive, not a replacement) since it's a cheap derived label
+ * some UI already renders. Also added `career` — the student's chosen
+ * career track name (profiles.career_track_slug -> career_tracks.name,
+ * the same source CareerPicker.jsx writes and useCareerTrack.js reads) —
+ * this is genuinely new, it was never on this roster before either
+ * decision, and is what "student choosen career" refers to.
  */
 import { supabaseAdmin } from "./supabase.js"
 
@@ -80,23 +75,17 @@ export async function fetchLinkStudents(link) {
 
   if (error) return { students: [], error: error.message }
 
-  // elo_rating was only selected (if at all) to support the sort above and
-  // the tier computation below — strip the raw number before it ever leaves
-  // this function. See file header: recruiters/companies never see it.
-  const stripRawElo = (row) => {
-    if (!("elo_rating" in row)) return row
-    const { elo_rating, ...rest } = row
-    return { ...rest, performance_tier: performanceTier(elo_rating) }
-  }
+  const withTier = (row) =>
+    "elo_rating" in row ? { ...row, performance_tier: performanceTier(row.elo_rating) } : row
 
   if (!students?.length || !SKILL_TIERS.has(tier)) {
-    return { students: (students || []).map(stripRawElo), error: null }
+    return { students: (students || []).map(withTier), error: null }
   }
 
   const userIds = students.map((s) => s.user_id).filter(Boolean)
-  if (!userIds.length) return { students: students.map(stripRawElo), error: null }
+  if (!userIds.length) return { students: students.map(withTier), error: null }
 
-  const [{ data: skillRows }, { data: historyRows }, { data: interviewRows }] = await Promise.all([
+  const [{ data: skillRows }, { data: historyRows }, { data: interviewRows }, { data: careerRows }] = await Promise.all([
     supabaseAdmin
       .from("skill_graph")
       .select("user_id, skill_name, elo_value")
@@ -113,15 +102,17 @@ export async function fetchLinkStudents(link) {
       .select("user_id")
       .in("user_id", userIds)
       .not("completed_at", "is", null),
+    supabaseAdmin
+      .from("profiles")
+      .select("id, career_track_slug, domain, target_role")
+      .in("id", userIds),
   ])
 
-  // No elo_value in the returned skill objects — skill NAME is the evidence
-  // ("user skills"), the numeric rating behind it is not.
   const topSkillsByUser = {}
   for (const row of skillRows || []) {
     if (!topSkillsByUser[row.user_id]) topSkillsByUser[row.user_id] = []
     if (topSkillsByUser[row.user_id].length < 3) {
-      topSkillsByUser[row.user_id].push({ skill_name: row.skill_name })
+      topSkillsByUser[row.user_id].push({ skill_name: row.skill_name, elo_value: row.elo_value })
     }
   }
   const completedByUser = {}
@@ -130,11 +121,25 @@ export async function fetchLinkStudents(link) {
   }
   const interviewedUsers = new Set((interviewRows || []).map((r) => r.user_id))
 
+  const careerSlugs = [...new Set((careerRows || []).map((r) => r.career_track_slug).filter(Boolean))]
+  const trackNameBySlug = {}
+  if (careerSlugs.length) {
+    const { data: tracks } = await supabaseAdmin
+      .from("career_tracks").select("slug, name").in("slug", careerSlugs)
+    for (const t of tracks || []) trackNameBySlug[t.slug] = t.name
+  }
+  const careerByUser = {}
+  for (const row of careerRows || []) {
+    careerByUser[row.id] = (row.career_track_slug && trackNameBySlug[row.career_track_slug])
+      || row.target_role || row.domain || null
+  }
+
   const enriched = students.map((s) => ({
-    ...stripRawElo(s),
+    ...withTier(s),
     top_skills: topSkillsByUser[s.user_id] || [],
     challenges_completed: completedByUser[s.user_id] || 0,
     ai_interview_completed: interviewedUsers.has(s.user_id),
+    career: careerByUser[s.user_id] || null,
   }))
   return { students: enriched, error: null }
 }

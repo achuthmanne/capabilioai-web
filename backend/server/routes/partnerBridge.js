@@ -38,13 +38,15 @@
  *   requesting a college that hasn't invited them) -- that has no UI on the
  *   institution side to action it yet. Real product gap, not faked here.
  *
- * UPDATED 2026-08-07 — PRODUCT DECISION: GET /candidates no longer returns
- * raw ELO (role_elo/professional_elo/aura_score) to capabilio-recruiter.
- * Same instruction and same performanceTier() bands as
- * recruiterSearch.js's identical change — see that file's header for the
- * full quote. performanceTier is imported from orgStudentVisibility.js
- * (this file already imports fetchLinkStudents from there) rather than
- * duplicated, since both are in the same app/deploy unit.
+ * UPDATED 2026-08-07 — raw ELO briefly stripped from GET /candidates, then
+ * REVERSED same day: "i want recruiters to see the student ELO and student
+ * choosen career, so then recruiters can see what student is proven" —
+ * confirmed as a full reversal, same as recruiterSearch.js (see that file's
+ * header for the full quote). role_elo/professional_elo/aura_score are back
+ * in the response; performance_tier stays as an additive derived field.
+ * performanceTier is imported from orgStudentVisibility.js (this file
+ * already imports fetchLinkStudents from there) rather than duplicated,
+ * since both are in the same app/deploy unit.
  */
 import { Router } from "express"
 import { supabaseAdmin } from "../lib/supabase.js"
@@ -141,9 +143,8 @@ router.get("/candidates", async (req, res) => {
 
     console.log(`[partner-bridge] ${partnerName} fetched ${candidates?.length || 0} candidates`)
     const enriched = (candidates || []).map((c) => {
-      const { role_elo, professional_elo, aura_score, ...rest } = c
-      const tierScore = Math.max(role_elo || 0, professional_elo || 0, aura_score || 0)
-      return { ...rest, performance_tier: performanceTier(tierScore), topSkills: skillsByUser[c.id] || [] }
+      const tierScore = Math.max(c.role_elo || 0, c.professional_elo || 0, c.aura_score || 0)
+      return { ...c, performance_tier: performanceTier(tierScore), topSkills: skillsByUser[c.id] || [] }
     })
     res.json({ candidates: enriched, total: count ?? enriched.length, limit, offset })
   } catch (err) {
