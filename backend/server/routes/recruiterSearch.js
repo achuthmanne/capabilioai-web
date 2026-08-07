@@ -30,10 +30,36 @@
  * professional must never be visible to a recruiter, even if they left
  * recruiter_discoverable on from a previous job search. This is a second,
  * independent gate — both conditions are required, not either/or.
+ *
+ * UPDATED 2026-08-07 — PRODUCT DECISION: raw ELO (role_elo, professional_elo,
+ * aura_score) is no longer returned in the response. Explicit instruction:
+ * "ELO should be only visible to users not recruiters ... recruiters can see
+ * user portfolio and user skills and user performance not ELO because
+ * recruiters don't understand about ELO thing." The three ELO columns are
+ * still SELECTED server-side (needed to compute the qualitative tier below
+ * and to keep the minElo filter working), they are just stripped from every
+ * candidate object before it's sent. Response now carries performance_tier
+ * (Beginner/Intermediate/Advanced/Expert — same bands as
+ * capabilio-recruiter's eloLevel() and orgStudentVisibility.js's
+ * performanceTier()) computed from the candidate's strongest of the three
+ * scores, plus topSkills (names only, already had no raw numbers).
  */
 import { Router } from "express"
 import { supabaseAdmin } from "../lib/supabase.js"
 import { requireAuth } from "../lib/auth.js"
+
+// Mirrors backend/server/lib/orgStudentVisibility.js's performanceTier() —
+// not imported from there because that module is scoped to the org/roster
+// domain; duplicating a 5-line pure function is cheaper and safer here than
+// creating a cross-domain import for something this small. Keep the bands
+// in sync if either changes.
+function performanceTier(elo) {
+  const e = elo || 0
+  if (e >= 1200) return "Expert"
+  if (e >= 1000) return "Advanced"
+  if (e >= 900)  return "Intermediate"
+  return "Beginner"
+}
 
 const router = Router()
 
@@ -122,7 +148,11 @@ router.get("/recruiter/search", requireAuth, requireRecruiter(), async (req, res
       }
     }
 
-    const enriched = (candidates || []).map(c => ({ ...c, topSkills: skillsByUser[c.id] || [] }))
+    const enriched = (candidates || []).map(c => {
+      const { role_elo, professional_elo, aura_score, ...rest } = c
+      const tierScore = Math.max(role_elo || 0, professional_elo || 0, aura_score || 0)
+      return { ...rest, performance_tier: performanceTier(tierScore), topSkills: skillsByUser[c.id] || [] }
+    })
     res.json({ candidates: enriched, total: count ?? enriched.length, limit, offset })
   } catch (err) {
     console.error("[recruiter/search]", err.message)

@@ -14,20 +14,28 @@
  * a name.
  *
  * 2026-08-07: added top_skills/challenges_completed to the "elo"/
- * "placements"/"full" tiers (not "roster" — that tier deliberately excludes
- * elo_rating too, so skill/challenge signal that's just as evaluative
- * shouldn't leak in at a tier a college chose specifically to withhold it).
- * This is the actual product differentiator — skill-graph/ELO evidence, not
- * a resume — and previously wasn't wired into the connected-college roster
- * at all, only into the separate candidate-search route
- * (recruiterSearch.js/partnerBridge.js's /candidates). Raw ELO is an
- * already-established recruiter-visible signal in both of those routes;
- * this does not introduce a new exposure, it extends the same one already
- * shipped for elo_rating on this exact roster to two more fields that were
- * always meant to travel with it. Not a "no raw ELO" (PC-7 Portfolio)
- * violation — that rule is scoped to a professional's own public Portfolio
- * page, not private recruiter/college evaluation views (see
- * portfolioNoRawEloAndProCleanup.test.js's own describe() scope).
+ * "placements"/"full" tiers (not "roster").
+ *
+ * 2026-08-07 (later same day) — PRODUCT DECISION, supersedes the note this
+ * replaces: raw ELO must never be returned to a recruiter/company consumer
+ * of this function. Explicit instruction: "ELO should be only visible to
+ * users not recruiters ... recruiters can see user portfolio and user
+ * skills and user performance not ELO because recruiters don't understand
+ * about ELO thing." orgCompanyLinks.js's route that calls this function is
+ * itself the institution's *preview of what the connected company/recruiter
+ * sees* — so this shared function is correctly scoped as "the
+ * recruiter-visible view" for both callers, and raw elo_rating /
+ * skill_graph.elo_value are now stripped from every returned row regardless
+ * of tier. In their place: performance_tier (a qualitative label — Beginner/
+ * Intermediate/Advanced/Expert, same bands as capabilio-recruiter's existing
+ * eloLevel() helper in CandidateProfile.jsx, so the two systems agree) and
+ * top_skills now carries skill_name only (no elo_value). Also added
+ * ai_interview_completed (from interview_sessions.completed_at) as a
+ * portfolio signal, per: "recruiter has to see the user portfolio where
+ * user generate their portfolios through tasks/ AI Interviews/ and other
+ * things." elo_rating is still SELECTED from org_members internally (it's
+ * needed to compute the tier and to preserve the existing sort-by-strongest
+ * ordering) — it is simply never included in the object returned to callers.
  */
 import { supabaseAdmin } from "./supabase.js"
 
@@ -39,6 +47,21 @@ export const VISIBILITY_COLUMNS = {
 }
 
 const SKILL_TIERS = new Set(["elo", "placements", "full"])
+
+/**
+ * Qualitative performance tier from a raw ELO number — never expose the
+ * number itself to recruiter-facing consumers. Bands match
+ * capabilio-recruiter/src/pages/recruiter/CandidateProfile.jsx's existing
+ * eloLevel() helper exactly, so a candidate's labeled tier is consistent
+ * across both apps.
+ */
+export function performanceTier(elo) {
+  const e = elo || 0
+  if (e >= 1200) return "Expert"
+  if (e >= 1000) return "Advanced"
+  if (e >= 900)  return "Intermediate"
+  return "Beginner"
+}
 
 /**
  * @param {{institution_org_id: string, visibility: string}} link
@@ -56,12 +79,24 @@ export async function fetchLinkStudents(link) {
     .order("elo_rating", { ascending: false })
 
   if (error) return { students: [], error: error.message }
-  if (!students?.length || !SKILL_TIERS.has(tier)) return { students: students || [], error: null }
+
+  // elo_rating was only selected (if at all) to support the sort above and
+  // the tier computation below — strip the raw number before it ever leaves
+  // this function. See file header: recruiters/companies never see it.
+  const stripRawElo = (row) => {
+    if (!("elo_rating" in row)) return row
+    const { elo_rating, ...rest } = row
+    return { ...rest, performance_tier: performanceTier(elo_rating) }
+  }
+
+  if (!students?.length || !SKILL_TIERS.has(tier)) {
+    return { students: (students || []).map(stripRawElo), error: null }
+  }
 
   const userIds = students.map((s) => s.user_id).filter(Boolean)
-  if (!userIds.length) return { students, error: null }
+  if (!userIds.length) return { students: students.map(stripRawElo), error: null }
 
-  const [{ data: skillRows }, { data: historyRows }] = await Promise.all([
+  const [{ data: skillRows }, { data: historyRows }, { data: interviewRows }] = await Promise.all([
     supabaseAdmin
       .from("skill_graph")
       .select("user_id, skill_name, elo_value")
@@ -73,24 +108,33 @@ export async function fetchLinkStudents(link) {
       .select("user_id")
       .in("user_id", userIds)
       .not("completed_at", "is", null),
+    supabaseAdmin
+      .from("interview_sessions")
+      .select("user_id")
+      .in("user_id", userIds)
+      .not("completed_at", "is", null),
   ])
 
+  // No elo_value in the returned skill objects — skill NAME is the evidence
+  // ("user skills"), the numeric rating behind it is not.
   const topSkillsByUser = {}
   for (const row of skillRows || []) {
     if (!topSkillsByUser[row.user_id]) topSkillsByUser[row.user_id] = []
     if (topSkillsByUser[row.user_id].length < 3) {
-      topSkillsByUser[row.user_id].push({ skill_name: row.skill_name, elo_value: row.elo_value })
+      topSkillsByUser[row.user_id].push({ skill_name: row.skill_name })
     }
   }
   const completedByUser = {}
   for (const row of historyRows || []) {
     completedByUser[row.user_id] = (completedByUser[row.user_id] || 0) + 1
   }
+  const interviewedUsers = new Set((interviewRows || []).map((r) => r.user_id))
 
   const enriched = students.map((s) => ({
-    ...s,
+    ...stripRawElo(s),
     top_skills: topSkillsByUser[s.user_id] || [],
     challenges_completed: completedByUser[s.user_id] || 0,
+    ai_interview_completed: interviewedUsers.has(s.user_id),
   }))
   return { students: enriched, error: null }
 }
