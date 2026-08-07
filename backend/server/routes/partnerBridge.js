@@ -51,7 +51,7 @@
 import { Router } from "express"
 import crypto from "crypto"
 import { supabaseAdmin } from "../lib/supabase.js"
-import { fetchLinkStudents, performanceTier } from "../lib/orgStudentVisibility.js"
+import { fetchLinkStudents, performanceTier, canonicalElo, resolveCareerBySlug, resolveCareerName } from "../lib/orgStudentVisibility.js"
 
 const router = Router()
 
@@ -161,11 +161,17 @@ router.use(requirePartnerSecret)
 // Identical field whitelist and privacy gate to recruiterSearch.js's
 // GET /api/recruiter/search -- this is the same data, reached by a
 // different (service-authenticated) caller, not a looser version of it.
+// 2026-08-07: added elo_rating, keyword, career_track_slug -- role_elo/
+// professional_elo/aura_score alone were never the real number a candidate's
+// own Aura dashboard shows for the student path (see canonicalElo() in
+// orgStudentVisibility.js for why), and target_role/domain are frequently
+// null even when the student clearly has a chosen career via `keyword`
+// (their onboarding role field) or career_track_slug.
 const RESULT_FIELDS = [
   "id", "username", "display_name", "avatar_url", "headline",
   "current_role_title", "current_company", "domain", "target_role",
   "path_type", "years_of_experience", "location",
-  "role_elo", "professional_elo", "aura_score",
+  "role_elo", "professional_elo", "aura_score", "elo_rating", "keyword", "career_track_slug",
   "uan_verified", "education_verified",
   "employment_status", "notice_period_ends_at",
 ].join(", ")
@@ -208,7 +214,7 @@ router.get("/candidates", async (req, res) => {
     }
     const minEloNum = parseInt(minElo, 10)
     if (Number.isFinite(minEloNum)) {
-      query = query.or(`professional_elo.gte.${minEloNum},role_elo.gte.${minEloNum},aura_score.gte.${minEloNum}`)
+      query = query.or(`professional_elo.gte.${minEloNum},role_elo.gte.${minEloNum},aura_score.gte.${minEloNum},elo_rating.gte.${minEloNum}`)
     }
 
     query = query.order("updated_at", { ascending: false }).range(offset, offset + limit - 1)
@@ -231,10 +237,18 @@ router.get("/candidates", async (req, res) => {
       }
     }
 
+    const trackNameBySlug = await resolveCareerBySlug((candidates || []).map((c) => c.career_track_slug))
+
     console.log(`[partner-bridge] ${partnerName} fetched ${candidates?.length || 0} candidates`)
     const enriched = (candidates || []).map((c) => {
-      const tierScore = Math.max(c.role_elo || 0, c.professional_elo || 0, c.aura_score || 0)
-      return { ...c, performance_tier: performanceTier(tierScore), topSkills: skillsByUser[c.id] || [] }
+      const elo = canonicalElo(c)
+      return {
+        ...c,
+        elo,
+        performance_tier: performanceTier(elo),
+        career: resolveCareerName(c, trackNameBySlug),
+        topSkills: skillsByUser[c.id] || [],
+      }
     })
     res.json({ candidates: enriched, total: count ?? enriched.length, limit, offset })
   } catch (err) {
@@ -296,9 +310,10 @@ router.get("/candidates/:id", async (req, res) => {
         .eq("user_id", id).eq("publish_state", "published").order("created_at", { ascending: false }),
     ])
 
-    const tierScore = Math.max(profile.role_elo || 0, profile.professional_elo || 0, profile.aura_score || 0)
+    const trackNameBySlug = await resolveCareerBySlug([profile.career_track_slug])
+    const elo = canonicalElo(profile)
     res.json({
-      candidate: { ...profile, performance_tier: performanceTier(tierScore) },
+      candidate: { ...profile, elo, performance_tier: performanceTier(elo), career: resolveCareerName(profile, trackNameBySlug) },
       skills: skills || [],
       careerTimeline: arenaRows || [],
       interviewsCompleted: interviewRows || [],

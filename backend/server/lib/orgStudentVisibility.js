@@ -31,8 +31,67 @@
  * the same source CareerPicker.jsx writes and useCareerTrack.js reads) —
  * this is genuinely new, it was never on this roster before either
  * decision, and is what "student choosen career" refers to.
+ *
+ * 2026-08-07 (bug fix): the roster's displayed ELO was coming straight from
+ * org_members.elo_rating -- a column on the ORG_MEMBERS table, separate from
+ * and never synced with profiles.elo_rating. For a real test account this
+ * showed "0" while the student's own Aura dashboard (which reads
+ * profiles.elo_rating -- see navEloBadgeCanonical.test.js, which documents
+ * elo_rating as the real, live, Arena-linked number for every path except
+ * "professional", which has its own verification-gated engine) showed 456.
+ * Similarly `career` fell back through career_track_slug/target_role/domain,
+ * all of which can be null even when the student's Aura dashboard clearly
+ * shows a role (e.g. "Database Administrator") -- that string turned out to
+ * live in profiles.keyword, a separate onboarding field Aura reads that this
+ * fallback chain was missing entirely. canonicalElo()/resolveCareerName()
+ * below fix both by reading the real profiles columns instead of trusting
+ * org_members.elo_rating or an incomplete fallback chain, and are reused by
+ * recruiterSearch.js and partnerBridge.js so every recruiter-facing surface
+ * (not just this roster) shows the same real numbers the student sees.
  */
 import { supabaseAdmin } from "./supabase.js"
+
+/**
+ * The single real ELO number for a candidate, matching what THEY see on
+ * their own nav badge / Aura dashboard (see navEloBadgeCanonical.test.js).
+ * Professional-path candidates have a separate, verification-gated engine
+ * (professional_elo) -- profiles.elo_rating is stale/legacy for them
+ * specifically, so it's deliberately excluded there. Every other path
+ * (student, authority, etc.) has elo_rating as its real, Arena-linked score.
+ */
+export function canonicalElo(profile) {
+  const { path_type, elo_rating, role_elo, professional_elo, aura_score } = profile || {}
+  if (path_type === "professional") {
+    return Math.max(role_elo || 0, professional_elo || 0, aura_score || 0)
+  }
+  return (elo_rating != null && elo_rating > 0)
+    ? elo_rating
+    : Math.max(role_elo || 0, professional_elo || 0, aura_score || 0)
+}
+
+/** Batch-resolve career_tracks.name for a set of slugs -> { slug: name }. */
+export async function resolveCareerBySlug(slugs) {
+  const unique = [...new Set((slugs || []).filter(Boolean))]
+  if (!unique.length) return {}
+  const { data: tracks } = await supabaseAdmin.from("career_tracks").select("slug, name").in("slug", unique)
+  return Object.fromEntries((tracks || []).map((t) => [t.slug, t.name]))
+}
+
+/**
+ * The student's real chosen career, in the same priority order Aura itself
+ * displays (career_tracks.name via career_track_slug -> profiles.keyword,
+ * the same onboarding field Aura's own subtitle reads -> target_role ->
+ * domain as a last resort).
+ */
+export function resolveCareerName(profile, trackNameBySlug) {
+  return (
+    (profile.career_track_slug && trackNameBySlug[profile.career_track_slug]) ||
+    profile.keyword ||
+    profile.target_role ||
+    profile.domain ||
+    null
+  )
+}
 
 export const VISIBILITY_COLUMNS = {
   roster:     ["id", "user_id", "name", "role", "department", "batch", "status"],
@@ -104,7 +163,7 @@ export async function fetchLinkStudents(link) {
       .not("completed_at", "is", null),
     supabaseAdmin
       .from("profiles")
-      .select("id, career_track_slug, domain, target_role")
+      .select("id, career_track_slug, domain, target_role, keyword, path_type, elo_rating, role_elo, professional_elo, aura_score")
       .in("id", userIds),
   ])
 
@@ -121,25 +180,29 @@ export async function fetchLinkStudents(link) {
   }
   const interviewedUsers = new Set((interviewRows || []).map((r) => r.user_id))
 
-  const careerSlugs = [...new Set((careerRows || []).map((r) => r.career_track_slug).filter(Boolean))]
-  const trackNameBySlug = {}
-  if (careerSlugs.length) {
-    const { data: tracks } = await supabaseAdmin
-      .from("career_tracks").select("slug, name").in("slug", careerSlugs)
-    for (const t of tracks || []) trackNameBySlug[t.slug] = t.name
-  }
+  const trackNameBySlug = await resolveCareerBySlug((careerRows || []).map((r) => r.career_track_slug))
   const careerByUser = {}
+  const eloByUser = {}
   for (const row of careerRows || []) {
-    careerByUser[row.id] = (row.career_track_slug && trackNameBySlug[row.career_track_slug])
-      || row.target_role || row.domain || null
+    careerByUser[row.id] = resolveCareerName(row, trackNameBySlug)
+    eloByUser[row.id] = canonicalElo(row)
   }
 
-  const enriched = students.map((s) => ({
-    ...withTier(s),
-    top_skills: topSkillsByUser[s.user_id] || [],
-    challenges_completed: completedByUser[s.user_id] || 0,
-    ai_interview_completed: interviewedUsers.has(s.user_id),
-    career: careerByUser[s.user_id] || null,
-  }))
+  const enriched = students.map((s) => {
+    // Prefer the real profiles-sourced ELO over org_members.elo_rating,
+    // which is a separate, never-synced column on this table (see file
+    // header) — fall back to the org_members value only if we somehow have
+    // no profiles row for this student at all.
+    const elo = s.user_id in eloByUser ? eloByUser[s.user_id] : s.elo_rating
+    return {
+      ...s,
+      elo_rating: elo,
+      performance_tier: performanceTier(elo),
+      top_skills: topSkillsByUser[s.user_id] || [],
+      challenges_completed: completedByUser[s.user_id] || 0,
+      ai_interview_completed: interviewedUsers.has(s.user_id),
+      career: careerByUser[s.user_id] || null,
+    }
+  })
   return { students: enriched, error: null }
 }

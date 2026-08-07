@@ -45,19 +45,16 @@
 import { Router } from "express"
 import { supabaseAdmin } from "../lib/supabase.js"
 import { requireAuth } from "../lib/auth.js"
+import { performanceTier, canonicalElo, resolveCareerBySlug, resolveCareerName } from "../lib/orgStudentVisibility.js"
 
-// Mirrors backend/server/lib/orgStudentVisibility.js's performanceTier() —
-// not imported from there because that module is scoped to the org/roster
-// domain; duplicating a 5-line pure function is cheaper and safer here than
-// creating a cross-domain import for something this small. Keep the bands
-// in sync if either changes.
-function performanceTier(elo) {
-  const e = elo || 0
-  if (e >= 1200) return "Expert"
-  if (e >= 1000) return "Advanced"
-  if (e >= 900)  return "Intermediate"
-  return "Beginner"
-}
+// 2026-08-07: performanceTier() was previously a 5-line local duplicate of
+// orgStudentVisibility.js's function (deliberately, per the original
+// comment here — cheap to keep two copies in sync for something that small).
+// canonicalElo()/resolveCareerBySlug()/resolveCareerName() are NOT that
+// small — resolveCareerBySlug is a real DB query, and canonicalElo encodes a
+// path_type-dependent rule (see its doc comment) that would silently drift
+// if duplicated. Importing here instead, same as partnerBridge.js already
+// does for performanceTier.
 
 const router = Router()
 
@@ -79,7 +76,7 @@ const RESULT_FIELDS = [
   "id", "username", "display_name", "avatar_url", "headline",
   "current_role_title", "current_company", "domain", "target_role",
   "path_type", "years_of_experience", "location",
-  "role_elo", "professional_elo", "aura_score",
+  "role_elo", "professional_elo", "aura_score", "elo_rating", "keyword", "career_track_slug",
   "uan_verified", "education_verified",
   "employment_status", "notice_period_ends_at", // so the UI can label "Notice period" vs "Open to offers" — never surfaces active_hidden rows since the query filters those out entirely
 ].join(", ")
@@ -122,7 +119,7 @@ router.get("/recruiter/search", requireAuth, requireRecruiter(), async (req, res
     }
     const minEloNum = parseInt(minElo, 10)
     if (Number.isFinite(minEloNum)) {
-      query = query.or(`professional_elo.gte.${minEloNum},role_elo.gte.${minEloNum},aura_score.gte.${minEloNum}`)
+      query = query.or(`professional_elo.gte.${minEloNum},role_elo.gte.${minEloNum},aura_score.gte.${minEloNum},elo_rating.gte.${minEloNum}`)
     }
 
     query = query.order("updated_at", { ascending: false }).range(offset, offset + limit - 1)
@@ -146,9 +143,16 @@ router.get("/recruiter/search", requireAuth, requireRecruiter(), async (req, res
       }
     }
 
+    const trackNameBySlug = await resolveCareerBySlug((candidates || []).map(c => c.career_track_slug))
     const enriched = (candidates || []).map(c => {
-      const tierScore = Math.max(c.role_elo || 0, c.professional_elo || 0, c.aura_score || 0)
-      return { ...c, performance_tier: performanceTier(tierScore), topSkills: skillsByUser[c.id] || [] }
+      const elo = canonicalElo(c)
+      return {
+        ...c,
+        elo,
+        performance_tier: performanceTier(elo),
+        career: resolveCareerName(c, trackNameBySlug),
+        topSkills: skillsByUser[c.id] || [],
+      }
     })
     res.json({ candidates: enriched, total: count ?? enriched.length, limit, offset })
   } catch (err) {
