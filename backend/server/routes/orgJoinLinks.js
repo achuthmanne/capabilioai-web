@@ -131,13 +131,18 @@ router.post("/join/:token", requireAuth, async (req, res) => {
   if (claimErr || !claimed)
     return res.status(410).json({ error: "This invite link is no longer valid.", reason: "max_uses_reached" })
 
+  // display_name is what most students actually have set (name is often
+  // blank — see recruiterSearch.js/partnerBridge.js RESULT_FIELDS, which
+  // treat display_name as the primary label). Falling straight to email
+  // when only `name` was checked meant most rosters showed an email address
+  // in the "Name" column instead of the student's real name.
   const { data: profile } = await supabaseAdmin
-    .from("profiles").select("name, email").eq("id", userId).single()
+    .from("profiles").select("name, display_name, username, email").eq("id", userId).single()
 
   const { data: member, error: insertErr } = await supabaseAdmin
     .from("org_members").insert({
       org_id: claimed.org_id, user_id: userId,
-      name: profile?.name || req.user.email || "Member",
+      name: profile?.display_name || profile?.name || profile?.username || req.user.email || "Member",
       email: profile?.email || req.user.email || "",
       role: claimed.role, department: claimed.department, batch: claimed.batch,
       status: "active", joined_at: new Date().toISOString(),

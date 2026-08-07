@@ -123,6 +123,12 @@ export const orgApi = {
   resolveCompanyInvite: (token) => request("GET",  `/org/company-invite/${token}`),
   acceptCompanyInvite:  (token) => request("POST", `/org/company-invite/${token}/accept`),
   declineCompanyInvite: (token) => request("POST", `/org/company-invite/${token}/decline`),
+
+  // Placement cell: approve/deny a recruiter's request to contact one
+  // specific student (2026-08-06) — see backend/server/routes/
+  // orgCompanyLinks.js's access-requests routes.
+  listAccessRequests:  (status = "pending") => request("GET", `/org/company-links/access-requests?status=${status}`),
+  decideAccessRequest: (id, decision) => request("POST", `/org/company-links/access-requests/${id}/decide`, { decision }),
 }
 
 // ══════════════════════════════════════════
