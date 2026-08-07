@@ -49,10 +49,100 @@
  * since both are in the same app/deploy unit.
  */
 import { Router } from "express"
+import crypto from "crypto"
 import { supabaseAdmin } from "../lib/supabase.js"
 import { fetchLinkStudents, performanceTier } from "../lib/orgStudentVisibility.js"
 
 const router = Router()
+
+// ─── Recruiter -> candidate messaging + interview scheduling (2026-08-07) ───
+// Requested: "rather than email whenever recruiter likes candidate profile
+// recruiter can send message to candidate and schedule a call for interview
+// so remove email kind of thing... for students it doesn't work if recruiter
+// wants to connect with student recruiter has to go through placement team
+// only." Confirmed via AskUserQuestion: direct messaging once a student
+// access request is approved (not always-3-way through placement cell), and
+// scheduling carries time + notification only (no calendar/video integration
+// in this pass).
+//
+// A capabilio-recruiter company has no profiles row in this Supabase
+// project, so recruiter_messages.from_user_id / interview_schedules.
+// recruiter_id (both real uuid columns, no FK enforced -- confirmed via
+// information_schema) need a stand-in identity. partnerPseudoId derives a
+// STABLE uuid from partnerCompanyId (same company always maps to the same
+// id, so a thread/schedule list can be queried back), not a random one.
+// This is a pseudo-identity for message threading only -- it is never
+// treated as a real profiles.id anywhere (no join against profiles happens
+// on these ids).
+function partnerPseudoId(partnerCompanyId) {
+  const hash = crypto.createHash("sha256").update(String(partnerCompanyId || "unknown-partner-company")).digest("hex")
+  return [
+    hash.slice(0, 8),
+    hash.slice(8, 12),
+    "5" + hash.slice(13, 16), // version nibble forced to 5 (name-based), rest from the hash
+    ((parseInt(hash[16], 16) & 0x3) | 0x8).toString(16) + hash.slice(17, 20), // variant bits forced to 10xx
+    hash.slice(20, 32),
+  ].join("-")
+}
+
+// Shared gate for contacting a STUDENT candidate: the recruiter must be
+// messaging/scheduling through an active connection to the student's own
+// college (linkId), and that specific student's access request on that
+// link must already be "approved" by the college's placement cell (decided
+// in college.js -- nothing in this file can self-approve). Professional-
+// path candidates skip this gate entirely (open direct contact), per the
+// confirmed product decision. Mirrors the existing request-access flow
+// below (POST /company-links/:linkId/students/:studentId/request-access)
+// rather than inventing a second approval concept.
+async function checkStudentAccessGate(studentId, linkId) {
+  if (!linkId) {
+    return { status: 403, error: "This candidate is a student — contact requires an approved request through their college's placement team first." }
+  }
+  const { data: link } = await supabaseAdmin
+    .from("org_company_links")
+    .select("id, institution_org_id, status")
+    .eq("id", linkId)
+    .maybeSingle()
+  if (!link || link.status !== "active") {
+    return { status: 403, error: "This college connection is not active." }
+  }
+  const { data: member } = await supabaseAdmin
+    .from("org_members")
+    .select("id")
+    .eq("org_id", link.institution_org_id)
+    .eq("user_id", studentId)
+    .eq("role", "student")
+    .maybeSingle()
+  if (!member) {
+    return { status: 404, error: "This student isn't part of that college's roster." }
+  }
+  const { data: reqRow } = await supabaseAdmin
+    .from("recruiter_student_access_requests")
+    .select("status")
+    .eq("org_company_link_id", linkId)
+    .eq("student_id", studentId)
+    .maybeSingle()
+  if (reqRow?.status !== "approved") {
+    return { status: 403, error: "Contacting this student requires placement-team approval first. Request access from the College Connections roster, then wait for it to be approved." }
+  }
+  return null
+}
+
+// Re-verifies the same discoverability gate every other route in this file
+// uses (recruiter_discoverable / employment_status / org_type) -- a message
+// or schedule request must not be usable to reach a candidate who isn't
+// actually visible to recruiters (e.g. an old cached id).
+async function loadVisibleCandidate(id) {
+  const { data } = await supabaseAdmin
+    .from("profiles")
+    .select("id, display_name, username, path_type, recruiter_discoverable, employment_status, org_type")
+    .eq("id", id)
+    .eq("recruiter_discoverable", true)
+    .neq("employment_status", "active_hidden")
+    .is("org_type", null)
+    .maybeSingle()
+  return data || null
+}
 
 function requirePartnerSecret(req, res, next) {
   const expected = process.env.PARTNER_BRIDGE_SECRET
@@ -217,6 +307,157 @@ router.get("/candidates/:id", async (req, res) => {
     })
   } catch (err) {
     console.error("[partner-bridge/candidates/:id]", err.message)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /candidates/:id/message — send a message to a candidate.
+// Body: { partnerCompanyId, companyName, linkId (required for students),
+//         subject, body }
+router.post("/candidates/:id/message", async (req, res) => {
+  try {
+    const { id } = req.params
+    const { partnerCompanyId, companyName, linkId, subject, body } = req.body || {}
+    if (!partnerCompanyId) return res.status(400).json({ error: "partnerCompanyId is required." })
+    if (!body || !String(body).trim()) return res.status(400).json({ error: "body is required." })
+
+    const candidate = await loadVisibleCandidate(id)
+    if (!candidate) return res.status(404).json({ error: "Candidate not found or not visible to recruiters." })
+
+    if (candidate.path_type === "student") {
+      const gateErr = await checkStudentAccessGate(id, linkId)
+      if (gateErr) return res.status(gateErr.status).json({ error: gateErr.error })
+    }
+
+    const fromId = partnerPseudoId(partnerCompanyId)
+    const { data, error } = await supabaseAdmin.from("recruiter_messages").insert({
+      from_user_id: fromId,
+      to_user_id: id,
+      message_type: "message",
+      subject: subject ? String(subject).slice(0, 200) : null,
+      body: String(body).trim(),
+    }).select().single()
+    if (error) return res.status(500).json({ error: error.message })
+
+    // Best-effort — the message itself already succeeded above regardless
+    // of whether the candidate's notification bell insert works.
+    await supabaseAdmin.from("notifications").insert({
+      user_id: id,
+      type: "recruiter_message",
+      title: "New Message",
+      body: `${companyName || "A recruiter"} sent you a message${subject ? `: ${subject}` : ""}`,
+      entity_id: data.id,
+      entity_type: "recruiter_message",
+    }).catch(() => {})
+
+    console.log(`[partner-bridge] message sent to candidate ${id} from partner company ${partnerCompanyId}`)
+    res.json({ success: true, message: data })
+  } catch (err) {
+    console.error("[partner-bridge/candidates/:id/message]", err.message)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// GET /candidates/:id/messages?partnerCompanyId=X — full thread with this candidate.
+router.get("/candidates/:id/messages", async (req, res) => {
+  try {
+    const { id } = req.params
+    const partnerCompanyId = String(req.query.partnerCompanyId || "").trim()
+    if (!partnerCompanyId) return res.status(400).json({ error: "partnerCompanyId query param is required." })
+    const fromId = partnerPseudoId(partnerCompanyId)
+
+    const { data, error } = await supabaseAdmin
+      .from("recruiter_messages")
+      .select("id, from_user_id, to_user_id, subject, body, created_at")
+      .or(`and(from_user_id.eq.${fromId},to_user_id.eq.${id}),and(from_user_id.eq.${id},to_user_id.eq.${fromId})`)
+      .order("created_at", { ascending: true })
+      .limit(200)
+    if (error) return res.status(500).json({ error: error.message })
+
+    res.json({ messages: (data || []).map((m) => ({ ...m, direction: m.from_user_id === fromId ? "outgoing" : "incoming" })) })
+  } catch (err) {
+    console.error("[partner-bridge/candidates/:id/messages]", err.message)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /candidates/:id/schedule — schedule an interview call with a candidate.
+// Body: { partnerCompanyId, companyName, linkId (required for students),
+//         scheduled_at, duration_mins, interview_type, meeting_link, title, description }
+// Time + notification only in this pass (per confirmed scope) — no calendar
+// invite or video-room provisioning.
+router.post("/candidates/:id/schedule", async (req, res) => {
+  try {
+    const { id } = req.params
+    const {
+      partnerCompanyId, companyName, linkId,
+      scheduled_at, duration_mins, interview_type, meeting_link, title, description,
+    } = req.body || {}
+    if (!partnerCompanyId) return res.status(400).json({ error: "partnerCompanyId is required." })
+    if (!scheduled_at) return res.status(400).json({ error: "scheduled_at is required." })
+    const when = new Date(scheduled_at)
+    if (Number.isNaN(when.getTime())) return res.status(400).json({ error: "scheduled_at must be a valid date/time." })
+
+    const candidate = await loadVisibleCandidate(id)
+    if (!candidate) return res.status(404).json({ error: "Candidate not found or not visible to recruiters." })
+
+    if (candidate.path_type === "student") {
+      const gateErr = await checkStudentAccessGate(id, linkId)
+      if (gateErr) return res.status(gateErr.status).json({ error: gateErr.error })
+    }
+
+    const recruiterId = partnerPseudoId(partnerCompanyId)
+    const { data, error } = await supabaseAdmin.from("interview_schedules").insert({
+      candidate_id: id,
+      recruiter_id: recruiterId,
+      interview_type: interview_type || "video",
+      stage: "initial",
+      title: title || `Interview call with ${companyName || "a recruiter"}`,
+      description: description || null,
+      scheduled_at: when.toISOString(),
+      duration_mins: Number.isFinite(parseInt(duration_mins, 10)) ? parseInt(duration_mins, 10) : 45,
+      meeting_link: meeting_link || null,
+      status: "scheduled",
+      candidate_status: "pending",
+    }).select().single()
+    if (error) return res.status(500).json({ error: error.message })
+
+    await supabaseAdmin.from("notifications").insert({
+      user_id: id,
+      type: "interview_scheduled",
+      title: "Interview Scheduled",
+      body: `${companyName || "A recruiter"} scheduled a call for ${when.toLocaleString("en-IN")}`,
+      entity_id: data.id,
+      entity_type: "interview_schedule",
+    }).catch(() => {})
+
+    console.log(`[partner-bridge] interview scheduled for candidate ${id} by partner company ${partnerCompanyId}`)
+    res.json({ success: true, schedule: data })
+  } catch (err) {
+    console.error("[partner-bridge/candidates/:id/schedule]", err.message)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// GET /candidates/:id/schedules?partnerCompanyId=X — this company's schedules with this candidate.
+router.get("/candidates/:id/schedules", async (req, res) => {
+  try {
+    const { id } = req.params
+    const partnerCompanyId = String(req.query.partnerCompanyId || "").trim()
+    if (!partnerCompanyId) return res.status(400).json({ error: "partnerCompanyId query param is required." })
+    const recruiterId = partnerPseudoId(partnerCompanyId)
+
+    const { data, error } = await supabaseAdmin
+      .from("interview_schedules")
+      .select("id, interview_type, stage, title, description, scheduled_at, duration_mins, meeting_link, status, candidate_status, created_at")
+      .eq("candidate_id", id)
+      .eq("recruiter_id", recruiterId)
+      .order("scheduled_at", { ascending: true })
+    if (error) return res.status(500).json({ error: error.message })
+
+    res.json({ schedules: data || [] })
+  } catch (err) {
+    console.error("[partner-bridge/candidates/:id/schedules]", err.message)
     res.status(500).json({ error: err.message })
   }
 })

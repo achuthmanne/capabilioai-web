@@ -245,13 +245,13 @@ router.post("/jobs/:id/apply", requireAuth, async (req, res) => {
       const { data: applicant } = await supabaseAdmin.from("profiles")
         .select("name,headline").eq("id", uid).single()
       await supabaseAdmin.from("notifications").insert({
-        user_id:        job.posted_by,
-        type:           "new_application",
-        title:          "New Application",
-        body:           `${applicant?.name || "A candidate"} applied to ${job.title}`,
-        actor_id:       uid,
-        reference_id:   data.id,
-        reference_type: "job_application",
+        user_id:     job.posted_by,
+        type:        "new_application",
+        title:       "New Application",
+        body:        `${applicant?.name || "A candidate"} applied to ${job.title}`,
+        actor_id:    uid,
+        entity_id:   data.id,
+        entity_type: "job_application",
       }).catch(() => {})
     }
 
@@ -334,13 +334,13 @@ router.post("/recruiter/messages", requireAuth, async (req, res) => {
     // Notify recipient
     const { data: sender } = await supabaseAdmin.from("profiles").select("name").eq("id", req.user.id).single()
     await supabaseAdmin.from("notifications").insert({
-      user_id:        to_user_id,
-      type:           "recruiter_message",
-      title:          "New Message",
-      body:           `${sender?.name || "Someone"} sent you a message${subject ? `: ${subject}` : ""}`,
-      actor_id:       req.user.id,
-      reference_id:   data.id,
-      reference_type: "recruiter_message",
+      user_id:     to_user_id,
+      type:        "recruiter_message",
+      title:       "New Message",
+      body:        `${sender?.name || "Someone"} sent you a message${subject ? `: ${subject}` : ""}`,
+      actor_id:    req.user.id,
+      entity_id:   data.id,
+      entity_type: "recruiter_message",
     }).catch(() => {})
 
     res.json({ success: true, message: data })
@@ -372,13 +372,13 @@ router.post("/recruiter/schedule", requireAuth, async (req, res) => {
     // Notify candidate
     const { data: recruiter } = await supabaseAdmin.from("profiles").select("name").eq("id", req.user.id).single()
     await supabaseAdmin.from("notifications").insert({
-      user_id:        candidate_id,
-      type:           "interview_scheduled",
-      title:          "Interview Scheduled",
-      body:           `${recruiter?.name || "A recruiter"} scheduled an interview for ${new Date(scheduled_at).toLocaleDateString("en-IN")}`,
-      actor_id:       req.user.id,
-      reference_id:   data.id,
-      reference_type: "interview_schedule",
+      user_id:     candidate_id,
+      type:        "interview_scheduled",
+      title:       "Interview Scheduled",
+      body:        `${recruiter?.name || "A recruiter"} scheduled an interview for ${new Date(scheduled_at).toLocaleDateString("en-IN")}`,
+      actor_id:    req.user.id,
+      entity_id:   data.id,
+      entity_type: "interview_schedule",
     }).catch(() => {})
 
     res.json({ success: true, schedule: data })
@@ -434,13 +434,13 @@ router.post("/offers", requireAuth, async (req, res) => {
 
     const { data: recruiter } = await supabaseAdmin.from("profiles").select("name").eq("id", req.user.id).single()
     await supabaseAdmin.from("notifications").insert({
-      user_id:        candidate_id,
-      type:           "offer_received",
-      title:          "Offer Letter Received",
-      body:           `You received an offer${role_title ? ` for ${role_title}` : ""}${company ? ` at ${company}` : ""}`,
-      actor_id:       req.user.id,
-      reference_id:   data.id,
-      reference_type: "offer",
+      user_id:     candidate_id,
+      type:        "offer_received",
+      title:       "Offer Letter Received",
+      body:        `You received an offer${role_title ? ` for ${role_title}` : ""}${company ? ` at ${company}` : ""}`,
+      actor_id:    req.user.id,
+      entity_id:   data.id,
+      entity_type: "offer",
     }).catch(() => {})
 
     res.json({ success: true, offer: data })
@@ -554,13 +554,13 @@ router.put("/offers/:id/respond", requireAuth, async (req, res) => {
     // ────────────────────────────────────────────────────────────────────────
 
     await supabaseAdmin.from("notifications").insert({
-      user_id:        offer.recruiter_id,
-      type:           "offer_response",
-      title:          `Offer ${response.charAt(0).toUpperCase() + response.slice(1)}`,
-      body:           `Candidate ${response} your offer`,
-      actor_id:       req.user.id,
-      reference_id:   data.id,
-      reference_type: "offer",
+      user_id:     offer.recruiter_id,
+      type:        "offer_response",
+      title:       `Offer ${response.charAt(0).toUpperCase() + response.slice(1)}`,
+      body:        `Candidate ${response} your offer`,
+      actor_id:    req.user.id,
+      entity_id:   data.id,
+      entity_type: "offer",
     }).catch(() => {})
 
     res.json({ success: true, offer: data })
