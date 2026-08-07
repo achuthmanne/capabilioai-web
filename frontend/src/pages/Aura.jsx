@@ -3531,7 +3531,10 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
     try {
       const base64=await fileToBase64(file)
       await save({ avatarUrl:base64 })
-    } catch(err) { console.error("Avatar upload failed:",err) }
+    } catch(err) {
+      console.error("Avatar upload failed:",err)
+      alert("Couldn't save your profile photo. Please try again.")
+    }
     setAvatarUploading(false)
   }
 

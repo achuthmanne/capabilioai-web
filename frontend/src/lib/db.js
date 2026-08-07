@@ -223,6 +223,14 @@ const toCompat = (data) => {
     onboardingComplete:   data.onboarding_complete  ?? data.onboardingComplete  ?? false,
     // Profile photo
     profilePhotoURL:      data.profile_photo_url    || data.profilePhotoURL     || null,
+    // BUG FIX (2026-08-08): avatarUrl is written to profile_photo_url on save
+    // (see CAMEL_TO_SNAKE above) but was never aliased back on read here --
+    // only profilePhotoURL was. Every render site (Aura.jsx, SettingsPanel.jsx)
+    // reads userData.avatarUrl/avatar_url, not profilePhotoURL, so an upload
+    // appeared to work (optimistic local state) and then vanished on refresh
+    // once userDoc.get() re-fetched without this alias. avatar_url (snake_case,
+    // no such column exists) kept only as a defensive fallback, not a real source.
+    avatarUrl:             data.profile_photo_url    || data.avatarUrl          || data.avatar_url || null,
     coverPhotoURL:        data.cover_photo_url      || data.coverPhotoURL       || null,
     // Career data — these columns are snake_case = camelCase so spread already
     // brings them in, but alias here for any code that might expect camelCase

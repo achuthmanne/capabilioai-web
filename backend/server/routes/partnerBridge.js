@@ -363,7 +363,7 @@ router.get("/candidates/:id", async (req, res) => {
     const { id } = req.params
     const { data: profile, error } = await supabaseAdmin
       .from("profiles")
-      .select(`${RESULT_FIELDS}, skill_graph, experiences`)
+      .select(`${RESULT_FIELDS}, skill_graph, experiences, profile_summary`)
       .eq("id", id)
       .eq("recruiter_discoverable", true)
       .neq("employment_status", "active_hidden")
@@ -424,7 +424,16 @@ router.get("/candidates/:id", async (req, res) => {
     } : null
 
     res.json({
-      candidate: { ...profileRest, elo, performance_tier: performanceTier(elo), career: resolveCareerName(profile, trackNameBySlug) },
+      candidate: {
+        ...profileRest,
+        elo,
+        performance_tier: performanceTier(elo),
+        career: resolveCareerName(profile, trackNameBySlug),
+        // Same field the candidate's own public Portfolio page renders as its
+        // "Bio summary" (Portfolio.jsx) -- either self-written or AI-generated
+        // via Aura.jsx's ProfileSummaryCard, both writing profiles.profile_summary.
+        professionalSummary: profileRest.profile_summary || null,
+      },
       skills: mergeSkillSources(skillRows, profileSkillGraph),
       proofOfSkills: (arenaRows || []).map((r) => ({ ...r, grade: gradeFor(r.score) })),
       careerTimeline: (experiences || []).filter((e) => e && e.company).map(withEmploymentType),
