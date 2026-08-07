@@ -153,6 +153,74 @@ router.get("/candidates", async (req, res) => {
   }
 })
 
+// ─── Recruiter: full candidate portfolio (2026-08-07) ───────────────────────
+// GET /candidates/:id was missing entirely -- capabilio-recruiter's
+// Candidate Discovery card had no way to open a real profile at all (its
+// only "profile" page was a legacy, disconnected Firestore-backed screen
+// that never had data for a Supabase-sourced candidate). This is the real
+// equivalent of capabilio-web's own Aura dashboard, reached by a recruiter:
+// skills (full list, not just top 3), Arena history (only entries the
+// candidate marked visible_in_portfolio -- this endpoint must respect that
+// flag same as the candidate's own public Portfolio page does, a recruiter
+// is not a more-privileged viewer than the public), completed AI interviews,
+// verified certifications, and published portfolio artifacts.
+// Re-applies the exact same discoverability gate as the list endpoint --
+// knowing a candidate's id (e.g. from an old link) must not bypass
+// recruiter_discoverable/employment_status/org_type.
+router.get("/candidates/:id", async (req, res) => {
+  try {
+    const { id } = req.params
+    const { data: profile, error } = await supabaseAdmin
+      .from("profiles")
+      .select(RESULT_FIELDS)
+      .eq("id", id)
+      .eq("recruiter_discoverable", true)
+      .neq("employment_status", "active_hidden")
+      .is("org_type", null)
+      .maybeSingle()
+    if (error) return res.status(500).json({ error: error.message })
+    if (!profile) return res.status(404).json({ error: "Candidate not found or not visible to recruiters." })
+
+    const [
+      { data: skills },
+      { data: arenaRows },
+      { data: interviewRows },
+      { data: certRows },
+      { data: artifactRows },
+    ] = await Promise.all([
+      supabaseAdmin.from("skill_graph")
+        .select("skill_name, domain, elo_value, verification_state, last_proof_date")
+        .eq("user_id", id).eq("is_current", true).order("elo_value", { ascending: false }),
+      supabaseAdmin.from("arena_history")
+        .select("id, title, domain, skill_name, difficulty, score, elo_delta, type, challenge_type, summary, completed_at")
+        .eq("user_id", id).eq("visible_in_portfolio", true)
+        .not("completed_at", "is", null).order("completed_at", { ascending: false }).limit(50),
+      supabaseAdmin.from("interview_sessions")
+        .select("id, module_id, mode, completed_at")
+        .eq("user_id", id).not("completed_at", "is", null).order("completed_at", { ascending: false }),
+      supabaseAdmin.from("professional_certifications")
+        .select("cert_name, cert_type, issuer, verification_status, verified_at")
+        .eq("user_id", id).eq("verification_status", "verified").order("verified_at", { ascending: false }),
+      supabaseAdmin.from("av2_portfolio_artifacts")
+        .select("id, artifact_type, storage_url, created_at")
+        .eq("user_id", id).eq("publish_state", "published").order("created_at", { ascending: false }),
+    ])
+
+    const tierScore = Math.max(profile.role_elo || 0, profile.professional_elo || 0, profile.aura_score || 0)
+    res.json({
+      candidate: { ...profile, performance_tier: performanceTier(tierScore) },
+      skills: skills || [],
+      careerTimeline: arenaRows || [],
+      interviewsCompleted: interviewRows || [],
+      certifications: certRows || [],
+      portfolioArtifacts: artifactRows || [],
+    })
+  } catch (err) {
+    console.error("[partner-bridge/candidates/:id]", err.message)
+    res.status(500).json({ error: err.message })
+  }
+})
+
 router.get("/institutions", async (req, res) => {
   try {
     const { data, error } = await supabaseAdmin
