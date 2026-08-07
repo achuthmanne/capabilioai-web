@@ -152,6 +152,10 @@ export const collegeApi = {
     const qs = new URLSearchParams(params).toString()
     return request("GET", `/college/institutions/${institutionId}/students${qs ? `?${qs}` : ""}`)
   },
+  // 2026-08-07: full-profile drilldown for a roster row click — see
+  // backend/server/routes/college.js's GET /institutions/:id/students/:studentUserId.
+  getStudentDetail: (institutionId, studentUserId) =>
+    request("GET", `/college/institutions/${institutionId}/students/${studentUserId}`),
   getStats:      (institutionId) => request("GET", `/college/institutions/${institutionId}/stats`),
   getBranches:   (institutionId) => request("GET", `/college/institutions/${institutionId}/branches`),
   getLeaderboard: (institutionId, params = {}) => {

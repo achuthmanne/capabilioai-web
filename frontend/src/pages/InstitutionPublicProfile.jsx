@@ -206,7 +206,7 @@ function buildBody(d) {
     </div>
     <div class="ip-sh"><h2>Departments</h2><div class="hl"></div><span class="badge" style="background:rgba(247,242,234,.07);color:var(--mut2)">${canon.branches && canon.branches.length ? 'Live' : 'Add via Settings'}</span></div>
     ${canon.branches && canon.branches.length
-      ? '<div class="ip-dept-grid">' + canon.branches.slice(0,4).map((b,i)=>`<div class="ip-dept${i===0?' feat':''}"><div class="dd-code">${b.department}</div><div class="dd-sub">${b.students} students · avg ELO ${b.avgElo}</div><div class="dd-track"><div class="dd-fill" style="width:${Math.min(100,b.placedPct)}%;background:${C.gold}"></div></div><div class="dd-placed">${b.placedPct}%</div><div class="dd-elo">placed</div></div>`).join('') + '</div>'
+      ? '<div class="ip-dept-grid">' + canon.branches.slice(0,4).map((b,i)=>`<div class="ip-dept${i===0?' feat':''}" data-ip="dept:${encodeURIComponent(b.department)}" style="cursor:pointer" title="View ${b.department} students"><div class="dd-code">${b.department}</div><div class="dd-sub">${b.students} students · avg ELO ${b.avgElo}</div><div class="dd-track"><div class="dd-fill" style="width:${Math.min(100,b.placedPct)}%;background:${C.gold}"></div></div><div class="dd-placed">${b.placedPct}%</div><div class="dd-elo">placed</div></div>`).join('') + '</div>'
       : '<div style="border:1px dashed rgba(255,255,255,.08);border-radius:16px;padding:32px;text-align:center;color:var(--mut2);font-size:12px;margin-bottom:24px">🎓 Department breakdown will appear here once students are linked to your institution</div>'}
     <div class="ip-sh"><h2>Recruiter Network</h2><div class="hl"></div><span class="badge" style="background:rgba(79,212,163,.12);color:var(--green)">● Active</span></div>
     ${canon.partnersCount ? `<div style="border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px;text-align:center;color:var(--mut);font-size:13px;margin-bottom:24px">🤝 <b style="color:var(--txt)">${canon.partnersCount}</b> recruiter${canon.partnersCount===1?'':'s'} ${canon.partnersCount===1?'has':'have'} engaged your shared students</div>` : '<div style="border:1px dashed rgba(255,255,255,.08);border-radius:16px;padding:32px;text-align:center;color:var(--mut2);font-size:12px;margin-bottom:24px">🤝 Recruiter partners will appear here as they connect through Capabilio</div>'}
@@ -372,6 +372,9 @@ export default function InstitutionPublicProfile({ onBack, onAction, userData, m
       if (!b) return
       const act = b.dataset.ip
       if (act === "back" && onBack) onBack()
+      // "dept:<encoded department name>" — added 2026-08-07 so department
+      // cards actually navigate somewhere instead of being purely decorative.
+      else if (act && act.startsWith("dept:")) onAction && onAction("department", decodeURIComponent(act.slice(5)))
       else if (onAction) onAction(act)
     }
     root.addEventListener("click", onClick)

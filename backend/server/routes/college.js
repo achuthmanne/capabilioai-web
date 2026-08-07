@@ -31,6 +31,7 @@ import { Router } from "express"
 import { supabaseAdmin } from "../lib/supabase.js"
 import { requireAuth } from "../lib/auth.js"
 import { recordEloEvent } from "../lib/eloLedger.js"
+import { canonicalElo, resolveCareerBySlug, resolveCareerName, performanceTier } from "../lib/orgStudentVisibility.js"
 
 const router = Router()
 
@@ -1094,6 +1095,24 @@ router.post("/institutions/:id/roster/import", requireAuth, requireInstitutionAd
 // apart on what "active" means.
 const ACTIVE_STATUSES = ["active", "placed", "transitioning", "professional_active"]
 
+// 2026-08-07: shared by the aggregate reporting routes below (stats,
+// branches) — batch-resolves the REAL per-student ELO via canonicalElo()
+// instead of trusting institution_students.elo_current, which is a cached
+// column that isn't reliably kept in sync with the student's actual
+// profiles data (confirmed: a real test student had elo_current="0" while
+// their profiles.elo_rating was 456). Falls back to elo_current only if a
+// student has no profiles row at all (shouldn't happen, but keeps this from
+// ever turning a present number into a missing one).
+async function realEloByStudent(institutionStudents) {
+  const userIds = (institutionStudents || []).map((s) => s.student_user_id).filter(Boolean)
+  if (!userIds.length) return {}
+  const { data: profiles } = await supabaseAdmin
+    .from("profiles")
+    .select("id, path_type, elo_rating, role_elo, professional_elo, aura_score")
+    .in("id", userIds)
+  return Object.fromEntries((profiles || []).map((p) => [p.id, canonicalElo(p)]))
+}
+
 // ── GET /institutions/:id/students — college.getStudentRoster ─────────────────
 // Extended 2026-07-31 (Phase 2 — placement-cell advanced filters) with role,
 // task-count, interview-status, share-status and active/inactive filtering.
@@ -1163,13 +1182,28 @@ router.get("/institutions/:id/students", requireAuth, requireInstitutionStaff(),
   // Always computed (not just when filtering on it) so the roster UI can
   // show career role / task count / AI interview count columns on every
   // page, not just filtered ones.
+  //
+  // 2026-08-07 bug fix: this previously trusted institution_students.
+  // elo_current directly, and resolved career role from only job_role/
+  // target_role. For a real test student both were wrong/empty — elo_current
+  // sat at its unsynced default "0" while the student's own Aura dashboard
+  // (profiles.elo_rating) showed 456, and job_role/target_role were both
+  // null while their real chosen role lived in profiles.keyword. Same root
+  // cause class as the recruiter-facing roster fix in orgStudentVisibility.js
+  // (org_members.elo_rating there, institution_students.elo_current here —
+  // two different stale/unsynced columns, same fix: read the real profiles
+  // columns via the shared canonicalElo()/resolveCareerName() helpers so
+  // every audience — student, recruiter, institution admin — sees the same
+  // real number and role for a given candidate.
   const userIds = data.map((s) => s.student_user_id).filter(Boolean)
   const [{ data: profileRows }, { data: interviewRows }] = await Promise.all([
     userIds.length
-      ? supabaseAdmin.from("profiles").select("id, job_role, target_role, arena_completed").in("id", userIds)
+      ? supabaseAdmin.from("profiles").select(
+          "id, job_role, target_role, arena_completed, elo_rating, role_elo, professional_elo, aura_score, path_type, career_track_slug, keyword, domain"
+        ).in("id", userIds)
       : Promise.resolve({ data: [] }),
     userIds.length
-      ? supabaseAdmin.from("interview_sessions").select("user_id").in("user_id", userIds)
+      ? supabaseAdmin.from("interview_sessions").select("user_id").in("user_id", userIds).not("completed_at", "is", null)
       : Promise.resolve({ data: [] }),
   ])
   const profileById = Object.fromEntries((profileRows || []).map((p) => [p.id, p]))
@@ -1177,12 +1211,17 @@ router.get("/institutions/:id/students", requireAuth, requireInstitutionStaff(),
   for (const row of interviewRows || []) {
     interviewCountById[row.user_id] = (interviewCountById[row.user_id] || 0) + 1
   }
+  const trackNameBySlug = await resolveCareerBySlug((profileRows || []).map((p) => p.career_track_slug))
 
-  let enriched = data.map(({ student_user_id, ...rest }) => {
+  let enriched = data.map(({ student_user_id, elo_current, ...rest }) => {
     const profile = profileById[student_user_id] || {}
+    const elo = profile.id ? canonicalElo(profile) : (elo_current || 0)
     return {
       ...rest,
-      careerRole: profile.job_role || profile.target_role || null,
+      studentUserId: student_user_id || null,
+      elo_current: elo,
+      performanceTier: performanceTier(elo),
+      careerRole: profile.id ? (resolveCareerName(profile, trackNameBySlug) || profile.job_role) : (rest.careerRole || null),
       taskCount: profile.arena_completed || 0,
       aiInterviewCount: interviewCountById[student_user_id] || 0,
     }
@@ -1206,6 +1245,79 @@ router.get("/institutions/:id/students", requireAuth, requireInstitutionStaff(),
   const paged = enriched.slice(pageStart, pageStart + pageSize)
 
   res.status(200).json({ students: paged, page, pageSize, total: filteredTotal, filteredInMemory: true })
+})
+
+// ── GET /institutions/:id/students/:studentUserId — full student detail ────
+// Added 2026-08-07 for the roster "click a row → open their full profile"
+// drilldown (previously didn't exist anywhere on the institution side — the
+// roster only returned an allowlisted summary, and student_user_id itself
+// wasn't even present in the list response for a UI to act on). Verifies
+// the student actually has an institution_students row for THIS institution
+// before returning anything, so a stale/foreign id can't pull an unrelated
+// student's record. Shape mirrors partnerBridge.js's GET /candidates/:id
+// (same skills/career-timeline/interviews/certifications/portfolio fields)
+// — an institution admin is not a more-privileged viewer than the public
+// Portfolio page or a recruiter, so Arena history still respects
+// visible_in_portfolio the same way.
+router.get("/institutions/:id/students/:studentUserId", requireAuth, requireInstitutionStaff(), async (req, res) => {
+  try {
+    const { id: institutionId, studentUserId } = req.params
+
+    const { data: link } = await supabaseAdmin
+      .from("institution_students")
+      .select("id, department, batch, roll_number, status, job_readiness_score, shared_with_recruiters, linked_at")
+      .eq("institution_id", institutionId)
+      .eq("student_user_id", studentUserId)
+      .maybeSingle()
+    if (!link) return res.status(404).json({ error: "This student isn't on your roster." })
+
+    // Same own-department scoping as the roster list route above.
+    if (req.institutionRole === "professor" || req.institutionRole === "mentor") {
+      const { data: staffRow } = await supabaseAdmin
+        .from("institution_staff")
+        .select("department, scope")
+        .eq("institution_id", institutionId).eq("user_id", req.user.id).eq("status", "active").maybeSingle()
+      if (staffRow?.scope === "own_department" && staffRow.department && staffRow.department !== link.department) {
+        return res.status(403).json({ error: "This student is outside your assigned department." })
+      }
+    }
+
+    const { data: profile, error } = await supabaseAdmin
+      .from("profiles")
+      .select("id, display_name, username, avatar_url, headline, current_role_title, current_company, domain, target_role, path_type, location, role_elo, professional_elo, aura_score, elo_rating, keyword, career_track_slug, uan_verified, education_verified")
+      .eq("id", studentUserId)
+      .maybeSingle()
+    if (error) return res.status(500).json({ error: error.message })
+    if (!profile) return res.status(404).json({ error: "Student profile not found." })
+
+    const [{ data: skills }, { data: arenaRows }, { data: interviewRows }, { data: certRows }, { data: artifactRows }, trackNameBySlug] = await Promise.all([
+      supabaseAdmin.from("skill_graph").select("skill_name, domain, elo_value, verification_state, last_proof_date")
+        .eq("user_id", studentUserId).eq("is_current", true).order("elo_value", { ascending: false }),
+      supabaseAdmin.from("arena_history").select("id, title, domain, skill_name, difficulty, score, elo_delta, type, challenge_type, summary, completed_at")
+        .eq("user_id", studentUserId).eq("visible_in_portfolio", true).not("completed_at", "is", null).order("completed_at", { ascending: false }).limit(50),
+      supabaseAdmin.from("interview_sessions").select("id, module_id, mode, completed_at")
+        .eq("user_id", studentUserId).not("completed_at", "is", null).order("completed_at", { ascending: false }),
+      supabaseAdmin.from("professional_certifications").select("cert_name, cert_type, issuer, verification_status, verified_at")
+        .eq("user_id", studentUserId).eq("verification_status", "verified").order("verified_at", { ascending: false }),
+      supabaseAdmin.from("av2_portfolio_artifacts").select("id, artifact_type, storage_url, created_at")
+        .eq("user_id", studentUserId).eq("publish_state", "published").order("created_at", { ascending: false }),
+      resolveCareerBySlug([profile.career_track_slug]),
+    ])
+
+    const elo = canonicalElo(profile)
+    res.json({
+      student: link,
+      candidate: { ...profile, elo, performance_tier: performanceTier(elo), career: resolveCareerName(profile, trackNameBySlug) },
+      skills: skills || [],
+      careerTimeline: arenaRows || [],
+      interviewsCompleted: interviewRows || [],
+      certifications: certRows || [],
+      portfolioArtifacts: artifactRows || [],
+    })
+  } catch (err) {
+    console.error("[college/institutions/:id/students/:studentUserId]", err.message)
+    res.status(500).json({ error: err.message })
+  }
 })
 
 // ── PATCH /institutions/:id/students/:studentId/share — placement-cell share control ──
@@ -1553,18 +1665,24 @@ router.get("/institutions/:id/leaderboard", requireAuth, requireInstitutionStaff
 })
 
 // ── GET /institutions/:id/stats — college.getCollegeStats ─────────────────────
+// 2026-08-07: avgElo previously trusted institution_students.elo_current
+// directly, same stale/unsynced-column bug as the roster route above (see
+// its header comment) — a college with real, active students could still
+// show "avg ELO 0" if that cached column was never updated. Now resolves
+// the real per-student ELO via canonicalElo() the same way.
 router.get("/institutions/:id/stats", requireAuth, requireInstitutionStaff(), async (req, res) => {
   const { id: institutionId } = req.params
 
   const { data: students, error } = await supabaseAdmin
     .from("institution_students")
-    .select("elo_current, job_readiness_score, status, department")
+    .select("student_user_id, elo_current, job_readiness_score, status, department")
     .eq("institution_id", institutionId)
 
   if (error) return res.status(500).json({ error: error.message })
 
+  const realEloById = await realEloByStudent(students)
   const total = students.length
-  const avgElo = total ? students.reduce((s, r) => s + (Number(r.elo_current) || 0), 0) / total : 0
+  const avgElo = total ? students.reduce((s, r) => s + (realEloById[r.student_user_id] ?? (Number(r.elo_current) || 0)), 0) / total : 0
   const avgJobReadiness = total
     ? students.reduce((s, r) => s + (Number(r.job_readiness_score) || 0), 0) / total
     : 0
@@ -1590,22 +1708,24 @@ router.get("/institutions/:id/stats", requireAuth, requireInstitutionStaff(), as
 })
 
 // ── GET /institutions/:id/branches — college.getBranchBreakdown ──────────────
+// 2026-08-07: same elo_current staleness fix as /stats above.
 router.get("/institutions/:id/branches", requireAuth, requireInstitutionStaff(), async (req, res) => {
   const { id: institutionId } = req.params
 
   const { data: students, error } = await supabaseAdmin
     .from("institution_students")
-    .select("department, elo_current, job_readiness_score, status")
+    .select("student_user_id, department, elo_current, job_readiness_score, status")
     .eq("institution_id", institutionId)
 
   if (error) return res.status(500).json({ error: error.message })
 
+  const realEloById = await realEloByStudent(students)
   const byDept = {}
   for (const s of students) {
     const key = s.department || "Unassigned"
     if (!byDept[key]) byDept[key] = { department: key, count: 0, eloSum: 0, jobReadySum: 0, placed: 0 }
     byDept[key].count += 1
-    byDept[key].eloSum += Number(s.elo_current) || 0
+    byDept[key].eloSum += realEloById[s.student_user_id] ?? (Number(s.elo_current) || 0)
     byDept[key].jobReadySum += Number(s.job_readiness_score) || 0
     if (s.status === "placed" || s.status === "transitioning" || s.status === "professional_active") {
       byDept[key].placed += 1

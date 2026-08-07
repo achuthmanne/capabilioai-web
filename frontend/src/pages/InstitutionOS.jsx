@@ -2010,7 +2010,7 @@ function NotificationCenterPanel() {
   )
 }
 
-function IntelligencePage({ userData, user, members, tasks, auditLogs, auditLoading, canonical, openThreadFor, pendingThreadContext, clearPendingThreadContext, initialTab = "pulse" }) {
+function IntelligencePage({ userData, user, members, tasks, auditLogs, auditLoading, canonical, openThreadFor, pendingThreadContext, clearPendingThreadContext, initialTab = "pulse", onDepartmentClick }) {
   const [tab, setTab] = useState(initialTab)
   const isCollege = (userData?.org_type || "college") !== "company"
 
@@ -2140,7 +2140,8 @@ function IntelligencePage({ userData, user, members, tasks, auditLogs, auditLoad
               const readiness = b.avgJobReadiness || 0
               const heat = readiness >= 70 ? T.green : readiness >= 40 ? T.amber : T.red
               return (
-                <div key={b.department} style={{ position: "relative", border: `1px solid ${heat}40`, background: `${heat}14`, borderRadius: 12, padding: 12 }}>
+                <div key={b.department} onClick={() => onDepartmentClick?.(b.department)}
+                  style={{ position: "relative", border: `1px solid ${heat}40`, background: `${heat}14`, borderRadius: 12, padding: 12, cursor: onDepartmentClick ? "pointer" : "default" }}>
                   <div style={{ position: "absolute", top: 8, right: 10, fontSize: 10, fontWeight: 800, color: T.ink4, fontFamily: MONO }}>#{i + 1}</div>
                   <div style={{ fontSize: 12, fontWeight: 700, color: T.ink, paddingRight: 20 }}>{b.department}</div>
                   <div style={{ fontSize: 22, fontWeight: 800, color: heat, fontFamily: MONO, marginTop: 4 }}>{readiness}%</div>
@@ -2543,6 +2544,13 @@ function CanonicalRosterPanel({ canonical, openThreadFor }) {
     setActionId(null)
   }
 
+  // 2026-08-07: "click a student → open their full profile" — previously
+  // didn't exist anywhere on the institution side. Reuses the same
+  // GET /institutions/:id/students/:studentUserId this session added,
+  // opened in a lightweight modal rather than a full page navigation so the
+  // roster's filters/scroll position stay intact behind it.
+  const [viewingStudentId, setViewingStudentId] = useState(null)
+
   // 2026-08-02: outcome recording (higher studies / entrepreneurship) — feeds
   // the NAAC report. Placement itself is never edited here — that only ever
   // moves through the TPO-confirm gate on the offers/placements flow.
@@ -2656,7 +2664,14 @@ function CanonicalRosterPanel({ canonical, openThreadFor }) {
             <tbody>
               {students.map(s => (
                 <tr key={s.id} style={{ borderBottom: `1px solid ${T.border}` }}>
-                  <td style={{ padding: "8px" }}>{s.roll_number || "—"}</td>
+                  <td style={{ padding: "8px" }}>
+                    {s.studentUserId ? (
+                      <button onClick={() => setViewingStudentId(s.studentUserId)} title="View full profile"
+                        style={{ background: "none", border: "none", padding: 0, font: "inherit", color: T.sky, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}>
+                        {s.roll_number || "View profile"}
+                      </button>
+                    ) : (s.roll_number || "—")}
+                  </td>
                   <td style={{ padding: "8px" }}>{s.department || "—"}</td>
                   <td style={{ padding: "8px" }}>{s.batch || "—"}</td>
                   <td style={{ padding: "8px" }}>{s.careerRole || "—"}</td>
@@ -2718,6 +2733,14 @@ function CanonicalRosterPanel({ canonical, openThreadFor }) {
         </div>
       )}
 
+      {viewingStudentId && (
+        <StudentDetailModal
+          institutionId={institution.id}
+          studentUserId={viewingStudentId}
+          onClose={() => setViewingStudentId(null)}
+        />
+      )}
+
       {editingStudent && (
         <Modal title={`Edit ${editingStudent.roll_number || "student"}`} onClose={() => setEditingStudent(null)}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -2768,6 +2791,113 @@ function CanonicalRosterPanel({ canonical, openThreadFor }) {
         </Modal>
       )}
     </div>
+  )
+}
+
+// ─── Student full-profile drilldown modal (2026-08-07) ──────────────────────
+// Opened from CanonicalRosterPanel's roll-number link. Mirrors what a
+// recruiter sees via partnerBridge.js's GET /candidates/:id and what the
+// student sees on their own Aura dashboard — same canonical ELO/career
+// (see college.js's GET /institutions/:id/students/:studentUserId), same
+// visible_in_portfolio-gated Arena history. An institution admin isn't a
+// more-privileged viewer than either of those audiences.
+function StudentDetailModal({ institutionId, studentUserId, onClose }) {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true); setError(null)
+    collegeApi.getStudentDetail(institutionId, studentUserId)
+      .then((res) => { if (!cancelled) setData(res) })
+      .catch((err) => { if (!cancelled) setError(err.message || "Couldn't load this student.") })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [institutionId, studentUserId])
+
+  const c = data?.candidate
+  const displayName = c?.display_name || c?.username || "Student"
+
+  return (
+    <Modal title={loading ? "Loading…" : displayName} onClose={onClose} width={620}>
+      {loading ? (
+        <div style={{ padding: "24px 0", textAlign: "center", color: T.ink4, fontSize: 12.5 }}>Loading student profile…</div>
+      ) : error ? (
+        <div style={{ padding: "24px 0", textAlign: "center", color: T.red, fontSize: 12.5 }}>{error}</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: "flex", gap: 14, alignItems: "flex-start", flexWrap: "wrap" }}>
+            {c.avatar_url ? (
+              <img src={c.avatar_url} alt={displayName} style={{ width: 56, height: 56, borderRadius: 14, objectFit: "cover" }} />
+            ) : (
+              <div style={{ width: 56, height: 56, borderRadius: 14, background: T.bg, border: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 18, color: T.sky }}>
+                {displayName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
+              </div>
+            )}
+            <div style={{ flex: 1, minWidth: 180 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: T.ink }}>{displayName}</div>
+              <div style={{ fontSize: 12, color: T.ink3, marginTop: 2 }}>
+                {[data.student.department, data.student.batch, data.student.roll_number].filter(Boolean).join(" · ") || "—"}
+              </div>
+              {c.career && <div style={{ fontSize: 12, color: T.sky, marginTop: 3, fontWeight: 600 }}>🎯 {c.career}</div>}
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ textAlign: "center", padding: "6px 14px", background: T.bg, borderRadius: 10, border: `1px solid ${T.border}` }}>
+                <div style={{ fontWeight: 800, fontSize: 18, color: T.sky }}>{c.elo}</div>
+                <div style={{ fontSize: 9.5, color: T.ink4 }}>ELO · {c.performance_tier}</div>
+              </div>
+              <div style={{ textAlign: "center", padding: "6px 14px", background: T.bg, borderRadius: 10, border: `1px solid ${T.border}` }}>
+                <div style={{ fontWeight: 800, fontSize: 18, color: T.green }}>{data.student.job_readiness_score != null ? `${data.student.job_readiness_score}%` : "—"}</div>
+                <div style={{ fontSize: 9.5, color: T.ink4 }}>Job Ready</div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: T.ink, marginBottom: 8 }}>Skills</div>
+            {data.skills.length === 0 ? (
+              <div style={{ fontSize: 12, color: T.ink4 }}>No skill data yet.</div>
+            ) : (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {data.skills.map((s) => (
+                  <span key={s.skill_name} title={`ELO ${s.elo_value}`} style={{ fontSize: 11, fontWeight: 600, padding: "4px 10px", background: T.bg, border: `1px solid ${T.border}`, borderRadius: 7, color: T.ink2 }}>
+                    {s.skill_name} · {s.elo_value}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: T.ink, marginBottom: 8 }}>Career Timeline</div>
+            {data.careerTimeline.length === 0 ? (
+              <div style={{ fontSize: 12, color: T.ink4 }}>No completed challenges shared to portfolio yet.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {data.careerTimeline.slice(0, 8).map((e) => (
+                  <div key={e.id} style={{ display: "flex", justifyContent: "space-between", padding: "7px 10px", background: T.bg, borderRadius: 8, fontSize: 12 }}>
+                    <span style={{ color: T.ink2 }}>{e.title || e.skill_name || "Challenge"}</span>
+                    {typeof e.score === "number" && <span style={{ color: T.green, fontWeight: 700 }}>{e.score}%</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: T.ink, marginBottom: 6 }}>AI Interviews</div>
+              <div style={{ fontSize: 12, color: T.ink3 }}>{data.interviewsCompleted.length === 0 ? "None completed yet." : `${data.interviewsCompleted.length} completed`}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: T.ink, marginBottom: 6 }}>Certifications</div>
+              <div style={{ fontSize: 12, color: T.ink3 }}>{data.certifications.length === 0 ? "None verified yet." : data.certifications.map((cc) => cc.cert_name).join(", ")}</div>
+            </div>
+          </div>
+        </div>
+      )}
+    </Modal>
   )
 }
 
@@ -6017,14 +6147,30 @@ export default function InstitutionOS({ user, userData, onNavigate, initialPage 
 
   const shared = { user, userData, onNav, members, membersLoading, membersError, reloadMembers, tasks, tasksLoading, tasksError, reloadTasks, events, eventsLoading, eventsError, reloadEvents, auditLogs, auditLoading, reloadAudit, canonical, openThreadFor, pendingThreadContext, clearPendingThreadContext }
 
+  // 2026-08-07: "department cards should be clickable — jump to that
+  // department's real student list." Reuses the roster's own filter state
+  // (canonical.setFilters) rather than inventing a second filtering
+  // mechanism, so landing on People shows exactly what the Live Roster
+  // panel's own "All branches" dropdown would show for that department.
+  const goToDepartment = (dept) => {
+    if (!dept) return
+    canonical.setFilters(f => ({ ...f, department: dept }))
+    setActivePage("people")
+  }
+
   const PAGE_MAP = {
     home:          <HomePage          {...shared} onVerify={handleVerify} />,
-    pubprofile:    <InstitutionPublicProfile onAction={(a)=>{ if(a==='back') setActivePage('home') }} onBack={()=>setActivePage('home')} userData={userData} members={members} />,
-    intelligence:  <IntelligencePage  {...shared} />,
+    pubprofile:    <InstitutionPublicProfile
+                      onAction={(a, payload) => {
+                        if (a === "back") setActivePage("home")
+                        else if (a === "department" && payload) goToDepartment(payload)
+                      }}
+                      onBack={() => setActivePage("home")} userData={userData} members={members} />,
+    intelligence:  <IntelligencePage  {...shared} onDepartmentClick={goToDepartment} />,
     // Same page as intelligence, mounted directly on the Team Chat tab.
     // Distinct key not needed: PAGE_MAP renders only one entry at a time,
     // so switching sidebar items remounts with the right initialTab.
-    chat:          <IntelligencePage  key="chat-page" {...shared} initialTab="messages" />,
+    chat:          <IntelligencePage  key="chat-page" {...shared} onDepartmentClick={goToDepartment} initialTab="messages" />,
     tasks:         <TasksPage         {...shared} />,
     people:        <PeoplePage        {...shared} />,
     community:     <CommunityPage userData={userData} user={user} />,
