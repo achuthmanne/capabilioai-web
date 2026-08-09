@@ -102,6 +102,21 @@ export default function Nexus({ user, userData, setUserData }) {
   const [page, setPage]         = useState(1)
   const [total, setTotal]       = useState(0)
 
+  // 2026-08-09: real candidate-side messaging. Previously a candidate could
+  // only see the last 3 recruiter_messages read-only (dead OrbitDashboard.jsx
+  // widget) with no reply path anywhere in the product -- messages only ever
+  // flowed recruiter -> candidate. This reuses the SAME already-working
+  // recruiterApi.messages/sendMessage this file's own ProfileCard already
+  // uses for peer-to-peer messaging (recruiter_messages is a generic
+  // from_user_id/to_user_id log, not recruiter-specific despite the table
+  // name) -- no new backend route needed, just a real UI for it. Threads are
+  // grouped client-side by "the other party" since the table has no thread id.
+  const [msgThreads, setMsgThreads] = useState([])
+  const [msgLoading, setMsgLoading] = useState(false)
+  const [activeThreadId, setActiveThreadId] = useState(null)
+  const [replyText, setReplyText] = useState("")
+  const [sendingReply, setSendingReply] = useState(false)
+
   const loadProfiles = useCallback(async () => {
     setLoading(true)
     try {
@@ -120,6 +135,55 @@ export default function Nexus({ user, userData, setUserData }) {
     if (tab==="notifications") nexusApi.notifications().then(d=>{ setNotifs(d||[]); nexusApi.markRead() }).catch(()=>{})
   }, [tab])
 
+  const loadMessages = useCallback(async () => {
+    setMsgLoading(true)
+    try {
+      const [inbox, sent] = await Promise.all([
+        recruiterApi.messages("inbox"),
+        recruiterApi.messages("sent"),
+      ])
+      const all = [
+        ...(inbox||[]).map(m=>({...m, direction:"incoming", counterpartId:m.from_user_id, counterpartName:m.sender_company_name||m.from_user?.name||"A recruiter"})),
+        ...(sent||[]).map(m=>({...m, direction:"outgoing", counterpartId:m.to_user_id, counterpartName:m.to_user?.name||"Recipient"})),
+      ]
+      const byId = new Map()
+      for (const m of all) {
+        const key = m.counterpartId
+        if (!key) continue
+        if (!byId.has(key)) byId.set(key, { id:key, name:m.counterpartName, messages:[] })
+        // Prefer a real name over the generic fallback once we see one, in
+        // either direction (an outgoing row won't have sender_company_name,
+        // an incoming one might).
+        const thread = byId.get(key)
+        if (m.counterpartName && (thread.name==="A recruiter"||thread.name==="Recipient")) thread.name = m.counterpartName
+        thread.messages.push(m)
+      }
+      const threads = [...byId.values()].map(t=>({
+        ...t,
+        messages: t.messages.sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)),
+      })).sort((a,b)=>{
+        const at = a.messages.at(-1)?.created_at || 0
+        const bt = b.messages.at(-1)?.created_at || 0
+        return new Date(bt)-new Date(at)
+      })
+      setMsgThreads(threads)
+    } catch(e) { console.error("Failed to load messages:", e) }
+    finally { setMsgLoading(false) }
+  }, [])
+
+  useEffect(() => { if (tab==="messages") loadMessages() }, [tab, loadMessages])
+
+  async function sendReply() {
+    if (!replyText.trim() || !activeThreadId || sendingReply) return
+    setSendingReply(true)
+    try {
+      await recruiterApi.sendMessage({ to_user_id: activeThreadId, body: replyText.trim() })
+      setReplyText("")
+      await loadMessages()
+    } catch(e) { alert(e.message) }
+    finally { setSendingReply(false) }
+  }
+
   async function handleRespond(connId, status) {
     try {
       await nexusApi.respond(connId, status)
@@ -137,7 +201,7 @@ export default function Nexus({ user, userData, setUserData }) {
     <div style={{background:T.cream,flex:1,minHeight:0,overflowY:"auto",fontFamily:"DM Sans,sans-serif",paddingBottom:100}}>
       <div style={{background:"#FFFFFF",borderBottom:`1px solid ${T.border}`,padding:"16px 24px",position:"sticky",top:0,zIndex:50}}>
         <div style={{maxWidth:1100,margin:"0 auto",display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-          {[{id:"discover",l:"Discover"},{id:"connections",l:`Connections (${accepted.length})`},{id:"notifications",l:`Notifications${unread>0?` (${unread})`:""}`,urgent:unread>0}].map(t=>(
+          {[{id:"discover",l:"Discover"},{id:"connections",l:`Connections (${accepted.length})`},{id:"messages",l:`Messages${msgThreads.length>0?` (${msgThreads.length})`:""}`},{id:"notifications",l:`Notifications${unread>0?` (${unread})`:""}`,urgent:unread>0}].map(t=>(
             <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"8px 16px",background:tab===t.id?T.indigo:"#FAF7F2",border:`1px solid ${tab===t.id?T.indigo:t.urgent?T.amber:T.border}`,borderRadius:10,color:tab===t.id?"#fff":t.urgent?T.amber:T.ink3,fontSize:13,fontWeight:tab===t.id||t.urgent?700:400,cursor:"pointer"}}>
               {t.l}
             </button>
@@ -202,6 +266,53 @@ export default function Nexus({ user, userData, setUserData }) {
                 )
               })}
             </div>}
+          </div>
+        )}
+
+        {/* Messages */}
+        {tab==="messages"&&(
+          msgLoading?<div style={{padding:60,textAlign:"center"}}><div style={{width:28,height:28,border:`3px solid ${T.indigo}`,borderTopColor:"transparent",borderRadius:"50%",animation:"spin .8s linear infinite",display:"inline-block"}}/></div>:
+          msgThreads.length===0?<div style={{textAlign:"center",padding:48,color:T.ink3,fontSize:13}}>No messages yet. Recruiters who message you, or connections you message, will show up here.</div>:
+          <div style={{display:"flex",gap:16,alignItems:"flex-start",flexWrap:"wrap"}}>
+            <div style={{flex:"1 1 260px",minWidth:220,maxWidth:320,background:"#FFFFFF",border:`1px solid ${T.border}`,borderRadius:12,overflow:"hidden"}}>
+              {msgThreads.map(t=>{
+                const last = t.messages.at(-1)
+                return (
+                  <button key={t.id} onClick={()=>setActiveThreadId(t.id)}
+                    style={{display:"block",width:"100%",textAlign:"left",padding:"12px 14px",background:activeThreadId===t.id?T.indigo2:"transparent",border:"none",borderBottom:`1px solid ${T.border}`,cursor:"pointer"}}>
+                    <div style={{fontSize:13,fontWeight:700,color:T.ink,marginBottom:2}}>{t.name}</div>
+                    <div style={{fontSize:11.5,color:T.ink3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{last?.direction==="outgoing"?"You: ":""}{last?.body}</div>
+                  </button>
+                )
+              })}
+            </div>
+            <div style={{flex:"2 1 360px",minWidth:280,background:"#FFFFFF",border:`1px solid ${T.border}`,borderRadius:12,padding:16,minHeight:320,display:"flex",flexDirection:"column"}}>
+              {!activeThreadId?(
+                <div style={{margin:"auto",color:T.ink3,fontSize:13}}>Select a conversation to view messages.</div>
+              ):(() => {
+                const thread = msgThreads.find(t=>t.id===activeThreadId)
+                if (!thread) return <div style={{margin:"auto",color:T.ink3,fontSize:13}}>This conversation is no longer available.</div>
+                return (
+                  <>
+                    <div style={{fontSize:14,fontWeight:700,color:T.ink,marginBottom:12,paddingBottom:10,borderBottom:`1px solid ${T.border}`}}>{thread.name}</div>
+                    <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:8,marginBottom:12,maxHeight:360}}>
+                      {thread.messages.map(m=>(
+                        <div key={m.id} style={{alignSelf:m.direction==="outgoing"?"flex-end":"flex-start",maxWidth:"80%",background:m.direction==="outgoing"?T.indigo:"#FAF7F2",color:m.direction==="outgoing"?"#fff":T.ink,borderRadius:12,padding:"8px 12px"}}>
+                          {m.subject&&<div style={{fontSize:11,fontWeight:700,marginBottom:2,opacity:0.85}}>{m.subject}</div>}
+                          <div style={{fontSize:13,lineHeight:1.5}}>{m.body}</div>
+                          <div style={{fontSize:10,opacity:0.7,marginTop:4}}>{new Date(m.created_at).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"})}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{display:"flex",gap:8}}>
+                      <textarea value={replyText} onChange={e=>setReplyText(e.target.value)} placeholder="Write a reply…" rows={2}
+                        style={{flex:1,padding:"8px 10px",border:`1px solid ${T.border}`,borderRadius:8,fontSize:13,resize:"none",fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+                      <button onClick={sendReply} disabled={sendingReply||!replyText.trim()} style={{padding:"0 16px",background:T.indigo,border:"none",borderRadius:8,color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",opacity:sendingReply||!replyText.trim()?0.6:1}}>{sendingReply?"Sending…":"Send"}</button>
+                    </div>
+                  </>
+                )
+              })()}
+            </div>
           </div>
         )}
 

@@ -565,12 +565,18 @@ router.post("/candidates/:id/message", async (req, res) => {
     }
 
     const fromId = partnerPseudoId(partnerCompanyId)
+    // sender_company_name (2026-08-09): from_user_id here is a synthetic
+    // pseudo-uuid with no matching profiles row, so the candidate-side
+    // Messages UI's from_user_id(...) embed can't resolve a real name for
+    // it -- this column is the only way that UI can show "Acme Corp sent
+    // you a message" instead of a bare id.
     const { data, error } = await supabaseAdmin.from("recruiter_messages").insert({
       from_user_id: fromId,
       to_user_id: id,
       message_type: "message",
       subject: subject ? String(subject).slice(0, 200) : null,
       body: String(body).trim(),
+      sender_company_name: companyName ? String(companyName).slice(0, 200) : null,
     }).select().single()
     if (error) return res.status(500).json({ error: error.message })
 
@@ -603,7 +609,7 @@ router.get("/candidates/:id/messages", async (req, res) => {
 
     const { data, error } = await supabaseAdmin
       .from("recruiter_messages")
-      .select("id, from_user_id, to_user_id, subject, body, created_at")
+      .select("id, from_user_id, to_user_id, subject, body, sender_company_name, created_at")
       .or(`and(from_user_id.eq.${fromId},to_user_id.eq.${id}),and(from_user_id.eq.${id},to_user_id.eq.${fromId})`)
       .order("created_at", { ascending: true })
       .limit(200)
