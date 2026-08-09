@@ -193,7 +193,13 @@ const RESULT_FIELDS = [
 router.get("/candidates", async (req, res) => {
   try {
     const {
-      skill = "", domain = "", minElo, verifiedOnly,
+      // 2026-08-09: advanced search filters -- see the file-level note above
+      // this route for what's DB-precise vs an intentional approximation.
+      skill = "", domain = "", career = "", location = "",
+      minElo, verifiedOnly, uanVerified, educationVerified,
+      pathType, employmentStatus,
+      minExperience, maxExperience, minTasks, minStreak, minJobReadiness,
+      sortBy = "recent",
       limit: limitRaw, offset: offsetRaw,
       partnerName = "capabilio-recruiter",
     } = req.query
@@ -202,13 +208,18 @@ router.get("/candidates", async (req, res) => {
     const offset = Math.max(parseInt(offsetRaw, 10) || 0, 0)
 
     let matchingUserIds = null
-    if (skill.trim()) {
+    // Supports comma-separated skills ("React,PostgreSQL") as an OR match --
+    // a candidate needs at least one of the listed skills, not all of them
+    // (an AND requirement would need a per-skill intersection query, a
+    // bigger change not needed for a first version of this).
+    const skillTerms = skill.split(",").map((s) => s.trim()).filter(Boolean)
+    if (skillTerms.length > 0) {
       const { data: skillRows, error: skillErr } = await supabaseAdmin
         .from("skill_graph")
         .select("user_id, skill_name, elo_value")
         .eq("is_current", true)
-        .ilike("skill_name", `%${skill.trim()}%`)
-        .limit(500)
+        .or(skillTerms.map((t) => `skill_name.ilike.%${t}%`).join(","))
+        .limit(1000)
       if (skillErr) return res.status(500).json({ error: skillErr.message })
       matchingUserIds = [...new Set((skillRows || []).map((r) => r.user_id))]
       if (matchingUserIds.length === 0) return res.json({ candidates: [], total: 0, limit, offset })
@@ -223,18 +234,75 @@ router.get("/candidates", async (req, res) => {
 
     if (matchingUserIds) query = query.in("id", matchingUserIds)
     if (domain.trim()) query = query.ilike("domain", `%${domain.trim()}%`)
+    // "career" matches either the student's onboarding role field (keyword)
+    // or a professional's stated target role -- the two real free-text
+    // fields a chosen career shows up in (career_track_slug is a fixed enum
+    // slug, not useful for a free-text search box).
+    if (career.trim()) {
+      const c = career.trim()
+      query = query.or(`keyword.ilike.%${c}%,target_role.ilike.%${c}%`)
+    }
+    if (location.trim()) query = query.ilike("location", `%${location.trim()}%`)
+    if (pathType === "student" || pathType === "professional") query = query.eq("path_type", pathType)
+    if (employmentStatus === "notice_period" || employmentStatus === "discoverable") {
+      query = query.eq("employment_status", employmentStatus)
+    }
     if (verifiedOnly === "true" || verifiedOnly === "1") {
       query = query.or("uan_verified.eq.true,education_verified.eq.true")
     }
+    if (uanVerified === "true") query = query.eq("uan_verified", true)
+    if (educationVerified === "true") query = query.eq("education_verified", true)
+    const minExpNum = parseFloat(minExperience)
+    if (Number.isFinite(minExpNum)) query = query.gte("years_of_experience", minExpNum)
+    const maxExpNum = parseFloat(maxExperience)
+    if (Number.isFinite(maxExpNum)) query = query.lte("years_of_experience", maxExpNum)
+    const minTasksNum = parseInt(minTasks, 10)
+    if (Number.isFinite(minTasksNum)) query = query.gte("arena_completed", minTasksNum)
+    const minStreakNum = parseInt(minStreak, 10)
+    if (Number.isFinite(minStreakNum)) query = query.gte("arena_streak", minStreakNum)
+    // ELO min is an OR across every raw ELO-ish column, not the single
+    // canonicalElo() value -- canonicalElo can only be computed after the
+    // row is fetched (it picks the right column per path_type), so this is
+    // a deliberate approximation: "qualifies if ANY of their raw ELO
+    // numbers clears the bar." No maxElo filter is offered for the same
+    // reason in reverse -- an OR-based upper bound would be backwards (it
+    // would wrongly admit someone with one huge ELO field and one small
+    // one), and there's no way to do a precise one without either a DB
+    // view/computed column or filtering post-fetch and re-paginating in
+    // memory. Left as a known gap rather than shipping a filter that lies.
     const minEloNum = parseInt(minElo, 10)
     if (Number.isFinite(minEloNum)) {
       query = query.or(`professional_elo.gte.${minEloNum},role_elo.gte.${minEloNum},aura_score.gte.${minEloNum},elo_rating.gte.${minEloNum}`)
     }
 
-    query = query.order("updated_at", { ascending: false }).range(offset, offset + limit - 1)
+    const SORT_COLUMNS = {
+      elo: "elo_rating",
+      experience: "years_of_experience",
+      tasks: "arena_completed",
+      recent: "updated_at",
+    }
+    query = query.order(SORT_COLUMNS[sortBy] || "updated_at", { ascending: false, nullsFirst: false })
+      .range(offset, offset + limit - 1)
 
-    const { data: candidates, count, error } = await query
+    const { data: candidatesRaw, count, error } = await query
     if (error) return res.status(500).json({ error: error.message })
+
+    // job_readiness is stored as TEXT on profiles ("40", not 40), confirmed
+    // via direct query -- a DB-level .gte() on it would compare
+    // lexicographically ("9" > "10") and silently return wrong results.
+    // Filtered here instead, in memory, on this already-paginated page.
+    // Known limitation: this can return fewer than `limit` results on a
+    // page even when more matches exist further in the total set (same
+    // page-local constraint the existing minElo approximation already has
+    // -- neither is exact across the full candidate pool without a
+    // materialized/computed column, which is a bigger schema change).
+    const minReadinessNum = parseFloat(minJobReadiness)
+    const candidates = Number.isFinite(minReadinessNum)
+      ? candidatesRaw.filter((c) => {
+          const r = Number(c.job_readiness)
+          return Number.isFinite(r) && r >= minReadinessNum
+        })
+      : candidatesRaw
 
     const ids = (candidates || []).map((c) => c.id)
     let skillsByUser = {}
