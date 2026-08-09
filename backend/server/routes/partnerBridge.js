@@ -354,6 +354,66 @@ router.get("/candidates", async (req, res) => {
   }
 })
 
+// ─── Recruiter: resolve a capabilio_username to a real verified profile (2026-08-09) ───
+// Added for the dual-track resume+profile matching request: "add both Resume
+// scoring and capabilio profile because everyone won't come straightaway to
+// capabilio so in meanwhile capabilio can go with resume things and slowly i
+// will remove resume from capabilio eco-system." The public apply form on
+// capabilio-recruiter already collects capabilio_username but never used it
+// for anything — this is the real lookup that lets it be linked to an actual
+// verified profile, additively, alongside (never instead of) resume scoring.
+//
+// Same discoverability gate and field whitelist as GET /candidates — a
+// candidate must have opted into recruiter_discoverable for this to resolve
+// them at all; an applicant typing a private/non-discoverable username gets
+// treated the same as "no matching profile" (404), not a partial leak.
+// Exact, case-insensitive match only (no wildcards) — a username lookup is
+// an identity claim, not a search.
+router.get("/candidates/by-username/:username", async (req, res) => {
+  try {
+    const username = String(req.params.username || "").trim()
+    if (!username) return res.status(400).json({ error: "username is required." })
+    const safeUsername = username.replace(/[%_,()]/g, "") // keep the ilike filter well-formed / avoid unintended wildcard injection
+
+    const { data: profile, error } = await supabaseAdmin
+      .from("profiles")
+      .select(RESULT_FIELDS)
+      .ilike("username", safeUsername)
+      .eq("recruiter_discoverable", true)
+      .neq("employment_status", "active_hidden")
+      .is("org_type", null)
+      .maybeSingle()
+    if (error) return res.status(500).json({ error: error.message })
+    if (!profile) return res.status(404).json({ error: "No verified Capabilio profile found for that username." })
+
+    const { data: skillRows } = await supabaseAdmin
+      .from("skill_graph")
+      .select("skill_name, elo_value")
+      .eq("user_id", profile.id)
+      .eq("is_current", true)
+      .order("elo_value", { ascending: false })
+      .limit(5)
+
+    const trackNameBySlug = await resolveCareerBySlug([profile.career_track_slug])
+    const elo = canonicalElo(profile)
+
+    console.log(`[partner-bridge] resolved capabilio_username -> profile ${profile.id}`)
+    res.json({
+      candidate: {
+        ...profile,
+        avatar_url: profile.avatar_url || profile.profile_photo_url || null,
+        elo,
+        performance_tier: performanceTier(elo),
+        career: resolveCareerName(profile, trackNameBySlug),
+        topSkills: (skillRows || []).map((r) => ({ skill_name: r.skill_name, elo_value: r.elo_value })),
+      },
+    })
+  } catch (err) {
+    console.error("[partner-bridge/candidates/by-username]", err.message)
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // Grade bands — copied verbatim from frontend/src/pages/Portfolio.jsx's
 // gradeFor() so a recruiter sees the exact same letter grade the candidate
 // sees on their own portfolio for the same score. arena_history.grade
