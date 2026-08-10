@@ -13188,6 +13188,1303 @@ buffer_factor = 1.10
   },
 ]
 
+// ─────────────────────────────────────────────────────────────────────────────
+// AI & DATA SCIENCE — ADVANCED SQL
+// ─────────────────────────────────────────────────────────────────────────────
+export const DATA_ANALYST_ADVANCED_SQL_CHALLENGES = [
+  {
+    id: "da-adv-sql-001",
+    title: "Running Totals and Rankings with Window Functions",
+    category: "Advanced SQL",
+    icon: "🪟",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 18,
+    tools: ["SQL"],
+    scenario:
+      "Finance wants a running cumulative revenue total by day, plus each salesperson's rank within their region. GROUP BY alone collapses rows — you need window functions to keep row-level detail while adding aggregate context.",
+    objective:
+      "Use SUM() OVER() for a running total and RANK() OVER(PARTITION BY...) to rank salespeople within their region.",
+    steps: [
+      "Write a running (cumulative) total of daily revenue ordered by date",
+      "Partition sales by region and rank salespeople by total revenue within each region",
+      "Use ROW_NUMBER() to break ties deterministically",
+      "Filter to show only the top 2 salespeople per region using the ranked result",
+      "Compare RANK() vs DENSE_RANK() behavior on tied values",
+    ],
+    workstation: "sql",
+    starterCode: `-- Running Totals and Rankings with Window Functions
+-- Table: daily_sales (sale_date, region, salesperson, revenue)
+
+-- STEP 1: Running cumulative total ordered by date
+-- TODO: SELECT sale_date, revenue,
+--   SUM(revenue) OVER (ORDER BY sale_date) AS running_total
+-- FROM daily_sales
+
+-- STEP 2: Rank salespeople by total revenue WITHIN each region
+-- TODO: SELECT region, salesperson, SUM(revenue) AS total_revenue,
+--   RANK() OVER (PARTITION BY region ORDER BY SUM(revenue) DESC) AS region_rank
+-- FROM daily_sales
+-- GROUP BY region, salesperson
+
+-- STEP 3: Use ROW_NUMBER() instead, for a tie-proof unique ranking
+-- TODO: same query, swap RANK() for ROW_NUMBER()
+
+-- STEP 4: Top 2 per region (wrap in a subquery/CTE and filter on rank)
+-- TODO: WITH ranked AS ( ...STEP 2 query... )
+-- SELECT * FROM ranked WHERE region_rank <= 2
+
+-- STEP 5: Compare RANK() vs DENSE_RANK() on tied revenue values
+-- TODO: add DENSE_RANK() OVER (PARTITION BY region ORDER BY SUM(revenue) DESC) alongside RANK()
+-- Note the difference: RANK() leaves gaps after ties (1,1,3), DENSE_RANK() doesn't (1,1,2)`,
+    skillTags: ["Window Functions", "RANK", "PARTITION BY", "Running Totals", "SQL"],
+    hints: [
+      "Window functions run AFTER the WHERE/GROUP BY but keep every row — unlike a plain aggregate, you don't lose row-level detail",
+      "You can't filter directly on a window function in the same SELECT (no WHERE region_rank <= 2) — wrap it in a CTE or subquery first",
+      "RANK() skips numbers after ties (1,1,3); DENSE_RANK() doesn't (1,1,2); ROW_NUMBER() never ties at all, even with identical values",
+    ],
+  },
+  {
+    id: "da-adv-sql-002",
+    title: "Recursive CTE for an Organization Hierarchy",
+    category: "Advanced SQL",
+    icon: "🌲",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 22,
+    tools: ["SQL"],
+    scenario:
+      "HR needs a report showing every employee's full management chain up to the CEO, and every manager's total headcount including indirect reports. The employee table only stores each person's direct manager_id — you need a recursive query to walk the tree.",
+    objective:
+      "Write a recursive CTE to traverse an employee-manager hierarchy, producing each employee's depth level and full reporting chain.",
+    steps: [
+      "Write the anchor member: employees with no manager (the CEO)",
+      "Write the recursive member: join employees to the growing result on manager_id",
+      "Track depth level (0 for CEO, 1 for direct reports, etc.)",
+      "Build a text path showing the full chain of managers",
+      "Compute total headcount (direct + indirect) for each manager using the recursive result",
+    ],
+    workstation: "sql",
+    starterCode: `-- Recursive CTE — Organization Hierarchy
+-- Table: employees (employee_id, name, manager_id)  -- manager_id NULL for the CEO
+
+-- STEP 1 & 2: Recursive CTE structure
+-- TODO: WITH RECURSIVE org_chain AS (
+--   -- Anchor: top of the hierarchy
+--   SELECT employee_id, name, manager_id, 0 AS depth, name AS chain
+--   FROM employees
+--   WHERE manager_id IS NULL
+--
+--   UNION ALL
+--
+--   -- Recursive: join each next level onto the growing result
+--   SELECT e.employee_id, e.name, e.manager_id, oc.depth + 1, oc.chain || ' > ' || e.name
+--   FROM employees e
+--   JOIN org_chain oc ON e.manager_id = oc.employee_id
+-- )
+-- SELECT * FROM org_chain ORDER BY depth, name;
+
+-- STEP 5: Total headcount per manager (direct + indirect reports)
+-- TODO: WITH RECURSIVE org_chain AS ( ...same as above... )
+-- SELECT manager_employee_id, COUNT(*) AS total_reports
+-- FROM (
+--   -- for each row in org_chain, associate it with EVERY ancestor in its chain, not just direct manager
+--   -- (this requires tracking ancestor list during recursion, a common recursive-CTE extension)
+--   SELECT employee_id FROM org_chain WHERE depth > 0
+-- ) sub
+-- -- simplified illustrative approach: direct reports only, via GROUP BY manager_id
+-- GROUP BY manager_employee_id;`,
+    skillTags: ["Recursive CTE", "Hierarchical Data", "WITH RECURSIVE", "Tree Traversal", "SQL"],
+    hints: [
+      "The anchor member defines your starting point (WHERE manager_id IS NULL) — get this wrong and the recursion either never starts or never stops",
+      "Recursive CTEs terminate automatically when the recursive member's join produces zero new rows — an infinite loop usually means a data problem (a cycle in the reporting chain), not a query bug",
+      "Full indirect headcount (not just direct reports) requires tracking the full ancestor chain during recursion — this is genuinely one of the trickier patterns in SQL, take it step by step",
+    ],
+  },
+  {
+    id: "da-adv-sql-003",
+    title: "Pivot Rows into Columns with Conditional Aggregation",
+    category: "Advanced SQL",
+    icon: "🔄",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 18,
+    tools: ["SQL"],
+    scenario:
+      "A stakeholder wants a report with one row per product and one column per quarter (Q1, Q2, Q3, Q4 revenue) — not the long/tall format the data warehouse stores it in. You need to pivot without a native PIVOT function.",
+    objective:
+      "Use conditional aggregation (SUM(CASE WHEN...)) to pivot quarterly sales data from a long format into a wide format with one column per quarter.",
+    steps: [
+      "Start from a long-format table (product, quarter, revenue)",
+      "Write SUM(CASE WHEN quarter = 'Q1' THEN revenue ELSE 0 END) for each quarter",
+      "GROUP BY product to collapse into one row per product",
+      "Add a total column summing all four quarters",
+      "Verify the pivoted totals match a simple SUM(revenue) GROUP BY product on the original data",
+    ],
+    workstation: "sql",
+    starterCode: `-- Pivot with Conditional Aggregation
+-- Table: quarterly_sales (product, quarter, revenue)
+-- Long format: one row per (product, quarter)
+
+-- STEP 2 & 3: Pivot using SUM(CASE WHEN...)
+-- TODO: SELECT
+--   product,
+--   SUM(CASE WHEN quarter = 'Q1' THEN revenue ELSE 0 END) AS q1_revenue,
+--   SUM(CASE WHEN quarter = 'Q2' THEN revenue ELSE 0 END) AS q2_revenue,
+--   SUM(CASE WHEN quarter = 'Q3' THEN revenue ELSE 0 END) AS q3_revenue,
+--   SUM(CASE WHEN quarter = 'Q4' THEN revenue ELSE 0 END) AS q4_revenue
+-- FROM quarterly_sales
+-- GROUP BY product
+
+-- STEP 4: Add a total column
+-- TODO: add ... + SUM(revenue) AS total_revenue to the same SELECT (or sum the 4 quarter columns)
+
+-- STEP 5: Verification query — should match total_revenue column above
+-- TODO: SELECT product, SUM(revenue) AS check_total FROM quarterly_sales GROUP BY product`,
+    skillTags: ["Pivot", "Conditional Aggregation", "CASE WHEN", "Wide vs Long Format", "SQL"],
+    hints: [
+      "SUM(CASE WHEN condition THEN value ELSE 0 END) is the standard portable way to pivot in SQL dialects without a native PIVOT keyword",
+      "Always use ELSE 0 (not ELSE NULL) when the outer function is SUM — SUM ignores NULLs, so ELSE NULL would work too, but 0 is more explicit and safer with COUNT/AVG",
+      "Cross-checking the pivoted total against a simple GROUP BY sum is a good habit — it catches silently dropped rows from a typo'd quarter value (e.g. 'q1' vs 'Q1')",
+    ],
+  },
+  {
+    id: "da-adv-sql-004",
+    title: "Deduplicate Rows, Keeping Only the Latest Record",
+    category: "Advanced SQL",
+    icon: "🗑️",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["SQL"],
+    scenario:
+      "A customer table has accumulated duplicate rows from repeated sync jobs — the same customer_id appears multiple times with different updated_at timestamps. You need to identify and remove duplicates, keeping only the most recently updated row per customer.",
+    objective:
+      "Use ROW_NUMBER() partitioned by the dedup key to identify and delete all but the latest row per group.",
+    steps: [
+      "Identify duplicate customer_ids and count how many extra rows exist",
+      "Use ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY updated_at DESC) to rank duplicates",
+      "Select rows where row number > 1 — these are the ones to remove",
+      "Write the DELETE statement using a CTE to remove only the non-latest duplicates",
+      "Verify the final table has exactly one row per customer_id",
+    ],
+    workstation: "sql",
+    starterCode: `-- Deduplicate — Keep Only the Latest Record
+-- Table: customers (id, customer_id, name, email, updated_at)
+
+-- STEP 1: Count duplicates
+-- TODO: SELECT customer_id, COUNT(*) AS row_count
+-- FROM customers GROUP BY customer_id HAVING COUNT(*) > 1
+
+-- STEP 2 & 3: Rank duplicates, latest first
+-- TODO: SELECT id, customer_id, updated_at,
+--   ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY updated_at DESC) AS rn
+-- FROM customers
+
+-- STEP 4: DELETE all but the latest (rn = 1) per customer_id
+-- TODO: WITH ranked AS (
+--   SELECT id, ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY updated_at DESC) AS rn
+--   FROM customers
+-- )
+-- DELETE FROM customers WHERE id IN (SELECT id FROM ranked WHERE rn > 1)
+
+-- STEP 5: Verify — this should return zero rows after the delete
+-- TODO: SELECT customer_id, COUNT(*) FROM customers GROUP BY customer_id HAVING COUNT(*) > 1`,
+    skillTags: ["Deduplication", "ROW_NUMBER", "DELETE with CTE", "Data Cleaning", "SQL"],
+    hints: [
+      "ALWAYS run the SELECT version of the dedup logic first and eyeball the results before running the DELETE — deletes are not easily undone in production",
+      "PARTITION BY customer_id ORDER BY updated_at DESC assigns rn=1 to the newest row per customer — deleting WHERE rn > 1 keeps exactly that one",
+      "This same ROW_NUMBER pattern generalizes to any 'keep latest/first per group' problem — a very common real-world data cleaning task",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI & DATA SCIENCE — ETL & DATA PIPELINES
+// ─────────────────────────────────────────────────────────────────────────────
+export const DATA_ANALYST_ETL_CHALLENGES = [
+  {
+    id: "da-etl-001",
+    title: "Design an Incremental Load Query",
+    category: "ETL & Pipelines",
+    icon: "⏩",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["SQL"],
+    scenario:
+      "A nightly job currently reloads the ENTIRE orders table from the source system every run — as the table has grown to millions of rows, this now takes hours and locks downstream dashboards. You need to switch it to an incremental load that only pulls new/changed rows.",
+    objective:
+      "Write an incremental load query that only selects rows changed since the last successful load, using a watermark timestamp.",
+    steps: [
+      "Retrieve the last successful load's watermark timestamp from a control table",
+      "Select only source rows with updated_at greater than the watermark",
+      "Handle both new inserts and updated existing rows (upsert logic)",
+      "Update the control table's watermark to the max updated_at just loaded",
+      "Explain why NOW() is the wrong choice for the new watermark instead of MAX(updated_at) from the batch",
+    ],
+    workstation: "sql",
+    starterCode: `-- Incremental Load with a Watermark
+-- Tables:
+--   source_orders (order_id, customer_id, amount, updated_at)
+--   etl_control (job_name, last_watermark)
+
+-- STEP 1: Get last watermark
+-- TODO: SELECT last_watermark FROM etl_control WHERE job_name = 'load_orders'
+
+-- STEP 2: Select only changed/new rows since the watermark
+-- TODO: SELECT * FROM source_orders
+-- WHERE updated_at > (SELECT last_watermark FROM etl_control WHERE job_name = 'load_orders')
+
+-- STEP 3: Upsert into the target table (dialect-dependent; Postgres example)
+-- TODO: INSERT INTO orders (order_id, customer_id, amount, updated_at)
+-- SELECT order_id, customer_id, amount, updated_at FROM source_orders
+-- WHERE updated_at > (SELECT last_watermark FROM etl_control WHERE job_name = 'load_orders')
+-- ON CONFLICT (order_id) DO UPDATE SET
+--   customer_id = EXCLUDED.customer_id, amount = EXCLUDED.amount, updated_at = EXCLUDED.updated_at
+
+-- STEP 4: Update the watermark to the MAX updated_at actually loaded this run
+-- TODO: UPDATE etl_control
+-- SET last_watermark = (SELECT MAX(updated_at) FROM source_orders WHERE updated_at > last_watermark)
+-- WHERE job_name = 'load_orders'
+
+-- STEP 5: Why not just use NOW()? -- answer in a comment:
+-- TODO: NOW() reflects when the JOB ran, not when the data actually changed at the source.
+-- If the source has any replication lag or late-arriving writes between the data's true
+-- updated_at and job execution time, using NOW() as the new watermark could SKIP those
+-- late rows forever on the next run. MAX(updated_at) from the actual loaded batch is safe.`,
+    skillTags: ["Incremental Load", "ETL", "Watermark Pattern", "Upsert", "Data Engineering"],
+    hints: [
+      "The watermark should always be MAX(updated_at) from the rows you actually just loaded — using the job's wall-clock time (NOW()) risks silently skipping late-arriving data",
+      "ON CONFLICT ... DO UPDATE (Postgres) or MERGE (other dialects) is what makes this an upsert — pure INSERT would fail or duplicate on rows that already exist",
+      "Incremental loads require the source to reliably maintain updated_at on every change — if the source system doesn't guarantee this, incremental loading isn't safe without a different change-detection strategy (e.g. CDC)",
+    ],
+  },
+  {
+    id: "da-etl-002",
+    title: "Validate and Cast Data Types During Load",
+    category: "ETL & Pipelines",
+    icon: "🔍",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 14,
+    tools: ["Python", "Pandas"],
+    scenario:
+      "A CSV feed from a partner system has inconsistent types — some 'amount' values are strings with currency symbols, some dates are in different formats, and a few rows have obviously invalid values. Loading this directly into a typed warehouse table will fail or silently corrupt data.",
+    objective:
+      "Build a validation and casting pipeline that cleans currency-formatted numbers, parses inconsistent date formats, and quarantines rows that fail validation instead of silently dropping or crashing on them.",
+    steps: [
+      "Load the raw CSV data into a DataFrame",
+      "Clean and cast the amount column (strip currency symbols, convert to float)",
+      "Parse the date column, handling multiple possible input formats",
+      "Identify rows that fail validation (can't be cast) and separate them into a quarantine set",
+      "Report how many rows loaded cleanly vs. were quarantined",
+    ],
+    workstation: "notebook",
+    starterCode: `# Validate and Cast Data Types During Load
+import pandas as pd
+
+raw_data = pd.DataFrame({
+    "order_id": [1, 2, 3, 4, 5],
+    "amount": ["$1,200.50", "899.00", "INVALID", "$450.75", "2,100"],
+    "order_date": ["2026-01-15", "01/16/2026", "2026-01-17", "not_a_date", "2026-01-19"],
+})
+
+def clean_amount(val):
+    # TODO: strip '$' and ',' characters, then try float(val)
+    # TODO: return the float, or None if it can't be converted
+    try:
+        cleaned = str(val).replace("$", "").replace(",", "")
+        return float(cleaned)
+    except ValueError:
+        return None
+
+def parse_date(val):
+    # TODO: try multiple known formats with pd.to_datetime(val, format=..., errors='raise')
+    # fall back to None if none match
+    for fmt in ("%Y-%m-%d", "%m/%d/%Y"):
+        try:
+            return pd.to_datetime(val, format=fmt)
+        except (ValueError, TypeError):
+            continue
+    return None
+
+# STEP 2 & 3: Apply cleaning functions
+# TODO: raw_data["amount_clean"] = raw_data["amount"].apply(clean_amount)
+# TODO: raw_data["date_clean"] = raw_data["order_date"].apply(parse_date)
+
+# STEP 4: Separate valid rows from quarantined (failed) rows
+# TODO: valid_rows = raw_data[raw_data["amount_clean"].notna() & raw_data["date_clean"].notna()]
+# TODO: quarantined_rows = raw_data[raw_data["amount_clean"].isna() | raw_data["date_clean"].isna()]
+
+# STEP 5: Report
+# TODO: print(f"Loaded cleanly: {len(valid_rows)} rows")
+# TODO: print(f"Quarantined (failed validation): {len(quarantined_rows)} rows")
+# TODO: print(quarantined_rows[["order_id", "amount", "order_date"]])
+`,
+    skillTags: ["Data Validation", "Type Casting", "ETL", "Pandas", "Error Handling"],
+    hints: [
+      "Never let a single bad row crash or silently corrupt the whole load — quarantining bad rows lets the good 80% load while flagging the 20% for manual review",
+      "Chaining multiple date format attempts (try each format, fall back on failure) is a pragmatic way to handle inconsistent upstream date formatting without guessing wrong",
+      "Silently dropping invalid rows (instead of quarantining them) hides data quality problems from whoever depends on the pipeline — always keep a visible record of what got rejected and why",
+    ],
+  },
+  {
+    id: "da-etl-003",
+    title: "Implement a Slowly Changing Dimension (Type 2)",
+    category: "ETL & Pipelines",
+    icon: "📜",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 22,
+    tools: ["SQL"],
+    scenario:
+      "The BI team needs to answer 'what was this customer's segment AT THE TIME of each historical order', not just their current segment. A simple overwrite-on-update dimension table loses that history — you need a Type 2 Slowly Changing Dimension to preserve it.",
+    objective:
+      "Implement SCD Type 2 logic: when a dimension attribute changes, close out the old row (set end_date) and insert a new row (with start_date, end_date=NULL, is_current=TRUE) rather than overwriting in place.",
+    steps: [
+      "Given a dimension table with start_date, end_date, is_current columns",
+      "Detect when an incoming record's attribute differs from the current row",
+      "Close the current row: set end_date = today, is_current = FALSE",
+      "Insert a new row with the updated attribute, start_date = today, end_date = NULL, is_current = TRUE",
+      "Write a query showing a customer's segment as of a specific historical date",
+    ],
+    workstation: "sql",
+    starterCode: `-- Slowly Changing Dimension — Type 2
+-- Table: dim_customer (customer_id, segment, start_date, end_date, is_current)
+-- Incoming change: customer_id=501 segment changes from 'Bronze' to 'Gold' on 2026-08-10
+
+-- STEP 2: Detect the change (compare incoming vs current row)
+-- TODO: SELECT * FROM dim_customer WHERE customer_id = 501 AND is_current = TRUE
+-- (compare its segment to the new incoming segment value 'Gold')
+
+-- STEP 3: Close the current row
+-- TODO: UPDATE dim_customer
+-- SET end_date = '2026-08-10', is_current = FALSE
+-- WHERE customer_id = 501 AND is_current = TRUE
+
+-- STEP 4: Insert the new current row
+-- TODO: INSERT INTO dim_customer (customer_id, segment, start_date, end_date, is_current)
+-- VALUES (501, 'Gold', '2026-08-10', NULL, TRUE)
+
+-- STEP 5: Query segment AS OF a historical date (e.g. 2026-05-01, before the change)
+-- TODO: SELECT segment FROM dim_customer
+-- WHERE customer_id = 501
+--   AND start_date <= '2026-05-01'
+--   AND (end_date IS NULL OR end_date > '2026-05-01')`,
+    skillTags: ["Slowly Changing Dimension", "SCD Type 2", "Data Warehousing", "Historical Tracking", "SQL"],
+    hints: [
+      "SCD Type 2 trades storage for history — every attribute change creates a new row instead of overwriting, so the table grows over time but you never lose 'what was true when'",
+      "The 'as of a date' query pattern (start_date <= X AND (end_date IS NULL OR end_date > X)) is the standard way to reconstruct point-in-time state from an SCD2 table",
+      "Closing the old row and inserting the new one must happen as a single atomic transaction — a crash between the two steps leaves the dimension in an inconsistent state (either two 'current' rows or zero)",
+    ],
+  },
+  {
+    id: "da-etl-004",
+    title: "Idempotent Pipeline: Handle Re-Runs Safely",
+    category: "ETL & Pipelines",
+    icon: "🔁",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 18,
+    tools: ["SQL"],
+    scenario:
+      "A pipeline job failed halfway through last night and was re-run this morning — but it duplicated every row that had already loaded before the failure. The job needs to be idempotent: running it twice with the same input should produce the same result as running it once.",
+    objective:
+      "Redesign a naive INSERT-only load into an idempotent upsert that produces identical results whether run once or multiple times with the same batch.",
+    steps: [
+      "Identify why a plain INSERT is not idempotent (duplicates on re-run)",
+      "Add a natural or business key that uniquely identifies each logical record",
+      "Rewrite the load as an upsert (INSERT ... ON CONFLICT DO UPDATE) keyed on that natural key",
+      "Simulate running the same batch twice and verify no duplicates result",
+      "Explain what would still break idempotency even with an upsert (e.g. non-deterministic derived columns)",
+    ],
+    workstation: "sql",
+    starterCode: `-- Idempotent Pipeline Design
+-- Table: order_events (event_id, order_id, event_type, event_timestamp, amount)
+-- Natural/business key: (order_id, event_type, event_timestamp) uniquely identifies a real event
+
+-- STEP 1: The naive (NOT idempotent) version — re-running this duplicates every row
+-- INSERT INTO order_events (order_id, event_type, event_timestamp, amount)
+-- SELECT order_id, event_type, event_timestamp, amount FROM staging_order_events;
+-- Running this twice with the same staging data produces 2x rows. This is the bug.
+
+-- STEP 2 & 3: Idempotent version — requires a UNIQUE constraint on the natural key first
+-- TODO: ALTER TABLE order_events ADD CONSTRAINT uq_order_event UNIQUE (order_id, event_type, event_timestamp);
+
+-- TODO: INSERT INTO order_events (order_id, event_type, event_timestamp, amount)
+-- SELECT order_id, event_type, event_timestamp, amount FROM staging_order_events
+-- ON CONFLICT (order_id, event_type, event_timestamp) DO UPDATE
+-- SET amount = EXCLUDED.amount;
+
+-- STEP 4: Verify — running the upsert TWICE with identical staging data
+-- should leave order_events with the exact same row count both times
+-- TODO: SELECT COUNT(*) FROM order_events;  -- run before and after a second identical load, compare
+
+-- STEP 5: What STILL breaks idempotency even with this upsert?
+-- TODO: add a comment — if any derived column uses something non-deterministic
+-- (e.g. loaded_at = NOW(), or a random/sequence-based surrogate key exposed downstream),
+-- re-running the job changes THAT value even though the business data is identical.
+-- True idempotency requires every derived/computed column to be deterministic given the same input.`,
+    skillTags: ["Idempotency", "ETL Reliability", "Upsert", "Natural Keys", "Pipeline Design"],
+    hints: [
+      "Idempotency requires a UNIQUE constraint on a real business/natural key — without one, the database has no way to know 'this row already exists' during an upsert",
+      "A plain INSERT is inherently NOT idempotent — it has no concept of 'this record already exists', it just appends, which is exactly what causes duplicate rows on re-run",
+      "Watch for hidden non-determinism: NOW(), random IDs, or auto-incrementing surrogate keys used in derived logic can make a technically-upserting pipeline still produce different results on each run",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI & DATA SCIENCE — STATISTICAL ANALYSIS FOR ANALYSTS
+// ─────────────────────────────────────────────────────────────────────────────
+export const DATA_ANALYST_STATS_CHALLENGES = [
+  {
+    id: "da-stats-001",
+    title: "Confidence Interval for a Conversion Rate",
+    category: "Statistical Analysis",
+    icon: "📐",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 14,
+    tools: ["Python", "SciPy"],
+    scenario:
+      "Product reports a 4.2% signup conversion rate from last week's 3,000 visitors and wants to know how confident they can be in that number before presenting it to the board — a single point estimate hides how much it could vary with a different sample.",
+    objective:
+      "Calculate a 95% confidence interval for a proportion (conversion rate) using the normal approximation method.",
+    steps: [
+      "Given the number of conversions and total visitors, compute the sample proportion",
+      "Compute the standard error of the proportion",
+      "Compute the 95% confidence interval using the normal approximation (±1.96 SE)",
+      "Interpret what the interval means in plain language",
+      "Show how the interval narrows with a 10x larger sample size",
+    ],
+    workstation: "notebook",
+    starterCode: `# Confidence Interval for a Conversion Rate
+import numpy as np
+
+conversions = 126
+visitors = 3000
+
+# STEP 1: Sample proportion
+# TODO: p_hat = conversions / visitors
+
+# STEP 2: Standard error
+# TODO: se = np.sqrt(p_hat * (1 - p_hat) / visitors)
+
+# STEP 3: 95% CI (normal approximation, z=1.96)
+z = 1.96
+# TODO: ci_low = p_hat - z * se
+# TODO: ci_high = p_hat + z * se
+# TODO: print(f"Conversion rate: {p_hat:.2%}")
+# TODO: print(f"95% CI: [{ci_low:.2%}, {ci_high:.2%}]")
+
+# STEP 4: Plain-language interpretation
+# TODO: print(f"We are 95% confident the TRUE conversion rate lies between {ci_low:.1%} and {ci_high:.1%}")
+
+# STEP 5: Effect of 10x larger sample (same rate, more data)
+visitors_large = visitors * 10
+conversions_large = conversions * 10
+# TODO: p_hat_large = conversions_large / visitors_large
+# TODO: se_large = np.sqrt(p_hat_large * (1 - p_hat_large) / visitors_large)
+# TODO: ci_low_large = p_hat_large - z * se_large
+# TODO: ci_high_large = p_hat_large + z * se_large
+# TODO: print(f"\\nWith 10x sample: 95% CI: [{ci_low_large:.2%}, {ci_high_large:.2%}] (narrower)")
+`,
+    skillTags: ["Confidence Intervals", "Proportions", "Statistical Inference", "Sample Size", "Business Analytics"],
+    hints: [
+      "The normal approximation (±1.96 SE) works well when n*p and n*(1-p) are both reasonably large (a common rule of thumb is >= 5-10) — with very small conversion counts, consider an exact method instead",
+      "A wider interval isn't a bad result — it's an honest one. Presenting '4.2%' with no interval hides real uncertainty that a 10x-smaller sample would have",
+      "Standard error shrinks with sqrt(n), not n — a 10x larger sample narrows the interval by roughly sqrt(10) ≈ 3.16x, not 10x",
+    ],
+  },
+  {
+    id: "da-stats-002",
+    title: "Correlation vs Causation: Spot the Confound",
+    category: "Statistical Analysis",
+    icon: "🔗",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Python", "Pandas"],
+    scenario:
+      "A stakeholder saw that customers who use the mobile app more also spend more, and wants to conclude 'the app drives spending' to justify a big investment. Before writing that in a report, you need to check whether a third factor could be driving both.",
+    objective:
+      "Compute the raw correlation between app usage and spending, then check whether it persists after controlling for a plausible confounding variable (customer tenure).",
+    steps: [
+      "Compute the raw Pearson correlation between app usage and spending",
+      "Compute correlations between the confound (tenure) and each of the two variables",
+      "Compute the partial correlation between app usage and spending, controlling for tenure",
+      "Compare raw vs partial correlation to see how much tenure explains",
+      "Write a plain-language conclusion about what can and cannot be claimed",
+    ],
+    workstation: "notebook",
+    starterCode: `# Correlation vs Causation — Checking for a Confound
+import numpy as np
+import pandas as pd
+from scipy.stats import pearsonr
+
+np.random.seed(7)
+n = 500
+tenure_months = np.random.uniform(1, 60, n)
+# Both app_usage and spending are driven by tenure (the TRUE common cause)
+app_usage = 2 + 0.3 * tenure_months + np.random.normal(0, 5, n)
+spending = 100 + 8 * tenure_months + np.random.normal(0, 50, n)
+
+df = pd.DataFrame({"tenure": tenure_months, "app_usage": app_usage, "spending": spending})
+
+# STEP 1: Raw correlation between app_usage and spending
+# TODO: raw_corr, raw_p = pearsonr(df["app_usage"], df["spending"])
+# TODO: print(f"Raw correlation (app_usage, spending): r={raw_corr:.3f}, p={raw_p:.4f}")
+
+# STEP 2: Correlations with the confound
+# TODO: corr_tenure_usage, _ = pearsonr(df["tenure"], df["app_usage"])
+# TODO: corr_tenure_spending, _ = pearsonr(df["tenure"], df["spending"])
+# TODO: print(f"tenure vs app_usage: r={corr_tenure_usage:.3f}")
+# TODO: print(f"tenure vs spending: r={corr_tenure_spending:.3f}")
+
+# STEP 3: Partial correlation of app_usage & spending, controlling for tenure
+def partial_correlation(x, y, control):
+    # Residualize x and y against the control variable, then correlate the residuals
+    x_resid = x - np.polyval(np.polyfit(control, x, 1), control)
+    y_resid = y - np.polyval(np.polyfit(control, y, 1), control)
+    # TODO: return pearsonr(x_resid, y_resid)[0]
+    pass
+
+# TODO: partial_r = partial_correlation(df["app_usage"], df["spending"], df["tenure"])
+# TODO: print(f"\\nPartial correlation (controlling for tenure): r={partial_r:.3f}")
+
+# STEP 5: Interpretation
+# TODO: print("\\nIf partial_r is much smaller than raw_corr, tenure likely explains most of the")
+# TODO: print("apparent app_usage-spending relationship — it may be a confound, not a causal driver.")
+`,
+    skillTags: ["Correlation vs Causation", "Confounding Variables", "Partial Correlation", "Statistical Reasoning", "Business Analytics"],
+    hints: [
+      "A confound is a third variable that influences BOTH variables you're correlating — here, tenure drives both app usage and spending independently, creating a spurious-looking link between them",
+      "If the partial correlation (controlling for tenure) drops close to zero while the raw correlation was strong, that's strong evidence tenure — not app usage — is the real driver",
+      "Even a low partial correlation doesn't PROVE no causal effect exists — it just means this particular confound doesn't fully explain it; true causal claims need controlled experiments, not just more careful correlation",
+    ],
+  },
+  {
+    id: "da-stats-003",
+    title: "Outlier Detection with Z-Scores and IQR",
+    category: "Statistical Analysis",
+    icon: "🎯",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 14,
+    tools: ["Python", "NumPy", "Pandas"],
+    scenario:
+      "A dataset of transaction amounts has a few suspiciously large values that could be either genuine high-value orders or data entry errors (an extra zero typo). Before deciding whether to exclude them from an average, you need a defensible, repeatable method to flag them.",
+    objective:
+      "Implement both Z-score and IQR-based outlier detection methods, compare which transactions each method flags, and discuss when to prefer one over the other.",
+    steps: [
+      "Compute Z-scores for all values and flag those with |z| > 3",
+      "Compute IQR (Q3 - Q1) and flag values outside [Q1 - 1.5*IQR, Q3 + 1.5*IQR]",
+      "Compare the sets of flagged outliers between the two methods",
+      "Discuss why Z-score is sensitive to the outliers themselves (they inflate the mean/std used to compute it)",
+      "Recommend which method is more robust for this skewed transaction data",
+    ],
+    workstation: "notebook",
+    starterCode: `# Outlier Detection — Z-Score vs IQR
+import numpy as np
+import pandas as pd
+
+np.random.seed(3)
+normal_transactions = np.random.normal(500, 100, 95)
+outlier_transactions = np.array([5200, 4800, 6100, 15000, 50])  # includes a likely typo (50) and large orders
+amounts = np.concatenate([normal_transactions, outlier_transactions])
+df = pd.DataFrame({"amount": amounts})
+
+# STEP 1: Z-score method
+# TODO: mean, std = df["amount"].mean(), df["amount"].std()
+# TODO: df["z_score"] = (df["amount"] - mean) / std
+# TODO: z_outliers = df[df["z_score"].abs() > 3]
+# TODO: print(f"Z-score method flagged {len(z_outliers)} outliers")
+# TODO: print(z_outliers[["amount", "z_score"]])
+
+# STEP 2: IQR method
+# TODO: q1, q3 = df["amount"].quantile(0.25), df["amount"].quantile(0.75)
+# TODO: iqr = q3 - q1
+# TODO: lower_bound, upper_bound = q1 - 1.5 * iqr, q3 + 1.5 * iqr
+# TODO: iqr_outliers = df[(df["amount"] < lower_bound) | (df["amount"] > upper_bound)]
+# TODO: print(f"\\nIQR method flagged {len(iqr_outliers)} outliers")
+# TODO: print(iqr_outliers[["amount"]])
+
+# STEP 3: Compare
+# TODO: only_z = set(z_outliers.index) - set(iqr_outliers.index)
+# TODO: only_iqr = set(iqr_outliers.index) - set(z_outliers.index)
+# TODO: print(f"\\nFlagged by Z-score only: {only_z}")
+# TODO: print(f"Flagged by IQR only: {only_iqr}")
+
+# STEP 4 & 5: Discussion
+# TODO: print("\\nZ-score uses mean/std, which the outliers themselves distort (especially with a small n)")
+# TODO: print("IQR uses quantiles (median-based), which are robust to extreme values — usually preferred for skewed data")
+`,
+    skillTags: ["Outlier Detection", "Z-Score", "IQR", "Robust Statistics", "Data Quality"],
+    hints: [
+      "Z-score is sensitive to the very outliers it's trying to detect — a few extreme values inflate the mean and standard deviation, which can mask moderate outliers (this is sometimes called the 'masking effect')",
+      "IQR-based bounds (1.5×IQR beyond Q1/Q3) are based on quantiles, which barely move even with several extreme values present — generally the safer default for real-world skewed data like transaction amounts",
+      "Neither method tells you WHY a value is extreme — a $15,000 transaction could be a legitimate large order or a data entry error; statistical flags need human judgment to resolve, not automatic deletion",
+    ],
+  },
+  {
+    id: "da-stats-004",
+    title: "Sample Size Calculation for a Customer Survey",
+    category: "Statistical Analysis",
+    icon: "📏",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 18,
+    tools: ["Python", "NumPy"],
+    scenario:
+      "Customer research wants to run a satisfaction survey and needs to know how many responses to collect to be confident in the result within a specific margin of error — collecting too few wastes the effort on an unreliable number, too many wastes budget and respondent goodwill.",
+    objective:
+      "Calculate the required sample size for estimating a proportion within a target margin of error at a given confidence level, and adjust for a finite population (small customer base).",
+    steps: [
+      "Given a target margin of error and confidence level, compute required sample size assuming maximum variance (p=0.5)",
+      "Recompute using an estimated proportion from a pilot study instead of the conservative p=0.5",
+      "Apply a finite population correction if the customer base is small relative to the sample",
+      "Compare sample sizes across a few different margin-of-error targets",
+      "Recommend a practical target given response rate assumptions",
+    ],
+    workstation: "notebook",
+    starterCode: `# Sample Size Calculation for a Survey
+import numpy as np
+
+confidence_level = 0.95
+z = 1.96  # z-score for 95% confidence
+margin_of_error = 0.05  # +/- 5 percentage points
+total_customer_base = 8000  # finite population
+
+# STEP 1: Sample size assuming max variance (p=0.5, most conservative)
+def sample_size_infinite(z, p, e):
+    # TODO: return (z**2 * p * (1 - p)) / (e**2)
+    pass
+
+# TODO: n_conservative = sample_size_infinite(z, 0.5, margin_of_error)
+# TODO: print(f"Conservative sample size (p=0.5): {n_conservative:.0f}")
+
+# STEP 2: Using a pilot estimate instead (say pilot found 78% satisfaction)
+pilot_p = 0.78
+# TODO: n_estimated = sample_size_infinite(z, pilot_p, margin_of_error)
+# TODO: print(f"Sample size using pilot estimate (p=0.78): {n_estimated:.0f}")
+
+# STEP 3: Finite population correction
+def finite_population_correction(n_infinite, N):
+    # TODO: return n_infinite / (1 + (n_infinite - 1) / N)
+    pass
+
+# TODO: n_corrected = finite_population_correction(n_conservative, total_customer_base)
+# TODO: print(f"Corrected for finite population of {total_customer_base}: {n_corrected:.0f}")
+
+# STEP 4: Compare across margin-of-error targets
+for e in [0.03, 0.05, 0.10]:
+    # TODO: n = sample_size_infinite(z, 0.5, e)
+    # TODO: n_fpc = finite_population_correction(n, total_customer_base)
+    # TODO: print(f"Margin +/-{e:.0%}: raw n={n:.0f}, FPC-adjusted n={n_fpc:.0f}")
+    pass
+
+# STEP 5: Practical recommendation accounting for a typical 20% survey response rate
+expected_response_rate = 0.20
+# TODO: invites_needed = n_corrected / expected_response_rate
+# TODO: print(f"\\nAt a {expected_response_rate:.0%} response rate, need to invite ~{invites_needed:.0f} customers")
+`,
+    skillTags: ["Sample Size", "Survey Design", "Finite Population Correction", "Margin of Error", "Statistical Planning"],
+    hints: [
+      "p=0.5 gives the LARGEST possible required sample size for a given margin of error — it's the conservative default when you have no prior estimate of the true proportion",
+      "The finite population correction matters when your sample would be a substantial fraction of the total population (here, sampling from only 8,000 customers) — for huge populations it barely changes the answer",
+      "Always divide the required completed-response sample size by your expected response rate to get the number of invitations to actually send — this step is frequently forgotten and leads to under-collecting",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI & DATA SCIENCE — EXPERIMENTATION & A/B TESTING
+// ─────────────────────────────────────────────────────────────────────────────
+export const DATA_ANALYST_EXPERIMENTATION_CHALLENGES = [
+  {
+    id: "da-exp-001",
+    title: "Calculate Required Sample Size for an A/B Test",
+    category: "Experimentation",
+    icon: "🧮",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 18,
+    tools: ["Python", "SciPy"],
+    scenario:
+      "Growth wants to test a new checkout flow expected to lift conversion from 5% to 5.5%. Before launching, you need to tell them how many visitors per variant the test needs to reliably detect that difference — launching underpowered wastes weeks on an inconclusive result.",
+    objective:
+      "Calculate the required sample size per variant for a two-proportion test given baseline rate, minimum detectable effect, significance level, and desired power.",
+    steps: [
+      "Given baseline conversion rate and minimum detectable effect (MDE)",
+      "Compute the required sample size per variant using the standard two-proportion power formula",
+      "Show how sample size changes as MDE shrinks (harder to detect small effects)",
+      "Estimate how many days the test would take given expected daily traffic",
+      "Flag if the required duration seems impractically long",
+    ],
+    workstation: "notebook",
+    starterCode: `# A/B Test Sample Size Calculation
+import numpy as np
+from scipy.stats import norm
+
+baseline_rate = 0.05
+mde = 0.005  # minimum detectable effect (absolute, i.e. 5% -> 5.5%)
+alpha = 0.05  # significance level
+power = 0.80  # desired statistical power
+
+def sample_size_per_variant(p1, mde, alpha, power):
+    p2 = p1 + mde
+    z_alpha = norm.ppf(1 - alpha / 2)
+    z_beta = norm.ppf(power)
+    pooled_p = (p1 + p2) / 2
+    # TODO: numerator = (z_alpha * np.sqrt(2 * pooled_p * (1 - pooled_p)) +
+    #                     z_beta * np.sqrt(p1*(1-p1) + p2*(1-p2))) ** 2
+    # TODO: n = numerator / (mde ** 2)
+    # TODO: return n
+    pass
+
+# TODO: n_required = sample_size_per_variant(baseline_rate, mde, alpha, power)
+# TODO: print(f"Required sample size per variant: {n_required:.0f}")
+# TODO: print(f"Total sample size (both variants): {n_required*2:.0f}")
+
+# STEP 3: Effect of smaller MDE (harder-to-detect effects need MORE data)
+print()
+for test_mde in [0.005, 0.003, 0.001]:
+    # TODO: n = sample_size_per_variant(baseline_rate, test_mde, alpha, power)
+    # TODO: print(f"MDE={test_mde:.1%}: n_per_variant={n:.0f}")
+    pass
+
+# STEP 4 & 5: Estimate test duration
+daily_traffic_per_variant = 1500
+# TODO: days_needed = n_required / daily_traffic_per_variant
+# TODO: print(f"\\nAt {daily_traffic_per_variant}/day per variant: test needs ~{days_needed:.0f} days")
+# TODO: if days_needed > 30: print("FLAG: test duration exceeds a month — consider a larger MDE or more traffic")
+`,
+    skillTags: ["A/B Testing", "Sample Size", "Statistical Power", "Minimum Detectable Effect", "Experiment Design"],
+    hints: [
+      "Smaller MDEs require dramatically more sample — detecting a 0.1% lift needs roughly 25x the sample of detecting a 0.5% lift (sample size scales with 1/MDE²), always check this before committing to a tiny target effect",
+      "Power (0.80 is standard) is the probability of detecting a real effect if one exists — lower power means more false negatives (real improvements that the test fails to detect)",
+      "If the calculated test duration is impractically long, the honest options are: accept a larger MDE, find more traffic, or accept the test can't reliably detect an effect that small — not silently launching underpowered",
+    ],
+  },
+  {
+    id: "da-exp-002",
+    title: "Analyze A/B Test Results and Check for Novelty Effects",
+    category: "Experimentation",
+    icon: "📊",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 18,
+    tools: ["Python", "Pandas", "SciPy"],
+    scenario:
+      "An A/B test just finished and shows a clear win for the new variant — but the results team wants to check whether the lift is stable across the test period or driven entirely by early novelty (users trying something new), which tends to fade.",
+    objective:
+      "Analyze daily A/B test results, run the overall significance test, and check whether the treatment effect is stable or decaying over the test period.",
+    steps: [
+      "Aggregate daily conversion data into an overall test result",
+      "Run a two-proportion z-test on the overall result",
+      "Compute the daily lift (treatment - control conversion rate) for each day",
+      "Check whether daily lift trends downward over time (possible novelty effect)",
+      "Give a recommendation on whether to trust the overall result",
+    ],
+    workstation: "notebook",
+    starterCode: `# A/B Test Results Analysis — Novelty Effect Check
+import numpy as np
+import pandas as pd
+from scipy.stats import norm
+
+np.random.seed(21)
+days = 14
+daily_visitors = 1000
+# Simulate a DECAYING treatment effect (novelty effect) — starts strong, fades
+base_rate = 0.05
+daily_lift = np.linspace(0.015, 0.002, days)  # lift shrinks from 1.5pp to 0.2pp over time
+
+records = []
+for day in range(days):
+    control_conv = np.random.binomial(daily_visitors, base_rate)
+    treatment_conv = np.random.binomial(daily_visitors, base_rate + daily_lift[day])
+    records.append({"day": day+1, "control_conv": control_conv, "control_n": daily_visitors,
+                     "treatment_conv": treatment_conv, "treatment_n": daily_visitors})
+df = pd.DataFrame(records)
+
+# STEP 1 & 2: Overall test result
+# TODO: total_control_conv, total_control_n = df["control_conv"].sum(), df["control_n"].sum()
+# TODO: total_treatment_conv, total_treatment_n = df["treatment_conv"].sum(), df["treatment_n"].sum()
+# TODO: p1 = total_control_conv / total_control_n
+# TODO: p2 = total_treatment_conv / total_treatment_n
+# TODO: pooled = (total_control_conv + total_treatment_conv) / (total_control_n + total_treatment_n)
+# TODO: se = np.sqrt(pooled * (1-pooled) * (1/total_control_n + 1/total_treatment_n))
+# TODO: z = (p2 - p1) / se
+# TODO: p_value = 2 * (1 - norm.cdf(abs(z)))
+# TODO: print(f"Overall: control={p1:.2%}, treatment={p2:.2%}, lift={p2-p1:+.2%}, p={p_value:.4f}")
+
+# STEP 3: Daily lift
+# TODO: df["control_rate"] = df["control_conv"] / df["control_n"]
+# TODO: df["treatment_rate"] = df["treatment_conv"] / df["treatment_n"]
+# TODO: df["daily_lift"] = df["treatment_rate"] - df["control_rate"]
+# TODO: print(df[["day", "daily_lift"]])
+
+# STEP 4: Check trend — correlate day number with daily lift
+from scipy.stats import pearsonr
+# TODO: trend_corr, trend_p = pearsonr(df["day"], df["daily_lift"])
+# TODO: print(f"\\nCorrelation of day vs daily lift: r={trend_corr:.3f}, p={trend_p:.4f}")
+
+# STEP 5: Recommendation
+# TODO: if trend_corr < -0.5 and trend_p < 0.05:
+# TODO:     print("WARNING: lift is significantly decaying over time — possible novelty effect, don't fully trust the overall average as a steady-state estimate")
+# TODO: else:
+# TODO:     print("Lift appears stable across the test period — overall result is likely trustworthy")
+`,
+    skillTags: ["A/B Testing", "Novelty Effect", "Trend Analysis", "Experiment Analysis", "Statistical Testing"],
+    hints: [
+      "A novelty effect shows up as a lift that's strong early and fades over the test window — the OVERALL average can look like a solid win while masking a decaying, possibly temporary effect",
+      "Correlating day-number with daily-lift is a simple, defensible way to quantify 'is this trending down' without needing a full time-series model",
+      "If novelty is suspected, the right move is usually to extend the test and look at the LATER days' steady-state lift, not the full-period average, before making a permanent launch decision",
+    ],
+  },
+  {
+    id: "da-exp-003",
+    title: "Detect Simpson's Paradox in Segmented A/B Results",
+    category: "Experimentation",
+    icon: "🔀",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 22,
+    tools: ["Python", "Pandas"],
+    scenario:
+      "An A/B test shows the new variant losing overall — but a sharp analyst suspects the traffic mix differed between variants (e.g. more mobile users happened to land in treatment), and that within EVERY segment, treatment actually wins. This is Simpson's Paradox, and getting it wrong means killing a genuinely better feature.",
+    objective:
+      "Compute overall and segment-level conversion rates for an A/B test, and detect a case where the segment-level results contradict the aggregate result due to unequal segment mix.",
+    steps: [
+      "Compute overall conversion rate by variant, ignoring segments",
+      "Compute conversion rate by variant WITHIN each segment (e.g. mobile vs desktop)",
+      "Compare the direction of the effect: overall vs within each segment",
+      "Compute segment mix (% of traffic) per variant to explain the discrepancy",
+      "Conclude which result (aggregate or segmented) should drive the launch decision",
+    ],
+    workstation: "notebook",
+    starterCode: `# Simpson's Paradox Detection in A/B Test Results
+import pandas as pd
+
+# Segment-level data: variant wins in BOTH segments individually,
+# but segment mix differs enough to flip the AGGREGATE result
+data = pd.DataFrame([
+    {"variant": "Control",   "segment": "Mobile",  "visitors": 8000, "conversions": 320},   # 4.0%
+    {"variant": "Control",   "segment": "Desktop",  "visitors": 2000, "conversions": 160},   # 8.0%
+    {"variant": "Treatment", "segment": "Mobile",  "visitors": 2000, "conversions": 90},     # 4.5% (beats control's 4.0%)
+    {"variant": "Treatment", "segment": "Desktop",  "visitors": 8000, "conversions": 680},   # 8.5% (beats control's 8.0%)
+])
+
+# STEP 1: Overall conversion rate by variant (ignoring segment)
+# TODO: overall = data.groupby("variant").agg(total_visitors=("visitors","sum"), total_conversions=("conversions","sum"))
+# TODO: overall["rate"] = overall["total_conversions"] / overall["total_visitors"]
+# TODO: print("=== OVERALL (aggregate) ===")
+# TODO: print(overall[["rate"]])
+
+# STEP 2: Conversion rate by variant WITHIN each segment
+data["rate"] = data["conversions"] / data["visitors"]
+# TODO: print("\\n=== BY SEGMENT ===")
+# TODO: print(data[["variant", "segment", "rate"]])
+
+# STEP 3: Compare direction
+# TODO: mobile_winner = data[data["segment"]=="Mobile"].sort_values("rate", ascending=False).iloc[0]["variant"]
+# TODO: desktop_winner = data[data["segment"]=="Desktop"].sort_values("rate", ascending=False).iloc[0]["variant"]
+# TODO: overall_winner = overall["rate"].idxmax()
+# TODO: print(f"\\nMobile segment winner: {mobile_winner}")
+# TODO: print(f"Desktop segment winner: {desktop_winner}")
+# TODO: print(f"Overall (aggregate) winner: {overall_winner}")
+
+# STEP 4: Segment mix per variant (this is WHY the paradox happens)
+# TODO: mix = data.pivot(index="variant", columns="segment", values="visitors")
+# TODO: mix_pct = mix.div(mix.sum(axis=1), axis=0)
+# TODO: print("\\n=== TRAFFIC MIX PER VARIANT ===")
+# TODO: print(mix_pct)
+
+# STEP 5: Conclusion
+# TODO: print("\\nIf segment winners disagree with the overall winner, this is Simpson's Paradox.")
+# TODO: print("The segmented result is more trustworthy here IF the segment mix difference between")
+# TODO: print("variants was accidental (e.g. randomization imbalance), not a real property of the treatment.")
+`,
+    skillTags: ["Simpson's Paradox", "A/B Testing", "Segmentation", "Statistical Reasoning", "Experiment Analysis"],
+    hints: [
+      "Simpson's Paradox happens when a lurking variable (here, device type) correlates with BOTH the treatment assignment AND the outcome — an imbalanced random split can trigger this even in a properly randomized test",
+      "The segmented result is usually more actionable IF you trust the segments are the real unit of decision-making — but always investigate WHY the mix differs; a true randomization bug upstream is a different, more urgent problem",
+      "This is exactly why experienced analysts always check segment-level results, not just the topline number, before declaring an A/B test win or loss",
+    ],
+  },
+  {
+    id: "da-exp-004",
+    title: "The Peeking Problem: Why Early-Stopping Inflates False Positives",
+    category: "Experimentation",
+    icon: "👀",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 22,
+    tools: ["Python", "NumPy"],
+    scenario:
+      "A PM keeps checking the A/B test dashboard daily and wants to 'call it' the moment p < 0.05 shows up, to ship faster. You need to demonstrate why this repeated-peeking approach inflates the false positive rate far beyond the nominal 5%, even when there's truly NO effect.",
+    objective:
+      "Simulate an A/B test with NO true effect, checking significance daily, and measure how often 'peeking and stopping at first significance' incorrectly declares a winner compared to the nominal 5% false positive rate.",
+    steps: [
+      "Simulate many independent A/B tests where the true conversion rate is IDENTICAL for both variants",
+      "For each simulated test, check significance daily as data accumulates",
+      "Record whether the test would have been stopped early due to a false-positive significant result",
+      "Compare the resulting false-positive rate to the nominal 5% (checking once at a pre-set end)",
+      "Explain the fix: pre-register a fixed sample size, or use a sequential testing correction",
+    ],
+    workstation: "notebook",
+    starterCode: `# The Peeking Problem — Why Daily Significance Checks Inflate False Positives
+import numpy as np
+from scipy.stats import norm
+
+np.random.seed(99)
+n_simulations = 500
+days = 20
+daily_n_per_variant = 200
+true_rate = 0.10  # SAME for both variants — there is NO real effect
+
+def check_significance(control_conv, control_n, treatment_conv, treatment_n):
+    if control_n == 0 or treatment_n == 0:
+        return False
+    p1, p2 = control_conv / control_n, treatment_conv / treatment_n
+    pooled = (control_conv + treatment_conv) / (control_n + treatment_n)
+    if pooled == 0 or pooled == 1:
+        return False
+    se = np.sqrt(pooled * (1 - pooled) * (1/control_n + 1/treatment_n))
+    if se == 0:
+        return False
+    z = (p2 - p1) / se
+    p_value = 2 * (1 - norm.cdf(abs(z)))
+    return p_value < 0.05
+
+peeked_false_positives = 0
+fixed_endpoint_false_positives = 0
+
+for sim in range(n_simulations):
+    control_conv_total, control_n_total = 0, 0
+    treatment_conv_total, treatment_n_total = 0, 0
+    stopped_early = False
+
+    for day in range(days):
+        # TODO: control_conv_total += np.random.binomial(daily_n_per_variant, true_rate)
+        # TODO: control_n_total += daily_n_per_variant
+        # TODO: treatment_conv_total += np.random.binomial(daily_n_per_variant, true_rate)
+        # TODO: treatment_n_total += daily_n_per_variant
+
+        # STEP 2 & 3: check significance EVERY day (the "peeking" behavior)
+        # TODO: if not stopped_early and check_significance(control_conv_total, control_n_total, treatment_conv_total, treatment_n_total):
+        # TODO:     stopped_early = True
+        pass
+
+    # TODO: if stopped_early: peeked_false_positives += 1
+
+    # STEP 4: check significance ONLY at the pre-set final day (the correct approach)
+    # TODO: if check_significance(control_conv_total, control_n_total, treatment_conv_total, treatment_n_total):
+    # TODO:     fixed_endpoint_false_positives += 1
+
+# TODO: peeked_rate = peeked_false_positives / n_simulations
+# TODO: fixed_rate = fixed_endpoint_false_positives / n_simulations
+# TODO: print(f"False positive rate WITH daily peeking: {peeked_rate:.1%} (nominal target: 5%)")
+# TODO: print(f"False positive rate checking ONLY at fixed endpoint: {fixed_rate:.1%} (should be close to 5%)")
+
+# STEP 5: The fix
+print("\\nFix: either (1) pre-register a fixed sample size/duration and check ONCE at the end,")
+print("or (2) use a sequential testing method (e.g. alpha-spending, always-valid p-values) designed")
+print("specifically to allow safe repeated peeking without inflating the false positive rate.")
+`,
+    skillTags: ["Peeking Problem", "Sequential Testing", "False Positive Rate", "A/B Testing Pitfalls", "Statistical Rigor"],
+    hints: [
+      "Even with ZERO true effect, checking significance repeatedly gives many chances for a false positive to appear by random chance alone — this is a form of multiple comparisons problem",
+      "The false-positive rate under daily peeking is often 2-3x higher than the nominal 5% (exact inflation depends on how many looks are taken) — this simulation should make that gap directly visible",
+      "This isn't just a theoretical concern — 'stop as soon as it's significant' is one of the most common real-world A/B testing mistakes, precisely because it feels efficient and intuitive",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI & DATA SCIENCE — DATA STORYTELLING & REPORTING
+// ─────────────────────────────────────────────────────────────────────────────
+export const DATA_ANALYST_STORYTELLING_CHALLENGES = [
+  {
+    id: "da-story-001",
+    title: "Choose the Right Chart Type for the Question",
+    category: "Data Storytelling",
+    icon: "📊",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python", "Matplotlib"],
+    scenario:
+      "A junior analyst used a pie chart with 12 slices to show monthly revenue trend — nearly impossible to read. You've been asked to rebuild the same data with chart types that actually fit each type of question being asked.",
+    objective:
+      "Given three different analytical questions about the same dataset, select and build the appropriate chart type for each (trend over time, part-to-whole, comparison across categories).",
+    steps: [
+      "For 'how did revenue trend over the year', build a line chart (not a pie chart)",
+      "For 'what share does each product category contribute', build a horizontal bar chart or a small number of pie slices (not 12)",
+      "For 'how do 5 regions compare on a single metric', build a sorted horizontal bar chart",
+      "Explain in a comment why a 12-slice pie chart fails as a trend visualization",
+      "Recommend a chart type mapping other analysts can reuse",
+    ],
+    workstation: "notebook",
+    starterCode: `# Choosing the Right Chart Type
+import pandas as pd
+import matplotlib.pyplot as plt
+
+months = pd.date_range("2026-01-01", periods=12, freq="M")
+revenue = [45000, 48000, 51000, 49000, 53000, 58000, 61000, 59000, 63000, 67000, 71000, 78000]
+categories = ["Electronics", "Clothing", "Home Goods", "Sports", "Books"]
+category_share = [0.35, 0.25, 0.20, 0.12, 0.08]
+regions = ["North", "South", "East", "West", "Central"]
+region_sales = [82000, 65000, 71000, 58000, 49000]
+
+# QUESTION 1: "How did revenue trend over the year?" -> LINE CHART
+fig, ax1 = plt.subplots()
+# TODO: ax1.plot(months, revenue, marker='o', color='#3D4EAC')
+# TODO: ax1.set_title("Monthly Revenue Trend 2026")
+# NOT a pie chart — pie charts have no sense of ORDER or DIRECTION, hiding the trend entirely
+
+# QUESTION 2: "What share does each category contribute?" -> fine as a pie IF slice count is small (<=5-6)
+fig, ax2 = plt.subplots()
+# TODO: ax2.pie(category_share, labels=categories, autopct='%1.0f%%')
+# TODO: ax2.set_title("Revenue Share by Category")
+
+# QUESTION 3: "How do 5 regions compare on total sales?" -> SORTED HORIZONTAL BAR
+fig, ax3 = plt.subplots()
+# TODO: sorted_pairs = sorted(zip(regions, region_sales), key=lambda x: x[1])
+# TODO: sorted_regions, sorted_sales = zip(*sorted_pairs)
+# TODO: ax3.barh(sorted_regions, sorted_sales, color='#3D4EAC')
+# TODO: ax3.set_title("Total Sales by Region")
+
+plt.show()
+
+# WHY NOT A 12-SLICE PIE FOR THE TREND QUESTION:
+# TODO: add a comment — pie charts encode value as ANGLE, which humans are bad at comparing precisely,
+# and they have no inherent ORDER, so a trend (which depends entirely on sequence) becomes invisible.
+# A line chart encodes value as VERTICAL POSITION over an ordered x-axis — exactly what a trend needs.
+`,
+    skillTags: ["Chart Selection", "Data Visualization", "Data Storytelling", "Matplotlib", "Business Communication"],
+    hints: [
+      "The question type should drive chart choice: trend over time -> line chart, part-to-whole with few categories -> pie/donut, comparison across categories -> sorted bar chart",
+      "Pie charts become unreadable past about 5-6 slices — human perception can't reliably compare that many angles, switch to a bar chart instead",
+      "Sorting bar charts (rather than leaving them in arbitrary/alphabetical order) makes comparisons dramatically easier to read at a glance — a small change with a big payoff",
+    ],
+  },
+  {
+    id: "da-story-002",
+    title: "Write an Executive Summary from a Data Table",
+    category: "Data Storytelling",
+    icon: "📝",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Python", "Pandas"],
+    scenario:
+      "A raw table of quarterly metrics needs to become a 3-sentence executive summary a VP will actually read on their way into a board meeting — no jargon, no raw numbers dump, just what changed and why it matters.",
+    objective:
+      "Programmatically extract the key facts from a metrics table (biggest change, direction, magnitude) and assemble them into a structured, readable executive summary.",
+    steps: [
+      "Compute period-over-period % change for each metric",
+      "Identify the metric with the largest absolute % change (the headline)",
+      "Identify any metric moving in a concerning direction (e.g. churn increasing)",
+      "Assemble a templated 3-sentence summary: headline, supporting context, one risk/watch item",
+      "Ensure the summary uses plain language, not raw column names",
+    ],
+    workstation: "notebook",
+    starterCode: `# Generate an Executive Summary from a Metrics Table
+import pandas as pd
+
+metrics = pd.DataFrame({
+    "metric": ["Revenue", "New Customers", "Churn Rate", "NPS Score", "Support Tickets"],
+    "last_quarter": [1_200_000, 340, 0.045, 42, 890],
+    "this_quarter": [1_450_000, 410, 0.062, 45, 1120],
+    "friendly_name": ["revenue", "new customer signups", "customer churn", "NPS score", "support ticket volume"],
+    "higher_is_better": [True, True, False, True, False],
+})
+
+# STEP 1: % change
+# TODO: metrics["pct_change"] = (metrics["this_quarter"] - metrics["last_quarter"]) / metrics["last_quarter"]
+
+# STEP 2: Headline metric — largest ABSOLUTE % change
+# TODO: headline_row = metrics.loc[metrics["pct_change"].abs().idxmax()]
+
+# STEP 3: Concerning metrics — moving in the WRONG direction (worse) by more than 5%
+def is_concerning(row):
+    # TODO: if row["higher_is_better"] and row["pct_change"] < -0.05: return True
+    # TODO: if not row["higher_is_better"] and row["pct_change"] > 0.05: return True
+    # TODO: return False
+    pass
+
+# TODO: metrics["concerning"] = metrics.apply(is_concerning, axis=1)
+# TODO: concerns = metrics[metrics["concerning"]]
+
+# STEP 4 & 5: Assemble the summary
+def format_pct(x):
+    return f"{x:+.0%}"
+
+# TODO: headline_sentence = f"{headline_row['friendly_name'].capitalize()} moved {format_pct(headline_row['pct_change'])} quarter-over-quarter, the largest shift this period."
+
+# TODO: if len(concerns) > 0:
+# TODO:     concern_row = concerns.iloc[0]
+# TODO:     watch_sentence = f"Worth watching: {concern_row['friendly_name']} moved {format_pct(concern_row['pct_change'])}, in an unfavorable direction."
+# TODO: else:
+# TODO:     watch_sentence = "No metrics moved in a concerning direction this quarter."
+
+# TODO: summary = f"{headline_sentence} {watch_sentence}"
+# TODO: print(summary)
+`,
+    skillTags: ["Executive Summary", "Data Storytelling", "Business Communication", "Automated Reporting", "Pandas"],
+    hints: [
+      "A good executive summary answers 'what changed, how much, and should I care' in the first sentence — busy executives decide whether to keep reading within seconds",
+      "'Higher is better' varies by metric (revenue up = good, churn up = bad) — a summary generator that doesn't account for this will cheerfully report a churn spike as neutral or even positive-sounding",
+      "friendly_name (not raw column names like 'churn_rate') is what makes automated text sound human — always maintain a human-readable label mapping alongside your metric names",
+    ],
+  },
+  {
+    id: "da-story-003",
+    title: "Build a Waterfall Chart to Explain a Revenue Bridge",
+    category: "Data Storytelling",
+    icon: "🌊",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 18,
+    tools: ["Python", "Matplotlib"],
+    scenario:
+      "Revenue grew from last quarter to this quarter, but the CFO wants to know exactly WHERE the growth came from — new customers, upsells, churn, and price changes each contributed differently. A single 'revenue went up' bar hides this story; a waterfall chart tells it.",
+    objective:
+      "Build a waterfall chart showing how starting revenue plus/minus each contributing factor bridges to ending revenue.",
+    steps: [
+      "Define starting revenue and each contributing factor (positive or negative)",
+      "Compute the cumulative running total after each factor is applied",
+      "Compute each bar's bottom (start) position for proper waterfall floating-bar effect",
+      "Color bars differently for positive vs negative contributions vs the start/end totals",
+      "Verify the final cumulative value equals the actual ending revenue",
+    ],
+    workstation: "notebook",
+    starterCode: `# Waterfall Chart — Revenue Bridge
+import matplotlib.pyplot as plt
+import numpy as np
+
+labels = ["Starting Revenue", "New Customers", "Upsells", "Churn", "Price Changes", "Ending Revenue"]
+values = [1_200_000, 180_000, 95_000, -140_000, 35_000, None]  # None = computed total, not an input
+
+# STEP 1 & 2: Compute cumulative running total
+cumulative = [values[0]]
+for v in values[1:-1]:
+    # TODO: cumulative.append(cumulative[-1] + v)
+    pass
+# TODO: cumulative.append(cumulative[-1])  # ending revenue = final cumulative value
+# TODO: values[-1] = cumulative[-1] - 0  # ending total bar shows the full height, not a delta
+
+# STEP 3: Bottom position for each floating bar (0 for start/end totals, else the running total before this step)
+bottoms = [0]
+for i in range(1, len(values) - 1):
+    # TODO: bottoms.append(min(cumulative[i-1], cumulative[i]))
+    pass
+bottoms.append(0)  # ending total bar also starts from 0
+
+# Bar heights (absolute value of each step)
+heights = [values[0]] + [abs(v) for v in values[1:-1]] + [values[-1]]
+
+# STEP 4: Colors — green for positive contributions, red for negative, blue for totals
+colors = []
+for i, v in enumerate(values):
+    if i == 0 or i == len(values) - 1:
+        colors.append("#3D4EAC")  # totals
+    elif v >= 0:
+        colors.append("#2ECC71")  # positive
+    else:
+        colors.append("#E74C3C")  # negative
+
+# TODO: plt.bar(labels, heights, bottom=bottoms, color=colors)
+# TODO: plt.title("Revenue Bridge: Last Quarter to This Quarter")
+# TODO: plt.xticks(rotation=30, ha='right')
+plt.tight_layout()
+plt.show()
+
+# STEP 5: Verify
+expected_ending_revenue = 1_370_000
+# TODO: print("Waterfall total matches actual ending revenue:", abs(cumulative[-1] - expected_ending_revenue) < 1)
+`,
+    skillTags: ["Waterfall Chart", "Revenue Bridge", "Data Storytelling", "Matplotlib", "Financial Visualization"],
+    hints: [
+      "The 'bottoms' array is what creates the floating-bar illusion of a waterfall chart — each intermediate bar starts where the running total was BEFORE that step, not from zero",
+      "Always verify your computed ending total matches the actual reported ending revenue — a waterfall chart that doesn't reconcile is worse than no chart at all, since it actively misleads",
+      "This bridge pattern (start + contributors = end) generalizes far beyond revenue — headcount changes, budget variances, and inventory movements all tell the same kind of story",
+    ],
+  },
+  {
+    id: "da-story-004",
+    title: "Anticipate and Pre-Empt Stakeholder Questions",
+    category: "Data Storytelling",
+    icon: "🎤",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 20,
+    tools: ["Python", "Pandas"],
+    scenario:
+      "Every time you present a metrics deck, the same three questions come up in the Q&A: 'is this seasonal', 'how does this compare to plan', and 'what's driving it'. Instead of scrambling live, you'll build the analysis that pre-answers these before the meeting even starts.",
+    objective:
+      "For a given metric's time series, automatically compute and surface the three most commonly-asked follow-up analyses: year-over-year comparison (seasonality check), plan vs actual variance, and a driver breakdown by segment.",
+    steps: [
+      "Compute year-over-year comparison for the same period last year (seasonality check)",
+      "Compute variance vs a stated plan/target number",
+      "Break down the metric's change by contributing segment to identify the driver",
+      "Assemble all three into a single pre-emptive Q&A block",
+      "Flag which pre-empted question has the most concerning answer, to lead with it proactively",
+    ],
+    workstation: "notebook",
+    starterCode: `# Pre-Empt Stakeholder Questions — Automated Q&A Prep
+import pandas as pd
+
+current_metric = 1_450_000  # this quarter's revenue
+same_period_last_year = 1_100_000
+planned_target = 1_500_000
+
+segment_breakdown = pd.DataFrame({
+    "segment": ["Enterprise", "SMB", "Self-Serve"],
+    "last_quarter": [600_000, 350_000, 250_000],
+    "this_quarter": [780_000, 380_000, 290_000],
+})
+
+# Q1: "Is this seasonal?" -> Year-over-year comparison
+# TODO: yoy_change_pct = (current_metric - same_period_last_year) / same_period_last_year
+# TODO: q1_answer = f"YoY: {'+' if yoy_change_pct >= 0 else ''}{yoy_change_pct:.1%} vs the same quarter last year (\${same_period_last_year:,} -> \${current_metric:,})"
+
+# Q2: "How does this compare to plan?" -> Plan vs actual variance
+# TODO: plan_variance_pct = (current_metric - planned_target) / planned_target
+# TODO: q2_answer = f"vs Plan: {'+' if plan_variance_pct >= 0 else ''}{plan_variance_pct:.1%} (\${current_metric:,} actual vs \${planned_target:,} target)"
+
+# Q3: "What's driving it?" -> Segment breakdown
+# TODO: segment_breakdown["change"] = segment_breakdown["this_quarter"] - segment_breakdown["last_quarter"]
+# TODO: segment_breakdown["pct_of_total_change"] = segment_breakdown["change"] / segment_breakdown["change"].sum()
+# TODO: top_driver = segment_breakdown.loc[segment_breakdown["change"].idxmax()]
+# TODO: q3_answer = f"Driver: {top_driver['segment']} contributed \${top_driver['change']:,} ({top_driver['pct_of_total_change']:.0%} of total change)"
+
+# STEP 4: Assemble pre-emptive Q&A
+print("=== PRE-EMPTIVE Q&A ===")
+# TODO: print(f"Q: Is this seasonal?\\nA: {q1_answer}\\n")
+# TODO: print(f"Q: How does this compare to plan?\\nA: {q2_answer}\\n")
+# TODO: print(f"Q: What's driving it?\\nA: {q3_answer}\\n")
+
+# STEP 5: Flag the most concerning answer to lead with proactively
+# TODO: if plan_variance_pct < -0.02:
+# TODO:     print("LEAD WITH: missed plan — address this before anyone can ask")
+# TODO: elif yoy_change_pct < 0:
+# TODO:     print("LEAD WITH: YoY decline — address seasonality/comparison concerns upfront")
+# TODO: else:
+# TODO:     print("No major concerns to lead with — present the driver breakdown as the main story")
+`,
+    skillTags: ["Stakeholder Communication", "Data Storytelling", "Presentation Prep", "Business Analytics", "Proactive Reporting"],
+    hints: [
+      "The three questions in this exercise (seasonality, plan comparison, driver) are close to universal in business reporting — building a reusable template for them saves real prep time on every future report",
+      "Leading with your weakest number (if there is one) rather than waiting for it to be asked builds more credibility with stakeholders than looking like you were hoping nobody would notice",
+      "pct_of_total_change can behave oddly if segments moved in OPPOSITE directions (one grew, one shrank) — the percentages might not intuitively sum the way you'd expect, worth sanity-checking before presenting",
+    ],
+  },
+]
+
 export const DOMAIN_CHALLENGES = {
   data:      DATA_ANALYST_CHALLENGES,
   bi_analyst:DATA_ANALYST_CHALLENGES,
