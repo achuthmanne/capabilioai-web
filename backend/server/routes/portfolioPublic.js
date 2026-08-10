@@ -226,6 +226,21 @@ router.get("/portfolio/lookup/:identifier", async (req, res) => {
     // institution_students (the same relationship the roster itself is
     // built on) -- an institution can't use this to view a student they
     // have no roster relationship with.
+    //
+    // 2026-08-10 fix: this only ever checked the institution_staff table,
+    // but an institution's OWNER (institutions.admin_user_id) isn't
+    // necessarily also given a row there -- institution_staff is for
+    // invited staff (professors, dept heads, placement officers), while
+    // ownership is tracked separately. Every other place in the codebase
+    // that checks this relationship (the canonical is_institution_staff()/
+    // is_institution_admin() SQL functions, used throughout RLS policies)
+    // already OR's both paths together. This endpoint had drifted out of
+    // sync with that convention, so an institution's own admin/owner (who
+    // has no institution_staff row) got "Portfolio not found" opening their
+    // own roster's students -- confirmed live for institution
+    // f2f0bf23-5b27-4abe-9467-9c25d3592f35 / admin_user_id
+    // 620c125d-fe7f-4ecc-9904-8f5e697d30ab. Now checks both, matching the
+    // rest of the platform.
     let isInstitutionStaffViewer = false
     if (!isOwner && viewer?.id && row.verified !== true) {
       const { data: links } = await supabaseAdmin
@@ -234,15 +249,24 @@ router.get("/portfolio/lookup/:identifier", async (req, res) => {
         .eq("student_user_id", row.id)
       const institutionIds = [...new Set((links || []).map((l) => l.institution_id))]
       if (institutionIds.length) {
-        const { data: staffRow } = await supabaseAdmin
-          .from("institution_staff")
-          .select("id")
-          .eq("user_id", viewer.id)
-          .eq("status", "active")
-          .in("institution_id", institutionIds)
-          .limit(1)
-          .maybeSingle()
-        isInstitutionStaffViewer = !!staffRow
+        const [{ data: staffRow }, { data: ownedInstitution }] = await Promise.all([
+          supabaseAdmin
+            .from("institution_staff")
+            .select("id")
+            .eq("user_id", viewer.id)
+            .eq("status", "active")
+            .in("institution_id", institutionIds)
+            .limit(1)
+            .maybeSingle(),
+          supabaseAdmin
+            .from("institutions")
+            .select("id")
+            .eq("admin_user_id", viewer.id)
+            .in("id", institutionIds)
+            .limit(1)
+            .maybeSingle(),
+        ])
+        isInstitutionStaffViewer = !!staffRow || !!ownedInstitution
       }
     }
 
