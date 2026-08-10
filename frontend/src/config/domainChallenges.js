@@ -9242,6 +9242,3952 @@ for reps, case in [(10, "Bear"), (15, "Base"), (22, "Bull")]:
   },
 ]
 
+// ─────────────────────────────────────────────────────────────────────────────
+// AI/ML — NEURAL NETWORKS
+// ─────────────────────────────────────────────────────────────────────────────
+export const ML_NEURAL_NETS_CHALLENGES = [
+  {
+    id: "nn-001",
+    title: "Implement a Perceptron from Scratch",
+    category: "Neural Networks",
+    icon: "🧠",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python", "NumPy"],
+    scenario:
+      "A robotics team needs a minimal binary classifier for a sensor threshold task — no ML framework available on the embedded board, just NumPy. You need to implement the original perceptron learning algorithm from first principles.",
+    objective:
+      "Implement a Perceptron class with weight initialization, a step activation, and the classic perceptron update rule, then train it on a linearly separable dataset.",
+    steps: [
+      "Initialize weights and bias to zero",
+      "Implement the step activation function",
+      "Implement predict(x) = step(w·x + b)",
+      "Implement the perceptron update rule: w += lr * (y_true - y_pred) * x",
+      "Train for N epochs and report final accuracy",
+    ],
+    workstation: "notebook",
+    starterCode: `# Perceptron from Scratch
+import numpy as np
+
+np.random.seed(42)
+# Linearly separable toy dataset (AND gate)
+X = np.array([[0,0],[0,1],[1,0],[1,1]])
+y = np.array([0,0,0,1])
+
+class Perceptron:
+    def __init__(self, n_features, lr=0.1):
+        self.w = np.zeros(n_features)
+        self.b = 0.0
+        self.lr = lr
+
+    def step(self, z):
+        # TODO: return 1 if z >= 0 else 0
+        pass
+
+    def predict(self, x):
+        # TODO: z = np.dot(self.w, x) + self.b; return self.step(z)
+        pass
+
+    def fit(self, X, y, epochs=20):
+        for epoch in range(epochs):
+            errors = 0
+            for xi, yi in zip(X, y):
+                # TODO: y_pred = self.predict(xi)
+                # TODO: update = self.lr * (yi - y_pred)
+                # TODO: self.w += update * xi; self.b += update
+                # TODO: if update != 0: errors += 1
+                pass
+            if errors == 0:
+                print(f"Converged at epoch {epoch}")
+                break
+
+model = Perceptron(n_features=2)
+model.fit(X, y)
+# TODO: print predictions for all 4 inputs and compare to y
+`,
+    skillTags: ["Perceptron", "NumPy", "Linear Classifiers", "Gradient-Free Learning", "First Principles"],
+    hints: [
+      "The perceptron only converges if the data is linearly separable — AND/OR gates work, XOR does not",
+      "The update rule is 0 when the prediction is already correct — that's what drives convergence",
+      "Track total errors per epoch; 0 errors means the perceptron has found a separating hyperplane",
+    ],
+  },
+  {
+    id: "nn-002",
+    title: "Build a 2-Layer Neural Network with Backpropagation",
+    category: "Neural Networks",
+    icon: "🕸️",
+    difficulty: "Medium",
+    timeLimit: "35 min",
+    eloGain: 20,
+    tools: ["Python", "NumPy"],
+    scenario:
+      "Before your team adopts PyTorch, the ML lead wants everyone to implement forward and backward passes manually once — to actually understand what autograd is doing under the hood.",
+    objective:
+      "Implement a 2-layer (1 hidden layer) neural network with sigmoid activations, forward pass, and manual backpropagation using the chain rule.",
+    steps: [
+      "Initialize weight matrices W1, W2 with small random values",
+      "Implement sigmoid and its derivative",
+      "Implement the forward pass (X → hidden → output)",
+      "Implement backpropagation: compute gradients for W2, then W1 via chain rule",
+      "Train with gradient descent and plot the loss curve (print loss every 200 epochs)",
+    ],
+    workstation: "notebook",
+    starterCode: `# 2-Layer Neural Network — Manual Backprop
+import numpy as np
+
+np.random.seed(1)
+# XOR dataset — needs a hidden layer, perceptron alone can't solve this
+X = np.array([[0,0],[0,1],[1,0],[1,1]])
+y = np.array([[0],[1],[1],[0]])
+
+n_input, n_hidden, n_output = 2, 4, 1
+W1 = np.random.randn(n_input, n_hidden) * 0.5
+W2 = np.random.randn(n_hidden, n_output) * 0.5
+
+def sigmoid(z):
+    return 1 / (1 + np.exp(-z))
+
+def sigmoid_deriv(a):
+    # TODO: derivative of sigmoid given its OUTPUT a: a * (1 - a)
+    pass
+
+lr = 0.5
+for epoch in range(5000):
+    # STEP 1: Forward pass
+    # TODO: z1 = X @ W1; a1 = sigmoid(z1)
+    # TODO: z2 = a1 @ W2; a2 = sigmoid(z2)  # a2 is the prediction
+
+    # STEP 2: Loss (mean squared error)
+    # TODO: loss = np.mean((y - a2) ** 2)
+
+    # STEP 3: Backward pass — output layer
+    # TODO: d_a2 = -(y - a2)
+    # TODO: d_z2 = d_a2 * sigmoid_deriv(a2)
+    # TODO: d_W2 = a1.T @ d_z2
+
+    # STEP 4: Backward pass — hidden layer (chain rule through W2)
+    # TODO: d_a1 = d_z2 @ W2.T
+    # TODO: d_z1 = d_a1 * sigmoid_deriv(a1)
+    # TODO: d_W1 = X.T @ d_z1
+
+    # STEP 5: Gradient descent update
+    # TODO: W2 -= lr * d_W2; W1 -= lr * d_W1
+
+    # if epoch % 200 == 0: print(f"Epoch {epoch}: loss={loss:.4f}")
+    pass
+
+# TODO: after training, print final predictions rounded to 0/1 vs y
+`,
+    skillTags: ["Backpropagation", "Chain Rule", "Sigmoid", "XOR Problem", "Gradient Descent"],
+    hints: [
+      "XOR is NOT linearly separable — this is exactly why a hidden layer is required, unlike nn-001's AND gate",
+      "sigmoid_deriv takes the sigmoid OUTPUT, not the raw z — that's what makes it cheap to compute",
+      "If loss plateaus around 0.25, your gradients likely aren't flowing back through W1 correctly",
+    ],
+  },
+  {
+    id: "nn-003",
+    title: "Activation Functions and Their Derivatives",
+    category: "Neural Networks",
+    icon: "⚡",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python", "NumPy"],
+    scenario:
+      "A junior teammate keeps confusing ReLU, sigmoid, and softmax and picked the wrong one for a multi-class output layer last sprint. You've been asked to write a reference implementation with tests everyone can check against.",
+    objective:
+      "Implement ReLU, sigmoid, tanh, and softmax plus their derivatives (where applicable), and verify numerical correctness against known values.",
+    steps: [
+      "Implement relu(z) and relu_deriv(z)",
+      "Implement sigmoid(z) and sigmoid_deriv(a)",
+      "Implement tanh_fn(z) and tanh_deriv(a)",
+      "Implement softmax(z) for a batch of logits (numerically stable)",
+      "Verify softmax output sums to 1 per row and matches a hand-computed example",
+    ],
+    workstation: "notebook",
+    starterCode: `# Activation Functions Reference Implementation
+import numpy as np
+
+def relu(z):
+    # TODO: np.maximum(0, z)
+    pass
+
+def relu_deriv(z):
+    # TODO: 1 where z > 0, else 0
+    pass
+
+def sigmoid(z):
+    return 1 / (1 + np.exp(-z))
+
+def sigmoid_deriv(a):
+    # TODO: derivative given sigmoid OUTPUT a
+    pass
+
+def tanh_fn(z):
+    # TODO: np.tanh(z)
+    pass
+
+def tanh_deriv(a):
+    # TODO: derivative given tanh OUTPUT a: 1 - a**2
+    pass
+
+def softmax(z):
+    # z: shape (batch, n_classes) — MUST subtract row max first for numerical stability
+    # TODO: z_shift = z - z.max(axis=1, keepdims=True)
+    # TODO: exp_z = np.exp(z_shift)
+    # TODO: return exp_z / exp_z.sum(axis=1, keepdims=True)
+    pass
+
+# Sanity checks
+print("relu(-2, 0, 3):", relu(np.array([-2, 0, 3])))
+print("sigmoid(0):", sigmoid(np.array([0.0])))
+logits = np.array([[2.0, 1.0, 0.1], [1.0, 1.0, 1.0]])
+probs = softmax(logits)
+print("softmax rows sum to 1:", np.allclose(probs.sum(axis=1), 1.0))
+print("softmax([1,1,1]) should be ~[0.33,0.33,0.33]:", probs[1])
+`,
+    skillTags: ["ReLU", "Sigmoid", "Tanh", "Softmax", "Numerical Stability"],
+    hints: [
+      "Always subtract the row max before exponentiating in softmax — otherwise large logits overflow to inf",
+      "ReLU's derivative is undefined at exactly 0 — convention is to treat it as 0 there, it rarely matters in practice",
+      "Use sigmoid/tanh for binary gates and older RNNs; use ReLU family for hidden layers in modern deep nets",
+    ],
+  },
+  {
+    id: "nn-004",
+    title: "Mini-Batch Gradient Descent Training Loop",
+    category: "Neural Networks",
+    icon: "🎯",
+    difficulty: "Hard",
+    timeLimit: "40 min",
+    eloGain: 25,
+    tools: ["Python", "NumPy"],
+    scenario:
+      "Full-batch gradient descent is too slow on your team's 50k-row dataset, and pure SGD is too noisy to converge cleanly. You've been asked to implement proper mini-batch training with shuffling, so the next model iteration trains in minutes instead of hours.",
+    objective:
+      "Implement a mini-batch training loop with shuffling per epoch, batch splitting, and running-loss tracking, applied to a simple linear regression via gradient descent.",
+    steps: [
+      "Shuffle the dataset indices at the start of each epoch",
+      "Split shuffled data into batches of size batch_size",
+      "For each batch, compute predictions, loss, and gradients",
+      "Update weights after each batch (not each epoch)",
+      "Track and print average epoch loss — verify it decreases monotonically",
+    ],
+    workstation: "notebook",
+    starterCode: `# Mini-Batch Gradient Descent — Linear Regression
+import numpy as np
+
+np.random.seed(0)
+n_samples = 2000
+X = np.random.randn(n_samples, 3)
+true_w = np.array([2.5, -1.3, 0.8])
+y = X @ true_w + np.random.randn(n_samples) * 0.1
+
+w = np.zeros(3)
+lr = 0.05
+batch_size = 32
+epochs = 15
+
+for epoch in range(epochs):
+    # STEP 1: Shuffle indices
+    # TODO: idx = np.random.permutation(n_samples)
+    # TODO: X_shuffled, y_shuffled = X[idx], y[idx]
+
+    epoch_losses = []
+    # STEP 2: Iterate over batches
+    for start in range(0, n_samples, batch_size):
+        end = start + batch_size
+        # TODO: X_batch = X_shuffled[start:end]; y_batch = y_shuffled[start:end]
+
+        # STEP 3: Forward — predictions
+        # TODO: y_pred = X_batch @ w
+
+        # STEP 4: Loss (MSE) and gradient
+        # TODO: error = y_pred - y_batch
+        # TODO: loss = np.mean(error ** 2)
+        # TODO: grad = (2 / len(X_batch)) * (X_batch.T @ error)
+
+        # STEP 5: Update
+        # TODO: w -= lr * grad
+        # TODO: epoch_losses.append(loss)
+        pass
+
+    # TODO: print(f"Epoch {epoch}: avg_loss={np.mean(epoch_losses):.4f}")
+
+# TODO: print final learned w vs true_w — should be close
+print("true_w:", true_w)
+`,
+    skillTags: ["Mini-Batch SGD", "Gradient Descent", "Shuffling", "Convergence", "Linear Regression"],
+    hints: [
+      "Shuffling per epoch (not once at the start) prevents the model from memorizing batch order",
+      "Smaller batch_size = noisier but faster-per-step updates; larger = smoother but slower per epoch",
+      "If loss oscillates instead of decreasing, your learning rate is too high — try lr=0.01",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI/ML — NATURAL LANGUAGE PROCESSING
+// ─────────────────────────────────────────────────────────────────────────────
+export const ML_NLP_CHALLENGES = [
+  {
+    id: "nlp-001",
+    title: "Build a Text Classifier with TF-IDF",
+    category: "NLP",
+    icon: "📝",
+    difficulty: "Easy",
+    timeLimit: "25 min",
+    eloGain: 14,
+    tools: ["Python", "scikit-learn"],
+    scenario:
+      "A customer support platform wants to auto-tag incoming tickets as 'billing', 'technical', or 'general'. You have 300 labeled historical tickets to train an initial classifier before the team writes a proper labeling pipeline.",
+    objective:
+      "Vectorize ticket text with TF-IDF and train a Multinomial Naive Bayes classifier to tag tickets into categories.",
+    steps: [
+      "Vectorize the training texts with TfidfVectorizer",
+      "Train a MultinomialNB classifier on the vectors",
+      "Predict categories for held-out test tickets",
+      "Print accuracy and a confusion matrix",
+      "Inspect the top TF-IDF terms driving one misclassified example",
+    ],
+    workstation: "notebook",
+    starterCode: `# Ticket Classification — TF-IDF + Naive Bayes
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import accuracy_score, confusion_matrix
+
+train_texts = [
+    "my card was charged twice this month", "invoice total looks wrong",
+    "refund not received after cancellation", "the app crashes on login",
+    "getting a 500 error on checkout page", "cannot reset my password",
+    "how do I change my shipping address", "when will my order arrive",
+    "what are your business hours",
+]
+train_labels = ["billing","billing","billing","technical","technical","technical","general","general","general"]
+
+test_texts = ["billing address needs to be updated", "the page keeps timing out", "do you ship internationally"]
+
+# STEP 1: Vectorize
+vectorizer = TfidfVectorizer()
+# TODO: X_train = vectorizer.fit_transform(train_texts)
+# TODO: X_test = vectorizer.transform(test_texts)
+
+# STEP 2: Train
+clf = MultinomialNB()
+# TODO: clf.fit(X_train, train_labels)
+
+# STEP 3: Predict
+# TODO: preds = clf.predict(X_test)
+# TODO: print("Predictions:", list(zip(test_texts, preds)))
+
+# STEP 4 (bonus): Show top TF-IDF terms for the first test example
+# TODO: feature_names = vectorizer.get_feature_names_out()
+# TODO: row = X_test[0].toarray()[0]
+# TODO: top_idx = row.argsort()[-5:][::-1]
+# TODO: print("Top terms:", [feature_names[i] for i in top_idx if row[i] > 0])
+`,
+    skillTags: ["TF-IDF", "Naive Bayes", "Text Classification", "scikit-learn", "NLP Pipeline"],
+    hints: [
+      "TF-IDF downweights common words automatically — no manual stopword-frequency tuning needed for this scale",
+      "MultinomialNB assumes non-negative features — TF-IDF vectors satisfy this, raw embeddings would not",
+      "With only 9 training examples this is a toy demo — real ticket classifiers need thousands of labeled rows",
+    ],
+  },
+  {
+    id: "nlp-002",
+    title: "Cosine Similarity for Document Search",
+    category: "NLP",
+    icon: "🔍",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Python", "NumPy", "scikit-learn"],
+    scenario:
+      "A knowledge-base search feature needs to find the most relevant help articles for a user's query — without a full search engine like Elasticsearch. You're prototyping a minimal cosine-similarity search over TF-IDF vectors.",
+    objective:
+      "Build a simple document search function that ranks documents by cosine similarity to a query, using TF-IDF vectors.",
+    steps: [
+      "Vectorize a corpus of documents with TfidfVectorizer",
+      "Vectorize a query using the SAME fitted vectorizer",
+      "Compute cosine similarity between the query and every document",
+      "Rank documents by similarity, descending",
+      "Return the top-3 most relevant document titles",
+    ],
+    workstation: "notebook",
+    starterCode: `# Document Search — Cosine Similarity over TF-IDF
+import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+docs = [
+    "How to reset your password using the mobile app",
+    "Understanding your monthly billing statement",
+    "Troubleshooting login issues on Android",
+    "How to update your payment method",
+    "Setting up two-factor authentication",
+]
+doc_titles = ["Password Reset", "Billing Statement", "Android Login Issues", "Payment Method", "2FA Setup"]
+
+query = "I can't log in and forgot my password"
+
+# STEP 1 & 2: Fit vectorizer on docs, transform both docs and query
+vectorizer = TfidfVectorizer()
+# TODO: doc_vectors = vectorizer.fit_transform(docs)
+# TODO: query_vector = vectorizer.transform([query])
+
+# STEP 3: Cosine similarity between query and each document
+# TODO: sims = cosine_similarity(query_vector, doc_vectors)[0]
+
+# STEP 4: Rank descending
+# TODO: ranked_idx = np.argsort(sims)[::-1]
+
+# STEP 5: Top-3 results
+# TODO: for rank, i in enumerate(ranked_idx[:3]):
+# TODO:     print(f"{rank+1}. {doc_titles[i]} (similarity={sims[i]:.3f})")
+`,
+    skillTags: ["Cosine Similarity", "TF-IDF", "Semantic Search", "Ranking", "Information Retrieval"],
+    hints: [
+      "Never fit a new vectorizer on the query — it must use transform() with the SAME vocabulary as the docs",
+      "Cosine similarity ranges 0-1 for TF-IDF (non-negative vectors) — closer to 1 means more relevant",
+      "This bag-of-words approach misses synonyms ('login' vs 'sign in') — real search adds embeddings for that",
+    ],
+  },
+  {
+    id: "nlp-003",
+    title: "Build a Bigram Language Model",
+    category: "NLP",
+    icon: "🔤",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 18,
+    tools: ["Python"],
+    scenario:
+      "Before reaching for a transformer-based model, your team wants a simple statistical baseline for next-word suggestion in a chat composer — a bigram model trained on your own message history.",
+    objective:
+      "Tokenize a text corpus, build bigram frequency counts, convert to conditional probabilities, and sample a next word given a prefix.",
+    steps: [
+      "Tokenize the corpus into lowercase words",
+      "Build a dictionary of bigram counts: {word: {next_word: count}}",
+      "Convert counts to probabilities per prefix word",
+      "Given a prefix word, return the most likely next word",
+      "Generate a short 5-word sequence by repeatedly sampling the most likely next word",
+    ],
+    workstation: "notebook",
+    starterCode: `# Bigram Language Model
+import re
+from collections import defaultdict, Counter
+
+corpus = """
+the quick brown fox jumps over the lazy dog
+the dog barks at the fox
+the fox runs away from the dog
+the quick fox is quick and clever
+"""
+
+# STEP 1: Tokenize
+# TODO: tokens = re.findall(r"[a-z]+", corpus.lower())
+
+# STEP 2: Build bigram counts
+bigram_counts = defaultdict(Counter)
+# TODO: for i in range(len(tokens) - 1):
+# TODO:     bigram_counts[tokens[i]][tokens[i+1]] += 1
+
+# STEP 3: Convert to probabilities (just needed for most_common, no explicit normalization required)
+def next_word_probs(word):
+    # TODO: return bigram_counts[word].most_common()
+    pass
+
+def predict_next(word):
+    # TODO: probs = next_word_probs(word)
+    # TODO: return probs[0][0] if probs else None
+    pass
+
+def generate(start_word, n=5):
+    seq = [start_word]
+    # TODO: for _ in range(n - 1):
+    # TODO:     nxt = predict_next(seq[-1])
+    # TODO:     if nxt is None: break
+    # TODO:     seq.append(nxt)
+    return seq
+
+print("Next word after 'the':", predict_next("the"))
+print("Generated:", " ".join(generate("the")))
+`,
+    skillTags: ["Language Models", "Bigrams", "Tokenization", "N-Grams", "Text Generation"],
+    hints: [
+      "Counter.most_common() is already sorted by frequency descending — [0] gives you the most likely next word",
+      "This tiny corpus will loop/repeat quickly ('the' → 'dog' → ... ) — real bigram models need much more text",
+      "A pure most-likely-next-word generator is deterministic and repetitive; sampling from the distribution adds variety",
+    ],
+  },
+  {
+    id: "nlp-004",
+    title: "Sentiment Analysis Preprocessing Pipeline",
+    category: "NLP",
+    icon: "💬",
+    difficulty: "Hard",
+    timeLimit: "35 min",
+    eloGain: 22,
+    tools: ["Python", "scikit-learn"],
+    scenario:
+      "Raw scraped product reviews are full of HTML tags, emoji, inconsistent casing, and stray punctuation — feeding this directly into a classifier produces a noisy, low-accuracy model. You need a proper cleaning pipeline before any vectorization happens.",
+    objective:
+      "Build a text preprocessing pipeline (HTML stripping, lowercasing, punctuation removal, stopword filtering) and measure its effect on classifier accuracy vs raw text.",
+    steps: [
+      "Strip HTML tags with a regex",
+      "Lowercase and remove punctuation",
+      "Remove a basic stopword list",
+      "Compare classifier accuracy trained on raw text vs cleaned text",
+      "Print the accuracy delta and which pipeline performed better",
+    ],
+    workstation: "notebook",
+    starterCode: `# Sentiment Preprocessing Pipeline — Before/After Comparison
+import re
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+
+raw_reviews = [
+    "<p>This product is AMAZING!!! Best purchase ever.</p>",
+    "<br>Terrible quality, broke after 2 days :(",
+    "<div>Pretty good, does what it says.</div>",
+    "Absolutely LOVE this, 10/10 would buy again!",
+    "Waste of money, do NOT buy this junk.",
+    "It's okay I guess, nothing special.",
+    "<p>Great value for the price, highly recommend</p>",
+    "Awful experience, product arrived broken.",
+]
+labels = ["pos","neg","pos","pos","neg","neg","pos","neg"]
+
+STOPWORDS = {"the","is","a","an","this","it","for","of","to","and","i"}
+
+def clean_text(text):
+    # STEP 1: strip HTML tags
+    # TODO: text = re.sub(r"<[^>]+>", " ", text)
+    # STEP 2: lowercase
+    # TODO: text = text.lower()
+    # STEP 3: remove punctuation (keep letters/numbers/spaces)
+    # TODO: text = re.sub(r"[^a-z0-9\\s]", " ", text)
+    # STEP 4: remove stopwords
+    # TODO: words = [w for w in text.split() if w not in STOPWORDS]
+    # TODO: return " ".join(words)
+    pass
+
+cleaned_reviews = [clean_text(r) for r in raw_reviews]
+
+def evaluate(texts, labels, name):
+    X_train, X_test, y_train, y_test = train_test_split(texts, labels, test_size=0.25, random_state=42)
+    vec = CountVectorizer()
+    X_train_v = vec.fit_transform(X_train)
+    X_test_v = vec.transform(X_test)
+    clf = MultinomialNB()
+    clf.fit(X_train_v, y_train)
+    acc = accuracy_score(y_test, clf.predict(X_test_v))
+    print(f"{name} accuracy: {acc:.2f}")
+    return acc
+
+# TODO: acc_raw = evaluate(raw_reviews, labels, "Raw text")
+# TODO: acc_clean = evaluate(cleaned_reviews, labels, "Cleaned text")
+# TODO: print(f"Delta: {acc_clean - acc_raw:+.2f}")
+`,
+    skillTags: ["Text Preprocessing", "HTML Stripping", "Stopwords", "Sentiment Analysis", "Pipeline Design"],
+    hints: [
+      "With only 8 examples the accuracy delta will be noisy — the point is the pipeline, not statistical significance",
+      "Always strip HTML BEFORE lowercasing/punctuation removal — tag brackets confuse later regex steps otherwise",
+      "In production, use a proper stopword list (NLTK/spaCy) — this hardcoded set is a minimal illustration only",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI/ML — COMPUTER VISION
+// ─────────────────────────────────────────────────────────────────────────────
+export const ML_CV_CHALLENGES = [
+  {
+    id: "cv-001",
+    title: "Image Preprocessing Pipeline for a CNN",
+    category: "Computer Vision",
+    icon: "🖼️",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python", "NumPy"],
+    scenario:
+      "Raw images arriving from a mobile upload endpoint come in inconsistent sizes and value ranges. Before any model can train on them, they need a standard preprocessing pipeline: resize, normalize, and batch.",
+    objective:
+      "Implement resize (via simple array slicing/padding), pixel normalization to [0,1] and then standardization, and batching for a set of raw image arrays.",
+    steps: [
+      "Simulate 5 raw images as random arrays with different shapes",
+      "Pad/crop each to a fixed 32×32 size",
+      "Normalize pixel values from [0,255] to [0,1]",
+      "Standardize using a given per-channel mean/std",
+      "Stack all images into a single batch array of shape (5, 32, 32, 3)",
+    ],
+    workstation: "notebook",
+    starterCode: `# Image Preprocessing Pipeline
+import numpy as np
+
+np.random.seed(0)
+TARGET_SIZE = 32
+raw_images = [
+    (np.random.rand(28, 28, 3) * 255).astype(np.uint8),
+    (np.random.rand(40, 36, 3) * 255).astype(np.uint8),
+    (np.random.rand(32, 32, 3) * 255).astype(np.uint8),
+    (np.random.rand(30, 34, 3) * 255).astype(np.uint8),
+    (np.random.rand(25, 25, 3) * 255).astype(np.uint8),
+]
+CHANNEL_MEAN = np.array([0.485, 0.456, 0.406])
+CHANNEL_STD  = np.array([0.229, 0.224, 0.225])
+
+def resize_pad_crop(img, size=TARGET_SIZE):
+    h, w, c = img.shape
+    out = np.zeros((size, size, c), dtype=img.dtype)
+    # TODO: copy min(h,size) rows and min(w,size) cols of img into out (center-crop-or-pad)
+    # copy_h = min(h, size); copy_w = min(w, size)
+    # out[:copy_h, :copy_w] = img[:copy_h, :copy_w]
+    return out
+
+def normalize(img):
+    # TODO: convert to float32 and divide by 255.0
+    pass
+
+def standardize(img):
+    # TODO: (img - CHANNEL_MEAN) / CHANNEL_STD, broadcasting over the last axis
+    pass
+
+processed = []
+for img in raw_images:
+    resized = resize_pad_crop(img)
+    normed = normalize(resized)
+    std = standardize(normed)
+    processed.append(std)
+
+# TODO: batch = np.stack(processed, axis=0)
+# TODO: print("Batch shape:", batch.shape)  # expect (5, 32, 32, 3)
+`,
+    skillTags: ["Image Preprocessing", "Normalization", "Standardization", "Batching", "NumPy"],
+    hints: [
+      "Normalize (÷255) BEFORE standardize (subtract mean, divide std) — standardization expects [0,1] input",
+      "CHANNEL_MEAN/STD broadcast automatically over the (H,W) axes since they match the last (channel) axis",
+      "Real pipelines use bilinear resize, not crop-or-pad — this simplified version keeps focus on the shape logic",
+    ],
+  },
+  {
+    id: "cv-002",
+    title: "Implement 2D Convolution from Scratch",
+    category: "Computer Vision",
+    icon: "🔲",
+    difficulty: "Medium",
+    timeLimit: "35 min",
+    eloGain: 20,
+    tools: ["Python", "NumPy"],
+    scenario:
+      "Understanding what a Conv2D layer actually does under the hood is core CV knowledge tested in interviews. You'll implement the sliding-window convolution operation manually, then verify it against a known edge-detection kernel.",
+    objective:
+      "Implement a 2D convolution function (valid padding, stride 1) and apply a Sobel edge-detection kernel to a synthetic image.",
+    steps: [
+      "Implement convolve2d(image, kernel) using nested loops (or sliding window)",
+      "Compute the output shape correctly for 'valid' padding",
+      "Apply a horizontal Sobel kernel to detect vertical edges",
+      "Apply a vertical Sobel kernel to detect horizontal edges",
+      "Combine both into a gradient magnitude map",
+    ],
+    workstation: "notebook",
+    starterCode: `# 2D Convolution from Scratch — Sobel Edge Detection
+import numpy as np
+
+# Synthetic image with a vertical edge in the middle
+image = np.zeros((10, 10))
+image[:, 5:] = 1.0
+
+sobel_x = np.array([[-1,0,1],[-2,0,2],[-1,0,1]])
+sobel_y = np.array([[-1,-2,-1],[0,0,0],[1,2,1]])
+
+def convolve2d(img, kernel):
+    kh, kw = kernel.shape
+    ih, iw = img.shape
+    out_h, out_w = ih - kh + 1, iw - kw + 1
+    out = np.zeros((out_h, out_w))
+    # TODO: for i in range(out_h):
+    # TODO:     for j in range(out_w):
+    # TODO:         region = img[i:i+kh, j:j+kw]
+    # TODO:         out[i, j] = np.sum(region * kernel)
+    return out
+
+# TODO: gx = convolve2d(image, sobel_x)
+# TODO: gy = convolve2d(image, sobel_y)
+# TODO: magnitude = np.sqrt(gx**2 + gy**2)
+# TODO: print("gx max response (should be near the vertical edge column):", np.unravel_index(np.argmax(np.abs(gx)), gx.shape))
+# TODO: print("Output shape:", magnitude.shape)  # expect (8, 8) for valid padding
+`,
+    skillTags: ["Convolution", "Sobel Kernel", "Edge Detection", "CNNs Fundamentals", "Sliding Window"],
+    hints: [
+      "Valid-padding output shape is (H - kh + 1, W - kw + 1) — no padding added around the border",
+      "sobel_x responds strongly to VERTICAL edges (horizontal intensity change) — the naming is about kernel orientation, not the edge it detects",
+      "This nested-loop version is O(H×W×kh×kw) — real CNN frameworks use im2col + matrix multiply for speed",
+    ],
+  },
+  {
+    id: "cv-003",
+    title: "Transfer Learning: Feature Extraction Concept",
+    category: "Computer Vision",
+    icon: "🔄",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 18,
+    tools: ["Python", "NumPy"],
+    scenario:
+      "Your team has only 200 labeled images of manufacturing defects — nowhere near enough to train a CNN from scratch. The standard approach is transfer learning: use a pretrained network's early layers as a fixed feature extractor, then train a small classifier on top.",
+    objective:
+      "Simulate the transfer-learning workflow: freeze a 'pretrained' feature extractor, extract fixed feature vectors for a small dataset, and train a lightweight classifier on those features.",
+    steps: [
+      "Simulate a pretrained feature extractor as a fixed random projection matrix",
+      "Extract feature vectors for the training images by applying the frozen projection",
+      "Train a simple Logistic Regression on the extracted features (NOT raw pixels)",
+      "Evaluate accuracy on held-out feature vectors",
+      "Explain in a comment why this needs far fewer labeled examples than training a CNN from scratch",
+    ],
+    workstation: "notebook",
+    starterCode: `# Transfer Learning — Frozen Feature Extractor + Small Classifier
+import numpy as np
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+
+np.random.seed(42)
+n_samples, img_dim, feature_dim = 200, 64*64*3, 128
+
+# Simulate flattened images and binary labels (defect vs no-defect)
+X_raw = np.random.randn(n_samples, img_dim)
+y = np.random.randint(0, 2, n_samples)
+
+# STEP 1: "Pretrained" feature extractor — a FIXED (frozen, not trained) projection
+np.random.seed(7)  # different seed = simulating pretrained weights, not learned here
+frozen_W = np.random.randn(img_dim, feature_dim) * 0.01
+
+def extract_features(X):
+    # TODO: apply the frozen projection then a ReLU-like nonlinearity: np.maximum(0, X @ frozen_W)
+    pass
+
+# STEP 2: Extract features for the whole dataset (frozen_W is NEVER updated)
+# TODO: X_features = extract_features(X_raw)
+
+# STEP 3: Train/test split on the EXTRACTED features
+# TODO: X_train, X_test, y_train, y_test = train_test_split(X_features, y, test_size=0.2, random_state=42)
+
+# STEP 4: Train a small classifier on top
+clf = LogisticRegression(max_iter=1000)
+# TODO: clf.fit(X_train, y_train)
+# TODO: acc = accuracy_score(y_test, clf.predict(X_test))
+# TODO: print(f"Accuracy on extracted features: {acc:.2f}")
+
+# WHY THIS NEEDS FEWER LABELS:
+# TODO: add a comment explaining that frozen_W was never trained on YOUR data —
+# only clf's weights (feature_dim -> 1) need fitting, a much smaller parameter count
+# than training a full CNN's millions of parameters from scratch.
+`,
+    skillTags: ["Transfer Learning", "Feature Extraction", "Frozen Weights", "Logistic Regression", "Few-Shot Learning"],
+    hints: [
+      "In real transfer learning, frozen_W would be a pretrained ResNet/EfficientNet's convolutional layers, not random",
+      "Only the small classifier on top (feature_dim → n_classes) gets trained — orders of magnitude fewer parameters",
+      "This is why 200 labeled images can work with transfer learning but would badly overfit a from-scratch CNN",
+    ],
+  },
+  {
+    id: "cv-004",
+    title: "Non-Max Suppression for Object Detection",
+    category: "Computer Vision",
+    icon: "📦",
+    difficulty: "Hard",
+    timeLimit: "35 min",
+    eloGain: 24,
+    tools: ["Python", "NumPy"],
+    scenario:
+      "An object detector on a retail shelf-monitoring camera outputs dozens of overlapping bounding boxes for the same product. Before results reach the dashboard, you need Non-Max Suppression (NMS) to collapse duplicates into one box per object.",
+    objective:
+      "Implement IoU (Intersection over Union) and Non-Max Suppression to filter overlapping bounding box detections down to one box per object.",
+    steps: [
+      "Implement iou(box_a, box_b) for boxes in [x1, y1, x2, y2] format",
+      "Sort all detections by confidence score, descending",
+      "Iteratively keep the highest-confidence box and suppress overlapping boxes above an IoU threshold",
+      "Repeat until no boxes remain",
+      "Return the final list of kept box indices",
+    ],
+    workstation: "notebook",
+    starterCode: `# Non-Max Suppression for Object Detection
+import numpy as np
+
+boxes = np.array([
+    [10, 10, 50, 50],
+    [12, 12, 52, 52],   # overlaps box 0 heavily — should be suppressed
+    [11, 11, 51, 51],   # overlaps box 0 heavily — should be suppressed
+    [100, 100, 150, 150],  # separate object
+    [98, 98, 148, 148],    # overlaps box 3 — should be suppressed
+])
+scores = np.array([0.95, 0.80, 0.85, 0.90, 0.70])
+iou_threshold = 0.5
+
+def iou(box_a, box_b):
+    xa1, ya1, xa2, ya2 = box_a
+    xb1, yb1, xb2, yb2 = box_b
+    # STEP 1: intersection coordinates
+    # TODO: inter_x1 = max(xa1, xb1); inter_y1 = max(ya1, yb1)
+    # TODO: inter_x2 = min(xa2, xb2); inter_y2 = min(ya2, yb2)
+    # TODO: inter_area = max(0, inter_x2 - inter_x1) * max(0, inter_y2 - inter_y1)
+    # STEP 2: union
+    # TODO: area_a = (xa2 - xa1) * (ya2 - ya1)
+    # TODO: area_b = (xb2 - xb1) * (yb2 - yb1)
+    # TODO: union_area = area_a + area_b - inter_area
+    # TODO: return inter_area / union_area if union_area > 0 else 0
+    pass
+
+def nms(boxes, scores, iou_thresh):
+    # STEP 1: sort by score descending
+    # TODO: order = np.argsort(scores)[::-1]
+    keep = []
+    order = list(np.argsort(scores)[::-1])
+    while order:
+        # STEP 2: keep the top box
+        current = order.pop(0)
+        keep.append(current)
+        # STEP 3: remove all remaining boxes with IoU > threshold vs current
+        # TODO: order = [i for i in order if iou(boxes[current], boxes[i]) <= iou_thresh]
+    return keep
+
+kept_indices = nms(boxes, scores, iou_threshold)
+print("Kept box indices:", kept_indices)
+print("Expected: box 0 (highest conf, suppresses 1&2) and box 3 (suppresses 4)")
+`,
+    skillTags: ["Non-Max Suppression", "IoU", "Object Detection", "Bounding Boxes", "Post-Processing"],
+    hints: [
+      "IoU = 0 whenever boxes don't overlap at all — always clamp the intersection width/height to >= 0",
+      "Sorting by confidence first is essential — NMS always keeps the MOST confident box in a cluster, not the first one",
+      "A lower iou_threshold suppresses more aggressively (fewer final boxes); higher keeps more near-duplicates",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI/ML — UNSUPERVISED LEARNING
+// ─────────────────────────────────────────────────────────────────────────────
+export const ML_UNSUPERVISED_CHALLENGES = [
+  {
+    id: "unsup-001",
+    title: "Implement K-Means Clustering from Scratch",
+    category: "Unsupervised Learning",
+    icon: "🎯",
+    difficulty: "Easy",
+    timeLimit: "25 min",
+    eloGain: 14,
+    tools: ["Python", "NumPy"],
+    scenario:
+      "Marketing wants to segment 500 customers into groups based on purchase frequency and average order value, with no labels to guide the grouping. You'll implement K-Means from first principles to understand exactly what scikit-learn does under the hood.",
+    objective:
+      "Implement the K-Means algorithm: random centroid initialization, assignment step, update step, and convergence check.",
+    steps: [
+      "Randomly initialize K centroids from the data points",
+      "Assignment step: assign each point to its nearest centroid",
+      "Update step: recompute each centroid as the mean of its assigned points",
+      "Repeat assignment/update until centroids stop moving (or max iterations)",
+      "Print final cluster sizes and centroid locations",
+    ],
+    workstation: "notebook",
+    starterCode: `# K-Means Clustering from Scratch
+import numpy as np
+
+np.random.seed(42)
+# 3 synthetic clusters
+cluster1 = np.random.randn(50, 2) + [0, 0]
+cluster2 = np.random.randn(50, 2) + [8, 8]
+cluster3 = np.random.randn(50, 2) + [0, 8]
+X = np.vstack([cluster1, cluster2, cluster3])
+
+K = 3
+max_iters = 50
+
+def initialize_centroids(X, k):
+    # TODO: randomly pick k data points as initial centroids (np.random.choice indices, no replacement)
+    pass
+
+def assign_clusters(X, centroids):
+    # TODO: for each point, compute distance to every centroid, assign to closest
+    # distances = np.linalg.norm(X[:, None] - centroids[None, :], axis=2)  # shape (n, k)
+    # return np.argmin(distances, axis=1)
+    pass
+
+def update_centroids(X, labels, k):
+    # TODO: new_centroids[i] = mean of X[labels == i], keep old centroid if cluster is empty
+    pass
+
+centroids = initialize_centroids(X, K)
+for iteration in range(max_iters):
+    labels = assign_clusters(X, centroids)
+    new_centroids = update_centroids(X, labels, K)
+    # TODO: if np.allclose(new_centroids, centroids): print(f"Converged at iter {iteration}"); break
+    centroids = new_centroids
+
+# TODO: print cluster sizes: np.bincount(labels)
+# TODO: print final centroids
+`,
+    skillTags: ["K-Means", "Clustering", "Unsupervised Learning", "Centroids", "Convergence"],
+    hints: [
+      "K-Means is sensitive to initialization — bad random centroids can converge to a poor local optimum",
+      "If a cluster becomes empty during update, keep its previous centroid instead of computing a mean of nothing",
+      "Broadcasting X[:, None] - centroids[None, :] computes all pairwise distances in one vectorized step",
+    ],
+  },
+  {
+    id: "unsup-002",
+    title: "Dimensionality Reduction with PCA",
+    category: "Unsupervised Learning",
+    icon: "📉",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 18,
+    tools: ["Python", "NumPy"],
+    scenario:
+      "A dataset with 50 correlated sensor features is too high-dimensional to visualize or feed efficiently into some downstream models. You need PCA to reduce it to 2 principal components while preserving as much variance as possible.",
+    objective:
+      "Implement PCA from scratch using covariance matrix eigendecomposition, project the data onto the top-2 components, and report the variance explained.",
+    steps: [
+      "Center the data (subtract the mean of each feature)",
+      "Compute the covariance matrix",
+      "Compute eigenvalues and eigenvectors of the covariance matrix",
+      "Sort eigenvectors by eigenvalue descending, take the top 2",
+      "Project the centered data onto the top-2 eigenvectors and report variance explained",
+    ],
+    workstation: "notebook",
+    starterCode: `# PCA from Scratch — Eigendecomposition
+import numpy as np
+
+np.random.seed(0)
+# Correlated 5-feature dataset (really only ~2 independent directions of variance)
+n = 200
+latent = np.random.randn(n, 2)
+mixing = np.random.randn(2, 5)
+X = latent @ mixing + np.random.randn(n, 5) * 0.1
+
+# STEP 1: Center the data
+# TODO: X_centered = X - X.mean(axis=0)
+
+# STEP 2: Covariance matrix
+# TODO: cov = np.cov(X_centered, rowvar=False)
+
+# STEP 3: Eigendecomposition
+# TODO: eigenvalues, eigenvectors = np.linalg.eigh(cov)
+
+# STEP 4: Sort descending (eigh returns ascending order)
+# TODO: order = np.argsort(eigenvalues)[::-1]
+# TODO: eigenvalues = eigenvalues[order]
+# TODO: eigenvectors = eigenvectors[:, order]
+
+# STEP 5: Project onto top 2 components
+# TODO: top2 = eigenvectors[:, :2]
+# TODO: X_projected = X_centered @ top2
+# TODO: print("Projected shape:", X_projected.shape)  # expect (200, 2)
+
+# Variance explained
+# TODO: total_var = eigenvalues.sum()
+# TODO: explained = eigenvalues[:2].sum() / total_var
+# TODO: print(f"Variance explained by top 2 components: {explained:.1%}")
+`,
+    skillTags: ["PCA", "Eigendecomposition", "Dimensionality Reduction", "Covariance Matrix", "Variance Explained"],
+    hints: [
+      "np.linalg.eigh (not eig) is correct here — covariance matrices are always symmetric, eigh is faster and more stable",
+      "eigh returns eigenvalues in ASCENDING order — you must reverse-sort both eigenvalues and eigenvectors together",
+      "Since this data was generated from a true 2D latent space, variance explained by the top 2 PCs should be very high (>90%)",
+    ],
+  },
+  {
+    id: "unsup-003",
+    title: "Hierarchical Clustering — Agglomerative Merge",
+    category: "Unsupervised Learning",
+    icon: "🌳",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 18,
+    tools: ["Python", "NumPy", "SciPy"],
+    scenario:
+      "Unlike K-Means, the biology team doesn't know how many gene-expression clusters to expect ahead of time — they want a dendrogram showing the full merge hierarchy so they can pick the cut level themselves.",
+    objective:
+      "Compute a linkage matrix using agglomerative (bottom-up) hierarchical clustering and extract flat clusters at a chosen distance threshold.",
+    steps: [
+      "Compute pairwise distances between all data points",
+      "Run agglomerative clustering with average linkage",
+      "Inspect the linkage matrix structure (merge steps and distances)",
+      "Cut the dendrogram at a chosen distance threshold to get flat cluster labels",
+      "Report how many clusters result from the cut",
+    ],
+    workstation: "notebook",
+    starterCode: `# Hierarchical (Agglomerative) Clustering
+import numpy as np
+from scipy.cluster.hierarchy import linkage, fcluster
+from scipy.spatial.distance import pdist
+
+np.random.seed(1)
+cluster1 = np.random.randn(15, 2) + [0, 0]
+cluster2 = np.random.randn(15, 2) + [10, 10]
+cluster3 = np.random.randn(15, 2) + [10, 0]
+X = np.vstack([cluster1, cluster2, cluster3])
+
+# STEP 1: Pairwise distances (condensed form, required by linkage())
+# TODO: distances = pdist(X, metric='euclidean')
+
+# STEP 2: Agglomerative clustering with average linkage
+# TODO: Z = linkage(distances, method='average')
+# Z has shape (n-1, 4): [idx1, idx2, distance, sample_count]
+
+# STEP 3: Inspect the first and last merges
+# TODO: print("First merge (closest pair):", Z[0])
+# TODO: print("Last merge (root):", Z[-1])
+
+# STEP 4: Cut the dendrogram at a distance threshold
+threshold = 5.0
+# TODO: cluster_labels = fcluster(Z, t=threshold, criterion='distance')
+
+# STEP 5: Report cluster count
+# TODO: n_clusters = len(set(cluster_labels))
+# TODO: print(f"Threshold={threshold}: {n_clusters} clusters found")
+# TODO: print("Cluster sizes:", np.bincount(cluster_labels)[1:])
+`,
+    skillTags: ["Hierarchical Clustering", "Dendrogram", "Linkage Matrix", "Agglomerative", "SciPy"],
+    hints: [
+      "Average linkage uses mean pairwise distance between clusters — more robust to outliers than single/complete linkage",
+      "A LOWER distance threshold produces MORE (smaller) clusters; a HIGHER threshold merges everything into fewer clusters",
+      "Z[i] = [cluster_a, cluster_b, distance, size] — cluster indices >= n refer to previously-merged clusters, not raw points",
+    ],
+  },
+  {
+    id: "unsup-004",
+    title: "Anomaly Detection with Isolation Forest Logic",
+    category: "Unsupervised Learning",
+    icon: "🚨",
+    difficulty: "Hard",
+    timeLimit: "35 min",
+    eloGain: 24,
+    tools: ["Python", "NumPy", "scikit-learn"],
+    scenario:
+      "A fraud team needs to flag suspicious transactions with NO labeled fraud examples to train on — fraud is too rare and evolving for supervised learning. You'll use Isolation Forest, which detects anomalies by how easily points get isolated in random splits.",
+    objective:
+      "Train an IsolationForest on transaction data, score every transaction by anomaly, and flag the top 5% most anomalous as suspicious.",
+    steps: [
+      "Generate synthetic transaction data (amount, hour_of_day) with a few injected outliers",
+      "Train an IsolationForest with an appropriate contamination rate",
+      "Get anomaly scores (decision_function) for every transaction",
+      "Flag the bottom N% by score (most negative = most anomalous) as suspicious",
+      "Verify the injected outliers are among the flagged transactions",
+    ],
+    workstation: "notebook",
+    starterCode: `# Anomaly Detection — Isolation Forest
+import numpy as np
+from sklearn.ensemble import IsolationForest
+
+np.random.seed(42)
+n_normal = 190
+n_outliers = 10
+
+# Normal transactions: amount ~₹500-3000, mostly daytime hours
+normal_amount = np.random.uniform(500, 3000, n_normal)
+normal_hour = np.random.normal(14, 4, n_normal).clip(0, 23)
+
+# Injected outliers: unusually large amounts at odd hours
+outlier_amount = np.random.uniform(15000, 50000, n_outliers)
+outlier_hour = np.random.uniform(1, 4, n_outliers)
+
+amounts = np.concatenate([normal_amount, outlier_amount])
+hours = np.concatenate([normal_hour, outlier_hour])
+X = np.column_stack([amounts, hours])
+true_outlier_mask = np.array([False]*n_normal + [True]*n_outliers)
+
+# STEP 1: Train Isolation Forest
+contamination = n_outliers / (n_normal + n_outliers)
+model = IsolationForest(contamination=contamination, random_state=42)
+# TODO: model.fit(X)
+
+# STEP 2: Anomaly scores — LOWER (more negative) = more anomalous
+# TODO: scores = model.decision_function(X)
+
+# STEP 3: Flag bottom 5% as suspicious
+# TODO: threshold = np.percentile(scores, 5)
+# TODO: flagged = scores <= threshold
+
+# STEP 4: Check overlap with true injected outliers
+# TODO: true_positives = np.sum(flagged & true_outlier_mask)
+# TODO: print(f"Flagged {flagged.sum()} transactions as suspicious")
+# TODO: print(f"Of those, {true_positives} were injected outliers (out of {n_outliers} total)")
+`,
+    skillTags: ["Isolation Forest", "Anomaly Detection", "Unsupervised Learning", "Fraud Detection", "Contamination"],
+    hints: [
+      "decision_function returns LOWER values for MORE anomalous points — don't mix this up with predict() which returns -1/1 labels",
+      "The contamination parameter should roughly match your expected outlier rate — set it too high and you'll flag normal points",
+      "Isolation Forest works well here because outliers (huge amount + odd hour) are isolated in FEWER random tree splits than normal points",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI/ML — MODEL DEPLOYMENT & MONITORING
+// ─────────────────────────────────────────────────────────────────────────────
+export const ML_DEPLOYMENT_CHALLENGES = [
+  {
+    id: "mldeploy-001",
+    title: "Detect Data Drift Between Training and Live Data",
+    category: "ML Deployment",
+    icon: "📡",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 18,
+    tools: ["Python", "NumPy", "SciPy"],
+    scenario:
+      "A model that scored 92% accuracy at launch is now underperforming three months later. Before retraining, you need to confirm whether the live feature distributions have drifted away from what the model was trained on.",
+    objective:
+      "Compare training vs live feature distributions using the Kolmogorov-Smirnov test and flag features with statistically significant drift.",
+    steps: [
+      "Simulate a training distribution and a live distribution (one feature shifted)",
+      "Run a KS test comparing training vs live for each feature",
+      "Flag features where the p-value is below a significance threshold",
+      "Report which features drifted and by how much (mean shift)",
+      "Recommend retrain vs no-retrain based on the results",
+    ],
+    workstation: "notebook",
+    starterCode: `# Data Drift Detection — Kolmogorov-Smirnov Test
+import numpy as np
+from scipy.stats import ks_2samp
+
+np.random.seed(42)
+n = 1000
+feature_names = ["avg_order_value", "days_since_signup", "num_logins_30d"]
+
+# Training-time distributions
+train_data = {
+    "avg_order_value":    np.random.normal(500, 100, n),
+    "days_since_signup":  np.random.normal(180, 60, n),
+    "num_logins_30d":     np.random.poisson(12, n),
+}
+
+# Live distributions — avg_order_value has DRIFTED (customers spending more now)
+live_data = {
+    "avg_order_value":    np.random.normal(650, 110, n),  # shifted mean
+    "days_since_signup":  np.random.normal(185, 62, n),   # roughly stable
+    "num_logins_30d":     np.random.poisson(12.5, n),     # roughly stable
+}
+
+alpha = 0.01  # significance threshold
+
+drifted_features = []
+for feat in feature_names:
+    # STEP 1 & 2: KS test between train and live for this feature
+    # TODO: statistic, p_value = ks_2samp(train_data[feat], live_data[feat])
+
+    # STEP 3: Flag if p_value < alpha
+    # TODO: is_drifted = p_value < alpha
+
+    # STEP 4: Mean shift
+    # TODO: mean_shift = live_data[feat].mean() - train_data[feat].mean()
+
+    # TODO: print(f"{feat}: KS_stat={statistic:.3f}, p={p_value:.4f}, drifted={is_drifted}, mean_shift={mean_shift:+.1f}")
+    # TODO: if is_drifted: drifted_features.append(feat)
+    pass
+
+# STEP 5: Recommendation
+# TODO: if drifted_features: print(f"RECOMMEND RETRAIN — drifted features: {drifted_features}")
+# TODO: else: print("No significant drift detected — monitoring can continue as-is")
+`,
+    skillTags: ["Data Drift", "KS Test", "Model Monitoring", "Statistical Testing", "MLOps"],
+    hints: [
+      "A low p-value (< alpha) means the two distributions are statistically unlikely to come from the same source — that's drift",
+      "KS test detects ANY distributional difference (shape, spread, location), not just mean shift — that's why it's a good general drift check",
+      "Drift alone doesn't always mean retrain immediately — check if it's actually hurting live accuracy/business metrics first",
+    ],
+  },
+  {
+    id: "mldeploy-002",
+    title: "A/B Test Two Model Versions",
+    category: "ML Deployment",
+    icon: "🧪",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 18,
+    tools: ["Python", "SciPy"],
+    scenario:
+      "A new recommendation model (v2) is being rolled out to 50% of traffic against the current production model (v1). Before fully shipping v2, you need a statistically sound comparison of their click-through rates.",
+    objective:
+      "Run a two-proportion z-test to determine whether v2's click-through rate is significantly better than v1's, and compute a confidence interval for the lift.",
+    steps: [
+      "Given click counts and impression counts for v1 and v2, compute CTR for each",
+      "Compute the pooled standard error for the two-proportion test",
+      "Compute the z-statistic and p-value",
+      "Compute a 95% confidence interval for the difference in CTR",
+      "Print a clear ship / don't-ship recommendation with justification",
+    ],
+    workstation: "notebook",
+    starterCode: `# A/B Test — Two-Proportion Z-Test
+import numpy as np
+from scipy.stats import norm
+
+# Results after 2 weeks
+v1_impressions, v1_clicks = 10000, 420   # CTR = 4.2%
+v2_impressions, v2_clicks = 10000, 480   # CTR = 4.8%
+
+# STEP 1: CTRs
+# TODO: p1 = v1_clicks / v1_impressions
+# TODO: p2 = v2_clicks / v2_impressions
+
+# STEP 2: Pooled proportion and standard error
+# TODO: p_pool = (v1_clicks + v2_clicks) / (v1_impressions + v2_impressions)
+# TODO: se = np.sqrt(p_pool * (1 - p_pool) * (1/v1_impressions + 1/v2_impressions))
+
+# STEP 3: Z-statistic and p-value (two-tailed)
+# TODO: z = (p2 - p1) / se
+# TODO: p_value = 2 * (1 - norm.cdf(abs(z)))
+
+# STEP 4: 95% CI for the difference (using UNPOOLED variance for the CI, standard practice)
+# TODO: se_unpooled = np.sqrt(p1*(1-p1)/v1_impressions + p2*(1-p2)/v2_impressions)
+# TODO: diff = p2 - p1
+# TODO: ci_low = diff - 1.96 * se_unpooled
+# TODO: ci_high = diff + 1.96 * se_unpooled
+
+# TODO: print(f"v1 CTR: {p1:.2%}, v2 CTR: {p2:.2%}")
+# TODO: print(f"Z={z:.2f}, p-value={p_value:.4f}")
+# TODO: print(f"95% CI for lift: [{ci_low:+.2%}, {ci_high:+.2%}]")
+
+# STEP 5: Recommendation
+# TODO: if p_value < 0.05 and diff > 0: print("SHIP v2 — statistically significant improvement")
+# TODO: elif p_value < 0.05 and diff < 0: print("DO NOT SHIP v2 — significantly worse than v1")
+# TODO: else: print("INCONCLUSIVE — collect more data before deciding")
+`,
+    skillTags: ["A/B Testing", "Two-Proportion Z-Test", "Confidence Intervals", "Statistical Significance", "Experimentation"],
+    hints: [
+      "Use the POOLED proportion for the z-test's standard error, but the UNPOOLED (per-group) variance for the confidence interval",
+      "A p-value < 0.05 alone isn't enough — check that the confidence interval doesn't straddle zero for a robust conclusion",
+      "'Inconclusive' is a valid and honest result — don't ship on a non-significant result just because v2's raw number was higher",
+    ],
+  },
+  {
+    id: "mldeploy-003",
+    title: "Build a Simple Feature Store Lookup Layer",
+    category: "ML Deployment",
+    icon: "🗄️",
+    difficulty: "Hard",
+    timeLimit: "35 min",
+    eloGain: 22,
+    tools: ["Python"],
+    scenario:
+      "Your model needs the same engineered features at training time (batch, from a warehouse) and serving time (real-time, low-latency). Feature skew between the two paths is a top cause of production model bugs — you'll build a minimal feature store abstraction to prevent it.",
+    objective:
+      "Implement a FeatureStore class with a single get_features() method used identically by both a (simulated) batch training job and a (simulated) real-time serving request, guaranteeing consistency.",
+    steps: [
+      "Implement a FeatureStore backed by an in-memory dict keyed by entity_id",
+      "Implement register_features() to write computed features for an entity",
+      "Implement get_features(entity_id, feature_names) to read them back",
+      "Simulate a batch job writing features for 1000 users",
+      "Simulate a real-time request reading features for one user and verify they match what the batch job wrote",
+    ],
+    workstation: "notebook",
+    starterCode: `# Minimal Feature Store — Training/Serving Consistency
+from datetime import datetime
+
+class FeatureStore:
+    def __init__(self):
+        self._store = {}  # entity_id -> {feature_name: value}
+        self._timestamps = {}
+
+    def register_features(self, entity_id, features: dict):
+        # TODO: self._store[entity_id] = features
+        # TODO: self._timestamps[entity_id] = datetime.utcnow()
+        pass
+
+    def get_features(self, entity_id, feature_names: list):
+        # TODO: entity_features = self._store.get(entity_id, {})
+        # TODO: return {name: entity_features.get(name) for name in feature_names}
+        pass
+
+fs = FeatureStore()
+
+# STEP 1: Simulate batch job computing features for 1000 users (offline, from warehouse)
+for user_id in range(1000):
+    computed = {
+        "avg_order_value": 500 + user_id % 50,
+        "days_active": 10 + user_id % 200,
+        "is_premium": user_id % 7 == 0,
+    }
+    # TODO: fs.register_features(f"user_{user_id}", computed)
+
+# STEP 2: Simulate a real-time serving request for user_42
+requested_features = ["avg_order_value", "days_active", "is_premium"]
+# TODO: served = fs.get_features("user_42", requested_features)
+# TODO: print("Served at request time:", served)
+
+# STEP 3: Verify against what the batch job computed directly (ground truth)
+expected = {"avg_order_value": 500 + 42 % 50, "days_active": 10 + 42 % 200, "is_premium": 42 % 7 == 0}
+# TODO: print("Matches batch computation:", served == expected)
+`,
+    skillTags: ["Feature Store", "Training-Serving Skew", "MLOps", "Feature Engineering", "System Design"],
+    hints: [
+      "The whole point of a feature store is that BOTH training and serving call the exact same get_features() — never reimplement feature logic twice",
+      "Real feature stores (Feast, Tecton) add TTLs, point-in-time correctness, and online/offline store separation — this is the minimal core idea",
+      "Training-serving skew is one of the most common silent production bugs — a feature computed slightly differently online vs offline degrades accuracy with no obvious error",
+    ],
+  },
+  {
+    id: "mldeploy-004",
+    title: "Batch vs Real-Time Inference Trade-off",
+    category: "ML Deployment",
+    icon: "⏱️",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 22,
+    tools: ["Python"],
+    scenario:
+      "Product wants recommendations to feel instant, but your model takes 200ms per prediction and you have 2 million users. You need to decide — and simulate — whether real-time or precomputed batch inference fits the latency and freshness requirements.",
+    objective:
+      "Simulate both inference strategies (real-time per-request vs precomputed batch lookup) and compare total latency and staleness trade-offs.",
+    steps: [
+      "Simulate a model's per-prediction latency (200ms)",
+      "Simulate real-time inference: total time for R requests",
+      "Simulate batch inference: total time to precompute for all N users once, then O(1) lookup per request",
+      "Compute the staleness window for batch (time since last precompute)",
+      "Print a recommendation based on requests/sec vs staleness tolerance",
+    ],
+    workstation: "notebook",
+    starterCode: `# Batch vs Real-Time Inference Trade-off Simulation
+import time
+
+MODEL_LATENCY_MS = 200
+N_USERS = 2_000_000
+REQUESTS_PER_SEC = 500          # expected live traffic
+STALENESS_TOLERANCE_HOURS = 6   # business requirement: recs can't be older than 6h
+BATCH_RUN_INTERVAL_HOURS = 4    # how often the batch job re-runs
+
+def simulate_realtime_latency(requests_per_sec, model_latency_ms):
+    # TODO: total time to serve 1 second of requests = requests_per_sec * model_latency_ms
+    # TODO: return this in ms, and whether it exceeds 1000ms (i.e. can't keep up with 1 req/sec throughput)
+    pass
+
+def simulate_batch_precompute_time(n_users, model_latency_ms):
+    # TODO: total precompute time = n_users * model_latency_ms, convert to hours
+    pass
+
+# STEP 1 & 2: Real-time analysis
+# TODO: rt_total_ms, rt_overloaded = simulate_realtime_latency(REQUESTS_PER_SEC, MODEL_LATENCY_MS)
+# TODO: print(f"Real-time: {rt_total_ms}ms of compute needed per second of traffic (overloaded: {rt_overloaded})")
+
+# STEP 3: Batch precompute analysis
+# TODO: batch_hours = simulate_batch_precompute_time(N_USERS, MODEL_LATENCY_MS)
+# TODO: print(f"Batch: {batch_hours:.1f} hours to precompute for all {N_USERS:,} users")
+
+# STEP 4: Staleness check
+# TODO: batch_meets_staleness = BATCH_RUN_INTERVAL_HOURS <= STALENESS_TOLERANCE_HOURS
+# TODO: batch_run_feasible = batch_hours <= BATCH_RUN_INTERVAL_HOURS
+# TODO: print(f"Batch job fits its own re-run interval: {batch_run_feasible}")
+# TODO: print(f"Batch staleness within tolerance: {batch_meets_staleness}")
+
+# STEP 5: Recommendation
+# TODO: if rt_overloaded and batch_run_feasible and batch_meets_staleness:
+# TODO:     print("RECOMMENDATION: Batch precompute + real-time lookup (real-time model can't keep up with traffic)")
+# TODO: elif not rt_overloaded:
+# TODO:     print("RECOMMENDATION: Real-time inference is feasible at this traffic level")
+# TODO: else:
+# TODO:     print("RECOMMENDATION: Neither fits as-is — need to reduce model latency or shard the batch job")
+`,
+    skillTags: ["Batch Inference", "Real-Time Inference", "Latency", "System Design", "MLOps Trade-offs"],
+    hints: [
+      "Real-time throughput is limited by (1000ms / model_latency_ms) predictions per second, per compute worker — compare that to your requests/sec",
+      "Batch precompute time scales with total USERS, not requests — huge user bases with modest traffic often favor batch",
+      "The real trade-off is freshness (real-time always current) vs throughput/cost (batch amortizes compute) — there's rarely a universally 'correct' answer",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MBA — MARKETING
+// ─────────────────────────────────────────────────────────────────────────────
+export const MBA_MARKETING_CHALLENGES = [
+  {
+    id: "mba-mkt-001",
+    title: "Customer Segmentation with RFM Analysis",
+    category: "Marketing",
+    icon: "📊",
+    difficulty: "Easy",
+    timeLimit: "25 min",
+    eloGain: 14,
+    tools: ["Python", "Pandas"],
+    scenario:
+      "The marketing team wants to launch a re-engagement campaign but is targeting all 5,000 customers with the same generic email. You've been asked to segment customers using RFM (Recency, Frequency, Monetary) analysis so the campaign can be tailored per segment.",
+    objective:
+      "Compute RFM scores for each customer, bucket them into quintiles, and assign segment labels (Champions, At Risk, Lost, etc.) based on the combined score.",
+    steps: [
+      "Compute Recency (days since last purchase), Frequency (order count), Monetary (total spend) per customer",
+      "Bucket each metric into quintiles (1-5) using pandas qcut",
+      "Combine R, F, M scores into a single RFM segment string",
+      "Map common RFM patterns to business-friendly segment names",
+      "Report the size of each segment",
+    ],
+    workstation: "notebook",
+    starterCode: `# RFM Customer Segmentation
+import pandas as pd
+import numpy as np
+
+np.random.seed(0)
+n = 500
+today = pd.Timestamp("2026-08-01")
+df = pd.DataFrame({
+    "customer_id": range(n),
+    "last_purchase_date": today - pd.to_timedelta(np.random.randint(1, 365, n), unit="D"),
+    "order_count": np.random.randint(1, 30, n),
+    "total_spend": np.random.uniform(50, 5000, n),
+})
+
+# STEP 1: Recency
+# TODO: df["recency"] = (today - df["last_purchase_date"]).dt.days
+# TODO: df["frequency"] = df["order_count"]
+# TODO: df["monetary"] = df["total_spend"]
+
+# STEP 2: Quintile scores — NOTE recency is inverted (lower days = better = higher score)
+# TODO: df["R_score"] = pd.qcut(df["recency"], 5, labels=[5,4,3,2,1]).astype(int)
+# TODO: df["F_score"] = pd.qcut(df["frequency"].rank(method="first"), 5, labels=[1,2,3,4,5]).astype(int)
+# TODO: df["M_score"] = pd.qcut(df["monetary"], 5, labels=[1,2,3,4,5]).astype(int)
+
+# STEP 3: Combined RFM string
+# TODO: df["RFM"] = df["R_score"].astype(str) + df["F_score"].astype(str) + df["M_score"].astype(str)
+
+def segment_label(row):
+    # STEP 4: TODO: map high R+F+M -> "Champions", high R low F/M -> "New Customers",
+    # low R high F/M -> "At Risk", low R low F/M -> "Lost", everything else -> "Regular"
+    r, f, m = row["R_score"], row["F_score"], row["M_score"]
+    if r >= 4 and f >= 4 and m >= 4:
+        return "Champions"
+    if r <= 2 and f >= 4 and m >= 4:
+        return "At Risk"
+    if r <= 2 and f <= 2 and m <= 2:
+        return "Lost"
+    if r >= 4 and f <= 2:
+        return "New Customers"
+    return "Regular"
+
+# TODO: df["segment"] = df.apply(segment_label, axis=1)
+# TODO: print(df["segment"].value_counts())
+`,
+    skillTags: ["RFM Analysis", "Customer Segmentation", "Pandas", "Quintile Binning", "Marketing Analytics"],
+    hints: [
+      "Recency scoring is INVERTED — fewer days since last purchase should map to a HIGHER score (more recent = better)",
+      "Use .rank(method='first') before qcut on frequency if there are many tied values causing duplicate bin edges",
+      "'Champions' (high R, F, M) deserve loyalty rewards; 'At Risk' (was high value, now inactive) needs win-back campaigns — different messaging per segment",
+    ],
+  },
+  {
+    id: "mba-mkt-002",
+    title: "Marketing Mix Attribution: Multi-Touch Model",
+    category: "Marketing",
+    icon: "🎯",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 18,
+    tools: ["Python", "Pandas"],
+    scenario:
+      "Finance is asking which marketing channels actually drive conversions before renewing a $2M paid social contract. Last-click attribution gives Paid Social 80% of the credit, but you suspect earlier touchpoints matter — you need to build a multi-touch attribution model.",
+    objective:
+      "Implement first-touch, last-touch, and linear multi-touch attribution models over customer journey data, and compare how credit is distributed across channels.",
+    steps: [
+      "Group touchpoint events by customer journey (converted customers only)",
+      "Implement first-touch attribution (100% credit to first channel)",
+      "Implement last-touch attribution (100% credit to last channel)",
+      "Implement linear attribution (equal credit split across all touchpoints)",
+      "Compare total conversions credited per channel across all three models",
+    ],
+    workstation: "notebook",
+    starterCode: `# Multi-Touch Marketing Attribution
+import pandas as pd
+from collections import defaultdict
+
+journeys = {
+    "cust_1": ["Organic Search", "Email", "Paid Social", "Paid Social"],   # converted via Paid Social
+    "cust_2": ["Paid Social", "Direct", "Paid Search"],
+    "cust_3": ["Referral", "Email", "Email", "Direct"],
+    "cust_4": ["Paid Social"],
+    "cust_5": ["Organic Search", "Paid Search", "Paid Search", "Email"],
+}
+
+def first_touch_attribution(journeys):
+    credit = defaultdict(float)
+    # TODO: for each journey, give 1 full credit to journey[0]
+    for cust, path in journeys.items():
+        credit[path[0]] += 1
+    return credit
+
+def last_touch_attribution(journeys):
+    credit = defaultdict(float)
+    # TODO: for each journey, give 1 full credit to journey[-1]
+    pass
+    return credit
+
+def linear_attribution(journeys):
+    credit = defaultdict(float)
+    # TODO: for each journey, split 1 credit EQUALLY across all unique or all touchpoints in the path
+    # (use all touchpoints, not unique, for this exercise)
+    for cust, path in journeys.items():
+        share = 1.0 / len(path)
+        for channel in path:
+            credit[channel] += share
+    return credit
+
+ft = first_touch_attribution(journeys)
+lt = last_touch_attribution(journeys)
+lin = linear_attribution(journeys)
+
+print("First-touch credit:", dict(ft))
+print("Last-touch credit:", dict(lt))
+print("Linear credit:", {k: round(v,2) for k,v in lin.items()})
+# TODO: compare Paid Social's credit across all 3 models — is it over- or under-credited by last-touch alone?
+`,
+    skillTags: ["Marketing Attribution", "Multi-Touch Modeling", "Channel Analysis", "Customer Journey", "Pandas"],
+    hints: [
+      "Last-touch attribution systematically over-credits 'closing' channels like Paid Social and Direct, which often just capture demand created earlier",
+      "First-touch over-credits awareness channels (Organic Search, Referral) that start journeys but don't always close them",
+      "Linear is a reasonable middle ground for a first pass — production systems often move to data-driven (Markov chain / Shapley value) attribution next",
+    ],
+  },
+  {
+    id: "mba-mkt-003",
+    title: "A/B Test a Landing Page Headline",
+    category: "Marketing",
+    icon: "🧪",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Python", "SciPy"],
+    scenario:
+      "Growth marketing ran a 2-week A/B test of two landing page headlines and needs a go/no-go decision by end of day for the next sprint's traffic allocation.",
+    objective:
+      "Run a chi-square test of independence on conversion counts across two headline variants and interpret statistical significance.",
+    steps: [
+      "Build a 2x2 contingency table of (variant, converted/not-converted)",
+      "Run a chi-square test of independence",
+      "Compute conversion rate and relative lift for each variant",
+      "Interpret the p-value against a 0.05 significance threshold",
+      "Give a clear recommendation with the supporting numbers",
+    ],
+    workstation: "notebook",
+    starterCode: `# A/B Test — Chi-Square Test of Independence
+import numpy as np
+from scipy.stats import chi2_contingency
+
+# Variant A (control): "Save 20% on Your First Order"
+# Variant B (test):     "Join 50,000+ Happy Customers Today"
+a_visitors, a_conversions = 5000, 210
+b_visitors, b_conversions = 5000, 265
+
+# STEP 1: 2x2 contingency table [[converted, not_converted], [converted, not_converted]]
+# TODO: table = np.array([
+#     [a_conversions, a_visitors - a_conversions],
+#     [b_conversions, b_visitors - b_conversions],
+# ])
+
+# STEP 2: Chi-square test
+# TODO: chi2, p_value, dof, expected = chi2_contingency(table)
+
+# STEP 3: Conversion rates and lift
+# TODO: cr_a = a_conversions / a_visitors
+# TODO: cr_b = b_conversions / b_visitors
+# TODO: relative_lift = (cr_b - cr_a) / cr_a
+
+# TODO: print(f"Variant A CR: {cr_a:.2%}, Variant B CR: {cr_b:.2%}")
+# TODO: print(f"Relative lift: {relative_lift:+.1%}")
+# TODO: print(f"Chi2={chi2:.2f}, p-value={p_value:.4f}")
+
+# STEP 4 & 5: Recommendation
+# TODO: if p_value < 0.05:
+# TODO:     winner = "B" if cr_b > cr_a else "A"
+# TODO:     print(f"SIGNIFICANT — roll out Variant {winner}")
+# TODO: else:
+# TODO:     print("NOT SIGNIFICANT — extend the test or accept no clear winner")
+`,
+    skillTags: ["A/B Testing", "Chi-Square Test", "Conversion Rate", "Statistical Significance", "Growth Marketing"],
+    hints: [
+      "Chi-square tests independence between variant and conversion outcome — a small p-value means the variant genuinely affects conversion",
+      "Relative lift ((B-A)/A) is what stakeholders usually want to hear, not just the raw percentage-point difference",
+      "5,000 visitors per variant is a reasonably sized test — smaller samples often produce 'not significant' results even with real underlying differences",
+    ],
+  },
+  {
+    id: "mba-mkt-004",
+    title: "Calculate Customer Lifetime Value (LTV)",
+    category: "Marketing",
+    icon: "💰",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 20,
+    tools: ["Python"],
+    scenario:
+      "The CFO wants to know the maximum sustainable customer acquisition cost (CAC) for a new paid channel. That number depends entirely on an accurate Customer Lifetime Value calculation — get this wrong and the company overspends on unprofitable acquisition.",
+    objective:
+      "Calculate LTV using the standard formula (avg order value × purchase frequency × customer lifespan), incorporating gross margin, and derive the maximum sustainable CAC.",
+    steps: [
+      "Compute average order value from historical transaction data",
+      "Compute average purchase frequency (orders per year)",
+      "Compute average customer lifespan (in years) from churn rate",
+      "Compute LTV = AOV × frequency × lifespan × gross_margin",
+      "Derive max sustainable CAC as a fraction of LTV (using a standard 3:1 LTV:CAC target ratio)",
+    ],
+    workstation: "notebook",
+    starterCode: `# Customer Lifetime Value (LTV) Calculation
+import numpy as np
+
+# Historical data
+orders = [45, 62, 38, 90, 55, 71, 48, 33, 66, 58]  # order values in a sample
+annual_churn_rate = 0.25   # 25% of customers churn per year
+gross_margin = 0.60        # 60% gross margin
+purchase_frequency_per_year = 4.5  # avg orders per customer per year
+
+# STEP 1: Average order value
+# TODO: aov = np.mean(orders)
+
+# STEP 2: Purchase frequency (given directly here)
+freq = purchase_frequency_per_year
+
+# STEP 3: Average customer lifespan = 1 / churn_rate
+# TODO: lifespan_years = 1 / annual_churn_rate
+
+# STEP 4: LTV = AOV * frequency * lifespan * gross_margin
+# TODO: ltv = aov * freq * lifespan_years * gross_margin
+
+# TODO: print(f"Average Order Value: \${aov:.2f}")
+# TODO: print(f"Customer Lifespan: {lifespan_years:.1f} years")
+# TODO: print(f"LTV: \${ltv:.2f}")
+
+# STEP 5: Max sustainable CAC at 3:1 LTV:CAC ratio
+target_ratio = 3.0
+# TODO: max_cac = ltv / target_ratio
+# TODO: print(f"Max sustainable CAC (3:1 target): \${max_cac:.2f}")
+
+# Sanity check against a hypothetical channel
+proposed_channel_cac = 95
+# TODO: if proposed_channel_cac <= max_cac: print("Channel is sustainable")
+# TODO: else: print(f"Channel is NOT sustainable — CAC exceeds max by \${proposed_channel_cac - max_cac:.2f}")
+`,
+    skillTags: ["Customer Lifetime Value", "CAC", "Churn Rate", "Gross Margin", "Unit Economics"],
+    hints: [
+      "Lifespan = 1/churn_rate assumes a constant annual churn rate — real cohorts often have declining churn over time, making this a conservative estimate",
+      "Always apply gross margin to LTV — revenue-based LTV without margin dramatically overstates true customer value",
+      "The 3:1 LTV:CAC ratio is an industry rule of thumb, not a law — SaaS investors often want to see it after 12-18 months of customer life, not a lifetime average",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MBA — OPERATIONS
+// ─────────────────────────────────────────────────────────────────────────────
+export const MBA_OPERATIONS_CHALLENGES = [
+  {
+    id: "mba-ops-001",
+    title: "Economic Order Quantity (EOQ) Calculation",
+    category: "Operations",
+    icon: "📦",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 14,
+    tools: ["Python"],
+    scenario:
+      "The warehouse is ordering inventory in inconsistent batch sizes, driving up both ordering costs (too frequent) and holding costs (too much stock). You've been asked to calculate the Economic Order Quantity to minimize total inventory cost.",
+    objective:
+      "Implement the EOQ formula and use it to compute the optimal order quantity, number of orders per year, and total annual inventory cost.",
+    steps: [
+      "Given annual demand, ordering cost per order, and holding cost per unit",
+      "Compute EOQ = sqrt(2 * D * S / H)",
+      "Compute number of orders per year = D / EOQ",
+      "Compute total annual cost = ordering cost + holding cost at EOQ",
+      "Compare total cost at EOQ vs. a naive order quantity to show the savings",
+    ],
+    workstation: "notebook",
+    starterCode: `# Economic Order Quantity (EOQ)
+import math
+
+annual_demand = 12000       # units per year
+ordering_cost = 75          # $ per order
+holding_cost_per_unit = 2.5 # $ per unit per year
+
+# STEP 1: EOQ formula
+# TODO: eoq = math.sqrt(2 * annual_demand * ordering_cost / holding_cost_per_unit)
+
+# STEP 2: Orders per year
+# TODO: orders_per_year = annual_demand / eoq
+
+# STEP 3: Total annual cost at EOQ
+def total_cost(order_qty, D, S, H):
+    # TODO: ordering = (D / order_qty) * S
+    # TODO: holding = (order_qty / 2) * H
+    # TODO: return ordering + holding
+    pass
+
+# TODO: cost_at_eoq = total_cost(eoq, annual_demand, ordering_cost, holding_cost_per_unit)
+
+# STEP 4: Compare to a naive order quantity (e.g. ordering once a quarter = 3000 units)
+naive_qty = annual_demand / 4
+# TODO: cost_naive = total_cost(naive_qty, annual_demand, ordering_cost, holding_cost_per_unit)
+
+# TODO: print(f"EOQ: {eoq:.0f} units, {orders_per_year:.1f} orders/year, cost=\${cost_at_eoq:.2f}")
+# TODO: print(f"Naive (quarterly): {naive_qty:.0f} units, cost=\${cost_naive:.2f}")
+# TODO: print(f"Annual savings from EOQ: \${cost_naive - cost_at_eoq:.2f}")
+`,
+    skillTags: ["EOQ", "Inventory Management", "Operations Research", "Cost Minimization", "Supply Chain"],
+    hints: [
+      "EOQ minimizes the SUM of ordering and holding costs — at the optimum, ordering cost and holding cost are exactly equal",
+      "Larger order quantities reduce ordering frequency (lower ordering cost) but increase average inventory (higher holding cost) — EOQ balances the tradeoff",
+      "This basic EOQ model assumes constant demand and no stockouts — real supply chains add safety stock and lead-time variability on top",
+    ],
+  },
+  {
+    id: "mba-ops-002",
+    title: "Little's Law: Diagnose a Process Bottleneck",
+    category: "Operations",
+    icon: "⏳",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Python"],
+    scenario:
+      "Customer support tickets are piling up in the queue and management wants to know: is the problem more agents, or faster resolution? Little's Law gives you the framework to answer this quantitatively instead of guessing.",
+    objective:
+      "Apply Little's Law (L = λW) to diagnose whether a process bottleneck is driven by arrival rate, work-in-progress, or cycle time, and simulate the effect of process changes.",
+    steps: [
+      "Given historical throughput (tickets/day) and average cycle time (days), compute average WIP using Little's Law",
+      "Compare current WIP to the observed queue length to sanity-check the model",
+      "Simulate adding agents (increasing throughput capacity) and its effect on cycle time",
+      "Simulate reducing average handling time and its effect on required WIP",
+      "Recommend which lever (more agents vs faster handling) yields a bigger cycle-time improvement",
+    ],
+    workstation: "notebook",
+    starterCode: `# Little's Law — Process Bottleneck Diagnosis
+# L = λ * W  (WIP = Arrival Rate × Cycle Time)
+
+current_throughput = 40      # tickets resolved per day (λ)
+current_cycle_time = 3.5     # avg days per ticket (W)
+
+# STEP 1: Current average WIP
+# TODO: current_wip = current_throughput * current_cycle_time
+
+# TODO: print(f"Current WIP (tickets in the system): {current_wip:.0f}")
+
+# STEP 2: Scenario A — add agents, raising throughput capacity to 55/day, same cycle time target
+scenario_a_throughput = 55
+# If we want to KEEP the same WIP (don't let backlog grow), what's the new cycle time?
+# TODO: scenario_a_cycle_time = current_wip / scenario_a_throughput
+# TODO: print(f"Scenario A (more agents): cycle_time={scenario_a_cycle_time:.2f} days (from {current_cycle_time})")
+
+# STEP 3: Scenario B — same throughput, but reduce WIP via better triage (fewer tickets in flight at once)
+scenario_b_wip = current_wip * 0.7   # 30% WIP reduction via triage/prioritization
+# TODO: scenario_b_cycle_time = scenario_b_wip / current_throughput
+# TODO: print(f"Scenario B (less WIP): cycle_time={scenario_b_cycle_time:.2f} days")
+
+# STEP 4: Compare improvements
+# TODO: improvement_a = current_cycle_time - scenario_a_cycle_time
+# TODO: improvement_b = current_cycle_time - scenario_b_cycle_time
+# TODO: print(f"Scenario A improves cycle time by {improvement_a:.2f} days")
+# TODO: print(f"Scenario B improves cycle time by {improvement_b:.2f} days")
+# TODO: print("Recommend:", "Scenario A (hire)" if improvement_a > improvement_b else "Scenario B (reduce WIP)")
+`,
+    skillTags: ["Little's Law", "Process Analysis", "Queueing Theory", "Operations Management", "Bottleneck Diagnosis"],
+    hints: [
+      "Little's Law (L = λW) holds for ANY stable queueing system — it doesn't require knowing the underlying arrival/service distributions",
+      "Reducing WIP directly (better triage, WIP limits) is often cheaper and faster than hiring — this is the core insight behind Kanban/lean systems",
+      "This model assumes a stable system (arrival rate ≈ throughput) — if tickets are arriving faster than they're resolved, WIP grows unboundedly and Little's Law describes a moving target",
+    ],
+  },
+  {
+    id: "mba-ops-003",
+    title: "Build a Simple Linear Programming Production Plan",
+    category: "Operations",
+    icon: "🏭",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 18,
+    tools: ["Python", "SciPy"],
+    scenario:
+      "A factory produces two products sharing limited machine-hours and labor-hours. Production planning wants the profit-maximizing mix given this month's constraints — a classic linear programming problem.",
+    objective:
+      "Formulate and solve a linear program to maximize profit subject to machine-hour and labor-hour constraints, using scipy.optimize.linprog.",
+    steps: [
+      "Define the profit coefficients for products A and B",
+      "Define the constraint matrix for machine-hours and labor-hours usage",
+      "Define the resource availability (RHS of constraints)",
+      "Solve the LP using linprog (remember: linprog MINIMIZES, so negate for maximization)",
+      "Interpret the optimal production quantities and resulting profit",
+    ],
+    workstation: "notebook",
+    starterCode: `# Linear Programming — Production Mix Optimization
+from scipy.optimize import linprog
+
+# Product A: profit $40/unit, uses 2 machine-hrs, 1 labor-hr
+# Product B: profit $30/unit, uses 1 machine-hr, 2 labor-hrs
+# Available: 100 machine-hours, 80 labor-hours this month
+
+# STEP 1: linprog MINIMIZES by default — negate profit coefficients to MAXIMIZE
+# c represents costs to minimize; use [-40, -30] to effectively maximize 40x + 30y
+c = [-40, -30]
+
+# STEP 2 & 3: Inequality constraints A_ub @ x <= b_ub
+# TODO: A_ub = [[2, 1], [1, 2]]   # machine-hours row, labor-hours row
+# TODO: b_ub = [100, 80]
+
+# Bounds: can't produce negative units
+bounds = [(0, None), (0, None)]
+
+# STEP 4: Solve
+# TODO: result = linprog(c, A_ub=A_ub, b_ub=b_ub, bounds=bounds, method='highs')
+
+# STEP 5: Interpret
+# TODO: units_a, units_b = result.x
+# TODO: max_profit = -result.fun  # negate back since we minimized -profit
+# TODO: print(f"Optimal: {units_a:.1f} units of A, {units_b:.1f} units of B")
+# TODO: print(f"Maximum profit: \${max_profit:.2f}")
+# TODO: print(f"Machine-hours used: {2*units_a + 1*units_b:.1f} / 100")
+# TODO: print(f"Labor-hours used: {1*units_a + 2*units_b:.1f} / 80")
+`,
+    skillTags: ["Linear Programming", "Production Planning", "Optimization", "SciPy", "Resource Allocation"],
+    hints: [
+      "scipy.optimize.linprog only MINIMIZES — negate your profit coefficients to solve a maximization problem",
+      "At the optimal solution, at least one constraint is usually 'binding' (used at exactly 100%) — check which resource is the true bottleneck",
+      "Real production planning adds integer constraints (can't produce half a unit) — that becomes integer/mixed-integer programming, a harder problem class",
+    ],
+  },
+  {
+    id: "mba-ops-004",
+    title: "Six Sigma: Process Capability Analysis",
+    category: "Operations",
+    icon: "🎯",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 20,
+    tools: ["Python", "NumPy", "SciPy"],
+    scenario:
+      "Quality control has flagged that a filling line's output weight is 'sometimes out of spec' but has no quantitative measure of how capable the process actually is. You'll compute Cp and Cpk to give them a defensible number.",
+    objective:
+      "Compute process capability indices (Cp and Cpk) from sample measurements and specification limits, and interpret whether the process is capable.",
+    steps: [
+      "Given specification limits (USL, LSL) and a sample of measurements",
+      "Compute the sample mean and standard deviation",
+      "Compute Cp = (USL - LSL) / (6 * std)",
+      "Compute Cpk = min((USL - mean)/(3*std), (mean - LSL)/(3*std))",
+      "Interpret: Cpk < 1.0 not capable, 1.0-1.33 marginally capable, >1.33 capable",
+    ],
+    workstation: "notebook",
+    starterCode: `# Six Sigma — Process Capability Analysis (Cp, Cpk)
+import numpy as np
+
+np.random.seed(42)
+# Fill weight spec: target 500g, tolerance ±15g
+USL, LSL = 515, 485
+# Sample of 100 fills — note the process mean is slightly OFF-target (502g, not 500g)
+sample = np.random.normal(502, 4.5, 100)
+
+# STEP 1: Sample statistics
+# TODO: mean = sample.mean()
+# TODO: std = sample.std(ddof=1)  # sample std, not population
+
+# STEP 2: Cp — measures POTENTIAL capability (ignores centering)
+# TODO: cp = (USL - LSL) / (6 * std)
+
+# STEP 3: Cpk — measures ACTUAL capability (accounts for how off-center the mean is)
+# TODO: cpu = (USL - mean) / (3 * std)
+# TODO: cpl = (mean - LSL) / (3 * std)
+# TODO: cpk = min(cpu, cpl)
+
+# TODO: print(f"Mean: {mean:.2f}g, Std: {std:.2f}g")
+# TODO: print(f"Cp: {cp:.2f}")
+# TODO: print(f"Cpk: {cpk:.2f}")
+
+# STEP 4 & 5: Interpretation
+def interpret(cpk):
+    # TODO: if cpk < 1.0: return "NOT CAPABLE — process will produce significant out-of-spec output"
+    # TODO: elif cpk < 1.33: return "MARGINALLY CAPABLE — tighten control or recenter the process"
+    # TODO: else: return "CAPABLE — process meets Six Sigma quality standards"
+    pass
+
+# TODO: print(interpret(cpk))
+# TODO: print(f"Cp vs Cpk gap ({cp - cpk:.2f}) indicates the process is off-center, not just too variable" if cp - cpk > 0.1 else "Process is well-centered")
+`,
+    skillTags: ["Six Sigma", "Process Capability", "Cp/Cpk", "Quality Control", "Statistical Process Control"],
+    hints: [
+      "Cp assumes the process is perfectly centered between USL and LSL — Cpk penalizes a process for being off-center even if variation (std) is small",
+      "A large gap between Cp and Cpk (Cp much higher) means the fix is RECENTERING the process, not reducing variation",
+      "Cpk = 1.33 corresponds to roughly a 4-sigma process; true 'Six Sigma' (Cpk ≈ 2.0) is a much higher bar most processes never reach",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MBA — FINANCIAL ACCOUNTING
+// ─────────────────────────────────────────────────────────────────────────────
+export const MBA_ACCOUNTING_CHALLENGES = [
+  {
+    id: "mba-acc-001",
+    title: "Build a Three-Statement Financial Model Link",
+    category: "Financial Accounting",
+    icon: "📑",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 18,
+    tools: ["Python"],
+    scenario:
+      "An investor asked for a simple projected income statement, balance sheet, and cash flow — but they need to actually TIE OUT (balance sheet balances, cash flow reconciles to the cash balance). You'll build the core linkages between the three statements.",
+    objective:
+      "Build a minimal three-statement model where net income flows into retained earnings, and the balance sheet balances (Assets = Liabilities + Equity).",
+    steps: [
+      "Build a simple income statement: revenue, COGS, opex → net income",
+      "Roll net income into retained earnings on the balance sheet",
+      "Build a simplified balance sheet with assets, liabilities, and equity",
+      "Verify Assets = Liabilities + Equity (the balance sheet must balance)",
+      "Build a simplified cash flow statement and verify ending cash matches the balance sheet's cash line",
+    ],
+    workstation: "notebook",
+    starterCode: `# Three-Statement Model — Core Linkages
+# Income Statement
+revenue = 500_000
+cogs = 200_000
+opex = 150_000
+tax_rate = 0.25
+
+# STEP 1: Income statement
+# TODO: gross_profit = revenue - cogs
+# TODO: ebit = gross_profit - opex
+# TODO: tax = ebit * tax_rate
+# TODO: net_income = ebit - tax
+# TODO: print(f"Net Income: \${net_income:,.0f}")
+
+# Balance sheet — beginning of period
+beginning_cash = 100_000
+beginning_retained_earnings = 300_000
+other_assets = 250_000       # PP&E, inventory, etc. (unchanged this period, simplification)
+total_liabilities = 200_000  # AP, debt, etc. (unchanged this period, simplification)
+common_stock = 150_000
+
+# STEP 2: Roll net income into retained earnings (no dividends this period)
+# TODO: ending_retained_earnings = beginning_retained_earnings + net_income
+
+# STEP 3: Cash flow statement (simplified — net income is the only driver of cash change here)
+# TODO: cash_from_operations = net_income
+# TODO: ending_cash = beginning_cash + cash_from_operations
+
+# STEP 4: Balance sheet — end of period
+# TODO: total_assets = ending_cash + other_assets
+# TODO: total_equity = common_stock + ending_retained_earnings
+# TODO: total_liab_and_equity = total_liabilities + total_equity
+
+# TODO: print(f"Total Assets: \${total_assets:,.0f}")
+# TODO: print(f"Total Liabilities + Equity: \${total_liab_and_equity:,.0f}")
+# TODO: print("Balance sheet BALANCES:", abs(total_assets - total_liab_and_equity) < 0.01)
+
+# STEP 5: Verify cash ties out
+# TODO: print("Cash flow ties to balance sheet:", abs(ending_cash - (total_assets - other_assets)) < 0.01)
+`,
+    skillTags: ["Financial Modeling", "Three-Statement Model", "Balance Sheet", "Accounting Linkages", "Corporate Finance"],
+    hints: [
+      "This is deliberately simplified — real models also flow depreciation (IS→CF, reduces PP&E), capex (CF→BS), and working capital changes",
+      "If your balance sheet doesn't balance, the bug is almost always a missing linkage — net income not flowing to retained earnings, or a cash flow line not hitting the cash account",
+      "'Ties out' is the term investors/accountants use for exactly this check — Assets = Liabilities + Equity, always, every period",
+    ],
+  },
+  {
+    id: "mba-acc-002",
+    title: "Break-Even Analysis with Multiple Products",
+    category: "Financial Accounting",
+    icon: "⚖️",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 14,
+    tools: ["Python"],
+    scenario:
+      "A startup selling two products (a subscription and a one-time add-on) needs to know how many units it must sell before covering its fixed costs — with a weighted contribution margin since the two products have different economics.",
+    objective:
+      "Compute weighted-average contribution margin across a product mix and derive the break-even point in units and revenue.",
+    steps: [
+      "Given price, variable cost, and sales mix % for two products",
+      "Compute contribution margin per unit for each product",
+      "Compute the weighted-average contribution margin using the sales mix",
+      "Compute break-even units = fixed costs / weighted contribution margin",
+      "Allocate break-even units back to each product using the sales mix, and compute break-even revenue",
+    ],
+    workstation: "notebook",
+    starterCode: `# Multi-Product Break-Even Analysis
+fixed_costs = 120_000
+
+products = {
+    "Subscription": {"price": 49, "variable_cost": 12, "mix_pct": 0.70},
+    "Add-on":       {"price": 25, "variable_cost": 5,  "mix_pct": 0.30},
+}
+
+# STEP 1 & 2: Contribution margin per product
+for name, p in products.items():
+    # TODO: p["cm"] = p["price"] - p["variable_cost"]
+    pass
+
+# STEP 3: Weighted-average contribution margin
+# TODO: weighted_cm = sum(p["cm"] * p["mix_pct"] for p in products.values())
+# TODO: print(f"Weighted-average CM: \${weighted_cm:.2f}")
+
+# STEP 4: Break-even total units
+# TODO: breakeven_units = fixed_costs / weighted_cm
+# TODO: print(f"Break-even total units: {breakeven_units:.0f}")
+
+# STEP 5: Allocate to each product and compute break-even revenue
+total_breakeven_revenue = 0
+for name, p in products.items():
+    # TODO: units_for_product = breakeven_units * p["mix_pct"]
+    # TODO: revenue_for_product = units_for_product * p["price"]
+    # TODO: total_breakeven_revenue += revenue_for_product
+    # TODO: print(f"{name}: {units_for_product:.0f} units, \${revenue_for_product:,.0f} revenue")
+    pass
+
+# TODO: print(f"Total break-even revenue: \${total_breakeven_revenue:,.0f}")
+`,
+    skillTags: ["Break-Even Analysis", "Contribution Margin", "Sales Mix", "Managerial Accounting", "Unit Economics"],
+    hints: [
+      "The weighted-average CM assumes the sales mix percentages STAY CONSTANT as volume changes — a simplifying assumption worth stating explicitly",
+      "If the mix shifts toward the lower-margin product (Add-on here), the true break-even point rises above this calculation",
+      "Contribution margin (price - variable cost) excludes fixed costs entirely — that's the whole point, fixed costs are covered by the CM pool, not per-unit",
+    ],
+  },
+  {
+    id: "mba-acc-003",
+    title: "Cash Flow: Direct vs Indirect Method Reconciliation",
+    category: "Financial Accounting",
+    icon: "💵",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Python"],
+    scenario:
+      "A finance intern built a cash flow statement using the indirect method, but the CFO wants to sanity-check it against a direct-method build to make sure both arrive at the same operating cash flow number.",
+    objective:
+      "Build cash flow from operations using both the indirect method (start from net income, adjust for non-cash items and working capital changes) and the direct method (actual cash receipts minus cash payments), and verify they reconcile.",
+    steps: [
+      "Indirect method: start with net income, add back depreciation, adjust for changes in AR/AP/inventory",
+      "Direct method: compute cash collected from customers and cash paid to suppliers/employees directly",
+      "Compute operating cash flow under both methods",
+      "Verify both methods produce the same operating cash flow figure",
+      "Explain in a comment why they must always reconcile to the same number",
+    ],
+    workstation: "notebook",
+    starterCode: `# Cash Flow — Direct vs Indirect Method Reconciliation
+net_income = 85_000
+depreciation = 15_000
+increase_in_ar = 8_000       # AR went UP -> cash NOT yet collected -> subtract
+decrease_in_inventory = 4_000  # Inventory went DOWN -> less cash tied up -> add
+increase_in_ap = 6_000        # AP went UP -> paying suppliers later -> add (cash saved)
+
+# STEP 1: Indirect method
+# TODO: indirect_ocf = net_income + depreciation - increase_in_ar + decrease_in_inventory + increase_in_ap
+# TODO: print(f"Indirect method OCF: \${indirect_ocf:,.0f}")
+
+# Direct method — raw cash flows this period
+revenue = 500_000
+cash_collected_from_customers = revenue - increase_in_ar  # revenue not yet collected stays out
+cogs = 200_000
+opex_cash = 200_000  # opex that was actually paid in cash (excludes depreciation, a non-cash expense)
+cash_paid_to_suppliers = cogs - decrease_in_inventory - increase_in_ap  # bought less new inventory, paid suppliers later
+
+# STEP 2 & 3: Direct method
+# TODO: direct_ocf = cash_collected_from_customers - cash_paid_to_suppliers - opex_cash
+# TODO: print(f"Direct method OCF: \${direct_ocf:,.0f}")
+
+# STEP 4: Reconcile
+# TODO: print("Methods reconcile:", abs(indirect_ocf - direct_ocf) < 1)
+
+# STEP 5:
+# WHY THEY RECONCILE:
+# TODO: add a comment — both methods measure the SAME underlying cash flow from operations,
+# just computed via different paths (top-down from net income + adjustments, vs bottom-up
+# from actual cash receipts/payments). GAAP/IFRS both permit either method for REPORTING,
+# but the underlying OCF number must be identical.
+`,
+    skillTags: ["Cash Flow Statement", "Direct Method", "Indirect Method", "Working Capital", "Financial Accounting"],
+    hints: [
+      "An INCREASE in AR is a cash OUTFLOW adjustment (revenue was recognized but cash not yet received) — a common sign-error spot",
+      "An INCREASE in AP is a cash INFLOW adjustment (expense was recognized but cash not yet paid out) — opposite sign from AR",
+      "Depreciation is added back in the indirect method because it reduced net income but was never an actual cash outflow this period",
+    ],
+  },
+  {
+    id: "mba-acc-004",
+    title: "DuPont Analysis: Decompose ROE",
+    category: "Financial Accounting",
+    icon: "🔬",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 18,
+    tools: ["Python"],
+    scenario:
+      "Two companies in the same industry report the same Return on Equity, but the board wants to know if that ROE was earned the same way — DuPont analysis decomposes ROE into profitability, efficiency, and leverage components to reveal the real story.",
+    objective:
+      "Decompose ROE using the 3-factor DuPont formula (Net Profit Margin × Asset Turnover × Equity Multiplier) for two companies and interpret what's driving each company's ROE.",
+    steps: [
+      "Compute Net Profit Margin = Net Income / Revenue for each company",
+      "Compute Asset Turnover = Revenue / Total Assets for each company",
+      "Compute Equity Multiplier = Total Assets / Total Equity for each company",
+      "Compute ROE as the product of all three factors and verify it matches Net Income / Equity directly",
+      "Interpret which factor(s) each company relies on most to achieve its ROE",
+    ],
+    workstation: "notebook",
+    starterCode: `# DuPont Analysis — ROE Decomposition
+companies = {
+    "Company A (retailer, thin margins)": {
+        "net_income": 20_000_000, "revenue": 500_000_000,
+        "total_assets": 200_000_000, "total_equity": 80_000_000,
+    },
+    "Company B (software, high margins, low leverage)": {
+        "net_income": 40_000_000, "revenue": 150_000_000,
+        "total_assets": 220_000_000, "total_equity": 180_000_000,
+    },
+}
+
+for name, c in companies.items():
+    # STEP 1: Net Profit Margin
+    # TODO: npm = c["net_income"] / c["revenue"]
+
+    # STEP 2: Asset Turnover
+    # TODO: asset_turnover = c["revenue"] / c["total_assets"]
+
+    # STEP 3: Equity Multiplier
+    # TODO: equity_multiplier = c["total_assets"] / c["total_equity"]
+
+    # STEP 4: ROE via DuPont vs direct calculation
+    # TODO: roe_dupont = npm * asset_turnover * equity_multiplier
+    # TODO: roe_direct = c["net_income"] / c["total_equity"]
+
+    # TODO: print(f"\\n{name}")
+    # TODO: print(f"  Net Profit Margin: {npm:.1%}")
+    # TODO: print(f"  Asset Turnover: {asset_turnover:.2f}x")
+    # TODO: print(f"  Equity Multiplier: {equity_multiplier:.2f}x")
+    # TODO: print(f"  ROE (DuPont): {roe_dupont:.1%}  |  ROE (direct): {roe_direct:.1%}")
+    pass
+
+# STEP 5: Interpretation
+# TODO: add a print/comment: Company A likely drives ROE via high asset turnover + leverage
+# (retail: thin margins, sell a lot, use debt) while Company B drives ROE via high margin
+# with low leverage (software: high margin, few assets, little debt needed)
+`,
+    skillTags: ["DuPont Analysis", "ROE Decomposition", "Financial Ratios", "Profitability Analysis", "Leverage"],
+    hints: [
+      "The three DuPont factors always multiply back to ROE exactly — use that as a built-in correctness check on your math",
+      "High leverage (equity multiplier) inflates ROE without necessarily improving underlying business quality — it's also the riskiest lever to pull",
+      "Comparing companies on ROE alone can mislead — two companies with identical ROE can have completely different risk profiles once decomposed",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MBA — HUMAN RESOURCES
+// ─────────────────────────────────────────────────────────────────────────────
+export const MBA_HR_CHALLENGES = [
+  {
+    id: "mba-hr-001",
+    title: "Calculate Employee Turnover Rate and Cost",
+    category: "Human Resources",
+    icon: "🔄",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 14,
+    tools: ["Python"],
+    scenario:
+      "The CFO wants to know if the recently-launched retention program is worth its budget. Before you can answer that, you need a clean, defensible turnover rate calculation and an estimate of what turnover is actually costing the company.",
+    objective:
+      "Compute the annualized employee turnover rate and estimate the total cost of turnover using a standard replacement-cost multiplier.",
+    steps: [
+      "Compute turnover rate = separations / average headcount over the period",
+      "Annualize the rate if the period is less than 12 months",
+      "Estimate replacement cost per departure using a multiplier of annual salary",
+      "Compute total annual turnover cost across all departed employees",
+      "Compare the cost to the retention program's budget to assess ROI potential",
+    ],
+    workstation: "notebook",
+    starterCode: `# Employee Turnover Rate and Cost
+beginning_headcount = 450
+ending_headcount = 470
+separations_this_quarter = 38
+avg_salary_of_departed = 75_000
+replacement_cost_multiplier = 0.5  # industry rule of thumb: 50% of annual salary per replacement
+retention_program_annual_budget = 300_000
+
+# STEP 1: Average headcount and turnover rate for the quarter
+# TODO: avg_headcount = (beginning_headcount + ending_headcount) / 2
+# TODO: quarterly_turnover_rate = separations_this_quarter / avg_headcount
+
+# STEP 2: Annualize (multiply quarterly rate by 4 — simplified, ignores compounding)
+# TODO: annualized_turnover_rate = quarterly_turnover_rate * 4
+
+# TODO: print(f"Quarterly turnover: {quarterly_turnover_rate:.1%}")
+# TODO: print(f"Annualized turnover: {annualized_turnover_rate:.1%}")
+
+# STEP 3 & 4: Cost of turnover
+# TODO: cost_per_departure = avg_salary_of_departed * replacement_cost_multiplier
+# TODO: annualized_separations = separations_this_quarter * 4
+# TODO: total_annual_turnover_cost = annualized_separations * cost_per_departure
+
+# TODO: print(f"Cost per departure: \${cost_per_departure:,.0f}")
+# TODO: print(f"Estimated annual turnover cost: \${total_annual_turnover_cost:,.0f}")
+
+# STEP 5: ROI framing for the retention program
+# TODO: if total_annual_turnover_cost > retention_program_annual_budget:
+# TODO:     print(f"Retention program budget (\${retention_program_annual_budget:,}) is smaller than turnover cost — even a modest reduction could pay for itself")
+# TODO: else:
+# TODO:     print("Turnover cost is lower than the program budget — needs a very high effectiveness to break even")
+`,
+    skillTags: ["Employee Turnover", "HR Analytics", "Retention", "Cost Analysis", "People Operations"],
+    hints: [
+      "Annualizing by simply multiplying the quarterly rate by 4 ignores compounding/seasonality — it's a reasonable estimate, not a precise annual figure",
+      "Replacement cost multipliers (0.5-2x salary depending on role seniority) come from recruiting, onboarding, and lost-productivity research — cite your assumption when presenting this",
+      "This model treats all departures as equally costly — voluntary regretted attrition (losing a top performer) costs far more than involuntary/planned attrition",
+    ],
+  },
+  {
+    id: "mba-hr-002",
+    title: "Design a Pay Equity Audit",
+    category: "Human Resources",
+    icon: "⚖️",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 18,
+    tools: ["Python", "Pandas"],
+    scenario:
+      "Legal has asked HR to run a pay equity audit ahead of a compliance review — checking whether pay gaps exist between groups after controlling for legitimate factors like role level and tenure, not just raw averages.",
+    objective:
+      "Compute raw pay gap and role-adjusted pay gap between two employee groups, controlling for job level, to distinguish a real equity issue from a role-mix artifact.",
+    steps: [
+      "Compute the raw (unadjusted) average pay gap between two groups",
+      "Group data by job level and compute within-level pay gaps",
+      "Compute a level-weighted adjusted pay gap (control for role-mix differences)",
+      "Compare raw gap vs adjusted gap to see how much is explained by role-mix",
+      "Flag any job level where the adjusted gap still exceeds a materiality threshold (e.g. 5%)",
+    ],
+    workstation: "notebook",
+    starterCode: `# Pay Equity Audit — Raw vs Role-Adjusted Gap
+import pandas as pd
+import numpy as np
+
+np.random.seed(3)
+n = 300
+levels = np.random.choice(["L3", "L4", "L5", "L6"], n, p=[0.4, 0.3, 0.2, 0.1])
+group = np.random.choice(["Group A", "Group B"], n)
+# Simulate: Group B is underrepresented at senior levels (role-mix effect)
+# AND has a small genuine within-level pay gap at L5
+base_pay = {"L3": 70000, "L4": 95000, "L5": 130000, "L6": 175000}
+salary = []
+for lvl, grp in zip(levels, group):
+    pay = base_pay[lvl] + np.random.normal(0, 5000)
+    if grp == "Group B" and lvl == "L5":
+        pay *= 0.94  # genuine 6% within-level gap at L5
+    salary.append(pay)
+
+df = pd.DataFrame({"level": levels, "group": group, "salary": salary})
+
+# STEP 1: Raw pay gap
+# TODO: raw_avg = df.groupby("group")["salary"].mean()
+# TODO: raw_gap = (raw_avg["Group A"] - raw_avg["Group B"]) / raw_avg["Group A"]
+# TODO: print(f"Raw pay gap: {raw_gap:.1%}")
+
+# STEP 2 & 3: Level-adjusted gap
+level_gaps = {}
+for lvl in df["level"].unique():
+    subset = df[df["level"] == lvl]
+    # TODO: avg_by_group = subset.groupby("group")["salary"].mean()
+    # TODO: if "Group A" in avg_by_group and "Group B" in avg_by_group:
+    # TODO:     gap = (avg_by_group["Group A"] - avg_by_group["Group B"]) / avg_by_group["Group A"]
+    # TODO:     level_gaps[lvl] = gap
+    pass
+
+# TODO: for lvl, gap in level_gaps.items(): print(f"  {lvl}: within-level gap = {gap:.1%}")
+
+# STEP 4 & 5: Flag material gaps
+materiality_threshold = 0.05
+# TODO: flagged = {lvl: gap for lvl, gap in level_gaps.items() if abs(gap) > materiality_threshold}
+# TODO: print("Levels with material (>5%) within-level pay gaps:", flagged)
+# TODO: print("Raw gap overstates the issue" if raw_gap > max(level_gaps.values(), default=0) else "Check role-mix and within-level gaps separately")
+`,
+    skillTags: ["Pay Equity", "HR Analytics", "Compensation Analysis", "Statistical Controls", "Compliance"],
+    hints: [
+      "The raw gap conflates two different things: role-mix differences (fewer Group B employees at senior levels) and genuine within-level pay differences — they need different fixes",
+      "A large raw gap with small/no within-level gaps points to a REPRESENTATION problem (promotion/hiring pipeline), not a compensation-setting problem",
+      "Real pay equity audits control for many more factors (tenure, performance rating, location, education) — job level alone is a simplified but directionally useful first pass",
+    ],
+  },
+  {
+    id: "mba-hr-003",
+    title: "Workforce Planning: Headcount Forecast Model",
+    category: "Human Resources",
+    icon: "📈",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Python"],
+    scenario:
+      "The VP of Engineering needs a 12-month headcount forecast to plan office space and budget — accounting for planned hiring, expected attrition, and internal transfers, not just a straight-line hiring plan.",
+    objective:
+      "Build a month-by-month headcount forecast incorporating a hiring plan, a monthly attrition rate applied to the current headcount, and report the projected end-of-year headcount.",
+    steps: [
+      "Start with current headcount",
+      "For each month, apply expected attrition (as a % of current headcount)",
+      "Add planned new hires for that month",
+      "Track running headcount across all 12 months",
+      "Report final headcount and total hires needed to hit a target headcount",
+    ],
+    workstation: "notebook",
+    starterCode: `# 12-Month Headcount Forecast
+starting_headcount = 200
+monthly_attrition_rate = 0.015  # 1.5% of current headcount leaves each month
+planned_hires_per_month = [8, 8, 10, 10, 12, 12, 10, 10, 8, 8, 6, 6]  # 12 months
+target_headcount_eoy = 230
+
+headcount = starting_headcount
+history = [headcount]
+
+for month, hires in enumerate(planned_hires_per_month, start=1):
+    # STEP 1 & 2: Attrition first
+    # TODO: attrition_this_month = round(headcount * monthly_attrition_rate)
+    # TODO: headcount -= attrition_this_month
+
+    # STEP 3: Add hires
+    # TODO: headcount += hires
+
+    history.append(headcount)
+    # TODO: print(f"Month {month}: -{attrition_this_month} attrition, +{hires} hires -> headcount={headcount}")
+
+# STEP 4 & 5: Final report
+# TODO: print(f"\\nProjected end-of-year headcount: {headcount}")
+# TODO: gap_to_target = target_headcount_eoy - headcount
+# TODO: if gap_to_target > 0:
+# TODO:     print(f"Shortfall of {gap_to_target} vs target {target_headcount_eoy} — need to increase hiring plan or reduce attrition")
+# TODO: else:
+# TODO:     print(f"On track — {abs(gap_to_target)} above target")
+`,
+    skillTags: ["Workforce Planning", "Headcount Forecasting", "Attrition Modeling", "HR Analytics", "Capacity Planning"],
+    hints: [
+      "Applying attrition to the CURRENT (already-changing) headcount each month compounds correctly — applying it only to the original starting headcount would understate attrition as the team grows",
+      "The order matters here: apply attrition before hires within a month, since new hires haven't been present long enough to be at attrition risk that same month in this simplified model",
+      "This model ignores hiring lead time (open reqs taking 6-10 weeks to fill) — real workforce plans offset the hire month from the req-open month",
+    ],
+  },
+  {
+    id: "mba-hr-004",
+    title: "Design a Weighted Performance Review Scorecard",
+    category: "Human Resources",
+    icon: "📋",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 20,
+    tools: ["Python"],
+    scenario:
+      "The current performance review process is a single 1-5 rating with no structure, leading to inconsistent calibration across managers. You've been asked to design a weighted multi-criteria scorecard that produces a defensible, comparable final score.",
+    objective:
+      "Build a weighted scorecard combining multiple performance criteria (quality, delivery, collaboration, growth) into a single normalized score, and apply a calibration adjustment for manager rating-severity bias.",
+    steps: [
+      "Define criteria weights that sum to 1.0",
+      "Compute a raw weighted score per employee from criteria sub-scores",
+      "Compute each manager's average given rating (to detect lenient/harsh raters)",
+      "Apply a calibration adjustment normalizing each manager's scores to a common mean",
+      "Rank employees by calibrated score and flag any manager whose ratings needed significant adjustment",
+    ],
+    workstation: "notebook",
+    starterCode: `# Weighted Performance Scorecard with Manager Calibration
+weights = {"quality": 0.35, "delivery": 0.30, "collaboration": 0.20, "growth": 0.15}
+assert abs(sum(weights.values()) - 1.0) < 0.001, "Weights must sum to 1.0"
+
+employees = [
+    {"name": "Asha",  "manager": "Manager 1", "quality": 4.5, "delivery": 4.0, "collaboration": 4.2, "growth": 3.8},
+    {"name": "Ravi",  "manager": "Manager 1", "quality": 3.8, "delivery": 4.2, "collaboration": 3.5, "growth": 4.0},
+    {"name": "Meera", "manager": "Manager 2", "quality": 3.0, "delivery": 3.2, "collaboration": 3.0, "growth": 2.8},  # harsh rater
+    {"name": "Kabir", "manager": "Manager 2", "quality": 3.5, "delivery": 3.0, "collaboration": 3.3, "growth": 3.1},  # harsh rater
+]
+
+# STEP 1 & 2: Raw weighted score per employee
+for e in employees:
+    # TODO: e["raw_score"] = sum(e[crit] * w for crit, w in weights.items())
+    pass
+
+# STEP 3: Manager average rating (detect lenient/harsh raters)
+from collections import defaultdict
+manager_scores = defaultdict(list)
+for e in employees:
+    manager_scores[e["manager"]].append(e["raw_score"])
+
+# TODO: manager_avgs = {m: sum(scores)/len(scores) for m, scores in manager_scores.items()}
+overall_avg = sum(e["raw_score"] for e in employees) / len(employees)
+# TODO: print("Manager averages:", manager_avgs)
+# TODO: print(f"Overall average: {overall_avg:.2f}")
+
+# STEP 4: Calibration adjustment — shift each manager's scores to match the overall average
+for e in employees:
+    # TODO: adjustment = overall_avg - manager_avgs[e["manager"]]
+    # TODO: e["calibrated_score"] = e["raw_score"] + adjustment
+    pass
+
+# STEP 5: Rank by calibrated score
+# TODO: ranked = sorted(employees, key=lambda e: e["calibrated_score"], reverse=True)
+# TODO: for e in ranked: print(f"{e['name']}: raw={e['raw_score']:.2f}, calibrated={e['calibrated_score']:.2f}")
+`,
+    skillTags: ["Performance Management", "Weighted Scoring", "Rater Calibration", "HR Analytics", "People Operations"],
+    hints: [
+      "Calibration doesn't judge whose employees are 'actually better' — it corrects for the fact that some managers systematically rate more harshly or leniently than others",
+      "A simple additive shift (adjustment = overall_avg - manager_avg) is the most transparent calibration method, though some orgs use more complex distribution-matching",
+      "Watch for the opposite failure mode: over-calibrating can punish a manager whose team is genuinely, legitimately outperforming — always sanity-check large adjustments against qualitative context",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MBA — BUSINESS ANALYTICS
+// ─────────────────────────────────────────────────────────────────────────────
+export const MBA_ANALYTICS_CHALLENGES = [
+  {
+    id: "mba-ana-001",
+    title: "Cohort Retention Analysis",
+    category: "Business Analytics",
+    icon: "📊",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 18,
+    tools: ["Python", "Pandas"],
+    scenario:
+      "The subscription business wants to know if a pricing change made in month 4 improved or hurt retention. A simple overall retention number hides this — you need a cohort retention table showing each signup month's behavior over time.",
+    objective:
+      "Build a cohort retention table (signup month × months since signup) showing the percentage of each cohort still active, and identify whether later cohorts retain better or worse.",
+    steps: [
+      "Group users by signup month (cohort) and compute cohort size",
+      "For each cohort, compute the number of active users at each subsequent month",
+      "Convert to retention percentage relative to the cohort's starting size",
+      "Pivot into a cohort table (rows=cohort month, columns=months since signup)",
+      "Compare average month-3 retention before vs after the pricing change month",
+    ],
+    workstation: "notebook",
+    starterCode: `# Cohort Retention Analysis
+import pandas as pd
+import numpy as np
+
+np.random.seed(5)
+# Simulated user activity records: user_id, signup_month, active_month
+records = []
+for cohort_month in range(1, 7):
+    cohort_size = 100
+    # Retention improves after cohort_month 4 (simulating a pricing change effect)
+    base_retention = 0.55 if cohort_month <= 4 else 0.68
+    for user in range(cohort_size):
+        records.append({"user_id": f"c{cohort_month}_u{user}", "signup_month": cohort_month, "active_month": cohort_month})
+        active = True
+        for m in range(cohort_month + 1, 7):
+            active = active and (np.random.random() < base_retention)
+            if active:
+                records.append({"user_id": f"c{cohort_month}_u{user}", "signup_month": cohort_month, "active_month": m})
+
+df = pd.DataFrame(records)
+
+# STEP 1: Cohort sizes
+# TODO: cohort_sizes = df[df["signup_month"] == df["active_month"]].groupby("signup_month")["user_id"].nunique()
+
+# STEP 2: Active users per (signup_month, active_month)
+# TODO: activity = df.groupby(["signup_month", "active_month"])["user_id"].nunique().reset_index(name="active_users")
+
+# STEP 3: Months since signup + retention %
+# TODO: activity["months_since_signup"] = activity["active_month"] - activity["signup_month"]
+# TODO: activity["cohort_size"] = activity["signup_month"].map(cohort_sizes)
+# TODO: activity["retention_pct"] = activity["active_users"] / activity["cohort_size"]
+
+# STEP 4: Pivot into cohort table
+# TODO: cohort_table = activity.pivot(index="signup_month", columns="months_since_signup", values="retention_pct")
+# TODO: print(cohort_table.round(2))
+
+# STEP 5: Compare month-3 retention before/after pricing change (cohort_month 4)
+# TODO: before = cohort_table.loc[cohort_table.index <= 4, 3].mean() if 3 in cohort_table.columns else None
+# TODO: after = cohort_table.loc[cohort_table.index > 4, 3].mean() if 3 in cohort_table.columns else None
+# TODO: print(f"Avg month-3 retention: before={before:.1%}, after={after:.1%}" if before and after else "Insufficient data for comparison")
+`,
+    skillTags: ["Cohort Analysis", "Retention", "Pandas Pivot", "Subscription Analytics", "Business Intelligence"],
+    hints: [
+      "A cohort table is read DIAGONALLY-FREE — each ROW is one signup cohort, each COLUMN is months-since-signup, so you compare retention at the SAME lifecycle stage across cohorts",
+      "Never compare raw calendar-month active users across cohorts directly — a cohort table normalizes for 'months since signup', which is what makes cohorts comparable",
+      "Later cohorts have fewer data points (less time has passed) — a 6-month-old cohort can't have month-8 retention data yet, expect NaNs in the upper-right of the table",
+    ],
+  },
+  {
+    id: "mba-ana-002",
+    title: "Forecast Revenue with Simple Linear Trend + Seasonality",
+    category: "Business Analytics",
+    icon: "📈",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 18,
+    tools: ["Python", "NumPy"],
+    scenario:
+      "FP&A needs a next-quarter revenue forecast for the board deck, and the historical data shows both a clear upward trend and a recurring seasonal dip in certain months. A naive linear extrapolation would miss the seasonality entirely.",
+    objective:
+      "Decompose monthly revenue into trend and seasonal components, and use both to forecast the next 3 months.",
+    steps: [
+      "Fit a linear trend line to 24 months of historical revenue",
+      "Compute seasonal factors as the average deviation from trend per calendar month",
+      "Reconstruct fitted values as trend + seasonal factor and compare to actuals",
+      "Forecast the next 3 months by extending the trend and adding the matching seasonal factor",
+      "Report forecasted revenue with the seasonal adjustment clearly called out",
+    ],
+    workstation: "notebook",
+    starterCode: `# Revenue Forecast — Trend + Seasonality Decomposition
+import numpy as np
+
+np.random.seed(9)
+months = np.arange(1, 25)  # 24 months of history
+trend_true = 100_000 + months * 3_000
+seasonal_pattern = np.tile([0, -5000, -8000, 2000, 5000, 8000, 3000, -2000, -6000, -3000, 4000, 10000], 2)
+revenue = trend_true + seasonal_pattern + np.random.normal(0, 1500, 24)
+
+# STEP 1: Fit linear trend (least squares)
+# TODO: coeffs = np.polyfit(months, revenue, deg=1)  # [slope, intercept]
+# TODO: trend_fitted = np.polyval(coeffs, months)
+
+# STEP 2: Seasonal factors — average deviation from trend, grouped by calendar month (1-12)
+calendar_month = ((months - 1) % 12) + 1
+deviations = revenue - trend_fitted
+seasonal_factors = {}
+# TODO: for cm in range(1, 13):
+# TODO:     mask = calendar_month == cm
+# TODO:     seasonal_factors[cm] = deviations[mask].mean()
+
+# STEP 3: Reconstructed fit
+# TODO: fitted = trend_fitted + np.array([seasonal_factors[cm] for cm in calendar_month])
+# TODO: mae = np.mean(np.abs(revenue - fitted))
+# TODO: print(f"Mean Absolute Error of trend+seasonal fit: \${mae:,.0f}")
+
+# STEP 4: Forecast next 3 months (months 25, 26, 27)
+future_months = np.array([25, 26, 27])
+future_calendar_months = ((future_months - 1) % 12) + 1
+# TODO: future_trend = np.polyval(coeffs, future_months)
+# TODO: forecast = future_trend + np.array([seasonal_factors[cm] for cm in future_calendar_months])
+
+# STEP 5: Report
+# TODO: for m, f in zip(future_months, forecast): print(f"Month {m}: forecasted revenue = \${f:,.0f}")
+`,
+    skillTags: ["Time Series Forecasting", "Seasonality", "Linear Trend", "FP&A", "Business Forecasting"],
+    hints: [
+      "Always fit the trend line FIRST, then compute seasonal factors as deviations FROM that trend — computing seasonality from raw revenue without detrending will bake trend growth into your seasonal factors incorrectly",
+      "This additive decomposition (trend + seasonal) assumes seasonal swings stay roughly constant in dollar terms — a multiplicative model (trend × seasonal factor) fits better when swings grow proportionally with revenue",
+      "24 months of history (2 full years) is close to the minimum needed to reliably separate a 12-month seasonal pattern from noise — with only 1 year you can't distinguish trend from seasonality at all",
+    ],
+  },
+  {
+    id: "mba-ana-003",
+    title: "Customer Churn Prediction with Logistic Regression",
+    category: "Business Analytics",
+    icon: "🚪",
+    difficulty: "Hard",
+    timeLimit: "35 min",
+    eloGain: 22,
+    tools: ["Python", "scikit-learn", "Pandas"],
+    scenario:
+      "The retention team wants a ranked list of at-risk customers to target with a save campaign, not just a churn rate number. You'll build a logistic regression churn model and use it to score and rank the current customer base by churn risk.",
+    objective:
+      "Train a logistic regression churn model on historical customer features, evaluate it with precision/recall, and produce a risk-ranked list of current (non-churned) customers.",
+    steps: [
+      "Prepare features (tenure, monthly_spend, support_tickets, num_products) and churn label",
+      "Split into train/test sets",
+      "Train a LogisticRegression classifier",
+      "Evaluate using precision, recall, and the confusion matrix",
+      "Score current active customers and rank by predicted churn probability",
+    ],
+    workstation: "notebook",
+    starterCode: `# Customer Churn Prediction — Logistic Regression
+import numpy as np
+import pandas as pd
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import precision_score, recall_score, confusion_matrix
+
+np.random.seed(11)
+n = 800
+tenure = np.random.uniform(1, 60, n)
+monthly_spend = np.random.uniform(20, 200, n)
+support_tickets = np.random.poisson(2, n)
+num_products = np.random.randint(1, 5, n)
+
+# Churn probability driven by: short tenure, high tickets, low product count
+churn_logit = -1.5 - 0.03*tenure + 0.4*support_tickets - 0.5*num_products + np.random.normal(0, 0.5, n)
+churn_prob_true = 1 / (1 + np.exp(-churn_logit))
+churned = (np.random.random(n) < churn_prob_true).astype(int)
+
+df = pd.DataFrame({"tenure": tenure, "monthly_spend": monthly_spend,
+                    "support_tickets": support_tickets, "num_products": num_products, "churned": churned})
+
+feature_cols = ["tenure", "monthly_spend", "support_tickets", "num_products"]
+
+# STEP 1 & 2: Train/test split
+X = df[feature_cols]
+y = df["churned"]
+# TODO: X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+
+# STEP 3: Train
+model = LogisticRegression(max_iter=1000)
+# TODO: model.fit(X_train, y_train)
+
+# STEP 4: Evaluate
+# TODO: y_pred = model.predict(X_test)
+# TODO: precision = precision_score(y_test, y_pred)
+# TODO: recall = recall_score(y_test, y_pred)
+# TODO: print(f"Precision: {precision:.2f}, Recall: {recall:.2f}")
+# TODO: print("Confusion matrix:\\n", confusion_matrix(y_test, y_pred))
+
+# STEP 5: Score CURRENT (not-yet-churned) customers and rank by risk
+current_customers = df[df["churned"] == 0].copy()
+# TODO: current_customers["churn_risk"] = model.predict_proba(current_customers[feature_cols])[:, 1]
+# TODO: top_at_risk = current_customers.sort_values("churn_risk", ascending=False).head(10)
+# TODO: print(top_at_risk[["tenure", "monthly_spend", "support_tickets", "num_products", "churn_risk"]])
+`,
+    skillTags: ["Churn Prediction", "Logistic Regression", "Precision/Recall", "Customer Analytics", "Predictive Modeling"],
+    hints: [
+      "Use stratify=y in train_test_split — churn datasets are usually imbalanced, and stratifying keeps the same churn ratio in both train and test sets",
+      "For a retention campaign, RECALL often matters more than precision — missing an at-risk customer (false negative) is usually costlier than wasting an outreach on someone who wouldn't have churned",
+      "predict_proba()[:, 1] gives the probability of the POSITIVE class (churn=1) — always double check which column index corresponds to which class",
+    ],
+  },
+  {
+    id: "mba-ana-004",
+    title: "Build a Business KPI Dashboard Data Layer",
+    category: "Business Analytics",
+    icon: "📉",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 20,
+    tools: ["Python", "Pandas"],
+    scenario:
+      "Leadership wants a single monthly KPI summary combining revenue, growth rate, churn, and CAC — pulled from several different raw data sources that don't share a common structure. You need to build the aggregation layer that would feed a dashboard.",
+    objective:
+      "Aggregate raw transactional, customer, and marketing spend data into a single monthly KPI table with MoM growth, churn rate, and CAC.",
+    steps: [
+      "Aggregate raw transactions into monthly revenue",
+      "Aggregate raw customer records into monthly active customer counts and churned customer counts",
+      "Aggregate marketing spend and new customer counts into CAC",
+      "Compute month-over-month revenue growth rate",
+      "Merge all metrics into a single monthly KPI table",
+    ],
+    workstation: "notebook",
+    starterCode: `# Monthly KPI Dashboard Aggregation Layer
+import pandas as pd
+import numpy as np
+
+np.random.seed(13)
+months = pd.period_range("2026-01", periods=6, freq="M")
+
+transactions = pd.DataFrame({
+    "month": np.repeat(months, 50),
+    "amount": np.random.uniform(20, 200, 300),
+})
+
+customers = pd.DataFrame({
+    "month": months,
+    "active_customers": [1000, 1050, 1080, 1120, 1140, 1180],
+    "churned_customers": [40, 38, 45, 42, 50, 47],
+})
+
+marketing = pd.DataFrame({
+    "month": months,
+    "spend": [15000, 16000, 15500, 17000, 18000, 17500],
+    "new_customers": [90, 88, 75, 82, 70, 88],
+})
+
+# STEP 1: Monthly revenue from transactions
+# TODO: revenue_by_month = transactions.groupby("month")["amount"].sum().reset_index(name="revenue")
+
+# STEP 2: Churn rate = churned / active (prior month active would be more precise; use same-month for simplicity)
+# TODO: customers["churn_rate"] = customers["churned_customers"] / customers["active_customers"]
+
+# STEP 3: CAC = spend / new_customers
+# TODO: marketing["cac"] = marketing["spend"] / marketing["new_customers"]
+
+# STEP 4: Merge everything into one KPI table
+# TODO: kpi = revenue_by_month.merge(customers, on="month").merge(marketing, on="month")
+
+# STEP 5: MoM revenue growth
+# TODO: kpi["revenue_growth_mom"] = kpi["revenue"].pct_change()
+
+# TODO: print(kpi[["month", "revenue", "revenue_growth_mom", "active_customers", "churn_rate", "cac"]].round(3))
+`,
+    skillTags: ["KPI Dashboard", "Data Aggregation", "Pandas Merge", "Business Metrics", "Data Engineering for Analytics"],
+    hints: [
+      "The first month's revenue_growth_mom will be NaN — there's no prior month to compare against, which is expected and correct, not a bug",
+      "A more precise churn rate would divide by the PRIOR month's active customers (beginning-of-period), not the same month's ending count — flag this as a known simplification",
+      "This aggregation pattern (group raw data → merge on a shared time key) is exactly what BI tools do under the hood — understanding it helps you debug a dashboard when numbers look wrong",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHARMACY — PHARMACOLOGY
+// ─────────────────────────────────────────────────────────────────────────────
+export const PHARMACY_PHARMACOLOGY_CHALLENGES = [
+  {
+    id: "pharm-pharma-001",
+    title: "Calculate Loading and Maintenance Doses",
+    category: "Pharmacology",
+    icon: "💊",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Python"],
+    scenario:
+      "A patient needs to reach therapeutic drug levels quickly (loading dose) and then be kept there (maintenance dose). Getting either calculation wrong risks either delayed efficacy or toxicity — you're verifying the attending's proposed regimen.",
+    objective:
+      "Calculate loading dose from target concentration and volume of distribution, and maintenance dose from clearance and target concentration.",
+    steps: [
+      "Compute loading dose = target concentration × volume of distribution",
+      "Compute maintenance dose rate = clearance × target concentration",
+      "Adjust maintenance dose for the dosing interval",
+      "Account for bioavailability if the route is oral, not IV",
+      "Flag if the computed doses fall outside a typical safe range",
+    ],
+    workstation: "notebook",
+    starterCode: `# Loading & Maintenance Dose Calculation
+target_conc = 20      # mg/L, target plasma concentration
+vd = 0.6               # L/kg, volume of distribution
+weight_kg = 70
+clearance = 0.05        # L/hr/kg
+dosing_interval_hr = 12
+bioavailability = 0.9   # oral bioavailability (F), 1.0 if IV
+route = "oral"
+
+# STEP 1: Loading dose = Cp_target * Vd (total body, not per-kg)
+# TODO: vd_total = vd * weight_kg
+# TODO: loading_dose_mg = target_conc * vd_total
+# TODO: if route == "oral": loading_dose_mg /= bioavailability
+
+# STEP 2: Maintenance dose RATE = Clearance * Cp_target
+# TODO: clearance_total = clearance * weight_kg
+# TODO: maintenance_rate_mg_per_hr = clearance_total * target_conc
+
+# STEP 3: Per-dose amount given the dosing interval
+# TODO: maintenance_dose_mg = maintenance_rate_mg_per_hr * dosing_interval_hr
+# TODO: if route == "oral": maintenance_dose_mg /= bioavailability
+
+# TODO: print(f"Loading dose: {loading_dose_mg:.0f} mg")
+# TODO: print(f"Maintenance dose: {maintenance_dose_mg:.0f} mg every {dosing_interval_hr}h")
+
+# STEP 5: Safety range check (illustrative range for this exercise)
+safe_max_single_dose = 2000
+# TODO: if loading_dose_mg > safe_max_single_dose: print("FLAG: Loading dose exceeds typical single-dose safety limit — verify with prescriber")
+`,
+    skillTags: ["Pharmacokinetics", "Loading Dose", "Maintenance Dose", "Clearance", "Volume of Distribution"],
+    hints: [
+      "Loading dose depends on Vd (how the drug distributes), NOT clearance — it's a one-time dose to fill the 'tank' quickly",
+      "Maintenance dose depends on clearance (how fast the drug is eliminated) — it replaces what's cleared between doses",
+      "For oral dosing, always divide by bioavailability (F) — an IV dose delivers 100% to the bloodstream, oral doses lose some to first-pass metabolism",
+    ],
+  },
+  {
+    id: "pharm-pharma-002",
+    title: "Drug-Drug Interaction Severity Screening",
+    category: "Pharmacology",
+    icon: "⚠️",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python"],
+    scenario:
+      "A patient's medication list has grown to 8 drugs after multiple specialist visits. Before dispensing a new prescription, you need to screen the full list for interactions and flag anything requiring pharmacist review.",
+    objective:
+      "Build a simple interaction-screening function that checks a new drug against a patient's current medication list using a lookup table of known interaction pairs and severities.",
+    steps: [
+      "Define a lookup table of known interaction pairs and severity levels",
+      "Given a patient's current medication list and a new drug, check all pairs",
+      "Classify each detected interaction as Major, Moderate, or Minor",
+      "Sort detected interactions by severity, most severe first",
+      "Print a clear pharmacist alert only if any Major interaction is found",
+    ],
+    workstation: "notebook",
+    starterCode: `# Drug-Drug Interaction Screening
+interaction_db = {
+    frozenset(["warfarin", "aspirin"]): ("Major", "Increased bleeding risk"),
+    frozenset(["warfarin", "amiodarone"]): ("Major", "Amiodarone increases warfarin effect"),
+    frozenset(["simvastatin", "clarithromycin"]): ("Major", "Increased risk of rhabdomyolysis"),
+    frozenset(["metformin", "contrast_dye"]): ("Moderate", "Risk of lactic acidosis, hold before imaging"),
+    frozenset(["lisinopril", "potassium"]): ("Moderate", "Risk of hyperkalemia"),
+    frozenset(["ibuprofen", "lisinopril"]): ("Minor", "NSAIDs may reduce antihypertensive effect"),
+}
+
+current_meds = ["warfarin", "metformin", "lisinopril"]
+new_drug = "aspirin"
+
+def screen_interactions(current_meds, new_drug, db):
+    detected = []
+    # TODO: for med in current_meds:
+    # TODO:     pair = frozenset([med, new_drug])
+    # TODO:     if pair in db:
+    # TODO:         severity, description = db[pair]
+    # TODO:         detected.append({"drug": med, "severity": severity, "description": description})
+    return detected
+
+results = screen_interactions(current_meds, new_drug, interaction_db)
+
+severity_rank = {"Major": 0, "Moderate": 1, "Minor": 2}
+# TODO: results_sorted = sorted(results, key=lambda r: severity_rank[r["severity"]])
+
+# TODO: for r in results_sorted: print(f"[{r['severity']}] {new_drug} + {r['drug']}: {r['description']}")
+
+# TODO: has_major = any(r["severity"] == "Major" for r in results_sorted)
+# TODO: if has_major: print("\\n*** PHARMACIST REVIEW REQUIRED — MAJOR INTERACTION DETECTED ***")
+`,
+    skillTags: ["Drug Interactions", "Clinical Pharmacology", "Medication Safety", "Severity Classification", "Screening Systems"],
+    hints: [
+      "Use frozenset for the interaction key so (warfarin, aspirin) and (aspirin, warfarin) both match the same lookup entry regardless of order",
+      "This tiny lookup table is illustrative only — real interaction screening uses comprehensive clinical databases (Lexicomp, Micromedex) with hundreds of thousands of pairs",
+      "A Major interaction doesn't always mean 'never combine' — it means it requires pharmacist/prescriber judgment, often with monitoring or dose adjustment",
+    ],
+  },
+  {
+    id: "pharm-pharma-003",
+    title: "First-Order Elimination: Time to Steady State",
+    category: "Pharmacology",
+    icon: "⏱️",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Python", "NumPy"],
+    scenario:
+      "A patient is starting a new maintenance medication and the prescriber wants to know when to draw the first steady-state trough level. Drawing it too early gives a falsely low, misleading result.",
+    objective:
+      "Calculate a drug's elimination half-life from its elimination rate constant, and use it to determine the time to reach steady state (approximately 4-5 half-lives).",
+    steps: [
+      "Given an elimination rate constant (k), compute the half-life: t½ = ln(2)/k",
+      "Simulate plasma concentration approaching steady state over multiple half-lives",
+      "Compute the fraction of steady-state concentration reached after each half-life",
+      "Determine the time at which >90% of steady state is reached",
+      "Recommend the earliest appropriate day to draw a trough level",
+    ],
+    workstation: "notebook",
+    starterCode: `# Time to Steady State — First-Order Elimination Kinetics
+import numpy as np
+
+k = 0.077  # hr^-1, elimination rate constant
+dosing_interval_hr = 24
+
+# STEP 1: Half-life
+# TODO: half_life_hr = np.log(2) / k
+# TODO: print(f"Half-life: {half_life_hr:.1f} hours ({half_life_hr/24:.1f} days)")
+
+# STEP 2 & 3: Fraction of steady state reached after N half-lives
+# Standard formula: fraction after n half-lives = 1 - (0.5)^n
+for n_half_lives in range(1, 6):
+    # TODO: fraction = 1 - (0.5) ** n_half_lives
+    # TODO: time_hr = n_half_lives * half_life_hr
+    # TODO: print(f"After {n_half_lives} half-lives ({time_hr:.0f}h / {time_hr/24:.1f} days): {fraction:.1%} of steady state")
+    pass
+
+# STEP 4: Time to reach 90% steady state
+# TODO: n_needed = np.log(1 - 0.90) / np.log(0.5)  # solve 1-(0.5)^n = 0.90 for n
+# TODO: time_to_90pct_hr = n_needed * half_life_hr
+# TODO: print(f"\\nTime to reach 90% steady state: {time_to_90pct_hr:.0f} hours ({time_to_90pct_hr/24:.1f} days)")
+
+# STEP 5: Recommendation
+# TODO: earliest_day = int(np.ceil(time_to_90pct_hr / 24))
+# TODO: print(f"Recommend drawing trough level no earlier than day {earliest_day}")
+`,
+    skillTags: ["Half-Life", "Steady State", "Elimination Kinetics", "Therapeutic Drug Monitoring", "Pharmacokinetics"],
+    hints: [
+      "The 'rule of thumb' that steady state takes ~4-5 half-lives comes directly from 1-(0.5)^5 = 96.9% — this is a standard clinical heuristic, not a coincidence",
+      "Drawing a level too early (before steady state) systematically underestimates the true steady-state trough — a common source of inappropriate dose increases",
+      "Half-life depends only on k (elimination rate), which is a property of the drug and the patient's clearance/Vd — it does NOT depend on the dose given",
+    ],
+  },
+  {
+    id: "pharm-pharma-004",
+    title: "Renal Dose Adjustment Using Creatinine Clearance",
+    category: "Pharmacology",
+    icon: "🫘",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 20,
+    tools: ["Python"],
+    scenario:
+      "An elderly patient with reduced kidney function is being prescribed a renally-cleared antibiotic at the standard adult dose. Without adjustment, this risks drug accumulation and toxicity — you need to calculate their creatinine clearance and adjust the dose accordingly.",
+    objective:
+      "Calculate creatinine clearance using the Cockcroft-Gault equation and apply a standard renal dose-adjustment table to recommend a corrected dose and interval.",
+    steps: [
+      "Calculate CrCl using Cockcroft-Gault (accounting for sex)",
+      "Classify renal function into a standard CKD-stage-like bucket",
+      "Look up the recommended dose adjustment for that CrCl bucket",
+      "Apply the adjustment to the standard dose and/or interval",
+      "Print the adjusted regimen with a clear rationale",
+    ],
+    workstation: "notebook",
+    starterCode: `# Renal Dose Adjustment — Cockcroft-Gault Creatinine Clearance
+age = 78
+weight_kg = 65
+scr_mg_dl = 1.4   # serum creatinine
+sex = "female"    # "male" or "female"
+
+standard_dose_mg = 1000
+standard_interval_hr = 8
+
+# STEP 1: Cockcroft-Gault
+# CrCl (mL/min) = [(140-age) * weight_kg] / (72 * SCr) * (0.85 if female)
+# TODO: crcl = ((140 - age) * weight_kg) / (72 * scr_mg_dl)
+# TODO: if sex == "female": crcl *= 0.85
+# TODO: print(f"Estimated CrCl: {crcl:.1f} mL/min")
+
+# STEP 2: Renal function bucket
+def renal_bucket(crcl):
+    # TODO: if crcl >= 50: return "Normal/Mild (>=50)"
+    # TODO: elif crcl >= 30: return "Moderate (30-49)"
+    # TODO: elif crcl >= 10: return "Severe (10-29)"
+    # TODO: else: return "Kidney Failure (<10)"
+    pass
+
+# TODO: bucket = renal_bucket(crcl)
+# TODO: print(f"Renal function category: {bucket}")
+
+# STEP 3: Dose adjustment table (illustrative, drug-specific in real practice)
+adjustment_table = {
+    "Normal/Mild (>=50)":    {"dose_factor": 1.0, "interval_hr": 8},
+    "Moderate (30-49)":      {"dose_factor": 1.0, "interval_hr": 12},
+    "Severe (10-29)":        {"dose_factor": 0.5, "interval_hr": 24},
+    "Kidney Failure (<10)":  {"dose_factor": 0.25, "interval_hr": 48},
+}
+
+# STEP 4: Apply adjustment
+# TODO: adj = adjustment_table[bucket]
+# TODO: adjusted_dose = standard_dose_mg * adj["dose_factor"]
+# TODO: adjusted_interval = adj["interval_hr"]
+
+# TODO: print(f"\\nStandard regimen: {standard_dose_mg}mg every {standard_interval_hr}h")
+# TODO: print(f"Adjusted regimen: {adjusted_dose:.0f}mg every {adjusted_interval}h")
+# TODO: print(f"Rationale: CrCl={crcl:.0f} mL/min falls in '{bucket}' — dose and/or interval adjusted per renal dosing guidance")
+`,
+    skillTags: ["Renal Dosing", "Cockcroft-Gault", "Creatinine Clearance", "Dose Adjustment", "Geriatric Pharmacology"],
+    hints: [
+      "Cockcroft-Gault uses ACTUAL body weight in most formulations, but many institutions use ideal or adjusted body weight for obese patients — always check your institution's protocol",
+      "The 0.85 female correction factor accounts for typically lower average muscle mass (and thus lower creatinine production) — it's a population-level approximation, not individualized",
+      "This adjustment table is illustrative — real renal dosing is drug-specific and should always be verified against a current reference (e.g. Sanford Guide, package insert) before dispensing",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHARMACY — MEDICINAL CHEMISTRY
+// ─────────────────────────────────────────────────────────────────────────────
+export const PHARMACY_CHEMISTRY_CHALLENGES = [
+  {
+    id: "pharm-chem-001",
+    title: "Calculate Molarity and Dilution for Compounding",
+    category: "Medicinal Chemistry",
+    icon: "🧪",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python"],
+    scenario:
+      "The compounding pharmacy needs to prepare a specific concentration oral solution by diluting a concentrated stock solution — a routine but error-prone calculation where a decimal mistake directly affects patient dosing.",
+    objective:
+      "Calculate the volume of stock solution and diluent needed to prepare a target volume and concentration using the C1V1 = C2V2 dilution equation.",
+    steps: [
+      "Given stock concentration and target concentration/volume",
+      "Apply C1V1 = C2V2 to solve for the required stock volume",
+      "Compute the diluent volume needed to reach the target total volume",
+      "Verify the final concentration by back-calculation",
+      "Flag if the required stock volume exceeds the target volume (impossible dilution)",
+    ],
+    workstation: "notebook",
+    starterCode: `# Dilution Calculation for Compounding (C1V1 = C2V2)
+stock_conc_mg_ml = 50    # C1: concentration of stock solution
+target_conc_mg_ml = 5    # C2: desired final concentration
+target_volume_ml = 200   # V2: desired final volume
+
+# STEP 1 & 2: Solve for stock volume needed
+# C1 * V1 = C2 * V2  ->  V1 = (C2 * V2) / C1
+# TODO: stock_volume_ml = (target_conc_mg_ml * target_volume_ml) / stock_conc_mg_ml
+
+# STEP 3: Diluent volume
+# TODO: diluent_volume_ml = target_volume_ml - stock_volume_ml
+
+# TODO: print(f"Stock solution needed: {stock_volume_ml:.1f} mL")
+# TODO: print(f"Diluent (e.g. simple syrup) needed: {diluent_volume_ml:.1f} mL")
+# TODO: print(f"Total final volume: {stock_volume_ml + diluent_volume_ml:.1f} mL")
+
+# STEP 4: Verify
+# TODO: final_conc_check = (stock_conc_mg_ml * stock_volume_ml) / target_volume_ml
+# TODO: print(f"Verification — final concentration: {final_conc_check:.2f} mg/mL (target: {target_conc_mg_ml})")
+
+# STEP 5: Feasibility check
+# TODO: if stock_volume_ml > target_volume_ml:
+# TODO:     print("ERROR: Required stock volume exceeds target volume — dilution not possible with this stock strength")
+`,
+    skillTags: ["Compounding", "Dilution Calculations", "C1V1=C2V2", "Molarity", "Pharmaceutical Chemistry"],
+    hints: [
+      "C1V1 = C2V2 works for ANY consistent concentration units (mg/mL, mol/L, %) as long as you don't mix units within the same calculation",
+      "Always sanity-check that stock_volume_ml < target_volume_ml — if the stock isn't concentrated enough, no amount of dilution math will fix it, you need a stronger stock",
+      "In real compounding, always round to a measurable volume (graduated cylinder/syringe precision) and re-verify the achievable concentration after rounding",
+    ],
+  },
+  {
+    id: "pharm-chem-002",
+    title: "Predict Drug Ionization State with Henderson-Hasselbalch",
+    category: "Medicinal Chemistry",
+    icon: "⚗️",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Python", "NumPy"],
+    scenario:
+      "Understanding whether a weak acid or base drug is ionized or un-ionized at physiological pH explains its absorption, distribution, and why some drugs are poorly absorbed in the stomach vs the small intestine — core knowledge for predicting drug behavior.",
+    objective:
+      "Use the Henderson-Hasselbalch equation to calculate the percentage of a weak acid or weak base drug that is ionized at a given pH, and compare behavior at gastric vs intestinal pH.",
+    steps: [
+      "Given a drug's pKa and whether it's a weak acid or weak base",
+      "Apply the appropriate Henderson-Hasselbalch form for the drug class",
+      "Calculate percent ionized at gastric pH (~1.5) and intestinal pH (~6.8)",
+      "Determine which environment favors absorption (un-ionized form crosses membranes better)",
+      "Repeat for a second drug and compare",
+    ],
+    workstation: "notebook",
+    starterCode: `# Henderson-Hasselbalch — Drug Ionization Prediction
+import numpy as np
+
+drugs = [
+    {"name": "Aspirin (weak acid)", "pka": 3.5, "type": "acid"},
+    {"name": "Morphine (weak base)", "pka": 8.0, "type": "base"},
+]
+
+gastric_ph = 1.5
+intestinal_ph = 6.8
+
+def percent_ionized(ph, pka, drug_type):
+    # Weak ACID:  ratio = [A-]/[HA] = 10^(pH - pKa)  -> % ionized = ratio/(1+ratio) * 100
+    # Weak BASE:  ratio = [BH+]/[B] = 10^(pKa - pH)  -> % ionized = ratio/(1+ratio) * 100
+    if drug_type == "acid":
+        # TODO: ratio = 10 ** (ph - pka)
+        pass
+    else:
+        # TODO: ratio = 10 ** (pka - ph)
+        pass
+    # TODO: return (ratio / (1 + ratio)) * 100
+
+for drug in drugs:
+    # TODO: pct_gastric = percent_ionized(gastric_ph, drug["pka"], drug["type"])
+    # TODO: pct_intestinal = percent_ionized(intestinal_ph, drug["pka"], drug["type"])
+    # TODO: print(f"{drug['name']} (pKa={drug['pka']}):")
+    # TODO: print(f"  Gastric (pH {gastric_ph}): {pct_gastric:.1f}% ionized")
+    # TODO: print(f"  Intestinal (pH {intestinal_ph}): {pct_intestinal:.1f}% ionized")
+    # TODO: better_site = "gastric" if pct_gastric < pct_intestinal else "intestinal"
+    # TODO: print(f"  Better absorption site (more un-ionized): {better_site}\\n")
+    pass
+`,
+    skillTags: ["Henderson-Hasselbalch", "Drug Ionization", "pKa", "Absorption", "Medicinal Chemistry"],
+    hints: [
+      "The UN-ionized form of a drug crosses lipid membranes far more readily — that's why aspirin (weak acid) absorbs well in the acidic stomach, staying mostly un-ionized there",
+      "Weak bases behave oppositely to weak acids — they're MORE ionized in acidic environments, which is why morphine absorbs poorly in the stomach but well in the more alkaline small intestine",
+      "This model ignores the fact that the small intestine's huge surface area often dominates total absorption regardless of ionization state — pKa/pH is one factor among several",
+    ],
+  },
+  {
+    id: "pharm-chem-003",
+    title: "Beer-Lambert Law: Spectrophotometric Assay Calculation",
+    category: "Medicinal Chemistry",
+    icon: "🔬",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Python", "NumPy"],
+    scenario:
+      "Quality control needs to verify the concentration of active ingredient in a batch of tablets using UV-Vis spectrophotometry, comparing a sample's absorbance against a calibration curve built from known standards.",
+    objective:
+      "Build a linear calibration curve from standard absorbance readings, use it to back-calculate an unknown sample's concentration, and verify against a target specification.",
+    steps: [
+      "Fit a linear regression (Beer-Lambert: A = εlc, effectively A = m*c + b) to standard concentration/absorbance pairs",
+      "Compute the calibration curve's slope and intercept",
+      "Use the fitted line to back-calculate the unknown sample's concentration from its measured absorbance",
+      "Compute percent of label claim (assay result vs stated tablet strength)",
+      "Determine if the batch passes (typically 90-110% of label claim)",
+    ],
+    workstation: "notebook",
+    starterCode: `# Beer-Lambert Calibration Curve — Tablet Assay
+import numpy as np
+
+# Standard solutions: known concentration (mcg/mL) vs measured absorbance
+std_conc = np.array([5, 10, 15, 20, 25])
+std_abs =  np.array([0.15, 0.31, 0.44, 0.58, 0.73])
+
+# STEP 1 & 2: Linear fit (A = m*C + b)
+# TODO: coeffs = np.polyfit(std_conc, std_abs, deg=1)
+# TODO: m, b = coeffs
+# TODO: print(f"Calibration curve: A = {m:.4f} * C + {b:.4f}")
+
+# R-squared for the fit (quality check)
+# TODO: predicted = np.polyval(coeffs, std_conc)
+# TODO: ss_res = np.sum((std_abs - predicted) ** 2)
+# TODO: ss_tot = np.sum((std_abs - std_abs.mean()) ** 2)
+# TODO: r_squared = 1 - ss_res / ss_tot
+# TODO: print(f"R-squared: {r_squared:.4f}")
+
+# STEP 3: Unknown sample
+sample_absorbance = 0.51
+label_claim_mcg = 20  # stated strength per tablet, in the same units as concentration
+
+# TODO: sample_conc = (sample_absorbance - b) / m
+# TODO: print(f"\\nSample concentration: {sample_conc:.2f} mcg/mL")
+
+# STEP 4: Percent of label claim
+# TODO: pct_label_claim = (sample_conc / label_claim_mcg) * 100
+# TODO: print(f"Percent of label claim: {pct_label_claim:.1f}%")
+
+# STEP 5: Pass/fail (USP typical range 90-110%)
+# TODO: if 90 <= pct_label_claim <= 110: print("PASS — within 90-110% label claim specification")
+# TODO: else: print("FAIL — outside acceptable label claim range, investigate batch")
+`,
+    skillTags: ["Beer-Lambert Law", "Spectrophotometry", "Calibration Curve", "Quality Control", "Assay Analysis"],
+    hints: [
+      "R-squared close to 1.0 confirms the calibration standards behaved linearly (as Beer-Lambert predicts) — a poor fit means something went wrong with the standards, not the sample",
+      "Always back-calculate concentration from the calibration curve's equation, never by simple proportion to a single standard — the curve accounts for the intercept (baseline absorbance)",
+      "90-110% of label claim is a common USP compendial range, but always verify the actual specification for the specific drug/dosage form being tested",
+    ],
+  },
+  {
+    id: "pharm-chem-004",
+    title: "Predict Shelf Life with Arrhenius Degradation Kinetics",
+    category: "Medicinal Chemistry",
+    icon: "📉",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 20,
+    tools: ["Python", "NumPy"],
+    scenario:
+      "A new formulation was only stability-tested at accelerated (high) temperature for 3 months due to launch timeline pressure. Regulatory needs a scientifically justified room-temperature shelf-life estimate before the product can ship — you'll use Arrhenius kinetics to extrapolate.",
+    objective:
+      "Use degradation rate constants measured at two accelerated temperatures to compute the activation energy via the Arrhenius equation, then predict the room-temperature degradation rate and shelf life.",
+    steps: [
+      "Given first-order degradation rate constants (k) measured at two elevated temperatures",
+      "Compute the activation energy (Ea) using the two-point Arrhenius equation",
+      "Extrapolate the rate constant at room temperature (25°C)",
+      "Compute shelf life as time to 10% degradation (t90) using the extrapolated k",
+      "Compare the extrapolated shelf life to a minimum required shelf life",
+    ],
+    workstation: "notebook",
+    starterCode: `# Arrhenius Extrapolation — Shelf Life Prediction
+import numpy as np
+
+R = 8.314  # J/(mol*K), gas constant
+
+# Measured degradation rate constants at two accelerated temperatures
+T1_celsius, k1 = 40, 0.015   # per day, first-order degradation
+T2_celsius, k2 = 50, 0.041   # per day
+
+T_room_celsius = 25
+min_required_shelf_life_days = 730  # 2 years
+
+def celsius_to_kelvin(c):
+    return c + 273.15
+
+T1 = celsius_to_kelvin(T1_celsius)
+T2 = celsius_to_kelvin(T2_celsius)
+T_room = celsius_to_kelvin(T_room_celsius)
+
+# STEP 1 & 2: Solve for activation energy Ea using two-point Arrhenius form
+# ln(k2/k1) = -(Ea/R) * (1/T2 - 1/T1)
+# TODO: Ea = -R * np.log(k2 / k1) / (1/T2 - 1/T1)
+# TODO: print(f"Activation energy: {Ea/1000:.1f} kJ/mol")
+
+# STEP 3: Extrapolate k at room temperature
+# ln(k_room) = ln(k1) - (Ea/R) * (1/T_room - 1/T1)
+# TODO: ln_k_room = np.log(k1) - (Ea / R) * (1/T_room - 1/T1)
+# TODO: k_room = np.exp(ln_k_room)
+# TODO: print(f"Extrapolated k at {T_room_celsius}°C: {k_room:.6f} per day")
+
+# STEP 4: t90 (time to 10% degradation) for first-order kinetics
+# t90 = (0.105) / k  (approximation: ln(1/0.9)/k)
+# TODO: t90_days = np.log(1/0.9) / k_room
+# TODO: print(f"Predicted shelf life (t90): {t90_days:.0f} days ({t90_days/365:.1f} years)")
+
+# STEP 5: Compare to requirement
+# TODO: if t90_days >= min_required_shelf_life_days:
+# TODO:     print(f"MEETS requirement of {min_required_shelf_life_days} days")
+# TODO: else:
+# TODO:     print(f"DOES NOT MEET requirement — short by {min_required_shelf_life_days - t90_days:.0f} days")
+`,
+    skillTags: ["Arrhenius Equation", "Stability Testing", "Shelf Life Prediction", "Degradation Kinetics", "Activation Energy"],
+    hints: [
+      "Arrhenius extrapolation assumes the SAME degradation mechanism holds across the whole temperature range — if the mechanism changes at lower temps, this extrapolation can be badly wrong",
+      "t90 (not t50/half-life) is the standard pharmaceutical shelf-life endpoint — most drugs are considered unacceptable once 10% of active ingredient has degraded, well before 50%",
+      "Real regulatory submissions require ACTUAL long-term room-temperature stability data eventually — accelerated extrapolation supports an initial shelf-life claim but is later confirmed empirically",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHARMACY — CLINICAL PHARMACY
+// ─────────────────────────────────────────────────────────────────────────────
+export const PHARMACY_CLINICAL_CHALLENGES = [
+  {
+    id: "pharm-clin-001",
+    title: "Medication Reconciliation Discrepancy Finder",
+    category: "Clinical Pharmacy",
+    icon: "📋",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python"],
+    scenario:
+      "A patient is being discharged and their home medication list needs to be reconciled against their inpatient medication administration record. Discrepancies (omissions, dose changes, additions) are a leading cause of post-discharge adverse events.",
+    objective:
+      "Compare a patient's home medication list against their discharge medication list and identify additions, omissions, and dose changes.",
+    steps: [
+      "Represent home meds and discharge meds as dictionaries of drug -> dose",
+      "Identify drugs present at home but missing at discharge (potential unintentional omissions)",
+      "Identify drugs newly added at discharge (new therapy)",
+      "Identify drugs present in both but with a changed dose",
+      "Print a reconciliation summary flagging omissions for pharmacist follow-up",
+    ],
+    workstation: "notebook",
+    starterCode: `# Medication Reconciliation — Discrepancy Detection
+home_meds = {
+    "lisinopril": "10mg daily",
+    "metformin": "500mg BID",
+    "atorvastatin": "20mg daily",
+    "omeprazole": "20mg daily",
+}
+
+discharge_meds = {
+    "lisinopril": "10mg daily",
+    "metformin": "1000mg BID",   # dose changed
+    "aspirin": "81mg daily",      # newly added
+    # atorvastatin and omeprazole missing — potential omissions
+}
+
+# STEP 2: Omissions — in home but not in discharge
+# TODO: omissions = set(home_meds.keys()) - set(discharge_meds.keys())
+
+# STEP 3: Additions — in discharge but not in home
+# TODO: additions = set(discharge_meds.keys()) - set(home_meds.keys())
+
+# STEP 4: Dose changes — in both, but different dose string
+common_drugs = set(home_meds.keys()) & set(discharge_meds.keys())
+# TODO: dose_changes = {d: (home_meds[d], discharge_meds[d]) for d in common_drugs if home_meds[d] != discharge_meds[d]}
+
+# STEP 5: Print reconciliation summary
+print("=== MEDICATION RECONCILIATION SUMMARY ===")
+# TODO: print(f"\\nPOTENTIAL OMISSIONS (verify if intentional): {omissions}")
+# TODO: print(f"NEW MEDICATIONS: {additions}")
+# TODO: print(f"DOSE CHANGES:")
+# TODO: for drug, (old, new) in dose_changes.items(): print(f"  {drug}: {old} -> {new}")
+# TODO: if omissions: print("\\n*** FLAG FOR PHARMACIST REVIEW: unexplained omissions detected ***")
+`,
+    skillTags: ["Medication Reconciliation", "Discharge Planning", "Patient Safety", "Clinical Pharmacy", "Care Transitions"],
+    hints: [
+      "Not every omission is an error — some home meds are intentionally discontinued (e.g. a med that caused the admission) — the tool should FLAG for review, not assume it's always a mistake",
+      "Set difference operations (set(a) - set(b)) are the right tool here — they directly express 'in this list but not that one'",
+      "Real medication reconciliation also checks for therapeutic duplication and drug interactions introduced by the new discharge list, not just simple list comparison",
+    ],
+  },
+  {
+    id: "pharm-clin-002",
+    title: "Warfarin Dose Titration Based on INR",
+    category: "Clinical Pharmacy",
+    icon: "🩸",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Python"],
+    scenario:
+      "An anticoagulation clinic patient's INR came back outside the therapeutic range. You need to apply a standard warfarin dose-adjustment protocol to recommend a new weekly dose and next follow-up interval.",
+    objective:
+      "Implement a rule-based warfarin dosing algorithm that adjusts weekly dose based on current INR relative to a target therapeutic range.",
+    steps: [
+      "Given current weekly warfarin dose and current INR",
+      "Define target INR range (e.g. 2.0-3.0 for most indications)",
+      "Apply percentage dose adjustment rules based on how far outside range the INR is",
+      "Determine the recommended follow-up interval based on INR stability",
+      "Print the new dose and next INR check date",
+    ],
+    workstation: "notebook",
+    starterCode: `# Warfarin Dose Titration Protocol
+current_weekly_dose_mg = 35
+current_inr = 4.2
+target_low, target_high = 2.0, 3.0
+
+def titrate_warfarin(inr, weekly_dose, target_low, target_high):
+    # Simplified standard-of-care style titration rules
+    if inr < 1.5:
+        adjustment_pct = 0.15   # increase 10-15%
+        action = "INCREASE"
+        followup_days = 7
+    elif inr < target_low:
+        adjustment_pct = 0.10
+        action = "INCREASE"
+        followup_days = 14
+    elif target_low <= inr <= target_high:
+        adjustment_pct = 0.0
+        action = "NO CHANGE"
+        followup_days = 28
+    elif inr <= 3.5:
+        adjustment_pct = -0.10
+        action = "DECREASE"
+        followup_days = 14
+    elif inr <= 5.0:
+        adjustment_pct = -0.15
+        action = "DECREASE (hold 1 dose, then resume lower)"
+        followup_days = 7
+    else:
+        adjustment_pct = -0.20
+        action = "HOLD — urgent pharmacist/physician review"
+        followup_days = 2
+
+    # TODO: new_dose = weekly_dose * (1 + adjustment_pct)
+    # TODO: return round(new_dose, 1), action, followup_days
+    pass
+
+# TODO: new_dose, action, followup_days = titrate_warfarin(current_inr, current_weekly_dose_mg, target_low, target_high)
+# TODO: print(f"Current: {current_weekly_dose_mg}mg/week, INR={current_inr}")
+# TODO: print(f"Action: {action}")
+# TODO: print(f"New weekly dose: {new_dose}mg")
+# TODO: print(f"Next INR check: {followup_days} days")
+
+# TODO: if current_inr > 5.0: print("\\n*** URGENT: INR critically elevated, assess bleeding risk immediately ***")
+`,
+    skillTags: ["Warfarin", "Anticoagulation", "Dose Titration", "INR Monitoring", "Clinical Protocols"],
+    hints: [
+      "This is a SIMPLIFIED illustrative protocol — real anticoagulation clinics use validated nomograms (e.g. from ACCP guidelines) that also weigh bleeding history and indication",
+      "The follow-up interval should tighten as INR moves further from target — a stable in-range INR can go 4 weeks between checks, a critically high one needs review within days",
+      "An INR > 5.0 combined with any bleeding symptoms is always an urgent clinical situation regardless of what the dosing algorithm outputs — algorithms support judgment, they don't replace it",
+    ],
+  },
+  {
+    id: "pharm-clin-003",
+    title: "Pediatric Weight-Based Dose with Maximum Cap",
+    category: "Clinical Pharmacy",
+    icon: "👶",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Python"],
+    scenario:
+      "A pediatric patient's weight-based antibiotic dose calculates to more than the adult maximum — a common error scenario for larger children where blindly applying mg/kg dosing leads to overdose.",
+    objective:
+      "Calculate a weight-based pediatric dose and correctly cap it at the lesser of the weight-based dose or the standard adult maximum dose.",
+    steps: [
+      "Calculate the weight-based dose (mg/kg × weight)",
+      "Compare against the adult maximum single dose",
+      "Select whichever is LOWER as the final dose (never exceed adult max)",
+      "Round to a practically measurable/available dose",
+      "Print the final dose with clear rationale for which limit applied",
+    ],
+    workstation: "notebook",
+    starterCode: `# Pediatric Weight-Based Dosing with Adult Max Cap
+weight_kg = 45          # a larger pediatric patient
+mg_per_kg_per_dose = 15
+adult_max_single_dose_mg = 500
+available_tablet_strengths = [125, 250, 500]  # mg
+
+# STEP 1: Weight-based dose
+# TODO: weight_based_dose = weight_kg * mg_per_kg_per_dose
+
+# STEP 2 & 3: Cap at adult max — NEVER exceed it, even if weight-based calc is higher
+# TODO: final_dose = min(weight_based_dose, adult_max_single_dose_mg)
+# TODO: capped = weight_based_dose > adult_max_single_dose_mg
+
+# TODO: print(f"Weight-based dose: {weight_based_dose:.0f}mg")
+# TODO: print(f"Adult max single dose: {adult_max_single_dose_mg}mg")
+# TODO: print(f"Final dose: {final_dose:.0f}mg" + (" (CAPPED at adult max)" if capped else " (weight-based, under adult max)"))
+
+# STEP 4: Round to nearest available/practical strength (round DOWN to avoid exceeding the cap)
+def round_to_available(dose, strengths):
+    # TODO: valid_strengths = [s for s in strengths if s <= dose]
+    # TODO: return max(valid_strengths) if valid_strengths else min(strengths)
+    pass
+
+# TODO: practical_dose = round_to_available(final_dose, available_tablet_strengths)
+# TODO: print(f"Practical dispensed dose (nearest available strength, rounded down): {practical_dose}mg")
+`,
+    skillTags: ["Pediatric Dosing", "Weight-Based Dosing", "Dose Capping", "Medication Safety", "Clinical Pharmacy"],
+    hints: [
+      "Always use min(weight_based_dose, adult_max) — this is one of the most common pediatric dosing errors when the calculation is done manually and the max-dose check is skipped",
+      "Round DOWN to the nearest available strength when at/near a safety cap — rounding up could push the dose back over the maximum",
+      "This cap logic applies broadly beyond antibiotics — acetaminophen, many analgesics, and most weight-based pediatric drugs have an adult-equivalent ceiling dose",
+    ],
+  },
+  {
+    id: "pharm-clin-004",
+    title: "Design a Clinical Intervention Documentation System",
+    category: "Clinical Pharmacy",
+    icon: "📝",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 20,
+    tools: ["Python"],
+    scenario:
+      "Your pharmacy department needs to track and quantify clinical interventions (dose corrections, allergy catches, interaction preventions) to justify staffing levels to hospital administration — you're building the data model and summary reporting.",
+    objective:
+      "Build a data structure to log clinical interventions with category, severity avoided, and estimated cost avoidance, then generate a monthly summary report.",
+    steps: [
+      "Define an intervention record structure (date, category, severity avoided, drug, cost avoidance estimate)",
+      "Log a set of sample interventions for the month",
+      "Aggregate interventions by category and count them",
+      "Sum estimated cost avoidance across all interventions",
+      "Generate a summary report ranking categories by frequency and total value",
+    ],
+    workstation: "notebook",
+    starterCode: `# Clinical Intervention Tracking & Reporting
+from collections import defaultdict
+
+interventions = [
+    {"date": "2026-08-01", "category": "Dose Adjustment", "severity_avoided": "Moderate", "drug": "vancomycin", "cost_avoidance": 1200},
+    {"date": "2026-08-03", "category": "Allergy Catch", "severity_avoided": "Major", "drug": "penicillin", "cost_avoidance": 8000},
+    {"date": "2026-08-05", "category": "Drug Interaction", "severity_avoided": "Major", "drug": "warfarin+aspirin", "cost_avoidance": 15000},
+    {"date": "2026-08-08", "category": "Dose Adjustment", "severity_avoided": "Minor", "drug": "gabapentin", "cost_avoidance": 300},
+    {"date": "2026-08-10", "category": "Duplicate Therapy", "severity_avoided": "Moderate", "drug": "omeprazole+pantoprazole", "cost_avoidance": 450},
+    {"date": "2026-08-12", "category": "Drug Interaction", "severity_avoided": "Moderate", "drug": "simvastatin+clarithromycin", "cost_avoidance": 3500},
+    {"date": "2026-08-15", "category": "Allergy Catch", "severity_avoided": "Major", "drug": "sulfamethoxazole", "cost_avoidance": 6000},
+]
+
+# STEP 3: Aggregate by category — count and total cost avoidance
+category_stats = defaultdict(lambda: {"count": 0, "total_cost_avoidance": 0})
+# TODO: for i in interventions:
+# TODO:     category_stats[i["category"]]["count"] += 1
+# TODO:     category_stats[i["category"]]["total_cost_avoidance"] += i["cost_avoidance"]
+
+# STEP 4: Overall totals
+# TODO: total_interventions = len(interventions)
+# TODO: total_cost_avoidance = sum(i["cost_avoidance"] for i in interventions)
+
+# TODO: print(f"Total interventions this month: {total_interventions}")
+# TODO: print(f"Total estimated cost avoidance: \${total_cost_avoidance:,}")
+
+# STEP 5: Report ranked by total cost avoidance
+# TODO: ranked = sorted(category_stats.items(), key=lambda kv: kv[1]["total_cost_avoidance"], reverse=True)
+print("\\n=== INTERVENTIONS BY CATEGORY (ranked by value) ===")
+# TODO: for category, stats in ranked:
+# TODO:     print(f"{category}: {stats['count']} interventions, \${stats['total_cost_avoidance']:,} avoided")
+
+# Count of Major severity interventions specifically (most compelling for admin reporting)
+# TODO: major_count = sum(1 for i in interventions if i["severity_avoided"] == "Major")
+# TODO: print(f"\\nMajor-severity interventions avoided: {major_count}")
+`,
+    skillTags: ["Clinical Documentation", "Pharmacy Practice Management", "Intervention Tracking", "Healthcare Analytics", "Quality Reporting"],
+    hints: [
+      "Tracking severity avoided (not just count) matters for reporting — one Major interaction prevention (like the $15,000 warfarin+aspirin catch) can outweigh ten minor dose tweaks in real clinical/financial impact",
+      "defaultdict(lambda: {...}) avoids KeyError boilerplate when aggregating into a dict of dicts — cleaner than checking 'if category not in stats' every time",
+      "Real intervention tracking systems (e.g. built into EHR pharmacy modules) use standardized taxonomies so cost-avoidance estimates are consistent across pharmacists and defensible to administration",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHARMACY — REGULATORY AFFAIRS
+// ─────────────────────────────────────────────────────────────────────────────
+export const PHARMACY_REGULATORY_CHALLENGES = [
+  {
+    id: "pharm-reg-001",
+    title: "Controlled Substance Schedule Classification Check",
+    category: "Regulatory Affairs",
+    icon: "🔒",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python"],
+    scenario:
+      "A new pharmacy technician needs a quick-reference tool to check controlled substance scheduling and the corresponding prescription requirements (refills allowed, prescription validity period) before processing a prescription.",
+    objective:
+      "Build a lookup system that classifies drugs by DEA schedule and returns the applicable prescription rules (max refills, validity period).",
+    steps: [
+      "Define a lookup table of drug -> DEA schedule",
+      "Define schedule -> prescription rules (refills allowed, validity days)",
+      "Given a drug name, look up its schedule and applicable rules",
+      "Validate a specific prescription against those rules (e.g. refills requested vs allowed)",
+      "Print a clear pass/fail with the regulatory reason",
+    ],
+    workstation: "notebook",
+    starterCode: `# Controlled Substance Schedule & Prescription Validation
+drug_schedule = {
+    "oxycodone": "CII", "morphine": "CII", "adderall": "CII",
+    "alprazolam": "CIV", "diazepam": "CIV", "zolpidem": "CIV",
+    "tramadol": "CIV",
+    "codeine_with_guaifenesin": "CV",
+    "gabapentin": "Non-controlled",
+}
+
+schedule_rules = {
+    "CII":  {"refills_allowed": 0, "validity_days": None, "note": "No refills permitted; new written/e-prescription required each time"},
+    "CIII": {"refills_allowed": 5, "validity_days": 180, "note": "Max 5 refills within 6 months"},
+    "CIV":  {"refills_allowed": 5, "validity_days": 180, "note": "Max 5 refills within 6 months"},
+    "CV":   {"refills_allowed": None, "validity_days": None, "note": "Varies by state, often OTC-like with logbook"},
+    "Non-controlled": {"refills_allowed": None, "validity_days": 365, "note": "Per prescriber order, standard 1-year validity typical"},
+}
+
+def check_prescription(drug_name, refills_requested):
+    # TODO: schedule = drug_schedule.get(drug_name.lower(), "Unknown")
+    # TODO: if schedule == "Unknown": return f"Drug '{drug_name}' not found in lookup — verify manually"
+    # TODO: rules = schedule_rules[schedule]
+    # TODO: max_refills = rules["refills_allowed"]
+    # TODO: if max_refills is not None and refills_requested > max_refills:
+    # TODO:     return f"FAIL: {drug_name} is {schedule} — max {max_refills} refills allowed, {refills_requested} requested. {rules['note']}"
+    # TODO: return f"PASS: {drug_name} is {schedule} — {refills_requested} refills requested is within limits. {rules['note']}"
+    pass
+
+# Test cases
+print(check_prescription("oxycodone", 0))
+print(check_prescription("alprazolam", 3))
+print(check_prescription("alprazolam", 8))
+print(check_prescription("gabapentin", 12))
+`,
+    skillTags: ["DEA Schedules", "Controlled Substances", "Prescription Validation", "Regulatory Compliance", "Pharmacy Law"],
+    hints: [
+      "CII drugs (oxycodone, morphine, most stimulants) NEVER allow refills — every fill requires a brand new prescription, this is a hard federal rule, not a guideline",
+      "State law can be MORE restrictive than federal DEA rules but never less — always defer to whichever (state or federal) is stricter for a given jurisdiction",
+      "This is a simplified illustrative lookup — real pharmacy systems integrate with state PDMPs (Prescription Drug Monitoring Programs) for real-time controlled substance verification",
+    ],
+  },
+  {
+    id: "pharm-reg-002",
+    title: "Adverse Event Report (MedWatch) Severity Triage",
+    category: "Regulatory Affairs",
+    icon: "🚨",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Python"],
+    scenario:
+      "A hospital's pharmacovigilance team receives adverse event reports throughout the week and needs to triage which ones qualify as 'serious' under FDA MedWatch criteria, requiring expedited reporting within 15 days.",
+    objective:
+      "Build a triage function that classifies adverse event reports as serious or non-serious per FDA MedWatch criteria, and determines the reporting deadline.",
+    steps: [
+      "Define the FDA seriousness criteria (death, life-threatening, hospitalization, disability, birth defect, requires intervention)",
+      "Given a report's outcome flags, determine if it meets ANY serious criterion",
+      "If serious, compute the 15-calendar-day expedited reporting deadline from event date",
+      "If non-serious, note it goes into periodic (not expedited) reporting",
+      "Generate a triage summary for a batch of reports",
+    ],
+    workstation: "notebook",
+    starterCode: `# MedWatch Adverse Event Seriousness Triage
+from datetime import datetime, timedelta
+
+reports = [
+    {"id": "AE-001", "date": "2026-08-01", "death": False, "life_threatening": False, "hospitalization": True, "disability": False, "birth_defect": False, "required_intervention": False},
+    {"id": "AE-002", "date": "2026-08-03", "death": False, "life_threatening": False, "hospitalization": False, "disability": False, "birth_defect": False, "required_intervention": False},
+    {"id": "AE-003", "date": "2026-08-05", "death": False, "life_threatening": True, "hospitalization": False, "disability": False, "birth_defect": False, "required_intervention": False},
+]
+
+SERIOUSNESS_CRITERIA = ["death", "life_threatening", "hospitalization", "disability", "birth_defect", "required_intervention"]
+
+def is_serious(report):
+    # TODO: return any(report[criterion] for criterion in SERIOUSNESS_CRITERIA)
+    pass
+
+def triage_report(report):
+    # TODO: serious = is_serious(report)
+    # TODO: event_date = datetime.strptime(report["date"], "%Y-%m-%d")
+    if False:  # placeholder to keep structure — replace with: if serious:
+        # TODO: deadline = event_date + timedelta(days=15)
+        # TODO: return {"id": report["id"], "serious": True, "reporting_path": "EXPEDITED", "deadline": deadline.strftime("%Y-%m-%d")}
+        pass
+    else:
+        # TODO: return {"id": report["id"], "serious": False, "reporting_path": "PERIODIC", "deadline": None}
+        pass
+
+for r in reports:
+    result = triage_report(r)
+    # TODO: print(result)
+
+# TODO: serious_count = sum(1 for r in reports if is_serious(r))
+# TODO: print(f"\\n{serious_count} of {len(reports)} reports require EXPEDITED (15-day) reporting")
+`,
+    skillTags: ["MedWatch", "Adverse Event Reporting", "Pharmacovigilance", "FDA Compliance", "Regulatory Affairs"],
+    hints: [
+      "ANY single serious criterion (even just hospitalization, with everything else False) is enough to classify the whole report as serious — the criteria are OR'd together, not AND'd",
+      "The 15-calendar-day clock starts from when the reporter/company FIRST becomes aware of the event, not necessarily the event date itself — this simplified exercise uses event date for clarity",
+      "'Required intervention to prevent permanent impairment' is often the most overlooked seriousness criterion — an event can be serious even without death, hospitalization, or disability",
+    ],
+  },
+  {
+    id: "pharm-reg-003",
+    title: "Verify Batch Records Against GMP Release Criteria",
+    category: "Regulatory Affairs",
+    icon: "✅",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 18,
+    tools: ["Python"],
+    scenario:
+      "Before a manufactured batch of tablets can be released to market, every specification in the batch record (assay, dissolution, uniformity, microbial limits) must pass — a single failing test blocks release under GMP regardless of how good the others look.",
+    objective:
+      "Build a batch release checker that validates all quality specifications against their acceptance criteria and determines overall batch disposition.",
+    steps: [
+      "Define acceptance criteria (ranges) for each quality attribute",
+      "Given a batch's actual test results, check each attribute against its range",
+      "Flag any out-of-specification (OOS) results",
+      "Determine overall batch disposition: only RELEASE if ALL attributes pass",
+      "Print a clear batch release report with any OOS results highlighted",
+    ],
+    workstation: "notebook",
+    starterCode: `# GMP Batch Release Verification
+acceptance_criteria = {
+    "assay_pct_label_claim": (95.0, 105.0),
+    "dissolution_pct_30min": (80.0, 120.0),   # must be >= 80% typically; using range for illustration
+    "content_uniformity_AV": (0, 15.0),        # Acceptance Value, must be <= 15
+    "microbial_cfu_per_g": (0, 100),
+}
+
+batch_results = {
+    "batch_id": "B2026-0847",
+    "assay_pct_label_claim": 98.2,
+    "dissolution_pct_30min": 91.5,
+    "content_uniformity_AV": 12.8,
+    "microbial_cfu_per_g": 45,
+}
+
+def check_batch(results, criteria):
+    findings = {}
+    # TODO: for attribute, (low, high) in criteria.items():
+    # TODO:     value = results[attribute]
+    # TODO:     passed = low <= value <= high
+    # TODO:     findings[attribute] = {"value": value, "range": (low, high), "passed": passed}
+    return findings
+
+findings = check_batch(batch_results, acceptance_criteria)
+
+print(f"=== BATCH RELEASE REPORT: {batch_results['batch_id']} ===\\n")
+# TODO: for attribute, result in findings.items():
+# TODO:     status = "PASS" if result["passed"] else "*** OOS - FAIL ***"
+# TODO:     print(f"{attribute}: {result['value']} (spec: {result['range']}) -> {status}")
+
+# STEP 4: Overall disposition
+# TODO: all_passed = all(f["passed"] for f in findings.values())
+# TODO: disposition = "RELEASE APPROVED" if all_passed else "BATCH REJECTED — OOS investigation required"
+# TODO: print(f"\\nDISPOSITION: {disposition}")
+`,
+    skillTags: ["GMP", "Batch Release", "Quality Control", "OOS Investigation", "Pharmaceutical Manufacturing"],
+    hints: [
+      "GMP release logic is strictly AND, not weighted average — a batch with 3 excellent results and 1 OOS result is still REJECTED, you cannot average your way to compliance",
+      "An OOS (Out of Specification) result triggers a formal OOS investigation procedure before any retest or batch disposition decision — this exercise simplifies that into a single check",
+      "Content Uniformity uses an 'Acceptance Value' (AV) per USP <905>, not a simple min/max range in real practice — this exercise simplifies it to a single upper bound for clarity",
+    ],
+  },
+  {
+    id: "pharm-reg-004",
+    title: "Track Regulatory Submission Timeline Compliance",
+    category: "Regulatory Affairs",
+    icon: "📅",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 20,
+    tools: ["Python"],
+    scenario:
+      "Regulatory affairs is managing multiple submissions to health authorities (FDA, EMA) with different required response timelines. Missing a deadline can mean losing priority review status or facing a clinical hold — you need a tracking system that flags at-risk deadlines.",
+    objective:
+      "Build a regulatory deadline tracker that computes days remaining for each submission's required response, and flags items approaching or past deadline.",
+    steps: [
+      "Define submissions with type, submission date, and required response window (days)",
+      "Compute the deadline date for each submission",
+      "Compute days remaining from today for each",
+      "Classify urgency: overdue, urgent (<7 days), upcoming (<30 days), or on-track",
+      "Print a prioritized action list, most urgent first",
+    ],
+    workstation: "notebook",
+    starterCode: `# Regulatory Submission Deadline Tracker
+from datetime import datetime, timedelta
+
+today = datetime(2026, 8, 10)
+
+submissions = [
+    {"id": "IND-2044", "type": "Clinical Hold Response", "submitted": "2026-07-25", "response_window_days": 30},
+    {"id": "NDA-8871", "type": "Complete Response Letter", "submitted": "2026-06-01", "response_window_days": 180},
+    {"id": "MAA-EU-334", "type": "Day 120 Response (EMA)", "submitted": "2026-08-05", "response_window_days": 10},
+    {"id": "ANDA-5521", "type": "Information Request", "submitted": "2026-07-01", "response_window_days": 30},
+]
+
+def classify_urgency(days_remaining):
+    # TODO: if days_remaining < 0: return "OVERDUE"
+    # TODO: elif days_remaining <= 7: return "URGENT"
+    # TODO: elif days_remaining <= 30: return "UPCOMING"
+    # TODO: else: return "ON-TRACK"
+    pass
+
+for sub in submissions:
+    # TODO: submitted_date = datetime.strptime(sub["submitted"], "%Y-%m-%d")
+    # TODO: deadline = submitted_date + timedelta(days=sub["response_window_days"])
+    # TODO: days_remaining = (deadline - today).days
+    # TODO: sub["deadline"] = deadline
+    # TODO: sub["days_remaining"] = days_remaining
+    # TODO: sub["urgency"] = classify_urgency(days_remaining)
+    pass
+
+# STEP 5: Sort by days_remaining ascending (most urgent first)
+# TODO: sorted_subs = sorted(submissions, key=lambda s: s["days_remaining"])
+
+print("=== REGULATORY DEADLINE TRACKER ===\\n")
+# TODO: for s in sorted_subs:
+# TODO:     print(f"[{s['urgency']}] {s['id']} ({s['type']}): deadline {s['deadline'].strftime('%Y-%m-%d')}, {s['days_remaining']} days remaining")
+`,
+    skillTags: ["Regulatory Affairs", "Submission Tracking", "FDA Timelines", "Compliance Management", "Project Tracking"],
+    hints: [
+      "A negative days_remaining means the deadline has already passed — sorting ascending naturally puts overdue items (most negative) at the very top of the priority list",
+      "Different submission types have very different statutory clocks (10 days for some EMA responses vs 180 days for an NDA Complete Response) — the tracker must handle this per-item, not assume a uniform window",
+      "In real regulatory operations, deadlines often have their own escalation rules (e.g. internal review must complete 5 days before the actual deadline) — this exercise tracks the hard external deadline only",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHARMACY — HOSPITAL PHARMACY OPERATIONS
+// ─────────────────────────────────────────────────────────────────────────────
+export const PHARMACY_HOSPITAL_CHALLENGES = [
+  {
+    id: "pharm-hosp-001",
+    title: "IV Compatibility Check for Y-Site Administration",
+    category: "Hospital Pharmacy",
+    icon: "💉",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Python"],
+    scenario:
+      "A nurse wants to know if two IV medications can be co-administered through the same Y-site line, or whether they need separate lines — running incompatible drugs together can cause precipitation directly in the patient's bloodstream.",
+    objective:
+      "Build a Y-site compatibility checker using a lookup table of known compatible/incompatible/unknown drug pairs.",
+    steps: [
+      "Define a compatibility lookup table of drug pairs",
+      "Given two drugs, check compatibility status (Compatible, Incompatible, Unknown/Data Not Available)",
+      "For Incompatible pairs, recommend separate lines or flush between administrations",
+      "For Unknown pairs, default to the SAFEST assumption (treat as incompatible until verified)",
+      "Print a clear nursing recommendation",
+    ],
+    workstation: "notebook",
+    starterCode: `# IV Y-Site Compatibility Checker
+compatibility_db = {
+    frozenset(["heparin", "normal_saline"]): "Compatible",
+    frozenset(["phenytoin", "dextrose_5"]): "Incompatible",   # phenytoin precipitates in dextrose
+    frozenset(["calcium_gluconate", "sodium_bicarbonate"]): "Incompatible",  # forms precipitate
+    frozenset(["potassium_chloride", "normal_saline"]): "Compatible",
+    frozenset(["furosemide", "dopamine"]): "Incompatible",
+    frozenset(["vancomycin", "piperacillin_tazobactam"]): "Compatible",
+}
+
+def check_ysite_compatibility(drug_a, drug_b, db):
+    pair = frozenset([drug_a, drug_b])
+    # TODO: status = db.get(pair, "Unknown")
+    # TODO: return status
+    pass
+
+def recommend(drug_a, drug_b, db):
+    # TODO: status = check_ysite_compatibility(drug_a, drug_b, db)
+    if False:  # placeholder — replace with proper branching on status
+        pass
+    # TODO: if status == "Compatible": return f"{drug_a} + {drug_b}: SAFE to co-administer via Y-site"
+    # TODO: elif status == "Incompatible": return f"{drug_a} + {drug_b}: DO NOT co-administer — use separate lines or flush thoroughly between"
+    # TODO: else: return f"{drug_a} + {drug_b}: UNKNOWN — treat as INCOMPATIBLE until verified (default to safest assumption)"
+
+print(recommend("heparin", "normal_saline", compatibility_db))
+print(recommend("phenytoin", "dextrose_5", compatibility_db))
+print(recommend("vancomycin", "amiodarone", compatibility_db))  # not in DB
+`,
+    skillTags: ["IV Compatibility", "Y-Site Administration", "Hospital Pharmacy", "Medication Safety", "Nursing Support"],
+    hints: [
+      "The 'default to safest assumption' principle is critical — when data is genuinely unavailable, treating an unknown pair as incompatible prevents a possible in-line precipitation event; treating it as compatible by default would not",
+      "Phenytoin + dextrose-containing solutions is one of the most well-known IV incompatibilities in clinical practice — it precipitates almost immediately outside of normal saline",
+      "This tiny lookup is illustrative only — real hospital pharmacies use comprehensive references (Trissel's IV Compatibility, King Guide) with thousands of documented pairs",
+    ],
+  },
+  {
+    id: "pharm-hosp-002",
+    title: "Automated Dispensing Cabinet Discrepancy Resolution",
+    category: "Hospital Pharmacy",
+    icon: "🗄️",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Python"],
+    scenario:
+      "The end-of-shift ADC (automated dispensing cabinet) count doesn't match the expected inventory based on removals and restocks — a controlled substance discrepancy that must be resolved and documented before shift change, per DEA and hospital policy.",
+    objective:
+      "Reconcile expected vs actual ADC inventory counts, identify discrepancies, and flag any involving controlled substances as requiring immediate documented resolution.",
+    steps: [
+      "Compute expected count = starting count + restocks - removals - wastes",
+      "Compare expected count to the actual physical count",
+      "Flag any non-zero discrepancy",
+      "Escalate controlled substance discrepancies as requiring immediate witness verification",
+      "Print a discrepancy report",
+    ],
+    workstation: "notebook",
+    starterCode: `# ADC (Automated Dispensing Cabinet) Discrepancy Reconciliation
+adc_items = [
+    {"drug": "oxycodone_5mg", "controlled": True, "starting_count": 100, "restocks": 50, "removals": 62, "wastes": 3, "actual_count": 84},
+    {"drug": "acetaminophen_500mg", "controlled": False, "starting_count": 200, "restocks": 100, "removals": 145, "wastes": 0, "actual_count": 155},
+    {"drug": "fentanyl_100mcg", "controlled": True, "starting_count": 40, "restocks": 20, "removals": 18, "wastes": 2, "actual_count": 40},
+]
+
+def reconcile(item):
+    # STEP 1: Expected count
+    # TODO: expected = item["starting_count"] + item["restocks"] - item["removals"] - item["wastes"]
+    # STEP 2: Discrepancy
+    # TODO: discrepancy = item["actual_count"] - expected
+    # TODO: return expected, discrepancy
+    pass
+
+print("=== ADC DISCREPANCY REPORT ===\\n")
+flagged_controlled = []
+for item in adc_items:
+    result = reconcile(item)
+    if result is None:
+        continue
+    expected, discrepancy = result
+    # TODO: status = "MATCH" if discrepancy == 0 else f"DISCREPANCY: {discrepancy:+d} units"
+    # TODO: print(f"{item['drug']}: expected={expected}, actual={item['actual_count']} -> {status}")
+    # TODO: if discrepancy != 0 and item["controlled"]:
+    # TODO:     flagged_controlled.append(item["drug"])
+
+# TODO: if flagged_controlled:
+# TODO:     print(f"\\n*** CONTROLLED SUBSTANCE DISCREPANCIES REQUIRE IMMEDIATE WITNESSED RESOLUTION: {flagged_controlled} ***")
+# TODO: else:
+# TODO:     print("\\nNo controlled substance discrepancies — routine reconciliation complete")
+`,
+    skillTags: ["Automated Dispensing Cabinets", "Controlled Substance Accountability", "Inventory Reconciliation", "Hospital Pharmacy Operations", "DEA Compliance"],
+    hints: [
+      "A negative discrepancy (actual < expected) suggests possible diversion and always requires investigation — a positive discrepancy (actual > expected) usually points to a documentation/charting error, but both must be resolved",
+      "Controlled substance discrepancies typically require TWO staff members to witness and sign off on the resolution — a non-controlled discrepancy usually only needs standard documentation",
+      "This model assumes wastes are already fully documented — in practice, undocumented waste (not properly witnessed/logged) is itself one of the most common causes of ADC discrepancies",
+    ],
+  },
+  {
+    id: "pharm-hosp-003",
+    title: "Sterile Compounding Beyond-Use Date Calculator",
+    category: "Hospital Pharmacy",
+    icon: "🧴",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 18,
+    tools: ["Python"],
+    scenario:
+      "The sterile compounding pharmacy prepares IV admixtures in different risk-level environments (low, medium, high risk per USP <797>), each with different maximum beyond-use dates depending on storage conditions.",
+    objective:
+      "Calculate the beyond-use date (BUD) for a compounded sterile preparation based on USP <797> risk level and storage temperature, and flag anything exceeding the allowed maximum.",
+    steps: [
+      "Define USP <797> BUD limits per risk level and storage condition (room temp, refrigerated, frozen)",
+      "Given a preparation's risk level, storage condition, and prep datetime",
+      "Look up the maximum allowed BUD duration",
+      "Compute the actual BUD datetime",
+      "Flag if a requested/labeled BUD exceeds the USP maximum",
+    ],
+    workstation: "notebook",
+    starterCode: `# USP <797> Beyond-Use Date (BUD) Calculator
+from datetime import datetime, timedelta
+
+# Simplified USP <797> BUD limits (hours) by risk level and storage condition
+bud_limits_hours = {
+    ("low", "room_temp"):     48,
+    ("low", "refrigerated"):  14 * 24,
+    ("low", "frozen"):        45 * 24,
+    ("medium", "room_temp"):  30,
+    ("medium", "refrigerated"): 9 * 24,
+    ("medium", "frozen"):      45 * 24,
+    ("high", "room_temp"):    24,
+    ("high", "refrigerated"): 3 * 24,
+    ("high", "frozen"):       45 * 24,
+}
+
+preparation = {
+    "id": "CSP-2026-3391",
+    "risk_level": "medium",
+    "storage": "refrigerated",
+    "prep_datetime": "2026-08-10 09:00",
+    "labeled_bud_days": 10,   # what was actually written on the label
+}
+
+# STEP 3: Look up max allowed hours
+# TODO: max_hours = bud_limits_hours[(preparation["risk_level"], preparation["storage"])]
+# TODO: print(f"USP <797> max BUD for {preparation['risk_level']}-risk, {preparation['storage']}: {max_hours} hours ({max_hours/24:.1f} days)")
+
+# STEP 4: Compute actual max BUD datetime
+# TODO: prep_dt = datetime.strptime(preparation["prep_datetime"], "%Y-%m-%d %H:%M")
+# TODO: max_bud_datetime = prep_dt + timedelta(hours=max_hours)
+# TODO: print(f"Prepared: {prep_dt}")
+# TODO: print(f"Maximum allowable BUD: {max_bud_datetime}")
+
+# STEP 5: Check labeled BUD against maximum
+# TODO: labeled_bud_datetime = prep_dt + timedelta(days=preparation["labeled_bud_days"])
+# TODO: if labeled_bud_datetime > max_bud_datetime:
+# TODO:     print(f"\\n*** LABEL ERROR: labeled BUD ({labeled_bud_datetime}) exceeds USP <797> maximum ({max_bud_datetime}) — RELABEL REQUIRED ***")
+# TODO: else:
+# TODO:     print(f"\\nLabeled BUD ({labeled_bud_datetime}) is within USP <797> limits — OK")
+`,
+    skillTags: ["USP 797", "Sterile Compounding", "Beyond-Use Date", "Hospital Pharmacy", "Compounding Safety"],
+    hints: [
+      "BUD limits scale UP for colder storage (frozen > refrigerated > room temp) because lower temperature slows microbial growth and chemical degradation — this is consistent across all risk levels",
+      "Higher CONTAMINATION risk level (high > medium > low) means SHORTER allowed BUDs at the same storage temperature — this reflects greater uncertainty about sterility assurance during more complex compounding",
+      "A labeled BUD exceeding the USP maximum is a serious compounding error requiring immediate relabeling (and possibly recall if already dispensed) — this is a patient safety, not just a documentation, issue",
+    ],
+  },
+  {
+    id: "pharm-hosp-004",
+    title: "Design a Pharmacy Staffing Model for 24/7 Coverage",
+    category: "Hospital Pharmacy",
+    icon: "🏥",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 22,
+    tools: ["Python"],
+    scenario:
+      "The pharmacy director needs to determine minimum FTE (full-time equivalent) staffing to cover 24/7 operations across three shifts, accounting for weekends, PTO, and a required minimum coverage level at all times.",
+    objective:
+      "Calculate the required FTE count to staff a 24/7 pharmacy operation given per-shift minimum coverage, shift length, and an absence/PTO factor.",
+    steps: [
+      "Compute total staffed hours needed per week (shifts × hours × min staff per shift × 7 days)",
+      "Compute hours one FTE can realistically provide, accounting for standard workweek and PTO",
+      "Compute the raw FTE requirement (total hours needed / hours per FTE)",
+      "Apply an absence/coverage buffer factor for sick days and unplanned absences",
+      "Round up to a whole FTE count and report the staffing gap vs current headcount",
+    ],
+    workstation: "notebook",
+    starterCode: `# 24/7 Pharmacy Staffing Model
+import math
+
+shifts_per_day = 3
+shift_length_hours = 8
+min_staff_per_shift = 2   # minimum pharmacists required on duty at all times
+days_per_week = 7
+
+standard_workweek_hours = 40
+annual_pto_days = 25
+annual_sick_days = 8
+weeks_per_year = 52
+
+current_headcount_fte = 14
+
+# STEP 1: Total staffed hours needed per week
+# TODO: total_hours_needed_weekly = shifts_per_day * shift_length_hours * min_staff_per_shift * days_per_week
+
+# STEP 2: Effective hours per FTE per week, after PTO/sick day reduction
+total_annual_hours_per_fte = standard_workweek_hours * weeks_per_year
+absence_hours_per_year = (annual_pto_days + annual_sick_days) * (standard_workweek_hours / 5)  # hours per absence day
+# TODO: effective_annual_hours_per_fte = total_annual_hours_per_fte - absence_hours_per_year
+# TODO: effective_weekly_hours_per_fte = effective_annual_hours_per_fte / weeks_per_year
+
+# STEP 3: Raw FTE requirement
+# TODO: raw_fte_needed = total_hours_needed_weekly / effective_weekly_hours_per_fte
+
+# STEP 4: Apply a coverage buffer (e.g. 10% for unplanned absences/turnover)
+buffer_factor = 1.10
+# TODO: buffered_fte_needed = raw_fte_needed * buffer_factor
+
+# STEP 5: Round up and compare to current headcount
+# TODO: required_fte = math.ceil(buffered_fte_needed)
+# TODO: print(f"Total weekly staffed hours needed: {total_hours_needed_weekly}")
+# TODO: print(f"Effective hours per FTE per week (after PTO/sick): {effective_weekly_hours_per_fte:.1f}")
+# TODO: print(f"Raw FTE requirement: {raw_fte_needed:.1f}")
+# TODO: print(f"Buffered FTE requirement (10% buffer): {buffered_fte_needed:.1f} -> rounds up to {required_fte}")
+# TODO: gap = required_fte - current_headcount_fte
+# TODO: if gap > 0: print(f"\\nSTAFFING GAP: need {gap} more FTE(s) than current headcount of {current_headcount_fte}")
+# TODO: else: print(f"\\nCurrent headcount of {current_headcount_fte} FTE meets or exceeds the requirement")
+`,
+    skillTags: ["Staffing Models", "Workforce Planning", "Hospital Operations", "24/7 Coverage", "Pharmacy Administration"],
+    hints: [
+      "Always account for PTO/sick time when converting 'hours needed' to 'FTEs needed' — using the raw 40-hour workweek without subtracting absences will systematically understaff the department",
+      "The buffer factor exists because average staffing models don't account for simultaneous unplanned absences (multiple people out sick at once) — it's a risk margin, not padding",
+      "This model assumes UNIFORM minimum staffing across all shifts — real hospital pharmacies often need higher coverage during day shift (more order volume) than overnight, which would require a shift-weighted calculation",
+    ],
+  },
+]
+
 export const DOMAIN_CHALLENGES = {
   data:      DATA_ANALYST_CHALLENGES,
   bi_analyst:DATA_ANALYST_CHALLENGES,
