@@ -10,14 +10,19 @@
  */
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { supabase } from "../lib/supabase"
-import { createClient } from "@supabase/supabase-js"
 import { useCareerTrack } from "../hooks/useCareerTrack"
 
-// Separate read-only client for the problems database (different project)
-const problemsDb = createClient(
-  "https://cbrjdfllxfmmvalijpej.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNicmpkZmxseGZtbXZhbGlqcGVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxMTE0MzYsImV4cCI6MjA5NTY4NzQzNn0.P2zSjd4AiVV2SlVb-bWMzzMQSCjkKFfLh1OvJU6tM-s"
-)
+// 2026-08-10 fix: this used to be a separate hardcoded client pointed at
+// project cbrjdfllxfmmvalijpej with a raw anon key in source -- a stale
+// reference, not this app's real database (that's eybchcqwbizjmzyrviri,
+// same as every other Supabase call in this app). See the identical fix +
+// full writeup in ArenaCommonChallenges.jsx.
+const problemsDb = supabase
+
+// Same backend base URL ArenaCommonChallenges.jsx uses for its arena API
+// calls — needed here now too so hydrateFullProblem() can reach the
+// server-side problem-detail route (see below).
+const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
 
 // ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
 const T = {
@@ -661,12 +666,13 @@ export default function ArenaCatalog({ user, userData, onOpenChallenge, filterCa
     if (dataSource !== "supabase" || challenge._fullContentLoaded) return challenge
     setOpeningId(challenge.id)
     try {
-      const { data, error } = await problemsDb
-        .from("problems")
-        .select("constraints,examples,test_cases,editorial")
-        .eq("id", challenge.id)
-        .single()
-      if (error || !data) return challenge // open with what we already have rather than block the student
+      // 2026-08-10: test_cases/editorial are no longer readable via the
+      // anon Supabase key (see problems RLS/grant security fix) — fetched
+      // via the backend's service-role-backed detail route instead. See the
+      // identical fix in ArenaCommonChallenges.jsx's openChallenge().
+      const res = await fetch(`${SERVER}/api/arena/problem/${challenge.id}/detail`)
+      if (!res.ok) return challenge // open with what we already have rather than block the student
+      const data = await res.json()
       const hydrated = {
         ...challenge,
         constraints: data.constraints || "",

@@ -22,7 +22,6 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { supabase } from "../lib/supabase"
 import { arenaHistoryRealtime } from "../lib/realtimeSingletons"
 import { arenaDb, userDoc } from "../lib/db"
-import { createClient } from "@supabase/supabase-js"
 
 // ── Local engineering challenge banks (stream-filtered) ───────────────────────
 import {
@@ -68,11 +67,18 @@ function adaptLocalChallenge(ch) {
   }
 }
 
-// ─── Separate read-only client for challenge content ──────────────────────────
-const problemsDb = createClient(
-  "https://cbrjdfllxfmmvalijpej.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNicmpkZmxseGZtbXZhbGlqcGVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxMTE0MzYsImV4cCI6MjA5NTY4NzQzNn0.P2zSjd4AiVV2SlVb-bWMzzMQSCjkKFfLh1OvJU6tM-s"
-)
+// 2026-08-10 fix: this used to be a SEPARATE hardcoded client pointed at
+// project cbrjdfllxfmmvalijpej with a raw anon key baked into the source --
+// a stale reference to a project that isn't this app's real, live database
+// (that's eybchcqwbizjmzyrviri, same as every other Supabase read/write in
+// this app, wired through the shared `supabase` client already imported
+// above). Left over from some earlier state, this meant every "problems"
+// query on this page was silently hitting the wrong project. Now just uses
+// the app's normal client -- also means the 2026-08-10 RLS/column-grant
+// security fix on problems.test_cases/editorial (see Supabase migration
+// revoke_problems_sensitive_columns_from_client_roles) actually applies to
+// what this page queries.
+const problemsDb = supabase
 
 const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
 
@@ -2026,9 +2032,14 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
   useEffect(() => {
     const load = async () => {
       try {
+        // 2026-08-10: test_cases/editorial removed from this list select --
+        // anon/authenticated no longer have column-level access to them (see
+        // the problems RLS/grant security fix). They're hydrated per-problem
+        // via GET /api/arena/problem/:id/detail when a challenge is opened
+        // (see openChallenge below), not fetched in bulk for the whole list.
         let q = problemsDb
           .from("problems")
-          .select("id,slug,title,difficulty,category,source,tags,statement,constraints,examples,test_cases,editorial,languages,acceptance_rate,interaction_type,options,assets,mechanic,track,created_at")
+          .select("id,slug,title,difficulty,category,source,tags,statement,constraints,examples,languages,acceptance_rate,interaction_type,options,assets,mechanic,track,created_at")
           // ── CRITICAL: only load arena-sourced problems (not domain workstation problems) ──
           .eq("source", "arena")
 
@@ -2491,7 +2502,7 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
   const sortIcon = (field) => sortField !== field ? " ↕" : sortDir === "asc" ? " ↑" : " ↓"
 
   // ── Challenge selection handler (also resets code starter) ──────────────────
-  const openChallenge = useCallback((ch) => {
+  const openChallenge = useCallback(async (ch) => {
     setSelectedChallenge(ch)
     setTestResults(null)
     setSqlResults(null)
@@ -2510,6 +2521,23 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
       setCode(`# ${ch.title}\n\ndef ${fnName}(*args):\n    # TODO: implement\n    pass\n`)
     }
     // calculator / multiple_choice: no code state needed
+
+    // 2026-08-10: test_cases/editorial are no longer readable via the anon
+    // Supabase key (see problems RLS/grant security fix). Hydrate them from
+    // the backend's service-role-backed detail route instead, then merge
+    // into the open challenge once they arrive — opens instantly with
+    // whatever the list query already had (title/statement/examples), the
+    // hint banner / "Show Solution" / test running just become available a
+    // beat later.
+    if (ch?.id) {
+      try {
+        const res = await fetch(`${SERVER}/api/arena/problem/${ch.id}/detail`)
+        if (res.ok) {
+          const detail = await res.json()
+          setSelectedChallenge(prev => (prev && prev.id === ch.id) ? { ...prev, ...detail } : prev)
+        }
+      } catch {}
+    }
   }, [])
 
   // ── Calculator submit ─────────────────────────────────────────────────────

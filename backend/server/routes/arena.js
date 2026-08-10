@@ -651,12 +651,69 @@ Return ONLY this JSON:
 // Languages that are declarative config, not executable programs.
 const CONFIG_LANGUAGES = new Set(["yaml", "yml", "hcl", "terraform", "bicep", "dockerfile", "json", "helm"])
 
+// ─── GET /problem/:id/detail — server-side problem detail hydration ─────────
+// 2026-08-10 security fix: public.problems.test_cases/editorial were removed
+// from anon/authenticated column grants (Supabase migration
+// revoke_problems_sensitive_columns_from_client_roles) — they were readable
+// in full, for all 241 problems, via a single unauthenticated PostgREST
+// query, including hidden test cases and full solution write-ups. This route
+// serves the same fields via the service-role client so existing UI (hint
+// banner, "Show Solution", post-answer explanations, test running) keeps
+// working with no product change — see ArenaCommonChallenges.jsx's
+// openChallenge() and ArenaCatalog.jsx's hydrateFullProblem(), both of which
+// now call this instead of querying Supabase directly. Already covered by
+// the aiLimiter rate limit mounted on the whole /api/arena prefix in server.js.
+router.get("/problem/:id/detail", async (req, res) => {
+  const { id } = req.params
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id || "")
+  if (!isUUID) return res.status(400).json({ error: "Invalid id" })
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("problems")
+      .select("constraints, examples, test_cases, editorial")
+      .eq("id", id)
+      .maybeSingle()
+    if (error) throw error
+    if (!data) return res.status(404).json({ error: "Not found" })
+    return res.json(data)
+  } catch (e) {
+    console.error("[arena/problem-detail]", e.message)
+    return res.status(500).json({ error: e.message })
+  }
+})
+
 // ─── 9. Run Tests — ACTUAL code execution, zero AI tokens ────────────────────
 // Executes user code in a sandboxed child_process for each test case.
 // Compares stdout to expectedOutput. Fast, deterministic, no rate limits.
 // SQL challenges: evaluated via AI (Groq) — not Python/JS execution.
 router.post("/run-tests", async (req, res) => {
-  const { code = "", language = "python", challenge = {}, testCases = [] } = req.body
+  const { code = "", language = "python", challenge = {} } = req.body
+  let testCases = req.body.testCases || []
+
+  // ── Integrity fix (2026-08-10): never trust client-supplied test cases for
+  // a DB-backed problem — a tampered request could previously fabricate a
+  // "passing" testCases array, which flows into testSummary in /review and
+  // ultimately into the authoritative server-side ELO write there. When
+  // challenge.id matches a real public.problems row, always re-fetch
+  // test_cases from the DB (service role) and ignore whatever the client
+  // sent. AI-generated daily missions have no persisted DB row (non-UUID or
+  // no match), so they still fall back to the client-supplied cases — there
+  // is no DB source of truth to check those against.
+  const isUUIDStr = s => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(s || ""))
+  if (isUUIDStr(challenge.id)) {
+    try {
+      const { data: dbProblem } = await supabaseAdmin
+        .from("problems")
+        .select("test_cases")
+        .eq("id", challenge.id)
+        .maybeSingle()
+      if (dbProblem?.test_cases?.length) {
+        testCases = dbProblem.test_cases
+      }
+    } catch (e) {
+      console.warn("[arena/run-tests] server-side test-case lookup failed, falling back to client-supplied:", e.message)
+    }
+  }
 
   if (!code.trim()) {
     return res.status(400).json({ error: "No code provided." })
