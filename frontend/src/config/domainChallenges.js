@@ -26559,6 +26559,1654 @@ target_improvement = 0.95  # what if the worst factor were improved to 95%
   },
 ]
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ECE — ANTENNA & RF DESIGN (closes ECE to 100/100; weighted Easy/Medium per
+// the beginner-first fix — freshers need challenges they can actually finish)
+// ─────────────────────────────────────────────────────────────────────────────
+export const ECE_ANTENNA_CHALLENGES = [
+  {
+    id: "ece-ant-001",
+    title: "Dipole Antenna Length from Frequency",
+    category: "Antenna Design",
+    icon: "📡",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python"],
+    scenario:
+      "A campus radio club wants to build a simple half-wave dipole antenna for the 2m amateur band (146 MHz). Before cutting any wire, they need the correct physical length — get it wrong and the antenna won't resonate at the target frequency, wasting most of the transmitted power as reflection back into the transmitter.",
+    objective:
+      "Write a Python function that computes the physical length of a half-wave dipole antenna given a frequency, using the standard formula L = 143 / f(MHz) in feet (or the metric equivalent), including the ~5% shortening factor real wire needs versus the free-space wavelength.",
+    steps: [
+      "Compute the free-space wavelength λ = c / f",
+      "Compute the ideal half-wave length λ/2",
+      "Apply a velocity factor (~0.95) to account for the end-effect shortening of real wire",
+      "Return the final antenna length in meters and print each leg (element) length",
+      "Test with f = 146 MHz and confirm the total length is close to ~0.975 m",
+    ],
+    workstation: "notebook",
+    starterCode: `# Dipole Antenna Length from Frequency
+import math
+
+C = 3e8  # speed of light, m/s
+VELOCITY_FACTOR = 0.95  # real wire is ~5% shorter than free-space due to end effects
+
+def dipole_length_m(freq_hz):
+    # TODO: wavelength = C / freq_hz
+    wavelength = None
+
+    # TODO: half_wave = wavelength / 2
+    half_wave = None
+
+    # TODO: apply the velocity factor
+    physical_length = None
+
+    return physical_length
+
+def dipole_leg_length_m(freq_hz):
+    # A dipole has TWO legs (elements) fed at the center.
+    # TODO: each leg is half of the total dipole_length_m()
+    total = dipole_length_m(freq_hz)
+    leg = None
+    return leg
+
+if __name__ == "__main__":
+    freq = 146e6  # 146 MHz, 2m amateur band
+    total_len = dipole_length_m(freq)
+    leg_len   = dipole_leg_length_m(freq)
+    print(f"Frequency: {freq/1e6:.1f} MHz")
+    print(f"Total dipole length: {total_len:.3f} m")
+    print(f"Each leg length: {leg_len:.3f} m")
+    # Expect total_len close to 0.975 m for 146 MHz
+`,
+    skillTags: ["Antenna Theory", "RF Fundamentals", "Wavelength Calculation"],
+    hints: [
+      "The formula L(feet) = 468 / f(MHz) is the classic amateur-radio shortcut — it already bakes in the ~5% velocity factor, so if you compute in meters from first principles (λ/2 × 0.95) you should land on the same answer.",
+      "A dipole has two symmetric legs fed at the center — the 'leg length' the antenna club actually cuts wire to is HALF of the total dipole length, not the full length.",
+      "Sanity check: at 146 MHz, λ ≈ 2.05 m, so λ/2 ≈ 1.03 m, and after the 0.95 shortening factor you land near 0.975 m total — check your code matches before trusting a different frequency.",
+    ],
+  },
+  {
+    id: "ece-ant-002",
+    title: "Antenna Gain: dBi vs dBd Conversion",
+    category: "Antenna Design",
+    icon: "📡",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python"],
+    scenario:
+      "A datasheet lists an antenna's gain as '6.15 dBd' while your link-budget spreadsheet expects dBi. Mixing these two units up is one of the most common beginner mistakes in RF work — it silently shifts every downstream power calculation by 2.15 dB, which can be the difference between a link that closes and one that doesn't.",
+    objective:
+      "Write functions to convert antenna gain between dBd (relative to a half-wave dipole) and dBi (relative to an isotropic radiator), using the fixed 2.15 dB offset between the two reference standards.",
+    steps: [
+      "Recall that an ideal dipole itself has 2.15 dBi of gain relative to an isotropic radiator",
+      "Write dbd_to_dbi(gain_dbd) = gain_dbd + 2.15",
+      "Write dbi_to_dbd(gain_dbi) = gain_dbi - 2.15",
+      "Test round-tripping a value through both functions returns the original",
+      "Print both conversions for a sample antenna rated at 6.15 dBd",
+    ],
+    workstation: "notebook",
+    starterCode: `# Antenna Gain: dBi vs dBd Conversion
+DIPOLE_GAIN_OVER_ISOTROPIC_DB = 2.15  # a half-wave dipole has 2.15 dBi of gain
+
+def dbd_to_dbi(gain_dbd):
+    # TODO: dBi = dBd + 2.15
+    return None
+
+def dbi_to_dbd(gain_dbi):
+    # TODO: dBd = dBi - 2.15
+    return None
+
+if __name__ == "__main__":
+    datasheet_gain_dbd = 6.15
+    gain_in_dbi = dbd_to_dbi(datasheet_gain_dbd)
+    print(f"Datasheet gain: {datasheet_gain_dbd} dBd = {gain_in_dbi:.2f} dBi")
+
+    # Round trip check
+    back_to_dbd = dbi_to_dbd(gain_in_dbi)
+    print(f"Round-trip back to dBd: {back_to_dbd:.2f} dBd (should equal {datasheet_gain_dbd})")
+    assert abs(back_to_dbd - datasheet_gain_dbd) < 1e-9, "Round-trip conversion failed!"
+    print("Round-trip check passed.")
+`,
+    skillTags: ["Antenna Theory", "RF Fundamentals", "Link Budget"],
+    hints: [
+      "dBi is gain relative to a theoretical isotropic radiator (radiates equally in all directions); dBd is gain relative to a real half-wave dipole, which itself already beats isotropic by 2.15 dB.",
+      "A quick memory check: dBi is always the larger number for the same physical antenna, because the isotropic reference is a weaker baseline than the dipole reference.",
+      "If a link budget mixes dBi and dBd values without converting, the total link margin will be off by 2.15 dB per antenna in the chain — always confirm which unit a datasheet uses before plugging it in.",
+    ],
+  },
+  {
+    id: "ece-ant-003",
+    title: "Yagi-Uda Element Spacing Check",
+    category: "Antenna Design",
+    icon: "📡",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 15,
+    tools: ["Python"],
+    scenario:
+      "A 3-element Yagi-Uda antenna (reflector, driven element, director) is being designed for 433 MHz IoT gateway use. The spacing between elements is critical — too close and mutual coupling detunes the antenna; too far and the directors stop reinforcing the forward beam. Standard design tables give spacing as a fraction of wavelength, not an absolute distance.",
+    objective:
+      "Write a function that converts standard Yagi element spacing ratios (in fractions of wavelength) into physical millimeter distances for a given frequency, and validate the total boom length against a maximum enclosure size.",
+    steps: [
+      "Compute the wavelength at 433 MHz",
+      "Apply standard spacing ratios: reflector-to-driven = 0.2λ, driven-to-director = 0.15λ",
+      "Convert both spacings to millimeters",
+      "Compute the total boom length (sum of both spacings)",
+      "Check whether the boom fits inside a 300mm enclosure and report pass/fail",
+    ],
+    workstation: "notebook",
+    starterCode: `# Yagi-Uda Element Spacing Check
+C = 3e8
+
+def wavelength_mm(freq_hz):
+    # TODO: λ (in mm) = (C / freq_hz) * 1000
+    return None
+
+def yagi_spacing_mm(freq_hz, reflector_ratio=0.2, director_ratio=0.15):
+    wl = wavelength_mm(freq_hz)
+    # TODO: multiply wavelength by each ratio to get physical spacing
+    reflector_to_driven = None
+    driven_to_director  = None
+    return reflector_to_driven, driven_to_director
+
+def boom_length_mm(freq_hz):
+    r_to_d, d_to_dir = yagi_spacing_mm(freq_hz)
+    # TODO: total boom length is the sum of both spacings
+    return None
+
+if __name__ == "__main__":
+    freq = 433e6
+    r_to_d, d_to_dir = yagi_spacing_mm(freq)
+    boom = boom_length_mm(freq)
+    print(f"Wavelength: {wavelength_mm(freq):.1f} mm")
+    print(f"Reflector-to-driven spacing: {r_to_d:.1f} mm")
+    print(f"Driven-to-director spacing: {d_to_dir:.1f} mm")
+    print(f"Total boom length: {boom:.1f} mm")
+
+    ENCLOSURE_MAX_MM = 300
+    fits = boom <= ENCLOSURE_MAX_MM
+    print(f"Fits in {ENCLOSURE_MAX_MM}mm enclosure: {'YES' if fits else 'NO'}")
+`,
+    skillTags: ["Antenna Theory", "Yagi Design", "RF Fundamentals"],
+    hints: [
+      "Wavelength at 433 MHz is roughly 693mm — sanity check your wavelength_mm() output against that before trusting the spacing numbers.",
+      "Spacing ratios are always expressed as fractions of wavelength (not fixed distances) specifically because Yagi geometry scales with frequency — the same 0.2λ/0.15λ ratios apply whether you're designing for 433 MHz or 2.4 GHz.",
+      "If the boom doesn't fit, the fix in a real design is either shrinking the spacing ratios slightly (with some gain trade-off) or choosing a smaller enclosure requirement — this challenge only asks you to detect the problem, not redesign around it.",
+    ],
+  },
+  {
+    id: "ece-ant-004",
+    title: "Friis Transmission Equation — Link Budget",
+    category: "Antenna Design",
+    icon: "📡",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 15,
+    tools: ["Python"],
+    scenario:
+      "A LoRa IoT deployment needs to confirm that a gateway 2km away can still receive packets from a field sensor node. The radio's receiver sensitivity is -130 dBm. Before deploying hardware, the RF engineer wants to calculate the expected received power using the Friis free-space transmission equation to confirm there's enough link margin.",
+    objective:
+      "Implement the Friis transmission equation to compute received power given transmit power, antenna gains, frequency, and distance, then compare against receiver sensitivity to determine link margin.",
+    steps: [
+      "Convert transmit power from dBm to a link budget in dB (dBm and dB add linearly, so no conversion to watts needed)",
+      "Compute free-space path loss (FSPL) in dB using FSPL = 20log10(d) + 20log10(f) + 20log10(4π/c)",
+      "Compute received power: Pr(dBm) = Pt(dBm) + Gt(dBi) + Gr(dBi) - FSPL(dB)",
+      "Compute link margin = received power - receiver sensitivity",
+      "Report whether the link closes (margin > 0) and print the margin in dB",
+    ],
+    workstation: "notebook",
+    starterCode: `# Friis Transmission Equation — Link Budget
+import math
+
+C = 3e8
+
+def free_space_path_loss_db(distance_m, freq_hz):
+    # TODO: FSPL(dB) = 20*log10(distance) + 20*log10(freq) + 20*log10(4*pi/C)
+    return None
+
+def received_power_dbm(tx_power_dbm, tx_gain_dbi, rx_gain_dbi, distance_m, freq_hz):
+    fspl = free_space_path_loss_db(distance_m, freq_hz)
+    # TODO: Pr = Pt + Gt + Gr - FSPL   (all in dB/dBm/dBi -- they just add and subtract)
+    return None
+
+def link_margin_db(rx_power_dbm, receiver_sensitivity_dbm):
+    # TODO: margin = received power - sensitivity
+    return None
+
+if __name__ == "__main__":
+    tx_power   = 14      # dBm (typical LoRa TX power)
+    tx_gain    = 2       # dBi (sensor node antenna)
+    rx_gain    = 6       # dBi (gateway antenna)
+    distance   = 2000    # meters
+    freq       = 915e6   # 915 MHz LoRa band
+    sensitivity = -130   # dBm (typical LoRa receiver sensitivity)
+
+    fspl = free_space_path_loss_db(distance, freq)
+    pr   = received_power_dbm(tx_power, tx_gain, rx_gain, distance, freq)
+    margin = link_margin_db(pr, sensitivity)
+
+    print(f"Free-space path loss: {fspl:.1f} dB")
+    print(f"Received power: {pr:.1f} dBm")
+    print(f"Receiver sensitivity: {sensitivity} dBm")
+    print(f"Link margin: {margin:.1f} dB")
+    print(f"Link closes: {'YES' if margin > 0 else 'NO'}")
+`,
+    skillTags: ["Link Budget", "Friis Equation", "RF Fundamentals"],
+    hints: [
+      "All the quantities here (dBm, dBi, dB) are logarithmic, which is exactly why Friis in log form is just addition and subtraction — no need to convert to watts and back.",
+      "Free-space path loss grows with BOTH distance and frequency — doubling either one adds roughly 6 dB of loss, which is why higher-frequency links need shorter range or more antenna gain to compensate.",
+      "A positive link margin means the signal arrives stronger than the receiver needs to decode it; a negative margin means the link won't work at that distance no matter how good the antennas are wired up.",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ECE — SENSORS & TRANSDUCERS
+// ─────────────────────────────────────────────────────────────────────────────
+export const ECE_SENSORS_CHALLENGES = [
+  {
+    id: "ece-sen-001",
+    title: "Thermistor Temperature from Resistance (Beta Equation)",
+    category: "Sensors & Transducers",
+    icon: "🌡️",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python"],
+    scenario:
+      "A weather station reads a raw resistance value from an NTC thermistor and needs to convert it to a temperature in Celsius for the display. The thermistor's datasheet gives a Beta value (B-constant) and a reference resistance at 25°C — the standard way manufacturers characterize these nonlinear sensors.",
+    objective:
+      "Implement the Beta equation to convert thermistor resistance to temperature, using the datasheet's R25 (resistance at 25°C) and Beta constant.",
+    steps: [
+      "Convert 25°C to Kelvin as the reference temperature T0",
+      "Apply the Beta equation: 1/T = 1/T0 + (1/B) * ln(R/R25)",
+      "Solve for T in Kelvin, then convert back to Celsius",
+      "Test with a sample resistance reading and confirm the output is a sane temperature",
+      "Print the result rounded to one decimal place",
+    ],
+    workstation: "notebook",
+    starterCode: `# Thermistor Temperature from Resistance (Beta Equation)
+import math
+
+def thermistor_temp_celsius(r_measured, r25=10000, beta=3950, t25_celsius=25):
+    t0_kelvin = t25_celsius + 273.15
+
+    # TODO: apply the Beta equation
+    # 1/T = 1/T0 + (1/beta) * ln(r_measured / r25)
+    inv_t = None
+
+    t_kelvin = 1 / inv_t
+    t_celsius = t_kelvin - 273.15
+    return t_celsius
+
+if __name__ == "__main__":
+    # A 10k NTC thermistor (beta=3950) reading 6244 ohms
+    reading = 6244
+    temp = thermistor_temp_celsius(reading)
+    print(f"Resistance reading: {reading} ohms")
+    print(f"Calculated temperature: {temp:.1f} °C")
+    # Expect roughly 35 °C for this reading
+`,
+    skillTags: ["Sensor Interfacing", "Thermistor", "Analog Sensing"],
+    hints: [
+      "At exactly R = R25 (i.e., the measured resistance equals the reference), the equation should return exactly 25°C — a good sanity check to try first.",
+      "NTC (Negative Temperature Coefficient) thermistors DECREASE resistance as temperature rises — if your computed temperature moves the wrong direction as resistance changes, check the sign inside the ln().",
+      "math.log() in Python is the natural log (ln), which is what the Beta equation requires — math.log10() would give the wrong answer here.",
+    ],
+  },
+  {
+    id: "ece-sen-002",
+    title: "Strain Gauge Wheatstone Bridge Output",
+    category: "Sensors & Transducers",
+    icon: "🌡️",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 15,
+    tools: ["Python"],
+    scenario:
+      "A load cell in a digital weighing scale uses a strain gauge in a Wheatstone bridge configuration. As the strain gauge deforms under load, its resistance changes by a tiny fraction of a percent — far too small to read directly, which is why bridge circuits exist to amplify that tiny change into a measurable voltage.",
+    objective:
+      "Compute the output voltage of a Wheatstone bridge given a strain gauge's resistance change, and verify the bridge is balanced at zero strain.",
+    steps: [
+      "Set up a bridge with one active strain gauge arm and three fixed reference resistors of equal value",
+      "Compute bridge output voltage: Vout = Vex * (ΔR / (4R)) for a quarter-bridge (small-signal approximation)",
+      "Confirm output is 0V when ΔR = 0 (no strain, balanced bridge)",
+      "Compute the output for a given strain-induced resistance change",
+      "Report the output in millivolts, since bridge outputs are typically very small",
+    ],
+    workstation: "notebook",
+    starterCode: `# Strain Gauge Wheatstone Bridge Output
+def bridge_output_mv(v_excitation, r_nominal, delta_r):
+    # Quarter-bridge small-signal approximation:
+    # Vout = Vex * (delta_r / (4 * r_nominal))
+    # TODO: implement this formula, return the result in millivolts
+    vout_volts = None
+    return vout_volts * 1000
+
+if __name__ == "__main__":
+    v_ex = 5.0        # 5V excitation voltage
+    r_nom = 350.0      # 350 ohm nominal strain gauge resistance (common value)
+
+    # Balanced case: no strain
+    balanced_output = bridge_output_mv(v_ex, r_nom, delta_r=0)
+    print(f"Balanced bridge output (no strain): {balanced_output:.4f} mV")
+    assert abs(balanced_output) < 1e-9, "Bridge should read exactly 0V when balanced!"
+
+    # Loaded case: gauge factor causes a small resistance change under load
+    delta_r_loaded = 0.7  # ohms, from strain
+    loaded_output = bridge_output_mv(v_ex, r_nom, delta_r_loaded)
+    print(f"Loaded bridge output: {loaded_output:.3f} mV")
+`,
+    skillTags: ["Sensor Interfacing", "Wheatstone Bridge", "Strain Gauge"],
+    hints: [
+      "A balanced bridge (all four arms equal, or ΔR=0) always outputs exactly 0V regardless of the excitation voltage — this is the whole point of the bridge topology, and it's a required test case here.",
+      "The output voltage from a real load cell is typically only a few millivolts even at full rated load, which is why the result is reported in mV, not V — a raw microcontroller ADC usually can't read this directly without an instrumentation amplifier first.",
+      "Notice ΔR is a tiny fraction of R (0.7 ohms out of 350 ohms here, about 0.2%) — this is realistic; strain gauges produce very small resistance changes even under significant mechanical load.",
+    ],
+  },
+  {
+    id: "ece-sen-003",
+    title: "PIR Motion Sensor Debounce Logic",
+    category: "Sensors & Transducers",
+    icon: "🌡️",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python"],
+    scenario:
+      "A smart-lighting system uses a PIR (Passive Infrared) motion sensor to turn lights on when someone enters a room. The raw sensor output flickers rapidly between HIGH and LOW for a moment right at the edge of detection, which would cause the lights to flicker annoyingly if acted on directly. The firmware needs a debounce/hold-time filter.",
+    objective:
+      "Simulate a stream of raw PIR sensor readings and implement a hold-time debounce filter that keeps the light 'on' state stable for a minimum duration after the last detected motion.",
+    steps: [
+      "Model a sequence of timestamped raw PIR readings (True = motion detected, False = no motion)",
+      "Implement a debounce filter that tracks the last time motion was seen",
+      "Keep the output 'light on' as True as long as we're within the hold_time_seconds window of the last motion event",
+      "Run the filter over the simulated readings and print the filtered (stable) output alongside the raw",
+      "Verify the light stays on through brief gaps in raw detection, within the hold window",
+    ],
+    workstation: "notebook",
+    starterCode: `# PIR Motion Sensor Debounce Logic
+def debounce_pir(readings, hold_time_seconds=5):
+    """
+    readings: list of (timestamp_seconds, raw_motion_bool)
+    Returns: list of (timestamp_seconds, raw_motion_bool, filtered_light_on_bool)
+    """
+    last_motion_time = None
+    result = []
+
+    for timestamp, raw in readings:
+        if raw:
+            # TODO: update last_motion_time to this timestamp
+            pass
+
+        # TODO: light_on should be True if last_motion_time is not None
+        # AND (timestamp - last_motion_time) <= hold_time_seconds
+        light_on = None
+
+        result.append((timestamp, raw, light_on))
+
+    return result
+
+if __name__ == "__main__":
+    # Raw readings: motion detected briefly, then flickers off, then nothing
+    readings = [
+        (0,  True),
+        (1,  False),   # brief flicker off -- should still hold light on
+        (2,  True),
+        (3,  False),
+        (4,  False),
+        (10, False),   # well past hold_time_seconds=5 from last motion at t=2 -- light should be off
+    ]
+
+    filtered = debounce_pir(readings, hold_time_seconds=5)
+    for t, raw, light in filtered:
+        print(f"t={t}s  raw={raw}  light_on={light}")
+`,
+    skillTags: ["Sensor Interfacing", "PIR Sensor", "Debounce Logic"],
+    hints: [
+      "The key insight: 'light_on' isn't the same signal as 'raw motion detected right now' — it's whether we're still WITHIN the hold window since the last time motion was seen, even if the sensor briefly reads False.",
+      "At t=10 in the test data, the last motion was at t=2, so 10-2=8 seconds have elapsed — since that's more than the 5-second hold_time, the light should correctly turn off.",
+      "This same hold-time debounce pattern shows up constantly in embedded firmware — button debouncing, door sensor triggers, and PIR lighting all use some version of 'stay in the active state for N seconds after the last trigger event.'",
+    ],
+  },
+  {
+    id: "ece-sen-004",
+    title: "Ultrasonic Distance Sensor Timing Calculation",
+    category: "Sensors & Transducers",
+    icon: "🌡️",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python"],
+    scenario:
+      "An HC-SR04 ultrasonic distance sensor on a robot measures distance by timing how long it takes a sound pulse to travel to an obstacle and echo back. The microcontroller measures this round-trip time in microseconds — converting that into a usable distance in centimeters requires knowing the speed of sound and remembering the pulse travels the distance TWICE (there and back).",
+    objective:
+      "Write a function that converts an HC-SR04 echo pulse duration (in microseconds) into a distance in centimeters, accounting for the round-trip travel and the speed of sound.",
+    steps: [
+      "Use the speed of sound as approximately 343 m/s (at room temperature)",
+      "Convert the pulse duration from microseconds to seconds",
+      "Compute total distance traveled by sound: distance = speed * time",
+      "Divide by 2 since the pulse travels to the object AND back",
+      "Convert the result to centimeters and test against a known example",
+    ],
+    workstation: "notebook",
+    starterCode: `# Ultrasonic Distance Sensor Timing Calculation
+SPEED_OF_SOUND_M_S = 343  # meters per second, at ~20°C room temperature
+
+def echo_pulse_to_distance_cm(pulse_duration_us):
+    # TODO: convert microseconds to seconds
+    pulse_duration_s = None
+
+    # TODO: total round-trip distance = speed * time
+    round_trip_distance_m = None
+
+    # TODO: the pulse travels there AND back, so the actual distance
+    # to the object is half the round-trip distance
+    distance_m = None
+
+    # TODO: convert meters to centimeters
+    distance_cm = None
+
+    return distance_cm
+
+if __name__ == "__main__":
+    # A pulse duration of 1160 microseconds was measured
+    pulse_us = 1160
+    distance = echo_pulse_to_distance_cm(pulse_us)
+    print(f"Pulse duration: {pulse_us} microseconds")
+    print(f"Calculated distance: {distance:.1f} cm")
+    # Expect roughly 19.9 cm for this pulse duration
+`,
+    skillTags: ["Sensor Interfacing", "Ultrasonic Sensor", "Timing Measurement"],
+    hints: [
+      "The most common beginner mistake with this sensor is forgetting the divide-by-2 — the measured time covers the FULL round trip (sensor→object→sensor), not just the one-way distance.",
+      "Microseconds to seconds is a division by 1,000,000 (1e6) — an easy place to introduce an off-by-a-power-of-ten bug if you're not careful with the exponent.",
+      "The HC-SR04's usable range is roughly 2cm to 400cm in real hardware — if your formula produces a wildly different number for a normal pulse duration like 1160µs, check your unit conversions first.",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ECE — PHOTONICS & OPTICAL COMMUNICATION
+// ─────────────────────────────────────────────────────────────────────────────
+export const ECE_PHOTONICS_CHALLENGES = [
+  {
+    id: "ece-photo-001",
+    title: "Fiber Optic Numerical Aperture and Acceptance Angle",
+    category: "Photonics",
+    icon: "💡",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python"],
+    scenario:
+      "A campus network is running fiber optic cable between two buildings. Before splicing connectors, the network technician needs to confirm the light source's beam angle is within the fiber's acceptance cone — light hitting the fiber core outside this angle simply won't be guided down the fiber and is wasted.",
+    objective:
+      "Compute a fiber's numerical aperture (NA) from its core and cladding refractive indices, then derive the maximum acceptance angle for light entering the fiber.",
+    steps: [
+      "Given the core refractive index (n1) and cladding refractive index (n2), compute NA = sqrt(n1^2 - n2^2)",
+      "Compute the acceptance angle using theta_max = arcsin(NA)",
+      "Convert the result from radians to degrees",
+      "Test with typical single-mode fiber values (n1=1.4682, n2=1.4629)",
+      "Print both the NA value and the acceptance angle in degrees",
+    ],
+    workstation: "notebook",
+    starterCode: `# Fiber Optic Numerical Aperture and Acceptance Angle
+import math
+
+def numerical_aperture(n_core, n_cladding):
+    # TODO: NA = sqrt(n_core^2 - n_cladding^2)
+    return None
+
+def acceptance_angle_degrees(n_core, n_cladding):
+    na = numerical_aperture(n_core, n_cladding)
+    # TODO: theta_max (radians) = arcsin(NA), then convert to degrees
+    theta_rad = None
+    theta_deg = None
+    return theta_deg
+
+if __name__ == "__main__":
+    n_core = 1.4682      # typical single-mode fiber core index
+    n_cladding = 1.4629  # typical single-mode fiber cladding index
+
+    na = numerical_aperture(n_core, n_cladding)
+    angle = acceptance_angle_degrees(n_core, n_cladding)
+
+    print(f"Numerical Aperture: {na:.4f}")
+    print(f"Acceptance angle: {angle:.2f} degrees")
+`,
+    skillTags: ["Fiber Optics", "Photonics", "Optical Communication"],
+    hints: [
+      "The core index must always be slightly HIGHER than the cladding index for total internal reflection to occur — this is the entire physical principle that makes fiber optic guiding work.",
+      "math.asin() returns radians in Python, so don't forget the radians-to-degrees conversion (multiply by 180/π) before reporting the final acceptance angle.",
+      "Real single-mode fiber has a very small NA (typically around 0.12-0.14) and a narrow acceptance angle — this is intentional, since single-mode fiber is designed to only guide one tightly-confined light path.",
+    ],
+  },
+  {
+    id: "ece-photo-002",
+    title: "Optical Power Budget: dB Loss Along a Fiber Link",
+    category: "Photonics",
+    icon: "💡",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 15,
+    tools: ["Python"],
+    scenario:
+      "A 10km fiber optic link between a data center and a remote office has several loss sources: fiber attenuation, two splice points, and two connectors. The receiver needs a minimum optical power to correctly decode the signal. Before the link is deployed, the network engineer must confirm the total loss budget doesn't exceed what the transmitter's launch power can tolerate.",
+    objective:
+      "Build a power budget calculator that sums all loss sources along a fiber link and determines whether the received power meets the receiver's minimum sensitivity requirement.",
+    steps: [
+      "Compute fiber attenuation loss: length_km * attenuation_db_per_km",
+      "Sum splice losses (each splice has a fixed dB loss)",
+      "Sum connector losses (each connector has a fixed dB loss)",
+      "Compute received power: Pr(dBm) = Pt(dBm) - total_loss(dB)",
+      "Compute margin against receiver sensitivity and report pass/fail",
+    ],
+    workstation: "notebook",
+    starterCode: `# Optical Power Budget: dB Loss Along a Fiber Link
+def fiber_attenuation_loss_db(length_km, attenuation_db_per_km=0.35):
+    # TODO: total fiber loss = length * attenuation per km
+    return None
+
+def total_link_loss_db(length_km, num_splices, num_connectors,
+                        attenuation_db_per_km=0.35,
+                        splice_loss_db=0.1, connector_loss_db=0.5):
+    fiber_loss = fiber_attenuation_loss_db(length_km, attenuation_db_per_km)
+    # TODO: sum fiber_loss + (num_splices * splice_loss_db) + (num_connectors * connector_loss_db)
+    return None
+
+def received_power_dbm(tx_power_dbm, length_km, num_splices, num_connectors):
+    loss = total_link_loss_db(length_km, num_splices, num_connectors)
+    # TODO: Pr = Pt - total loss
+    return None
+
+if __name__ == "__main__":
+    tx_power = 0        # dBm, typical laser transmitter launch power
+    length = 10         # km
+    splices = 2
+    connectors = 2
+    receiver_sensitivity = -23  # dBm, typical SFP receiver
+
+    loss = total_link_loss_db(length, splices, connectors)
+    pr = received_power_dbm(tx_power, length, splices, connectors)
+    margin = pr - receiver_sensitivity
+
+    print(f"Total link loss: {loss:.2f} dB")
+    print(f"Received power: {pr:.2f} dBm")
+    print(f"Receiver sensitivity: {receiver_sensitivity} dBm")
+    print(f"Link margin: {margin:.2f} dB")
+    print(f"Link viable: {'YES' if margin > 0 else 'NO'}")
+`,
+    skillTags: ["Fiber Optics", "Power Budget", "Optical Communication"],
+    hints: [
+      "This is structurally the same idea as the RF Friis link-budget challenge — different loss sources, same principle of adding up all the dB losses and comparing what's left against the receiver's minimum requirement.",
+      "0.35 dB/km is realistic for single-mode fiber at the 1310nm wavelength; if you're getting a total loss that seems too large, double check you're not accidentally adding an extra loss source or double-counting.",
+      "A positive margin doesn't just mean 'link works' — in real deployments, engineers want several dB of extra margin beyond zero to account for aging, temperature drift, and future splice additions.",
+    ],
+  },
+  {
+    id: "ece-photo-003",
+    title: "Laser Diode Threshold Current Estimation",
+    category: "Photonics",
+    icon: "💡",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 15,
+    tools: ["Python"],
+    scenario:
+      "A laser diode driver circuit for a fiber transmitter needs to bias the laser just above its threshold current — the point where stimulated emission (laser action) begins. Below threshold, the diode only emits weak, incoherent LED-like light; above it, output power rises sharply and linearly with current. Getting this wrong either wastes power or fails to produce a usable optical signal.",
+    objective:
+      "Given a laser diode's L-I (light output vs. current) characteristic as a piecewise model, determine the threshold current by finding where the slope changes from near-zero (below threshold) to steep (above threshold).",
+    steps: [
+      "Model the L-I curve using two regimes: below threshold (near-zero slope) and above threshold (steep linear slope)",
+      "Given a series of (current_ma, power_mw) sample points, compute the slope between consecutive points",
+      "Identify the current at which the slope jumps sharply (this is the threshold)",
+      "Report the estimated threshold current",
+      "Verify against the known synthetic threshold used to generate the test data",
+    ],
+    workstation: "notebook",
+    starterCode: `# Laser Diode Threshold Current Estimation
+def compute_slopes(samples):
+    """samples: list of (current_ma, power_mw) tuples, sorted by current"""
+    slopes = []
+    for i in range(1, len(samples)):
+        i_prev, p_prev = samples[i-1]
+        i_curr, p_curr = samples[i]
+        # TODO: slope = (p_curr - p_prev) / (i_curr - i_prev)
+        slope = None
+        slopes.append((i_curr, slope))
+    return slopes
+
+def estimate_threshold_current(samples, slope_jump_factor=5):
+    slopes = compute_slopes(samples)
+    # TODO: walk through slopes and find the first point where the slope
+    # is at least slope_jump_factor times larger than the previous slope --
+    # that's the threshold current
+    for i in range(1, len(slopes)):
+        prev_slope = slopes[i-1][1]
+        curr_slope = slopes[i][1]
+        if prev_slope > 0 and curr_slope >= prev_slope * slope_jump_factor:
+            return slopes[i][0]
+        elif prev_slope == 0 and curr_slope > 0:
+            return slopes[i][0]
+    return None
+
+if __name__ == "__main__":
+    # Synthetic L-I curve: flat below 20mA threshold, steep linear above it
+    samples = [
+        (0,  0.01),
+        (5,  0.02),
+        (10, 0.03),
+        (15, 0.04),
+        (20, 0.05),   # still near threshold
+        (25, 1.5),    # sharp jump -- laser action begins
+        (30, 3.0),
+        (35, 4.5),
+    ]
+
+    threshold = estimate_threshold_current(samples)
+    print(f"Estimated threshold current: {threshold} mA")
+    # Expect the algorithm to land on 25mA -- the first point after the sharp jump
+`,
+    skillTags: ["Laser Diodes", "Photonics", "L-I Characteristic"],
+    hints: [
+      "Below threshold, a laser diode behaves almost like a regular LED — power rises very slowly with current. The 'knee' in the L-I curve where the slope suddenly steepens is the threshold current.",
+      "This challenge is really about detecting a slope discontinuity in a data series — the same pattern used to find knee-points/breakpoints in all kinds of engineering measurement curves, not just laser diodes.",
+      "In a real driver circuit, biasing right at or slightly above threshold minimizes turn-on delay for digital modulation while avoiding wasted bias current below the point where the diode actually lases.",
+    ],
+  },
+  {
+    id: "ece-photo-004",
+    title: "WDM Channel Spacing Validation (ITU Grid)",
+    category: "Photonics",
+    icon: "💡",
+    difficulty: "Hard",
+    timeLimit: "35 min",
+    eloGain: 18,
+    tools: ["Python"],
+    scenario:
+      "A wavelength-division multiplexing (WDM) system plans to carry 8 optical channels on a single fiber. Each channel must be spaced far enough apart in frequency to avoid crosstalk between adjacent channels, following the standard ITU-T 100 GHz grid. Before ordering the DWDM transceivers, the design needs validating against the grid spacing requirement.",
+    objective:
+      "Given a list of proposed channel center frequencies (in THz), validate that every pair of adjacent channels is spaced by exactly the required 100 GHz grid spacing, and flag any channel that violates the grid.",
+    steps: [
+      "Sort the proposed channel frequencies in ascending order",
+      "Compute the frequency spacing between each pair of adjacent channels",
+      "Compare each spacing against the required 100 GHz (0.1 THz) grid spacing, allowing a small tolerance",
+      "Collect and report any channel pairs that violate the spacing requirement",
+      "Report overall pass/fail for the full channel plan",
+    ],
+    workstation: "notebook",
+    starterCode: `# WDM Channel Spacing Validation (ITU Grid)
+REQUIRED_SPACING_THZ = 0.1  # 100 GHz ITU grid spacing
+TOLERANCE_THZ = 0.001       # small tolerance for floating point comparison
+
+def validate_channel_spacing(frequencies_thz):
+    # TODO: sort the frequencies ascending
+    sorted_freqs = None
+
+    violations = []
+    for i in range(1, len(sorted_freqs)):
+        # TODO: compute spacing between sorted_freqs[i] and sorted_freqs[i-1]
+        spacing = None
+
+        # TODO: if spacing deviates from REQUIRED_SPACING_THZ by more than
+        # TOLERANCE_THZ, record a violation as (freq_a, freq_b, spacing)
+        if spacing is not None and abs(spacing - REQUIRED_SPACING_THZ) > TOLERANCE_THZ:
+            violations.append((sorted_freqs[i-1], sorted_freqs[i], spacing))
+
+    return violations
+
+if __name__ == "__main__":
+    # 8 channels around the C-band, one intentionally misplaced
+    proposed_channels_thz = [
+        193.10, 193.20, 193.30, 193.42,  # 193.42 should be 193.40 -- violation!
+        193.50, 193.60, 193.70, 193.80,
+    ]
+
+    violations = validate_channel_spacing(proposed_channels_thz)
+
+    if violations:
+        print(f"FOUND {len(violations)} spacing violation(s):")
+        for a, b, spacing in violations:
+            print(f"  {a} THz -> {b} THz : spacing = {spacing*1000:.1f} GHz (expected 100 GHz)")
+    else:
+        print("All channels correctly spaced on the 100 GHz ITU grid.")
+`,
+    skillTags: ["WDM", "Photonics", "Optical Networking"],
+    hints: [
+      "The test data has exactly one bad channel (193.42 instead of 193.40 THz) — your violations list should end up with exactly one entry if the spacing check logic is correct.",
+      "Floating point comparisons are never exact — that's why TOLERANCE_THZ exists; comparing spacing == REQUIRED_SPACING_THZ directly would fail even on correctly-spaced channels due to rounding.",
+      "In real DWDM systems, channels this close together (100 GHz, or even 50/25 GHz on denser grids) require very precise laser wavelength stability — a channel drifting even slightly off-grid can bleed into its neighbor.",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ECE — MICROCONTROLLER PERIPHERALS
+// ─────────────────────────────────────────────────────────────────────────────
+export const ECE_MICROCONTROLLER_CHALLENGES = [
+  {
+    id: "ece-mcu-001",
+    title: "ADC Reading to Voltage Conversion",
+    category: "Microcontroller Peripherals",
+    icon: "🔌",
+    difficulty: "Easy",
+    timeLimit: "15 min",
+    eloGain: 10,
+    tools: ["Python"],
+    scenario:
+      "A microcontroller's 10-bit ADC (analog-to-digital converter) reads a raw integer value from 0-1023 representing an analog voltage on a sensor pin. Before that raw number means anything to a student debugging their circuit, it needs converting to an actual voltage using the ADC's known reference voltage.",
+    objective:
+      "Write a function that converts a raw ADC reading into a voltage, given the ADC's resolution (number of bits) and reference voltage.",
+    steps: [
+      "Compute the maximum raw ADC value for the given bit resolution (2^bits - 1)",
+      "Compute voltage = (raw_value / max_raw_value) * reference_voltage",
+      "Test with a 10-bit ADC, 3.3V reference, and a mid-scale raw reading",
+      "Test the edge cases: raw value of 0 should give 0V, and max raw value should give the full reference voltage",
+      "Print all three test results",
+    ],
+    workstation: "notebook",
+    starterCode: `# ADC Reading to Voltage Conversion
+def adc_to_voltage(raw_value, bits=10, v_ref=3.3):
+    # TODO: max_raw = 2^bits - 1
+    max_raw = None
+
+    # TODO: voltage = (raw_value / max_raw) * v_ref
+    voltage = None
+
+    return voltage
+
+if __name__ == "__main__":
+    # Mid-scale reading on a 10-bit ADC (0-1023), 3.3V reference
+    mid_reading = 512
+    print(f"Raw={mid_reading}: {adc_to_voltage(mid_reading):.4f} V")
+
+    # Edge cases
+    print(f"Raw=0: {adc_to_voltage(0):.4f} V (should be 0.0000)")
+    print(f"Raw=1023: {adc_to_voltage(1023):.4f} V (should be very close to 3.3000)")
+`,
+    skillTags: ["Microcontroller", "ADC", "Embedded Systems"],
+    hints: [
+      "For an N-bit ADC, the raw value ranges from 0 to (2^N - 1), NOT 0 to 2^N — for a 10-bit ADC that's 0 to 1023, not 0 to 1024. This off-by-one is a very common beginner bug.",
+      "The raw=1023 case should land very close to but technically just under the full 3.3V reference (since 1023/1023=1.0 exactly gives 3.3V here) — if your max_raw calculation used 1024 instead of 1023, this test would silently give a slightly wrong answer.",
+      "This conversion pattern (raw / max_raw * reference) is the single most common calculation in embedded sensor code — it's worth having memorized cold.",
+    ],
+  },
+  {
+    id: "ece-mcu-002",
+    title: "PWM Duty Cycle to Servo Angle Mapping",
+    category: "Microcontroller Peripherals",
+    icon: "🔌",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python"],
+    scenario:
+      "A robotics club is controlling a hobby servo motor with a microcontroller's PWM output. Standard hobby servos expect a pulse width between 1ms (0 degrees) and 2ms (180 degrees), repeated every 20ms. The firmware needs to convert a desired angle into the correct pulse width in microseconds to command the servo.",
+    objective:
+      "Write a function that maps a desired servo angle (0-180 degrees) to the corresponding PWM pulse width in microseconds, using linear interpolation between the 1ms and 2ms endpoints.",
+    steps: [
+      "Define the pulse width range: 1000 microseconds at 0 degrees, 2000 microseconds at 180 degrees",
+      "Linearly interpolate: pulse_width = min_pulse + (angle / 180) * (max_pulse - min_pulse)",
+      "Clamp the input angle to the valid 0-180 range before converting",
+      "Test with 0, 90, and 180 degrees and confirm the expected pulse widths",
+      "Print the results for each test angle",
+    ],
+    workstation: "notebook",
+    starterCode: `# PWM Duty Cycle to Servo Angle Mapping
+def angle_to_pulse_width_us(angle_degrees, min_pulse_us=1000, max_pulse_us=2000):
+    # TODO: clamp angle_degrees to the range [0, 180]
+    clamped_angle = None
+
+    # TODO: linearly interpolate between min_pulse_us and max_pulse_us
+    pulse_width = None
+
+    return pulse_width
+
+if __name__ == "__main__":
+    for angle in [0, 45, 90, 135, 180]:
+        pw = angle_to_pulse_width_us(angle)
+        print(f"Angle={angle}°  →  Pulse width={pw:.0f} µs")
+
+    # Test clamping with an out-of-range angle
+    over_range = angle_to_pulse_width_us(200)
+    print(f"Angle=200° (out of range)  →  Pulse width={over_range:.0f} µs (should clamp to 2000)")
+`,
+    skillTags: ["Microcontroller", "PWM", "Servo Control", "Embedded Systems"],
+    hints: [
+      "0 degrees should map to exactly 1000µs and 180 degrees should map to exactly 2000µs — check both endpoints match before trusting the interpolation for angles in between.",
+      "Clamping matters in real firmware because a bad sensor reading or bug elsewhere in the code could ask for an angle like -30 or 220, which would command the servo to a mechanically dangerous or simply undefined position without the clamp.",
+      "This is the same linear interpolation (lerp) pattern used everywhere in embedded and graphics code — value = start + (fraction) * (end - start).",
+    ],
+  },
+  {
+    id: "ece-mcu-003",
+    title: "UART Baud Rate Register Calculation",
+    category: "Microcontroller Peripherals",
+    icon: "🔌",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 15,
+    tools: ["Python"],
+    scenario:
+      "A firmware engineer is configuring a microcontroller's UART peripheral to communicate at 9600 baud. The UART hardware doesn't take 'baud rate' directly as a setting — it needs a specific baud rate register value computed from the microcontroller's clock frequency, and picking the wrong value causes garbled serial communication.",
+    objective:
+      "Implement the standard UBRR (UART Baud Rate Register) formula used on AVR-family microcontrollers, and check the resulting actual baud rate error percentage against the target.",
+    steps: [
+      "Apply the formula: UBRR = round(F_CPU / (16 * baud_rate)) - 1",
+      "Compute the actual achieved baud rate from the rounded UBRR value: actual_baud = F_CPU / (16 * (UBRR + 1))",
+      "Compute the percentage error between actual and target baud rate",
+      "Test with a common 16MHz clock targeting 9600 baud",
+      "Flag whether the error exceeds the typical 2% UART tolerance",
+    ],
+    workstation: "notebook",
+    starterCode: `# UART Baud Rate Register Calculation
+def compute_ubrr(f_cpu_hz, target_baud):
+    # TODO: UBRR = round(F_CPU / (16 * baud)) - 1
+    ubrr = None
+    return ubrr
+
+def actual_baud_rate(f_cpu_hz, ubrr):
+    # TODO: actual_baud = F_CPU / (16 * (UBRR + 1))
+    return None
+
+def baud_error_percent(target_baud, actual_baud):
+    # TODO: error % = abs(actual - target) / target * 100
+    return None
+
+if __name__ == "__main__":
+    f_cpu = 16_000_000  # 16 MHz clock
+    target = 9600
+
+    ubrr = compute_ubrr(f_cpu, target)
+    actual = actual_baud_rate(f_cpu, ubrr)
+    error = baud_error_percent(target, actual)
+
+    print(f"F_CPU: {f_cpu} Hz, Target baud: {target}")
+    print(f"UBRR register value: {ubrr}")
+    print(f"Actual baud rate: {actual:.1f}")
+    print(f"Error: {error:.3f}%")
+    print(f"Within 2% tolerance: {'YES' if error <= 2.0 else 'NO'}")
+`,
+    skillTags: ["Microcontroller", "UART", "Serial Communication", "Embedded Systems"],
+    hints: [
+      "UBRR must be an integer register value — that's exactly why the formula rounds before subtracting 1, and why the 'actual' baud rate achieved is rarely a perfectly exact match to the target.",
+      "For 16MHz and 9600 baud, you should get a UBRR value of 103 and an actual baud rate very close to 9615, which is a well-known standard result you can check your formula against.",
+      "UART communication typically tolerates baud rate error up to about 2% before bit sampling starts landing in the wrong place — this is why checking the error percentage (not just picking any UBRR value) matters in real firmware.",
+    ],
+  },
+  {
+    id: "ece-mcu-004",
+    title: "I2C Address 7-bit vs 8-bit Confusion",
+    category: "Microcontroller Peripherals",
+    icon: "🔌",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 15,
+    tools: ["Python"],
+    scenario:
+      "A student debugging an I2C sensor can't get it to respond. The datasheet lists the device address as 0x68, but a bus scanner tool shows a device responding at 0x68 in 'write mode' and something that looks like 0xD0 in a raw capture. This is one of the most common sources of I2C confusion for beginners — the 7-bit vs 8-bit address representation.",
+    objective:
+      "Write functions to convert between the 7-bit I2C device address (as commonly listed in datasheets) and the 8-bit address-plus-R/W-bit format actually sent on the wire, for both read and write operations.",
+    steps: [
+      "Given a 7-bit address, compute the 8-bit write address by shifting left 1 bit and clearing the LSB (R/W=0)",
+      "Compute the 8-bit read address by shifting left 1 bit and setting the LSB (R/W=1)",
+      "Write the reverse function: extract the 7-bit address from an 8-bit wire address (ignoring the R/W bit)",
+      "Test with the common MPU6050 IMU address 0x68",
+      "Confirm write address comes out to 0xD0 and read address to 0xD1",
+    ],
+    workstation: "notebook",
+    starterCode: `# I2C Address 7-bit vs 8-bit Confusion
+def address_7bit_to_8bit_write(addr_7bit):
+    # TODO: shift left 1, R/W bit = 0 (already 0 after shift, but be explicit)
+    return None
+
+def address_7bit_to_8bit_read(addr_7bit):
+    # TODO: shift left 1, then set the R/W bit (LSB) to 1
+    return None
+
+def address_8bit_to_7bit(addr_8bit):
+    # TODO: shift right 1 to strip the R/W bit and recover the 7-bit address
+    return None
+
+if __name__ == "__main__":
+    mpu6050_addr = 0x68  # 7-bit address as listed in the datasheet
+
+    write_addr = address_7bit_to_8bit_write(mpu6050_addr)
+    read_addr  = address_7bit_to_8bit_read(mpu6050_addr)
+
+    print(f"7-bit address: {hex(mpu6050_addr)}")
+    print(f"8-bit write address: {hex(write_addr)} (expected 0xd0)")
+    print(f"8-bit read address:  {hex(read_addr)} (expected 0xd1)")
+
+    # Round trip check
+    recovered = address_8bit_to_7bit(write_addr)
+    print(f"Recovered 7-bit from write address: {hex(recovered)} (should equal {hex(mpu6050_addr)})")
+`,
+    skillTags: ["I2C Protocol", "Microcontroller", "Bit Manipulation", "Embedded Systems"],
+    hints: [
+      "0x68 in binary is 1101000. Shifted left by 1 bit that's 11010000 = 0xD0 — this is exactly the 'confusing' 8-bit value bus scanners and raw logic analyzer captures often show instead of the datasheet's 7-bit address.",
+      "Datasheets almost universally list the 7-bit address; some I2C libraries expect you to pass the 7-bit form and shift internally, while others (or raw bus traces) expect the pre-shifted 8-bit form — mixing these up is the #1 cause of 'my I2C device isn't responding' bugs.",
+      "The R/W bit is the least significant bit of the 8-bit address byte: 0 means the master is about to WRITE to the device, 1 means the master wants to READ from it.",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ECE — ANALOG CIRCUIT DESIGN
+// ─────────────────────────────────────────────────────────────────────────────
+export const ECE_ANALOG_CHALLENGES = [
+  {
+    id: "ece-analog-001",
+    title: "Non-Inverting Op-Amp Gain Calculation",
+    category: "Analog Circuit Design",
+    icon: "⚡",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python"],
+    scenario:
+      "A sensor signal-conditioning board needs to amplify a small 50mV sensor signal up to a usable 2.5V range using a non-inverting op-amp stage. The student needs to pick two resistor values that produce the target gain, then verify the output stays within the op-amp's supply rails.",
+    objective:
+      "Compute the gain of a non-inverting op-amp configuration from its feedback resistor values, and check whether a given input signal would clip against the supply rails.",
+    steps: [
+      "Apply the non-inverting gain formula: Gain = 1 + (Rf / Rin)",
+      "Compute the output voltage for a given input voltage and gain",
+      "Check whether the output voltage would exceed the supply rail limits (clipping)",
+      "Test with sample resistor values and a small input signal",
+      "Report the gain, output voltage, and whether clipping occurs",
+    ],
+    workstation: "notebook",
+    starterCode: `# Non-Inverting Op-Amp Gain Calculation
+def non_inverting_gain(r_feedback, r_input):
+    # TODO: Gain = 1 + (Rf / Rin)
+    return None
+
+def output_voltage(v_in, r_feedback, r_input):
+    gain = non_inverting_gain(r_feedback, r_input)
+    # TODO: v_out = v_in * gain
+    return None
+
+def check_clipping(v_out, v_supply_pos=5.0, v_supply_neg=0.0):
+    # TODO: return True if v_out is outside [v_supply_neg, v_supply_pos]
+    return None
+
+if __name__ == "__main__":
+    r_f = 47000   # 47k feedback resistor
+    r_in = 1000   # 1k input resistor
+    v_in = 0.05   # 50 mV sensor signal
+
+    gain = non_inverting_gain(r_f, r_in)
+    v_out = output_voltage(v_in, r_f, r_in)
+    clips = check_clipping(v_out)
+
+    print(f"Gain: {gain:.1f}x")
+    print(f"Output voltage: {v_out:.3f} V")
+    print(f"Clips against 0-5V supply: {'YES' if clips else 'NO'}")
+`,
+    skillTags: ["Op-Amp", "Analog Design", "Signal Conditioning"],
+    hints: [
+      "The '+1' in the non-inverting gain formula is easy to forget — unlike the inverting configuration (Gain = -Rf/Rin), the non-inverting op-amp always has a minimum gain of 1, even if Rf were 0.",
+      "With Rf=47k and Rin=1k, the gain works out to 48x — applied to a 50mV input that's 2.4V output, comfortably within a 0-5V single-supply rail.",
+      "Real op-amp outputs can't swing all the way to the supply rail voltages (there's usually some headroom lost) — this simplified check assumes an ideal rail-to-rail op-amp for clarity.",
+    ],
+  },
+  {
+    id: "ece-analog-002",
+    title: "RC Low-Pass Filter Cutoff Frequency",
+    category: "Analog Circuit Design",
+    icon: "⚡",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python"],
+    scenario:
+      "A microphone preamp circuit picks up unwanted high-frequency noise above 5kHz that needs filtering out before the audio signal reaches the ADC. A simple RC low-pass filter is the cheapest fix, but the student needs to pick an R and C combination that puts the cutoff frequency in the right place.",
+    objective:
+      "Write functions to compute an RC low-pass filter's cutoff frequency from component values, and to solve for the required capacitor value given a target cutoff frequency and a chosen resistor.",
+    steps: [
+      "Apply the cutoff frequency formula: fc = 1 / (2 * pi * R * C)",
+      "Rearrange to solve for C given a target fc and chosen R: C = 1 / (2 * pi * R * fc)",
+      "Test computing fc from a standard R and C combination",
+      "Test the reverse: solve for C given a 5kHz target and a chosen R",
+      "Verify plugging the solved C back into the forward formula recovers the target frequency",
+    ],
+    workstation: "notebook",
+    starterCode: `# RC Low-Pass Filter Cutoff Frequency
+import math
+
+def cutoff_frequency_hz(r_ohms, c_farads):
+    # TODO: fc = 1 / (2 * pi * R * C)
+    return None
+
+def solve_capacitance_farads(r_ohms, target_fc_hz):
+    # TODO: rearrange the cutoff formula to solve for C
+    return None
+
+if __name__ == "__main__":
+    # Forward: known R and C, find fc
+    r = 1000       # 1k ohm
+    c = 15.9e-9    # 15.9 nF
+    fc = cutoff_frequency_hz(r, c)
+    print(f"R={r} ohm, C={c*1e9:.1f} nF  →  fc = {fc:.1f} Hz")
+
+    # Reverse: target fc, solve for C given a chosen R
+    target_fc = 5000  # 5 kHz target cutoff
+    r_chosen = 3300    # 3.3k ohm resistor on hand
+    c_needed = solve_capacitance_farads(r_chosen, target_fc)
+    print(f"To get fc={target_fc} Hz with R={r_chosen} ohm, need C = {c_needed*1e9:.2f} nF")
+
+    # Verify round trip
+    fc_check = cutoff_frequency_hz(r_chosen, c_needed)
+    print(f"Verification: R={r_chosen}, C={c_needed*1e9:.2f}nF  →  fc = {fc_check:.1f} Hz (should be close to {target_fc})")
+`,
+    skillTags: ["RC Filters", "Analog Design", "Signal Processing"],
+    hints: [
+      "The forward test case (R=1k, C=15.9nF) is chosen to land almost exactly on fc=10000 Hz — a good round-number sanity check for your formula before trusting the reverse-solve version.",
+      "When solving for C, make sure you're isolating C algebraically from fc = 1/(2πRC) correctly: C = 1/(2π·R·fc), not R/(2π·fc) or some other rearrangement.",
+      "Real capacitor values come in standard series (E12, E24) so a 'solved' value like 9.65nF would in practice be rounded to the nearest standard part (e.g. 10nF), which is why the round-trip verification shows a 'close to' target rather than an exact match.",
+    ],
+  },
+  {
+    id: "ece-analog-003",
+    title: "Voltage Divider with Load Resistance Error",
+    category: "Analog Circuit Design",
+    icon: "⚡",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 15,
+    tools: ["Python"],
+    scenario:
+      "A student built a resistive voltage divider expecting exactly 2.5V output from a 5V supply using two equal 10k resistors. When they connect their multimeter (which is ideal, high impedance) it reads 2.5V correctly — but when they connect the divider to drive a load with only 10k of input impedance, the output sags noticeably below 2.5V. This 'loading effect' catches every beginner at least once.",
+    objective:
+      "Compute the actual output voltage of a voltage divider once a finite load resistance is connected, and quantify the error versus the ideal (unloaded) prediction.",
+    steps: [
+      "Compute the ideal (unloaded) divider output: Vout = Vin * R2 / (R1 + R2)",
+      "Compute the effective resistance of R2 in parallel with the load resistance",
+      "Recompute the loaded divider output using the effective parallel resistance in place of R2",
+      "Compute the percentage error between ideal and loaded output",
+      "Report both values and flag if the error exceeds a 5% threshold",
+    ],
+    workstation: "notebook",
+    starterCode: `# Voltage Divider with Load Resistance Error
+def ideal_divider_output(v_in, r1, r2):
+    # TODO: Vout = Vin * R2 / (R1 + R2)
+    return None
+
+def parallel_resistance(r_a, r_b):
+    # TODO: R_parallel = (Ra * Rb) / (Ra + Rb)
+    return None
+
+def loaded_divider_output(v_in, r1, r2, r_load):
+    # TODO: replace R2 with R2 in parallel with r_load, then apply the divider formula
+    r2_effective = parallel_resistance(r2, r_load)
+    return None
+
+def percent_error(ideal, actual):
+    # TODO: error % = abs(ideal - actual) / ideal * 100
+    return None
+
+if __name__ == "__main__":
+    v_in = 5.0
+    r1 = 10000
+    r2 = 10000
+    r_load = 10000  # a load with the same impedance as R2 -- significant loading effect
+
+    ideal = ideal_divider_output(v_in, r1, r2)
+    loaded = loaded_divider_output(v_in, r1, r2, r_load)
+    error = percent_error(ideal, loaded)
+
+    print(f"Ideal (unloaded) output: {ideal:.3f} V")
+    print(f"Loaded output: {loaded:.3f} V")
+    print(f"Error: {error:.1f}%")
+    print(f"Significant loading effect (>5%): {'YES' if error > 5 else 'NO'}")
+`,
+    skillTags: ["Voltage Divider", "Analog Design", "Loading Effect"],
+    hints: [
+      "A multimeter reads correctly because it has very high input impedance (megohms) — it barely draws any current, so it doesn't disturb the divider. A real load with impedance comparable to the divider resistors is a completely different story.",
+      "R2 in parallel with an equal-value load resistance is exactly half of R2's original value — that's a useful mental shortcut: equal parallel resistors always halve.",
+      "This exact loading-effect problem is why voltage dividers are a poor choice for driving anything except very high-impedance inputs — an op-amp buffer stage is the standard fix in real circuit design.",
+    ],
+  },
+  {
+    id: "ece-analog-004",
+    title: "Common-Emitter BJT Bias Point (Q-Point) Calculation",
+    category: "Analog Circuit Design",
+    icon: "⚡",
+    difficulty: "Hard",
+    timeLimit: "35 min",
+    eloGain: 18,
+    tools: ["Python"],
+    scenario:
+      "A common-emitter BJT amplifier stage needs its DC bias point (Q-point) set correctly before any AC signal analysis makes sense — bias it wrong and the transistor either clips the signal against the rails or barely conducts at all. The student is using voltage-divider bias, the standard stable biasing topology, and needs to compute the resulting collector current and voltage.",
+    objective:
+      "Implement the voltage-divider bias analysis for a common-emitter BJT stage: compute the base voltage from the divider, the emitter current, and the resulting collector-emitter voltage, then check the transistor isn't saturated or cut off.",
+    steps: [
+      "Compute the Thevenin base voltage from the bias resistor divider: Vth = Vcc * R2 / (R1 + R2)",
+      "Compute emitter voltage: Ve = Vth - Vbe (typically Vbe = 0.7V)",
+      "Compute emitter current: Ie = Ve / Re",
+      "Approximate collector current as Ic ≈ Ie (valid for high-beta transistors)",
+      "Compute Vce = Vcc - Ic*(Rc + Re) and check it's comfortably between 0V and Vcc (active region, not saturated or cut off)",
+    ],
+    workstation: "notebook",
+    starterCode: `# Common-Emitter BJT Bias Point (Q-Point) Calculation
+def thevenin_base_voltage(vcc, r1, r2):
+    # TODO: Vth = Vcc * R2 / (R1 + R2)
+    return None
+
+def emitter_current(vcc, r1, r2, re, vbe=0.7):
+    vth = thevenin_base_voltage(vcc, r1, r2)
+    # TODO: Ve = Vth - Vbe, then Ie = Ve / Re
+    ve = None
+    ie = None
+    return ie
+
+def collector_emitter_voltage(vcc, r1, r2, rc, re, vbe=0.7):
+    ie = emitter_current(vcc, r1, r2, re, vbe)
+    ic = ie  # approximation: Ic ≈ Ie for high-beta transistors
+    # TODO: Vce = Vcc - Ic*(Rc + Re)
+    return None
+
+def check_active_region(vce, vcc, saturation_margin=0.2):
+    # TODO: return True if vce is between saturation_margin and (vcc - saturation_margin)
+    # i.e. not saturated (too close to 0V) and not cut off (too close to Vcc)
+    return None
+
+if __name__ == "__main__":
+    vcc = 12.0
+    r1 = 47000   # upper bias resistor
+    r2 = 10000   # lower bias resistor
+    rc = 2200    # collector resistor
+    re = 1000    # emitter resistor
+
+    vth = thevenin_base_voltage(vcc, r1, r2)
+    ie  = emitter_current(vcc, r1, r2, re)
+    vce = collector_emitter_voltage(vcc, r1, r2, rc, re)
+    in_active_region = check_active_region(vce, vcc)
+
+    print(f"Thevenin base voltage: {vth:.3f} V")
+    print(f"Emitter current: {ie*1000:.3f} mA")
+    print(f"Vce: {vce:.3f} V")
+    print(f"In active region (not saturated/cut off): {'YES' if in_active_region else 'NO'}")
+`,
+    skillTags: ["BJT Amplifiers", "Analog Design", "Bias Point Analysis"],
+    hints: [
+      "The Thevenin equivalent of the R1/R2 bias divider is what actually sets the base voltage — this is the same voltage-divider math as any other divider, just applied to compute a bias point rather than a standalone output signal.",
+      "Vbe = 0.7V is the standard silicon BJT approximation used almost universally in hand-calculation bias analysis — real devices vary a bit, but 0.7V is the expected assumption here.",
+      "A Q-point sitting too close to Vcc means the transistor is nearly cut off (barely conducting); a Q-point too close to 0V means it's saturated (can't respond to further base drive) — good bias design usually aims for Vce around Vcc/2 for maximum symmetric swing.",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ECE — PCB DESIGN & EMI/EMC
+// ─────────────────────────────────────────────────────────────────────────────
+export const ECE_PCB_CHALLENGES = [
+  {
+    id: "ece-pcb-001",
+    title: "PCB Trace Width for Current Capacity (IPC-2221)",
+    category: "PCB Design",
+    icon: "🖥️",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python"],
+    scenario:
+      "A student is laying out a PCB for a motor driver board that needs to carry 3A of current on an external copper layer. Too thin a trace acts like a fuse — it heats up and can even burn open under sustained current. The IPC-2221 standard gives the industry formula for minimum trace width based on current and allowed temperature rise.",
+    objective:
+      "Implement the simplified IPC-2221 external-layer trace width formula to compute the minimum copper trace width needed to carry a given current without exceeding a target temperature rise.",
+    steps: [
+      "Use the IPC-2221 external layer formula: Area(mils^2) = (I / (k * dT^b))^(1/c), with k=0.048, b=0.44, c=0.725 for external layers",
+      "Convert the resulting cross-sectional area to a trace width given a standard 1oz copper thickness (1.37 mils)",
+      "Test with a 3A current and 10°C allowed temperature rise",
+      "Convert the result from mils to millimeters for a more familiar unit",
+      "Print both the required area and trace width",
+    ],
+    workstation: "notebook",
+    starterCode: `# PCB Trace Width for Current Capacity (IPC-2221)
+def required_trace_area_mils2(current_amps, temp_rise_c, k=0.048, b=0.44, c=0.725):
+    # TODO: Area = (I / (k * dT^b)) ^ (1/c)
+    return None
+
+def trace_width_mils(current_amps, temp_rise_c, copper_thickness_mils=1.37):
+    area = required_trace_area_mils2(current_amps, temp_rise_c)
+    # TODO: width = area / thickness
+    return None
+
+def mils_to_mm(mils):
+    # TODO: 1 mil = 0.0254 mm
+    return None
+
+if __name__ == "__main__":
+    current = 3.0      # 3 Amps
+    temp_rise = 10.0   # 10°C allowed rise
+
+    area = required_trace_area_mils2(current, temp_rise)
+    width_mils = trace_width_mils(current, temp_rise)
+    width_mm = mils_to_mm(width_mils)
+
+    print(f"Current: {current} A, Allowed rise: {temp_rise}°C")
+    print(f"Required copper area: {area:.1f} mils²")
+    print(f"Required trace width: {width_mils:.1f} mils ({width_mm:.3f} mm)")
+`,
+    skillTags: ["PCB Design", "IPC-2221", "Power Electronics"],
+    hints: [
+      "This is the standard formula PCB design tools (KiCad, Altium) use internally for their built-in trace-width calculators — implementing it by hand here is exactly what those tools automate.",
+      "For 3A at 10°C rise on external copper, expect a trace width somewhere in the 40-60 mil range (roughly 1-1.5mm) — if your result is wildly different, check the exponent (1/c) is applied correctly.",
+      "External layer traces (on the outside of the board, exposed to air) can carry more current per unit width than internal layer traces (buried inside the board, worse heat dissipation) — this formula is specifically for external layers.",
+    ],
+  },
+  {
+    id: "ece-pcb-002",
+    title: "Microstrip Trace Impedance Estimation",
+    category: "PCB Design",
+    icon: "🖥️",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 15,
+    tools: ["Python"],
+    scenario:
+      "A high-speed USB signal trace on a 4-layer PCB needs to be routed with a controlled 90-ohm differential impedance to avoid reflections that corrupt the signal. Getting the trace width and dielectric spacing right is what achieves this — but the relationship isn't obvious without the microstrip impedance formula.",
+    objective:
+      "Implement the simplified microstrip characteristic impedance formula to estimate a single-ended trace's impedance from its width, the dielectric height beneath it, and the board's dielectric constant.",
+    steps: [
+      "Apply the simplified microstrip formula: Z0 = (87 / sqrt(er + 1.41)) * ln(5.98*h / (0.8*w + t))",
+      "Where er is dielectric constant, h is height above ground plane, w is trace width, t is copper thickness (all in consistent units, e.g. mils)",
+      "Test with typical FR4 values (er=4.4) and a target 50-ohm single-ended impedance",
+      "Given a fixed height and copper thickness, iterate/search for the trace width that gets closest to the 50-ohm target",
+      "Report the found width and the resulting impedance",
+    ],
+    workstation: "notebook",
+    starterCode: `# Microstrip Trace Impedance Estimation
+import math
+
+def microstrip_impedance(width_mils, height_mils, thickness_mils, er):
+    # TODO: Z0 = (87 / sqrt(er + 1.41)) * ln(5.98*h / (0.8*w + t))
+    return None
+
+def find_width_for_target_impedance(target_z0, height_mils, thickness_mils, er,
+                                     width_min=1, width_max=50, step=0.1):
+    best_width = None
+    best_diff = float("inf")
+
+    w = width_min
+    while w <= width_max:
+        # TODO: compute impedance at this width, track the width with
+        # the smallest |impedance - target_z0|
+        z = microstrip_impedance(w, height_mils, thickness_mils, er)
+        diff = abs(z - target_z0)
+        if diff < best_diff:
+            best_diff = diff
+            best_width = w
+        w += step
+
+    return best_width
+
+if __name__ == "__main__":
+    er = 4.4               # typical FR4 dielectric constant
+    height = 6.7            # mils, dielectric height above ground plane
+    thickness = 1.37        # mils, 1oz copper thickness
+    target_z0 = 50.0        # target single-ended impedance
+
+    best_w = find_width_for_target_impedance(target_z0, height, thickness, er)
+    achieved_z0 = microstrip_impedance(best_w, height, thickness, er)
+
+    print(f"Target impedance: {target_z0} ohm")
+    print(f"Best trace width found: {best_w:.2f} mils")
+    print(f"Achieved impedance: {achieved_z0:.2f} ohm")
+`,
+    skillTags: ["PCB Design", "Impedance Matching", "High-Speed Design"],
+    hints: [
+      "This simplified formula is an approximation (real PCB design tools use full 2D field solvers) but it's accurate enough to get within a few percent of the true impedance and understand the width-vs-impedance relationship: narrower traces have HIGHER impedance.",
+      "The search function is a simple linear sweep — start with a coarse step to find the right neighborhood, and notice that as width increases, impedance decreases (an inverse-ish relationship), which is why the loop can just track the single best candidate.",
+      "For 50 ohms on standard FR4 with h≈6.7mils, expect a trace width somewhere around 12-13 mils — this is a well-known rule-of-thumb result worth checking your formula against.",
+    ],
+  },
+  {
+    id: "ece-pcb-003",
+    title: "Decoupling Capacitor Value Selection by Frequency",
+    category: "PCB Design",
+    icon: "🖥️",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python"],
+    scenario:
+      "A digital board layout needs decoupling capacitors near each IC's power pin to suppress switching noise. A common beginner mistake is picking one capacitor value for everything — in reality, each capacitor value is only effective (low impedance) over a specific frequency range, which is why boards use multiple capacitor values in parallel.",
+    objective:
+      "Compute a capacitor's self-resonant-adjacent impedance behavior by calculating its reactance at a given frequency, and determine which of several standard decoupling capacitor values is most effective (lowest reactance) at a target noise frequency.",
+    steps: [
+      "Compute capacitive reactance: Xc = 1 / (2 * pi * f * C)",
+      "Given a target noise frequency, compute the reactance for several standard capacitor values (100nF, 10nF, 1nF, 100pF)",
+      "Identify which capacitor value gives the lowest reactance (best decoupling) at that frequency",
+      "Test at two different frequencies (a lower and a higher one) and show the 'best' capacitor changes",
+      "Print a comparison table of reactance per capacitor value at each test frequency",
+    ],
+    workstation: "notebook",
+    starterCode: `# Decoupling Capacitor Value Selection by Frequency
+import math
+
+def capacitive_reactance_ohms(freq_hz, capacitance_farads):
+    # TODO: Xc = 1 / (2 * pi * f * C)
+    return None
+
+def best_decoupling_cap(freq_hz, candidate_caps_farads):
+    # TODO: compute reactance for each candidate, return the (cap_value, reactance)
+    # pair with the LOWEST reactance (best decoupling at this frequency)
+    best_cap = None
+    best_reactance = float("inf")
+    for cap in candidate_caps_farads:
+        xc = capacitive_reactance_ohms(freq_hz, cap)
+        if xc < best_reactance:
+            best_reactance = xc
+            best_cap = cap
+    return best_cap, best_reactance
+
+if __name__ == "__main__":
+    candidates = [100e-9, 10e-9, 1e-9, 100e-12]  # 100nF, 10nF, 1nF, 100pF
+
+    for freq in [100e3, 50e6]:  # 100 kHz (low freq noise) vs 50 MHz (high freq noise)
+        print(f"\\n--- Target frequency: {freq/1e6:.3f} MHz ---")
+        for cap in candidates:
+            xc = capacitive_reactance_ohms(freq, cap)
+            print(f"  C={cap*1e9:.3f} nF  →  Xc={xc:.2f} ohm")
+
+        best_cap, best_xc = best_decoupling_cap(freq, candidates)
+        print(f"  Best choice at this frequency: {best_cap*1e9:.3f} nF (Xc={best_xc:.2f} ohm)")
+`,
+    skillTags: ["PCB Design", "Decoupling", "Signal Integrity"],
+    hints: [
+      "Reactance DECREASES as frequency increases for a fixed capacitance — this is why smaller capacitor values (which naturally reach their low-reactance region at higher frequencies) are chosen for high-frequency noise, and larger values for low-frequency noise.",
+      "At 100kHz, the 100nF capacitor should show the lowest reactance among the four candidates; at 50MHz, a much smaller capacitor should win — if your 'best' choice doesn't shift between the two test frequencies, check your reactance formula.",
+      "This is exactly why real boards place a mix of capacitor values (e.g. 100nF + 10nF + 1nF) in parallel near each IC — no single value is optimal across the whole noise spectrum a digital IC generates.",
+    ],
+  },
+  {
+    id: "ece-pcb-004",
+    title: "Ground Loop Area and EMI Radiation Estimate",
+    category: "PCB Design",
+    icon: "🖥️",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 15,
+    tools: ["Python"],
+    scenario:
+      "A PCB layout review flags a signal trace that routes far away from its return path, creating a large loop area between the signal and its ground return. Large loop areas act like tiny antennas, radiating EMI proportional to the loop area and current frequency — a common cause of boards failing EMC certification testing.",
+    objective:
+      "Estimate relative EMI radiation risk using the simplified relationship that radiated field strength is proportional to loop area × frequency² × current, and compare two candidate trace routings.",
+    steps: [
+      "Model each routing option as a rectangular loop area (trace length x separation from return path)",
+      "Compute a relative EMI risk score proportional to: loop_area_m2 * (frequency_hz ** 2) * current_amps",
+      "Compare a 'bad' routing (large separation from ground return) against a 'good' routing (tight ground return, small loop area)",
+      "Compute the ratio of bad-to-good EMI risk score",
+      "Report which routing is preferred and by what factor",
+    ],
+    workstation: "notebook",
+    starterCode: `# Ground Loop Area and EMI Radiation Estimate
+def loop_area_m2(trace_length_mm, separation_from_return_mm):
+    # TODO: convert both dimensions from mm to meters, then multiply for area
+    length_m = None
+    separation_m = None
+    return length_m * separation_m
+
+def relative_emi_risk(loop_area_m2_val, freq_hz, current_amps):
+    # TODO: risk is proportional to loop_area * freq^2 * current
+    # (this is a simplified relative comparison, not an absolute field-strength unit)
+    return None
+
+if __name__ == "__main__":
+    freq = 50e6       # 50 MHz clock signal
+    current = 0.02     # 20 mA signal current
+
+    # Bad routing: signal trace routed far from its ground return (e.g. across a plane split)
+    bad_length_mm = 40
+    bad_separation_mm = 15
+    bad_area = loop_area_m2(bad_length_mm, bad_separation_mm)
+    bad_risk = relative_emi_risk(bad_area, freq, current)
+
+    # Good routing: signal trace routed directly over a solid ground plane
+    good_length_mm = 40
+    good_separation_mm = 0.2   # very tight coupling to the return plane
+    good_area = loop_area_m2(good_length_mm, good_separation_mm)
+    good_risk = relative_emi_risk(good_area, freq, current)
+
+    print(f"Bad routing loop area: {bad_area*1e6:.3f} mm², relative EMI risk: {bad_risk:.3e}")
+    print(f"Good routing loop area: {good_area*1e6:.3f} mm², relative EMI risk: {good_risk:.3e}")
+    print(f"Bad routing is {bad_risk/good_risk:.0f}x higher EMI risk than good routing")
+`,
+    skillTags: ["PCB Design", "EMI/EMC", "Signal Integrity"],
+    hints: [
+      "Loop area is the product of two lengths (trace length and separation from its return path) — make sure BOTH are converted from millimeters to meters before multiplying, or the area will be off by a factor of a million.",
+      "The bad-vs-good ratio should work out to exactly the ratio of the two separation distances (75x here, since 15mm/0.2mm=75), because trace length and frequency and current are identical between the two scenarios — only separation differs.",
+      "In real PCB layout, routing high-speed or high-frequency signals directly over a continuous ground plane (minimizing separation) is one of the single most effective and cheapest EMI mitigation techniques available.",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ECE — DIGITAL SIGNAL PROCESSING FUNDAMENTALS
+// ─────────────────────────────────────────────────────────────────────────────
+export const ECE_DSP_CHALLENGES = [
+  {
+    id: "ece-dsp-001",
+    title: "Nyquist Sampling Rate Check",
+    category: "Digital Signal Processing",
+    icon: "📊",
+    difficulty: "Easy",
+    timeLimit: "15 min",
+    eloGain: 10,
+    tools: ["Python"],
+    scenario:
+      "A student is designing a data acquisition system to digitize an audio signal containing frequencies up to 8kHz. Before choosing an ADC sampling rate, they need to confirm it satisfies the Nyquist criterion — sample too slowly and higher frequencies alias into false lower frequencies, corrupting the recording in a way that can't be fixed after the fact.",
+    objective:
+      "Write a function that checks whether a proposed sampling rate satisfies the Nyquist criterion for a given maximum signal frequency, and computes the minimum required sampling rate.",
+    steps: [
+      "Compute the Nyquist minimum sampling rate: 2 * max_signal_frequency",
+      "Write a check function that compares a proposed sampling rate against this minimum",
+      "Test with an 8kHz audio signal and a proposed 16kHz sample rate (should just barely pass)",
+      "Test with the same signal and an insufficient 12kHz sample rate (should fail)",
+      "Print pass/fail results for both test cases with a clear explanation",
+    ],
+    workstation: "notebook",
+    starterCode: `# Nyquist Sampling Rate Check
+def nyquist_minimum_rate_hz(max_signal_freq_hz):
+    # TODO: minimum sampling rate = 2 * max signal frequency
+    return None
+
+def satisfies_nyquist(sample_rate_hz, max_signal_freq_hz):
+    minimum = nyquist_minimum_rate_hz(max_signal_freq_hz)
+    # TODO: return True if sample_rate_hz >= minimum
+    return None
+
+if __name__ == "__main__":
+    max_freq = 8000  # 8 kHz max signal frequency
+
+    minimum_rate = nyquist_minimum_rate_hz(max_freq)
+    print(f"Minimum required sampling rate: {minimum_rate} Hz")
+
+    for proposed_rate in [16000, 12000, 44100]:
+        ok = satisfies_nyquist(proposed_rate, max_freq)
+        print(f"Sample rate {proposed_rate} Hz: {'PASS' if ok else 'FAIL (aliasing risk!)'}")
+`,
+    skillTags: ["DSP Fundamentals", "Sampling Theory", "Nyquist Criterion"],
+    hints: [
+      "The Nyquist rate is exactly DOUBLE the highest frequency component present in the signal — sampling at exactly this rate is the theoretical minimum, which is why real systems (like 44100 Hz for 8kHz audio) sample well above it for margin.",
+      "12000 Hz should fail this check (12000 < 16000 minimum) — if your function marks it as passing, double check the >= comparison direction in satisfies_nyquist().",
+      "Sampling below the Nyquist rate doesn't just lose the high-frequency content — it causes ALIASING, where those high frequencies fold back and appear as false, corrupting lower frequencies that weren't even in the original signal.",
+    ],
+  },
+  {
+    id: "ece-dsp-002",
+    title: "Simple Moving Average Filter (Noise Smoothing)",
+    category: "Digital Signal Processing",
+    icon: "📊",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python"],
+    scenario:
+      "A temperature sensor's raw digital readings are noisy — jumping around by a degree or two between samples even when the actual temperature is stable. A simple moving average filter is the most basic and widely-used technique to smooth out this kind of sample-to-sample noise before displaying or logging the value.",
+    objective:
+      "Implement a simple moving average filter that smooths a sequence of noisy sensor readings using a sliding window of the last N samples.",
+    steps: [
+      "Implement a function that computes the moving average over a window of the last N samples at each point in a sequence",
+      "For the first few samples (fewer than N available), average over however many samples exist so far",
+      "Apply the filter to a synthetic noisy signal and observe the smoothed output",
+      "Test with window sizes of 3 and 5, and compare how much smoother the larger window is",
+      "Print the raw vs filtered values side by side",
+    ],
+    workstation: "notebook",
+    starterCode: `# Simple Moving Average Filter (Noise Smoothing)
+def moving_average(readings, window_size):
+    filtered = []
+    for i in range(len(readings)):
+        # TODO: take the window of the last 'window_size' readings ending at index i
+        # (use however many samples are available if fewer than window_size exist so far)
+        start = max(0, i - window_size + 1)
+        window = readings[start:i+1]
+
+        # TODO: compute the average of the window
+        avg = None
+        filtered.append(avg)
+    return filtered
+
+if __name__ == "__main__":
+    # Noisy temperature readings, actual stable value is ~25.0
+    noisy_readings = [25.2, 24.6, 25.8, 24.3, 25.5, 24.9, 25.1, 25.7, 24.4, 25.0]
+
+    smoothed_3 = moving_average(noisy_readings, window_size=3)
+    smoothed_5 = moving_average(noisy_readings, window_size=5)
+
+    print(f"{'Raw':>8} {'MA(3)':>8} {'MA(5)':>8}")
+    for raw, ma3, ma5 in zip(noisy_readings, smoothed_3, smoothed_5):
+        print(f"{raw:>8.2f} {ma3:>8.2f} {ma5:>8.2f}")
+`,
+    skillTags: ["DSP Fundamentals", "Digital Filtering", "Noise Reduction"],
+    hints: [
+      "At i=0 (the very first sample), the window can only contain that one sample — the average of a single value is just that value itself, which is why the 'start = max(0, ...)' handles the edge case at the beginning of the sequence.",
+      "A larger window size smooths more aggressively but also reacts more slowly to genuine changes in the signal — MA(5) should show a visibly flatter output than MA(3) on this noisy test data.",
+      "This moving average filter is a form of FIR (Finite Impulse Response) low-pass filter — conceptually the same idea as the RC low-pass filter, just implemented in the digital/software domain instead of analog hardware.",
+    ],
+  },
+  {
+    id: "ece-dsp-003",
+    title: "Detecting a Sine Wave's Frequency via Zero-Crossing",
+    category: "Digital Signal Processing",
+    icon: "📊",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 15,
+    tools: ["Python"],
+    scenario:
+      "An embedded system needs a lightweight way to estimate the frequency of an incoming sine wave signal without running a full FFT (which is computationally expensive for a small microcontroller). Zero-crossing detection — counting how often the signal crosses zero — is a simple, cheap alternative that works well for clean single-tone signals.",
+    objective:
+      "Implement a zero-crossing frequency detector: count zero crossings in a sampled signal over a known time window, and use that count to estimate the signal's frequency.",
+    steps: [
+      "Given a list of sampled signal values and the sample rate, detect zero crossings (sign changes between consecutive samples)",
+      "Count the total number of zero crossings in the sample buffer",
+      "Compute the time duration covered by the buffer (num_samples / sample_rate)",
+      "Estimate frequency: a full sine wave cycle has exactly 2 zero crossings, so frequency = (num_crossings / 2) / duration_seconds",
+      "Test against a synthetically generated sine wave of known frequency and confirm the estimate is close",
+    ],
+    workstation: "notebook",
+    starterCode: `# Detecting a Sine Wave's Frequency via Zero-Crossing
+import math
+
+def count_zero_crossings(samples):
+    crossings = 0
+    for i in range(1, len(samples)):
+        # TODO: a zero crossing happens when consecutive samples have
+        # different signs (one positive, one negative or zero)
+        prev = samples[i-1]
+        curr = samples[i]
+        if None:  # TODO: replace with the correct sign-change condition
+            crossings += 1
+    return crossings
+
+def estimate_frequency_hz(samples, sample_rate_hz):
+    crossings = count_zero_crossings(samples)
+    duration_s = len(samples) / sample_rate_hz
+    # TODO: each full cycle has 2 zero crossings
+    estimated_freq = None
+    return estimated_freq
+
+if __name__ == "__main__":
+    # Generate a synthetic 1kHz sine wave, sampled at 10kHz for 50ms
+    sample_rate = 10000
+    true_freq = 1000
+    duration = 0.05
+    num_samples = int(sample_rate * duration)
+
+    samples = [math.sin(2 * math.pi * true_freq * (i / sample_rate)) for i in range(num_samples)]
+
+    estimated = estimate_frequency_hz(samples, sample_rate)
+    print(f"True frequency: {true_freq} Hz")
+    print(f"Estimated frequency (zero-crossing method): {estimated:.1f} Hz")
+`,
+    skillTags: ["DSP Fundamentals", "Frequency Estimation", "Signal Processing"],
+    hints: [
+      "A sign change means prev and curr have opposite signs — one common way to express this in code is checking if (prev < 0 and curr >= 0) or (prev >= 0 and curr < 0), or equivalently that prev * curr < 0.",
+      "One complete sine wave cycle crosses zero exactly twice (once going up, once going down) — this is why the crossing count needs dividing by 2 before converting to a frequency.",
+      "Zero-crossing detection is fast and cheap but only works reliably for clean, single-tone signals — real-world noisy or multi-tone signals need a proper FFT for accurate frequency analysis, which is the trade-off this lightweight technique makes.",
+    ],
+  },
+  {
+    id: "ece-dsp-004",
+    title: "Quantization Noise and SNR for an N-bit ADC",
+    category: "Digital Signal Processing",
+    icon: "📊",
+    difficulty: "Hard",
+    timeLimit: "35 min",
+    eloGain: 18,
+    tools: ["Python"],
+    scenario:
+      "An audio engineering student is choosing between a 12-bit and 16-bit ADC for a recording project. Every ADC introduces quantization noise — the rounding error from representing a continuous analog signal with a finite number of digital levels. The choice of bit depth directly determines the theoretical best-case signal-to-noise ratio (SNR) achievable.",
+    objective:
+      "Implement the theoretical SNR formula for an N-bit ADC (SNR = 6.02*N + 1.76 dB) and compare quantization noise characteristics across different bit depths.",
+    steps: [
+      "Implement the standard ADC quantization SNR formula: SNR(dB) = 6.02 * N + 1.76",
+      "Compute and compare the theoretical SNR for 8-bit, 12-bit, and 16-bit ADCs",
+      "Compute the quantization step size (LSB voltage) for a given ADC resolution and reference voltage",
+      "Verify that each additional bit of resolution improves SNR by approximately 6 dB",
+      "Report a summary table of bits, SNR, and quantization step size",
+    ],
+    workstation: "notebook",
+    starterCode: `# Quantization Noise and SNR for an N-bit ADC
+def theoretical_snr_db(num_bits):
+    # TODO: SNR(dB) = 6.02 * N + 1.76
+    return None
+
+def quantization_step_v(num_bits, v_ref):
+    # TODO: step size = v_ref / (2^num_bits)
+    return None
+
+if __name__ == "__main__":
+    v_ref = 3.3  # 3.3V reference
+
+    print(f"{'Bits':>6} {'SNR (dB)':>10} {'LSB step (mV)':>15}")
+    results = {}
+    for bits in [8, 12, 16, 24]:
+        snr = theoretical_snr_db(bits)
+        step = quantization_step_v(bits, v_ref)
+        results[bits] = snr
+        print(f"{bits:>6} {snr:>10.2f} {step*1000:>15.4f}")
+
+    # Verify the "~6dB per bit" rule of thumb
+    diff_8_to_12 = results[12] - results[8]
+    diff_per_bit = diff_8_to_12 / (12 - 8)
+    print(f"\\nSNR improvement per bit (8→12 bit): {diff_per_bit:.2f} dB/bit (should be close to 6.02)")
+`,
+    skillTags: ["DSP Fundamentals", "Quantization", "SNR Analysis"],
+    hints: [
+      "The '6.02*N' term is the dominant part of the formula and is exactly why the well-known rule of thumb '6dB per bit' exists — the +1.76 is a fixed offset that doesn't change the per-bit slope.",
+      "Going from 8-bit to 16-bit (doubling the resolution in bit-count, but actually 256x more quantization levels) should improve theoretical SNR by roughly 8 * 6.02 ≈ 48 dB — a very large practical difference in recording quality.",
+      "The quantization step (LSB size) shrinks by a factor of 2 for every additional bit — this is the direct hardware reason more bits mean less quantization error and thus better SNR.",
+    ],
+  },
+]
+
 // Full AI & Data Science pool -- all 11 sub-topic arrays, not just the base 4.
 // Used by both `data` (Data Analyst) and `bi_analyst` (BI Analyst) roles below.
 const _AI_DS_FULL_POOL = [
