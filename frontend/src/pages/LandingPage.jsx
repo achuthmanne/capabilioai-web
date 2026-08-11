@@ -46,7 +46,25 @@ function PageParticleField() {
     let height = mount.clientHeight
     if (width === 0 || height === 0) return
 
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true })
+    // WebGL context creation can fail/throw outright -- most notably in
+    // Safari with Lockdown Mode enabled, which restricts WebGL and made
+    // `new THREE.WebGLRenderer(...)` throw synchronously here, crashing the
+    // ENTIRE landing page to the generic ErrorBoundary fallback ("Something
+    // went wrong") for every visitor in that mode, since this decorative,
+    // aria-hidden particle field was previously created unconditionally
+    // with no fallback. It's pure decoration (pointer-events disabled, not
+    // required for any content or functionality), so treat WebGL as
+    // progressive enhancement: if context creation fails for any reason,
+    // skip the effect entirely and let the rest of the landing page render
+    // normally with no particle field, exactly like the existing
+    // width===0/height===0 bail-out above.
+    let renderer
+    try {
+      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true })
+    } catch (err) {
+      console.warn("[PageParticleField] WebGL unavailable, skipping decorative particle field:", err)
+      return
+    }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
     renderer.setSize(width, height)
     renderer.domElement.style.display = "block"
