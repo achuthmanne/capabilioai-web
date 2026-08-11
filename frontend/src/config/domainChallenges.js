@@ -18814,6 +18814,1493 @@ X_clean = X[["feature_1", "feature_2"]]
   },
 ]
 
+// ─────────────────────────────────────────────────────────────────────────────
+// MBA — CORPORATE FINANCE & VALUATION
+// ─────────────────────────────────────────────────────────────────────────────
+export const MBA_FINANCE_CHALLENGES = [
+  {
+    id: "mba-fin-001",
+    title: "Build a Discounted Cash Flow (DCF) Valuation",
+    category: "Corporate Finance",
+    icon: "💰",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 18,
+    tools: ["Spreadsheet Logic", "Financial Modeling"],
+    scenario:
+      "A startup is raising a Series B round and the board wants an independent DCF valuation to sanity-check the term sheet's implied valuation, not just take the lead investor's number at face value.",
+    objective:
+      "Project free cash flows, discount them to present value using WACC, calculate terminal value, and derive the implied enterprise and equity value.",
+    steps: [
+      "Project 5 years of free cash flow from given revenue growth and margin assumptions",
+      "Discount each year's FCF to present value using the given WACC",
+      "Calculate terminal value using the Gordon Growth (perpetuity) method",
+      "Discount the terminal value to present value and sum with the discounted FCFs for enterprise value",
+      "Subtract net debt to get equity value, and divide by shares outstanding for implied value per share",
+    ],
+    workstation: "notebook",
+    starterCode: `# Discounted Cash Flow (DCF) Valuation
+import numpy as np
+
+# Assumptions
+revenue_year0 = 5_000_000       # current annual revenue
+revenue_growth_rates = [0.60, 0.45, 0.35, 0.25, 0.18]  # yr1..yr5, growth decelerating as company matures
+fcf_margin = 0.15               # free cash flow as % of revenue (assume stabilizes at this margin)
+wacc = 0.14                     # weighted average cost of capital (discount rate)
+terminal_growth_rate = 0.03     # long-run perpetuity growth (should be <= overall economic growth rate)
+net_debt = -2_000_000           # negative = net cash position
+shares_outstanding = 10_000_000
+
+# STEP 1: Project revenue and FCF for 5 years
+revenues = []
+current_revenue = revenue_year0
+# TODO: for growth in revenue_growth_rates:
+# TODO:     current_revenue = current_revenue * (1 + growth)
+# TODO:     revenues.append(current_revenue)
+
+# TODO: fcfs = [rev * fcf_margin for rev in revenues]
+# TODO: print("Projected FCF by year:", [f"\${fcf:,.0f}" for fcf in fcfs])
+
+# STEP 2: Discount each year's FCF to present value
+# TODO: discounted_fcfs = [fcf / (1 + wacc) ** (year + 1) for year, fcf in enumerate(fcfs)]
+# TODO: print("Discounted FCF by year:", [f"\${d:,.0f}" for d in discounted_fcfs])
+
+# STEP 3: Terminal value using Gordon Growth perpetuity formula
+# TV = FCF_year5 * (1 + g) / (WACC - g)
+# TODO: terminal_value = fcfs[-1] * (1 + terminal_growth_rate) / (wacc - terminal_growth_rate)
+# TODO: print(f"\\nTerminal value (undiscounted): \${terminal_value:,.0f}")
+
+# STEP 4: Discount terminal value to present value (same discount factor as year 5)
+# TODO: discounted_terminal_value = terminal_value / (1 + wacc) ** 5
+# TODO: enterprise_value = sum(discounted_fcfs) + discounted_terminal_value
+# TODO: print(f"Discounted terminal value: \${discounted_terminal_value:,.0f}")
+# TODO: print(f"Enterprise value: \${enterprise_value:,.0f}")
+
+# STEP 5: Equity value and per-share value
+# TODO: equity_value = enterprise_value - net_debt
+# TODO: value_per_share = equity_value / shares_outstanding
+# TODO: print(f"\\nEquity value: \${equity_value:,.0f}")
+# TODO: print(f"Implied value per share: \${value_per_share:.2f}")
+
+# TODO: print(f"\\nWhat fraction of enterprise value comes from the terminal value?")
+# TODO: print(f"Terminal value share: {discounted_terminal_value / enterprise_value * 100:.1f}%")
+# TODO: print("(A very high terminal-value share means the valuation is highly sensitive to")
+# TODO: print(" long-run assumptions far beyond the explicit forecast period -- worth flagging)")
+`,
+    skillTags: ["DCF", "Valuation", "WACC", "Terminal Value", "Corporate Finance"],
+    hints: [
+      "Terminal value typically represents 60-80%+ of total enterprise value in a DCF — this makes the terminal growth rate and WACC assumptions disproportionately influential, and worth stress-testing with sensitivity analysis rather than treating as a single fixed number",
+      "The terminal growth rate must be less than WACC (otherwise the perpetuity formula produces a negative or undefined terminal value) and is typically capped near long-run GDP growth, since no company can outgrow the economy forever",
+      "A DCF is only as good as its assumptions — the exercise here is as much about understanding WHICH inputs the valuation is most sensitive to as it is about the mechanical calculation itself",
+    ],
+  },
+  {
+    id: "mba-fin-002",
+    title: "Compare Financing Options: Debt vs Equity Dilution",
+    category: "Corporate Finance",
+    icon: "⚖️",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Financial Modeling"],
+    scenario:
+      "A company needs $2M in growth capital and is deciding between taking on debt (a term loan) or raising equity (giving up ownership). The founders need to understand the real trade-off in terms of dilution, financial risk, and ownership retained.",
+    objective:
+      "Model both financing scenarios and quantify the actual cost and risk trade-off: interest burden and default risk for debt versus permanent ownership dilution for equity.",
+    steps: [
+      "Model the debt scenario: calculate total interest cost over the loan term and the debt-to-EBITDA ratio it creates",
+      "Model the equity scenario: calculate the ownership percentage given up based on the pre-money valuation",
+      "Calculate the founders' retained ownership value under each scenario at a future exit valuation",
+      "Compare downside risk: what happens under each scenario if the company underperforms",
+      "Recommend a financing approach with explicit reasoning tied to the company's risk profile",
+    ],
+    workstation: "notebook",
+    starterCode: `# Debt vs Equity Financing Comparison
+capital_needed = 2_000_000
+
+# Debt scenario
+loan_interest_rate = 0.12
+loan_term_years = 4
+current_ebitda = 800_000
+
+# Equity scenario
+pre_money_valuation = 8_000_000
+exit_valuation_scenario = 40_000_000  # hypothetical future exit value
+founder_ownership_before = 1.00       # 100% founder-owned before this raise
+
+# STEP 1: Debt cost and leverage
+# TODO: total_interest_cost = capital_needed * loan_interest_rate * loan_term_years  # simplified, ignoring amortization
+# TODO: debt_to_ebitda = capital_needed / current_ebitda
+# TODO: print(f"Debt scenario: total interest over {loan_term_years} years = \${total_interest_cost:,.0f}")
+# TODO: print(f"Debt-to-EBITDA ratio: {debt_to_ebitda:.2f}x (above ~3-4x is typically considered risky for a growth company)")
+
+# STEP 2: Equity dilution
+# TODO: post_money_valuation = pre_money_valuation + capital_needed
+# TODO: investor_ownership_pct = capital_needed / post_money_valuation
+# TODO: founder_ownership_after = founder_ownership_before * (1 - investor_ownership_pct)
+# TODO: print(f"\\nEquity scenario: investor gets {investor_ownership_pct * 100:.1f}% ownership")
+# TODO: print(f"Founder ownership after raise: {founder_ownership_after * 100:.1f}%")
+
+# STEP 3: Founder's value at exit under each scenario
+# TODO: founder_exit_value_debt = exit_valuation_scenario - total_interest_cost  # debt: founders keep ~100% ownership minus interest paid
+# TODO: founder_exit_value_equity = exit_valuation_scenario * founder_ownership_after
+# TODO: print(f"\\nAt a \${exit_valuation_scenario:,.0f} exit:")
+# TODO: print(f"  Debt scenario founder value: \${founder_exit_value_debt:,.0f}")
+# TODO: print(f"  Equity scenario founder value: \${founder_exit_value_equity:,.0f}")
+
+# STEP 4: Downside risk comparison
+underperformance_ebitda = 200_000  # if the company underperforms badly
+# TODO: downside_debt_to_ebitda = capital_needed / underperformance_ebitda
+print("\\nDownside scenario (underperformance):")
+# TODO: print(f"  Debt: debt-to-EBITDA balloons to {downside_debt_to_ebitda:.2f}x -- risk of covenant breach or default")
+print("  Equity: no repayment obligation -- dilution already happened, but no bankruptcy risk from this capital")
+
+# STEP 5: Recommendation
+# TODO: print("\\nRecommendation: [fill in based on the numbers above and the company's cash flow stability]")
+`,
+    skillTags: ["Capital Structure", "Debt Financing", "Equity Dilution", "Corporate Finance", "Risk Management"],
+    hints: [
+      "Debt is cheaper in a high-growth, successful scenario (fixed repayment vs giving up a growing ownership stake) but carries real default/covenant risk if cash flow underperforms — equity has the opposite trade-off: more expensive in the good case, but no bankruptcy risk in the bad case",
+      "Debt-to-EBITDA above roughly 3-4x is often considered high risk for growth companies with less predictable cash flow — this threshold varies significantly by industry and cash flow stability",
+      "This decision is fundamentally about matching financing structure to the company's risk profile and cash flow predictability, not simply picking whichever has a lower 'headline cost' in the best-case projection",
+    ],
+  },
+  {
+    id: "mba-fin-003",
+    title: "Calculate Unit Economics and Payback Period for a Subscription Business",
+    category: "Corporate Finance",
+    icon: "📊",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Financial Modeling"],
+    scenario:
+      "A SaaS company's investors are asking pointed questions about unit economics: 'What's your CAC payback period, and is your LTV:CAC ratio actually healthy or are you burning cash to grow?' You need real numbers, not vibes.",
+    objective:
+      "Calculate customer acquisition cost (CAC), lifetime value (LTV), the LTV:CAC ratio, and CAC payback period from raw business metrics, and assess whether the unit economics are sustainable.",
+    steps: [
+      "Calculate blended CAC from total sales & marketing spend and new customers acquired",
+      "Calculate average customer lifetime from the monthly churn rate",
+      "Calculate LTV using average revenue per account, gross margin, and customer lifetime",
+      "Calculate the LTV:CAC ratio and CAC payback period in months",
+      "Assess against common SaaS health benchmarks (LTV:CAC > 3, payback period < 12-18 months)",
+    ],
+    workstation: "notebook",
+    starterCode: `# SaaS Unit Economics: CAC, LTV, Payback Period
+sales_marketing_spend = 300_000   # monthly S&M spend
+new_customers_this_month = 150
+average_revenue_per_account = 200  # monthly, per customer
+gross_margin = 0.75                # SaaS gross margin (COGS = hosting, support, etc.)
+monthly_churn_rate = 0.025         # 2.5% of customers churn each month
+
+# STEP 1: Blended CAC
+# TODO: cac = sales_marketing_spend / new_customers_this_month
+# TODO: print(f"Customer Acquisition Cost (CAC): \${cac:,.2f}")
+
+# STEP 2: Average customer lifetime (in months) from churn rate
+# Average lifetime = 1 / monthly churn rate
+# TODO: average_lifetime_months = 1 / monthly_churn_rate
+# TODO: print(f"Average customer lifetime: {average_lifetime_months:.1f} months ({average_lifetime_months / 12:.1f} years)")
+
+# STEP 3: Lifetime Value (LTV)
+# TODO: monthly_gross_profit_per_customer = average_revenue_per_account * gross_margin
+# TODO: ltv = monthly_gross_profit_per_customer * average_lifetime_months
+# TODO: print(f"\\nMonthly gross profit per customer: \${monthly_gross_profit_per_customer:.2f}")
+# TODO: print(f"Lifetime Value (LTV): \${ltv:,.2f}")
+
+# STEP 4: LTV:CAC ratio and payback period
+# TODO: ltv_to_cac_ratio = ltv / cac
+# TODO: payback_period_months = cac / monthly_gross_profit_per_customer
+# TODO: print(f"\\nLTV:CAC ratio: {ltv_to_cac_ratio:.2f}:1")
+# TODO: print(f"CAC payback period: {payback_period_months:.1f} months")
+
+# STEP 5: Health assessment against common benchmarks
+print("\\n=== Unit Economics Health Check ===")
+# TODO: if ltv_to_cac_ratio >= 3:
+# TODO:     print(f"LTV:CAC of {ltv_to_cac_ratio:.1f}:1 is HEALTHY (benchmark: >= 3:1)")
+# TODO: else:
+# TODO:     print(f"LTV:CAC of {ltv_to_cac_ratio:.1f}:1 is BELOW the healthy benchmark of 3:1 -- flag for investors")
+
+# TODO: if payback_period_months <= 18:
+# TODO:     print(f"Payback period of {payback_period_months:.1f} months is REASONABLE (benchmark: <= 12-18 months)")
+# TODO: else:
+# TODO:     print(f"Payback period of {payback_period_months:.1f} months is LONG -- cash-flow risk if growth capital dries up")
+`,
+    skillTags: ["Unit Economics", "CAC", "LTV", "SaaS Metrics", "Corporate Finance"],
+    hints: [
+      "LTV:CAC and payback period tell you different things: LTV:CAC measures whether the business model is fundamentally profitable per customer over time, while payback period measures cash-flow risk (how long the company is 'underwater' on each customer before recouping acquisition spend)",
+      "The average lifetime = 1/churn approximation assumes a constant churn rate over time, which is a simplification — real customer cohorts often have higher early churn ('early cancellers') and lower churn among customers who stick around past the first few months",
+      "A high LTV:CAC ratio with a very long payback period can still be a real problem — it says the business is profitable in theory but may run out of cash funding growth before those profits show up, especially without continued external funding",
+    ],
+  },
+  {
+    id: "mba-fin-004",
+    title: "Build a Sensitivity Analysis for a Capital Budgeting Decision",
+    category: "Corporate Finance",
+    icon: "🎯",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Financial Modeling", "Sensitivity Analysis"],
+    scenario:
+      "The board is evaluating whether to approve a $3M capital investment in new manufacturing equipment. The single-point NPV calculation looks positive, but the CFO wants to know how sensitive that answer is to the key uncertain assumptions before committing capital.",
+    objective:
+      "Calculate NPV under the base case, then run a sensitivity analysis varying the two most uncertain assumptions (unit sales growth and discount rate) to identify the range of outcomes and the break-even point.",
+    steps: [
+      "Calculate base-case NPV using given cash flow projections and discount rate",
+      "Identify the decision as GO or NO-GO based on base-case NPV",
+      "Run sensitivity analysis: recalculate NPV across a grid of discount rate and sales growth assumptions",
+      "Identify the break-even discount rate (IRR) and the sales growth threshold where NPV turns negative",
+      "Summarize the risk profile: how much cushion exists before the decision would flip to NO-GO",
+    ],
+    workstation: "notebook",
+    starterCode: `# Capital Budgeting Sensitivity Analysis
+import numpy as np
+
+initial_investment = 3_000_000
+base_annual_cash_flow = 900_000   # year 1 cash flow from the new equipment
+base_growth_rate = 0.04           # annual growth in cash flow (efficiency gains compound)
+base_discount_rate = 0.10
+project_years = 6
+
+def calculate_npv(initial_investment, base_cf, growth_rate, discount_rate, years):
+    cash_flows = []
+    cf = base_cf
+    for year in range(1, years + 1):
+        cash_flows.append(cf)
+        cf = cf * (1 + growth_rate)
+    npv = -initial_investment
+    for year, cf in enumerate(cash_flows, start=1):
+        npv += cf / (1 + discount_rate) ** year
+    return npv
+
+# STEP 1 & 2: Base case NPV
+# TODO: base_npv = calculate_npv(initial_investment, base_annual_cash_flow, base_growth_rate, base_discount_rate, project_years)
+# TODO: print(f"Base case NPV: \${base_npv:,.0f}")
+# TODO: print(f"Decision: {'GO' if base_npv > 0 else 'NO-GO'}")
+
+# STEP 3: Sensitivity grid across discount rate and growth rate
+discount_rates_to_test = [0.08, 0.10, 0.12, 0.14, 0.16]
+growth_rates_to_test = [0.00, 0.02, 0.04, 0.06, 0.08]
+
+print("\\n=== NPV Sensitivity Grid (rows=discount rate, cols=growth rate) ===")
+header = "disc\\\\growth  " + "  ".join([f"{g:.0%}" for g in growth_rates_to_test])
+# TODO: print(header)
+# TODO: for dr in discount_rates_to_test:
+# TODO:     row_values = []
+# TODO:     for gr in growth_rates_to_test:
+# TODO:         npv = calculate_npv(initial_investment, base_annual_cash_flow, gr, dr, project_years)
+# TODO:         row_values.append(npv)
+# TODO:     row_str = f"{dr:.0%}         " + "  ".join([f"{v/1e6:+.2f}M" for v in row_values])
+# TODO:     print(row_str)
+
+# STEP 4: Break-even discount rate (approximate IRR) at base growth assumption
+print("\\n=== Break-even discount rate search (base growth assumption) ===")
+# TODO: for dr in np.arange(0.08, 0.30, 0.01):
+# TODO:     npv = calculate_npv(initial_investment, base_annual_cash_flow, base_growth_rate, dr, project_years)
+# TODO:     if npv < 0:
+# TODO:         print(f"NPV turns negative between discount rate {dr - 0.01:.0%} and {dr:.0%} (this range brackets the IRR)")
+# TODO:         break
+
+# STEP 5: Risk summary
+# TODO: print(f"\\nAt the base discount rate of {base_discount_rate:.0%}, how much could growth underperform before NPV turns negative?")
+`,
+    skillTags: ["Capital Budgeting", "NPV", "Sensitivity Analysis", "IRR", "Corporate Finance"],
+    hints: [
+      "A single-point NPV hides how fragile or robust the decision actually is — sensitivity analysis reveals whether the GO decision holds up across a plausible range of assumptions, or whether it only works under optimistic conditions",
+      "The break-even discount rate found by searching where NPV crosses zero is exactly what IRR (Internal Rate of Return) represents — the discount rate at which a project's NPV equals zero",
+      "Board-level capital budgeting decisions should be presented with this kind of range, not just a single 'NPV is positive, approve it' number — the range tells decision-makers how much cushion exists before the answer would flip",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MBA — COMPETITIVE STRATEGY
+// ─────────────────────────────────────────────────────────────────────────────
+export const MBA_STRATEGY_CHALLENGES = [
+  {
+    id: "mba-strat-001",
+    title: "Run a Porter's Five Forces Analysis",
+    category: "Business Strategy",
+    icon: "🧭",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Strategic Frameworks"],
+    scenario:
+      "A mid-size grocery delivery startup wants to know if their industry is structurally attractive before raising another round — is this a market where profitable companies can be built, or a structurally brutal one no amount of execution can fix?",
+    objective:
+      "Apply Porter's Five Forces framework to assess industry attractiveness, rating each force and synthesizing an overall structural assessment.",
+    steps: [
+      "Assess threat of new entrants (barriers to entry in this industry)",
+      "Assess bargaining power of suppliers (grocery wholesalers, delivery drivers/gig labor)",
+      "Assess bargaining power of buyers (price sensitivity, switching costs for consumers)",
+      "Assess threat of substitutes (in-store shopping, other delivery apps, meal kits)",
+      "Assess competitive rivalry intensity, then synthesize an overall industry attractiveness rating with reasoning",
+    ],
+    workstation: "notebook",
+    starterCode: `# Porter's Five Forces Analysis -- Grocery Delivery Industry
+# Rate each force LOW / MEDIUM / HIGH and justify. HIGH force strength = BAD for industry profitability.
+
+forces_assessment = {}
+
+# STEP 1: Threat of new entrants
+# Consider: capital requirements, network effects, brand loyalty, regulatory barriers
+# TODO: forces_assessment["new_entrants"] = {
+# TODO:     "rating": "HIGH",  # low capital requirements to start a delivery app, but scaling logistics is capital-intensive
+# TODO:     "reasoning": "Low barrier to launch an app, but achieving delivery density/unit economics at scale requires significant capital -- moderate-high overall",
+# TODO: }
+
+# STEP 2: Bargaining power of suppliers (wholesalers, gig drivers)
+# TODO: forces_assessment["supplier_power"] = {
+# TODO:     "rating": "MEDIUM",
+# TODO:     "reasoning": "Grocery wholesalers have some power (few large distributors), gig drivers have low individual power but labor regulation trends could shift this",
+# TODO: }
+
+# STEP 3: Bargaining power of buyers (consumers)
+# TODO: forces_assessment["buyer_power"] = {
+# TODO:     "rating": "HIGH",
+# TODO:     "reasoning": "Near-zero switching costs between delivery apps, highly price/promo sensitive, easy comparison shopping",
+# TODO: }
+
+# STEP 4: Threat of substitutes
+# TODO: forces_assessment["substitutes"] = {
+# TODO:     "rating": "HIGH",
+# TODO:     "reasoning": "In-store shopping remains the dominant substitute and is often cheaper/faster for many trip types; meal kits and other delivery categories also compete for wallet share",
+# TODO: }
+
+# STEP 5: Competitive rivalry
+# TODO: forces_assessment["rivalry"] = {
+# TODO:     "rating": "HIGH",
+# TODO:     "reasoning": "Multiple well-funded competitors racing for market share, frequent price wars via promotions, low differentiation on core service",
+# TODO: }
+
+print("=== Porter's Five Forces: Grocery Delivery ===")
+# TODO: for force, details in forces_assessment.items():
+# TODO:     print(f"{force}: {details['rating']} -- {details['reasoning']}")
+
+# TODO: high_count = sum(1 for d in forces_assessment.values() if d["rating"] == "HIGH")
+# TODO: print(f"\\n{high_count}/5 forces rated HIGH")
+# TODO: print("Overall industry attractiveness: " + ("STRUCTURALLY CHALLENGING -- differentiation or a defensible niche is essential" if high_count >= 3 else "MODERATELY ATTRACTIVE"))
+`,
+    skillTags: ["Porter's Five Forces", "Industry Analysis", "Competitive Strategy", "Strategic Frameworks"],
+    hints: [
+      "Porter's framework assesses industry STRUCTURE, not any single company's execution quality — even a brilliantly-run company can struggle in a structurally unattractive industry (all 5 forces working against profitability), which is exactly why this analysis matters before committing more capital",
+      "The framework's real value is in forcing explicit reasoning for each rating, not just the final labels — 'HIGH buyer power because near-zero switching costs' is actionable information a one-word rating alone isn't",
+      "A structurally tough industry doesn't necessarily mean 'don't invest' — it means the company needs a genuine source of defensibility (network effects, exclusive supply relationships, brand loyalty) to overcome the structural headwinds, and that should be explicitly identified",
+    ],
+  },
+  {
+    id: "mba-strat-002",
+    title: "Conduct a Blue Ocean vs Red Ocean Strategic Assessment",
+    category: "Business Strategy",
+    icon: "🌊",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Strategic Frameworks"],
+    scenario:
+      "A fitness startup is deciding between competing head-on in the crowded gym membership market (red ocean) or creating a differentiated category around corporate wellness partnerships (potential blue ocean). Leadership needs a structured comparison, not just gut instinct.",
+    objective:
+      "Build a strategy canvas comparing the company's proposed offering against existing competitors across key value dimensions, and assess whether the strategy represents genuine blue-ocean differentiation or incremental red-ocean competition.",
+    steps: [
+      "Define the key value factors customers care about in this industry",
+      "Score existing competitors on each factor to establish the current 'value curve'",
+      "Score the proposed new offering on the same factors",
+      "Apply the Four Actions Framework: what to Eliminate, Reduce, Raise, and Create",
+      "Assess whether the resulting value curve diverges meaningfully from competitors (blue ocean) or largely tracks them (red ocean)",
+    ],
+    workstation: "notebook",
+    starterCode: `# Blue Ocean Strategy Canvas
+value_factors = ["price", "equipment_variety", "class_variety", "corporate_partnerships",
+                  "personalization", "convenience_location"]
+
+# Score 1-10 for each factor
+competitor_a_traditional_gym = {"price": 6, "equipment_variety": 9, "class_variety": 7,
+                                  "corporate_partnerships": 2, "personalization": 3, "convenience_location": 6}
+competitor_b_boutique_studio = {"price": 3, "equipment_variety": 3, "class_variety": 9,
+                                  "corporate_partnerships": 1, "personalization": 7, "convenience_location": 5}
+
+# STEP 3: Proposed new offering
+proposed_offering = {"price": 5, "equipment_variety": 2, "class_variety": 4,
+                       "corporate_partnerships": 9, "personalization": 8, "convenience_location": 8}
+
+print("=== Strategy Canvas (1-10 scale) ===")
+print(f"{'Factor':<25}{'Traditional Gym':<18}{'Boutique Studio':<18}{'Proposed Offering'}")
+# TODO: for factor in value_factors:
+# TODO:     print(f"{factor:<25}{competitor_a_traditional_gym[factor]:<18}{competitor_b_boutique_studio[factor]:<18}{proposed_offering[factor]}")
+
+# STEP 4: Four Actions Framework
+print("\\n=== Four Actions Framework ===")
+# TODO: eliminate = [f for f in value_factors if proposed_offering[f] <= 2]
+# TODO: reduce = [f for f in value_factors if 2 < proposed_offering[f] < min(competitor_a_traditional_gym[f], competitor_b_boutique_studio[f])]
+# TODO: raise_factors = [f for f in value_factors if proposed_offering[f] > max(competitor_a_traditional_gym[f], competitor_b_boutique_studio[f])]
+# TODO: print(f"ELIMINATE (near-zero investment): {eliminate}")
+# TODO: print(f"REDUCE (below industry standard): {reduce}")
+# TODO: print(f"RAISE (well above industry standard): {raise_factors}")
+print("CREATE (entirely new factor not in the original list): corporate_partnerships is arguably a 'Create' if")
+print("competitors essentially ignore it, not just a 'Raise'")
+
+# STEP 5: Blue ocean vs red ocean assessment
+# TODO: divergence_score = sum(abs(proposed_offering[f] - max(competitor_a_traditional_gym[f], competitor_b_boutique_studio[f]))
+# TODO:                         for f in value_factors if proposed_offering[f] > max(competitor_a_traditional_gym[f], competitor_b_boutique_studio[f]))
+# TODO: print(f"\\nDivergence score (sum of 'Raise' amounts): {divergence_score}")
+# TODO: print("Assessment: " + ("BLUE OCEAN -- meaningfully differentiated value curve" if divergence_score > 10 else "RED OCEAN -- largely competing on the same dimensions"))
+`,
+    skillTags: ["Blue Ocean Strategy", "Strategy Canvas", "Four Actions Framework", "Business Strategy"],
+    hints: [
+      "A genuine blue ocean strategy requires the value curve to diverge meaningfully from competitors, not just be 'slightly better' on the same dimensions everyone already competes on -- incremental improvement on existing factors is still red-ocean competition",
+      "The Four Actions Framework (Eliminate, Reduce, Raise, Create) forces explicit trade-offs -- a strategy that tries to raise EVERY factor without eliminating or reducing anything usually isn't a coherent differentiated strategy, it's just trying to be better at everything, which is expensive and rarely defensible",
+      "Corporate wellness partnerships being scored so far above both competitors is the key signal here -- if that's genuinely a factor competitors barely address at all, it may represent a 'Create' (an entirely new value dimension) rather than merely a 'Raise' on an existing one, which is an even stronger differentiation signal",
+    ],
+  },
+  {
+    id: "mba-strat-003",
+    title: "Build a Competitive Positioning Map from Market Data",
+    category: "Business Strategy",
+    icon: "📍",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Python", "Strategic Frameworks"],
+    scenario:
+      "A CPG (consumer packaged goods) brand manager needs to understand where their new product sits relative to competitors on the two dimensions customers say matter most: price and perceived quality, before finalizing pricing strategy.",
+    objective:
+      "Plot competitor products on a two-dimensional positioning map, identify market gaps (white space), and recommend a positioning strategy for the new product.",
+    steps: [
+      "Organize competitor data by price and quality perception score",
+      "Identify which quadrant each competitor occupies (e.g. premium/high-quality, budget/low-quality, etc.)",
+      "Identify any underserved quadrants (white space) with insufficient competition",
+      "Determine where the new product's current formulation and cost structure would position it",
+      "Recommend whether to reposition toward white space or compete directly in an occupied quadrant, with reasoning",
+    ],
+    workstation: "notebook",
+    starterCode: `# Competitive Positioning Map
+competitors = [
+    {"name": "Brand A (mass market leader)", "price": 4.99, "quality_score": 6.2, "market_share": 0.35},
+    {"name": "Brand B (budget)",               "price": 2.99, "quality_score": 4.5, "market_share": 0.20},
+    {"name": "Brand C (premium)",              "price": 8.99, "quality_score": 9.1, "market_share": 0.10},
+    {"name": "Brand D (mass market #2)",       "price": 5.49, "quality_score": 6.5, "market_share": 0.15},
+    {"name": "Brand E (premium #2)",           "price": 9.49, "quality_score": 8.8, "market_share": 0.08},
+]
+
+new_product_cost_based_price = 6.49
+new_product_quality_score = 7.8  # from consumer panel testing
+
+# STEP 1 & 2: Categorize each competitor into a quadrant
+price_midpoint = 6.0   # roughly the market's price midpoint
+quality_midpoint = 6.5
+
+def classify_quadrant(price, quality):
+    # TODO: if price >= price_midpoint and quality >= quality_midpoint:
+    # TODO:     return "Premium (high price, high quality)"
+    # TODO: elif price < price_midpoint and quality >= quality_midpoint:
+    # TODO:     return "Value leader (low price, high quality)"
+    # TODO: elif price >= price_midpoint and quality < quality_midpoint:
+    # TODO:     return "Overpriced (high price, low quality) -- vulnerable position"
+    # TODO: else:
+    # TODO:     return "Budget (low price, low quality)"
+    pass
+
+print("=== Competitive Positioning ===")
+# TODO: for c in competitors:
+# TODO:     quadrant = classify_quadrant(c["price"], c["quality_score"])
+# TODO:     print(f"{c['name']}: price=\${c['price']}, quality={c['quality_score']}/10, share={c['market_share']:.0%} -> {quadrant}")
+
+# STEP 3: Identify white space -- quadrant with no/weak competitor presence
+quadrant_share = {}
+# TODO: for c in competitors:
+# TODO:     q = classify_quadrant(c["price"], c["quality_score"])
+# TODO:     quadrant_share[q] = quadrant_share.get(q, 0) + c["market_share"]
+
+# TODO: print("\\nMarket share by quadrant:")
+# TODO: for q, share in sorted(quadrant_share.items(), key=lambda x: x[1]):
+# TODO:     print(f"  {q}: {share:.0%} combined share")
+# TODO: print("\\nWhite space = quadrant with lowest combined share (least contested)")
+
+# STEP 4 & 5: New product positioning and recommendation
+# TODO: new_quadrant = classify_quadrant(new_product_cost_based_price, new_product_quality_score)
+# TODO: print(f"\\nNew product at current cost-based pricing: \${new_product_cost_based_price}, quality={new_product_quality_score}/10 -> {new_quadrant}")
+# TODO: print("Recommendation: [assess whether this lands in contested or white-space territory, and whether pricing should shift]")
+`,
+    skillTags: ["Positioning Map", "Competitive Analysis", "Market Segmentation", "Business Strategy"],
+    hints: [
+      "A positioning map is only as useful as the dimensions chosen — price and quality are common defaults, but the RIGHT dimensions are whatever customers actually say drives their choice, which should come from real market research, not assumption",
+      "'White space' (an underserved quadrant) isn't automatically a good opportunity — it may be empty because demand genuinely doesn't exist there, not because competitors have overlooked it; validating demand in the white space is a separate, necessary step",
+      "The new product landing in the Value Leader quadrant (Brand A/D territory but with a stronger quality score) is a meaningfully different strategic story than landing in already-crowded Premium territory — the map should directly inform the pricing decision, not just describe the current state",
+    ],
+  },
+  {
+    id: "mba-strat-004",
+    title: "Assess a Diversification Decision Using the Ansoff Matrix",
+    category: "Business Strategy",
+    icon: "🔀",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Strategic Frameworks"],
+    scenario:
+      "A profitable B2B software company is deciding between four growth options: selling more to existing customers, entering new geographic markets, launching a new product line, or acquiring a company in an adjacent industry. Leadership needs a structured risk-return comparison before committing budget.",
+    objective:
+      "Classify each growth option using the Ansoff Matrix (market penetration, market development, product development, diversification), assess relative risk, and recommend a prioritized growth strategy.",
+    steps: [
+      "Classify each of the four growth options into its Ansoff Matrix quadrant",
+      "Assign a relative risk level to each quadrant based on the framework's underlying logic",
+      "Estimate potential revenue impact and required investment for each option",
+      "Calculate a rough risk-adjusted priority score for each option",
+      "Recommend a sequencing (not necessarily 'pick one') with reasoning tied to the company's current resources",
+    ],
+    workstation: "notebook",
+    starterCode: `# Ansoff Matrix Growth Strategy Assessment
+growth_options = [
+    {"name": "Upsell/cross-sell to existing customers", "existing_market": True, "existing_product": True,
+     "est_revenue_impact": 800_000, "est_investment": 150_000},
+    {"name": "Expand into EU market with current product", "existing_market": False, "existing_product": True,
+     "est_revenue_impact": 2_000_000, "est_investment": 900_000},
+    {"name": "Launch new analytics module for current customers", "existing_market": True, "existing_product": False,
+     "est_revenue_impact": 1_500_000, "est_investment": 700_000},
+    {"name": "Acquire adjacent-industry company", "existing_market": False, "existing_product": False,
+     "est_revenue_impact": 4_000_000, "est_investment": 3_000_000},
+]
+
+# STEP 1: Ansoff quadrant classification and STEP 2: inherent risk level
+def classify_ansoff(existing_market, existing_product):
+    # TODO: if existing_market and existing_product:
+    # TODO:     return "Market Penetration", "LOW"
+    # TODO: elif not existing_market and existing_product:
+    # TODO:     return "Market Development", "MEDIUM"
+    # TODO: elif existing_market and not existing_product:
+    # TODO:     return "Product Development", "MEDIUM"
+    # TODO: else:
+    # TODO:     return "Diversification", "HIGH"
+    pass
+
+risk_multiplier = {"LOW": 1.0, "MEDIUM": 0.7, "HIGH": 0.4}  # discount expected value by execution risk
+
+print("=== Ansoff Matrix Assessment ===")
+results = []
+# TODO: for option in growth_options:
+# TODO:     quadrant, risk = classify_ansoff(option["existing_market"], option["existing_product"])
+# TODO:     roi = (option["est_revenue_impact"] - option["est_investment"]) / option["est_investment"]
+# TODO:     risk_adjusted_value = (option["est_revenue_impact"] - option["est_investment"]) * risk_multiplier[risk]
+# TODO:     results.append({**option, "quadrant": quadrant, "risk": risk, "roi": roi, "risk_adjusted_value": risk_adjusted_value})
+# TODO:     print(f"{option['name']}")
+# TODO:     print(f"  Quadrant: {quadrant} | Risk: {risk} | Raw ROI: {roi:.1%} | Risk-adjusted value: \${risk_adjusted_value:,.0f}")
+
+# STEP 4 & 5: Rank by risk-adjusted value and recommend sequencing
+# TODO: ranked = sorted(results, key=lambda x: x["risk_adjusted_value"], reverse=True)
+print("\\n=== Recommended Sequencing (highest risk-adjusted value first) ===")
+# TODO: for i, r in enumerate(ranked, start=1):
+# TODO:     print(f"{i}. {r['name']} ({r['quadrant']}, {r['risk']} risk)")
+`,
+    skillTags: ["Ansoff Matrix", "Growth Strategy", "Risk Assessment", "Business Strategy"],
+    hints: [
+      "The Ansoff Matrix's core insight is that risk compounds when a company changes BOTH market and product simultaneously (diversification) versus changing just one dimension at a time — this is why diversification through acquisition is inherently riskier than upselling to existing customers, independent of the raw revenue numbers",
+      "A pure ROI ranking without risk-adjustment can mislead a resource-constrained company into over-indexing on the highest-upside, highest-risk option — the risk-adjusted comparison here is what should actually inform sequencing decisions",
+      "'Prioritized sequencing' rather than 'pick one' is often the more realistic recommendation for a company with multiple viable growth paths — lower-risk options (market penetration) can often be pursued in parallel with longer-lead-time bets (diversification), rather than treating this as strictly either/or",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MBA — SUPPLY CHAIN & LOGISTICS
+// ─────────────────────────────────────────────────────────────────────────────
+export const MBA_SUPPLY_CHAIN_CHALLENGES = [
+  {
+    id: "mba-sc-001",
+    title: "Calculate Economic Order Quantity (EOQ) for Inventory Management",
+    category: "Supply Chain",
+    icon: "📦",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Operations Analytics"],
+    scenario:
+      "A retailer's warehouse manager is ordering inventory ad-hoc based on gut feeling, resulting in either stockouts or excess holding costs. You need to calculate the mathematically optimal order quantity that minimizes total inventory cost.",
+    objective:
+      "Apply the Economic Order Quantity formula to determine the optimal order size balancing ordering costs against holding costs, and calculate the resulting total annual inventory cost.",
+    steps: [
+      "Gather annual demand, fixed ordering cost per order, and annual holding cost per unit",
+      "Apply the EOQ formula to find the optimal order quantity",
+      "Calculate the number of orders per year and time between orders at this EOQ",
+      "Calculate total annual cost (ordering cost + holding cost) at the EOQ and compare to a naive alternative order size",
+      "Determine the reorder point given lead time and daily demand",
+    ],
+    workstation: "notebook",
+    starterCode: `# Economic Order Quantity (EOQ) Calculation
+import math
+
+annual_demand = 12_000        # units per year
+ordering_cost_per_order = 250 # fixed cost to place one order (admin, shipping setup, etc.)
+holding_cost_per_unit = 4     # annual cost to hold one unit in inventory
+lead_time_days = 10           # days between placing an order and receiving it
+working_days_per_year = 300
+
+# STEP 2: EOQ formula: sqrt(2 * D * S / H)
+# TODO: eoq = math.sqrt(2 * annual_demand * ordering_cost_per_order / holding_cost_per_unit)
+# TODO: print(f"Economic Order Quantity (EOQ): {eoq:.0f} units")
+
+# STEP 3: Orders per year and time between orders
+# TODO: orders_per_year = annual_demand / eoq
+# TODO: days_between_orders = working_days_per_year / orders_per_year
+# TODO: print(f"Orders per year: {orders_per_year:.1f}")
+# TODO: print(f"Days between orders: {days_between_orders:.1f}")
+
+# STEP 4: Total annual cost at EOQ vs a naive fixed order size
+def total_annual_cost(order_qty, demand, order_cost, hold_cost):
+    # TODO: ordering_cost_total = (demand / order_qty) * order_cost
+    # TODO: holding_cost_total = (order_qty / 2) * hold_cost  # average inventory = Q/2
+    # TODO: return ordering_cost_total + holding_cost_total
+    pass
+
+# TODO: eoq_total_cost = total_annual_cost(eoq, annual_demand, ordering_cost_per_order, holding_cost_per_unit)
+naive_order_size = 2000  # what the warehouse manager was doing by gut feel
+# TODO: naive_total_cost = total_annual_cost(naive_order_size, annual_demand, ordering_cost_per_order, holding_cost_per_unit)
+# TODO: print(f"\\nTotal annual cost at EOQ ({eoq:.0f} units): \${eoq_total_cost:,.2f}")
+# TODO: print(f"Total annual cost at naive order size ({naive_order_size} units): \${naive_total_cost:,.2f}")
+# TODO: print(f"Annual savings from using EOQ: \${naive_total_cost - eoq_total_cost:,.2f}")
+
+# STEP 5: Reorder point
+# TODO: daily_demand = annual_demand / working_days_per_year
+# TODO: reorder_point = daily_demand * lead_time_days
+# TODO: print(f"\\nDaily demand: {daily_demand:.1f} units/day")
+# TODO: print(f"Reorder point: order more when inventory falls to {reorder_point:.0f} units")
+`,
+    skillTags: ["EOQ", "Inventory Management", "Supply Chain", "Operations Analytics"],
+    hints: [
+      "EOQ finds the sweet spot where ordering more frequently (lower holding cost, higher ordering cost) and ordering less frequently (higher holding cost, lower ordering cost) are balanced — at the true EOQ, ordering cost and holding cost are actually equal, which is a useful sanity check on the formula result",
+      "The classic EOQ formula assumes constant, known demand and lead time — real-world inventory systems add a safety stock buffer on top of the raw reorder point to account for demand variability and lead time uncertainty, which this simplified model doesn't include",
+      "The reorder point (not the EOQ itself) is what actually triggers each new order in an ongoing inventory system — EOQ answers 'how much to order,' reorder point answers 'when to order'",
+    ],
+  },
+  {
+    id: "mba-sc-002",
+    title: "Design a Vendor Scorecard for Supplier Selection",
+    category: "Supply Chain",
+    icon: "🏭",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Vendor Management"],
+    scenario:
+      "Procurement is choosing between three potential suppliers for a critical component and has been picking based on price alone in the past, leading to quality and delivery problems. You need a weighted scorecard that accounts for the full picture.",
+    objective:
+      "Build a weighted vendor scorecard across multiple criteria (price, quality, delivery reliability, financial stability) and use it to make a defensible, holistic supplier recommendation.",
+    steps: [
+      "Define scoring criteria and assign relative weights based on business priorities",
+      "Score each vendor on each criterion using available data",
+      "Calculate each vendor's weighted total score",
+      "Identify which vendor would have been chosen under price-only selection versus the weighted scorecard",
+      "Recommend a vendor with explicit reasoning, and flag any risk that the winning vendor still carries",
+    ],
+    workstation: "notebook",
+    starterCode: `# Weighted Vendor Scorecard
+criteria_weights = {
+    "price_competitiveness": 0.30,
+    "quality_defect_rate": 0.30,
+    "on_time_delivery_rate": 0.25,
+    "financial_stability": 0.15,
+}
+
+# Raw data per vendor (already normalized to a 1-10 scale, 10=best)
+vendors = {
+    "Vendor A": {"price_competitiveness": 9, "quality_defect_rate": 5, "on_time_delivery_rate": 6, "financial_stability": 7},
+    "Vendor B": {"price_competitiveness": 6, "quality_defect_rate": 9, "on_time_delivery_rate": 8, "financial_stability": 8},
+    "Vendor C": {"price_competitiveness": 7, "quality_defect_rate": 7, "on_time_delivery_rate": 9, "financial_stability": 5},
+}
+
+# STEP 2 & 3: Weighted scores
+weighted_scores = {}
+# TODO: for vendor_name, scores in vendors.items():
+# TODO:     weighted_total = sum(scores[criterion] * weight for criterion, weight in criteria_weights.items())
+# TODO:     weighted_scores[vendor_name] = weighted_total
+
+print("=== Vendor Scorecard ===")
+# TODO: for vendor_name, scores in vendors.items():
+# TODO:     print(f"\\n{vendor_name}:")
+# TODO:     for criterion, weight in criteria_weights.items():
+# TODO:         print(f"  {criterion}: {scores[criterion]}/10 (weight: {weight:.0%})")
+# TODO:     print(f"  WEIGHTED TOTAL: {weighted_scores[vendor_name]:.2f}/10")
+
+# STEP 4: Price-only vs weighted-scorecard comparison
+# TODO: price_only_winner = max(vendors.items(), key=lambda x: x[1]["price_competitiveness"])[0]
+# TODO: scorecard_winner = max(weighted_scores.items(), key=lambda x: x[1])[0]
+# TODO: print(f"\\nPrice-only selection would choose: {price_only_winner}")
+# TODO: print(f"Weighted scorecard selection: {scorecard_winner}")
+
+# STEP 5: Recommendation and risk flag
+# TODO: if price_only_winner != scorecard_winner:
+# TODO:     print(f"\\nThese DIFFER -- price-only selection was masking quality/delivery risk with {price_only_winner}")
+# TODO: winner_scores = vendors[scorecard_winner]
+# TODO: weakest_criterion = min(winner_scores.items(), key=lambda x: x[1])
+# TODO: print(f"\\nRecommendation: {scorecard_winner}")
+# TODO: print(f"Residual risk to monitor: {weakest_criterion[0]} scored only {weakest_criterion[1]}/10 -- lowest of {scorecard_winner}'s criteria")
+`,
+    skillTags: ["Vendor Selection", "Supplier Scorecard", "Weighted Decision Matrix", "Supply Chain"],
+    hints: [
+      "Price-only vendor selection is a classic false economy in procurement — a cheaper supplier with a high defect rate or unreliable delivery can cost far more in downstream quality issues, expediting fees, and production disruptions than the sticker-price savings",
+      "The weights assigned to each criterion should reflect actual business priorities and risk tolerance, not be arbitrary — a company in a safety-critical industry might weight quality far above 30%, while a company with thin margins might weight price higher",
+      "Even the winning vendor by weighted score should have its weakest dimension explicitly flagged as a residual risk to monitor — a scorecard doesn't eliminate risk, it makes trade-offs visible and lets the business decide what to actively manage",
+    ],
+  },
+  {
+    id: "mba-sc-003",
+    title: "Analyze Bullwhip Effect in a Multi-Tier Supply Chain",
+    category: "Supply Chain",
+    icon: "🌀",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Python", "Supply Chain Analytics"],
+    scenario:
+      "A manufacturer notices wild swings in orders from its distributor, even though actual end-consumer demand has been relatively stable. This is a classic case of the bullwhip effect, and leadership wants to know how bad the amplification is at each tier before proposing fixes.",
+    objective:
+      "Quantify order variance amplification across supply chain tiers (retailer, distributor, manufacturer) relative to actual consumer demand, and identify which tier contributes the most amplification.",
+    steps: [
+      "Calculate the coefficient of variation (variance relative to mean) for consumer demand",
+      "Calculate the same for retailer orders, distributor orders, and manufacturer orders",
+      "Compare variance amplification at each tier moving upstream",
+      "Identify which tier-to-tier transition contributes the most amplification",
+      "Recommend a specific bullwhip-reduction lever tied to the biggest amplification source",
+    ],
+    workstation: "notebook",
+    starterCode: `# Bullwhip Effect Analysis
+import numpy as np
+
+# Weekly order/demand quantities across 12 weeks, moving upstream through the supply chain
+consumer_demand    = [100, 105, 98, 102, 110, 95, 108, 100, 103, 97, 106, 101]
+retailer_orders    = [95, 120, 80, 115, 130, 70, 125, 90, 110, 75, 128, 92]
+distributor_orders = [80, 150, 50, 140, 170, 30, 165, 60, 130, 40, 175, 65]
+manufacturer_orders= [60, 190, 10, 175, 220, -10, 210, 20, 165, 0, 230, 15]  # negative = order deferral/cancellation
+
+def coefficient_of_variation(data):
+    # TODO: mean = np.mean(data)
+    # TODO: std = np.std(data)
+    # TODO: return std / mean if mean != 0 else float('inf')
+    pass
+
+# STEP 1 & 2: CV at each tier
+# TODO: cv_consumer = coefficient_of_variation(consumer_demand)
+# TODO: cv_retailer = coefficient_of_variation(retailer_orders)
+# TODO: cv_distributor = coefficient_of_variation(distributor_orders)
+# TODO: cv_manufacturer = coefficient_of_variation(manufacturer_orders)
+
+print("=== Order Variance by Supply Chain Tier ===")
+# TODO: print(f"Consumer demand CV:      {cv_consumer:.3f}")
+# TODO: print(f"Retailer orders CV:      {cv_retailer:.3f}")
+# TODO: print(f"Distributor orders CV:   {cv_distributor:.3f}")
+# TODO: print(f"Manufacturer orders CV:  {cv_manufacturer:.3f}")
+
+# STEP 3 & 4: Amplification ratios between adjacent tiers
+print("\\n=== Amplification Between Tiers ===")
+# TODO: amp_retailer = cv_retailer / cv_consumer
+# TODO: amp_distributor = cv_distributor / cv_retailer
+# TODO: amp_manufacturer = cv_manufacturer / cv_distributor
+# TODO: print(f"Consumer -> Retailer amplification: {amp_retailer:.2f}x")
+# TODO: print(f"Retailer -> Distributor amplification: {amp_distributor:.2f}x")
+# TODO: print(f"Distributor -> Manufacturer amplification: {amp_manufacturer:.2f}x")
+
+# TODO: amplifications = {"Consumer->Retailer": amp_retailer, "Retailer->Distributor": amp_distributor, "Distributor->Manufacturer": amp_manufacturer}
+# TODO: biggest_amplifier = max(amplifications.items(), key=lambda x: x[1])
+# TODO: print(f"\\nBiggest amplification source: {biggest_amplifier[0]} ({biggest_amplifier[1]:.2f}x)")
+
+# STEP 5: Recommendation
+print("\\nCommon bullwhip reduction levers: shared real-time demand data (vs order-based forecasting),")
+print("smaller/more frequent order batches, stable pricing (avoid promotion-driven order spikes),")
+print("and shorter lead times to reduce the need for large safety-stock buffers.")
+`,
+    skillTags: ["Bullwhip Effect", "Supply Chain Analytics", "Demand Variability", "Operations Management"],
+    hints: [
+      "The bullwhip effect describes how small fluctuations in end-consumer demand get progressively amplified as each upstream tier makes ordering decisions based on the tier below it rather than actual consumer demand — this is a structural/informational problem, not a sign that any single tier is doing a bad job",
+      "Coefficient of variation (std/mean) is used instead of raw standard deviation specifically because it's scale-independent — this lets you fairly compare variability across tiers with very different average order volumes",
+      "The standard root causes are demand-signal distortion (using orders instead of real demand to forecast), order batching, price fluctuations/promotions causing forward-buying, and rationing games during shortages — the recommended fix should map directly to whichever of these is most evident in the specific data pattern observed",
+    ],
+  },
+  {
+    id: "mba-sc-004",
+    title: "Optimize a Distribution Network Using Total Landed Cost",
+    category: "Supply Chain",
+    icon: "🚚",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Python", "Network Optimization"],
+    scenario:
+      "A company is deciding between three candidate warehouse locations to serve its regional customer base. The obvious choice by rent alone isn't necessarily the cheapest overall -- you need total landed cost including transportation to all customer regions.",
+    objective:
+      "Calculate total landed cost (facility cost + transportation cost) for each candidate warehouse location and recommend the location that minimizes total cost, not just facility cost.",
+    steps: [
+      "Gather facility costs (rent, labor) for each candidate location",
+      "Gather shipping volume and per-mile transportation cost to each customer region from each candidate location",
+      "Calculate total transportation cost per candidate location across all customer regions",
+      "Calculate total landed cost (facility + transportation) per candidate",
+      "Identify the true lowest-cost option and quantify the gap versus the naive lowest-facility-cost choice",
+    ],
+    workstation: "notebook",
+    starterCode: `# Total Landed Cost Distribution Network Analysis
+facility_costs = {
+    "Location A (cheap rent, far from customers)": 400_000,
+    "Location B (moderate rent, central)": 650_000,
+    "Location C (expensive rent, very close to customers)": 900_000,
+}
+
+# Distance in miles from each candidate to each customer region, and annual shipping volume (units) to that region
+customer_regions = {
+    "North": {"volume": 50_000, "distance_from_A": 800, "distance_from_B": 300, "distance_from_C": 100},
+    "South": {"volume": 70_000, "distance_from_A": 200, "distance_from_B": 250, "distance_from_C": 150},
+    "East":  {"volume": 40_000, "distance_from_A": 600, "distance_from_B": 350, "distance_from_C": 120},
+    "West":  {"volume": 60_000, "distance_from_A": 100, "distance_from_B": 400, "distance_from_C": 250},
+}
+
+cost_per_unit_per_mile = 0.008
+
+# STEP 3: Transportation cost per candidate location
+transport_costs = {}
+locations = {"Location A (cheap rent, far from customers)": "A",
+             "Location B (moderate rent, central)": "B",
+             "Location C (expensive rent, very close to customers)": "C"}
+
+# TODO: for location_name, location_key in locations.items():
+# TODO:     total_transport = 0
+# TODO:     for region, data in customer_regions.items():
+# TODO:         distance = data[f"distance_from_{location_key}"]
+# TODO:         volume = data["volume"]
+# TODO:         total_transport += distance * volume * cost_per_unit_per_mile
+# TODO:     transport_costs[location_name] = total_transport
+
+print("=== Transportation Cost by Candidate Location ===")
+# TODO: for location, cost in transport_costs.items():
+# TODO:     print(f"{location}: \${cost:,.0f}")
+
+# STEP 4: Total landed cost
+print("\\n=== Total Landed Cost (Facility + Transportation) ===")
+total_landed_costs = {}
+# TODO: for location in facility_costs:
+# TODO:     total_landed_costs[location] = facility_costs[location] + transport_costs[location]
+# TODO:     print(f"{location}: facility=\${facility_costs[location]:,.0f} + transport=\${transport_costs[location]:,.0f} = \${total_landed_costs[location]:,.0f}")
+
+# STEP 5: True lowest-cost vs naive lowest-facility-cost
+# TODO: naive_choice = min(facility_costs.items(), key=lambda x: x[1])[0]
+# TODO: true_best_choice = min(total_landed_costs.items(), key=lambda x: x[1])[0]
+# TODO: print(f"\\nNaive choice (lowest facility cost only): {naive_choice}")
+# TODO: print(f"True best choice (lowest total landed cost): {true_best_choice}")
+# TODO: if naive_choice != true_best_choice:
+# TODO:     savings = total_landed_costs[naive_choice] - total_landed_costs[true_best_choice]
+# TODO:     print(f"Choosing based on facility cost alone would have cost \${savings:,.0f} more per year")
+`,
+    skillTags: ["Total Landed Cost", "Network Optimization", "Distribution Strategy", "Supply Chain"],
+    hints: [
+      "Total landed cost analysis exists precisely to catch this trap -- the cheapest facility on paper can easily be the most expensive choice overall once ongoing transportation costs to serve the full customer base are factored in, especially for high-volume, low-margin distribution businesses",
+      "This simplified model uses a flat cost-per-unit-per-mile, but real network design also factors in delivery speed requirements, fixed shipping/routing costs, multi-stop routing efficiency, and warehousing labor productivity differences by location",
+      "The magnitude of the facility-cost-only mistake scales with shipping volume and distance variance across locations — a business with low shipping volume or geographically clustered customers might see facility cost dominate instead, so this analysis should be re-run whenever the underlying volume or customer geography changes materially",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MBA — NEGOTIATION & DEAL STRUCTURING
+// ─────────────────────────────────────────────────────────────────────────────
+export const MBA_NEGOTIATION_CHALLENGES = [
+  {
+    id: "mba-neg-001",
+    title: "Determine BATNA and Reservation Price Before a Negotiation",
+    category: "Negotiation",
+    icon: "🤝",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Negotiation Strategy"],
+    scenario:
+      "A company is about to negotiate a commercial lease renewal and the facilities manager wants to walk in with a clear-eyed number: what's the actual walk-away point, based on real alternatives, not just a gut-feel target?",
+    objective:
+      "Calculate BATNA (Best Alternative to a Negotiated Agreement) and reservation price from concrete alternative options, and use them to set a negotiation strategy.",
+    steps: [
+      "List and cost out all realistic alternatives to renewing the current lease",
+      "Identify the best (cheapest, most viable) alternative as the BATNA",
+      "Convert the BATNA into a reservation price (the maximum acceptable rent increase before walking away)",
+      "Compare the reservation price against the landlord's likely opening ask",
+      "Determine the negotiation zone (ZOPA - Zone of Possible Agreement) if one exists",
+    ],
+    workstation: "notebook",
+    starterCode: `# BATNA and Reservation Price Calculation
+current_annual_rent = 180_000
+landlord_proposed_new_rent = 230_000  # landlord's opening ask for renewal
+
+# Alternative options if lease renewal falls through
+alternatives = [
+    {"name": "Relocate to Building X", "annual_rent": 195_000, "moving_cost_one_time": 40_000, "disruption_cost_one_time": 25_000},
+    {"name": "Relocate to Building Y (further out)", "annual_rent": 165_000, "moving_cost_one_time": 55_000, "disruption_cost_one_time": 45_000},
+    {"name": "Downsize into smaller current-building space", "annual_rent": 140_000, "moving_cost_one_time": 15_000, "disruption_cost_one_time": 10_000},
+]
+
+analysis_period_years = 5  # amortize one-time costs over this horizon for comparison
+
+# STEP 1 & 2: Cost out each alternative and find the BATNA (lowest total annualized cost)
+alternative_costs = []
+# TODO: for alt in alternatives:
+# TODO:     annualized_one_time = (alt["moving_cost_one_time"] + alt["disruption_cost_one_time"]) / analysis_period_years
+# TODO:     total_annualized_cost = alt["annual_rent"] + annualized_one_time
+# TODO:     alternative_costs.append({**alt, "total_annualized_cost": total_annualized_cost})
+
+print("=== Alternatives Analysis ===")
+# TODO: for alt in alternative_costs:
+# TODO:     print(f"{alt['name']}: rent=\${alt['annual_rent']:,.0f} + annualized one-time=\${(alt['moving_cost_one_time']+alt['disruption_cost_one_time'])/analysis_period_years:,.0f} = \${alt['total_annualized_cost']:,.0f}/yr")
+
+# TODO: batna = min(alternative_costs, key=lambda x: x["total_annualized_cost"])
+# TODO: print(f"\\nBATNA: {batna['name']} at \${batna['total_annualized_cost']:,.0f}/yr total annualized cost")
+
+# STEP 3: Reservation price = the BATNA cost (the point at which renewing stops being the better choice)
+# TODO: reservation_price = batna["total_annualized_cost"]
+# TODO: print(f"Reservation price for lease renewal: \${reservation_price:,.0f}/yr")
+# TODO: print(f"(Any renewal rent above this, and the BATNA becomes the better financial choice)")
+
+# STEP 4 & 5: Compare to landlord's ask and find the ZOPA
+# TODO: print(f"\\nLandlord's opening ask: \${landlord_proposed_new_rent:,.0f}/yr")
+# TODO: print(f"Current rent (landlord's likely floor, roughly): \${current_annual_rent:,.0f}/yr")
+# TODO: if landlord_proposed_new_rent > reservation_price:
+# TODO:     print(f"\\nLandlord's ask (\${landlord_proposed_new_rent:,.0f}) EXCEEDS reservation price (\${reservation_price:,.0f})")
+# TODO:     print(f"Target negotiation range: \${current_annual_rent:,.0f} to \${reservation_price:,.0f}/yr")
+# TODO:     print("Walk away if the landlord won't move below the reservation price")
+`,
+    skillTags: ["BATNA", "Reservation Price", "ZOPA", "Negotiation Strategy"],
+    hints: [
+      "BATNA must be calculated from REAL, executable alternatives with honest costs (including one-time transition costs like moving and disruption) — an unrealistic or overly rosy BATNA leads to either walking away from good deals or accepting bad ones",
+      "The reservation price is a hard number derived directly from the BATNA, not a target or an opening offer — the opening offer in the actual negotiation should typically be more aggressive than the reservation price, since the reservation price is your walk-away line, not your ask",
+      "A ZOPA (Zone of Possible Agreement) only exists if the landlord's true floor is below your reservation price — if you can't observe the landlord's floor directly, the negotiation itself is partly an information-gathering exercise to discover whether a ZOPA exists at all",
+    ],
+  },
+  {
+    id: "mba-neg-002",
+    title: "Structure a Multi-Issue Negotiation with Integrative Trades",
+    category: "Negotiation",
+    icon: "🔄",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Negotiation Strategy"],
+    scenario:
+      "A software vendor and enterprise buyer are negotiating a contract across four issues: price, contract length, payment terms, and support SLA level. Both sides value these issues differently -- the challenge is finding trades that create value for both parties, not just splitting each issue down the middle.",
+    objective:
+      "Map each party's relative priorities across negotiation issues, identify high-value trades where one party can concede on a low-priority issue to gain on a high-priority one, and construct a package deal that beats a naive item-by-item compromise.",
+    steps: [
+      "Define each party's priority weighting across the four negotiation issues",
+      "Define a range of possible outcomes for each issue, scored from each party's perspective",
+      "Identify issues where the two parties' priorities diverge most (the best trading opportunities)",
+      "Construct a package deal that gives each party more on their high-priority issues",
+      "Compare the total value each party receives under the package deal versus a naive 'split every issue evenly' approach",
+    ],
+    workstation: "notebook",
+    starterCode: `# Multi-Issue Integrative Negotiation
+# Priority weights (must sum to 1.0 for each party) -- reveals what each party ACTUALLY cares about most
+vendor_priorities = {"price": 0.45, "contract_length": 0.35, "payment_terms": 0.10, "support_sla": 0.10}
+buyer_priorities =  {"price": 0.20, "contract_length": 0.15, "payment_terms": 0.15, "support_sla": 0.50}
+
+# Each issue has options scored 0(worst)-10(best) from each party's own perspective
+issue_options = {
+    "price": {"vendor_score": {"high": 10, "mid": 5, "low": 0}, "buyer_score": {"high": 0, "mid": 5, "low": 10}},
+    "contract_length": {"vendor_score": {"3yr": 10, "2yr": 5, "1yr": 0}, "buyer_score": {"3yr": 2, "2yr": 6, "1yr": 10}},
+    "payment_terms": {"vendor_score": {"upfront": 10, "quarterly": 5, "net90": 0}, "buyer_score": {"upfront": 2, "quarterly": 6, "net90": 10}},
+    "support_sla": {"vendor_score": {"basic": 10, "standard": 5, "premium": 0}, "buyer_score": {"basic": 0, "buyer_mid": 4, "premium": 10}},
+}
+
+# STEP 3: Identify priority divergence (biggest trading opportunity = biggest gap between weights)
+print("=== Priority Divergence by Issue ===")
+divergences = {}
+# TODO: for issue in vendor_priorities:
+# TODO:     divergences[issue] = abs(vendor_priorities[issue] - buyer_priorities[issue])
+# TODO:     print(f"{issue}: vendor={vendor_priorities[issue]:.0%}, buyer={buyer_priorities[issue]:.0%}, divergence={divergences[issue]:.0%}")
+
+# TODO: best_trade_issue = max(divergences.items(), key=lambda x: x[1])
+# TODO: print(f"\\nBiggest trading opportunity: {best_trade_issue[0]} (divergence {best_trade_issue[1]:.0%})")
+print("Logic: give the party who cares LESS about this issue a worse outcome on it, in exchange for")
+print("a better outcome on an issue they care MORE about -- this is how integrative trades create joint value")
+
+# STEP 4: Package deal exploiting the divergence
+# Vendor cares more about price and contract_length; buyer cares far more about support_sla
+package_deal = {"price": "mid", "contract_length": "2yr", "payment_terms": "quarterly", "support_sla": "premium"}
+naive_split = {"price": "mid", "contract_length": "2yr", "payment_terms": "quarterly", "support_sla": "buyer_mid"}
+
+def score_deal(deal, priorities, party_key):
+    # TODO: total = 0
+    # TODO: for issue, choice in deal.items():
+    # TODO:     issue_score = issue_options[issue][party_key][choice]
+    # TODO:     total += issue_score * priorities[issue]
+    # TODO: return total
+    pass
+
+# STEP 5: Compare package deal to naive split for BOTH parties
+# TODO: vendor_package_score = score_deal(package_deal, vendor_priorities, "vendor_score")
+# TODO: buyer_package_score = score_deal(package_deal, buyer_priorities, "buyer_score")
+# TODO: vendor_naive_score = score_deal(naive_split, vendor_priorities, "vendor_score")
+# TODO: buyer_naive_score = score_deal(naive_split, buyer_priorities, "buyer_score")
+
+print(f"\\n=== Package Deal vs Naive Split ===")
+# TODO: print(f"Vendor: package={vendor_package_score:.2f} vs naive={vendor_naive_score:.2f}")
+# TODO: print(f"Buyer:  package={buyer_package_score:.2f} vs naive={buyer_naive_score:.2f}")
+# TODO: print("A well-constructed package should score higher (or equal) for BOTH parties than the naive split --")
+# TODO: print("this is the hallmark of an integrative (value-creating) negotiation outcome vs a purely distributive one")
+`,
+    skillTags: ["Integrative Negotiation", "Multi-Issue Bargaining", "Package Deals", "Negotiation Strategy"],
+    hints: [
+      "Integrative (value-creating) negotiation differs fundamentally from distributive (zero-sum, split-the-difference) negotiation — it requires understanding what each party ACTUALLY prioritizes, which is often not obvious from their opening positions and may need to be uncovered through questions during the negotiation itself",
+      "The biggest trading opportunities exist where priorities diverge most sharply — if both parties weight an issue similarly, there's little room to create joint value on it and it tends toward a straightforward compromise instead",
+      "A genuinely good package deal should score better for BOTH sides than a naive item-by-item split — if a proposed 'package' only improves one party's outcome, it's not actually exploiting an integrative trade, it's just a better distributive outcome for one side",
+    ],
+  },
+  {
+    id: "mba-neg-003",
+    title: "Analyze an Earnout Structure for a Business Acquisition",
+    category: "Negotiation",
+    icon: "📜",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 22,
+    tools: ["Deal Structuring", "Financial Modeling"],
+    scenario:
+      "A buyer and seller disagree on the target company's valuation -- the seller believes ambitious growth projections justify a high price, the buyer is skeptical. An earnout (contingent future payments based on performance) is being proposed as a bridge. Both sides need to understand what they're actually agreeing to under different outcomes.",
+    objective:
+      "Model total consideration paid to the seller under an earnout structure across a range of future performance outcomes, and assess whether the structure fairly resolves the valuation disagreement for both parties.",
+    steps: [
+      "Define the earnout structure: upfront payment, performance metric, target thresholds, and payout formula",
+      "Model total consideration paid across a range of possible future performance outcomes",
+      "Compare total consideration in the earnout structure to the buyer's flat offer and the seller's ask under each outcome",
+      "Identify the performance level at which the earnout structure roughly reconciles both parties' valuation views",
+      "Assess risk: what happens to the seller if the buyer controls decisions that affect the earnout metric post-acquisition",
+    ],
+    workstation: "notebook",
+    starterCode: `# Earnout Structure Analysis
+buyer_flat_offer = 8_000_000     # buyer's confident, no-earnout offer
+seller_ask = 14_000_000          # seller's ask based on optimistic growth projections
+
+# Proposed earnout structure
+upfront_payment = 8_000_000      # paid at close regardless of future performance
+earnout_target_revenue = 20_000_000  # revenue threshold for FULL earnout payout
+max_earnout_payment = 6_000_000      # additional payment if target is fully hit
+earnout_period_years = 3
+
+def calculate_earnout_payout(actual_revenue_at_end_of_period, target_revenue, max_payout):
+    # TODO: payout_ratio = min(actual_revenue_at_end_of_period / target_revenue, 1.0)  # capped at 100%
+    # TODO: payout_ratio = max(payout_ratio, 0)  # floor at 0, no negative payout
+    # TODO: return max_payout * payout_ratio
+    pass
+
+# STEP 2: Model across a range of future performance scenarios
+revenue_scenarios = {
+    "Pessimistic (buyer's view)": 12_000_000,
+    "Moderate": 16_000_000,
+    "Seller's projection": 20_000_000,
+    "Beat projection": 24_000_000,
+}
+
+print("=== Total Consideration Under Earnout Structure by Scenario ===")
+# TODO: for scenario_name, revenue in revenue_scenarios.items():
+# TODO:     earnout_payout = calculate_earnout_payout(revenue, earnout_target_revenue, max_earnout_payment)
+# TODO:     total_consideration = upfront_payment + earnout_payout
+# TODO:     print(f"{scenario_name} (\${revenue:,.0f} revenue): earnout=\${earnout_payout:,.0f}, total=\${total_consideration:,.0f}")
+
+# STEP 3 & 4: Compare to flat offers
+# TODO: print(f"\\nBuyer's flat offer (no earnout): \${buyer_flat_offer:,.0f}")
+# TODO: print(f"Seller's ask: \${seller_ask:,.0f}")
+print("\\nThe earnout structure lets the seller capture upside IF their optimistic projection proves true,")
+print("while protecting the buyer from overpaying if it doesn't -- this is the core logic of using an")
+print("earnout to bridge a valuation gap driven by differing confidence in future performance.")
+
+# STEP 5: Risk to the seller
+print("\\n=== Key Risk for the Seller ===")
+print("Once the deal closes, the BUYER typically controls operating decisions (budget, staffing, sales")
+print("strategy, pricing) that directly affect the earnout metric. A seller with a large earnout stake")
+print("should negotiate explicit operational protections into the deal terms -- e.g., minimum marketing")
+print("spend commitments, seller retaining decision rights over factors driving the earnout metric,")
+print("or an earnout metric harder for the buyer to unilaterally suppress (e.g., gross bookings vs")
+print("net income, which is more easily manipulated through post-close cost allocation decisions).")
+`,
+    skillTags: ["Earnout Structure", "M&A Deal Structuring", "Valuation Gap", "Contingent Consideration"],
+    hints: [
+      "Earnouts are a classic tool for bridging valuation disagreements rooted in differing beliefs about future performance -- rather than one party simply 'winning' the valuation argument, both parties get an outcome contingent on which view of the future actually materializes",
+      "The critical, often underweighted risk in earnout structures is post-close control -- once the buyer owns and operates the business, they control many of the decisions (budget allocation, strategic priorities, even accounting treatment) that determine whether the earnout target is hit, creating a potential conflict of interest",
+      "Choosing an earnout metric matters enormously -- top-line metrics like revenue are generally harder for an acquirer to manipulate post-close than bottom-line metrics like net income, which can be affected by cost allocation and overhead assignment decisions largely under the buyer's control",
+    ],
+  },
+  {
+    id: "mba-neg-004",
+    title: "Assess Anchoring Effects and Counter-Offer Strategy",
+    category: "Negotiation",
+    icon: "⚓",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Negotiation Strategy", "Behavioral Economics"],
+    scenario:
+      "A job candidate received a surprisingly low initial salary offer and isn't sure whether to counter aggressively, counter moderately, or accept -- and wants to understand the psychology of anchoring before deciding on a counter-offer strategy.",
+    objective:
+      "Analyze the anchoring effect of the initial offer, calculate a counter-offer strategy grounded in market data (not just reacting to the anchor), and assess the risk/reward of different counter-offer aggressiveness levels.",
+    steps: [
+      "Establish an anchor-independent reference point using market salary data for the role",
+      "Calculate how far the initial offer sits below the market-based reference point",
+      "Model three counter-offer strategies: modest, market-based, and aggressive",
+      "Estimate the likely outcome range for each strategy based on typical negotiation dynamics",
+      "Recommend a counter-offer strategy with reasoning that explicitly avoids anchoring bias",
+    ],
+    workstation: "notebook",
+    starterCode: `# Anchoring Effect and Counter-Offer Strategy
+initial_offer = 95_000
+
+# Market data (independent of the offer -- this is the anchor-free reference point)
+market_data_percentiles = {
+    "25th percentile": 92_000,
+    "50th percentile (median)": 108_000,
+    "75th percentile": 122_000,
+    "90th percentile": 135_000,
+}
+candidate_experience_level = "above median"  # candidate has stronger-than-typical background for this role
+
+# STEP 1 & 2: Anchor gap analysis
+# TODO: median_market_rate = market_data_percentiles["50th percentile (median)"]
+# TODO: gap_from_median = median_market_rate - initial_offer
+# TODO: gap_pct = gap_from_median / median_market_rate
+# TODO: print(f"Initial offer: \${initial_offer:,.0f}")
+# TODO: print(f"Market median: \${median_market_rate:,.0f}")
+# TODO: print(f"Gap: \${gap_from_median:,.0f} ({gap_pct:.1%} below market median)")
+# TODO: print("\\nThe psychological risk: the initial offer can unconsciously 'anchor' the candidate's own")
+# TODO: print("sense of what's reasonable, causing them to counter too conservatively relative to the market.")
+
+# STEP 3: Three counter-offer strategies
+counter_strategies = {
+    "Modest (anchored by initial offer)": initial_offer * 1.08,        # small % above the anchor -- classic anchoring trap
+    "Market-based (ignoring the anchor)": market_data_percentiles["75th percentile"],  # justified by above-median experience
+    "Aggressive": market_data_percentiles["90th percentile"],
+}
+
+print("\\n=== Counter-Offer Strategies ===")
+# TODO: for strategy, counter_amount in counter_strategies.items():
+# TODO:     print(f"{strategy}: \${counter_amount:,.0f}")
+
+# STEP 4 & 5: Assess and recommend
+print("\\n=== Assessment ===")
+print("Modest strategy: anchored too heavily on the LOW initial offer -- likely to settle well below")
+print("market value even after 'winning' a small increase, because it never resets the reference point.")
+print("\\nMarket-based strategy: grounded in objective data and justified by above-median experience --")
+print("defensible and likely to land in a reasonable final range without appearing unreasonable.")
+print("\\nAggressive strategy: highest upside if it works, but risks signaling unrealistic expectations")
+print("if not well-supported by specific, articulable value the candidate brings.")
+# TODO: print(f"\\nRecommended counter: \${counter_strategies['Market-based (ignoring the anchor)']:,.0f}, citing market data directly")
+`,
+    skillTags: ["Anchoring Bias", "Counter-Offer Strategy", "Behavioral Economics", "Salary Negotiation"],
+    hints: [
+      "Anchoring is one of the most well-documented cognitive biases in negotiation research — even negotiators who know about anchoring intellectually often still adjust insufficiently from an anchor they've been given, which is exactly why grounding a counter-offer in independent market data (not a percentage above the anchor) is the more robust strategy",
+      "A counter-offer strategy calculated as 'X% above their offer' is itself a symptom of anchoring — the more disciplined approach establishes the target number FIRST from independent data, then treats the initial offer as irrelevant to that calculation",
+      "The best-supported counter-offers tie the number to specific, verifiable justification (market percentile data, above-median experience) rather than either just being adjacent to the anchor or being an arbitrary 'ask high' number — this materially affects how the counter is received on the other side of the table",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MBA — ORGANIZATIONAL LEADERSHIP & CHANGE MANAGEMENT
+// ─────────────────────────────────────────────────────────────────────────────
+export const MBA_LEADERSHIP_CHALLENGES = [
+  {
+    id: "mba-lead-001",
+    title: "Diagnose Team Dysfunction Using the Five Dysfunctions Model",
+    category: "Organizational Leadership",
+    icon: "🧩",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Organizational Behavior"],
+    scenario:
+      "A leadership team is missing deadlines, meetings are polite but unproductive, and decisions made in meetings keep getting silently ignored afterward. The CEO wants a structured diagnosis of what's actually broken, not just 'communication issues.'",
+    objective:
+      "Apply Lencioni's Five Dysfunctions of a Team model to diagnose the root-cause dysfunction from observed symptoms, and recommend an intervention targeted at the foundational layer rather than surface symptoms.",
+    steps: [
+      "Map observed team symptoms to the five dysfunction layers (trust, conflict, commitment, accountability, results)",
+      "Identify which dysfunction layer is the ROOT cause versus which are downstream symptoms",
+      "Explain why intervening at a downstream layer alone would fail to fix the root cause",
+      "Recommend a specific intervention targeted at the foundational dysfunction",
+      "Define a leading indicator that would show whether the intervention is working",
+    ],
+    workstation: "notebook",
+    starterCode: `# Five Dysfunctions of a Team -- Diagnostic Analysis
+# The model is a pyramid: Absence of Trust (base) -> Fear of Conflict -> Lack of Commitment
+# -> Avoidance of Accountability -> Inattention to Results (top)
+
+observed_symptoms = [
+    "Meetings are polite and conflict-free, but nothing gets debated openly",
+    "Decisions made in meetings are quietly ignored or reversed afterward",
+    "Team members don't call each other out when commitments are missed",
+    "Individuals seem more focused on personal metrics than team goals",
+    "People are guarded and don't admit mistakes or ask for help in front of the group",
+]
+
+dysfunction_layers = ["absence_of_trust", "fear_of_conflict", "lack_of_commitment",
+                       "avoidance_of_accountability", "inattention_to_results"]
+
+# STEP 1: Map symptoms to layers
+symptom_to_layer = {
+    "Meetings are polite and conflict-free, but nothing gets debated openly": "fear_of_conflict",
+    "Decisions made in meetings are quietly ignored or reversed afterward": "lack_of_commitment",
+    "Team members don't call each other out when commitments are missed": "avoidance_of_accountability",
+    "Individuals seem more focused on personal metrics than team goals": "inattention_to_results",
+    "People are guarded and don't admit mistakes or ask for help in front of the group": "absence_of_trust",
+}
+
+print("=== Symptom Mapping ===")
+# TODO: for symptom in observed_symptoms:
+# TODO:     print(f"'{symptom}' -> {symptom_to_layer[symptom]}")
+
+# STEP 2: Identify the root cause (lowest layer present in the pyramid)
+# TODO: layers_present = set(symptom_to_layer.values())
+# TODO: root_cause = min(layers_present, key=lambda l: dysfunction_layers.index(l))
+# TODO: print(f"\\nLayers present: {layers_present}")
+# TODO: print(f"ROOT CAUSE (lowest layer in the pyramid): {root_cause}")
+
+# STEP 3: Why intervening downstream alone fails
+print("\\n=== Why This Matters ===")
+print("Each layer in Lencioni's model is BUILT ON the one below it -- you cannot fix accountability")
+print("or commitment problems with process fixes (better meeting agendas, clearer OKRs) if the root")
+print("cause is that team members don't trust each other enough to be vulnerable and honest in the")
+print("first place. Symptom-level fixes (e.g. 'let's improve our meeting structure') will not hold if")
+print("the foundational layer (trust) remains unaddressed.")
+
+# STEP 4 & 5: Intervention and leading indicator
+print("\\n=== Recommended Intervention (targeting the root cause) ===")
+print("If absence_of_trust is the root cause: structured vulnerability-based exercises (e.g. sharing")
+print("individual strengths/weaknesses, personal histories, working styles) BEFORE attempting to fix")
+print("meeting structure or accountability processes -- trust-building interventions typically need to")
+print("precede process interventions, not follow them.")
+print("\\nLeading indicator: increased frequency of team members openly disagreeing or admitting")
+print("uncertainty IN MEETINGS (not after) -- this is the observable signal that fear of conflict")
+print("(the next layer up) is starting to resolve as trust improves.")
+`,
+    skillTags: ["Five Dysfunctions of a Team", "Team Diagnostics", "Organizational Behavior", "Leadership"],
+    hints: [
+      "The pyramid structure is the key insight of this model — dysfunctions at higher layers (accountability, results) are usually SYMPTOMS of unresolved dysfunction at lower layers (trust, conflict), which is why fixing the visible symptom directly (e.g. 'let's have better accountability check-ins') often doesn't stick",
+      "Diagnosing the root cause requires looking at the LOWEST layer where a real symptom appears, not the layer with the most visible or urgent-feeling symptoms — inattention to results might be the most business-critical symptom, but it's rarely the place to intervene first",
+      "A trust-building intervention (like structured vulnerability exercises) can feel like a strange or 'soft' first step to a results-focused leadership team, which is exactly why explaining the causal logic of the pyramid model matters for getting buy-in on addressing root cause rather than symptoms",
+    ],
+  },
+  {
+    id: "mba-lead-002",
+    title: "Design a Change Management Plan Using Kotter's 8-Step Model",
+    category: "Organizational Leadership",
+    icon: "🔧",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 18,
+    tools: ["Change Management"],
+    scenario:
+      "A company is rolling out a major new CRM system that will change how the sales team works daily. Past tech rollouts at this company have failed due to employee resistance and reversion to old habits. Leadership wants a structured change plan this time, not just a training session and a launch email.",
+    objective:
+      "Build a change management plan following Kotter's 8-step model, mapping specific actions to each step and identifying where past rollout failures likely broke down in this framework.",
+    steps: [
+      "Assess whether a genuine sense of urgency currently exists for the change (Step 1)",
+      "Identify who should be on the guiding coalition leading this change (Step 2)",
+      "Draft a clear vision statement for why this change matters (Step 3)",
+      "Plan specific communication and short-term win actions (Steps 4 and 6)",
+      "Identify the step where the PAST failed rollout most likely broke down, and why",
+    ],
+    workstation: "notebook",
+    starterCode: `# Kotter's 8-Step Change Management Model
+kotter_steps = [
+    "1. Create urgency",
+    "2. Build a guiding coalition",
+    "3. Form a strategic vision",
+    "4. Enlist a volunteer army (communicate the vision widely)",
+    "5. Enable action by removing barriers",
+    "6. Generate short-term wins",
+    "7. Sustain acceleration",
+    "8. Institute change (anchor it in culture)",
+]
+
+# What actually happened in the PAST failed CRM rollout attempt
+past_rollout_facts = {
+    "urgency_communicated": False,  # leadership just announced "we're switching systems" with no why
+    "coalition_included_frontline_sales": False,  # decision made entirely by IT and executives
+    "vision_was_clear": False,  # no articulated benefit beyond "modernization"
+    "training_provided": True,  # one 2-hour training session was held
+    "short_term_wins_highlighted": False,  # no visible early wins were called out
+    "old_system_access_removed": False,  # sales reps could still quietly use the old system, so many did
+}
+
+# STEP 5: Identify where the past rollout broke down
+print("=== Past Rollout: Kotter Step-by-Step Diagnosis ===")
+# TODO: if not past_rollout_facts["urgency_communicated"]:
+# TODO:     print("Step 1 (Urgency) FAILED: no compelling 'why now' was communicated -- change felt optional/arbitrary")
+# TODO: if not past_rollout_facts["coalition_included_frontline_sales"]:
+# TODO:     print("Step 2 (Coalition) FAILED: no frontline sales voice in the decision -- no peer credibility for the change")
+# TODO: if not past_rollout_facts["vision_was_clear"]:
+# TODO:     print("Step 3 (Vision) FAILED: 'modernization' isn't a vision sales reps can connect to their daily work")
+# TODO: if not past_rollout_facts["short_term_wins_highlighted"]:
+# TODO:     print("Step 6 (Short-term wins) FAILED: no visible proof points to build momentum")
+# TODO: if not past_rollout_facts["old_system_access_removed"]:
+# TODO:     print("Step 8 (Institutionalize) FAILED: old system access left open -- default reversion path was never closed")
+
+# STEP 1-4: New plan for the current rollout
+print("\\n=== New Rollout Plan ===")
+new_plan = {
+    "1. Create urgency": "Tie CRM change directly to a stated business problem: '30% of deals stall from lost visibility -- this fixes that'",
+    "2. Build a guiding coalition": "Include 2-3 respected senior sales reps (not just IT/execs) as visible champions",
+    "3. Form a strategic vision": "Concrete before/after: 'no more manually re-entering data across 3 tools'",
+    "4. Enlist a volunteer army": "Champions demo the new system in team meetings, not a single top-down email",
+    "5. Enable action": "Remove barriers: pre-migrate historical data so reps aren't starting from a blank system",
+    "6. Generate short-term wins": "Publicly highlight the first rep who closes a deal faster using the new system",
+    "7. Sustain acceleration": "Weekly office hours for questions during the first month, not one-time training only",
+    "8. Institute change": "Fully sunset the old system access on a firm date -- no quiet fallback option",
+}
+# TODO: for step, action in new_plan.items():
+# TODO:     print(f"{step}: {action}")
+`,
+    skillTags: ["Kotter's 8-Step Model", "Change Management", "Organizational Leadership", "Technology Adoption"],
+    hints: [
+      "Kotter's model is sequential for a reason -- skipping straight to communication/training (steps 4-6) without first establishing genuine urgency and a credible guiding coalition (steps 1-2) is one of the most common causes of failed change initiatives, exactly the pattern in the past failed rollout",
+      "Step 8 (institutionalizing the change) is frequently the most neglected step -- leaving the old system quietly accessible (as in the past rollout) creates an easy default reversion path, meaning the change was never actually 'anchored' even if the initial rollout seemed to go fine",
+      "A guiding coalition without frontline representation (only IT and executives) tends to produce a technically correct but practically disconnected plan -- frontline peer credibility is often what determines whether a change is genuinely adopted versus complied with reluctantly",
+    ],
+  },
+  {
+    id: "mba-lead-003",
+    title: "Apply Situational Leadership to Match Management Style to Team Readiness",
+    category: "Organizational Leadership",
+    icon: "🎚️",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Leadership Frameworks"],
+    scenario:
+      "A newly promoted manager is using the exact same hands-off leadership style with every team member, regardless of their experience level -- and it's failing both with a brand-new hire who feels lost and a senior expert who feels micromanaged in the rare moments the manager does check in.",
+    objective:
+      "Apply the Situational Leadership model to match leadership style (directing, coaching, supporting, delegating) to each team member's individual readiness level (competence and commitment), and identify the specific mismatches causing problems.",
+    steps: [
+      "Assess each team member's readiness level based on competence and commitment for their current task",
+      "Map each readiness level to the appropriate Situational Leadership style",
+      "Compare the manager's actual (uniform) approach against the ideal approach for each person",
+      "Identify which team members are experiencing the most severe style mismatch",
+      "Recommend a specific, differentiated approach for each team member",
+    ],
+    workstation: "notebook",
+    starterCode: `# Situational Leadership Model
+# Readiness levels: R1 (low competence, low commitment) -> R4 (high competence, high commitment)
+# Matching styles: S1 Directing, S2 Coaching, S3 Supporting, S4 Delegating
+
+team_members = [
+    {"name": "Alex (brand-new hire)", "competence": "low", "commitment": "high"},   # R1: enthusiastic but unskilled
+    {"name": "Jordan (2 years in role)", "competence": "medium", "commitment": "low"},  # R2: some skill, has become disillusioned
+    {"name": "Sam (skilled but inconsistent confidence)", "competence": "high", "commitment": "variable"},  # R3
+    {"name": "Taylor (senior expert)", "competence": "high", "commitment": "high"},  # R4: fully capable and motivated
+]
+
+def assess_readiness_level(competence, commitment):
+    # TODO: if competence == "low":
+    # TODO:     return "R1", "S1 - Directing (high direction, low support -- give clear instructions and close supervision)"
+    # TODO: elif competence == "medium" and commitment == "low":
+    # TODO:     return "R2", "S2 - Coaching (high direction, high support -- explain decisions, ask for input, keep encouraging)"
+    # TODO: elif competence == "high" and commitment in ("variable", "low"):
+    # TODO:     return "R3", "S3 - Supporting (low direction, high support -- facilitate, praise, listen, involve in decisions)"
+    # TODO: else:
+    # TODO:     return "R4", "S4 - Delegating (low direction, low support -- turn over responsibility, minimal check-ins)"
+    pass
+
+manager_actual_style = "S4 - Delegating (low direction, low support)"  # the uniform, hands-off style being applied to everyone
+
+print("=== Situational Leadership Assessment ===")
+# TODO: for member in team_members:
+# TODO:     readiness, ideal_style = assess_readiness_level(member["competence"], member["commitment"])
+# TODO:     mismatch = "MISMATCH" if ideal_style.split(" - ")[0] not in manager_actual_style else "MATCH"
+# TODO:     print(f"\\n{member['name']}:")
+# TODO:     print(f"  Readiness level: {readiness}")
+# TODO:     print(f"  Ideal style: {ideal_style}")
+# TODO:     print(f"  Manager's actual style: {manager_actual_style}")
+# TODO:     print(f"  Status: {mismatch}")
+
+print("\\n=== Most Severe Mismatches ===")
+print("Alex (R1, needs Directing) getting Delegating-style hands-off treatment is the most severe")
+print("mismatch -- a low-competence new hire needs clear instruction, not autonomy they aren't yet")
+print("equipped to use well, which explains why Alex feels lost.")
+print("\\nTaylor (R4, actually wants Delegating) is correctly matched by coincidence, not by design --")
+print("this only works because Taylor's readiness happens to align with the manager's default style.")
+`,
+    skillTags: ["Situational Leadership", "Management Style", "Team Readiness", "Leadership"],
+    hints: [
+      "The core insight of Situational Leadership is that there's no single 'best' leadership style — the right style depends entirely on the follower's readiness level for the SPECIFIC task at hand, meaning even the same person might need Directing for a new task and Delegating for one they've mastered",
+      "A manager applying a single uniform style (regardless of which style it is) will inevitably mismatch some fraction of their team, since real teams virtually always have a spread of competence and commitment levels across their members",
+      "Commitment (motivation/confidence) and competence (skill) are assessed independently and can move in surprising directions — Jordan's declining commitment despite growing competence (R2) is a common and often-missed pattern, frequently mistaken for a skill problem when it's actually a motivation problem needing a different intervention",
+    ],
+  },
+  {
+    id: "mba-lead-004",
+    title: "Build a Stakeholder Influence Map for a Cross-Functional Initiative",
+    category: "Organizational Leadership",
+    icon: "🗺️",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Stakeholder Management"],
+    scenario:
+      "A project lead is launching a cross-functional initiative that touches Sales, Engineering, Finance, and Legal -- and has learned the hard way on past projects that ignoring a skeptical-but-powerful stakeholder can quietly kill a project months in. Time to map influence and engagement strategy properly before launch.",
+    objective:
+      "Build a power/interest stakeholder map, classify each stakeholder's quadrant, and define a differentiated engagement strategy for each rather than treating all stakeholders the same.",
+    steps: [
+      "Score each stakeholder on power (ability to help or block the initiative) and interest (how much they care about the outcome)",
+      "Classify each stakeholder into a power/interest quadrant",
+      "Define the standard engagement strategy for each quadrant",
+      "Flag the highest-risk stakeholder(s): high power combined with low current interest or known skepticism",
+      "Recommend a specific engagement action for the highest-risk stakeholder before project kickoff",
+    ],
+    workstation: "notebook",
+    starterCode: `# Stakeholder Power/Interest Map
+stakeholders = [
+    {"name": "VP Sales", "power": 9, "interest": 8, "sentiment": "supportive"},
+    {"name": "VP Finance", "power": 9, "interest": 3, "sentiment": "skeptical -- concerned about budget precedent"},
+    {"name": "Engineering Lead", "power": 6, "interest": 9, "sentiment": "supportive but resource-constrained"},
+    {"name": "Legal Counsel", "power": 7, "interest": 2, "sentiment": "neutral, hasn't been briefed yet"},
+    {"name": "Regional Sales Manager", "power": 3, "interest": 7, "sentiment": "supportive"},
+    {"name": "IT Security", "power": 5, "interest": 4, "sentiment": "unknown -- not yet consulted"},
+]
+
+power_threshold = 6
+interest_threshold = 5
+
+def classify_quadrant(power, interest):
+    # TODO: if power >= power_threshold and interest >= interest_threshold:
+    # TODO:     return "Manage Closely (high power, high interest)"
+    # TODO: elif power >= power_threshold and interest < interest_threshold:
+    # TODO:     return "Keep Satisfied (high power, low interest)"
+    # TODO: elif power < power_threshold and interest >= interest_threshold:
+    # TODO:     return "Keep Informed (low power, high interest)"
+    # TODO: else:
+    # TODO:     return "Monitor (low power, low interest)"
+    pass
+
+print("=== Stakeholder Map ===")
+# TODO: for s in stakeholders:
+# TODO:     quadrant = classify_quadrant(s["power"], s["interest"])
+# TODO:     print(f"{s['name']}: power={s['power']}, interest={s['interest']} -> {quadrant}")
+# TODO:     print(f"  Sentiment: {s['sentiment']}")
+
+# STEP 4: Highest-risk stakeholders -- high power, and either low interest or skeptical sentiment
+print("\\n=== Highest-Risk Stakeholders ===")
+# TODO: for s in stakeholders:
+# TODO:     is_high_power = s["power"] >= power_threshold
+# TODO:     is_risk_sentiment = "skeptical" in s["sentiment"] or "unknown" in s["sentiment"] or "hasn't been briefed" in s["sentiment"]
+# TODO:     if is_high_power and is_risk_sentiment:
+# TODO:         print(f"{s['name']}: HIGH RISK -- high power (can block/slow the project) combined with {s['sentiment']}")
+
+# STEP 5: Specific engagement recommendation
+print("\\n=== Recommended Pre-Kickoff Action ===")
+print("VP Finance (high power, skeptical about budget precedent) should get a 1:1 briefing BEFORE the")
+print("group kickoff, specifically addressing the budget-precedent concern directly -- not a generic")
+print("project overview. Legal Counsel should also be briefed individually before kickoff rather than")
+print("hearing about the initiative for the first time in a group setting alongside stakeholders who")
+print("are already bought in, which can make a not-yet-briefed high-power stakeholder feel sidelined.")
+`,
+    skillTags: ["Stakeholder Mapping", "Power/Interest Grid", "Cross-Functional Leadership", "Change Management"],
+    hints: [
+      "The power/interest grid's real value is in prescribing DIFFERENT engagement strategies per quadrant rather than treating all stakeholders identically — 'Keep Satisfied' stakeholders (high power, low interest) need periodic high-level updates and early buy-in on concerns, not the frequent detailed engagement appropriate for 'Manage Closely' stakeholders",
+      "The most dangerous combination is high power with low CURRENT interest or unaddressed skepticism — these stakeholders often go unnoticed during planning precisely because they're quiet, but they have the power to block or slow a project the moment something affects their domain (like VP Finance and budget precedent here)",
+      "Briefing a skeptical high-power stakeholder individually and specifically before a group kickoff (rather than letting them hear the pitch for the first time alongside already-bought-in stakeholders) is a well-established practical tactic — it addresses their specific concern directly and avoids putting them in a position where objecting publicly feels like the only way to be heard",
+    ],
+  },
+]
+
 export const DOMAIN_CHALLENGES = {
   data:      DATA_ANALYST_CHALLENGES,
   bi_analyst:DATA_ANALYST_CHALLENGES,
