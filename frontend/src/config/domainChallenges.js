@@ -15860,6 +15860,1409 @@ table_plan = [
   },
 ]
 
+// ─────────────────────────────────────────────────────────────────────────────
+// IoT — EMBEDDED FIRMWARE FUNDAMENTALS
+// ─────────────────────────────────────────────────────────────────────────────
+export const IOT_EMBEDDED_PROGRAMMING_CHALLENGES = [
+  {
+    id: "iot-emb-001",
+    title: "Debounce a Noisy Push-Button Signal",
+    category: "Embedded Firmware",
+    icon: "🔘",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python", "Embedded Systems"],
+    scenario:
+      "A mechanical push-button on an IoT door sensor is triggering the interrupt handler 5-8 times per single physical press, due to mechanical contact bounce. The firmware needs a debounce algorithm before this reaches production and floods the event log.",
+    objective:
+      "Simulate raw noisy button-press samples and implement a time-based debounce algorithm that reports exactly one clean press event per physical press.",
+    steps: [
+      "Simulate a raw signal array representing rapid HIGH/LOW bouncing during a single press",
+      "Implement a debounce function that ignores state changes within a minimum time window",
+      "Track the last stable state and the last change timestamp",
+      "Only register a new press event if the signal has been stable for the debounce interval",
+      "Verify the debounced output reports exactly 1 event for a bouncy press sequence",
+    ],
+    workstation: "notebook",
+    starterCode: `# Button Debounce Simulation
+import time
+
+# Simulated raw samples: (timestamp_ms, pin_state) -- bouncing during a single physical press
+raw_samples = [
+    (0, 0), (2, 1), (4, 0), (6, 1), (8, 1), (10, 1),  # bounce, then settles HIGH (pressed)
+    (12, 1), (14, 1), (16, 1), (18, 1), (20, 1),
+    (100, 0), (102, 1), (104, 0), (106, 0), (108, 0),  # bounce, then settles LOW (released)
+]
+
+DEBOUNCE_MS = 15  # minimum stable time before accepting a state change
+
+def debounce_events(samples, debounce_ms):
+    events = []
+    # TODO: last_stable_state = samples[0][1]
+    # TODO: last_change_time = samples[0][0]
+    # TODO: candidate_state = samples[0][1]
+    # TODO: candidate_since = samples[0][0]
+
+    for t, state in samples[1:]:
+        # TODO: if state != candidate_state:
+        # TODO:     candidate_state = state
+        # TODO:     candidate_since = t
+        # TODO: elif (t - candidate_since) >= debounce_ms and candidate_state != last_stable_state:
+        # TODO:     events.append((t, candidate_state))
+        # TODO:     last_stable_state = candidate_state
+        pass
+
+    return events
+
+# TODO: clean_events = debounce_events(raw_samples, DEBOUNCE_MS)
+# TODO: print(f"Debounced events: {clean_events}")
+# TODO: press_events = [e for e in clean_events if e[1] == 1]
+# TODO: print(f"Clean press count: {len(press_events)} (expected: 1)")
+`,
+    skillTags: ["Debouncing", "Embedded Firmware", "Signal Processing", "Interrupt Handling", "IoT Sensors"],
+    hints: [
+      "Debouncing works by requiring a signal to stay STABLE for a minimum duration before trusting the new state — bounces are individually too short-lived to satisfy that window",
+      "A common firmware alternative to this software approach is a hardware RC low-pass filter on the button line — but software debounce is cheaper and needs no extra components",
+      "Real firmware often debounces inside a timer interrupt (polling every few ms) rather than on every raw edge interrupt — edge-triggered interrupts are exactly what fire repeatedly during bounce",
+    ],
+  },
+  {
+    id: "iot-emb-002",
+    title: "Implement a Watchdog Timer Reset Pattern",
+    category: "Embedded Firmware",
+    icon: "🐕",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Python", "Embedded Systems"],
+    scenario:
+      "A deployed IoT sensor node occasionally hangs in the field (a rare firmware bug that's hard to reproduce) and stays unresponsive until someone physically power-cycles it. You've been asked to design the watchdog timer logic that will automatically recover the device instead.",
+    objective:
+      "Simulate a watchdog timer pattern: the main loop must periodically 'pet' (reset) the watchdog, or the watchdog fires and simulates a forced reboot.",
+    steps: [
+      "Implement a Watchdog class with a timeout and a last-pet timestamp",
+      "Implement pet() to reset the last-pet timestamp",
+      "Implement check() to determine if the watchdog would fire (timeout exceeded since last pet)",
+      "Simulate a healthy main loop that pets regularly — watchdog should never fire",
+      "Simulate a hung main loop that stops petting — watchdog should fire and trigger a simulated reboot",
+    ],
+    workstation: "notebook",
+    starterCode: `# Watchdog Timer Simulation
+import time
+
+class Watchdog:
+    def __init__(self, timeout_s):
+        self.timeout_s = timeout_s
+        self.last_pet = time.monotonic()
+        self.reboot_count = 0
+
+    def pet(self):
+        # TODO: self.last_pet = time.monotonic()
+        pass
+
+    def check(self):
+        # TODO: elapsed = time.monotonic() - self.last_pet
+        # TODO: if elapsed >= self.timeout_s:
+        # TODO:     self.reboot_count += 1
+        # TODO:     self.last_pet = time.monotonic()  # simulate reboot resetting the watchdog
+        # TODO:     return True  # watchdog fired
+        # TODO: return False
+        pass
+
+def simulate_healthy_loop(wd, iterations=5, work_delay_s=0.05):
+    for i in range(iterations):
+        # do some work
+        time.sleep(work_delay_s)
+        # TODO: wd.pet()  # healthy firmware pets the watchdog every loop iteration
+        fired = wd.check()
+        print(f"Healthy loop iter {i}: watchdog fired = {fired}")
+
+def simulate_hung_loop(wd, hang_duration_s):
+    print(f"\\nSimulating a hang of {hang_duration_s}s (no petting)...")
+    time.sleep(hang_duration_s)
+    fired = wd.check()
+    print(f"After hang: watchdog fired = {fired}, reboot_count = {wd.reboot_count}")
+
+wd = Watchdog(timeout_s=0.3)
+simulate_healthy_loop(wd)
+simulate_hung_loop(wd, hang_duration_s=0.5)
+`,
+    skillTags: ["Watchdog Timer", "Embedded Firmware", "Fault Recovery", "Reliability Engineering", "IoT Devices"],
+    hints: [
+      "A watchdog timer is a hardware (or software-simulated) safety net — if the main loop stops petting it (because it's hung/crashed), the watchdog assumes something is wrong and forces a reboot",
+      "The timeout must be set longer than the LONGEST legitimate delay between pets in normal operation — too short and healthy devices reboot spuriously; too long and a hang takes too long to recover from",
+      "This pattern is one of the most important reliability mechanisms in unattended, field-deployed IoT hardware — a device that can't be physically reached needs to be able to recover from its own bugs",
+    ],
+  },
+  {
+    id: "iot-emb-003",
+    title: "Design a Finite State Machine for a Smart Lock",
+    category: "Embedded Firmware",
+    icon: "🔒",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 18,
+    tools: ["Python", "Embedded Systems"],
+    scenario:
+      "A smart lock's firmware has grown into a tangle of nested if-statements handling locked/unlocked/alarm states, and a recent bug let an invalid state transition happen (armed alarm bypassed by a stale button press). You need to redesign it as an explicit finite state machine with only valid transitions allowed.",
+    objective:
+      "Implement a finite state machine for a smart lock with explicit states and a transition table that rejects invalid transitions instead of silently allowing them.",
+    steps: [
+      "Define the states: LOCKED, UNLOCKED, ALARM_ARMED, ALARM_TRIGGERED",
+      "Define the valid transition table: (current_state, event) -> new_state",
+      "Implement a transition function that only allows table-defined transitions",
+      "Attempt an invalid transition (e.g. UNLOCKED -> ALARM_TRIGGERED directly) and verify it's rejected",
+      "Walk through a full valid sequence and verify final state is correct",
+    ],
+    workstation: "notebook",
+    starterCode: `# Smart Lock Finite State Machine
+class SmartLockFSM:
+    STATES = {"LOCKED", "UNLOCKED", "ALARM_ARMED", "ALARM_TRIGGERED"}
+
+    # STEP 2: Valid transitions: (current_state, event) -> new_state
+    TRANSITIONS = {
+        ("LOCKED", "unlock_code_correct"):      "UNLOCKED",
+        ("LOCKED", "arm_alarm"):                "ALARM_ARMED",
+        ("UNLOCKED", "lock"):                   "LOCKED",
+        ("ALARM_ARMED", "unlock_code_correct"): "UNLOCKED",
+        ("ALARM_ARMED", "tamper_detected"):     "ALARM_TRIGGERED",
+        ("ALARM_TRIGGERED", "admin_reset"):     "LOCKED",
+    }
+
+    def __init__(self):
+        self.state = "LOCKED"
+        self.history = [self.state]
+
+    def transition(self, event):
+        key = (self.state, event)
+        # TODO: if key in self.TRANSITIONS:
+        # TODO:     self.state = self.TRANSITIONS[key]
+        # TODO:     self.history.append(self.state)
+        # TODO:     return True
+        # TODO: else:
+        # TODO:     print(f"REJECTED: no valid transition from {self.state} on event '{event}'")
+        # TODO:     return False
+        pass
+
+lock = SmartLockFSM()
+
+# STEP 3, 4: Valid sequence
+print("=== Valid sequence ===")
+# TODO: lock.transition("arm_alarm")       # LOCKED -> ALARM_ARMED
+# TODO: lock.transition("tamper_detected") # ALARM_ARMED -> ALARM_TRIGGERED
+# TODO: lock.transition("admin_reset")     # ALARM_TRIGGERED -> LOCKED
+# TODO: print("History:", lock.history)
+
+# STEP 4: Invalid transition attempt — should be rejected, not silently allowed
+print("\\n=== Invalid transition attempt ===")
+# TODO: lock.transition("unlock_code_correct")  # LOCKED -> UNLOCKED (valid)
+# TODO: success = lock.transition("tamper_detected")  # UNLOCKED has no tamper_detected transition!
+# TODO: print(f"Invalid transition succeeded: {success} (should be False)")
+# TODO: print(f"State after rejected transition: {lock.state} (should remain UNLOCKED, unchanged)")
+`,
+    skillTags: ["Finite State Machine", "Embedded Firmware", "State Management", "Access Control Systems", "Defensive Programming"],
+    hints: [
+      "An explicit transition TABLE (not nested if/else) makes every valid state change visible in one place — the exact bug class described (a bypass via an unhandled transition) becomes structurally impossible once undefined transitions are rejected by default",
+      "The state should only ever change through transition() — never assign self.state directly elsewhere in the code, or the FSM's guarantees are silently broken",
+      "This same table-driven FSM pattern applies far beyond locks — connection state machines, order fulfillment workflows, and game character states all benefit from making valid transitions explicit rather than implicit",
+    ],
+  },
+  {
+    id: "iot-emb-004",
+    title: "Estimate Stack Usage to Prevent Overflow",
+    category: "Embedded Firmware",
+    icon: "📚",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 22,
+    tools: ["Python", "Embedded Systems"],
+    scenario:
+      "A microcontroller with only 4KB of RAM crashed mysteriously in the field with no error message — classic symptom of stack overflow silently corrupting memory. You need to estimate worst-case stack usage across the call chain before it ships to catch this class of bug at design time, not in the field.",
+    objective:
+      "Model a function call graph with per-function stack frame sizes, compute the worst-case (deepest) stack usage path, and check it against the available stack budget.",
+    steps: [
+      "Define each function's local stack frame size and which functions it calls",
+      "Compute the worst-case cumulative stack depth for every possible call path",
+      "Identify the single deepest call path and its total stack usage",
+      "Compare against the available stack budget, accounting for a safety margin",
+      "Recommend a fix if the worst case exceeds budget (e.g. reduce local variables, avoid recursion)",
+    ],
+    workstation: "notebook",
+    starterCode: `# Worst-Case Stack Usage Estimation
+# Call graph: function_name -> (frame_size_bytes, [functions it calls])
+call_graph = {
+    "main":            (64,  ["sensor_read_loop"]),
+    "sensor_read_loop":(96,  ["read_temperature", "read_humidity", "publish_mqtt"]),
+    "read_temperature":(48,  ["i2c_transfer"]),
+    "read_humidity":   (48,  ["i2c_transfer"]),
+    "i2c_transfer":    (32,  []),
+    "publish_mqtt":    (256, ["tls_encrypt", "tcp_send"]),   # MQTT+TLS buffers are large
+    "tls_encrypt":     (512, []),                             # crypto buffers dominate stack usage
+    "tcp_send":        (128, []),
+}
+
+AVAILABLE_STACK_BYTES = 2048
+SAFETY_MARGIN_PCT = 0.20  # keep 20% headroom
+
+def worst_case_depth(func, graph, visited=None):
+    if visited is None:
+        visited = set()
+    if func in visited:
+        raise ValueError(f"Cycle detected at {func} — recursive calls need separate analysis")
+    # TODO: visited = visited | {func}
+    # TODO: frame_size, callees = graph[func]
+    # TODO: if not callees:
+    # TODO:     return frame_size, [func]
+    # TODO: deepest_callee_size, deepest_path = 0, []
+    # TODO: for callee in callees:
+    # TODO:     callee_size, callee_path = worst_case_depth(callee, graph, visited)
+    # TODO:     if callee_size > deepest_callee_size:
+    # TODO:         deepest_callee_size, deepest_path = callee_size, callee_path
+    # TODO: return frame_size + deepest_callee_size, [func] + deepest_path
+    pass
+
+# TODO: worst_bytes, worst_path = worst_case_depth("main", call_graph)
+# TODO: print(f"Worst-case stack path: {' -> '.join(worst_path)}")
+# TODO: print(f"Worst-case stack usage: {worst_bytes} bytes")
+
+# STEP 4 & 5: Check against budget with safety margin
+# TODO: usable_budget = AVAILABLE_STACK_BYTES * (1 - SAFETY_MARGIN_PCT)
+# TODO: print(f"Usable budget (with {SAFETY_MARGIN_PCT:.0%} margin): {usable_budget:.0f} bytes")
+# TODO: if worst_bytes > usable_budget:
+# TODO:     print(f"RISK: worst-case usage exceeds safe budget by {worst_bytes - usable_budget:.0f} bytes")
+# TODO:     print("Recommendation: reduce buffer sizes in tls_encrypt/publish_mqtt, or move TLS to a separate stack/task")
+# TODO: else:
+# TODO:     print("Worst-case stack usage is within the safety margin")
+`,
+    skillTags: ["Stack Overflow", "Embedded Firmware", "Memory Analysis", "Call Graph Analysis", "Reliability Engineering"],
+    hints: [
+      "Stack usage adds up along the DEEPEST call chain, not the sum of all functions — a wide-but-shallow call graph can be safe even with many functions, while one deep chain through a few large-frame functions can overflow",
+      "TLS/crypto functions are a classic hidden stack hog in embedded IoT firmware — their large internal buffers often dwarf the rest of the application's stack usage combined",
+      "Recursive functions need special handling in this kind of analysis (the cycle check exists for exactly that reason) — worst-case depth for recursion depends on runtime data, not just the static call graph, and needs a different bound (e.g. a hard recursion depth limit)",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IoT — SENSOR DATA & CALIBRATION
+// ─────────────────────────────────────────────────────────────────────────────
+export const IOT_SENSOR_DATA_CHALLENGES = [
+  {
+    id: "iot-sensor-001",
+    title: "Calibrate a Sensor Against a Reference Standard",
+    category: "Sensor Data",
+    icon: "🌡️",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python", "NumPy"],
+    scenario:
+      "A batch of low-cost temperature sensors reads consistently 2-3°C higher than a calibrated reference thermometer across the operating range. Before deploying 500 of these sensors in a cold-chain monitoring product, you need to compute and apply a calibration correction.",
+    objective:
+      "Fit a linear calibration curve (sensor reading -> true temperature) using reference measurements, and apply the correction to raw sensor data.",
+    steps: [
+      "Given paired (sensor_reading, reference_reading) calibration points",
+      "Fit a linear correction: true_temp = a * sensor_reading + b",
+      "Apply the correction to a new batch of raw sensor readings",
+      "Compute the residual error after correction vs before",
+      "Verify the corrected readings fall within an acceptable accuracy tolerance",
+    ],
+    workstation: "notebook",
+    starterCode: `# Sensor Calibration Against Reference Standard
+import numpy as np
+
+# Calibration data: sensor reads high by a roughly consistent offset + slight scale error
+sensor_readings =    np.array([10.0, 15.0, 20.0, 25.0, 30.0, 35.0])
+reference_readings = np.array([7.8,  12.9, 17.7, 22.6, 27.5, 32.3])
+
+# STEP 2: Fit linear correction (reference = a * sensor + b)
+# TODO: coeffs = np.polyfit(sensor_readings, reference_readings, deg=1)
+# TODO: a, b = coeffs
+# TODO: print(f"Calibration: true_temp = {a:.4f} * sensor_reading + {b:.4f}")
+
+def apply_calibration(raw_reading, a, b):
+    # TODO: return a * raw_reading + b
+    pass
+
+# STEP 3: Apply to new raw readings from the field
+new_raw_readings = np.array([12.0, 18.5, 24.0, 29.0])
+# TODO: corrected = np.array([apply_calibration(r, a, b) for r in new_raw_readings])
+# TODO: print(f"Raw: {new_raw_readings}")
+# TODO: print(f"Corrected: {corrected}")
+
+# STEP 4: Residual error on the calibration set itself (before vs after)
+# TODO: error_before = np.abs(sensor_readings - reference_readings)
+# TODO: predicted_calibration = np.array([apply_calibration(r, a, b) for r in sensor_readings])
+# TODO: error_after = np.abs(predicted_calibration - reference_readings)
+# TODO: print(f"\\nMean absolute error BEFORE calibration: {error_before.mean():.3f}")
+# TODO: print(f"Mean absolute error AFTER calibration: {error_after.mean():.3f}")
+
+# STEP 5: Tolerance check
+tolerance_c = 0.5
+# TODO: max_error_after = error_after.max()
+# TODO: print(f"\\nMax residual error after calibration: {max_error_after:.3f}°C (tolerance: {tolerance_c}°C)")
+# TODO: print("PASS" if max_error_after <= tolerance_c else "FAIL — consider a higher-order fit or per-unit calibration")
+`,
+    skillTags: ["Sensor Calibration", "Linear Regression", "Measurement Accuracy", "IoT Hardware", "Signal Processing"],
+    hints: [
+      "A linear calibration corrects both OFFSET (the intercept b) and SCALE error (the slope a deviating from 1.0) — many cheap sensors have both, not just a constant offset",
+      "This calibration was fit on ONE sensor unit — if unit-to-unit variation is significant across your batch of 500, you may need per-unit calibration rather than one global correction applied to all",
+      "Residual error after correction should be checked across the FULL operating range, not just near the calibration points — a linear fit can extrapolate poorly outside the range it was fitted on",
+    ],
+  },
+  {
+    id: "iot-sensor-002",
+    title: "Filter Sensor Noise with a Moving Average",
+    category: "Sensor Data",
+    icon: "📶",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 14,
+    tools: ["Python", "NumPy"],
+    scenario:
+      "A vibration sensor on industrial equipment produces a noisy raw signal that triggers false alarms on brief spikes that aren't real problems. You need a simple, low-compute filter that runs on the device itself (no cloud round-trip) to smooth the signal before threshold comparison.",
+    objective:
+      "Implement a moving average filter suitable for running on constrained IoT hardware, and compare false alarm rates before and after filtering.",
+    steps: [
+      "Simulate a noisy vibration signal with occasional brief spikes",
+      "Implement a simple moving average filter with a small window (memory-constrained)",
+      "Apply a fixed alarm threshold to both raw and filtered signals",
+      "Count false alarms (brief spikes that don't represent sustained high vibration) in each",
+      "Discuss the trade-off between window size, alarm responsiveness, and false alarm rate",
+    ],
+    workstation: "notebook",
+    starterCode: `# Moving Average Filter for Noisy Sensor Data
+import numpy as np
+
+np.random.seed(20)
+n_samples = 200
+baseline = 2.0
+signal = baseline + np.random.normal(0, 0.3, n_samples)
+# Inject a few brief noise spikes (not real events) and one sustained real event
+spike_indices = [30, 75, 140]
+for idx in spike_indices:
+    signal[idx] += 3.5  # single-sample spike
+signal[100:110] += 2.5  # sustained real event (10 samples)
+
+ALARM_THRESHOLD = 4.0
+WINDOW = 5  # small window — must fit in constrained IoT RAM
+
+def moving_average_filter(data, window):
+    filtered = np.zeros_like(data)
+    for i in range(len(data)):
+        # TODO: start = max(0, i - window + 1)
+        # TODO: filtered[i] = data[start:i+1].mean()
+        pass
+    return filtered
+
+# TODO: filtered_signal = moving_average_filter(signal, WINDOW)
+
+# STEP 3: Apply alarm threshold
+# TODO: raw_alarms = signal > ALARM_THRESHOLD
+# TODO: filtered_alarms = filtered_signal > ALARM_THRESHOLD
+
+# STEP 4: Count alarm EVENTS (consecutive True runs count as 1 event, not 1 per sample)
+def count_alarm_events(alarm_array):
+    events = 0
+    in_alarm = False
+    for a in alarm_array:
+        if a and not in_alarm:
+            events += 1
+            in_alarm = True
+        elif not a:
+            in_alarm = False
+    return events
+
+# TODO: raw_event_count = count_alarm_events(raw_alarms)
+# TODO: filtered_event_count = count_alarm_events(filtered_alarms)
+# TODO: print(f"Raw signal alarm events: {raw_event_count} (includes false spikes)")
+# TODO: print(f"Filtered signal alarm events: {filtered_event_count} (should be closer to 1 real event)")
+
+# STEP 5: discuss trade-off
+print("\\nSmaller window = more responsive but less noise rejection.")
+print("Larger window = smoother but delays real alarm detection and uses more RAM/history.")
+`,
+    skillTags: ["Moving Average Filter", "Noise Reduction", "Signal Processing", "IoT Sensors", "Embedded Constraints"],
+    hints: [
+      "A moving average of window size W only needs to store W samples in memory — this is why it's a favorite filter for constrained microcontrollers, unlike more sophisticated filters that may need more state or computation",
+      "The window size is a real engineering trade-off, not a free parameter — too small doesn't filter enough noise, too large delays detecting genuine sustained events and uses more of your limited RAM",
+      "Counting alarm EVENTS (not raw samples above threshold) matters because a sustained real event spans many samples but should only count as ONE alert, not dozens",
+    ],
+  },
+  {
+    id: "iot-sensor-003",
+    title: "Detect a Stuck or Failed Sensor",
+    category: "Sensor Data",
+    icon: "🚫",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Python", "NumPy"],
+    scenario:
+      "A fleet of 200 remote soil-moisture sensors reports data every hour, but some sensors physically fail and get stuck reporting the exact same value forever — silently, with no error flag, because the hardware still responds, it's just returning garbage. Your monitoring system needs to detect these stuck sensors automatically.",
+    objective:
+      "Implement stuck-sensor detection by identifying readings that show zero variance over a sustained window, distinguishing genuine stability from sensor failure.",
+    steps: [
+      "For each sensor's reading history, compute the rolling variance over a trailing window",
+      "Flag sensors where variance is exactly zero (or near-zero) for an extended period",
+      "Distinguish this from a genuinely stable but healthy sensor (e.g. constant humidity in a sealed room) using a plausibility check",
+      "Generate a list of suspected stuck sensors requiring field inspection",
+      "Explain why 'stuck' is different from 'out of range' and needs a different detection method",
+    ],
+    workstation: "notebook",
+    starterCode: `# Stuck Sensor Detection
+import numpy as np
+
+np.random.seed(25)
+n_readings = 48  # 48 hourly readings = 2 days
+
+sensors = {
+    "sensor_A": baseline_A := 35 + np.cumsum(np.random.normal(0, 0.5, n_readings)) * 0.1,  # healthy, natural drift
+    "sensor_B": np.full(n_readings, 22.0),  # STUCK — exact same value every reading
+    "sensor_C": 40 + np.random.normal(0, 0.3, n_readings),  # healthy, noisy but varying
+}
+# Make sensor_A a genuine array, not a walrus-assigned tuple artifact
+sensors["sensor_A"] = baseline_A
+
+STUCK_WINDOW = 12  # flag if identical for 12+ consecutive hourly readings
+VARIANCE_THRESHOLD = 1e-6  # essentially zero
+
+def detect_stuck(readings, window, var_threshold):
+    n = len(readings)
+    for start in range(n - window + 1):
+        segment = readings[start:start+window]
+        # TODO: if np.var(segment) < var_threshold:
+        # TODO:     return True, start
+        pass
+    return False, None
+
+print("=== Stuck Sensor Detection ===")
+suspected_stuck = []
+for name, readings in sensors.items():
+    # TODO: is_stuck, start_idx = detect_stuck(readings, STUCK_WINDOW, VARIANCE_THRESHOLD)
+    # TODO: print(f"{name}: stuck={is_stuck}" + (f" (from reading {start_idx})" if is_stuck else ""))
+    # TODO: if is_stuck: suspected_stuck.append(name)
+    pass
+
+# TODO: print(f"\\nSensors requiring field inspection: {suspected_stuck}")
+
+# STEP 5: Why "stuck" != "out of range"
+print("\\nAn out-of-range reading is instantly obviously wrong (e.g. -500°C) and easy to filter.")
+print("A stuck sensor often returns a perfectly PLAUSIBLE value — it just never changes — so")
+print("range checks alone would never catch it. Only variance-over-time detection can.")
+`,
+    skillTags: ["Sensor Failure Detection", "Anomaly Detection", "IoT Fleet Monitoring", "Data Quality", "Predictive Maintenance"],
+    hints: [
+      "A stuck sensor's biggest danger is that its readings look completely plausible in isolation — only the ABSENCE of natural variation over time reveals the failure, which is why range-based validation alone misses it entirely",
+      "The stuck-detection window must be longer than any legitimate period of genuine stability in your environment — too short a window will flag healthy, temporarily-stable sensors as failed",
+      "At fleet scale (200+ sensors), this kind of automated check is the only practical way to catch failures — nobody is going to eyeball 200 time series charts every day looking for flat lines",
+    ],
+  },
+  {
+    id: "iot-sensor-004",
+    title: "Sensor Fusion: Combine Two Noisy Estimates",
+    category: "Sensor Data",
+    icon: "🔀",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 22,
+    tools: ["Python", "NumPy"],
+    scenario:
+      "A weather station has two humidity sensors of different quality and cost — a cheap, noisy one and an expensive, more precise one used as a periodic spot-check. Rather than just trusting the expensive one alone (limited by its slow sampling rate), you can fuse both readings for a better combined estimate using their known uncertainties.",
+    objective:
+      "Implement a simple inverse-variance-weighted sensor fusion to combine two noisy measurements into a single estimate with lower combined uncertainty than either sensor alone.",
+    steps: [
+      "Given two sensor readings and their known measurement variances (uncertainty)",
+      "Compute the inverse-variance weights for each sensor",
+      "Compute the fused estimate as the weighted average",
+      "Compute the resulting fused variance and show it's lower than either individual variance",
+      "Demonstrate with a numeric example that the cheap sensor still contributes useful information despite being noisier",
+    ],
+    workstation: "notebook",
+    starterCode: `# Inverse-Variance Weighted Sensor Fusion
+import numpy as np
+
+# Two sensors' readings and their KNOWN measurement variances (from datasheets/calibration)
+cheap_sensor_reading = 62.5    # %RH
+cheap_sensor_variance = 4.0    # noisy: std dev = 2.0 %RH
+
+precise_sensor_reading = 59.8  # %RH
+precise_sensor_variance = 0.25 # precise: std dev = 0.5 %RH
+
+def fuse_estimates(readings, variances):
+    # STEP 2: Inverse-variance weights
+    # TODO: weights = [1 / v for v in variances]
+    # TODO: total_weight = sum(weights)
+    # TODO: normalized_weights = [w / total_weight for w in weights]
+
+    # STEP 3: Weighted average
+    # TODO: fused_estimate = sum(r * w for r, w in zip(readings, normalized_weights))
+
+    # STEP 4: Fused variance (always <= min of individual variances)
+    # TODO: fused_variance = 1 / total_weight
+
+    # TODO: return fused_estimate, fused_variance, normalized_weights
+    pass
+
+# TODO: fused_value, fused_var, weights = fuse_estimates(
+# TODO:     [cheap_sensor_reading, precise_sensor_reading],
+# TODO:     [cheap_sensor_variance, precise_sensor_variance]
+# TODO: )
+
+# TODO: print(f"Cheap sensor: {cheap_sensor_reading}%RH (variance={cheap_sensor_variance})")
+# TODO: print(f"Precise sensor: {precise_sensor_reading}%RH (variance={precise_sensor_variance})")
+# TODO: print(f"\\nFused estimate: {fused_value:.2f}%RH (variance={fused_var:.3f})")
+# TODO: print(f"Weights: cheap={weights[0]:.1%}, precise={weights[1]:.1%}")
+
+# STEP 5: Verify fused variance beats BOTH individual sensors
+# TODO: print(f"\\nFused variance ({fused_var:.3f}) < precise sensor alone ({precise_sensor_variance})?",
+# TODO:       fused_var < precise_sensor_variance)
+`,
+    skillTags: ["Sensor Fusion", "Inverse-Variance Weighting", "Uncertainty Quantification", "IoT Systems", "Statistical Estimation"],
+    hints: [
+      "Inverse-variance weighting automatically gives MORE weight to the more precise (lower-variance) sensor — you never need to manually tune the weighting, it falls directly out of the math",
+      "The fused variance is always less than or equal to the SMALLER of the two individual variances — combining even a noisy second sensor with a precise one can only help, never hurt, the combined estimate (assuming independent, unbiased errors)",
+      "This is the core idea behind more advanced fusion techniques like the Kalman filter — a Kalman filter is essentially this same inverse-variance-weighted fusion applied recursively over time with a predicted state as one of the 'sensors'",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IoT — CONNECTIVITY & LOW-POWER NETWORKS
+// ─────────────────────────────────────────────────────────────────────────────
+export const IOT_CONNECTIVITY_CHALLENGES = [
+  {
+    id: "iot-conn-001",
+    title: "Calculate LoRaWAN Duty Cycle Compliance",
+    category: "Connectivity",
+    icon: "📡",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 18,
+    tools: ["LoRaWAN", "RF Regulations"],
+    scenario:
+      "A LoRaWAN sensor deployment in the EU868 band must comply with a 1% duty cycle regulatory limit on its sub-band — exceeding it risks regulatory violations and interference with other devices. You need to verify a proposed transmission schedule stays compliant.",
+    objective:
+      "Calculate airtime per transmission and verify a proposed sensor reporting interval satisfies the regulatory duty cycle limit.",
+    steps: [
+      "Given a LoRa transmission's time-on-air per message",
+      "Compute the duty cycle for a proposed reporting interval: airtime / interval",
+      "Compare against the regulatory limit (1% for EU868 default sub-band)",
+      "If non-compliant, compute the minimum interval that WOULD be compliant",
+      "Recommend an interval with a safety margin below the strict regulatory maximum",
+    ],
+    workstation: "notebook",
+    starterCode: `# LoRaWAN Duty Cycle Compliance Check
+time_on_air_ms = 495  # airtime for one uplink message (from LoRa airtime calculator, SF9/BW125)
+proposed_interval_s = 30  # sensor wants to report every 30 seconds
+duty_cycle_limit_pct = 1.0  # EU868 default sub-band regulatory limit
+
+# STEP 2: Duty cycle for the proposed interval
+# TODO: proposed_duty_cycle_pct = (time_on_air_ms / 1000) / proposed_interval_s * 100
+# TODO: print(f"Proposed interval: {proposed_interval_s}s")
+# TODO: print(f"Duty cycle at this interval: {proposed_duty_cycle_pct:.3f}%")
+# TODO: print(f"Regulatory limit: {duty_cycle_limit_pct}%")
+
+# STEP 3: Compliance check
+# TODO: compliant = proposed_duty_cycle_pct <= duty_cycle_limit_pct
+# TODO: print(f"Compliant: {compliant}")
+
+# STEP 4: If non-compliant, find minimum compliant interval
+# duty_cycle = airtime / interval  =>  interval = airtime / duty_cycle
+# TODO: min_compliant_interval_s = (time_on_air_ms / 1000) / (duty_cycle_limit_pct / 100)
+# TODO: print(f"\\nMinimum compliant interval: {min_compliant_interval_s:.1f}s")
+
+# STEP 5: Recommend with safety margin (use 80% of the regulatory limit)
+safety_factor = 0.8
+# TODO: recommended_interval_s = min_compliant_interval_s / safety_factor
+# TODO: print(f"Recommended interval (with safety margin): {recommended_interval_s:.1f}s")
+`,
+    skillTags: ["LoRaWAN", "Duty Cycle", "RF Regulations", "IoT Connectivity", "Time on Air"],
+    hints: [
+      "Duty cycle is simply (time spent transmitting) / (total time period) — a 495ms message every 30 seconds is about 1.65% duty cycle, which is ALREADY over the 1% EU868 limit for that sub-band, a common early-deployment mistake",
+      "Never design right at the regulatory limit — clock drift, retries, and message size variation can easily push you over; a safety margin (used here) protects against edge cases",
+      "Spreading Factor (SF) and Bandwidth (BW) directly control time-on-air — a higher SF gives better range/sensitivity but dramatically increases airtime, which makes duty cycle compliance harder at long range",
+    ],
+  },
+  {
+    id: "iot-conn-002",
+    title: "Choose Between WiFi, BLE, and LoRa for a Deployment",
+    category: "Connectivity",
+    icon: "🔌",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["IoT Connectivity", "System Design"],
+    scenario:
+      "A product team wants 'the best' wireless protocol for a new IoT product without specifying range, power budget, data rate, or cost constraints — a request that has no single right answer without those trade-offs made explicit.",
+    objective:
+      "Build a structured decision framework scoring WiFi, BLE, and LoRa against a deployment's actual requirements, rather than picking based on hype or familiarity.",
+    steps: [
+      "Define the deployment's actual requirements: range, battery life target, data volume, infrastructure availability",
+      "Score each protocol (WiFi, BLE, LoRa) against each requirement",
+      "Weight the requirements by importance for this specific use case",
+      "Compute a weighted score per protocol and identify the best fit",
+      "Explain why the 'best' protocol changes completely for a different use case",
+    ],
+    workstation: "notebook",
+    starterCode: `# Wireless Protocol Selection Framework
+# Use case: outdoor agricultural soil sensors, battery powered, 1 reading/hour, no WiFi infra on the farm
+
+protocol_scores = {
+    # (range_score, battery_score, data_rate_score, infra_cost_score) -- all 1-5, 5=best fit for THIS use case
+    "WiFi": {"range": 1, "battery": 1, "data_rate": 5, "infra_cost": 1},
+    "BLE":  {"range": 2, "battery": 4, "data_rate": 3, "infra_cost": 2},  # needs a nearby gateway/phone
+    "LoRa": {"range": 5, "battery": 5, "data_rate": 1, "infra_cost": 4},  # low data rate is FINE here (1 reading/hr)
+}
+
+# Weights reflect THIS use case's priorities — a different deployment would weight differently
+weights = {"range": 0.35, "battery": 0.35, "data_rate": 0.10, "infra_cost": 0.20}
+
+def weighted_score(scores, weights):
+    # TODO: return sum(scores[k] * weights[k] for k in weights)
+    pass
+
+print("=== Protocol Selection for Outdoor Agricultural Sensors ===")
+results = {}
+for protocol, scores in protocol_scores.items():
+    # TODO: total = weighted_score(scores, weights)
+    # TODO: results[protocol] = total
+    # TODO: print(f"{protocol}: {total:.2f}")
+    pass
+
+# TODO: best_protocol = max(results, key=results.get)
+# TODO: print(f"\\nBest fit: {best_protocol}")
+
+# STEP 5: Explain why this changes for a different use case
+print("\\nFor a different use case (e.g. an indoor smart-home camera with mains power,")
+print("Wi-Fi infrastructure already present, and high data rate needs), the SAME framework")
+print("with different weights (data_rate and infra_cost weighted much higher, range/battery")
+print("much lower) would correctly select WiFi instead — there is no universally 'best' protocol.")
+`,
+    skillTags: ["Wireless Protocol Selection", "IoT System Design", "Trade-off Analysis", "Decision Frameworks", "Connectivity"],
+    hints: [
+      "This weighted-scoring pattern generalizes to almost any 'which technology should we use' decision — it forces the requirements and their relative importance to be explicit instead of left as unstated assumptions",
+      "LoRa's low data rate is a genuine constraint (kbps range), but it's IRRELEVANT for a use case sending a few bytes once an hour — a naive 'higher data rate is always better' framework would incorrectly penalize LoRa here",
+      "The most common real-world mistake in protocol selection is picking based on what the team is already familiar with, rather than what the actual deployment constraints require — this framework is a defense against exactly that bias",
+    ],
+  },
+  {
+    id: "iot-conn-003",
+    title: "Design an Exponential Backoff Retry for Flaky Connectivity",
+    category: "Connectivity",
+    icon: "🔁",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Python", "Networking"],
+    scenario:
+      "A cellular IoT device in a rural area with weak signal keeps hammering the network with immediate reconnect attempts when the connection drops, draining its battery and congesting the already-weak signal further. You need exponential backoff with jitter to make reconnection attempts smarter.",
+    objective:
+      "Implement exponential backoff with jitter for connection retries, capping the maximum wait and comparing battery/network impact against naive immediate retry.",
+    steps: [
+      "Implement a naive immediate-retry loop and count total retry attempts over a failure period",
+      "Implement exponential backoff: wait doubles after each failure, up to a maximum",
+      "Add random jitter to avoid many devices retrying in lockstep (thundering herd)",
+      "Compare total retry attempts (and thus battery/network cost) between naive and backoff approaches",
+      "Explain why jitter matters even for a single isolated device, not just device fleets",
+    ],
+    workstation: "notebook",
+    starterCode: `# Exponential Backoff with Jitter for Connection Retries
+import random
+
+def naive_retry_attempts(failure_duration_s, retry_interval_s=1):
+    # TODO: return failure_duration_s // retry_interval_s
+    pass
+
+def backoff_retry_attempts(failure_duration_s, base_delay_s=1, max_delay_s=60, jitter=True):
+    attempts = 0
+    elapsed = 0
+    delay = base_delay_s
+    while elapsed < failure_duration_s:
+        # TODO: attempts += 1
+        # TODO: wait = delay
+        # TODO: if jitter: wait = random.uniform(delay * 0.5, delay * 1.5)
+        # TODO: elapsed += wait
+        # TODO: delay = min(delay * 2, max_delay_s)  # exponential growth, capped
+        pass
+    return attempts
+
+FAILURE_DURATION_S = 600  # 10-minute outage
+
+# TODO: naive_count = naive_retry_attempts(FAILURE_DURATION_S)
+# TODO: backoff_count = backoff_retry_attempts(FAILURE_DURATION_S)
+
+# TODO: print(f"Naive immediate retry: ~{naive_count} attempts over a {FAILURE_DURATION_S}s outage")
+# TODO: print(f"Exponential backoff: ~{backoff_count} attempts over the same outage")
+# TODO: print(f"Reduction: {(1 - backoff_count/naive_count):.1%} fewer connection attempts")
+
+# STEP 5: Why jitter matters even for ONE device
+print("\\nJitter isn't just for avoiding fleet-wide synchronized retries -- it also prevents")
+print("a single device's retry pattern from repeatedly landing on the exact moment a")
+print("congested/overloaded network or server is least able to respond, which pure")
+print("deterministic exponential backoff can still do by unlucky coincidence.")
+`,
+    skillTags: ["Exponential Backoff", "Jitter", "Connection Retry", "IoT Reliability", "Network Resilience"],
+    hints: [
+      "Exponential backoff without a MAX cap can grow unboundedly — always cap the delay (here at 60s) so a long outage doesn't leave the device waiting hours between attempts once connectivity returns",
+      "Jitter (randomizing the exact wait within a range) is what prevents a 'thundering herd' — thousands of devices that all lost connection at the same moment (e.g. a cell tower outage) would otherwise all retry in perfect lockstep, overwhelming the network the instant it recovers",
+      "This same backoff-with-jitter pattern is standard practice far beyond IoT — API clients, database connection pools, and distributed systems all use it to avoid retry storms",
+    ],
+  },
+  {
+    id: "iot-conn-004",
+    title: "Design a Store-and-Forward Buffer for Intermittent Connectivity",
+    category: "Connectivity",
+    icon: "💾",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 22,
+    tools: ["Python", "Embedded Systems"],
+    scenario:
+      "A fleet-tracking IoT device loses cellular connectivity in tunnels and remote areas for minutes at a time. Currently, any GPS reading taken during an outage is simply lost — the fleet manager needs continuous location history, not gaps. You need a store-and-forward buffer that survives connectivity loss.",
+    objective:
+      "Implement a bounded circular buffer that queues readings during connectivity loss and flushes them in order once connectivity returns, handling the case where the buffer fills up during an extended outage.",
+    steps: [
+      "Implement a bounded buffer (FIFO) with a maximum capacity",
+      "Simulate readings arriving during a connectivity outage — buffer them instead of dropping",
+      "Handle buffer overflow: decide and implement a policy (drop oldest vs drop newest) when full",
+      "On reconnection, flush buffered readings in the correct chronological order",
+      "Report how many readings were preserved vs lost during a simulated outage",
+    ],
+    workstation: "notebook",
+    starterCode: `# Store-and-Forward Buffer for Intermittent Connectivity
+from collections import deque
+
+class StoreAndForwardBuffer:
+    def __init__(self, capacity):
+        self.capacity = capacity
+        self.buffer = deque()
+        self.dropped_count = 0
+
+    def add_reading(self, reading):
+        # STEP 3: Overflow policy — drop OLDEST to keep buffer size bounded
+        # (rationale: most recent location is more operationally useful than the very first)
+        # TODO: if len(self.buffer) >= self.capacity:
+        # TODO:     self.buffer.popleft()  # drop oldest
+        # TODO:     self.dropped_count += 1
+        # TODO: self.buffer.append(reading)
+        pass
+
+    def flush(self):
+        # STEP 4: Return all buffered readings in chronological order, then clear
+        # TODO: flushed = list(self.buffer)
+        # TODO: self.buffer.clear()
+        # TODO: return flushed
+        pass
+
+buf = StoreAndForwardBuffer(capacity=5)
+
+# STEP 2: Simulate readings during a long outage (more readings than capacity)
+outage_readings = [f"gps_reading_{i}" for i in range(1, 9)]  # 8 readings, capacity is 5
+print("=== During outage ===")
+for r in outage_readings:
+    # TODO: buf.add_reading(r)
+    print(f"Buffered: {r}")
+
+# TODO: print(f"\\nReadings dropped during outage: {buf.dropped_count}")
+
+# STEP 4 & 5: Reconnection — flush in order
+print("\\n=== On reconnection ===")
+# TODO: flushed = buf.flush()
+# TODO: print(f"Flushed {len(flushed)} readings in order: {flushed}")
+# TODO: print(f"Total readings taken: {len(outage_readings)}, preserved: {len(flushed)}, lost: {buf.dropped_count}")
+`,
+    skillTags: ["Store and Forward", "Circular Buffer", "IoT Reliability", "Data Persistence", "Intermittent Connectivity"],
+    hints: [
+      "The overflow policy (drop oldest vs drop newest) is a real product decision, not just an implementation detail — for fleet tracking, the most RECENT location is usually most operationally valuable, favoring drop-oldest; for an audit log, you might prefer the opposite",
+      "A production version of this buffer would persist to flash/non-volatile storage, not just in-memory RAM — a device power cycle during an outage would otherwise lose the entire buffer regardless of this logic",
+      "Flushing in chronological order matters for downstream systems that assume monotonically increasing timestamps — an out-of-order flush can break time-series databases or trigger false 'device moved backward in time' alerts",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IoT — DEVICE SECURITY
+// ─────────────────────────────────────────────────────────────────────────────
+export const IOT_SECURITY_CHALLENGES = [
+  {
+    id: "iot-sec-001",
+    title: "Design a Secure Device Provisioning Flow",
+    category: "IoT Security",
+    icon: "🔐",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 18,
+    tools: ["IoT Security", "Provisioning"],
+    scenario:
+      "A factory currently flashes the same hardcoded WiFi credentials and API key into every device of a product line — meaning if one device is reverse-engineered, EVERY device in the field is compromised simultaneously. You need to design a provisioning flow that gives each device unique credentials.",
+    objective:
+      "Design a per-device provisioning flow using unique device identity and short-lived credentials instead of shared hardcoded secrets.",
+    steps: [
+      "Identify why shared hardcoded credentials across a whole product line are a critical vulnerability",
+      "Design a flow: each device gets a unique identity (e.g. from a hardware secure element) at manufacture time",
+      "Design the first-boot registration flow where the device exchanges its unique identity for device-specific credentials",
+      "Ensure the exchange happens over a secure channel (TLS) and credentials are never transmitted in plaintext",
+      "Explain how this limits the blast radius if a single device is compromised",
+    ],
+    workstation: "notebook",
+    starterCode: `# Secure Per-Device Provisioning Flow Design
+# (Design/documentation exercise — model the flow, don't need real crypto)
+
+provisioning_steps = [
+    {
+        "step": 1,
+        "name": "Manufacture-time identity",
+        "detail": "Each device gets a UNIQUE identity: a device certificate + private key burned into a "
+                   "hardware secure element (or at minimum, a unique device serial + factory-generated secret). "
+                   "NEVER the same key across the whole product line.",
+    },
+    {
+        "step": 2,
+        "name": "First-boot registration request",
+        "detail": "On first boot, device connects to the provisioning server over TLS, presenting its unique "
+                   "device certificate/identity -- NOT a shared API key.",
+    },
+    {
+        "step": 3,
+        "name": "Server-side verification",
+        "detail": "Provisioning server verifies the device certificate against a manufacturing registry "
+                   "(is this a real device we made? has it already been provisioned?).",
+    },
+    {
+        "step": 4,
+        "name": "Issue device-specific credentials",
+        "detail": "Server issues a SHORT-LIVED, device-specific access token/certificate for normal operation "
+                   "-- scoped to only what this one device needs (least privilege).",
+    },
+    {
+        "step": 5,
+        "name": "Ongoing rotation",
+        "detail": "Device-specific credentials are rotated/renewed periodically, not permanent -- limits how "
+                   "long a compromised credential remains useful even if leaked.",
+    },
+]
+
+# TODO: for s in provisioning_steps:
+# TODO:     print(f"Step {s['step']}: {s['name']}")
+# TODO:     print(f"  {s['detail']}\\n")
+
+# STEP 1 & 5: Blast radius comparison
+print("=== Blast Radius Comparison ===")
+print("Shared hardcoded credentials: 1 device reverse-engineered -> ALL devices in the field compromised")
+print("Per-device unique credentials: 1 device compromised -> ONLY that 1 device's access is at risk,")
+print("                                remaining fleet is completely unaffected")
+`,
+    skillTags: ["Device Provisioning", "IoT Security", "Credential Management", "Secure Design", "Blast Radius Limitation"],
+    hints: [
+      "Shared hardcoded credentials are one of the most common and most severe real-world IoT vulnerabilities — attackers routinely extract a single device's firmware to recover credentials that then unlock an entire product line at once",
+      "A hardware secure element (or at minimum a factory-unique per-device secret) is what makes unique-identity-per-device actually FEASIBLE at manufacturing scale — without it, 'give every device a unique key' becomes a logistics nightmare",
+      "Short-lived, rotatable credentials mean a leaked credential has a limited window of usefulness — this is a defense-in-depth layer on top of (not a replacement for) unique per-device identity",
+    ],
+  },
+  {
+    id: "iot-sec-002",
+    title: "Verify Firmware Integrity Before OTA Update Installation",
+    category: "IoT Security",
+    icon: "📦",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 18,
+    tools: ["Python", "IoT Security"],
+    scenario:
+      "A fleet of IoT devices receives over-the-air (OTA) firmware updates from a cloud server. Without integrity verification, a compromised update server or a man-in-the-middle attacker could push malicious firmware to every device — you need to verify the update's authenticity before installation.",
+    objective:
+      "Implement a firmware integrity check using a cryptographic hash comparison, and design the logic to reject and roll back on any mismatch.",
+    steps: [
+      "Compute a hash of a downloaded firmware image",
+      "Compare it against a known-good hash provided by the trusted update server (signed/verified separately)",
+      "Reject the update and refuse to flash if the hash doesn't match",
+      "Simulate a corrupted/tampered firmware image and verify it's correctly rejected",
+      "Explain why hash verification alone isn't sufficient without also verifying a signature",
+    ],
+    workstation: "notebook",
+    starterCode: `# OTA Firmware Integrity Verification
+import hashlib
+
+def compute_firmware_hash(firmware_bytes):
+    # TODO: return hashlib.sha256(firmware_bytes).hexdigest()
+    pass
+
+# Simulate a legitimate firmware image and its expected hash (provided by trusted update server)
+legitimate_firmware = b"FIRMWARE_V2.3.1_REAL_BINARY_CONTENT_" + b"\\x00" * 100
+# TODO: expected_hash = compute_firmware_hash(legitimate_firmware)
+# TODO: print(f"Expected hash (from trusted server): {expected_hash}")
+
+def verify_and_install(downloaded_firmware, expected_hash):
+    # TODO: actual_hash = compute_firmware_hash(downloaded_firmware)
+    # TODO: if actual_hash != expected_hash:
+    # TODO:     print(f"REJECTED: hash mismatch")
+    # TODO:     print(f"  expected: {expected_hash}")
+    # TODO:     print(f"  actual:   {actual_hash}")
+    # TODO:     return False
+    # TODO: print("Hash verified — proceeding with installation")
+    # TODO: return True
+    pass
+
+# STEP 1: Legitimate download — should verify and install
+print("\\n=== Scenario 1: Legitimate download ===")
+# TODO: verify_and_install(legitimate_firmware, expected_hash)
+
+# STEP 4: Simulate tampering (a single byte changed mid-transit)
+tampered_firmware = bytearray(legitimate_firmware)
+tampered_firmware[20] ^= 0xFF  # flip bits in one byte
+tampered_firmware = bytes(tampered_firmware)
+
+print("\\n=== Scenario 2: Tampered/corrupted download ===")
+# TODO: verify_and_install(tampered_firmware, expected_hash)
+
+# STEP 5: Why hash alone isn't enough
+print("\\nA hash proves INTEGRITY (the file wasn't altered from what the hash was computed on)")
+print("but proves nothing about AUTHENTICITY (who actually produced that hash in the first place).")
+print("If an attacker can also control/spoof the expected_hash value itself, hash checking alone")
+print("is defeated. Real OTA systems also verify a digital SIGNATURE over the hash, using a public")
+print("key that traces back to a trusted root -- proving the hash itself came from a legitimate source.")
+`,
+    skillTags: ["OTA Updates", "Firmware Integrity", "Cryptographic Hashing", "IoT Security", "Secure Boot"],
+    hints: [
+      "A single flipped bit changes the ENTIRE hash output (the avalanche effect of cryptographic hash functions) — this is exactly why even tiny transmission corruption or tampering is reliably detectable",
+      "Hash verification alone defends against corruption and naive tampering, but NOT against a sophisticated attacker who can also control what 'expected hash' the device trusts — that's what digital signatures add",
+      "A device that installs firmware without integrity verification is one of the most severe IoT vulnerability classes — it turns a compromised update pipeline into a way to push malware to an entire fleet at once",
+    ],
+  },
+  {
+    id: "iot-sec-003",
+    title: "Implement Rate Limiting on a Device's Command Endpoint",
+    category: "IoT Security",
+    icon: "🚦",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Python", "IoT Security"],
+    scenario:
+      "An IoT device exposes a local command endpoint (e.g. for a companion mobile app to control it) with no rate limiting — an attacker on the same network could brute-force a PIN or flood it with commands. You need to add rate limiting to slow down abuse without blocking legitimate use.",
+    objective:
+      "Implement a token-bucket rate limiter for a device command endpoint that allows normal usage bursts but throttles rapid repeated attempts.",
+    steps: [
+      "Implement a token bucket: starts full, refills over time, each request consumes one token",
+      "Allow requests through when tokens are available; reject (with a clear reason) when empty",
+      "Simulate normal usage (occasional commands) — should never be throttled",
+      "Simulate a brute-force attempt (rapid repeated requests) — should be throttled after the burst allowance",
+      "Discuss why rate limiting is a mitigation, not a complete fix, for brute-force attacks",
+    ],
+    workstation: "notebook",
+    starterCode: `# Token Bucket Rate Limiter for Device Command Endpoint
+import time
+
+class TokenBucket:
+    def __init__(self, capacity, refill_rate_per_sec):
+        self.capacity = capacity
+        self.tokens = capacity
+        self.refill_rate = refill_rate_per_sec
+        self.last_refill = time.monotonic()
+
+    def _refill(self):
+        now = time.monotonic()
+        elapsed = now - self.last_refill
+        # TODO: self.tokens = min(self.capacity, self.tokens + elapsed * self.refill_rate)
+        # TODO: self.last_refill = now
+        pass
+
+    def try_consume(self):
+        # TODO: self._refill()
+        # TODO: if self.tokens >= 1:
+        # TODO:     self.tokens -= 1
+        # TODO:     return True
+        # TODO: return False
+        pass
+
+bucket = TokenBucket(capacity=5, refill_rate_per_sec=1)  # burst of 5, refills 1/sec
+
+# STEP 3: Normal usage — a few spaced-out commands
+print("=== Normal usage (spaced commands) ===")
+for i in range(3):
+    # TODO: allowed = bucket.try_consume()
+    # TODO: print(f"Command {i+1}: {'ALLOWED' if allowed else 'THROTTLED'}")
+    time.sleep(0.1)
+
+# STEP 4: Brute-force simulation — rapid repeated requests, no delay
+print("\\n=== Brute-force attempt (rapid requests) ===")
+allowed_count, throttled_count = 0, 0
+for i in range(20):
+    # TODO: allowed = bucket.try_consume()
+    # TODO: if allowed: allowed_count += 1
+    # TODO: else: throttled_count += 1
+# TODO: print(f"Allowed: {allowed_count}, Throttled: {throttled_count}")
+
+# STEP 5: Discussion
+print("\\nRate limiting slows brute-force attacks (makes them take impractically long) but doesn't")
+print("stop a patient attacker entirely. It should be paired with: account lockout after N failures,")
+print("strong PIN/credential requirements, and alerting on repeated failed attempts -- defense in depth.")
+`,
+    skillTags: ["Rate Limiting", "Token Bucket Algorithm", "IoT Security", "Brute Force Mitigation", "Defense in Depth"],
+    hints: [
+      "The token bucket's capacity controls how large a legitimate BURST of usage is tolerated, while the refill rate controls the sustained long-term rate — tuning both independently is what lets you allow normal bursts while still throttling sustained abuse",
+      "Rate limiting alone doesn't stop a determined attacker with patience — it just makes brute-forcing take much longer, which is genuinely valuable but should be layered with lockouts and strong credentials, not relied on as the sole defense",
+      "This exact token bucket pattern is used far beyond IoT — API gateways, login endpoints, and network traffic shaping all use the same core algorithm",
+    ],
+  },
+  {
+    id: "iot-sec-004",
+    title: "Audit an IoT Device's Attack Surface",
+    category: "IoT Security",
+    icon: "🔍",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 22,
+    tools: ["IoT Security", "Threat Modeling"],
+    scenario:
+      "A new IoT product is about to ship and security review is asking 'what could go wrong' before launch. You need to systematically enumerate the device's attack surface — every entry point an attacker could target — rather than relying on an ad-hoc, incomplete mental checklist.",
+    objective:
+      "Build a structured attack surface inventory for an IoT device covering network, physical, firmware, and cloud-API entry points, with a risk rating for each.",
+    steps: [
+      "Enumerate network-facing entry points (WiFi, BLE, local API, cloud API)",
+      "Enumerate physical entry points (debug ports/JTAG, exposed flash chip, unencrypted storage)",
+      "Enumerate firmware/software entry points (update mechanism, default credentials, unnecessary open services)",
+      "Rate each entry point's risk based on exploitability and potential impact",
+      "Prioritize the top risks for remediation before launch",
+    ],
+    workstation: "notebook",
+    starterCode: `# IoT Device Attack Surface Audit
+attack_surface = [
+    {"entry_point": "WiFi provisioning (WPS/AP mode)", "category": "network", "exploitability": "Medium", "impact": "High", "notes": "AP mode with no auth during setup could let a nearby attacker join the setup flow"},
+    {"entry_point": "BLE companion app pairing", "category": "network", "exploitability": "Medium", "impact": "Medium", "notes": "Verify pairing uses authenticated (not Just Works) BLE pairing mode"},
+    {"entry_point": "Local HTTP API (companion app control)", "category": "network", "exploitability": "High", "impact": "High", "notes": "Unauthenticated local API = anyone on the LAN can control the device"},
+    {"entry_point": "Cloud API (telemetry upload)", "category": "network", "exploitability": "Low", "impact": "High", "notes": "TLS + per-device auth should already mitigate this if provisioning (see iot-sec-001) is done right"},
+    {"entry_point": "Exposed UART/JTAG debug header on PCB", "category": "physical", "exploitability": "Medium", "impact": "Critical", "notes": "Physical access = potential full firmware dump/flash if debug port isn't disabled/locked in production"},
+    {"entry_point": "Unencrypted flash storage", "category": "physical", "exploitability": "Medium", "impact": "High", "notes": "Desoldering the flash chip could expose credentials/keys if stored in plaintext"},
+    {"entry_point": "OTA update mechanism", "category": "firmware", "exploitability": "Low", "impact": "Critical", "notes": "Covered by iot-sec-002's integrity+signature verification, if implemented"},
+    {"entry_point": "Default/hardcoded credentials", "category": "firmware", "exploitability": "High", "impact": "Critical", "notes": "Covered by iot-sec-001's unique-per-device provisioning, if implemented"},
+]
+
+RISK_MATRIX = {
+    ("Low", "Low"): 1, ("Low", "Medium"): 2, ("Low", "High"): 3, ("Low", "Critical"): 4,
+    ("Medium", "Low"): 2, ("Medium", "Medium"): 4, ("Medium", "High"): 6, ("Medium", "Critical"): 8,
+    ("High", "Low"): 3, ("High", "Medium"): 6, ("High", "High"): 9, ("High", "Critical"): 12,
+}
+
+# STEP 4: Compute risk score per entry point
+for item in attack_surface:
+    # TODO: item["risk_score"] = RISK_MATRIX[(item["exploitability"], item["impact"])]
+    pass
+
+# STEP 5: Prioritize by risk score, descending
+# TODO: prioritized = sorted(attack_surface, key=lambda x: x["risk_score"], reverse=True)
+
+print("=== Attack Surface Audit — Prioritized by Risk ===\\n")
+# TODO: for item in prioritized:
+# TODO:     print(f"[Risk={item['risk_score']}] {item['entry_point']} ({item['category']})")
+# TODO:     print(f"  Exploitability={item['exploitability']}, Impact={item['impact']}")
+# TODO:     print(f"  {item['notes']}\\n")
+
+# TODO: top_3 = prioritized[:3]
+# TODO: print("TOP 3 PRIORITIES BEFORE LAUNCH:", [t["entry_point"] for t in top_3])
+`,
+    skillTags: ["Attack Surface Analysis", "Threat Modeling", "IoT Security", "Risk Assessment", "Security Auditing"],
+    hints: [
+      "A structured attack surface inventory catches entry points that ad-hoc review often misses — physical/hardware attack vectors (debug ports, exposed flash) are especially easy to forget when a team is focused on network/software security",
+      "Risk = exploitability × impact is a standard, simple risk-scoring approach — it deliberately surfaces 'High exploitability + Critical impact' items (like hardcoded credentials) as the clear top priority, even without a perfectly precise numeric model",
+      "This audit references iot-sec-001 (provisioning) and iot-sec-002 (OTA integrity) directly — attack surface analysis and specific mitigations should inform each other, not live in separate silos",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IoT — EDGE COMPUTING
+// ─────────────────────────────────────────────────────────────────────────────
+export const IOT_EDGE_COMPUTING_CHALLENGES = [
+  {
+    id: "iot-edge-001",
+    title: "Decide What to Process at the Edge vs the Cloud",
+    category: "Edge Computing",
+    icon: "🌩️",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Edge Computing", "System Design"],
+    scenario:
+      "A smart camera product sends every frame to the cloud for object detection, burning through customers' data plans and adding 2-3 seconds of latency for a 'person detected' alert that should be near-instant. You need to decide what should move to edge processing versus stay in the cloud.",
+    objective:
+      "Build a decision framework for edge vs cloud processing based on latency sensitivity, data volume, compute requirements, and connectivity reliability.",
+    steps: [
+      "List the pipeline's processing stages (motion detection, object classification, alert delivery, long-term storage)",
+      "For each stage, assess latency sensitivity, data volume, and compute cost",
+      "Assign each stage to edge or cloud based on the assessment",
+      "Calculate the data volume reduction from moving early-stage filtering to the edge",
+      "Explain the resulting hybrid architecture's benefits over the current all-cloud approach",
+    ],
+    workstation: "notebook",
+    starterCode: `# Edge vs Cloud Processing Decision Framework
+pipeline_stages = [
+    {"stage": "Motion detection (frame-diff)",       "latency_sensitivity": "High",   "data_volume_per_event": 0,        "compute_needed": "Low"},
+    {"stage": "Object classification (person/pet/car)", "latency_sensitivity": "High", "data_volume_per_event": 0.05,     "compute_needed": "Medium"},  # small model, MB
+    {"stage": "Alert delivery to user's phone",       "latency_sensitivity": "High",   "data_volume_per_event": 0.01,     "compute_needed": "Low"},
+    {"stage": "Long-term video archive storage",      "latency_sensitivity": "Low",    "data_volume_per_event": 50,       "compute_needed": "Low"},   # full clip, MB
+    {"stage": "Advanced analytics (monthly trends)",  "latency_sensitivity": "Low",    "data_volume_per_event": 0,        "compute_needed": "High"},
+]
+
+def recommend_location(stage):
+    # TODO: if stage["latency_sensitivity"] == "High" and stage["compute_needed"] in ("Low", "Medium"):
+    # TODO:     return "EDGE"
+    # TODO: return "CLOUD"
+    pass
+
+print("=== Edge vs Cloud Recommendation ===\\n")
+edge_stages, cloud_stages = [], []
+for stage in pipeline_stages:
+    # TODO: location = recommend_location(stage)
+    # TODO: print(f"{stage['stage']}: {location}")
+    # TODO: (edge_stages if location == "EDGE" else cloud_stages).append(stage)
+    pass
+
+# STEP 4: Data volume comparison — CURRENT (all-cloud, every frame) vs NEW (edge-filtered)
+frames_per_day = 86400  # 1 fps constant stream
+frame_size_mb = 0.2
+current_cloud_upload_mb_per_day = frames_per_day * frame_size_mb  # sends EVERYTHING today
+
+events_per_day = 40  # only ~40 real motion events per day after edge filtering
+# TODO: new_cloud_upload_mb_per_day = sum(s["data_volume_per_event"] for s in cloud_stages) * events_per_day
+
+# TODO: print(f"\\nCurrent (all-cloud): {current_cloud_upload_mb_per_day:,.0f} MB/day uploaded")
+# TODO: print(f"New (edge-filtered): {new_cloud_upload_mb_per_day:,.0f} MB/day uploaded")
+# TODO: reduction = 1 - new_cloud_upload_mb_per_day / current_cloud_upload_mb_per_day
+# TODO: print(f"Reduction: {reduction:.1%}")
+`,
+    skillTags: ["Edge Computing", "System Architecture", "Latency Optimization", "IoT Bandwidth", "Hybrid Cloud Design"],
+    hints: [
+      "High-latency-sensitivity, low/medium-compute stages (motion detection, lightweight classification) are the classic candidates for edge processing — they need to be fast AND don't require the cloud's heavier compute",
+      "Moving early-stage filtering (motion detection, basic classification) to the edge is what produces the biggest data volume win — you stop uploading the 99% of frames where nothing interesting happened at all",
+      "Heavy, latency-INsensitive workloads (monthly trend analytics, model retraining) are exactly what the cloud's elastic compute is good for — there's no reason to force those onto constrained edge hardware",
+    ],
+  },
+  {
+    id: "iot-edge-002",
+    title: "Compress Sensor Data Before Transmission",
+    category: "Edge Computing",
+    icon: "🗜️",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Python", "Data Compression"],
+    scenario:
+      "A vibration-monitoring IoT device samples at 1kHz and needs to transmit data over an expensive, low-bandwidth cellular connection. Sending raw samples is burning through the data budget — you need a lightweight, edge-computable compression scheme that preserves the signal's important features.",
+    objective:
+      "Implement delta encoding (a simple, edge-friendly compression technique) for a sensor data stream and measure the compression ratio achieved.",
+    steps: [
+      "Simulate a raw sensor sample stream with realistic smooth variation",
+      "Implement delta encoding: store the first value, then only the DIFFERENCE from the previous sample",
+      "Compare the byte size needed for raw values (e.g. 16-bit each) vs delta-encoded values (often fit in fewer bits)",
+      "Implement decoding to reconstruct the original stream from deltas and verify it's lossless",
+      "Calculate the compression ratio and bandwidth savings",
+    ],
+    workstation: "notebook",
+    starterCode: `# Delta Encoding for Edge-Computable Sensor Compression
+import numpy as np
+
+np.random.seed(30)
+n_samples = 1000
+# Smooth-ish vibration signal (adjacent samples are usually close in value)
+raw_samples = np.cumsum(np.random.randint(-50, 51, n_samples)) + 2000
+raw_samples = np.clip(raw_samples, 0, 4095).astype(int)  # 12-bit ADC range
+
+def delta_encode(samples):
+    # TODO: deltas = [samples[0]]  # first value stored in full
+    # TODO: for i in range(1, len(samples)):
+    # TODO:     deltas.append(samples[i] - samples[i-1])
+    # TODO: return deltas
+    pass
+
+def delta_decode(deltas):
+    # TODO: reconstructed = [deltas[0]]
+    # TODO: for d in deltas[1:]:
+    # TODO:     reconstructed.append(reconstructed[-1] + d)
+    # TODO: return reconstructed
+    pass
+
+# TODO: deltas = delta_encode(raw_samples.tolist())
+# TODO: reconstructed = delta_decode(deltas)
+
+# STEP 4: Verify lossless
+# TODO: is_lossless = list(raw_samples) == reconstructed
+# TODO: print(f"Lossless reconstruction: {is_lossless}")
+
+# STEP 3: Size comparison
+raw_bits_per_sample = 12  # 12-bit ADC values need 12 bits raw
+raw_bytes = (n_samples * raw_bits_per_sample) / 8
+
+# TODO: max_abs_delta = max(abs(d) for d in deltas[1:])
+# TODO: import math
+# TODO: delta_bits_needed = max(4, math.ceil(math.log2(max_abs_delta + 1)) + 1)  # +1 for sign
+# TODO: delta_bytes = (raw_bits_per_sample / 8) + (len(deltas) - 1) * delta_bits_needed / 8  # first sample full-size
+
+# TODO: print(f"\\nRaw size: {raw_bytes:.0f} bytes ({raw_bits_per_sample} bits/sample)")
+# TODO: print(f"Delta-encoded size: {delta_bytes:.0f} bytes (~{delta_bits_needed} bits/sample after the first)")
+# TODO: compression_ratio = raw_bytes / delta_bytes
+# TODO: print(f"Compression ratio: {compression_ratio:.2f}x")
+`,
+    skillTags: ["Delta Encoding", "Data Compression", "Edge Computing", "Bandwidth Optimization", "IoT Data Transmission"],
+    hints: [
+      "Delta encoding works well specifically because ADJACENT sensor samples tend to be close in value for smoothly-varying physical signals — the deltas are usually much smaller numbers than the raw values, needing fewer bits to represent",
+      "This compression is 'free' in the sense that it needs almost no CPU/RAM — critical for constrained microcontrollers that can't afford a heavyweight compression library",
+      "This is lossless — the exact original values are always fully recoverable — unlike lossy compression (e.g. reducing sample resolution), which trades some accuracy for even better compression when that trade-off is acceptable",
+    ],
+  },
+  {
+    id: "iot-edge-003",
+    title: "Deploy a Tiny ML Model for On-Device Inference",
+    category: "Edge Computing",
+    icon: "🧠",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 22,
+    tools: ["Python", "TinyML", "Edge AI"],
+    scenario:
+      "A wearable device wants to detect 'fall detected' events locally, without a round-trip to the cloud (both for latency and for privacy — continuous audio/motion streaming would be a battery and privacy nightmare). You need to reason through what makes a model actually deployable on constrained edge hardware.",
+    objective:
+      "Evaluate model size, inference latency, and memory constraints for a simple on-device classifier, and determine whether it fits a given microcontroller's resource budget.",
+    steps: [
+      "Given a trained model's parameter count and precision, calculate its memory footprint",
+      "Given the microcontroller's available flash and RAM, check if the model fits",
+      "Estimate inference latency given the MCU's clock speed and the model's operation count",
+      "If the model doesn't fit, evaluate quantization (float32 -> int8) as a mitigation",
+      "Recommend whether this model/hardware pairing is viable for the fall-detection use case",
+    ],
+    workstation: "notebook",
+    starterCode: `# TinyML On-Device Model Feasibility Check
+model_params = 45000       # trainable parameters in the fall-detection model
+model_precision_bytes = 4  # float32 = 4 bytes per parameter
+
+mcu_flash_kb = 256   # available flash for model storage
+mcu_ram_kb = 64       # available RAM for inference (activations/buffers)
+mcu_clock_mhz = 80
+model_flops = 2_200_000  # estimated floating point operations per inference
+
+# STEP 1: Model memory footprint (float32)
+# TODO: model_size_bytes = model_params * model_precision_bytes
+# TODO: model_size_kb = model_size_bytes / 1024
+# TODO: print(f"Model size (float32): {model_size_kb:.1f} KB")
+
+# STEP 2: Does it fit in flash?
+# TODO: fits_flash = model_size_kb <= mcu_flash_kb * 0.7  # leave 30% for firmware itself
+# TODO: print(f"Fits in flash (with headroom): {fits_flash}")
+
+# STEP 3: Rough inference latency estimate
+# Assume the MCU can do roughly 1 FLOP per clock cycle for simple ops (very rough estimate)
+# TODO: estimated_cycles = model_flops
+# TODO: estimated_latency_ms = (estimated_cycles / (mcu_clock_mhz * 1_000_000)) * 1000
+# TODO: print(f"\\nEstimated inference latency: {estimated_latency_ms:.1f} ms")
+
+max_acceptable_latency_ms = 200  # fall detection needs to be near-real-time
+# TODO: latency_ok = estimated_latency_ms <= max_acceptable_latency_ms
+# TODO: print(f"Latency acceptable: {latency_ok}")
+
+# STEP 4: Quantization mitigation (float32 -> int8, roughly 4x smaller)
+# TODO: quantized_size_kb = model_size_kb / 4
+# TODO: print(f"\\nQuantized (int8) model size: {quantized_size_kb:.1f} KB")
+# TODO: quantized_fits = quantized_size_kb <= mcu_flash_kb * 0.7
+# TODO: print(f"Quantized model fits in flash: {quantized_fits}")
+
+# STEP 5: Recommendation
+# TODO: if fits_flash and latency_ok:
+# TODO:     print("\\nRECOMMENDATION: Deploy as-is (float32) — fits comfortably within budget")
+# TODO: elif quantized_fits:
+# TODO:     print("\\nRECOMMENDATION: Quantize to int8 before deployment — original doesn't fit, quantized does")
+# TODO: else:
+# TODO:     print("\\nRECOMMENDATION: Model needs architectural reduction (fewer params) — even quantization isn't enough")
+`,
+    skillTags: ["TinyML", "Edge AI", "Model Quantization", "Embedded Constraints", "On-Device Inference"],
+    hints: [
+      "Model size scales directly with parameter count × bytes-per-parameter — this is why quantization (reducing precision from float32 to int8) is such a common and effective first lever for shrinking a model to fit constrained hardware",
+      "Latency estimates like this are necessarily rough (real hardware has caches, DSP instructions, and other MCU-specific effects) — but a back-of-envelope check catches obviously-infeasible pairings before investing in real deployment testing",
+      "On-device inference for something like fall detection isn't just a latency optimization — it's also a genuine privacy win, since continuous motion/audio data never has to leave the device at all",
+    ],
+  },
+  {
+    id: "iot-edge-004",
+    title: "Design Graceful Degradation for Edge-Cloud Split Systems",
+    category: "Edge Computing",
+    icon: "⚙️",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 20,
+    tools: ["System Design", "Edge Computing"],
+    scenario:
+      "A smart thermostat normally uses cloud-based ML for optimal scheduling, but currently goes completely non-functional (stuck at last setting, no local control) whenever internet connectivity drops — an unacceptable failure mode for something controlling home heating in winter. You need to design graceful degradation.",
+    objective:
+      "Design a tiered fallback system where each connectivity tier (full cloud, degraded cloud, edge-only, hardware failsafe) provides progressively reduced but still functional behavior.",
+    steps: [
+      "Define the full-capability tier (cloud connected: ML-optimized scheduling, remote control, learning)",
+      "Define a degraded tier (cloud reachable but slow/unreliable: cached schedule, no new learning)",
+      "Define an edge-only tier (no cloud: local rule-based schedule, manual control still works)",
+      "Define a hardware failsafe tier (even local logic fails: simple thermostat behavior, safe default temperature)",
+      "Design the detection logic for which tier is currently active and how transitions happen",
+    ],
+    workstation: "notebook",
+    starterCode: `# Graceful Degradation Tiers for a Smart Thermostat
+import time
+
+tiers = [
+    {
+        "name": "FULL_CLOUD",
+        "condition": "Cloud reachable, low latency",
+        "capability": "ML-optimized scheduling, remote app control, continuous learning from usage patterns",
+    },
+    {
+        "name": "DEGRADED_CLOUD",
+        "condition": "Cloud reachable but slow/unreliable (high latency or intermittent)",
+        "capability": "Use last-known-good cloud schedule (cached locally), remote control still works but no new learning",
+    },
+    {
+        "name": "EDGE_ONLY",
+        "condition": "No cloud connectivity at all",
+        "capability": "Local rule-based schedule (simple time-of-day rules baked into firmware), manual physical/local-app control still fully works",
+    },
+    {
+        "name": "HARDWARE_FAILSAFE",
+        "condition": "Even local software/logic has failed (crash, corrupted state)",
+        "capability": "Hardware-level simple thermostat behavior: maintain a safe default temperature (e.g. prevent freezing), no smart features",
+    },
+]
+
+def determine_tier(cloud_reachable, cloud_latency_ms, local_software_healthy):
+    # TODO: if not local_software_healthy:
+    # TODO:     return "HARDWARE_FAILSAFE"
+    # TODO: if not cloud_reachable:
+    # TODO:     return "EDGE_ONLY"
+    # TODO: if cloud_latency_ms > 2000:
+    # TODO:     return "DEGRADED_CLOUD"
+    # TODO: return "FULL_CLOUD"
+    pass
+
+# STEP 5: Simulate a few scenarios
+scenarios = [
+    {"cloud_reachable": True,  "cloud_latency_ms": 150,  "local_software_healthy": True,  "desc": "Normal operation"},
+    {"cloud_reachable": True,  "cloud_latency_ms": 5000, "local_software_healthy": True,  "desc": "Cloud slow/congested"},
+    {"cloud_reachable": False, "cloud_latency_ms": None, "local_software_healthy": True,  "desc": "Internet outage"},
+    {"cloud_reachable": False, "cloud_latency_ms": None, "local_software_healthy": False, "desc": "Firmware crash during outage"},
+]
+
+for s in scenarios:
+    # TODO: tier = determine_tier(s["cloud_reachable"], s["cloud_latency_ms"] or 0, s["local_software_healthy"])
+    # TODO: tier_info = next(t for t in tiers if t["name"] == tier)
+    # TODO: print(f"{s['desc']}: -> {tier}")
+    # TODO: print(f"  Capability: {tier_info['capability']}\\n")
+    pass
+`,
+    skillTags: ["Graceful Degradation", "Fault Tolerance", "Edge-Cloud Architecture", "System Design", "Reliability Engineering"],
+    hints: [
+      "The key design principle here is that EVERY tier still does something useful and safe — the failure mode of 'complete non-functionality' is exactly what a tiered fallback design eliminates, replacing it with progressively reduced (but never zero) capability",
+      "The hardware failsafe tier is deliberately the SIMPLEST possible logic, often implemented separately from the main smart-thermostat software stack — if the main software has crashed, you need a fallback that doesn't depend on that same software being healthy",
+      "This tiered degradation pattern applies broadly to any edge-cloud split system, not just thermostats — the core question 'what should this device do when its dependencies fail, one by one' is worth asking for every connected product",
+    ],
+  },
+]
+
 export const DOMAIN_CHALLENGES = {
   data:      DATA_ANALYST_CHALLENGES,
   bi_analyst:DATA_ANALYST_CHALLENGES,
