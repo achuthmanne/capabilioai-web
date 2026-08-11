@@ -20301,6 +20301,1456 @@ print("are already bought in, which can make a not-yet-briefed high-power stakeh
   },
 ]
 
+// ─────────────────────────────────────────────────────────────────────────────
+// PHARMACY — PHARMACOKINETICS & BIOPHARMACEUTICS
+// ─────────────────────────────────────────────────────────────────────────────
+export const PHARMACY_PHARMACOKINETICS_CHALLENGES = [
+  {
+    id: "pharm-pk-001",
+    title: "Calculate Drug Half-Life and Elimination Rate Constant",
+    category: "Pharmacokinetics",
+    icon: "⏱️",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Pharmacokinetic Calculations"],
+    scenario:
+      "A physician wants to know how long a drug will remain in a patient's system before starting a second medication that interacts with it. You need to calculate the elimination rate constant and half-life from measured plasma concentration data.",
+    objective:
+      "Calculate the elimination rate constant (k) from two plasma concentration measurements at different times, derive the half-life, and determine how many half-lives are needed to reach a clinically negligible concentration.",
+    steps: [
+      "Use two plasma concentration measurements at known time points to calculate the elimination rate constant k",
+      "Derive the half-life (t1/2) from k using the standard first-order elimination relationship",
+      "Calculate how many half-lives are needed to reach approximately 3% of the original concentration (a common clinical threshold)",
+      "Predict plasma concentration at a future time point using the calculated k",
+      "Determine the appropriate waiting period before starting the interacting second medication",
+    ],
+    workstation: "notebook",
+    starterCode: `# Drug Half-Life and Elimination Rate Constant Calculation
+import math
+
+# Two measured plasma concentrations (first-order elimination assumed)
+c1 = 80.0   # mcg/mL at time t1
+t1 = 2.0    # hours
+c2 = 20.0   # mcg/mL at time t2
+t2 = 8.0    # hours
+
+# STEP 1: Elimination rate constant k, from ln(C1/C2) = k * (t2 - t1)
+# TODO: k = math.log(c1 / c2) / (t2 - t1)
+# TODO: print(f"Elimination rate constant (k): {k:.4f} per hour")
+
+# STEP 2: Half-life from k
+# TODO: half_life = math.log(2) / k
+# TODO: print(f"Half-life (t1/2): {half_life:.2f} hours")
+
+# STEP 3: Half-lives needed to reach ~3% of original concentration (~5 half-lives is the common clinical rule)
+# TODO: import math as m
+# TODO: half_lives_to_3pct = math.log(1 / 0.03) / math.log(2)
+# TODO: print(f"\\nHalf-lives needed to reach ~3% of original concentration: {half_lives_to_3pct:.1f}")
+# TODO: time_to_3pct = half_lives_to_3pct * half_life
+# TODO: print(f"Time to reach ~3% of original concentration: {time_to_3pct:.1f} hours")
+
+# STEP 4: Predict concentration at a future time point
+future_time = 12.0  # hours after t1
+# TODO: c0_at_t1 = c1  # use c1 as the reference concentration at t1
+# TODO: predicted_concentration = c0_at_t1 * math.exp(-k * (future_time - t1))
+# TODO: print(f"\\nPredicted concentration at t={future_time}h: {predicted_concentration:.2f} mcg/mL")
+
+# STEP 5: Waiting period recommendation
+# TODO: print(f"\\nRecommended wait before starting the interacting medication: at least {time_to_3pct:.1f} hours")
+# TODO: print(f"(approximately {half_lives_to_3pct:.1f} half-lives, by which point drug level is clinically negligible)")
+`,
+    skillTags: ["Pharmacokinetics", "Half-Life", "Elimination Rate", "First-Order Kinetics"],
+    hints: [
+      "This calculation assumes first-order (linear) elimination kinetics, where the elimination rate is proportional to the current concentration -- this holds for most drugs at therapeutic concentrations, but some drugs (like ethanol, phenytoin at high doses) exhibit zero-order kinetics where a constant AMOUNT (not fraction) is eliminated per unit time, requiring a different calculation",
+      "The '5 half-lives to clinical negligibility' rule of thumb corresponds to roughly 3% of the original concentration remaining -- this is a widely used clinical approximation for determining washout periods before starting interacting medications",
+      "Half-life is a property of the drug's elimination kinetics and (for first-order kinetics) is independent of the starting concentration -- doubling the dose doubles the concentration at every time point, but does NOT change the half-life itself",
+    ],
+  },
+  {
+    id: "pharm-pk-002",
+    title: "Calculate Loading Dose and Maintenance Dose for a Target Steady-State",
+    category: "Pharmacokinetics",
+    icon: "💉",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Pharmacokinetic Calculations"],
+    scenario:
+      "A patient needs a drug with a long half-life to reach therapeutic concentration quickly, rather than waiting many hours for it to accumulate through maintenance dosing alone. You need to calculate an appropriate loading dose and the ongoing maintenance dose to sustain the target steady-state level.",
+    objective:
+      "Calculate a loading dose to rapidly achieve target plasma concentration, and calculate the maintenance dose required to sustain that concentration at steady state given the drug's clearance.",
+    steps: [
+      "Calculate the loading dose using target concentration, volume of distribution, and bioavailability",
+      "Calculate the maintenance dose rate using target concentration, clearance, and dosing interval",
+      "Convert the maintenance dose rate into an actual dose given the chosen dosing interval",
+      "Verify the maintenance dose produces the correct average steady-state concentration",
+      "Flag the clinical consideration of loading dose risk (transient supratherapeutic peak)",
+    ],
+    workstation: "notebook",
+    starterCode: `# Loading Dose and Maintenance Dose Calculation
+target_concentration = 15.0    # mcg/mL, target steady-state plasma concentration
+volume_of_distribution = 35.0  # L (patient-specific, from body weight and drug properties)
+bioavailability = 0.9          # fraction absorbed (oral dosing, F=1.0 for IV)
+clearance = 3.0                # L/hour, drug clearance for this patient
+dosing_interval = 12.0         # hours between maintenance doses
+
+# STEP 1: Loading dose = (Target Concentration x Volume of Distribution) / Bioavailability
+# TODO: loading_dose = (target_concentration * volume_of_distribution) / bioavailability
+# TODO: print(f"Loading dose: {loading_dose:.0f} mg")
+
+# STEP 2: Maintenance dose RATE (mg/hour) at steady state = Target Concentration x Clearance
+# TODO: maintenance_rate = target_concentration * clearance
+# TODO: print(f"Maintenance dose rate: {maintenance_rate:.1f} mg/hour")
+
+# STEP 3: Convert to an actual dose per dosing interval
+# TODO: maintenance_dose_per_interval = (maintenance_rate * dosing_interval) / bioavailability
+# TODO: print(f"Maintenance dose: {maintenance_dose_per_interval:.0f} mg every {dosing_interval:.0f} hours")
+
+# STEP 4: Verify -- average steady-state concentration from this maintenance regimen
+# TODO: verified_css_avg = (maintenance_dose_per_interval * bioavailability) / (clearance * dosing_interval)
+# TODO: print(f"\\nVerification: average steady-state concentration from this regimen = {verified_css_avg:.1f} mcg/mL")
+# TODO: print(f"(should match target of {target_concentration} mcg/mL)")
+
+# STEP 5: Clinical risk consideration
+print("\\n=== Clinical Consideration ===")
+print("A loading dose reaches the target concentration almost immediately, but for a drug with a narrow")
+print("therapeutic index, the peak concentration right after the loading dose may transiently exceed the")
+print("target more than a gradually-accumulating maintenance-only regimen would -- this transient peak")
+print("risk should be weighed against the clinical urgency of reaching therapeutic levels quickly.")
+`,
+    skillTags: ["Loading Dose", "Maintenance Dose", "Steady State", "Clearance", "Pharmacokinetics"],
+    hints: [
+      "Loading dose depends on volume of distribution (how the drug distributes into body tissues), while maintenance dose depends on clearance (how the drug is eliminated) -- these are two distinct pharmacokinetic parameters, and a drug can have a large volume of distribution with either fast or slow clearance, requiring genuinely independent calculations",
+      "The loading dose formula assumes the drug distributes essentially instantaneously, which is a simplification -- for drugs with slow tissue distribution, the actual peak concentration profile after a loading dose can differ meaningfully from this idealized single-compartment model",
+      "A loading dose is most clinically valuable for drugs with a long half-life relative to how quickly therapeutic effect is needed -- for a drug with a short half-life that reaches steady state quickly on maintenance dosing alone, a loading dose adds peak-concentration risk without much practical benefit",
+    ],
+  },
+  {
+    id: "pharm-pk-003",
+    title: "Adjust Dosing for Renal Impairment Using Creatinine Clearance",
+    category: "Pharmacokinetics",
+    icon: "🩺",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Pharmacokinetic Calculations", "Renal Dosing"],
+    scenario:
+      "An elderly patient with reduced kidney function is being prescribed a renally-cleared antibiotic at the standard adult dose. Without adjustment, this risks drug accumulation and toxicity. You need to calculate creatinine clearance and adjust the dosing regimen accordingly.",
+    objective:
+      "Calculate estimated creatinine clearance using the Cockcroft-Gault equation, classify the degree of renal impairment, and apply the appropriate dose adjustment for a renally-cleared drug.",
+    steps: [
+      "Calculate creatinine clearance (CrCl) using the Cockcroft-Gault equation from patient demographics",
+      "Classify the renal impairment severity based on CrCl thresholds",
+      "Look up (from provided renal dosing guidance) the appropriate adjustment for this severity level",
+      "Calculate the adjusted dose or dosing interval",
+      "Flag the ongoing monitoring consideration given the patient's renal status",
+    ],
+    workstation: "notebook",
+    starterCode: `# Creatinine Clearance and Renal Dose Adjustment
+# Cockcroft-Gault equation
+patient_age = 78
+patient_weight_kg = 62
+serum_creatinine_mg_dl = 1.8
+is_female = True
+
+standard_dose_mg = 500
+standard_interval_hours = 8
+
+# STEP 1: Cockcroft-Gault: CrCl (mL/min) = [(140 - age) x weight(kg)] / (72 x SCr) x (0.85 if female)
+# TODO: crcl = ((140 - patient_age) * patient_weight_kg) / (72 * serum_creatinine_mg_dl)
+# TODO: if is_female:
+# TODO:     crcl = crcl * 0.85
+# TODO: print(f"Estimated creatinine clearance (CrCl): {crcl:.1f} mL/min")
+
+# STEP 2: Classify renal impairment severity
+def classify_renal_function(crcl):
+    # TODO: if crcl >= 90:
+    # TODO:     return "Normal"
+    # TODO: elif crcl >= 60:
+    # TODO:     return "Mild impairment"
+    # TODO: elif crcl >= 30:
+    # TODO:     return "Moderate impairment"
+    # TODO: elif crcl >= 15:
+    # TODO:     return "Severe impairment"
+    # TODO: else:
+    # TODO:     return "Kidney failure"
+    pass
+
+# TODO: severity = classify_renal_function(crcl)
+# TODO: print(f"Renal function classification: {severity}")
+
+# STEP 3: Renal dosing adjustment guidance (drug-specific -- example table for this renally-cleared antibiotic)
+dose_adjustment_table = {
+    "Normal": {"dose_mg": 500, "interval_hours": 8},
+    "Mild impairment": {"dose_mg": 500, "interval_hours": 12},
+    "Moderate impairment": {"dose_mg": 250, "interval_hours": 12},
+    "Severe impairment": {"dose_mg": 250, "interval_hours": 24},
+    "Kidney failure": {"dose_mg": 250, "interval_hours": 48},
+}
+
+# STEP 4: Apply the adjustment
+# TODO: adjusted = dose_adjustment_table[severity]
+# TODO: print(f"\\nStandard regimen: {standard_dose_mg}mg every {standard_interval_hours}h")
+# TODO: print(f"Adjusted regimen: {adjusted['dose_mg']}mg every {adjusted['interval_hours']}h")
+
+# STEP 5: Monitoring consideration
+print("\\n=== Monitoring Consideration ===")
+print("Renal function can change during a course of therapy, especially in acutely ill or elderly")
+print("patients -- CrCl should be reassessed periodically during extended treatment, not calculated")
+print("once and assumed static, particularly if the patient's clinical status changes.")
+`,
+    skillTags: ["Renal Dosing", "Creatinine Clearance", "Cockcroft-Gault", "Pharmacokinetics"],
+    hints: [
+      "The Cockcroft-Gault equation estimates creatinine clearance from serum creatinine and patient demographics rather than measuring it directly -- it's widely used for dosing decisions specifically because of its long clinical validation history for this purpose, even though other equations (like CKD-EPI) may be preferred for diagnostic kidney function staging",
+      "Renal dose adjustments can take the form of either reducing the dose, extending the interval, or both -- the specific adjustment strategy depends on the drug's therapeutic index and pharmacokinetic properties, which is why real dosing guidance always needs to be drug-specific rather than a generic percentage reduction",
+      "Elderly patients often have serum creatinine values that appear 'normal' despite significantly reduced renal function, because reduced muscle mass produces less creatinine in the first place -- this is exactly why an estimating equation using age and weight (not serum creatinine alone) is used for dosing decisions",
+    ],
+  },
+  {
+    id: "pharm-pk-004",
+    title: "Calculate Bioavailability from Oral vs IV AUC Comparison",
+    category: "Pharmacokinetics",
+    icon: "📈",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Pharmacokinetic Calculations"],
+    scenario:
+      "A generic drug manufacturer needs to demonstrate their new oral formulation is bioequivalent to the reference IV formulation before it can be approved for a specific indication. You need to calculate absolute bioavailability from area-under-curve (AUC) data.",
+    objective:
+      "Calculate absolute oral bioavailability from AUC data for both oral and IV administration, adjusting for any dose differences between the two routes.",
+    steps: [
+      "Gather AUC (area under the plasma concentration-time curve) data for both oral and IV doses",
+      "Account for any difference in dose between the two administration routes",
+      "Calculate absolute bioavailability (F) using the dose-normalized AUC ratio",
+      "Interpret the bioavailability value in the context of typical oral drug absorption",
+      "Determine what oral dose would be needed to achieve IV-equivalent systemic exposure",
+    ],
+    workstation: "notebook",
+    starterCode: `# Absolute Bioavailability Calculation
+auc_oral = 145.0        # mcg*hr/mL, from oral dose
+dose_oral = 500.0       # mg
+auc_iv = 210.0          # mcg*hr/mL, from IV dose (IV is always F=1.0, complete bioavailability by definition)
+dose_iv = 300.0         # mg -- note: doses differ between routes in this study design
+
+# STEP 1 & 2 & 3: Absolute bioavailability F = (AUC_oral / Dose_oral) / (AUC_iv / Dose_iv)
+# TODO: dose_normalized_auc_oral = auc_oral / dose_oral
+# TODO: dose_normalized_auc_iv = auc_iv / dose_iv
+# TODO: bioavailability_f = dose_normalized_auc_oral / dose_normalized_auc_iv
+# TODO: print(f"Dose-normalized AUC (oral): {dose_normalized_auc_oral:.4f} mcg*hr/mL per mg")
+# TODO: print(f"Dose-normalized AUC (IV): {dose_normalized_auc_iv:.4f} mcg*hr/mL per mg")
+# TODO: print(f"\\nAbsolute bioavailability (F): {bioavailability_f:.3f} ({bioavailability_f * 100:.1f}%)")
+
+# STEP 4: Interpretation
+print("\\n=== Interpretation ===")
+# TODO: if bioavailability_f >= 0.8:
+# TODO:     print(f"F={bioavailability_f:.2f} indicates HIGH oral bioavailability -- minimal first-pass metabolism loss")
+# TODO: elif bioavailability_f >= 0.5:
+# TODO:     print(f"F={bioavailability_f:.2f} indicates MODERATE oral bioavailability -- notable first-pass effect")
+# TODO: else:
+# TODO:     print(f"F={bioavailability_f:.2f} indicates LOW oral bioavailability -- substantial first-pass metabolism or poor absorption")
+
+# STEP 5: Oral dose needed for IV-equivalent systemic exposure
+desired_iv_equivalent_exposure_mg = 300.0  # want oral exposure equivalent to a 300mg IV dose
+# TODO: required_oral_dose = desired_iv_equivalent_exposure_mg / bioavailability_f
+# TODO: print(f"\\nOral dose needed to match a {desired_iv_equivalent_exposure_mg}mg IV dose's systemic exposure: {required_oral_dose:.0f} mg")
+`,
+    skillTags: ["Bioavailability", "AUC", "Bioequivalence", "First-Pass Metabolism", "Pharmacokinetics"],
+    hints: [
+      "IV administration is the reference standard for 'complete' bioavailability (F=1.0 or 100%) by definition, since the entire dose enters systemic circulation directly, bypassing absorption and first-pass hepatic metabolism entirely -- this is exactly why it's used as the denominator when calculating ABSOLUTE bioavailability of another route",
+      "The dose-normalization step (dividing AUC by dose before comparing) is essential whenever the oral and IV doses differ, which is common in real bioavailability studies -- comparing raw AUC values without normalizing for dose would produce a meaningless or misleading bioavailability estimate",
+      "Low oral bioavailability is often driven by first-pass hepatic metabolism (the liver processes the drug before it reaches systemic circulation, since orally absorbed drugs pass through the portal vein to the liver first) rather than poor absorption from the GI tract itself -- distinguishing between these two causes matters clinically since they call for different formulation or dosing strategies",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHARMACY — DRUG INTERACTIONS & TOXICOLOGY
+// ─────────────────────────────────────────────────────────────────────────────
+export const PHARMACY_TOXICOLOGY_CHALLENGES = [
+  {
+    id: "pharm-tox-001",
+    title: "Screen a Medication List for Clinically Significant Drug Interactions",
+    category: "Toxicology & Drug Interactions",
+    icon: "⚠️",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 18,
+    tools: ["Drug Interaction Screening"],
+    scenario:
+      "A patient is being discharged with 6 new medications added to their existing 4-drug regimen. Before dispensing, you need to systematically screen for clinically significant interactions rather than relying on memory alone.",
+    objective:
+      "Systematically screen a full medication list for pairwise interactions using a provided interaction database, classify severity, and flag the highest-priority interactions requiring prescriber contact.",
+    steps: [
+      "List all pairwise combinations across the full medication list",
+      "Check each pair against the known interaction database",
+      "Classify identified interactions by severity (contraindicated, major, moderate, minor)",
+      "Prioritize which interactions require immediate prescriber contact before dispensing",
+      "Draft a concise clinical note summarizing the findings for the prescriber",
+    ],
+    workstation: "notebook",
+    starterCode: `# Drug Interaction Screening
+from itertools import combinations
+
+patient_medications = ["Warfarin", "Amoxicillin", "Metformin", "Lisinopril",
+                         "Ibuprofen", "Simvastatin", "Clarithromycin", "Sertraline",
+                         "Omeprazole", "Furosemide"]
+
+# Known interaction database (simplified) -- (drug_a, drug_b): (severity, mechanism)
+interaction_database = {
+    frozenset(["Warfarin", "Amoxicillin"]): ("Moderate", "Antibiotic may alter gut flora affecting vitamin K synthesis, increasing INR"),
+    frozenset(["Warfarin", "Ibuprofen"]): ("Major", "NSAID + anticoagulant increases GI bleeding risk significantly"),
+    frozenset(["Simvastatin", "Clarithromycin"]): ("Contraindicated", "Clarithromycin inhibits CYP3A4, causing simvastatin accumulation and rhabdomyolysis risk"),
+    frozenset(["Lisinopril", "Furosemide"]): ("Moderate", "Combined effect can cause excessive hypotension and renal function changes"),
+    frozenset(["Sertraline", "Warfarin"]): ("Moderate", "SSRI may potentiate anticoagulant effect via platelet function changes"),
+}
+
+# STEP 1: All pairwise combinations
+# TODO: all_pairs = list(combinations(patient_medications, 2))
+# TODO: print(f"Total pairwise combinations to screen: {len(all_pairs)}")
+
+# STEP 2 & 3: Check each pair and classify
+found_interactions = []
+# TODO: for drug_a, drug_b in all_pairs:
+# TODO:     pair_key = frozenset([drug_a, drug_b])
+# TODO:     if pair_key in interaction_database:
+# TODO:         severity, mechanism = interaction_database[pair_key]
+# TODO:         found_interactions.append({"drugs": (drug_a, drug_b), "severity": severity, "mechanism": mechanism})
+
+print("\\n=== Interactions Found ===")
+# TODO: for interaction in found_interactions:
+# TODO:     print(f"{interaction['drugs'][0]} + {interaction['drugs'][1]}: {interaction['severity']}")
+# TODO:     print(f"  Mechanism: {interaction['mechanism']}")
+
+# STEP 4: Prioritize for prescriber contact
+severity_priority = {"Contraindicated": 0, "Major": 1, "Moderate": 2, "Minor": 3}
+# TODO: found_interactions.sort(key=lambda x: severity_priority[x["severity"]])
+# TODO: urgent_interactions = [i for i in found_interactions if i["severity"] in ("Contraindicated", "Major")]
+# TODO: print(f"\\n{len(urgent_interactions)} interaction(s) require IMMEDIATE prescriber contact before dispensing:")
+# TODO: for interaction in urgent_interactions:
+# TODO:     print(f"  {interaction['drugs'][0]} + {interaction['drugs'][1]} ({interaction['severity']})")
+
+# STEP 5: Draft clinical note
+print("\\n=== Draft Note to Prescriber ===")
+# TODO: for interaction in urgent_interactions:
+# TODO:     print(f"- {interaction['drugs'][0]}/{interaction['drugs'][1]}: {interaction['severity']} interaction. {interaction['mechanism']}. Recommend alternative or additional monitoring before dispensing.")
+`,
+    skillTags: ["Drug Interactions", "Interaction Screening", "Clinical Pharmacy", "Patient Safety"],
+    hints: [
+      "The number of pairwise combinations grows quadratically with medication list length (n*(n-1)/2) -- this is exactly why manual, memory-based interaction checking becomes unreliable as patients accumulate more medications, and why systematic screening tools are standard practice in real pharmacy workflows",
+      "Severity classification determines urgency, not just documentation -- a Contraindicated or Major interaction typically warrants holding the fill and contacting the prescriber before dispensing, while Moderate/Minor interactions may be documented with monitoring guidance rather than blocking the fill outright",
+      "Real-world drug interaction checking also needs to account for interactions that only manifest through a shared metabolic pathway across MORE than two drugs simultaneously (e.g. multiple CYP3A4 inhibitors combined), which simple pairwise screening like this simplified exercise doesn't fully capture -- production clinical decision support systems handle this with more sophisticated modeling",
+    ],
+  },
+  {
+    id: "pharm-tox-002",
+    title: "Assess Acetaminophen Toxicity Risk Using the Rumack-Matthew Nomogram Logic",
+    category: "Toxicology & Drug Interactions",
+    icon: "☠️",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 22,
+    tools: ["Toxicology Assessment"],
+    scenario:
+      "A patient presents to the ER reporting an acetaminophen overdose several hours ago. The clinical team needs a rapid, evidence-based assessment of hepatotoxicity risk to decide whether N-acetylcysteine (NAC) treatment is indicated, based on time since ingestion and plasma level.",
+    objective:
+      "Apply the logic underlying the Rumack-Matthew nomogram to assess acetaminophen toxicity risk from a plasma concentration and time-since-ingestion, and determine whether NAC treatment is indicated.",
+    steps: [
+      "Confirm the plasma level was drawn at an appropriate time (nomogram is only valid 4+ hours post-ingestion for a single acute ingestion)",
+      "Calculate the treatment threshold concentration at the given time point using the nomogram's reference line",
+      "Compare the patient's actual level against the threshold",
+      "Determine the NAC treatment recommendation",
+      "Flag key situations where the nomogram does NOT apply (important safety caveat)",
+    ],
+    workstation: "notebook",
+    starterCode: `# Acetaminophen Toxicity Risk Assessment (Rumack-Matthew Nomogram Logic)
+import math
+
+time_since_ingestion_hours = 8.0
+plasma_level_mcg_ml = 95.0
+ingestion_type = "single_acute"  # vs "staggered" or "chronic" -- nomogram ONLY applies to single acute ingestion
+time_of_blood_draw_valid = time_since_ingestion_hours >= 4.0  # nomogram requires 4+ hours post-ingestion
+
+# STEP 1: Validity check
+print("=== Validity Check ===")
+# TODO: if not time_of_blood_draw_valid:
+# TODO:     print("INVALID: level drawn before 4 hours post-ingestion -- absorption may not be complete, repeat level needed at 4h")
+# TODO: elif ingestion_type != "single_acute":
+# TODO:     print(f"NOMOGRAM DOES NOT APPLY: ingestion type is '{ingestion_type}', not single acute -- use different clinical criteria")
+# TODO: else:
+# TODO:     print("Valid: level drawn 4+ hours after single acute ingestion, nomogram logic applies")
+
+# STEP 2: Treatment threshold line (simplified 200-line at 4h, halving every ~4 hours -- approximates the actual nomogram's log-linear treatment line)
+def treatment_threshold(hours_post_ingestion):
+    # TODO: reference_level_at_4h = 150.0  # mcg/mL, the standard "possible toxicity" treatment line at 4 hours
+    # TODO: half_life_hours = 4.0  # approximate elimination half-life used for the nomogram's reference line
+    # TODO: elapsed_since_4h = hours_post_ingestion - 4.0
+    # TODO: threshold = reference_level_at_4h * (0.5 ** (elapsed_since_4h / half_life_hours))
+    # TODO: return threshold
+    pass
+
+# TODO: threshold_at_current_time = treatment_threshold(time_since_ingestion_hours)
+# TODO: print(f"\\nTreatment threshold at {time_since_ingestion_hours}h post-ingestion: {threshold_at_current_time:.1f} mcg/mL")
+# TODO: print(f"Patient's actual level: {plasma_level_mcg_ml} mcg/mL")
+
+# STEP 3 & 4: Compare and recommend
+# TODO: if plasma_level_mcg_ml >= threshold_at_current_time:
+# TODO:     print(f"\\nLEVEL ABOVE THRESHOLD -- NAC treatment INDICATED")
+# TODO: else:
+# TODO:     print(f"\\nLevel below threshold -- NAC treatment not indicated based on this nomogram assessment alone")
+
+# STEP 5: Critical safety caveats
+print("\\n=== Critical Caveats (nomogram does NOT apply / is unreliable) ===")
+print("- Staggered ingestion (multiple doses over time, not a single acute overdose)")
+print("- Chronic/repeated supratherapeutic ingestion")
+print("- Unknown or uncertain time of ingestion")
+print("- Delayed presentation beyond 24 hours")
+print("- Extended-release formulation ingestion (absorption kinetics differ)")
+print("- Co-ingestion of substances that delay gastric emptying")
+print("\\nIn any of these situations, clinical judgment and different assessment criteria (not this")
+print("nomogram) should guide the NAC treatment decision -- this is a real patient safety boundary,")
+print("not a minor technical footnote.")
+`,
+    skillTags: ["Acetaminophen Toxicity", "Rumack-Matthew Nomogram", "Toxicology", "NAC Treatment", "Emergency Pharmacy"],
+    hints: [
+      "The Rumack-Matthew nomogram is only valid for a SINGLE, ACUTE ingestion with a KNOWN time of ingestion, and only for levels drawn 4 or more hours after ingestion -- applying it outside these conditions (staggered ingestion, unknown timing, chronic overuse) can produce dangerously misleading risk assessments, which is why the validity check must always come before the threshold comparison, not after",
+      "This simplified exponential approximation captures the core logic of the nomogram's log-linear treatment line, but the real clinical nomogram is typically referenced as an actual chart/table rather than recalculated from a formula in practice -- the exercise here builds the underlying reasoning, not a replacement for the validated clinical tool",
+      "NAC is most effective when started early (within 8-10 hours of ingestion) but is still given at lower efficacy even later if indicated -- the treatment threshold assessment determines WHETHER to treat, while timing affects the urgency and expected efficacy of treatment, which is a separate clinical consideration",
+    ],
+  },
+  {
+    id: "pharm-tox-003",
+    title: "Evaluate CYP450 Enzyme Interactions for Polypharmacy Risk",
+    category: "Toxicology & Drug Interactions",
+    icon: "🧬",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Pharmacogenomics", "Drug Metabolism"],
+    scenario:
+      "A patient on multiple medications metabolized through the same CYP450 enzyme pathway is at risk of unexpected drug accumulation or reduced efficacy, even without an obvious 'named' drug-drug interaction in a simple pairwise database. You need to reason through the shared metabolic pathway directly.",
+    objective:
+      "Map each medication in a patient's regimen to its primary CYP450 metabolic pathway and role (substrate, inhibitor, or inducer), and identify accumulation or efficacy risks from shared pathway competition.",
+    steps: [
+      "Map each medication to its primary CYP450 enzyme and role (substrate/inhibitor/inducer)",
+      "Group medications by shared enzyme pathway",
+      "For each enzyme with multiple medications, assess the interaction type based on the combination of roles present",
+      "Flag the highest-risk combinations: a sensitive substrate combined with a strong inhibitor or inducer of the same enzyme",
+      "Recommend a monitoring or alternative-agent strategy for the highest-risk finding",
+    ],
+    workstation: "notebook",
+    starterCode: `# CYP450 Pathway Interaction Analysis
+medications = {
+    "Simvastatin": {"enzyme": "CYP3A4", "role": "sensitive_substrate"},
+    "Clarithromycin": {"enzyme": "CYP3A4", "role": "strong_inhibitor"},
+    "Carbamazepine": {"enzyme": "CYP3A4", "role": "strong_inducer"},
+    "Omeprazole": {"enzyme": "CYP2C19", "role": "substrate"},
+    "Clopidogrel": {"enzyme": "CYP2C19", "role": "prodrug_substrate"},  # needs CYP2C19 activation to work
+    "Fluoxetine": {"enzyme": "CYP2D6", "role": "strong_inhibitor"},
+    "Codeine": {"enzyme": "CYP2D6", "role": "prodrug_substrate"},  # needs CYP2D6 to convert to active morphine
+}
+
+# STEP 2: Group by enzyme
+from collections import defaultdict
+enzyme_groups = defaultdict(list)
+# TODO: for drug, info in medications.items():
+# TODO:     enzyme_groups[info["enzyme"]].append((drug, info["role"]))
+
+print("=== Medications Grouped by CYP450 Enzyme ===")
+# TODO: for enzyme, drugs_and_roles in enzyme_groups.items():
+# TODO:     print(f"\\n{enzyme}:")
+# TODO:     for drug, role in drugs_and_roles:
+# TODO:         print(f"  {drug}: {role}")
+
+# STEP 3 & 4: Assess risk for each enzyme group with multiple drugs
+print("\\n=== Risk Assessment ===")
+# TODO: for enzyme, drugs_and_roles in enzyme_groups.items():
+# TODO:     if len(drugs_and_roles) < 2:
+# TODO:         continue
+# TODO:     roles_present = [role for drug, role in drugs_and_roles]
+# TODO:     substrates = [d for d, r in drugs_and_roles if "substrate" in r]
+# TODO:     inhibitors = [d for d, r in drugs_and_roles if "inhibitor" in r]
+# TODO:     inducers = [d for d, r in drugs_and_roles if "inducer" in r]
+# TODO:     if substrates and inhibitors:
+# TODO:         for sub in substrates:
+# TODO:             sub_role = [r for d, r in drugs_and_roles if d == sub][0]
+# TODO:             if sub_role == "prodrug_substrate":
+# TODO:                 print(f"HIGH RISK ({enzyme}): {inhibitors} inhibits activation of prodrug {sub} -- REDUCED EFFICACY risk (drug may not work)")
+# TODO:             else:
+# TODO:                 print(f"HIGH RISK ({enzyme}): {inhibitors} inhibits metabolism of {sub} -- ACCUMULATION/TOXICITY risk")
+# TODO:     if substrates and inducers:
+# TODO:         for sub in substrates:
+# TODO:             print(f"MODERATE-HIGH RISK ({enzyme}): {inducers} induces metabolism of {sub} -- REDUCED EFFICACY risk (faster clearance)")
+
+# STEP 5: Highest-priority recommendation
+print("\\n=== Highest-Priority Finding ===")
+print("Simvastatin (sensitive CYP3A4 substrate) + Clarithromycin (strong CYP3A4 inhibitor) is the")
+print("highest-risk pairing here -- this specific combination is well-documented to cause simvastatin")
+print("accumulation and significantly elevated rhabdomyolysis risk. Recommend temporarily holding")
+print("simvastatin during the clarithromycin course, or switching to a non-CYP3A4-dependent statin")
+print("(e.g. pravastatin) if antibiotic therapy cannot be substituted.")
+`,
+    skillTags: ["CYP450", "Drug Metabolism", "Pharmacogenomics", "Polypharmacy", "Toxicology"],
+    hints: [
+      "The direction of risk depends critically on WHETHER the affected drug is an active substrate (inhibition causes accumulation/toxicity) or a prodrug requiring metabolic activation (inhibition causes reduced efficacy, since the enzyme is needed to make the drug work in the first place) -- codeine requiring CYP2D6 activation to become active morphine is the classic example of this second, often-missed pattern",
+      "CYP450-mediated interactions can occur even between drugs that don't appear together in a simple named pairwise interaction database, because the risk emerges from the shared metabolic pathway itself rather than a specifically documented drug-pair interaction -- this is why reasoning through the pathway directly (as this exercise does) catches risks that pure database lookups can miss",
+      "Enzyme inducers and inhibitors have opposite directional effects (inducers speed up metabolism/reduce drug levels, inhibitors slow it down/raise drug levels) but BOTH represent real clinical risk -- an inducer can cause therapeutic failure just as seriously as an inhibitor can cause toxicity, so both directions need active screening, not just the more commonly discussed toxicity-via-inhibition scenario",
+    ],
+  },
+  {
+    id: "pharm-tox-004",
+    title: "Calculate a Pediatric Weight-Based Dose and Verify Against Maximum Safe Limits",
+    category: "Toxicology & Drug Interactions",
+    icon: "👶",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 18,
+    tools: ["Pediatric Dosing", "Dose Verification"],
+    scenario:
+      "A pediatric patient's weight-based dose calculation, if done carelessly, can produce a dose that's technically 'correct' by the mg/kg formula but exceeds the drug's absolute adult maximum dose -- a real and dangerous pediatric dosing error pattern. You need to build a calculation that catches this.",
+    objective:
+      "Calculate a weight-based pediatric dose, then verify it against both the per-dose maximum and daily maximum limits, flagging any case where the weight-based calculation would exceed the absolute safe ceiling.",
+    steps: [
+      "Calculate the weight-based dose using the drug's mg/kg/dose guidance",
+      "Calculate the resulting daily total dose given the dosing frequency",
+      "Compare the calculated per-dose amount against the drug's absolute maximum per-dose limit",
+      "Compare the calculated daily total against the drug's absolute maximum daily limit",
+      "Determine the FINAL dose to administer (the lower of weight-based and absolute maximum, whichever applies)",
+    ],
+    workstation: "notebook",
+    starterCode: `# Pediatric Weight-Based Dosing with Maximum Dose Verification
+patient_weight_kg = 45.0  # a larger/older pediatric patient -- exactly the case where max-dose capping matters most
+mg_per_kg_per_dose = 15.0
+doses_per_day = 4
+
+# Drug's absolute maximum limits (these apply regardless of weight-based calculation)
+absolute_max_per_dose_mg = 500.0
+absolute_max_daily_mg = 2000.0
+
+# STEP 1: Weight-based per-dose calculation
+# TODO: weight_based_dose_mg = patient_weight_kg * mg_per_kg_per_dose
+# TODO: print(f"Weight-based calculation: {patient_weight_kg}kg x {mg_per_kg_per_dose}mg/kg = {weight_based_dose_mg:.0f}mg per dose")
+
+# STEP 2: Daily total from weight-based calculation
+# TODO: weight_based_daily_total = weight_based_dose_mg * doses_per_day
+# TODO: print(f"Weight-based daily total: {weight_based_dose_mg:.0f}mg x {doses_per_day} doses/day = {weight_based_daily_total:.0f}mg/day")
+
+# STEP 3: Check against absolute per-dose maximum
+print(f"\\n=== Maximum Dose Verification ===")
+# TODO: per_dose_exceeds_max = weight_based_dose_mg > absolute_max_per_dose_mg
+# TODO: print(f"Absolute max per dose: {absolute_max_per_dose_mg}mg")
+# TODO: print(f"Weight-based calculation: {weight_based_dose_mg:.0f}mg -> {'EXCEEDS MAXIMUM' if per_dose_exceeds_max else 'within limit'}")
+
+# STEP 4: Check against absolute daily maximum
+# TODO: daily_exceeds_max = weight_based_daily_total > absolute_max_daily_mg
+# TODO: print(f"\\nAbsolute max daily: {absolute_max_daily_mg}mg")
+# TODO: print(f"Weight-based daily total: {weight_based_daily_total:.0f}mg -> {'EXCEEDS MAXIMUM' if daily_exceeds_max else 'within limit'}")
+
+# STEP 5: Determine the FINAL safe dose to administer
+# TODO: final_per_dose = min(weight_based_dose_mg, absolute_max_per_dose_mg)
+# TODO: final_daily_total = final_per_dose * doses_per_day
+# TODO: if final_daily_total > absolute_max_daily_mg:
+# TODO:     final_per_dose = absolute_max_daily_mg / doses_per_day
+# TODO:     final_daily_total = absolute_max_daily_mg
+
+print(f"\\n=== FINAL DOSE TO ADMINISTER ===")
+# TODO: print(f"Per dose: {final_per_dose:.0f}mg, {doses_per_day} times per day")
+# TODO: print(f"Daily total: {final_daily_total:.0f}mg")
+# TODO: if final_per_dose < weight_based_dose_mg:
+# TODO:     print(f"\\nNOTE: dose was CAPPED at the absolute maximum -- weight-based calculation alone")
+# TODO:     print(f"({weight_based_dose_mg:.0f}mg) would have exceeded the safe ceiling for this drug")
+`,
+    skillTags: ["Pediatric Dosing", "Weight-Based Dosing", "Dose Verification", "Maximum Dose", "Patient Safety"],
+    hints: [
+      "This is a real, well-documented pediatric dosing error pattern -- as pediatric patients approach adult weight, a mg/kg calculation that's perfectly appropriate for a smaller child can produce a dose exceeding the drug's absolute adult maximum, since the mg/kg formula alone has no built-in ceiling",
+      "The correct dosing logic must ALWAYS apply both the weight-based calculation AND the absolute maximum check, taking whichever is LOWER -- relying on either check alone (just weight-based, or just remembering 'don't exceed the adult max') is exactly how this error pattern happens in practice",
+      "Both a per-dose maximum AND a daily total maximum need independent verification -- a per-dose amount can pass its own individual limit while the resulting daily total (per-dose times frequency) still exceeds the daily ceiling, so checking only one of the two limits isn't sufficient",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHARMACY — COMPOUNDING & STERILE PREPARATION
+// ─────────────────────────────────────────────────────────────────────────────
+export const PHARMACY_COMPOUNDING_CHALLENGES = [
+  {
+    id: "pharm-comp-001",
+    title: "Calculate Compounding Quantities for a Custom-Strength Suspension",
+    category: "Compounding",
+    icon: "🧪",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Compounding Calculations"],
+    scenario:
+      "A pediatric patient needs a liquid suspension at a custom strength not commercially available, compounded from available tablets. You need to calculate exactly how many tablets and how much suspending vehicle are needed for the prescribed batch.",
+    objective:
+      "Calculate the number of source tablets needed and the correct quantity of suspending vehicle to compound a target volume and concentration of oral suspension.",
+    steps: [
+      "Calculate the total active ingredient (mg) needed for the full batch volume at the target concentration",
+      "Calculate how many source tablets are needed to supply that total active ingredient amount",
+      "Account for realistic tablet count rounding (can't use a fraction of a tablet in practice)",
+      "Recalculate the ACTUAL final concentration given the rounded (whole) tablet count used",
+      "Verify the actual concentration is within an acceptable tolerance of the target (typically ±10%)",
+    ],
+    workstation: "notebook",
+    starterCode: `# Compounding Calculation: Custom-Strength Suspension
+target_concentration_mg_per_ml = 5.0
+batch_volume_ml = 120.0
+tablet_strength_mg = 25.0
+
+# STEP 1: Total active ingredient needed for the full batch
+# TODO: total_mg_needed = target_concentration_mg_per_ml * batch_volume_ml
+# TODO: print(f"Total active ingredient needed for {batch_volume_ml}mL batch at {target_concentration_mg_per_ml}mg/mL: {total_mg_needed:.0f}mg")
+
+# STEP 2: Tablets needed
+# TODO: exact_tablets_needed = total_mg_needed / tablet_strength_mg
+# TODO: print(f"Exact tablets needed: {exact_tablets_needed:.2f}")
+
+# STEP 3: Round to a practical whole tablet count (compounding pharmacies work with whole tablets)
+import math
+# TODO: rounded_tablets = round(exact_tablets_needed)
+# TODO: print(f"Rounded to whole tablets: {rounded_tablets}")
+
+# STEP 4: Recalculate ACTUAL concentration from the rounded tablet count
+# TODO: actual_total_mg = rounded_tablets * tablet_strength_mg
+# TODO: actual_concentration = actual_total_mg / batch_volume_ml
+# TODO: print(f"\\nActual total active ingredient with {rounded_tablets} tablets: {actual_total_mg:.0f}mg")
+# TODO: print(f"Actual final concentration: {actual_concentration:.3f}mg/mL")
+# TODO: print(f"Target concentration: {target_concentration_mg_per_ml}mg/mL")
+
+# STEP 5: Tolerance check (commonly +/-10% for compounded preparations)
+# TODO: percent_deviation = abs(actual_concentration - target_concentration_mg_per_ml) / target_concentration_mg_per_ml * 100
+# TODO: print(f"\\nDeviation from target: {percent_deviation:.1f}%")
+# TODO: if percent_deviation <= 10:
+# TODO:     print("WITHIN acceptable tolerance (+/-10%) -- proceed with this tablet count")
+# TODO: else:
+# TODO:     print("EXCEEDS acceptable tolerance -- consider adjusting batch volume instead to hit target concentration exactly with a whole tablet count")
+`,
+    skillTags: ["Compounding", "Suspension Preparation", "Dose Calculations", "Pharmaceutical Compounding"],
+    hints: [
+      "Whole-tablet rounding is unavoidable in most manual compounding workflows, and the resulting deviation from the exact target concentration must be explicitly verified against a tolerance threshold -- silently using the rounded number without checking deviation is how compounding concentration errors happen",
+      "When the tolerance check fails, adjusting the BATCH VOLUME (rather than trying to split tablets, which introduces its own accuracy problems) is often the more practical fix -- solving for the batch volume that makes a whole tablet count hit the target concentration exactly",
+      "This calculation assumes 100% of the tablet's stated active ingredient transfers into the suspension -- real compounding also needs to account for triturating/crushing losses and excipient interactions, which is why compounding pharmacies validate their specific formulation and technique, not just the arithmetic",
+    ],
+  },
+  {
+    id: "pharm-comp-002",
+    title: "Perform Alligation Calculations to Prepare a Custom-Strength Mixture",
+    category: "Compounding",
+    icon: "⚗️",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Alligation Method"],
+    scenario:
+      "A prescription calls for a 2.5% topical cream, but the pharmacy only stocks a 5% cream and a 0% (plain base) cream. You need to use the alligation method to determine the correct proportions to mix.",
+    objective:
+      "Apply the alligation method to calculate the ratio of high-strength and low-strength (or plain base) components needed to prepare a target intermediate strength, then scale to the prescribed total quantity.",
+    steps: [
+      "Set up the alligation grid with high strength, low strength, and target strength",
+      "Calculate the parts of each component using the alligation method",
+      "Convert the parts ratio into actual quantities for the prescribed total batch size",
+      "Verify the resulting mixture achieves the target concentration",
+      "Determine the final weighed amounts of each component to compound",
+    ],
+    workstation: "notebook",
+    starterCode: `# Alligation Method for Custom-Strength Mixture
+high_strength_pct = 5.0    # available stock strength
+low_strength_pct = 0.0     # plain base (0% active ingredient)
+target_strength_pct = 2.5  # prescribed strength
+total_batch_grams = 60.0
+
+# STEP 1 & 2: Alligation grid
+# Parts of high strength = |low - target|
+# Parts of low strength = |high - target|
+# TODO: parts_high = abs(low_strength_pct - target_strength_pct)
+# TODO: parts_low = abs(high_strength_pct - target_strength_pct)
+# TODO: total_parts = parts_high + parts_low
+# TODO: print(f"Parts of {high_strength_pct}% strength needed: {parts_high}")
+# TODO: print(f"Parts of {low_strength_pct}% strength (plain base) needed: {parts_low}")
+# TODO: print(f"Total parts: {total_parts}")
+
+# STEP 3: Convert to actual quantities for the batch
+# TODO: fraction_high = parts_high / total_parts
+# TODO: fraction_low = parts_low / total_parts
+# TODO: grams_high_strength = total_batch_grams * fraction_high
+# TODO: grams_low_strength = total_batch_grams * fraction_low
+# TODO: print(f"\\nFor a {total_batch_grams}g batch:")
+# TODO: print(f"  {high_strength_pct}% cream needed: {grams_high_strength:.1f}g")
+# TODO: print(f"  {low_strength_pct}% plain base needed: {grams_low_strength:.1f}g")
+
+# STEP 4: Verify
+# TODO: total_active_ingredient = grams_high_strength * (high_strength_pct / 100)
+# TODO: verified_concentration = (total_active_ingredient / total_batch_grams) * 100
+# TODO: print(f"\\nVerification: total active ingredient = {total_active_ingredient:.2f}g")
+# TODO: print(f"Verified concentration: {verified_concentration:.2f}% (target: {target_strength_pct}%)")
+
+# STEP 5: Final compounding instructions
+print(f"\\n=== Final Compounding Instructions ===")
+# TODO: print(f"Weigh {grams_high_strength:.1f}g of {high_strength_pct}% cream")
+# TODO: print(f"Weigh {grams_low_strength:.1f}g of plain base")
+# TODO: print(f"Mix thoroughly to achieve homogeneous {target_strength_pct}% cream, total batch {total_batch_grams}g")
+`,
+    skillTags: ["Alligation Method", "Compounding Calculations", "Topical Preparations", "Pharmaceutical Math"],
+    hints: [
+      "The alligation method's cross-subtraction logic (parts of high strength = distance from LOW to target, parts of low strength = distance from HIGH to target) can feel counterintuitive at first -- it works because it's solving a weighted-average equation, and the 'distance' assigned to each component is inversely related to how much of it you need",
+      "A verification step recalculating the actual final concentration from the computed quantities is essential -- alligation is a classic place for pharmacy calculation errors, and independently confirming the answer (total active ingredient / total batch weight) catches arithmetic mistakes before compounding",
+      "This same alligation logic extends beyond two-component mixtures to more complex scenarios (e.g., mixing three different strengths, or diluting concentrated products), though those require solving the underlying weighted-average system more generally rather than the simple cross-subtraction shortcut used here",
+    ],
+  },
+  {
+    id: "pharm-comp-003",
+    title: "Verify Beyond-Use Dating for a Compounded Sterile Preparation",
+    category: "Compounding",
+    icon: "🗓️",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["USP 797 Standards", "Sterile Compounding"],
+    scenario:
+      "A hospital pharmacy is preparing a batch of compounded sterile IV admixtures and needs to assign an appropriate beyond-use date (BUD) that complies with USP 797 risk-level requirements -- assigning too long a BUD is a real patient safety and regulatory risk.",
+    objective:
+      "Determine the appropriate USP 797 risk level for a compounded sterile preparation based on preparation conditions, and calculate the correct beyond-use date accordingly.",
+    steps: [
+      "Assess the compounding conditions to determine the USP 797 risk level (low, medium, or high risk)",
+      "Apply the corresponding maximum BUD limits for room temperature, refrigerated, and frozen storage",
+      "Account for any sterility testing that would extend the BUD beyond default limits",
+      "Calculate the actual expiration date/time from the compounding date and BUD limit",
+      "Flag any conflicting requirement (e.g. manufacturer's shorter stability data overriding the USP default)",
+    ],
+    workstation: "notebook",
+    starterCode: `# USP 797 Beyond-Use Dating for Compounded Sterile Preparations
+from datetime import datetime, timedelta
+
+compounding_conditions = {
+    "single_compounder": True,       # one person, one uninterrupted procedure
+    "sterile_starting_components_only": True,   # no non-sterile ingredients
+    "aseptic_technique_ISO5_environment": True,  # compounded under proper ISO Class 5 conditions
+    "transferred_between_multiple_sterile_containers": False,  # simple, not complex manipulation
+    "sterility_tested": False,  # no additional sterility testing performed
+}
+
+storage_condition = "refrigerated"  # room_temp, refrigerated, or frozen
+compounding_datetime = datetime(2026, 8, 11, 9, 0)
+
+# STEP 1: Determine risk level
+def determine_risk_level(conditions):
+    # TODO: if not conditions["sterile_starting_components_only"]:
+    # TODO:     return "High"  # non-sterile starting components = automatically high risk
+    # TODO: if conditions["transferred_between_multiple_sterile_containers"]:
+    # TODO:     return "Medium"  # complex manipulation across multiple containers/devices
+    # TODO: if conditions["single_compounder"] and conditions["aseptic_technique_ISO5_environment"]:
+    # TODO:     return "Low"  # simple, single-transfer aseptic compounding
+    # TODO: return "Medium"  # default if conditions unclear
+    pass
+
+# TODO: risk_level = determine_risk_level(compounding_conditions)
+# TODO: print(f"Determined USP 797 risk level: {risk_level}")
+
+# STEP 2: Default BUD limits by risk level (without sterility testing) -- USP 797 general defaults
+default_bud_limits = {
+    "Low":    {"room_temp_hours": 48, "refrigerated_hours": 14 * 24, "frozen_hours": 45 * 24},
+    "Medium": {"room_temp_hours": 30, "refrigerated_hours": 9 * 24, "frozen_hours": 45 * 24},
+    "High":   {"room_temp_hours": 24, "refrigerated_hours": 3 * 24, "frozen_hours": 24},
+}
+
+# STEP 3: Sterility testing extension (if applicable -- not in this scenario)
+# TODO: bud_limits = default_bud_limits[risk_level]
+condition_key_map = {"room_temp": "room_temp_hours", "refrigerated": "refrigerated_hours", "frozen": "frozen_hours"}
+# TODO: applicable_bud_hours = bud_limits[condition_key_map[storage_condition]]
+# TODO: print(f"\\nBUD limit for {risk_level} risk, {storage_condition} storage: {applicable_bud_hours} hours ({applicable_bud_hours/24:.1f} days)")
+# TODO: if compounding_conditions["sterility_tested"]:
+# TODO:     print("(Sterility testing performed -- BUD may be extended per USP 797 sterility-testing provisions, consult full guidance)")
+
+# STEP 4: Calculate actual expiration
+# TODO: expiration_datetime = compounding_datetime + timedelta(hours=applicable_bud_hours)
+# TODO: print(f"\\nCompounded: {compounding_datetime}")
+# TODO: print(f"Beyond-use date/time: {expiration_datetime}")
+
+# STEP 5: Manufacturer stability data override check
+manufacturer_stability_hours = 72  # if manufacturer's published stability data is SHORTER than USP default
+print(f"\\n=== Cross-Check ===")
+# TODO: if manufacturer_stability_hours < applicable_bud_hours:
+# TODO:     print(f"FLAG: manufacturer stability data ({manufacturer_stability_hours}h) is SHORTER than the USP 797")
+# TODO:     print(f"default ({applicable_bud_hours}h) -- the SHORTER of the two must be used as the actual BUD")
+# TODO:     print(f"Corrected BUD: {compounding_datetime + timedelta(hours=manufacturer_stability_hours)}")
+`,
+    skillTags: ["USP 797", "Beyond-Use Dating", "Sterile Compounding", "Regulatory Compliance"],
+    hints: [
+      "USP 797 risk levels (low, medium, high) are determined by the complexity and sterility assurance of the compounding PROCESS itself, not by the drug being compounded -- the same drug compounded under different conditions (single simple transfer vs. multiple container manipulations, or with non-sterile starting components) can be assigned to entirely different risk levels with very different allowable BUDs",
+      "The governing rule when USP 797 default limits and manufacturer-published stability data disagree is to always use the SHORTER of the two -- USP 797 limits represent a general maximum ceiling, not a guarantee that a specific product is stable that long, so a shorter manufacturer stability study always takes precedence",
+      "Assigning too LONG a beyond-use date is a genuine patient safety and regulatory compliance risk (using a preparation past its actual sterility/stability window), while assigning unnecessarily SHORT dates creates waste and access problems -- getting this calculation right in both directions matters, not just erring maximally conservative",
+    ],
+  },
+  {
+    id: "pharm-comp-004",
+    title: "Calculate Osmolarity for a Compounded Parenteral Nutrition Solution",
+    category: "Compounding",
+    icon: "💧",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Parenteral Nutrition", "Osmolarity Calculations"],
+    scenario:
+      "A compounded parenteral nutrition (PN) solution's osmolarity determines whether it can be safely infused through a peripheral IV line or requires central venous access. Getting this calculation wrong risks either unnecessary central line placement or dangerous peripheral vein damage.",
+    objective:
+      "Calculate the total osmolarity of a compounded parenteral nutrition solution from its component concentrations, and determine whether peripheral or central administration is required.",
+    steps: [
+      "Calculate osmolarity contribution from dextrose concentration",
+      "Calculate osmolarity contribution from amino acid concentration",
+      "Calculate osmolarity contribution from electrolyte additives",
+      "Sum all contributions for total solution osmolarity",
+      "Determine the appropriate administration route based on the osmolarity threshold for peripheral administration",
+    ],
+    workstation: "notebook",
+    starterCode: `# Parenteral Nutrition Osmolarity Calculation
+final_volume_ml = 2000.0
+
+# Component concentrations in the final compounded solution
+dextrose_final_concentration_pct = 15.0    # % dextrose in final solution
+amino_acids_final_concentration_pct = 4.25 # % amino acids in final solution
+sodium_mEq_per_L = 60.0
+potassium_mEq_per_L = 40.0
+calcium_mEq_per_L = 10.0
+magnesium_mEq_per_L = 8.0
+
+# Approximate osmolarity contribution factors (mOsm/L per unit concentration) -- standard PN calculation factors
+dextrose_mosm_per_pct = 50.0    # mOsm/L per 1% dextrose concentration
+amino_acid_mosm_per_pct = 100.0 # mOsm/L per 1% amino acid concentration
+electrolyte_mosm_per_meq = 2.0  # mOsm/L per mEq/L (approximate, ions contribute roughly 1-2 mOsm per mEq)
+
+# STEP 1: Dextrose contribution
+# TODO: dextrose_osmolarity = dextrose_final_concentration_pct * dextrose_mosm_per_pct
+# TODO: print(f"Dextrose osmolarity contribution: {dextrose_osmolarity:.0f} mOsm/L")
+
+# STEP 2: Amino acid contribution
+# TODO: amino_acid_osmolarity = amino_acids_final_concentration_pct * amino_acid_mosm_per_pct
+# TODO: print(f"Amino acid osmolarity contribution: {amino_acid_osmolarity:.0f} mOsm/L")
+
+# STEP 3: Electrolyte contribution
+# TODO: total_electrolyte_meq = sodium_mEq_per_L + potassium_mEq_per_L + calcium_mEq_per_L + magnesium_mEq_per_L
+# TODO: electrolyte_osmolarity = total_electrolyte_meq * electrolyte_mosm_per_meq
+# TODO: print(f"Electrolyte osmolarity contribution: {electrolyte_osmolarity:.0f} mOsm/L (from {total_electrolyte_meq:.0f} total mEq/L)")
+
+# STEP 4: Total osmolarity
+# TODO: total_osmolarity = dextrose_osmolarity + amino_acid_osmolarity + electrolyte_osmolarity
+# TODO: print(f"\\nTOTAL SOLUTION OSMOLARITY: {total_osmolarity:.0f} mOsm/L")
+
+# STEP 5: Administration route determination
+peripheral_osmolarity_limit = 900.0  # mOsm/L -- widely cited threshold for safe peripheral vein administration
+print(f"\\n=== Administration Route Determination ===")
+# TODO: print(f"Peripheral administration safety threshold: {peripheral_osmolarity_limit:.0f} mOsm/L")
+# TODO: if total_osmolarity > peripheral_osmolarity_limit:
+# TODO:     print(f"Total osmolarity ({total_osmolarity:.0f}) EXCEEDS peripheral limit -- CENTRAL VENOUS ACCESS REQUIRED")
+# TODO:     print("Peripheral administration would risk phlebitis and vein damage from the hypertonic solution")
+# TODO: else:
+# TODO:     print(f"Total osmolarity ({total_osmolarity:.0f}) is within peripheral limit -- peripheral administration is an option")
+`,
+    skillTags: ["Parenteral Nutrition", "Osmolarity", "TPN Compounding", "IV Administration Route"],
+    hints: [
+      "Dextrose and amino acid concentrations are typically the dominant contributors to PN solution osmolarity, which is exactly why high-dextrose, high-protein PN formulations (needed for patients with high caloric/protein requirements) frequently require central venous access rather than peripheral administration",
+      "The ~900 mOsm/L peripheral administration threshold is a widely cited clinical guideline, but institutional protocols can vary somewhat, and the consequence of exceeding it (phlebitis, vein damage from hypertonic solution in a smaller peripheral vein) is exactly why this calculation needs to be done BEFORE compounding and administration, not discovered as a complication afterward",
+      "This calculation uses simplified approximate conversion factors for illustration -- real PN osmolarity calculations in practice typically use each specific product's actual published osmolarity data or a compounding software's built-in calculation, since exact factors vary by specific amino acid and dextrose product formulation",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHARMACY — COMMUNITY PHARMACY PRACTICE
+// ─────────────────────────────────────────────────────────────────────────────
+export const PHARMACY_COMMUNITY_CHALLENGES = [
+  {
+    id: "pharm-comm-001",
+    title: "Verify Insurance Claim Rejection Codes and Resolve a Prior Authorization",
+    category: "Community Pharmacy",
+    icon: "📋",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Claims Processing"],
+    scenario:
+      "A patient's prescription claim is rejected at the point of sale with a code the pharmacy technician doesn't recognize, and the patient is waiting at the counter. You need to quickly interpret common rejection codes and determine the correct resolution path.",
+    objective:
+      "Interpret common NCPDP rejection codes, determine the appropriate resolution pathway for each, and prioritize actions to minimize patient wait time.",
+    steps: [
+      "Look up the meaning of each rejection code received",
+      "Classify each rejection as resolvable at the pharmacy level vs requiring prescriber/insurer action",
+      "Determine the specific next action for each rejection type",
+      "Estimate realistic resolution time for each pathway",
+      "Recommend an interim solution for the patient while resolution is pending",
+    ],
+    workstation: "notebook",
+    starterCode: `# Insurance Claim Rejection Code Resolution
+rejection_codes_received = ["75", "76", "70", "MR"]
+
+rejection_code_meanings = {
+    "70": {"meaning": "Product/Service Not Covered", "pharmacy_resolvable": False, "action": "Contact prescriber for covered alternative, or patient pays cash price"},
+    "75": {"meaning": "Prior Authorization Required", "pharmacy_resolvable": False, "action": "Prescriber's office must submit PA request to insurer"},
+    "76": {"meaning": "Plan Limitations Exceeded (e.g. refill too soon)", "pharmacy_resolvable": True, "action": "Check days supply remaining; may need to wait or request early refill override"},
+    "MR": {"meaning": "Product Not on Formulary", "pharmacy_resolvable": False, "action": "Contact prescriber for formulary-preferred alternative"},
+}
+
+# STEP 1 & 2: Interpret and classify
+print("=== Rejection Code Analysis ===")
+# TODO: for code in rejection_codes_received:
+# TODO:     info = rejection_code_meanings[code]
+# TODO:     resolvable_status = "PHARMACY CAN RESOLVE" if info["pharmacy_resolvable"] else "REQUIRES EXTERNAL ACTION"
+# TODO:     print(f"\\nCode {code}: {info['meaning']}")
+# TODO:     print(f"  Status: {resolvable_status}")
+# TODO:     print(f"  Action: {info['action']}")
+
+# STEP 3 & 4: Prioritize and estimate resolution time
+resolution_time_estimates = {
+    "76": "Same visit (pharmacist can check days supply and potentially override)",
+    "75": "1-3 business days (requires prescriber PA submission and insurer review)",
+    "70": "Same visit for cash price option, or 1-2 days if seeking prescriber alternative",
+    "MR": "Same day if prescriber responsive, otherwise 1-2 days",
+}
+
+print("\\n=== Resolution Time Estimates ===")
+# TODO: for code in rejection_codes_received:
+# TODO:     print(f"Code {code}: {resolution_time_estimates[code]}")
+
+# STEP 5: Interim solution for the waiting patient
+print("\\n=== Recommended Interim Action ===")
+print("Given code 76 (refill too soon) is pharmacy-resolvable immediately, address that first --")
+print("check actual days supply remaining and process an override if clinically appropriate.")
+print("For codes 75 and MR (both requiring prescriber involvement), offer the patient either a")
+print("cash-price option to leave with medication today while the PA/formulary issue is resolved,")
+print("or fax the prescriber's office immediately and set a follow-up expectation.")
+`,
+    skillTags: ["Insurance Claims", "Prior Authorization", "NCPDP Rejection Codes", "Community Pharmacy"],
+    hints: [
+      "Distinguishing pharmacy-resolvable rejections (like early refill overrides, which the pharmacist can often handle directly) from rejections requiring prescriber or insurer action (like prior authorization) is the single most useful triage step for managing patient wait time at the counter",
+      "Offering a cash-price interim option isn't just a courtesy -- for time-sensitive medications (antibiotics, certain cardiac or psychiatric medications), a multi-day PA delay can have real clinical consequences, so proactively presenting the cash option lets the patient make an informed choice rather than leaving empty-handed",
+      "Real-world rejection code handling also requires knowing which codes are genuinely urgent to escalate (e.g., a rejection on a medication with no safe substitute) versus routine administrative friction -- this prioritization judgment matters as much as knowing the code definitions themselves",
+    ],
+  },
+  {
+    id: "pharm-comm-002",
+    title: "Calculate Days Supply and Detect a Potential Early Refill Pattern",
+    category: "Community Pharmacy",
+    icon: "📅",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Refill Analysis"],
+    scenario:
+      "A patient is requesting an early refill on a controlled substance. Before dispensing, the pharmacist needs to review the patient's refill history to determine if this is a legitimate isolated early request or part of a concerning pattern.",
+    objective:
+      "Calculate days supply and inter-fill intervals from a patient's prescription fill history, and identify whether the pattern is consistent with a single legitimate early request or a concerning trend requiring further pharmacist review.",
+    steps: [
+      "Calculate days supply for each historical fill from quantity dispensed and prescribed directions",
+      "Calculate the actual number of days between consecutive fills",
+      "Compare actual inter-fill days against the days supply that should have lasted",
+      "Identify the pattern: isolated incident vs recurring early refills",
+      "Determine the appropriate pharmacist action based on the pattern found",
+    ],
+    workstation: "notebook",
+    starterCode: `# Refill Pattern Analysis
+from datetime import date
+
+# Fill history: (fill_date, quantity_dispensed, days_supply_billed)
+fill_history = [
+    (date(2026, 3, 1), 30, 30),
+    (date(2026, 3, 28), 30, 30),
+    (date(2026, 4, 20), 30, 30),   # filled 23 days after previous -- early
+    (date(2026, 5, 10), 30, 30),   # filled 20 days after previous -- early
+    (date(2026, 6, 8), 30, 30),    # current request, 29 days after previous
+]
+
+# STEP 2 & 3: Calculate actual inter-fill intervals and compare to expected days supply
+print("=== Fill History Analysis ===")
+intervals = []
+# TODO: for i in range(1, len(fill_history)):
+# TODO:     prev_date, prev_qty, prev_days_supply = fill_history[i - 1]
+# TODO:     curr_date, curr_qty, curr_days_supply = fill_history[i]
+# TODO:     actual_interval_days = (curr_date - prev_date).days
+# TODO:     early_by_days = prev_days_supply - actual_interval_days
+# TODO:     intervals.append({"fill_date": curr_date, "actual_interval": actual_interval_days,
+# TODO:                        "expected_days_supply": prev_days_supply, "early_by_days": early_by_days})
+# TODO:     status = "EARLY" if early_by_days > 2 else "on schedule"  # small buffer for normal variation
+# TODO:     print(f"Fill on {curr_date}: {actual_interval_days} days since previous fill (expected ~{prev_days_supply}) -> {status}")
+# TODO:     if early_by_days > 2:
+# TODO:         print(f"  Filled {early_by_days} days early")
+
+# STEP 4: Pattern identification
+# TODO: early_fills = [i for i in intervals if i["early_by_days"] > 2]
+# TODO: print(f"\\n{len(early_fills)} out of {len(intervals)} fills were early")
+
+# STEP 5: Recommendation based on pattern
+print("\\n=== Pharmacist Action ===")
+# TODO: if len(early_fills) >= 2:
+# TODO:     print("PATTERN DETECTED: multiple early refills in recent history, not an isolated incident.")
+# TODO:     print("This warrants a direct conversation with the patient about medication use, a check of")
+# TODO:     print("the state Prescription Drug Monitoring Program (PDMP), and possible prescriber consultation")
+# TODO:     print("before dispensing this early refill request -- this is a clinical judgment call, not an")
+# TODO:     print("automatic denial, but it should not be processed routinely without this review.")
+# TODO: else:
+# TODO:     print("Isolated single early request with no broader pattern -- may be dispensed with standard")
+# TODO:     print("professional judgment (e.g. verifying a reasonable explanation like lost medication,")
+# TODO:     print("dose change, or upcoming travel) without escalation.")
+`,
+    skillTags: ["Refill Analysis", "Controlled Substances", "PDMP", "Community Pharmacy", "Patient Safety"],
+    hints: [
+      "A single early refill request has many legitimate explanations (dose titration, lost medication, upcoming travel) and shouldn't automatically trigger suspicion -- the pattern across MULTIPLE fills, not any single data point, is what should drive escalation to deeper review",
+      "This kind of pattern analysis is exactly what real Prescription Drug Monitoring Program (PDMP) checks and pharmacy dispensing software flag automatically for controlled substances -- understanding the underlying logic helps interpret why a system flags a patient, rather than treating the flag as a black box",
+      "The appropriate response to a detected pattern is escalated clinical review and patient conversation, not automatic denial -- pharmacists have both a corresponding responsibility to prevent diversion AND a duty to ensure patients with legitimate needs aren't inappropriately denied medication, and this calculation supports that judgment rather than replacing it",
+    ],
+  },
+  {
+    id: "pharm-comm-003",
+    title: "Optimize Inventory Reorder Points for High-Turnover Community Pharmacy Stock",
+    category: "Community Pharmacy",
+    icon: "📦",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Inventory Management"],
+    scenario:
+      "A community pharmacy keeps running out of several high-demand medications between wholesaler deliveries, causing patient inconvenience and lost sales, while other slower-moving items sit overstocked tying up cash. You need to set data-driven reorder points instead of ordering by gut feel.",
+    objective:
+      "Calculate appropriate reorder points and reorder quantities for a set of pharmacy inventory items based on their demand rate and delivery lead time, incorporating safety stock for demand variability.",
+    steps: [
+      "Calculate average daily demand for each medication from recent dispensing history",
+      "Calculate the base reorder point from lead time and average daily demand",
+      "Add safety stock based on demand variability to protect against stockouts",
+      "Determine the final reorder point per item",
+      "Flag which currently-stocked medications are most at risk of stockout under the current ordering pattern",
+    ],
+    workstation: "notebook",
+    starterCode: `# Community Pharmacy Inventory Reorder Point Optimization
+import numpy as np
+
+medications = {
+    "Lisinopril 10mg": {"daily_dispensing_history": [45, 52, 38, 61, 47, 55, 42], "current_stock": 120, "lead_time_days": 2},
+    "Amoxicillin 500mg": {"daily_dispensing_history": [20, 65, 15, 80, 30, 18, 22], "current_stock": 90, "lead_time_days": 2},
+    "Metformin 500mg": {"daily_dispensing_history": [60, 58, 63, 55, 61, 59, 57], "current_stock": 150, "lead_time_days": 3},
+}
+
+service_level_z_score = 1.65  # ~95% service level (protect against stockout in 95% of demand scenarios)
+
+print("=== Reorder Point Analysis ===")
+# TODO: for med_name, data in medications.items():
+# TODO:     history = data["daily_dispensing_history"]
+# TODO:     avg_daily_demand = np.mean(history)
+# TODO:     std_daily_demand = np.std(history)
+# TODO:     lead_time = data["lead_time_days"]
+# TODO:
+# TODO:     # STEP 2: Base reorder point = average daily demand x lead time
+# TODO:     base_reorder_point = avg_daily_demand * lead_time
+# TODO:
+# TODO:     # STEP 3: Safety stock = z-score x std deviation x sqrt(lead time) -- accounts for demand variability during lead time
+# TODO:     safety_stock = service_level_z_score * std_daily_demand * np.sqrt(lead_time)
+# TODO:
+# TODO:     # STEP 4: Final reorder point
+# TODO:     final_reorder_point = base_reorder_point + safety_stock
+# TODO:
+# TODO:     print(f"\\n{med_name}:")
+# TODO:     print(f"  Avg daily demand: {avg_daily_demand:.1f} units, std dev: {std_daily_demand:.1f}")
+# TODO:     print(f"  Base reorder point: {base_reorder_point:.0f} units")
+# TODO:     print(f"  Safety stock (95% service level): {safety_stock:.0f} units")
+# TODO:     print(f"  FINAL reorder point: {final_reorder_point:.0f} units")
+# TODO:     print(f"  Current stock: {data['current_stock']} units")
+# TODO:
+# TODO:     if data["current_stock"] <= final_reorder_point:
+# TODO:         print(f"  >>> AT RISK: current stock is at or below reorder point -- ORDER NOW")
+
+print("\\n=== Key Insight ===")
+print("Amoxicillin has HIGH demand variability (dispensing swings widely day to day, likely tied to")
+print("infection seasonality) -- this drives a disproportionately large safety stock requirement")
+print("relative to its average demand, compared to the more stable, predictable demand for Lisinopril")
+print("and Metformin (chronic maintenance medications with steady day-to-day usage).")
+`,
+    skillTags: ["Inventory Management", "Reorder Point", "Safety Stock", "Community Pharmacy Operations"],
+    hints: [
+      "Demand variability (not just average demand) is what really drives safety stock requirements -- two medications with identical average daily demand can need very different reorder points if one has stable, predictable usage and the other has highly variable, spiky demand (like antibiotics tied to infection seasonality)",
+      "The safety stock formula scaling by sqrt(lead time) rather than lead time directly reflects how variance (not standard deviation) combines additively across independent days -- this is a standard result from combining independent random variables, and is why longer lead times increase safety stock requirements sub-linearly rather than linearly",
+      "The 95% service level (z=1.65) is a business choice, not a fixed constant -- a pharmacy could choose a higher service level (more safety stock, less stockout risk, more capital tied up in inventory) or lower, and the right choice depends on the clinical criticality of stockouts for that specific medication category",
+    ],
+  },
+  {
+    id: "pharm-comm-004",
+    title: "Design a Medication Therapy Management (MTM) Session Workflow",
+    category: "Community Pharmacy",
+    icon: "🗣️",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Medication Therapy Management"],
+    scenario:
+      "A community pharmacy is starting to offer billable Medication Therapy Management (MTM) sessions for patients on multiple chronic medications, but the pharmacists have never run a structured MTM session before and need a clear, repeatable workflow.",
+    objective:
+      "Design a structured MTM session workflow covering medication reconciliation, therapy problem identification, and action planning, applied to a specific patient case to validate the workflow.",
+    steps: [
+      "Reconcile the patient's actual medication list against what's on file (patients often take things not in the pharmacy record)",
+      "Screen the reconciled list for therapy problems: duplications, interactions, adherence barriers, cost issues",
+      "Prioritize identified therapy problems by clinical significance",
+      "Draft a specific action plan item for each significant problem",
+      "Generate a personal medication record (PMR) summary the patient can take home",
+    ],
+    workstation: "notebook",
+    starterCode: `# Medication Therapy Management (MTM) Session Workflow
+pharmacy_record_medications = ["Lisinopril 10mg daily", "Metformin 500mg BID", "Atorvastatin 20mg daily"]
+
+# STEP 1: Medication reconciliation -- what the patient reports actually taking (often differs from pharmacy record)
+patient_reported_medications = [
+    "Lisinopril 10mg daily",
+    "Metformin 500mg BID",
+    "Atorvastatin 20mg daily",
+    "Ibuprofen 400mg, takes 2-3 times a week for knee pain (OTC, not in pharmacy record)",
+    "A friend's leftover amoxicillin, took a few doses last month for a cold (concerning, not in record)",
+    "Fish oil supplement daily",
+]
+
+print("=== Step 1: Medication Reconciliation ===")
+# TODO: pharmacy_names = set(m.split(" ")[0] for m in pharmacy_record_medications)
+# TODO: patient_names = set(m.split(" ")[0] for m in patient_reported_medications)
+# TODO: undocumented = [m for m in patient_reported_medications if m.split(" ")[0] not in pharmacy_names]
+# TODO: print(f"Medications reported by patient but NOT in pharmacy record: {len(undocumented)}")
+# TODO: for m in undocumented:
+# TODO:     print(f"  - {m}")
+
+# STEP 2 & 3: Therapy problem identification and prioritization
+therapy_problems = [
+    {"issue": "Regular ibuprofen use in a patient on ACE inhibitor (Lisinopril) -- can reduce antihypertensive efficacy and affect renal function", "priority": "High"},
+    {"issue": "Use of another person's prescription antibiotic (leftover amoxicillin) -- safety and appropriate-use concern", "priority": "High"},
+    {"issue": "No documented issue with core chronic medication adherence based on refill timing", "priority": "Low"},
+    {"issue": "Fish oil supplement -- generally low risk, but should be documented for completeness and potential bleeding-risk interactions if anticoagulants are ever added", "priority": "Low"},
+]
+
+print("\\n=== Step 2-3: Therapy Problems (prioritized) ===")
+priority_order = {"High": 0, "Medium": 1, "Low": 2}
+# TODO: therapy_problems.sort(key=lambda x: priority_order[x["priority"]])
+# TODO: for problem in therapy_problems:
+# TODO:     print(f"[{problem['priority']}] {problem['issue']}")
+
+# STEP 4: Action plan for high-priority items
+print("\\n=== Step 4: Action Plan ===")
+# TODO: high_priority = [p for p in therapy_problems if p["priority"] == "High"]
+# TODO: for problem in high_priority:
+# TODO:     print(f"- {problem['issue'][:60]}...")
+print("  Action: Discuss NSAID alternatives (e.g. acetaminophen) for knee pain with patient and")
+print("          prescriber; document regular ibuprofen use and monitor renal function/BP")
+print("  Action: Counsel patient on risks of taking others' prescription medications; document")
+print("          discussion in patient record")
+
+# STEP 5: Personal Medication Record summary
+print("\\n=== Step 5: Personal Medication Record (patient takeaway) ===")
+# TODO: for med in patient_reported_medications:
+# TODO:     print(f"  - {med}")
+`,
+    skillTags: ["MTM", "Medication Therapy Management", "Medication Reconciliation", "Community Pharmacy"],
+    hints: [
+      "Medication reconciliation consistently surfaces medications, especially OTC products and shared/borrowed prescriptions, that never appear in the pharmacy's own dispensing record -- this is precisely why MTM sessions ask patients to report everything they're actually taking rather than relying solely on the pharmacy's fill history",
+      "The regular NSAID use combined with an ACE inhibitor is a clinically real and easy-to-miss interaction (NSAIDs can reduce antihypertensive efficacy and stress renal function, and the combination is sometimes informally called part of the 'triple whammy' when a diuretic is also involved) -- exactly the kind of finding a structured MTM review is designed to catch that a routine dispensing check would not",
+      "The Personal Medication Record given to the patient should reflect the patient's ACTUAL medication use (including OTC and supplement use uncovered during reconciliation), not just what's in the pharmacy's dispensing system -- this makes it a genuinely more complete and useful document than what the patient likely had before the session",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHARMACY — PHARMACY INFORMATICS & TECHNOLOGY
+// ─────────────────────────────────────────────────────────────────────────────
+export const PHARMACY_INFORMATICS_CHALLENGES = [
+  {
+    id: "pharm-info-001",
+    title: "Design Clinical Decision Support Alert Logic to Reduce Alert Fatigue",
+    category: "Pharmacy Informatics",
+    icon: "🔔",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Python", "Clinical Decision Support"],
+    scenario:
+      "A hospital's e-prescribing system fires so many drug interaction alerts that pharmacists have started reflexively clicking through all of them, including the rare genuinely dangerous ones -- a well-documented and dangerous phenomenon called alert fatigue. You've been asked to redesign the alerting logic to be more selective.",
+    objective:
+      "Analyze historical alert override data to identify which alert types are consistently overridden (low value, contributing to fatigue) versus rarely overridden (high value, likely genuinely actionable), and redesign the alerting threshold accordingly.",
+    steps: [
+      "Calculate the override rate for each alert type from historical data",
+      "Classify alert types as high-value (low override rate) or low-value (high override rate, likely noise)",
+      "Identify low-value alert types that could be suppressed or downgraded to reduce fatigue",
+      "Estimate the alert volume reduction from suppressing low-value alerts",
+      "Recommend which alerts to keep as hard stops vs soft warnings vs suppress entirely",
+    ],
+    workstation: "notebook",
+    starterCode: `# Clinical Decision Support Alert Fatigue Analysis
+alert_history = {
+    "Duplicate therapy (same drug class)": {"total_fired": 1200, "overridden": 1140},
+    "Minor drug-drug interaction": {"total_fired": 3400, "overridden": 3350},
+    "Contraindicated drug combination": {"total_fired": 45, "overridden": 3},
+    "Allergy alert (documented allergy)": {"total_fired": 180, "overridden": 12},
+    "Dose range check (slightly outside normal)": {"total_fired": 2100, "overridden": 2040},
+    "Renal dose adjustment needed": {"total_fired": 310, "overridden": 55},
+}
+
+# STEP 1: Override rate per alert type
+print("=== Alert Override Rates ===")
+override_rates = {}
+# TODO: for alert_type, data in alert_history.items():
+# TODO:     override_rate = data["overridden"] / data["total_fired"]
+# TODO:     override_rates[alert_type] = override_rate
+# TODO:     print(f"{alert_type}: {data['total_fired']} fired, {override_rate:.1%} overridden")
+
+# STEP 2: Classify as high-value vs low-value
+high_override_threshold = 0.80  # alerts overridden >80% of the time are likely low-value/noise
+print("\\n=== Classification ===")
+# TODO: for alert_type, rate in override_rates.items():
+# TODO:     classification = "LOW-VALUE (likely alert fatigue contributor)" if rate > high_override_threshold else "HIGH-VALUE (likely genuinely actionable)"
+# TODO:     print(f"{alert_type}: {rate:.1%} override rate -> {classification}")
+
+# STEP 3 & 4: Volume reduction from suppressing low-value alerts
+# TODO: low_value_alerts = [a for a, r in override_rates.items() if r > high_override_threshold]
+# TODO: total_alert_volume = sum(data["total_fired"] for data in alert_history.values())
+# TODO: low_value_volume = sum(alert_history[a]["total_fired"] for a in low_value_alerts)
+# TODO: print(f"\\nTotal alert volume: {total_alert_volume}")
+# TODO: print(f"Low-value alert volume: {low_value_volume} ({low_value_volume/total_alert_volume:.1%} of all alerts)")
+# TODO: print(f"Potential alert reduction if suppressed/downgraded: {low_value_volume/total_alert_volume:.1%}")
+
+# STEP 5: Recommendation by alert tier
+print("\\n=== Recommended Alert Tiering ===")
+# TODO: for alert_type, rate in override_rates.items():
+# TODO:     if rate <= 0.20:
+# TODO:         tier = "HARD STOP (keep as interruptive alert -- rarely overridden, high clinical value)"
+# TODO:     elif rate <= high_override_threshold:
+# TODO:         tier = "SOFT WARNING (keep visible but less interruptive)"
+# TODO:     else:
+# TODO:         tier = "SUPPRESS or move to non-interruptive log (very high override rate suggests low clinical value as currently configured)"
+# TODO:     print(f"{alert_type}: {tier}")
+`,
+    skillTags: ["Alert Fatigue", "Clinical Decision Support", "Pharmacy Informatics", "Patient Safety"],
+    hints: [
+      "Alert fatigue is a well-documented patient safety problem in its own right -- when clinicians are bombarded with low-value alerts, they develop a reflexive override habit that can cause them to miss the rare genuinely dangerous alert buried among the noise, meaning over-alerting can paradoxically make a system LESS safe, not more",
+      "A high override rate doesn't automatically mean an alert type should be suppressed entirely -- it means the CURRENT threshold or logic for firing that alert is probably too broad/sensitive, and the fix is often to tighten the triggering criteria (e.g., only alert on duplicate therapy for higher-risk drug classes) rather than eliminating the check altogether",
+      "This kind of override-rate analysis is standard practice in real clinical decision support system tuning -- but it should be combined with clinical review of what's actually being missed, not purely statistical, since a rarely-overridden alert type could still occasionally represent a near-miss that a purely override-rate-driven analysis wouldn't surface",
+    ],
+  },
+  {
+    id: "pharm-info-002",
+    title: "Parse and Validate an HL7 Prescription Message Structure",
+    category: "Pharmacy Informatics",
+    icon: "📡",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Python", "HL7 Standards"],
+    scenario:
+      "A pharmacy's e-prescribing interface is receiving prescription messages from a hospital EHR system, and some messages are failing to process. You need to parse the HL7-style message structure and validate required fields before the message reaches the dispensing workflow.",
+    objective:
+      "Parse a simplified HL7-style pipe-delimited prescription message into structured fields, validate required fields are present and well-formed, and flag any message that would fail downstream processing.",
+    steps: [
+      "Parse the pipe-delimited message into its segment and field structure",
+      "Extract the key prescription fields: patient ID, drug name, dose, quantity, prescriber ID",
+      "Validate that all required fields are present and non-empty",
+      "Validate that numeric fields (dose, quantity) actually contain valid numbers",
+      "Generate a clear error report for any message that fails validation, rather than a generic failure",
+    ],
+    workstation: "notebook",
+    starterCode: `# Simplified HL7-Style Prescription Message Parsing and Validation
+# Format: SEGMENT|field1|field2|field3|...
+raw_messages = [
+    "RX|PT12345|Amoxicillin 500mg|500mg|30|DR7788",
+    "RX|PT12346||500mg|30|DR7789",              # missing drug name
+    "RX|PT12347|Lisinopril 10mg|10mg|ABC|DR7790",  # quantity is not a valid number
+    "RX||Metformin 500mg|500mg|60|DR7791",      # missing patient ID
+]
+
+required_fields = ["patient_id", "drug_name", "dose", "quantity", "prescriber_id"]
+field_order = ["segment_type", "patient_id", "drug_name", "dose", "quantity", "prescriber_id"]
+
+# STEP 1 & 2: Parse each message into structured fields
+def parse_message(raw_message):
+    # TODO: parts = raw_message.split("|")
+    # TODO: parsed = dict(zip(field_order, parts))
+    # TODO: return parsed
+    pass
+
+parsed_messages = []
+# TODO: for msg in raw_messages:
+# TODO:     parsed_messages.append(parse_message(msg))
+
+print("=== Parsed Messages ===")
+# TODO: for i, parsed in enumerate(parsed_messages):
+# TODO:     print(f"Message {i+1}: {parsed}")
+
+# STEP 3, 4, 5: Validate each message and generate specific error reports
+def validate_message(parsed):
+    errors = []
+    # TODO: for field in required_fields:
+    # TODO:     if not parsed.get(field, "").strip():
+    # TODO:         errors.append(f"Missing required field: {field}")
+    # TODO: quantity = parsed.get("quantity", "")
+    # TODO: if quantity and not quantity.strip().isdigit():
+    # TODO:     errors.append(f"Invalid quantity: '{quantity}' is not a valid number")
+    # TODO: return errors
+    pass
+
+print("\\n=== Validation Results ===")
+# TODO: for i, parsed in enumerate(parsed_messages):
+# TODO:     errors = validate_message(parsed)
+# TODO:     if errors:
+# TODO:         print(f"\\nMessage {i+1}: FAILED VALIDATION")
+# TODO:         for error in errors:
+# TODO:             print(f"  - {error}")
+# TODO:     else:
+# TODO:         print(f"\\nMessage {i+1}: VALID -- ready for dispensing workflow")
+`,
+    skillTags: ["HL7", "Pharmacy Informatics", "Data Validation", "e-Prescribing", "Interoperability"],
+    hints: [
+      "Real HL7 messages are considerably more complex than this simplified pipe-delimited example (with nested component and repetition delimiters, multiple segment types per message, and versioned message structures), but the core validation principle is identical -- parse into structured fields first, then validate each field independently, rather than treating the whole message as pass/fail",
+      "Generating SPECIFIC error messages (which field is missing or malformed) rather than a generic 'message failed to process' is what actually makes a validation system useful operationally -- a pharmacy technician or informatics team member can act immediately on 'missing drug name' but not on an opaque failure code",
+      "Numeric field validation (checking that quantity is actually a valid number) is a distinct check from presence validation (checking the field isn't empty) -- a message can have a non-empty but still invalid value in a field, and both failure modes need independent handling since they often indicate different upstream problems (a missing field vs. a data entry or mapping error)",
+    ],
+  },
+  {
+    id: "pharm-info-003",
+    title: "Analyze Medication Error Reports to Identify Systemic Root Causes",
+    category: "Pharmacy Informatics",
+    icon: "🔍",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 22,
+    tools: ["Python", "Medication Safety Analytics"],
+    scenario:
+      "A hospital pharmacy's quality team has a backlog of individually-investigated medication error reports, but nobody has stepped back to look for systemic patterns across them. Leadership wants to know if there's a common root cause worth a system-level fix, rather than treating each error as an isolated case.",
+    objective:
+      "Aggregate and analyze a set of medication error reports to identify recurring contributing factors, quantify which factor appears most frequently across errors, and distinguish a systemic issue from a collection of unrelated individual mistakes.",
+    steps: [
+      "Aggregate contributing factors across all error reports",
+      "Count frequency of each contributing factor across the full report set",
+      "Identify which specific medications or units are disproportionately represented",
+      "Determine whether a single dominant systemic factor exists or errors are genuinely dispersed",
+      "Recommend a specific system-level intervention if a dominant pattern is found",
+    ],
+    workstation: "notebook",
+    starterCode: `# Medication Error Report Pattern Analysis
+error_reports = [
+    {"medication": "Insulin", "unit": "ICU", "contributing_factors": ["look-alike vial", "similar dose on shelf", "time pressure"]},
+    {"medication": "Insulin", "unit": "Med-Surg", "contributing_factors": ["look-alike vial", "interruption during prep"]},
+    {"medication": "Heparin", "unit": "ICU", "contributing_factors": ["similar dose on shelf", "unclear labeling"]},
+    {"medication": "Insulin", "unit": "ICU", "contributing_factors": ["look-alike vial", "time pressure"]},
+    {"medication": "Metoprolol", "unit": "Med-Surg", "contributing_factors": ["sound-alike drug name confused with metformin"]},
+    {"medication": "Insulin", "unit": "Med-Surg", "contributing_factors": ["look-alike vial", "unclear labeling"]},
+    {"medication": "Heparin", "unit": "ICU", "contributing_factors": ["time pressure", "interruption during prep"]},
+]
+
+# STEP 1 & 2: Aggregate contributing factors
+from collections import Counter
+all_factors = []
+# TODO: for report in error_reports:
+# TODO:     all_factors.extend(report["contributing_factors"])
+
+# TODO: factor_counts = Counter(all_factors)
+print("=== Contributing Factor Frequency ===")
+# TODO: for factor, count in factor_counts.most_common():
+# TODO:     print(f"{factor}: {count} occurrences ({count/len(error_reports):.1%} of all reports)")
+
+# STEP 3: Medication/unit concentration
+# TODO: medication_counts = Counter(r["medication"] for r in error_reports)
+# TODO: unit_counts = Counter(r["unit"] for r in error_reports)
+print("\\n=== Medication Concentration ===")
+# TODO: for med, count in medication_counts.most_common():
+# TODO:     print(f"{med}: {count} error reports ({count/len(error_reports):.1%} of all reports)")
+
+# STEP 4: Determine if a dominant systemic pattern exists
+# TODO: top_factor, top_factor_count = factor_counts.most_common(1)[0]
+# TODO: dominant_pattern_exists = top_factor_count / len(error_reports) >= 0.5
+print(f"\\n=== Pattern Assessment ===")
+# TODO: print(f"Most common contributing factor: '{top_factor}' appears in {top_factor_count}/{len(error_reports)} reports")
+# TODO: if dominant_pattern_exists:
+# TODO:     print("SYSTEMIC PATTERN IDENTIFIED -- this is not a collection of unrelated individual errors")
+# TODO: else:
+# TODO:     print("No single dominant factor -- errors appear more dispersed across different root causes")
+
+# STEP 5: Recommendation
+print("\\n=== Recommended System-Level Intervention ===")
+print("'Look-alike vial' appears disproportionately across Insulin errors specifically, concentrated")
+print("in look-alike packaging rather than being a generic 'human error' pattern. This points to a")
+print("systemic fix: physical separation of look-alike insulin vials in storage, tall-man lettering")
+print("on labels, or barcode scanning verification at the point of preparation -- addressing the")
+print("packaging/storage system itself, rather than relying on individual staff vigilance alone,")
+print("which is the intervention level least likely to prevent recurrence.")
+`,
+    skillTags: ["Medication Error Analysis", "Root Cause Analysis", "Patient Safety", "Pharmacy Informatics"],
+    hints: [
+      "The core insight of aggregate error analysis is that patterns invisible when each report is investigated in isolation can become obvious once reports are analyzed together -- a hospital treating each Insulin/look-alike-vial error as an unrelated one-off misses the opportunity to fix the underlying systemic packaging issue causing repeated, preventable errors",
+      "System-level interventions (changing storage, packaging, or requiring barcode verification) are generally more effective and durable than interventions that rely on individual staff vigilance ('be more careful') -- this is a foundational principle in patient safety and human factors engineering, since systems that depend on sustained perfect human attention under time pressure reliably fail eventually",
+      "Distinguishing a genuine systemic pattern from a coincidental cluster matters for resource allocation -- the threshold used here (a factor appearing in 50%+ of reports) is one reasonable heuristic, but real quality improvement programs also weigh severity and would investigate a dangerous factor appearing in even a smaller fraction of reports, not just the statistically most frequent one",
+    ],
+  },
+  {
+    id: "pharm-info-004",
+    title: "Build a Formulary Cost-Comparison Tool for Therapeutic Alternatives",
+    category: "Pharmacy Informatics",
+    icon: "💵",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 18,
+    tools: ["Python", "Formulary Management"],
+    scenario:
+      "A hospital's Pharmacy & Therapeutics committee wants a data-driven comparison of therapeutic alternatives within a drug class to inform formulary decisions -- balancing acquisition cost against total cost of care, not just the sticker price per unit.",
+    objective:
+      "Build a cost-comparison analysis across therapeutic alternatives within a drug class, incorporating dosing frequency and typical course length to calculate true cost-per-course rather than relying on misleading per-unit price alone.",
+    steps: [
+      "Gather per-unit acquisition cost for each therapeutic alternative",
+      "Gather dosing frequency and typical treatment course length for each",
+      "Calculate total units needed per typical treatment course for each alternative",
+      "Calculate total cost per course (the true comparable metric, not per-unit price)",
+      "Rank alternatives by total cost per course and flag any case where per-unit price ranking would have been misleading",
+    ],
+    workstation: "notebook",
+    starterCode: `# Formulary Cost Comparison: Therapeutic Alternatives
+therapeutic_alternatives = {
+    "Drug A (once daily)": {"cost_per_unit": 8.50, "doses_per_day": 1, "course_length_days": 7},
+    "Drug B (twice daily)": {"cost_per_unit": 3.20, "doses_per_day": 2, "course_length_days": 7},
+    "Drug C (three times daily)": {"cost_per_unit": 1.80, "doses_per_day": 3, "course_length_days": 10},
+    "Drug D (once daily, longer course)": {"cost_per_unit": 6.00, "doses_per_day": 1, "course_length_days": 14},
+}
+
+# STEP 1-3: Calculate total units and total cost per course
+print("=== Cost Per Course Analysis ===")
+results = []
+# TODO: for drug_name, data in therapeutic_alternatives.items():
+# TODO:     total_units_needed = data["doses_per_day"] * data["course_length_days"]
+# TODO:     total_cost_per_course = total_units_needed * data["cost_per_unit"]
+# TODO:     results.append({"drug": drug_name, "cost_per_unit": data["cost_per_unit"],
+# TODO:                      "total_units": total_units_needed, "total_cost_per_course": total_cost_per_course})
+# TODO:     print(f"\\n{drug_name}:")
+# TODO:     print(f"  Cost per unit: \${data['cost_per_unit']:.2f}")
+# TODO:     print(f"  Units needed for full course: {total_units_needed}")
+# TODO:     print(f"  TOTAL COST PER COURSE: \${total_cost_per_course:.2f}")
+
+# STEP 4 & 5: Rank by total cost and compare to naive per-unit ranking
+# TODO: ranked_by_total_cost = sorted(results, key=lambda x: x["total_cost_per_course"])
+# TODO: ranked_by_unit_cost = sorted(results, key=lambda x: x["cost_per_unit"])
+
+print("\\n=== Ranking Comparison ===")
+# TODO: print("By TOTAL COST PER COURSE (the metric that actually matters):")
+# TODO: for i, r in enumerate(ranked_by_total_cost, start=1):
+# TODO:     print(f"  {i}. {r['drug']}: \${r['total_cost_per_course']:.2f}")
+
+# TODO: print("\\nBy PER-UNIT PRICE ALONE (potentially misleading):")
+# TODO: for i, r in enumerate(ranked_by_unit_cost, start=1):
+# TODO:     print(f"  {i}. {r['drug']}: \${r['cost_per_unit']:.2f}/unit")
+
+# TODO: cheapest_by_unit = ranked_by_unit_cost[0]["drug"]
+# TODO: cheapest_by_total = ranked_by_total_cost[0]["drug"]
+# TODO: if cheapest_by_unit != cheapest_by_total:
+# TODO:     print(f"\\nFLAG: '{cheapest_by_unit}' looks cheapest by per-unit price, but '{cheapest_by_total}'")
+# TODO:     print(f"is actually the lowest TOTAL cost per course -- per-unit price alone would have misled")
+# TODO:     print(f"the formulary decision here.")
+`,
+    skillTags: ["Formulary Management", "Cost Comparison", "P&T Committee", "Pharmacoeconomics"],
+    hints: [
+      "Per-unit acquisition price is a genuinely misleading metric for formulary decisions whenever dosing frequency or course length differs between alternatives -- a drug with a low per-unit cost but frequent dosing or a longer required course can easily end up MORE expensive in total than a higher per-unit-cost alternative dosed once daily for a shorter course",
+      "Total cost per course is itself still a simplification -- a complete pharmacoeconomic formulary analysis would also weigh clinical efficacy differences, adherence likelihood (fewer daily doses generally means better real-world adherence), side effect profile, and downstream costs of treatment failure, not acquisition cost alone",
+      "This kind of true cost-per-course comparison is standard practice for P&T committee formulary reviews specifically because acquisition-cost-only comparisons have historically led to formulary decisions that looked cost-effective on paper but weren't in actual total cost of care",
+    ],
+  },
+]
+
 export const DOMAIN_CHALLENGES = {
   data:      DATA_ANALYST_CHALLENGES,
   bi_analyst:DATA_ANALYST_CHALLENGES,
