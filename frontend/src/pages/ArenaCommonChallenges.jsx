@@ -2088,7 +2088,9 @@ export default function ArenaCommonChallenges({ user, userData, onBack, streamCa
   const [diffFilter, setDiffFilter]           = useState("All")
   const [statusFilter, setStatusFilter]       = useState("All")  // All | Todo | Solved
   const [search, setSearch]                   = useState("")
-  const [sortField, setSortField]             = useState("id")
+  // Default to difficulty-ascending (Easy first) so freshers land on beginner-friendly
+  // challenges by default instead of a mixed-difficulty list ordered by insertion.
+  const [sortField, setSortField]             = useState("difficulty")
   const [sortDir, setSortDir]                 = useState("asc")
   const [cardView, setCardView]               = useState(true)   // true = pcbx card grid, false = table
 
