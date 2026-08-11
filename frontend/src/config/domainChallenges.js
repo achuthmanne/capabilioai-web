@@ -14485,6 +14485,1381 @@ print("=== PRE-EMPTIVE Q&A ===")
   },
 ]
 
+// ─────────────────────────────────────────────────────────────────────────────
+// AI & DATA SCIENCE — TIME SERIES FORECASTING
+// ─────────────────────────────────────────────────────────────────────────────
+export const DATA_ANALYST_FORECASTING_CHALLENGES = [
+  {
+    id: "da-fcst-001",
+    title: "Forecast with a Simple Moving Average",
+    category: "Forecasting",
+    icon: "📉",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 14,
+    tools: ["Python", "Pandas"],
+    scenario:
+      "Inventory planning needs a quick next-week demand forecast before a more sophisticated model is built. A simple moving average is fast to implement and a reasonable baseline to compare fancier methods against.",
+    objective:
+      "Implement a simple moving average forecast, choose an appropriate window size, and evaluate its accuracy against actual values.",
+    steps: [
+      "Compute a 3-period and a 7-period moving average on historical daily demand",
+      "Use the last moving average value as the forecast for the next period",
+      "Compute Mean Absolute Error (MAE) for both window sizes against actual next-day values",
+      "Compare which window size performs better on this data",
+      "Explain the trade-off between window size and responsiveness to recent change",
+    ],
+    workstation: "notebook",
+    starterCode: `# Simple Moving Average Forecast
+import pandas as pd
+import numpy as np
+
+np.random.seed(4)
+days = 30
+demand = 100 + np.cumsum(np.random.normal(0, 5, days))  # random-walk-like demand
+df = pd.DataFrame({"day": range(1, days+1), "demand": demand})
+
+# STEP 1: Moving averages
+# TODO: df["ma_3"] = df["demand"].rolling(window=3).mean()
+# TODO: df["ma_7"] = df["demand"].rolling(window=7).mean()
+
+# STEP 2: Forecast for day 31 = last available moving average value
+# TODO: forecast_ma3 = df["ma_3"].iloc[-1]
+# TODO: forecast_ma7 = df["ma_7"].iloc[-1]
+# TODO: print(f"Day 31 forecast (MA-3): {forecast_ma3:.1f}")
+# TODO: print(f"Day 31 forecast (MA-7): {forecast_ma7:.1f}")
+
+# STEP 3: Backtest — for each day, use the PRIOR window's MA as the forecast, compare to actual
+# TODO: df["ma_3_forecast"] = df["ma_3"].shift(1)
+# TODO: df["ma_7_forecast"] = df["ma_7"].shift(1)
+# TODO: mae_3 = (df["demand"] - df["ma_3_forecast"]).abs().mean()
+# TODO: mae_7 = (df["demand"] - df["ma_7_forecast"]).abs().mean()
+# TODO: print(f"\\nMAE (MA-3): {mae_3:.2f}")
+# TODO: print(f"MAE (MA-7): {mae_7:.2f}")
+
+# STEP 5: Trade-off explanation
+# TODO: print("\\nShorter window (MA-3) reacts faster to recent changes but is noisier.")
+# TODO: print("Longer window (MA-7) is smoother but lags behind real shifts in demand.")
+`,
+    skillTags: ["Moving Average", "Time Series Forecasting", "MAE", "Baseline Models", "Demand Planning"],
+    hints: [
+      "A moving average forecast is naive by design — it assumes tomorrow looks like the recent average, with no trend or seasonality modeling — it's a baseline, not a final answer",
+      "Backtesting with .shift(1) is essential — comparing today's demand to a moving average that INCLUDES today's value would be cheating (data leakage from the future)",
+      "Shorter windows trade smoothness for responsiveness — the 'right' window size depends on how quickly the underlying demand pattern actually changes",
+    ],
+  },
+  {
+    id: "da-fcst-002",
+    title: "Exponential Smoothing for a Reactive Forecast",
+    category: "Forecasting",
+    icon: "📈",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Python", "NumPy"],
+    scenario:
+      "Moving averages weight every period in the window equally, which lags behind a real shift in demand. Exponential smoothing weights recent observations more heavily, reacting faster to genuine changes while still filtering out noise.",
+    objective:
+      "Implement simple exponential smoothing (SES) and tune the smoothing parameter alpha to balance responsiveness against noise.",
+    steps: [
+      "Implement the SES recursive formula: forecast = alpha * actual + (1-alpha) * previous_forecast",
+      "Run SES across the historical series with a chosen alpha",
+      "Compare forecasts using a low alpha (smooth) vs a high alpha (reactive)",
+      "Compute MAE for each alpha value",
+      "Recommend the alpha that minimizes MAE on this data",
+    ],
+    workstation: "notebook",
+    starterCode: `# Simple Exponential Smoothing (SES)
+import numpy as np
+
+np.random.seed(6)
+days = 30
+demand = 100 + np.cumsum(np.random.normal(0, 5, days))
+
+def simple_exponential_smoothing(series, alpha):
+    forecasts = [series[0]]  # initialize with the first actual value
+    for t in range(1, len(series)):
+        # TODO: next_forecast = alpha * series[t-1] + (1 - alpha) * forecasts[-1]
+        # TODO: forecasts.append(next_forecast)
+        pass
+    return forecasts
+
+def mae(actual, forecast):
+    # TODO: return np.mean(np.abs(np.array(actual) - np.array(forecast)))
+    pass
+
+# STEP 3 & 4: Compare a few alpha values
+for alpha in [0.1, 0.3, 0.5, 0.8]:
+    # TODO: forecasts = simple_exponential_smoothing(demand, alpha)
+    # TODO: error = mae(demand, forecasts)
+    # TODO: print(f"alpha={alpha}: MAE={error:.2f}")
+    pass
+
+# STEP 5: Find the best alpha
+best_alpha, best_mae = None, float("inf")
+for alpha in np.arange(0.05, 0.95, 0.05):
+    # TODO: forecasts = simple_exponential_smoothing(demand, alpha)
+    # TODO: error = mae(demand, forecasts)
+    # TODO: if error < best_mae: best_mae, best_alpha = error, alpha
+    pass
+# TODO: print(f"\\nBest alpha: {best_alpha:.2f} (MAE={best_mae:.2f})")
+`,
+    skillTags: ["Exponential Smoothing", "Time Series Forecasting", "Parameter Tuning", "Alpha", "Demand Planning"],
+    hints: [
+      "Alpha close to 1 makes the forecast nearly equal to the last observed value (very reactive, very noisy); alpha close to 0 makes it barely move (very smooth, very laggy)",
+      "SES has no trend or seasonal component — for data with a clear trend, Holt's method (double exponential smoothing) extends this same idea with a trend term",
+      "Grid-searching alpha against historical MAE (as in step 5) is a simple, practical way to tune it without needing a full statistical framework",
+    ],
+  },
+  {
+    id: "da-fcst-003",
+    title: "Seasonal Naive Forecast as a Sanity-Check Baseline",
+    category: "Forecasting",
+    icon: "🔄",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 14,
+    tools: ["Python", "Pandas"],
+    scenario:
+      "A data scientist just built a sophisticated forecasting model and reported '92% accuracy' — but nobody checked whether a trivial 'same as last week' forecast would have done just as well. You'll build that baseline to see if the fancy model is actually adding value.",
+    objective:
+      "Implement a seasonal naive forecast (this period = same period N cycles ago) and compare its error against a more complex model's reported error.",
+    steps: [
+      "Given weekly seasonal data, forecast each day as equal to the same weekday last week",
+      "Compute MAE and MAPE for the seasonal naive forecast",
+      "Compare against a given 'sophisticated model' error metric",
+      "Determine whether the sophisticated model actually beats the naive baseline",
+      "Explain why every forecasting project should report this comparison",
+    ],
+    workstation: "notebook",
+    starterCode: `# Seasonal Naive Forecast — Sanity-Check Baseline
+import numpy as np
+import pandas as pd
+
+np.random.seed(8)
+weeks = 6
+days = weeks * 7
+weekday_pattern = [80, 85, 90, 95, 110, 140, 120]  # Mon-Sun baseline pattern
+demand = np.array([weekday_pattern[d % 7] + np.random.normal(0, 8) for d in range(days)])
+df = pd.DataFrame({"day_index": range(days), "demand": demand})
+
+# STEP 1: Seasonal naive forecast — this day = same weekday 7 days ago
+# TODO: df["seasonal_naive_forecast"] = df["demand"].shift(7)
+
+# STEP 2: MAE and MAPE (skip first 7 days with no forecast available)
+valid = df.dropna(subset=["seasonal_naive_forecast"])
+# TODO: mae = (valid["demand"] - valid["seasonal_naive_forecast"]).abs().mean()
+# TODO: mape = ((valid["demand"] - valid["seasonal_naive_forecast"]).abs() / valid["demand"]).mean()
+# TODO: print(f"Seasonal Naive MAE: {mae:.2f}")
+# TODO: print(f"Seasonal Naive MAPE: {mape:.1%}")
+
+# STEP 3 & 4: Compare against the "sophisticated model"
+sophisticated_model_mae = 9.5  # reported by the data science team
+# TODO: if mae <= sophisticated_model_mae:
+# TODO:     print(f"\\nThe sophisticated model (MAE={sophisticated_model_mae}) does NOT clearly beat the naive baseline (MAE={mae:.2f})")
+# TODO: else:
+# TODO:     print(f"\\nThe sophisticated model (MAE={sophisticated_model_mae}) DOES beat the naive baseline (MAE={mae:.2f}) — added complexity is justified")
+
+# STEP 5:
+print("\\nEvery forecasting project should report this comparison because a complex model")
+print("that doesn't beat a trivial baseline isn't adding real value — it's just adding")
+print("maintenance cost and interpretability loss for no accuracy gain.")
+`,
+    skillTags: ["Seasonal Naive", "Forecasting Baselines", "MAPE", "Model Evaluation", "Sanity Checks"],
+    hints: [
+      "A seasonal naive forecast is embarrassingly simple by design — that's the point, it establishes the floor any real model must clear to justify its complexity",
+      "MAPE (Mean Absolute Percentage Error) is more interpretable for stakeholders than MAE (raw units) since it's scale-independent — but it breaks down when actual values are near zero",
+      "If a 'sophisticated' model can't beat this naive baseline, that's a critical finding worth reporting, not something to quietly bury — it means the model may not be ready for production use",
+    ],
+  },
+  {
+    id: "da-fcst-004",
+    title: "Decompose a Time Series into Trend, Seasonal, and Residual",
+    category: "Forecasting",
+    icon: "🧩",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 22,
+    tools: ["Python", "NumPy", "Pandas"],
+    scenario:
+      "Before choosing a forecasting method, the analytics lead wants to understand what's actually driving a metric's movement — is it a long-term trend, a repeating seasonal pattern, or just noise? Decomposition answers this before you commit to any particular model.",
+    objective:
+      "Manually decompose a time series into trend (via moving average), seasonal (via detrended averages per period), and residual (leftover noise) components, and verify they recombine to the original series.",
+    steps: [
+      "Compute the trend component using a centered moving average",
+      "Compute detrended values (original - trend)",
+      "Compute the seasonal component as the average detrended value per seasonal period (e.g. per weekday)",
+      "Compute the residual as original - trend - seasonal",
+      "Verify trend + seasonal + residual reconstructs the original series",
+    ],
+    workstation: "notebook",
+    starterCode: `# Time Series Decomposition — Trend, Seasonal, Residual (Additive Model)
+import numpy as np
+import pandas as pd
+
+np.random.seed(10)
+days = 63  # 9 weeks
+trend_true = 100 + np.arange(days) * 0.5
+seasonal_true = np.tile([0, 5, 10, 8, 15, 25, 20], 9)
+noise = np.random.normal(0, 3, days)
+observed = trend_true + seasonal_true + noise
+df = pd.DataFrame({"day": range(days), "observed": observed})
+
+# STEP 1: Trend via centered 7-day moving average (matches the weekly seasonal period)
+# TODO: df["trend"] = df["observed"].rolling(window=7, center=True).mean()
+
+# STEP 2: Detrend
+# TODO: df["detrended"] = df["observed"] - df["trend"]
+
+# STEP 3: Seasonal component — average detrended value per weekday (day % 7)
+df["weekday"] = df["day"] % 7
+# TODO: seasonal_avg = df.groupby("weekday")["detrended"].mean()
+# TODO: df["seasonal"] = df["weekday"].map(seasonal_avg)
+
+# STEP 4: Residual
+# TODO: df["residual"] = df["observed"] - df["trend"] - df["seasonal"]
+
+# TODO: print(df[["day", "observed", "trend", "seasonal", "residual"]].dropna().head(10))
+
+# STEP 5: Verify reconstruction (where trend is available, i.e. not the edge NaNs)
+valid = df.dropna(subset=["trend"])
+# TODO: reconstructed = valid["trend"] + valid["seasonal"] + valid["residual"]
+# TODO: print("\\nReconstruction matches observed:", np.allclose(reconstructed, valid["observed"], atol=0.01))
+`,
+    skillTags: ["Time Series Decomposition", "Trend Analysis", "Seasonality", "Additive Model", "Forecasting Fundamentals"],
+    hints: [
+      "A CENTERED moving average (window looking both forward and backward) is used for trend extraction specifically because it doesn't lag the way a trailing moving average does — but it does create NaNs at both edges of the series",
+      "The seasonal component here is constant across cycles (same Monday effect every week) — this is the additive decomposition assumption; a multiplicative model would use ratios instead of differences when seasonal swings scale with the trend",
+      "This decomposition IS effectively how classical methods like STL and X-13ARIMA-SEATS work under the hood, just with more sophisticated smoothing — understanding this manual version demystifies those black-box tools",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI & DATA SCIENCE — DATA MODELING & WAREHOUSE DESIGN
+// ─────────────────────────────────────────────────────────────────────────────
+export const DATA_ANALYST_DATA_MODELING_CHALLENGES = [
+  {
+    id: "da-model-001",
+    title: "Design a Star Schema for Sales Analytics",
+    category: "Data Modeling",
+    icon: "⭐",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 18,
+    tools: ["SQL"],
+    scenario:
+      "The current sales data lives in one giant denormalized spreadsheet-like table that's slow to query and hard to maintain. You've been asked to design a proper star schema (fact + dimension tables) that a BI tool can query efficiently.",
+    objective:
+      "Design and create a star schema with one fact table (sales) and supporting dimension tables (date, product, customer, store), including appropriate keys.",
+    steps: [
+      "Identify the fact table's grain (the level of detail one row represents)",
+      "Design dimension tables with surrogate keys and descriptive attributes",
+      "Design the fact table with foreign keys to each dimension plus measures",
+      "Write the CREATE TABLE statements",
+      "Write a sample query joining the fact table to 2+ dimensions to prove the design works",
+    ],
+    workstation: "sql",
+    starterCode: `-- Star Schema Design — Sales Analytics
+-- Grain: one row per (product, store, date) sales transaction line
+
+-- STEP 2: Dimension tables
+-- TODO: CREATE TABLE dim_date (
+--   date_key INT PRIMARY KEY,       -- surrogate key, e.g. 20260810
+--   full_date DATE,
+--   day_of_week VARCHAR(10),
+--   month INT,
+--   quarter INT,
+--   year INT
+-- );
+
+-- TODO: CREATE TABLE dim_product (
+--   product_key INT PRIMARY KEY,    -- surrogate key
+--   product_id VARCHAR(20),         -- natural/business key from source system
+--   product_name VARCHAR(200),
+--   category VARCHAR(100),
+--   unit_price DECIMAL(10,2)
+-- );
+
+-- TODO: CREATE TABLE dim_store (
+--   store_key INT PRIMARY KEY,
+--   store_id VARCHAR(20),
+--   store_name VARCHAR(200),
+--   region VARCHAR(100)
+-- );
+
+-- STEP 3: Fact table — foreign keys to dimensions, plus additive measures
+-- TODO: CREATE TABLE fact_sales (
+--   sale_id BIGINT PRIMARY KEY,
+--   date_key INT REFERENCES dim_date(date_key),
+--   product_key INT REFERENCES dim_product(product_key),
+--   store_key INT REFERENCES dim_store(store_key),
+--   quantity_sold INT,
+--   revenue DECIMAL(12,2)
+-- );
+
+-- STEP 5: Sample query — revenue by category and quarter
+-- TODO: SELECT dp.category, dd.quarter, dd.year, SUM(fs.revenue) AS total_revenue
+-- FROM fact_sales fs
+-- JOIN dim_product dp ON fs.product_key = dp.product_key
+-- JOIN dim_date dd ON fs.date_key = dd.date_key
+-- GROUP BY dp.category, dd.quarter, dd.year
+-- ORDER BY dd.year, dd.quarter, total_revenue DESC;`,
+    skillTags: ["Star Schema", "Dimensional Modeling", "Data Warehousing", "Fact Tables", "SQL"],
+    hints: [
+      "Defining the grain FIRST (one row per what?) is the single most important design decision — get it wrong and every downstream aggregation becomes ambiguous or incorrect",
+      "Surrogate keys (auto-generated integers) are preferred over natural/business keys as the primary key in dimensions — they're stable even if the source system's ID format changes",
+      "Fact tables should hold mostly foreign keys and numeric, additive MEASURES (things that make sense to SUM, like revenue or quantity) — descriptive attributes belong in dimensions, not the fact table",
+    ],
+  },
+  {
+    id: "da-model-002",
+    title: "Choose Between Star Schema and Snowflake Schema",
+    category: "Data Modeling",
+    icon: "❄️",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["SQL"],
+    scenario:
+      "A colleague proposes normalizing the product dimension further — splitting it into product, sub_category, and category tables (a snowflake schema) to save storage and avoid update anomalies. You need to evaluate whether that trade-off is worth it for this analytics use case.",
+    objective:
+      "Compare star vs snowflake schema designs for the same dimension, implement both, and analyze the query complexity and performance trade-off.",
+    steps: [
+      "Design the denormalized star version (product dimension with category as a flat column)",
+      "Design the normalized snowflake version (separate product, sub_category, category tables)",
+      "Write the same analytical query against both designs",
+      "Count the number of JOINs required in each version",
+      "Recommend which design fits an analytics (read-heavy, BI) workload better and why",
+    ],
+    workstation: "sql",
+    starterCode: `-- Star vs Snowflake Schema Comparison
+
+-- STAR VERSION: category info flattened directly into dim_product
+-- TODO: CREATE TABLE dim_product_star (
+--   product_key INT PRIMARY KEY,
+--   product_name VARCHAR(200),
+--   sub_category_name VARCHAR(100),
+--   category_name VARCHAR(100)      -- denormalized, repeated for every product in that category
+-- );
+
+-- SNOWFLAKE VERSION: category info normalized into separate tables
+-- TODO: CREATE TABLE dim_category (category_key INT PRIMARY KEY, category_name VARCHAR(100));
+-- TODO: CREATE TABLE dim_sub_category (
+--   sub_category_key INT PRIMARY KEY,
+--   sub_category_name VARCHAR(100),
+--   category_key INT REFERENCES dim_category(category_key)
+-- );
+-- TODO: CREATE TABLE dim_product_snowflake (
+--   product_key INT PRIMARY KEY,
+--   product_name VARCHAR(200),
+--   sub_category_key INT REFERENCES dim_sub_category(sub_category_key)
+-- );
+
+-- Same analytical query: total revenue by category name
+
+-- STAR query — 1 join to the fact table
+-- TODO: SELECT dp.category_name, SUM(fs.revenue)
+-- FROM fact_sales fs JOIN dim_product_star dp ON fs.product_key = dp.product_key
+-- GROUP BY dp.category_name;
+
+-- SNOWFLAKE query — 3 joins to reach category_name
+-- TODO: SELECT dc.category_name, SUM(fs.revenue)
+-- FROM fact_sales fs
+-- JOIN dim_product_snowflake dp ON fs.product_key = dp.product_key
+-- JOIN dim_sub_category dsc ON dp.sub_category_key = dsc.sub_category_key
+-- JOIN dim_category dc ON dsc.category_key = dc.category_key
+-- GROUP BY dc.category_name;
+
+-- STEP 5: Recommendation
+-- TODO: add a comment — for read-heavy BI workloads, star schema is almost always preferred:
+-- fewer joins means simpler queries and better performance, and storage savings from
+-- normalization rarely matter much for dimension tables (which are typically small
+-- relative to fact tables). Snowflaking mainly helps when a sub-dimension changes
+-- independently and frequently, or storage is genuinely constrained.`,
+    skillTags: ["Star Schema", "Snowflake Schema", "Dimensional Modeling", "Query Performance", "Data Warehouse Design"],
+    hints: [
+      "More joins in the snowflake version isn't just more typing — it can meaningfully hurt query performance, especially on large fact tables, since each join adds computational cost",
+      "Dimension tables are typically tiny relative to fact tables (thousands of products vs millions of sales rows) — the storage savings from normalizing a small dimension table are usually not worth the query complexity",
+      "The classic rule of thumb in analytics/BI data warehousing: prefer star schema by default, snowflake only when you have a specific, justified reason (e.g. a large, independently-changing sub-dimension)",
+    ],
+  },
+  {
+    id: "da-model-003",
+    title: "Slowly vs Rapidly Changing Attributes: Choosing SCD Strategy",
+    category: "Data Modeling",
+    icon: "🔀",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["SQL"],
+    scenario:
+      "A dimension table has several attributes: some almost never change (product category), some change occasionally and history matters (customer segment), and some change constantly and history doesn't matter (last_login_timestamp). Applying the same SCD strategy to all of them would be wasteful or wrong.",
+    objective:
+      "Classify dimension attributes by change frequency and business need for history, and design the appropriate SCD strategy (Type 1 overwrite, Type 2 versioned, or Type 3/separate table) for each.",
+    steps: [
+      "List each attribute and classify: how often does it change, does history matter for reporting",
+      "Assign Type 1 (overwrite, no history) to attributes where history doesn't matter",
+      "Assign Type 2 (versioned rows) to attributes where historical accuracy matters for reporting",
+      "Identify any attribute so volatile it shouldn't live in the slowly-changing dimension at all",
+      "Justify each choice with a concrete reporting scenario that would break with the wrong choice",
+    ],
+    workstation: "sql",
+    starterCode: `-- SCD Strategy Selection per Attribute
+-- Table: dim_customer
+
+attributes = [
+    {"name": "customer_name",       "change_frequency": "rare",     "history_matters": False},
+    {"name": "customer_segment",    "change_frequency": "occasional","history_matters": True},
+    {"name": "email",               "change_frequency": "rare",     "history_matters": False},
+    {"name": "loyalty_tier",        "change_frequency": "occasional","history_matters": True},
+    {"name": "last_login_at",       "change_frequency": "constant", "history_matters": False},
+    {"name": "lifetime_value_rank", "change_frequency": "frequent", "history_matters": False},
+]
+
+def recommend_scd_strategy(attr):
+    # TODO: if attr["change_frequency"] == "constant" or attr["change_frequency"] == "frequent":
+    # TODO:     if not attr["history_matters"]:
+    # TODO:         return "EXCLUDE from SCD dimension — belongs in a separate fact/metric table or fact_customer_activity, not versioned here"
+    # TODO: if attr["history_matters"]:
+    # TODO:     return "Type 2 (versioned rows: start_date, end_date, is_current)"
+    # TODO: return "Type 1 (overwrite in place, no history kept)"
+    pass
+
+for attr in attributes:
+    # TODO: strategy = recommend_scd_strategy(attr)
+    # TODO: print(f"{attr['name']}: {strategy}")
+    pass
+
+# STEP 5: Justification examples (add as comments)
+# customer_segment as Type 2: "What was this customer's segment when they placed order #5021
+#   six months ago" requires historical segment, not today's segment — Type 1 would silently
+#   rewrite history and make past segment-based revenue reports wrong retroactively.
+# last_login_at as excluded: this changes on every single visit — versioning it in an SCD2
+#   dimension would explode the table size for no analytical benefit; it belongs in an
+#   activity/event fact table instead.`,
+    skillTags: ["SCD Strategy", "Dimensional Modeling", "Attribute Classification", "Data Warehouse Design", "Historical Tracking"],
+    hints: [
+      "The deciding question for Type 1 vs Type 2 isn't 'does it change' — almost everything changes eventually — it's 'does a historical report need to reflect the OLD value or the CURRENT value'",
+      "Extremely volatile attributes (constant/frequent change with no history need) usually don't belong in a slowly-changing dimension at all — they belong in a fact or activity table designed for high-frequency updates",
+      "Getting this wrong in either direction has real costs: over-versioning (Type 2 everywhere) bloats dimension tables and slows queries; under-versioning (Type 1 on something that needed history) silently corrupts historical reporting",
+    ],
+  },
+  {
+    id: "da-model-004",
+    title: "Handle a Many-to-Many Relationship with a Bridge Table",
+    category: "Data Modeling",
+    icon: "🌉",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 20,
+    tools: ["SQL"],
+    scenario:
+      "Each customer can have MULTIPLE tags (e.g. 'VIP', 'At Risk', 'Newsletter Subscriber') and each tag applies to MULTIPLE customers — a classic many-to-many relationship that doesn't fit cleanly into a simple dimension table without either duplicating fact rows or losing information.",
+    objective:
+      "Design and query a bridge (associative) table to correctly model a many-to-many relationship between customers and tags without distorting fact table aggregations.",
+    steps: [
+      "Design a bridge table linking customer_key to tag_key",
+      "Write a query joining fact_sales through the customer dimension and bridge table to tags",
+      "Demonstrate the fan-out problem: a customer with 3 tags makes their sales appear 3x if joined naively",
+      "Fix the fan-out using a pre-aggregation or a weighting factor",
+      "Write a correct total-revenue-by-tag query that doesn't double count",
+    ],
+    workstation: "sql",
+    starterCode: `-- Many-to-Many Relationship — Bridge Table Pattern
+-- Tables: dim_customer, dim_tag, bridge_customer_tag (customer_key, tag_key), fact_sales
+
+-- STEP 1: Bridge table design
+-- TODO: CREATE TABLE bridge_customer_tag (
+--   customer_key INT REFERENCES dim_customer(customer_key),
+--   tag_key INT REFERENCES dim_tag(tag_key),
+--   PRIMARY KEY (customer_key, tag_key)
+-- );
+
+-- STEP 2 & 3: Naive join — THIS HAS A FAN-OUT BUG
+-- TODO: SELECT dt.tag_name, SUM(fs.revenue) AS total_revenue
+-- FROM fact_sales fs
+-- JOIN bridge_customer_tag bct ON fs.customer_key = bct.customer_key
+-- JOIN dim_tag dt ON bct.tag_key = dt.tag_key
+-- GROUP BY dt.tag_name;
+-- BUG: if a customer has 3 tags, EVERY sale of theirs gets joined 3 times — one per tag —
+-- so a customer's revenue is now counted once per tag they have. This inflates totals
+-- whenever you sum ACROSS tags (e.g. total revenue overall), though it's fine when
+-- looking at ONE tag at a time.
+
+-- STEP 4: Correct total-revenue-by-tag (this pattern IS still valid, since we're not
+-- summing across tags — each tag's total independently includes every sale from
+-- customers who have that tag, which is the intended semantic)
+-- TODO: same query as above is actually CORRECT for "revenue from customers tagged X" per tag
+
+-- STEP 5: What's WRONG is using this same join to compute a single grand total
+-- (e.g. SUM(fs.revenue) with no GROUP BY tag) — that WOULD double/triple count.
+-- Fix: compute the grand total from fact_sales directly, without going through the bridge table at all.
+-- TODO: SELECT SUM(revenue) AS true_total_revenue FROM fact_sales;  -- correct, no fan-out
+`,
+    skillTags: ["Bridge Table", "Many-to-Many Relationships", "Fan-Out Problem", "Dimensional Modeling", "SQL"],
+    hints: [
+      "A bridge table with a composite primary key (customer_key, tag_key) is the standard pattern for modeling many-to-many relationships without duplicating dimension rows",
+      "The fan-out problem is subtle: revenue-BY-tag through the bridge table is correct, but a single grand total computed the SAME way is wrong — the bug only shows up when you aggregate ACROSS the many-to-many relationship instead of within one branch of it",
+      "The safest general rule: never compute a metric that should be counted exactly once per fact row by joining through a bridge/many-to-many path — go back to the fact table directly for any 'grand total' style number",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI & DATA SCIENCE — METRIC DEFINITION & GOVERNANCE
+// ─────────────────────────────────────────────────────────────────────────────
+export const DATA_ANALYST_METRICS_CHALLENGES = [
+  {
+    id: "da-metric-001",
+    title: "Write an Unambiguous Metric Definition",
+    category: "Metrics Definition",
+    icon: "📏",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 14,
+    tools: ["SQL"],
+    scenario:
+      "Three teams each report a different 'Active Users' number for the same month, and nobody can agree who's right — because nobody wrote down what 'active' actually means. You've been asked to write a precise, testable metric definition that ends the debate.",
+    objective:
+      "Translate a vague metric name into a precise, unambiguous SQL definition covering every edge case that caused the disagreement.",
+    steps: [
+      "List the ambiguities in the vague definition ('users who used the app')",
+      "Decide and document: what counts as 'used' (login? any event? a specific action?)",
+      "Decide and document: what time window defines 'this month'",
+      "Decide and document: how to handle users who signed up mid-month or churned mid-month",
+      "Write the final SQL query implementing the fully-specified definition",
+    ],
+    workstation: "sql",
+    starterCode: `-- Writing an Unambiguous Metric Definition
+-- Vague ask: "How many active users did we have in August?"
+
+-- STEP 1 & 2: Ambiguities to resolve (write as comments, then encode in the query)
+-- - "Active" could mean: logged in, OR performed any tracked event, OR completed a core action
+-- - DECISION: define active = performed at least ONE event of type 'core_action' (not just login)
+-- - "August" could mean: calendar month, OR a rolling 30-day window
+-- - DECISION: define as calendar month, user's LOCAL timezone converted to UTC boundaries
+-- - Mid-month signups/churns: do they count if active for even 1 day?
+-- - DECISION: yes, any user with >= 1 qualifying event within the window counts, regardless of signup date
+
+-- STEP 5: Final precise definition, encoded in SQL
+-- Table: events (user_id, event_type, event_timestamp)
+-- TODO: SELECT COUNT(DISTINCT user_id) AS active_users_august_2026
+-- FROM events
+-- WHERE event_type = 'core_action'
+--   AND event_timestamp >= '2026-08-01 00:00:00'
+--   AND event_timestamp < '2026-09-01 00:00:00'
+
+-- Document this as a reusable definition, e.g. in a metrics dictionary:
+-- METRIC: Monthly Active Users (MAU)
+-- DEFINITION: Distinct count of users with >= 1 'core_action' event in the calendar month (UTC)
+-- EXCLUDES: login-only sessions, non-core events (e.g. page views)
+-- OWNER: Analytics team, last reviewed 2026-08-10`,
+    skillTags: ["Metric Definitions", "Data Governance", "Metrics Dictionary", "Business Analytics", "SQL"],
+    hints: [
+      "Every ambiguous word in a metric name ('active', 'this month', 'user') is a place where different teams will silently make different assumptions — write down the decision explicitly, don't leave it implied",
+      "A metrics dictionary entry (definition, exclusions, owner, last-reviewed date) turns a one-time argument into a durable, referenceable source of truth that prevents the SAME argument recurring every quarter",
+      "'Core action' vs 'any event' is a real, consequential business decision, not just a technical detail — it should be made deliberately with stakeholder input, not quietly chosen by whoever wrote the first query",
+    ],
+  },
+  {
+    id: "da-metric-002",
+    title: "Design a Guardrail Metric Set for a Feature Launch",
+    category: "Metrics Definition",
+    icon: "🛡️",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["SQL"],
+    scenario:
+      "A team is launching a feature designed to boost engagement, and they're only tracking the engagement metric itself. If the feature secretly hurts revenue or increases support load, nobody will notice until it's too late — you need to define guardrail metrics that catch unintended harm.",
+    objective:
+      "Design a guardrail metric set alongside a primary success metric, covering the most plausible ways the feature could cause harm even while succeeding on its primary goal.",
+    steps: [
+      "State the primary success metric for the feature",
+      "Brainstorm 3-4 plausible negative side effects the feature could cause",
+      "Define a specific, measurable guardrail metric for each side effect",
+      "Set a directional threshold for each guardrail (e.g. 'must not drop by more than X%')",
+      "Explain what action should be taken if a guardrail is breached even while the primary metric improves",
+    ],
+    workstation: "sql",
+    starterCode: `-- Guardrail Metrics for a Feature Launch
+-- Feature: "Auto-Play Next Video" on a content platform
+
+metric_plan = {
+    "primary_metric": {
+        "name": "Average Session Watch Time",
+        "goal": "increase",
+        "target": "+10% vs control",
+    },
+    "guardrail_metrics": [
+        {
+            "name": "User-Reported Complaints (data usage / unwanted autoplay)",
+            "risk": "Feature could annoy users into complaining or disabling notifications",
+            "threshold": "must not increase by more than 5% vs control",
+        },
+        {
+            "name": "7-Day Retention",
+            "risk": "Autoplay could feel intrusive, driving users away long-term even if short-term watch time rises",
+            "threshold": "must not decrease vs control",
+        },
+        {
+            "name": "Ad Revenue Per Session",
+            "risk": "Users might mute/skip through autoplay content faster, reducing ad engagement",
+            "threshold": "must not decrease by more than 3% vs control",
+        },
+        {
+            "name": "Data Usage Complaints (mobile users)",
+            "risk": "Autoplay burns mobile data without explicit consent for each video",
+            "threshold": "must not increase support tickets tagged 'data usage' by more than 10%",
+        },
+    ],
+}
+
+# TODO: for g in metric_plan["guardrail_metrics"]:
+# TODO:     print(f"Guardrail: {g['name']}")
+# TODO:     print(f"  Risk: {g['risk']}")
+# TODO:     print(f"  Threshold: {g['threshold']}\\n")
+
+# STEP 5: Decision rule
+# TODO: print("If ANY guardrail is breached, the feature should NOT ship as-is, even if the")
+# TODO: print("primary metric (watch time) hits its target — a guardrail breach means the win")
+# TODO: print("came at an unacceptable cost, and the feature needs iteration before re-testing.")
+`,
+    skillTags: ["Guardrail Metrics", "Feature Launch Planning", "Metric Design", "Product Analytics", "Risk Management"],
+    hints: [
+      "Guardrail metrics exist specifically to catch harm that the primary metric is blind to by design — a feature can hit its primary goal while quietly damaging something else entirely",
+      "Good guardrails are chosen BEFORE launch based on plausible failure modes, not added retroactively after something breaks — retroactive guardrails are really just incident postmortems in disguise",
+      "The decision rule matters as much as the metrics themselves — teams under pressure to ship often rationalize away a breached guardrail; deciding the rule in advance removes that temptation",
+    ],
+  },
+  {
+    id: "da-metric-003",
+    title: "Build a North Star Metric Tree",
+    category: "Metrics Definition",
+    icon: "🌟",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 18,
+    tools: ["Python"],
+    scenario:
+      "Leadership wants every team to understand how their day-to-day work ladders up to the company's single North Star metric — right now, teams optimize local metrics with no visibility into whether they actually move the number that matters.",
+    objective:
+      "Build a metric tree decomposing a North Star metric into its input drivers, and quantify each driver's current contribution to identify where to focus effort.",
+    steps: [
+      "Define the North Star metric as a product of its component drivers",
+      "Break the tree down at least two levels (North Star -> mid-level drivers -> team-level inputs)",
+      "Compute each driver's current value and its contribution to the North Star",
+      "Identify which driver, if improved by 10%, would move the North Star the most",
+      "Recommend where teams should focus based on the leverage analysis",
+    ],
+    workstation: "notebook",
+    starterCode: `# North Star Metric Tree — Leverage Analysis
+# North Star: Monthly Recurring Revenue (MRR)
+# MRR = Active Subscribers x Average Revenue Per User (ARPU)
+# Active Subscribers = New Signups + Retained Subscribers - Churned Subscribers
+# ARPU = (Base Plan Revenue + Upsell Revenue) / Active Subscribers
+
+current = {
+    "active_subscribers": 12000,
+    "arpu": 45,
+    "new_signups": 800,
+    "churned_subscribers": 350,
+}
+
+# STEP 3: Current MRR
+# TODO: current_mrr = current["active_subscribers"] * current["arpu"]
+# TODO: print(f"Current MRR: \${current_mrr:,.0f}")
+
+# STEP 4: Leverage analysis — what if EACH driver improved by 10% independently?
+drivers_to_test = ["active_subscribers", "arpu"]
+print("\\n=== LEVERAGE ANALYSIS (10% improvement in each driver) ===")
+for driver in drivers_to_test:
+    # TODO: scenario = current.copy()
+    # TODO: scenario[driver] = current[driver] * 1.10
+    # TODO: new_mrr = scenario["active_subscribers"] * scenario["arpu"]
+    # TODO: mrr_lift = new_mrr - current_mrr
+    # TODO: print(f"+10% {driver}: MRR = \${new_mrr:,.0f} (+\${mrr_lift:,.0f}, {mrr_lift/current_mrr:.1%})")
+    pass
+
+# Sub-driver: reducing churn by 10% (churn is a component of active_subscribers)
+# TODO: reduced_churn_subscribers = current["active_subscribers"] + current["churned_subscribers"] * 0.10
+# TODO: new_mrr_from_churn = reduced_churn_subscribers * current["arpu"]
+# TODO: print(f"-10% churn: MRR = \${new_mrr_from_churn:,.0f} (+\${new_mrr_from_churn - current_mrr:,.0f})")
+
+# STEP 5: Recommendation
+# TODO: print("\\nFocus effort on whichever driver produces the largest MRR lift per unit of")
+# TODO: print("realistic effort — a 10% ARPU lift and a 10% subscriber lift are NOT equally")
+# TODO: print("achievable, so leverage must be weighed against feasibility, not raw MRR impact alone.")
+`,
+    skillTags: ["North Star Metric", "Metric Tree", "Leverage Analysis", "Strategic Analytics", "Business Metrics"],
+    hints: [
+      "A metric tree makes the MATH of how each team's work connects to the top-line number explicit — MRR = subscribers × ARPU means a churn-reduction team and an upsell team are both, mathematically, working the same lever from different angles",
+      "Equal percentage improvements across different drivers rarely take equal effort — the leverage analysis identifies mathematical impact, but the final prioritization also needs a feasibility/cost estimate for each lever",
+      "This decomposition pattern (top metric = product/sum of component drivers) generalizes to almost any North Star metric — revenue, engagement, retention — the key skill is correctly identifying the true mathematical relationship, not just listing related metrics",
+    ],
+  },
+  {
+    id: "da-metric-004",
+    title: "Audit a Dashboard for Metric Definition Drift",
+    category: "Metrics Definition",
+    icon: "🔍",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 20,
+    tools: ["SQL"],
+    scenario:
+      "Two dashboards both report 'Total Revenue' for the same month, but the numbers don't match. Before anyone trusts either number again, you need to audit both underlying queries to find exactly where the definitions diverged.",
+    objective:
+      "Compare two SQL queries that claim to compute the same metric, identify every point of divergence (filters, joins, date handling, exclusions), and produce a reconciliation report.",
+    steps: [
+      "Read both queries side by side and list every WHERE/JOIN condition in each",
+      "Identify differences in date range handling (inclusive/exclusive boundaries, timezone)",
+      "Identify differences in what's included/excluded (refunds, test accounts, specific statuses)",
+      "Quantify the dollar impact of each individual difference",
+      "Recommend which definition (or a new reconciled one) should become the single source of truth",
+    ],
+    workstation: "sql",
+    starterCode: `-- Metric Definition Drift Audit — Two "Total Revenue" Queries
+
+-- QUERY A (Finance dashboard)
+-- SELECT SUM(amount) AS total_revenue
+-- FROM orders
+-- WHERE order_date >= '2026-08-01' AND order_date <= '2026-08-31'
+--   AND status = 'completed';
+
+-- QUERY B (Marketing dashboard)
+-- SELECT SUM(amount) AS total_revenue
+-- FROM orders
+-- WHERE order_date >= '2026-08-01' AND order_date < '2026-09-01'
+--   AND status IN ('completed', 'refunded')
+--   AND is_test_account = FALSE;
+
+-- STEP 1 & 2 & 3: Differences identified (write as structured findings)
+differences = [
+    {
+        "aspect": "Date boundary",
+        "query_a": "order_date <= '2026-08-31' (could include/exclude late-day timestamps depending on time component)",
+        "query_b": "order_date < '2026-09-01' (unambiguous, correctly excludes September)",
+        "risk": "If order_date has a time component, Query A could silently drop Aug 31 orders after midnight, or Query B could be more correct",
+    },
+    {
+        "aspect": "Status filter",
+        "query_a": "'completed' only",
+        "query_b": "'completed' AND 'refunded'",
+        "risk": "Query B counts refunded orders' original amount as revenue — likely WRONG for a true revenue metric unless netting refunds separately",
+    },
+    {
+        "aspect": "Test accounts",
+        "query_a": "no filter — may include internal/test account orders",
+        "query_b": "explicitly excludes is_test_account",
+        "risk": "Query A likely overstates revenue by including test data",
+    },
+]
+
+# STEP 4: Quantify dollar impact (would require running each isolated filter against real data)
+# TODO: for d in differences:
+# TODO:     print(f"{d['aspect']}:")
+# TODO:     print(f"  Query A: {d['query_a']}")
+# TODO:     print(f"  Query B: {d['query_b']}")
+# TODO:     print(f"  Risk: {d['risk']}\\n")
+
+-- STEP 5: Recommended reconciled definition
+-- SELECT SUM(amount) AS total_revenue
+-- FROM orders
+-- WHERE order_date >= '2026-08-01' AND order_date < '2026-09-01'  -- unambiguous boundary
+--   AND status = 'completed'                                       -- refunds should be a SEPARATE metric, not netted silently
+--   AND is_test_account = FALSE;                                   -- always exclude test data
+`,
+    skillTags: ["Metric Auditing", "Data Governance", "Definition Drift", "Reconciliation", "SQL"],
+    hints: [
+      "Date boundary bugs (<=  '2026-08-31' vs < '2026-09-01') are one of the most common sources of off-by-one-day metric drift, especially when the date column actually has a time component",
+      "Whether refunded orders should count as revenue is a genuine business decision, not just a technical bug — but BOTH dashboards claiming the same metric name should make the SAME decision, or use different names",
+      "The end goal of an audit like this isn't just finding the bug — it's establishing ONE reconciled definition that both teams adopt going forward, backed by a metrics dictionary entry so it doesn't drift again",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI & DATA SCIENCE — REPORT AUTOMATION & SCRIPTING
+// ─────────────────────────────────────────────────────────────────────────────
+export const DATA_ANALYST_AUTOMATION_CHALLENGES = [
+  {
+    id: "da-auto-001",
+    title: "Automate a Recurring Weekly Report",
+    category: "Report Automation",
+    icon: "🤖",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 18,
+    tools: ["Python", "Pandas"],
+    scenario:
+      "Every Monday you manually pull the same 5 numbers, format them, and paste them into an email to the team — 20 minutes of pure copy-paste work every single week. You've been asked to automate the whole pipeline into a single reusable script.",
+    objective:
+      "Build a script that pulls weekly metrics, formats them into a readable summary, and structures the output as a ready-to-send report — no manual copy-paste steps.",
+    steps: [
+      "Define the metrics to include and their calculation logic in one place",
+      "Compute week-over-week comparison automatically",
+      "Format numbers consistently (currency, percentages, thousands separators)",
+      "Assemble everything into a single formatted report string",
+      "Structure the script so it can run unattended (e.g. via a scheduler) with no manual input",
+    ],
+    workstation: "notebook",
+    starterCode: `# Automated Weekly Report Generator
+import pandas as pd
+from datetime import datetime
+
+this_week_data = {"revenue": 145000, "new_customers": 62, "support_tickets": 34, "nps": 46}
+last_week_data = {"revenue": 138000, "new_customers": 58, "support_tickets": 41, "nps": 44}
+
+metric_config = [
+    {"key": "revenue", "label": "Revenue", "format": "currency", "higher_is_better": True},
+    {"key": "new_customers", "label": "New Customers", "format": "count", "higher_is_better": True},
+    {"key": "support_tickets", "label": "Support Tickets", "format": "count", "higher_is_better": False},
+    {"key": "nps", "label": "NPS Score", "format": "count", "higher_is_better": True},
+]
+
+def format_value(value, fmt):
+    # TODO: if fmt == "currency": return f"\${value:,.0f}"
+    # TODO: return f"{value:,}"
+    pass
+
+def format_change(this_val, last_val, higher_is_better):
+    # TODO: change = this_val - last_val
+    # TODO: pct = change / last_val if last_val != 0 else 0
+    # TODO: direction = "up" if change > 0 else ("down" if change < 0 else "flat")
+    # TODO: sentiment = "GOOD" if (change > 0) == higher_is_better else ("NEUTRAL" if change == 0 else "WATCH")
+    # TODO: return f"{direction} {abs(pct):.1%} ({sentiment})"
+    pass
+
+# STEP 3, 4: Assemble the report
+report_lines = [f"=== WEEKLY REPORT — Week of {datetime(2026,8,10).strftime('%B %d, %Y')} ==="]
+for m in metric_config:
+    # TODO: this_val = this_week_data[m["key"]]
+    # TODO: last_val = last_week_data[m["key"]]
+    # TODO: formatted_value = format_value(this_val, m["format"])
+    # TODO: change_str = format_change(this_val, last_val, m["higher_is_better"])
+    # TODO: report_lines.append(f"{m['label']}: {formatted_value} ({change_str})")
+    pass
+
+# TODO: report = "\\n".join(report_lines)
+# TODO: print(report)
+
+# STEP 5: This script is now unattended-run-ready — the only thing needed to run it on a
+# schedule is a data-fetching step (SQL query or API call) replacing the hardcoded dicts above,
+# and a delivery step (email/Slack API call) at the end. No manual formatting steps remain.
+`,
+    skillTags: ["Report Automation", "Python Scripting", "Reproducible Reporting", "Data Pipeline", "Business Analytics"],
+    hints: [
+      "Centralizing metric config (label, format type, whether higher is better) in one list instead of hardcoding format logic per-metric is what makes the script easy to extend — adding a 6th metric becomes a one-line change",
+      "'Higher is better' must be tracked per metric, not assumed — support tickets going UP is bad news even though the raw number increased, the same as revenue going down is bad news",
+      "The real value of automation isn't just saving 20 minutes once — it's ELIMINATING the chance of a copy-paste error that silently reports the wrong number to the whole team",
+    ],
+  },
+  {
+    id: "da-auto-002",
+    title: "Build a Reusable Data Quality Check Script",
+    category: "Report Automation",
+    icon: "✅",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 18,
+    tools: ["Python", "Pandas"],
+    scenario:
+      "Every morning before the dashboard refreshes, you manually eyeball the data for obvious problems (nulls spiking, row counts dropping, values out of range). This is exactly the kind of repetitive check that should run automatically and alert you only when something's actually wrong.",
+    objective:
+      "Build a reusable data quality check function that runs a battery of automated checks against a DataFrame and reports pass/fail for each, rather than requiring manual inspection.",
+    steps: [
+      "Define a set of quality checks: row count within expected range, null rate below threshold, no duplicate keys, values within a sane range",
+      "Implement each check as a function returning pass/fail plus a diagnostic message",
+      "Run all checks against a sample dataset and collect results",
+      "Determine overall pipeline health: pass only if ALL checks pass",
+      "Design the output so a human immediately sees only what needs attention (not a wall of passing checks)",
+    ],
+    workstation: "notebook",
+    starterCode: `# Reusable Data Quality Check Script
+import pandas as pd
+import numpy as np
+
+np.random.seed(2)
+df = pd.DataFrame({
+    "order_id": range(1, 1001),
+    "customer_id": np.random.randint(1, 200, 1000),
+    "amount": np.concatenate([np.random.uniform(10, 500, 990), [np.nan]*5, [-50, -20, 99999, 88888, 77777]]),  # some nulls and bad values injected
+})
+df.loc[500, "order_id"] = df.loc[499, "order_id"]  # inject a duplicate
+
+checks_config = {
+    "expected_row_count_range": (900, 1100),
+    "max_null_rate": {"amount": 0.02},   # max 2% nulls allowed
+    "unique_key": "order_id",
+    "value_range": {"amount": (0, 5000)},
+}
+
+def check_row_count(df, expected_range):
+    n = len(df)
+    passed = expected_range[0] <= n <= expected_range[1]
+    return {"check": "row_count", "passed": passed, "detail": f"{n} rows (expected {expected_range[0]}-{expected_range[1]})"}
+
+def check_null_rate(df, column, max_rate):
+    # TODO: null_rate = df[column].isna().mean()
+    # TODO: passed = null_rate <= max_rate
+    # TODO: return {"check": f"null_rate_{column}", "passed": passed, "detail": f"{null_rate:.1%} nulls (max allowed {max_rate:.1%})"}
+    pass
+
+def check_unique_key(df, column):
+    # TODO: n_dupes = df[column].duplicated().sum()
+    # TODO: passed = n_dupes == 0
+    # TODO: return {"check": f"unique_{column}", "passed": passed, "detail": f"{n_dupes} duplicate {column} values found"}
+    pass
+
+def check_value_range(df, column, value_range):
+    # TODO: out_of_range = ((df[column] < value_range[0]) | (df[column] > value_range[1])).sum()
+    # TODO: passed = out_of_range == 0
+    # TODO: return {"check": f"value_range_{column}", "passed": passed, "detail": f"{out_of_range} values outside [{value_range[0]}, {value_range[1]}]"}
+    pass
+
+results = [check_row_count(df, checks_config["expected_row_count_range"])]
+# TODO: results.append(check_null_rate(df, "amount", checks_config["max_null_rate"]["amount"]))
+# TODO: results.append(check_unique_key(df, checks_config["unique_key"]))
+# TODO: results.append(check_value_range(df, "amount", checks_config["value_range"]["amount"]))
+
+# STEP 5: Only show what needs attention
+failures = [r for r in results if not r["passed"]]
+if failures:
+    print("*** DATA QUALITY ISSUES DETECTED ***")
+    for f in failures:
+        print(f"  FAIL — {f['check']}: {f['detail']}")
+else:
+    print("All data quality checks passed.")
+`,
+    skillTags: ["Data Quality Automation", "Pipeline Monitoring", "Python Scripting", "Data Validation", "Reproducible Checks"],
+    hints: [
+      "Showing only FAILURES (not a wall of passing checks) is a deliberate design choice — humans stop reading long green checklists, and the one real failure gets lost in the noise",
+      "Row count range checks catch a whole class of pipeline bugs (a source system outage, a broken join dropping rows) that column-level checks would completely miss",
+      "This exact pattern (config-driven list of checks, each returning a structured pass/fail result) is essentially what dedicated data quality frameworks like Great Expectations do — building a minimal version yourself is genuinely useful and demystifies the tooling",
+    ],
+  },
+  {
+    id: "da-auto-003",
+    title: "Parameterize a Report to Run for Any Date Range",
+    category: "Report Automation",
+    icon: "📅",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 14,
+    tools: ["Python", "Pandas"],
+    scenario:
+      "A report script has the date range hardcoded inside it — every time someone needs last month's numbers instead of this month's, they have to edit the code directly, which is error-prone and means only the original author can safely run it.",
+    objective:
+      "Refactor a hardcoded report script into a parameterized function that accepts a start and end date as arguments, with sensible defaults and input validation.",
+    steps: [
+      "Extract the hardcoded date range into function parameters",
+      "Add default values that produce 'last full month' if no dates are given",
+      "Validate that start_date is before end_date, raising a clear error if not",
+      "Filter the dataset using the parameterized range",
+      "Demonstrate the same function correctly producing results for two different date ranges",
+    ],
+    workstation: "notebook",
+    starterCode: `# Parameterize a Report for Any Date Range
+import pandas as pd
+from datetime import datetime, timedelta
+
+np.random.seed(0) if False else None
+import numpy as np
+np.random.seed(0)
+dates = pd.date_range("2026-01-01", "2026-08-10", freq="D")
+sales = pd.DataFrame({"date": dates, "revenue": np.random.uniform(3000, 8000, len(dates))})
+
+def get_default_last_month_range(today=None):
+    # TODO: if today is None: today = datetime.now()
+    # TODO: first_of_this_month = today.replace(day=1)
+    # TODO: last_day_of_prev_month = first_of_this_month - timedelta(days=1)
+    # TODO: first_day_of_prev_month = last_day_of_prev_month.replace(day=1)
+    # TODO: return first_day_of_prev_month, last_day_of_prev_month
+    pass
+
+def generate_revenue_report(df, start_date=None, end_date=None):
+    # STEP 2: Default to last full month if not provided
+    if start_date is None or end_date is None:
+        # TODO: start_date, end_date = get_default_last_month_range()
+        pass
+
+    # STEP 3: Validate
+    # TODO: if start_date > end_date:
+    # TODO:     raise ValueError(f"start_date ({start_date}) must be before end_date ({end_date})")
+
+    # STEP 4: Filter and aggregate
+    # TODO: mask = (df["date"] >= pd.Timestamp(start_date)) & (df["date"] <= pd.Timestamp(end_date))
+    # TODO: filtered = df[mask]
+    # TODO: total_revenue = filtered["revenue"].sum()
+    # TODO: avg_daily_revenue = filtered["revenue"].mean()
+    # TODO: return {
+    # TODO:     "start_date": start_date, "end_date": end_date,
+    # TODO:     "total_revenue": total_revenue, "avg_daily_revenue": avg_daily_revenue, "days": len(filtered)
+    # TODO: }
+
+# STEP 5: Demonstrate with two different ranges
+# TODO: report_q1 = generate_revenue_report(sales, datetime(2026,1,1), datetime(2026,3,31))
+# TODO: print(f"Q1 2026: total=\${report_q1['total_revenue']:,.0f}, avg_daily=\${report_q1['avg_daily_revenue']:,.0f}")
+
+# TODO: report_july = generate_revenue_report(sales, datetime(2026,7,1), datetime(2026,7,31))
+# TODO: print(f"July 2026: total=\${report_july['total_revenue']:,.0f}, avg_daily=\${report_july['avg_daily_revenue']:,.0f}")
+`,
+    skillTags: ["Report Parameterization", "Python Functions", "Input Validation", "Reusable Scripts", "Data Engineering"],
+    hints: [
+      "A reusable report function should never require editing the function BODY to change its behavior — everything that varies between runs (like a date range) belongs as a PARAMETER",
+      "Sensible defaults (like 'last full month') make the function convenient for the common case while still allowing full flexibility for edge cases via explicit arguments",
+      "Input validation (start_date > end_date) that raises a clear error immediately is far better than silently returning an empty or nonsensical result — fail loud and early, not quiet and wrong",
+    ],
+  },
+  {
+    id: "da-auto-004",
+    title: "Design an Alerting Threshold for a Monitored Metric",
+    category: "Report Automation",
+    icon: "🚨",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 20,
+    tools: ["Python", "Pandas", "NumPy"],
+    scenario:
+      "A daily metric monitoring script currently has no alerting — someone has to remember to look at the dashboard every day to catch a problem. You need to design a statistically-grounded alerting threshold that flags genuine anomalies without crying wolf on normal day-to-day noise.",
+    objective:
+      "Build an alerting function using rolling mean and standard deviation to flag values that fall outside a normal range, avoiding both over-alerting on noise and under-alerting on real problems.",
+    steps: [
+      "Compute a rolling mean and standard deviation over a trailing window",
+      "Define an alert threshold as mean ± N standard deviations",
+      "Flag any day where the actual value falls outside the threshold",
+      "Tune N to balance false alarms against missed real anomalies using historical data",
+      "Design the alert to include enough context (expected range, actual value) to be actionable, not just 'something is wrong'",
+    ],
+    workstation: "notebook",
+    starterCode: `# Statistical Alerting Threshold Design
+import numpy as np
+import pandas as pd
+
+np.random.seed(15)
+days = 60
+normal_metric = 1000 + np.cumsum(np.random.normal(0, 15, days))
+# Inject two real anomalies
+normal_metric[45] *= 0.5   # a real drop
+normal_metric[52] *= 1.8   # a real spike
+df = pd.DataFrame({"day": range(days), "value": normal_metric})
+
+def add_rolling_bounds(df, window=14, n_std=3):
+    # TODO: df["rolling_mean"] = df["value"].rolling(window=window).mean()
+    # TODO: df["rolling_std"] = df["value"].rolling(window=window).std()
+    # TODO: df["upper_bound"] = df["rolling_mean"] + n_std * df["rolling_std"]
+    # TODO: df["lower_bound"] = df["rolling_mean"] - n_std * df["rolling_std"]
+    # TODO: df["is_anomaly"] = (df["value"] > df["upper_bound"]) | (df["value"] < df["lower_bound"])
+    return df
+
+# STEP 3: Run with a default n_std
+# TODO: df = add_rolling_bounds(df, window=14, n_std=3)
+# TODO: anomalies = df[df["is_anomaly"] == True]
+# TODO: print(f"n_std=3: {len(anomalies)} anomalies flagged on days {list(anomalies['day'])}")
+
+# STEP 4: Tune n_std — compare 2 vs 3 vs 4 standard deviations
+for n_std in [2, 3, 4]:
+    # TODO: test_df = add_rolling_bounds(df.copy(), window=14, n_std=n_std)
+    # TODO: n_flagged = test_df["is_anomaly"].sum()
+    # TODO: print(f"n_std={n_std}: {n_flagged} days flagged")
+    pass
+
+# STEP 5: Actionable alert format
+# TODO: for _, row in anomalies.iterrows():
+# TODO:     print(f"ALERT — Day {row['day']}: value={row['value']:.0f}, expected range=[{row['lower_bound']:.0f}, {row['upper_bound']:.0f}]")
+`,
+    skillTags: ["Alerting Design", "Anomaly Detection", "Rolling Statistics", "Monitoring", "Statistical Thresholds"],
+    hints: [
+      "Lower n_std (e.g. 2) catches smaller anomalies but generates more false alarms on normal noise; higher n_std (e.g. 4) is quieter but might miss real, moderate anomalies — there's no universally correct value, it depends on the cost of each type of error",
+      "A rolling window (not a fixed historical mean) lets the 'normal range' adapt as the metric's baseline naturally shifts over time — without this, a slow legitimate trend would eventually trigger constant false alarms",
+      "An alert that just says 'anomaly detected' forces the recipient to go dig for context — always include the actual value AND the expected range in the alert itself, so the severity is immediately clear without extra investigation",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI & DATA SCIENCE — DATA PRIVACY & GOVERNANCE
+// ─────────────────────────────────────────────────────────────────────────────
+export const DATA_ANALYST_GOVERNANCE_CHALLENGES = [
+  {
+    id: "da-gov-001",
+    title: "Classify Columns by PII Sensitivity Level",
+    category: "Data Governance",
+    icon: "🔐",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 14,
+    tools: ["Python"],
+    scenario:
+      "A new analyst is about to get read access to a customer table with 40 columns, but nobody has classified which columns are sensitive PII versus safe for general analytics use. You need to build a classification pass before granting broad access.",
+    objective:
+      "Build a rule-based classifier that tags each column with a sensitivity level (Public, Internal, Confidential, Restricted) based on its name and content pattern.",
+    steps: [
+      "Define classification rules based on column name keywords",
+      "Define classification rules based on sample value patterns (e.g. looks like an email, SSN format)",
+      "Apply the classifier to a list of column names and sample values",
+      "Flag any column the rules can't confidently classify for manual review",
+      "Output an access recommendation per sensitivity level",
+    ],
+    workstation: "notebook",
+    starterCode: `# PII Sensitivity Classification
+import re
+
+columns = [
+    {"name": "customer_id", "sample": "10234"},
+    {"name": "email", "sample": "priya@example.com"},
+    {"name": "ssn", "sample": "123-45-6789"},
+    {"name": "signup_date", "sample": "2026-01-15"},
+    {"name": "product_category", "sample": "Electronics"},
+    {"name": "phone_number", "sample": "+91-9876543210"},
+    {"name": "annual_income", "sample": "850000"},
+    {"name": "notes_freeform", "sample": "Called about billing issue, upset"},
+]
+
+RESTRICTED_KEYWORDS = ["ssn", "social_security", "passport", "credit_card", "bank_account"]
+CONFIDENTIAL_KEYWORDS = ["email", "phone", "address", "income", "salary", "date_of_birth", "dob"]
+EMAIL_PATTERN = re.compile(r"[^@]+@[^@]+\\.[^@]+")
+SSN_PATTERN = re.compile(r"\\d{3}-\\d{2}-\\d{4}")
+
+def classify_column(col):
+    name_lower = col["name"].lower()
+    sample = str(col["sample"])
+
+    # TODO: if any(kw in name_lower for kw in RESTRICTED_KEYWORDS) or SSN_PATTERN.match(sample):
+    # TODO:     return "RESTRICTED"
+    # TODO: if any(kw in name_lower for kw in CONFIDENTIAL_KEYWORDS) or EMAIL_PATTERN.match(sample):
+    # TODO:     return "CONFIDENTIAL"
+    # TODO: if "notes" in name_lower or "freeform" in name_lower or "comment" in name_lower:
+    # TODO:     return "NEEDS MANUAL REVIEW (freeform text may contain PII)"
+    # TODO: return "PUBLIC/INTERNAL"
+    pass
+
+access_recommendation = {
+    "RESTRICTED": "Access only via approved data steward request, never in raw analytics tools",
+    "CONFIDENTIAL": "Access requires business justification + manager approval",
+    "PUBLIC/INTERNAL": "Standard analyst access",
+    "NEEDS MANUAL REVIEW (freeform text may contain PII)": "Do NOT grant broad access until manually reviewed for embedded PII",
+}
+
+for col in columns:
+    # TODO: level = classify_column(col)
+    # TODO: print(f"{col['name']}: {level}")
+    # TODO: print(f"  -> {access_recommendation.get(level, 'Review needed')}")
+    pass
+`,
+    skillTags: ["PII Classification", "Data Governance", "Data Privacy", "Access Control", "Data Security"],
+    hints: [
+      "Freeform text columns (notes, comments) are one of the most commonly overlooked PII risks — a support agent might type a customer's phone number or address directly into a 'notes' field with no structured column ever flagging it",
+      "Rule-based classification is a useful first pass, but it will miss things — always route 'can't classify confidently' cases to a human reviewer rather than defaulting them to public access",
+      "This kind of classification pass should happen BEFORE granting broad table access, not after — it's much easier to prevent overexposure than to audit who already saw what after the fact",
+    ],
+  },
+  {
+    id: "da-gov-002",
+    title: "Anonymize a Dataset for External Sharing",
+    category: "Data Governance",
+    icon: "🎭",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 18,
+    tools: ["Python", "Pandas"],
+    scenario:
+      "A university partner wants a dataset of customer purchase behavior for research, but the raw data contains names, emails, and exact addresses. You need to anonymize it while preserving enough analytical value that the research is still useful.",
+    objective:
+      "Apply appropriate anonymization techniques (removal, hashing, generalization, bucketing) to different column types before external sharing.",
+    steps: [
+      "Remove columns that are direct identifiers with no analytical value externally (name, email)",
+      "Hash the customer_id so records can still be linked WITHIN the dataset without revealing identity",
+      "Generalize exact age to age brackets, and exact location to region/state level",
+      "Bucket exact purchase amount into ranges to reduce re-identification risk from unique high values",
+      "Verify the anonymized dataset can't be trivially re-joined back to the original via any remaining column",
+    ],
+    workstation: "notebook",
+    starterCode: `# Dataset Anonymization for External Sharing
+import pandas as pd
+import hashlib
+
+raw_data = pd.DataFrame({
+    "customer_id": [1001, 1002, 1003, 1004],
+    "name": ["Priya Sharma", "Raj Patel", "Amit Kumar", "Sara Khan"],
+    "email": ["priya@x.com", "raj@x.com", "amit@x.com", "sara@x.com"],
+    "age": [28, 45, 33, 52],
+    "city": ["Mumbai", "Ahmedabad", "Chennai", "Bangalore"],
+    "state": ["Maharashtra", "Gujarat", "Tamil Nadu", "Karnataka"],
+    "purchase_amount": [1250, 8900, 340, 15600],
+})
+
+# STEP 1: Remove direct identifiers
+# TODO: anonymized = raw_data.drop(columns=["name", "email"])
+
+# STEP 2: Hash customer_id (deterministic, so repeated IDs stay linkable within this dataset,
+# but can't be reversed back to the original ID without the salt)
+SALT = "research_export_2026_v1"
+def hash_id(cid):
+    # TODO: return hashlib.sha256(f"{SALT}{cid}".encode()).hexdigest()[:16]
+    pass
+
+# TODO: anonymized["customer_hash"] = anonymized["customer_id"].apply(hash_id)
+# TODO: anonymized = anonymized.drop(columns=["customer_id"])
+
+# STEP 3: Generalize age to brackets, city to just state (drop city entirely)
+def age_bracket(age):
+    # TODO: if age < 25: return "18-24"
+    # TODO: elif age < 35: return "25-34"
+    # TODO: elif age < 45: return "35-44"
+    # TODO: elif age < 55: return "45-54"
+    # TODO: else: return "55+"
+    pass
+
+# TODO: anonymized["age_bracket"] = anonymized["age"].apply(age_bracket)
+# TODO: anonymized = anonymized.drop(columns=["age", "city"])  -- city dropped, state kept as coarser geography
+
+# STEP 4: Bucket purchase amount
+def amount_bucket(amt):
+    # TODO: if amt < 500: return "<500"
+    # TODO: elif amt < 2000: return "500-2000"
+    # TODO: elif amt < 10000: return "2000-10000"
+    # TODO: else: return "10000+"
+    pass
+
+# TODO: anonymized["amount_bucket"] = anonymized["purchase_amount"].apply(amount_bucket)
+# TODO: anonymized = anonymized.drop(columns=["purchase_amount"])
+
+# TODO: print(anonymized)
+
+# STEP 5: Re-identification check — no column here can be joined back to raw_data directly
+# TODO: print("\\nColumns in exported dataset:", list(anonymized.columns))
+# TODO: print("None of these directly match a raw_data column value (name, email, exact age, exact city, exact amount removed/transformed)")
+`,
+    skillTags: ["Data Anonymization", "PII Removal", "Generalization", "Data Privacy", "External Data Sharing"],
+    hints: [
+      "Hashing customer_id preserves the ability to link rows belonging to the same customer WITHIN the exported dataset, without exposing the real ID — but only if the salt is kept secret from the recipient",
+      "Generalization (exact age -> bracket, exact city -> dropped/state-level) trades some analytical precision for reduced re-identification risk — the right level of generalization depends on how sensitive and how unique the data is",
+      "Even after removing obvious identifiers, a combination of quasi-identifiers (age bracket + state + purchase bucket) could still narrow down to a single real person in a small enough population — this is a known re-identification risk that pure column-by-column anonymization doesn't fully solve",
+    ],
+  },
+  {
+    id: "da-gov-003",
+    title: "Design a Column-Level Access Control Policy",
+    category: "Data Governance",
+    icon: "🔑",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["SQL"],
+    scenario:
+      "The current customer table gives every analyst full column access, including salary and SSN fields that only HR should ever see. You need to design and implement role-based, column-level access control so different roles see only what they need.",
+    objective:
+      "Design a column-level GRANT policy mapping roles to allowed columns, and implement it using database views or column-level GRANT statements.",
+    steps: [
+      "Define roles: general_analyst, hr_analyst, finance_analyst",
+      "Map which columns each role should be able to see",
+      "Implement column-level GRANT statements restricting sensitive columns",
+      "Alternatively, design a view per role exposing only its allowed columns",
+      "Verify a general_analyst querying a restricted column would be denied",
+    ],
+    workstation: "sql",
+    starterCode: `-- Column-Level Access Control Policy
+-- Table: employees (employee_id, name, department, email, salary, ssn, performance_rating)
+
+-- STEP 1 & 2: Role -> allowed columns mapping (documented, then implemented below)
+-- general_analyst: employee_id, name, department, email  (NOT salary, ssn, performance_rating)
+-- hr_analyst:      employee_id, name, department, email, performance_rating  (NOT ssn, salary)
+-- finance_analyst: employee_id, name, department, salary  (NOT ssn, performance_rating)
+
+-- STEP 3: Column-level GRANT approach
+-- TODO: REVOKE SELECT ON employees FROM general_analyst, hr_analyst, finance_analyst;
+
+-- TODO: GRANT SELECT (employee_id, name, department, email) ON employees TO general_analyst;
+-- TODO: GRANT SELECT (employee_id, name, department, email, performance_rating) ON employees TO hr_analyst;
+-- TODO: GRANT SELECT (employee_id, name, department, salary) ON employees TO finance_analyst;
+-- ssn is granted to NOBODY at the table level — accessible only via a separate, audited process
+
+-- STEP 4: Alternative — role-specific views (often easier to reason about than raw column grants)
+-- TODO: CREATE VIEW v_employees_general AS
+-- SELECT employee_id, name, department, email FROM employees;
+
+-- TODO: CREATE VIEW v_employees_hr AS
+-- SELECT employee_id, name, department, email, performance_rating FROM employees;
+
+-- TODO: GRANT SELECT ON v_employees_general TO general_analyst;
+-- TODO: GRANT SELECT ON v_employees_hr TO hr_analyst;
+
+-- STEP 5: Verification — this should FAIL for general_analyst
+-- (run as general_analyst role)
+-- SELECT salary FROM employees;  -- expect: permission denied for column salary`,
+    skillTags: ["Access Control", "Column-Level Security", "Data Governance", "Role-Based Access", "SQL"],
+    hints: [
+      "Column-level GRANTs and role-specific views accomplish the same goal differently — views are often easier for teams to reason about and audit, while column grants avoid maintaining duplicate view definitions as the schema evolves",
+      "A table-level GRANT SELECT ON employees TO role supersedes column-level restrictions if both exist — always REVOKE the table-level grant first before applying column-level grants, exactly like the earlier problems.test_cases fix",
+      "SSN (or any Restricted-tier field) often shouldn't be queryable through normal analytics access AT ALL, even for HR — it may need a separate, heavily audited access path entirely outside the standard analyst role structure",
+    ],
+  },
+  {
+    id: "da-gov-004",
+    title: "Implement a Right-to-Erasure (GDPR) Deletion Workflow",
+    category: "Data Governance",
+    icon: "🗑️",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 22,
+    tools: ["SQL"],
+    scenario:
+      "A customer has submitted a formal data deletion request under GDPR's 'right to erasure'. Simply deleting their row from the customers table isn't enough — their data may be scattered across a dozen tables, some of which need to preserve aggregate history without personal identifiers.",
+    objective:
+      "Design a deletion/anonymization workflow that removes or anonymizes a customer's personal data across all relevant tables while preserving non-personal aggregate/statistical value where legally permitted.",
+    steps: [
+      "Identify every table containing this customer's personal data",
+      "Classify each table's handling: hard delete, anonymize-in-place, or exempt (e.g. financial records with a legal retention requirement)",
+      "Write the deletion/anonymization statements for each table",
+      "Preserve referential integrity — decide what happens to foreign-key-dependent rows (e.g. their orders)",
+      "Log the erasure action itself for compliance audit purposes",
+    ],
+    workstation: "sql",
+    starterCode: `-- GDPR Right-to-Erasure Workflow
+-- Customer requesting erasure: customer_id = 4471
+
+-- STEP 1 & 2: Table inventory and handling decision
+table_plan = [
+    {"table": "customers", "handling": "HARD DELETE", "reason": "core PII record, no legal retention requirement"},
+    {"table": "customer_addresses", "handling": "HARD DELETE", "reason": "PII, no retention requirement"},
+    {"table": "marketing_consent_log", "handling": "HARD DELETE", "reason": "PII, no retention requirement"},
+    {"table": "orders", "handling": "ANONYMIZE IN PLACE", "reason": "financial records must be retained for tax/audit law, but customer_id can be replaced with a generic 'erased_customer' placeholder"},
+    {"table": "support_tickets", "handling": "ANONYMIZE IN PLACE", "reason": "operational history has value in aggregate, but must not be traceable to this individual"},
+]
+
+# TODO: for t in table_plan:
+# TODO:     print(f"{t['table']}: {t['handling']} -- {t['reason']}")
+
+-- STEP 3: Deletion/anonymization statements
+-- TODO: DELETE FROM customer_addresses WHERE customer_id = 4471;
+-- TODO: DELETE FROM marketing_consent_log WHERE customer_id = 4471;
+
+-- STEP 4: Anonymize orders (preserve the row for financial retention, remove the link to the person)
+-- TODO: UPDATE orders SET customer_id = -1, customer_name_snapshot = 'ERASED', customer_email_snapshot = NULL
+-- WHERE customer_id = 4471;
+-- (assumes -1 is a reserved sentinel "erased customer" row that satisfies the foreign key constraint)
+
+-- TODO: UPDATE support_tickets SET customer_id = -1, ticket_text = 'ERASED PER GDPR REQUEST'
+-- WHERE customer_id = 4471;
+
+-- STEP 3 (cont'd): Now safe to hard-delete the core record
+-- TODO: DELETE FROM customers WHERE customer_id = 4471;
+
+-- STEP 5: Compliance audit log — this record is KEPT, deliberately, as proof erasure occurred
+-- TODO: INSERT INTO gdpr_erasure_log (customer_id_erased, requested_at, completed_at, requested_by)
+-- VALUES (4471, '2026-08-05', '2026-08-10', 'customer_self_service_portal');`,
+    skillTags: ["GDPR Compliance", "Right to Erasure", "Data Deletion", "Referential Integrity", "Data Governance"],
+    hints: [
+      "'Delete the customer row' is almost never sufficient on its own — personal data typically spreads across many tables (orders, tickets, logs, marketing lists), and a real erasure workflow must account for every one of them",
+      "Some data has a LEGAL RETENTION requirement (financial/tax records) that can outweigh an erasure request — the correct response there is usually anonymization (sever the link to the person) rather than deletion, not simply refusing the request",
+      "Paradoxically, you must KEEP a record that erasure happened (who, when, what) for compliance audit purposes — this log itself should contain minimal-to-no personal data, just enough to prove the process was followed",
+    ],
+  },
+]
+
 export const DOMAIN_CHALLENGES = {
   data:      DATA_ANALYST_CHALLENGES,
   bi_analyst:DATA_ANALYST_CHALLENGES,
