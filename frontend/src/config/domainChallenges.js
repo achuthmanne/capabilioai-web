@@ -24926,6 +24926,1639 @@ for alt_discount_rate in [0.02, 0.04, 0.06, 0.08]:
   },
 ]
 
+// ─────────────────────────────────────────────────────────────────────────────
+// MECHANICAL — VIBRATIONS & DYNAMICS
+// ─────────────────────────────────────────────────────────────────────────────
+export const MECH_VIBRATIONS_CHALLENGES = [
+  {
+    id: "mech-vib-001",
+    title: "Calculate Natural Frequency of a Spring-Mass System and Check Resonance Risk",
+    category: "Vibrations",
+    icon: "〰️",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Python", "Vibration Analysis"],
+    scenario:
+      "A machine mounted on isolation springs runs at a specific operating speed, and engineers need to verify the mounting system's natural frequency doesn't coincide with the machine's operating frequency -- running at or near resonance would cause dangerously amplified vibration.",
+    objective:
+      "Calculate the natural frequency of a spring-mass system, compare it against the machine's operating frequency, and assess resonance risk using the frequency ratio.",
+    steps: [
+      "Calculate the system's natural frequency from mass and spring stiffness",
+      "Calculate the machine's operating frequency from its rotational speed",
+      "Calculate the frequency ratio between operating and natural frequency",
+      "Assess resonance risk based on how close the ratio is to 1.0",
+      "Recommend a design change if resonance risk is significant",
+    ],
+    workstation: "notebook",
+    starterCode: `# Natural Frequency and Resonance Risk Assessment
+import math
+
+machine_mass_kg = 450.0
+total_spring_stiffness_n_per_m = 850_000.0   # combined stiffness of all isolation springs
+machine_operating_speed_rpm = 1800.0
+
+# STEP 1: Natural frequency
+# TODO: natural_frequency_rad_s = math.sqrt(total_spring_stiffness_n_per_m / machine_mass_kg)
+# TODO: natural_frequency_hz = natural_frequency_rad_s / (2 * math.pi)
+# TODO: print(f"Natural frequency: {natural_frequency_rad_s:.1f} rad/s ({natural_frequency_hz:.2f} Hz)")
+
+# STEP 2: Operating frequency
+# TODO: operating_frequency_hz = machine_operating_speed_rpm / 60
+# TODO: print(f"Operating frequency: {operating_frequency_hz:.2f} Hz ({machine_operating_speed_rpm} RPM)")
+
+# STEP 3: Frequency ratio
+# TODO: frequency_ratio = operating_frequency_hz / natural_frequency_hz
+# TODO: print(f"\\nFrequency ratio (operating/natural): {frequency_ratio:.2f}")
+
+# STEP 4: Resonance risk assessment
+print(f"\\n=== Resonance Risk Assessment ===")
+# TODO: if 0.8 <= frequency_ratio <= 1.2:
+# TODO:     risk = "HIGH RISK -- operating frequency is close to natural frequency, significant amplification expected"
+# TODO: elif frequency_ratio < 0.8:
+# TODO:     risk = "Operating below natural frequency -- generally low amplification (stiffness-dominated region)"
+# TODO: else:
+# TODO:     risk = "Operating above natural frequency -- generally good isolation (mass-dominated region), IF ratio is well above 1.4"
+# TODO: print(risk)
+
+# STEP 5: Recommendation
+print(f"\\n=== Recommendation ===")
+# TODO: if 0.8 <= frequency_ratio <= 1.2:
+# TODO:     print("Design change needed: either increase mass, reduce spring stiffness (to lower natural")
+# TODO:     print("frequency well below operating frequency), or increase spring stiffness substantially")
+# TODO:     print("(to raise natural frequency well above operating frequency) -- avoid leaving the ratio")
+# TODO:     print("anywhere near 1.0")
+# TODO: elif frequency_ratio > 1.4:
+# TODO:     print("Current design provides good vibration isolation -- frequency ratio is comfortably in")
+# TODO:     print("the isolation-effective range above resonance")
+# TODO: else:
+# TODO:     print("Frequency ratio is in an intermediate zone -- verify against the specific isolation")
+# TODO:     print("transmissibility curve for this system's damping ratio before confirming adequacy")
+`,
+    skillTags: ["Natural Frequency", "Resonance", "Vibration Isolation", "Spring-Mass System"],
+    hints: [
+      "Resonance occurs when the forcing frequency (here, the machine's operating speed) approaches the system's natural frequency, causing dramatically amplified vibration response even from a relatively small excitation force -- this is why the frequency RATIO, not either frequency in isolation, is the key design parameter to check",
+      "For effective vibration isolation, the general design rule of thumb is to keep the operating frequency well ABOVE the natural frequency (frequency ratio greater than roughly 1.4-1.5), since only in this 'mass-dominated' region does the isolation system actually reduce transmitted vibration below what a rigid mount would transmit -- operating below or too close to the natural frequency provides little to no isolation benefit or actively amplifies vibration",
+      "This simplified analysis doesn't include damping, which affects the exact amplification magnitude near resonance and the isolation effectiveness in the mass-dominated region -- a complete vibration isolation design would calculate the transmissibility ratio accounting for the system's actual damping ratio, not just the undamped natural frequency comparison shown here",
+    ],
+  },
+  {
+    id: "mech-vib-002",
+    title: "Balance a Rotating Assembly Using Static and Couple Unbalance Analysis",
+    category: "Vibrations",
+    icon: "⚙️",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Python", "Rotor Balancing"],
+    scenario:
+      "A rotating shaft assembly with multiple attached masses is vibrating excessively at operating speed. Before adding more damping or stiffening the supports (treating the symptom), the underlying cause -- rotor unbalance -- needs to be diagnosed and corrected at the source.",
+    objective:
+      "Calculate the resultant unbalance from multiple eccentric masses on a rotating shaft, determine the required balancing correction mass and its placement, and verify the correction reduces unbalance to an acceptable level.",
+    steps: [
+      "Calculate the unbalance vector (magnitude and angular position) contributed by each mass",
+      "Sum all unbalance vectors to find the resultant total unbalance",
+      "Calculate the required correction mass and its angular position to counteract the resultant",
+      "Verify the correction, when added, reduces total unbalance toward zero",
+      "Compare the resultant unbalance against a standard balance quality grade tolerance",
+    ],
+    workstation: "notebook",
+    starterCode: `# Rotor Unbalance Analysis and Correction
+import math
+
+shaft_speed_rpm = 3000.0
+correction_radius_m = 0.12  # radius at which the correction mass will be placed
+
+# Unbalance masses on the rotor: (mass_kg, eccentricity_m, angular_position_deg)
+unbalance_masses = [
+    (0.05, 0.15, 30),
+    (0.03, 0.10, 160),
+    (0.04, 0.18, 280),
+]
+
+# STEP 1: Unbalance vector for each mass (unbalance = m x e, at the given angular position)
+print("=== Individual Unbalance Contributions ===")
+unbalance_x_total = 0.0
+unbalance_y_total = 0.0
+# TODO: for mass, eccentricity, angle_deg in unbalance_masses:
+# TODO:     unbalance_magnitude = mass * eccentricity  # kg*m
+# TODO:     angle_rad = math.radians(angle_deg)
+# TODO:     ux = unbalance_magnitude * math.cos(angle_rad)
+# TODO:     uy = unbalance_magnitude * math.sin(angle_rad)
+# TODO:     unbalance_x_total += ux
+# TODO:     unbalance_y_total += uy
+# TODO:     print(f"Mass={mass}kg @ e={eccentricity}m, angle={angle_deg}°: unbalance={unbalance_magnitude*1000:.2f} g·m")
+
+# STEP 2: Resultant unbalance
+# TODO: resultant_unbalance_magnitude = math.sqrt(unbalance_x_total ** 2 + unbalance_y_total ** 2)
+# TODO: resultant_angle_rad = math.atan2(unbalance_y_total, unbalance_x_total)
+# TODO: resultant_angle_deg = math.degrees(resultant_angle_rad) % 360
+# TODO: print(f"\\nResultant unbalance: {resultant_unbalance_magnitude*1000:.2f} g·m at {resultant_angle_deg:.1f}°")
+
+# STEP 3: Correction mass and placement (correction must be EQUAL and OPPOSITE to the resultant)
+# TODO: correction_mass_kg = resultant_unbalance_magnitude / correction_radius_m
+# TODO: correction_angle_deg = (resultant_angle_deg + 180) % 360
+# TODO: print(f"\\nRequired correction mass: {correction_mass_kg*1000:.1f} g at radius {correction_radius_m}m")
+# TODO: print(f"Required correction angular position: {correction_angle_deg:.1f}° (180° opposite the resultant)")
+
+# STEP 4: Verify correction reduces unbalance
+# TODO: correction_unbalance = correction_mass_kg * correction_radius_m
+# TODO: correction_angle_rad = math.radians(correction_angle_deg)
+# TODO: cx = correction_unbalance * math.cos(correction_angle_rad)
+# TODO: cy = correction_unbalance * math.sin(correction_angle_rad)
+# TODO: residual_x = unbalance_x_total + cx
+# TODO: residual_y = unbalance_y_total + cy
+# TODO: residual_unbalance = math.sqrt(residual_x ** 2 + residual_y ** 2)
+# TODO: print(f"\\nResidual unbalance after correction: {residual_unbalance*1000:.4f} g·m (should be ~0)")
+
+# STEP 5: Balance quality grade check (ISO 21940 style, simplified)
+rotor_mass_kg = 8.0  # total rotor mass
+# TODO: specific_unbalance_g_mm_per_kg = (residual_unbalance * 1e6) / rotor_mass_kg  # residual unbalance per unit rotor mass
+# TODO: omega_rad_s = shaft_speed_rpm * 2 * math.pi / 60
+# TODO: balance_quality_grade_mm_s = (specific_unbalance_g_mm_per_kg / 1000) * omega_rad_s / 1000
+print(f"\\n=== Balance Quality Assessment ===")
+# TODO: print(f"Achieved specific unbalance: {specific_unbalance_g_mm_per_kg:.2f} g·mm/kg")
+# TODO: print("Compare this against the applicable ISO balance quality grade (e.g. G2.5, G6.3) for this")
+# TODO: print("machine type to confirm the correction achieves the required balance quality standard")
+`,
+    skillTags: ["Rotor Balancing", "Unbalance Vector Analysis", "Vibration Diagnosis", "Rotating Machinery"],
+    hints: [
+      "Unbalance vectors must be summed as VECTORS (accounting for both magnitude and angular position), not simply added as scalar magnitudes -- masses positioned at different angles can partially or fully cancel each other's unbalance contribution, which is exactly why the resultant unbalance can be smaller than the sum of individual unbalance magnitudes",
+      "The correction mass must be placed at exactly 180 degrees opposite the resultant unbalance vector's angular position -- placing correction mass at the wrong angle, even with the correct magnitude, would fail to properly counteract the unbalance and could even worsen vibration in some cases",
+      "Diagnosing and correcting unbalance at its source (adding a properly calculated correction mass) is fundamentally different from treating the symptom (adding damping or stiffening supports) -- the source-level fix addresses the actual rotating force imbalance causing the vibration, while symptom-level fixes merely reduce how much of that same underlying force gets transmitted to the surrounding structure",
+    ],
+  },
+  {
+    id: "mech-vib-003",
+    title: "Analyze a Vibration Frequency Spectrum for Machinery Fault Diagnosis",
+    category: "Vibrations",
+    icon: "📊",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Python", "Vibration Diagnostics"],
+    scenario:
+      "A vibration monitoring system on a rotating machine has flagged an increase in vibration amplitude. Rather than immediately shutting down for inspection, a maintenance engineer wants to analyze the frequency spectrum to diagnose the likely fault type before deciding on the appropriate response.",
+    objective:
+      "Interpret a vibration frequency spectrum by identifying dominant frequency peaks relative to shaft running speed, and diagnose the likely fault mechanism based on standard vibration diagnostic signatures.",
+    steps: [
+      "Calculate the shaft running speed frequency (1x) as the diagnostic reference frequency",
+      "Express each significant spectrum peak as a multiple (order) of running speed",
+      "Match each peak's order and characteristics against standard fault signatures",
+      "Rank findings by amplitude significance",
+      "Recommend the appropriate maintenance response based on the diagnosed fault type and severity",
+    ],
+    workstation: "notebook",
+    starterCode: `# Vibration Frequency Spectrum Fault Diagnosis
+shaft_speed_rpm = 1800.0
+
+# Detected spectrum peaks: (frequency_hz, amplitude_mm_s)
+spectrum_peaks = [
+    (30.0, 1.2),   # will correspond to 1x running speed
+    (60.0, 4.8),   # 2x running speed -- notably larger than 1x
+    (90.0, 2.1),   # 3x running speed
+    (450.0, 0.6),  # much higher frequency, low amplitude
+]
+
+# Reference fault signature guide (simplified)
+fault_signatures = {
+    "1x (unbalance)": "Dominant peak at 1x running speed, radial direction, steady amplitude",
+    "2x (misalignment)": "Dominant peak at 2x running speed, often with significant 1x also present, both radial and axial vibration",
+    "3x+ (misalignment, severe)": "Strong 3x and higher harmonics, typically indicates more severe angular misalignment",
+    "High frequency, non-harmonic (bearing defect)": "Peaks not at simple multiples of running speed, often much higher frequency, associated with bearing defect frequencies",
+}
+
+# STEP 1: Running speed frequency (1x)
+# TODO: running_speed_hz = shaft_speed_rpm / 60
+# TODO: print(f"Shaft running speed (1x): {running_speed_hz:.1f} Hz")
+
+# STEP 2: Express each peak as an order (multiple of running speed)
+print("\\n=== Spectrum Peaks Expressed as Orders ===")
+peak_orders = []
+# TODO: for freq, amplitude in spectrum_peaks:
+# TODO:     order = freq / running_speed_hz
+# TODO:     peak_orders.append({"frequency": freq, "amplitude": amplitude, "order": order})
+# TODO:     print(f"{freq}Hz, {amplitude}mm/s -> order {order:.2f}x")
+
+# STEP 3: Match against fault signatures
+print("\\n=== Diagnostic Interpretation ===")
+# TODO: for peak in peak_orders:
+# TODO:     if abs(peak["order"] - 1.0) < 0.1:
+# TODO:         peak["diagnosis"] = "1x -- consistent with unbalance"
+# TODO:     elif abs(peak["order"] - 2.0) < 0.1:
+# TODO:         peak["diagnosis"] = "2x -- consistent with misalignment"
+# TODO:     elif abs(peak["order"] - 3.0) < 0.1:
+# TODO:         peak["diagnosis"] = "3x -- consistent with (typically more severe) misalignment"
+# TODO:     elif peak["order"] > 5:
+# TODO:         peak["diagnosis"] = "High order, non-simple-harmonic -- consistent with bearing defect frequency, needs bearing-specific frequency calculation to confirm"
+# TODO:     else:
+# TODO:         peak["diagnosis"] = "Unclassified order -- further investigation needed"
+# TODO:     print(f"{peak['frequency']}Hz (order {peak['order']:.1f}x, {peak['amplitude']}mm/s): {peak['diagnosis']}")
+
+# STEP 4: Rank by amplitude significance
+print("\\n=== Ranked by Amplitude ===")
+# TODO: ranked = sorted(peak_orders, key=lambda p: p["amplitude"], reverse=True)
+# TODO: for p in ranked:
+# TODO:     print(f"{p['amplitude']}mm/s: {p['diagnosis']}")
+
+# STEP 5: Recommendation
+print(f"\\n=== Recommended Response ===")
+print("The DOMINANT peak (highest amplitude) is at 2x running speed, and 1x is also present but smaller --")
+print("this pattern is classically consistent with shaft MISALIGNMENT rather than pure unbalance (which")
+print("would show 1x as dominant instead). Recommended response: schedule an alignment check at the next")
+print("planned maintenance window; misalignment is a progressive fault that typically doesn't require")
+print("immediate shutdown at this amplitude level, but should not be left unaddressed indefinitely, as")
+print("it accelerates bearing and coupling wear over time.")
+`,
+    skillTags: ["Vibration Analysis", "Frequency Spectrum", "Fault Diagnosis", "Predictive Maintenance"],
+    hints: [
+      "Expressing spectrum peaks as ORDERS (multiples of running speed) rather than raw frequency is the standard vibration analysis technique because it makes fault signatures directly comparable across machines running at different speeds -- a 2x peak means the same diagnostic thing (misalignment) whether the machine runs at 1800 RPM or 3600 RPM, while the raw frequency value alone would differ",
+      "The relative amplitude PATTERN across orders (not just which order has a peak) is diagnostically important -- pure unbalance typically shows 1x dominant with much smaller 2x/3x content, while misalignment typically shows 2x (and often 3x) comparable to or dominant over 1x, which is exactly the distinguishing pattern used in this exercise's diagnosis",
+      "Bearing defect frequencies are generally NOT simple integer multiples of running speed -- they depend on the specific bearing's geometry (ball/roller diameter, pitch diameter, number of rolling elements, contact angle), which is why a genuinely non-harmonic high-frequency peak often points toward a bearing issue requiring the bearing's specific defect frequency calculation to confirm, rather than a generic 'high frequency = bearing' assumption",
+    ],
+  },
+  {
+    id: "mech-vib-004",
+    title: "Design a Tuned Mass Damper to Suppress Structural Vibration",
+    category: "Vibrations",
+    icon: "🎯",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 22,
+    tools: ["Python", "Vibration Control"],
+    scenario:
+      "A cantilevered equipment platform vibrates excessively at its natural frequency when excited by a nearby machine's operating frequency, and relocating either piece of equipment isn't feasible. A tuned mass damper (TMD) is proposed as a targeted vibration suppression solution.",
+    objective:
+      "Design a tuned mass damper by calculating its optimal mass ratio, tuning frequency, and damping ratio using established TMD design formulas, and estimate the resulting vibration amplitude reduction.",
+    steps: [
+      "Calculate the primary structure's natural frequency and the mass ratio for the proposed TMD mass",
+      "Calculate the TMD's optimal tuning frequency ratio using the Den Hartog formula",
+      "Calculate the TMD's optimal damping ratio using the corresponding Den Hartog formula",
+      "Calculate the TMD spring stiffness and damping coefficient from these optimal parameters",
+      "Estimate the resulting peak vibration amplitude reduction compared to the undamped primary structure",
+    ],
+    workstation: "notebook",
+    starterCode: `# Tuned Mass Damper (TMD) Design (Den Hartog Optimal Tuning)
+import math
+
+primary_mass_kg = 2500.0
+primary_stiffness_n_per_m = 4_500_000.0
+
+tmd_mass_kg = 125.0   # proposed TMD mass (typically 2-10% of primary mass)
+
+# STEP 1: Primary structure natural frequency and mass ratio
+# TODO: primary_natural_freq_rad_s = math.sqrt(primary_stiffness_n_per_m / primary_mass_kg)
+# TODO: primary_natural_freq_hz = primary_natural_freq_rad_s / (2 * math.pi)
+# TODO: mass_ratio = tmd_mass_kg / primary_mass_kg
+# TODO: print(f"Primary structure natural frequency: {primary_natural_freq_hz:.2f} Hz")
+# TODO: print(f"Mass ratio (mu = TMD mass / primary mass): {mass_ratio:.4f} ({mass_ratio*100:.1f}%)")
+
+# STEP 2: Optimal tuning frequency ratio (Den Hartog formula for undamped primary structure)
+# f_opt = 1 / (1 + mu)
+# TODO: optimal_frequency_ratio = 1 / (1 + mass_ratio)
+# TODO: tmd_tuning_freq_hz = optimal_frequency_ratio * primary_natural_freq_hz
+# TODO: print(f"\\nOptimal TMD tuning frequency ratio: {optimal_frequency_ratio:.4f}")
+# TODO: print(f"TMD tuning frequency: {tmd_tuning_freq_hz:.3f} Hz")
+
+# STEP 3: Optimal damping ratio (Den Hartog formula)
+# zeta_opt = sqrt(3*mu / (8*(1+mu)^3))
+# TODO: optimal_damping_ratio = math.sqrt((3 * mass_ratio) / (8 * (1 + mass_ratio) ** 3))
+# TODO: print(f"Optimal TMD damping ratio: {optimal_damping_ratio:.4f}")
+
+# STEP 4: TMD spring stiffness and damping coefficient
+# TODO: tmd_tuning_freq_rad_s = tmd_tuning_freq_hz * 2 * math.pi
+# TODO: tmd_stiffness_n_per_m = tmd_mass_kg * tmd_tuning_freq_rad_s ** 2
+# TODO: tmd_critical_damping = 2 * tmd_mass_kg * tmd_tuning_freq_rad_s
+# TODO: tmd_damping_coefficient = optimal_damping_ratio * tmd_critical_damping
+# TODO: print(f"\\nRequired TMD spring stiffness: {tmd_stiffness_n_per_m:,.0f} N/m")
+# TODO: print(f"Required TMD damping coefficient: {tmd_damping_coefficient:,.1f} N·s/m")
+
+# STEP 5: Estimated peak amplitude reduction
+# Approximate peak dynamic magnification factor at resonance WITH optimal TMD vs WITHOUT (undamped primary, theoretically infinite)
+# TODO: peak_magnification_with_tmd = math.sqrt(1 + 2 / mass_ratio)
+print(f"\\n=== Vibration Suppression Estimate ===")
+# TODO: print(f"Peak dynamic magnification factor WITH optimally tuned TMD: {peak_magnification_with_tmd:.1f}")
+# TODO: print(f"(An undamped primary structure alone would theoretically have UNBOUNDED response at exact")
+# TODO: print(f" resonance -- the TMD's role is precisely to eliminate this unbounded resonant peak by")
+# TODO: print(f" splitting it into two smaller, finite peaks on either side of the original natural frequency)")
+`,
+    skillTags: ["Tuned Mass Damper", "Den Hartog", "Vibration Control", "Structural Dynamics"],
+    hints: [
+      "A tuned mass damper works by deliberately splitting the primary structure's single sharp resonant peak into two smaller, separated peaks -- rather than eliminating vibration outright, it fundamentally changes the dynamic response shape so that neither resulting peak reaches the dangerous amplitude the original single resonance would have produced",
+      "The Den Hartog optimal tuning formulas (frequency ratio and damping ratio) are specifically derived to minimize the WORST-CASE peak response across the two resulting resonant peaks -- this is a genuinely optimized design target, not an arbitrary rule of thumb, and deviating from these optimal values (mistuning the TMD) can significantly reduce its effectiveness",
+      "The mass ratio is the primary design lever available -- a larger TMD mass (higher mass ratio) provides more effective vibration suppression but at the cost of more added weight and space, which is exactly why practical TMD mass ratios are typically kept in the 1-10% range rather than pursuing higher ratios purely for maximum theoretical suppression",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MECHANICAL — ROBOTICS & MECHATRONICS
+// ─────────────────────────────────────────────────────────────────────────────
+export const MECH_ROBOTICS_CHALLENGES = [
+  {
+    id: "mech-robo-001",
+    title: "Calculate Forward Kinematics for a 2-Link Robotic Arm",
+    category: "Robotics",
+    icon: "🦾",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 18,
+    tools: ["Python", "Robot Kinematics"],
+    scenario:
+      "A 2-link robotic arm's controller needs to calculate the end-effector position given the current joint angles -- this forward kinematics calculation is the foundational computation every higher-level robot motion planning function depends on.",
+    objective:
+      "Calculate the end-effector (x, y) position of a 2-link planar robotic arm given link lengths and joint angles, and verify the result against the arm's known workspace reach limits.",
+    steps: [
+      "Calculate the position of the first joint (elbow) from the base joint angle and first link length",
+      "Calculate the end-effector position by adding the second link's contribution using the cumulative joint angle",
+      "Calculate the total reach distance from base to end-effector",
+      "Verify the calculated reach is within the arm's maximum possible workspace",
+      "Calculate the result for a second joint configuration to demonstrate the arm can reach the same point via different configurations",
+    ],
+    workstation: "notebook",
+    starterCode: `# 2-Link Robotic Arm Forward Kinematics
+import math
+
+link1_length_m = 0.40
+link2_length_m = 0.30
+
+# Joint angles (theta1 = base/shoulder joint, theta2 = elbow joint, relative to link1)
+theta1_deg = 35.0
+theta2_deg = -50.0
+
+# STEP 1: Elbow joint position
+# TODO: theta1_rad = math.radians(theta1_deg)
+# TODO: elbow_x = link1_length_m * math.cos(theta1_rad)
+# TODO: elbow_y = link1_length_m * math.sin(theta1_rad)
+# TODO: print(f"Elbow joint position: ({elbow_x:.3f}, {elbow_y:.3f}) m")
+
+# STEP 2: End-effector position
+# theta2 is relative to link1's orientation, so the absolute angle of link2 is theta1 + theta2
+# TODO: theta2_rad = math.radians(theta2_deg)
+# TODO: absolute_link2_angle_rad = theta1_rad + theta2_rad
+# TODO: end_effector_x = elbow_x + link2_length_m * math.cos(absolute_link2_angle_rad)
+# TODO: end_effector_y = elbow_y + link2_length_m * math.sin(absolute_link2_angle_rad)
+# TODO: print(f"End-effector position: ({end_effector_x:.3f}, {end_effector_y:.3f}) m")
+
+# STEP 3: Total reach distance
+# TODO: reach_distance = math.sqrt(end_effector_x ** 2 + end_effector_y ** 2)
+# TODO: print(f"\\nReach distance from base: {reach_distance:.3f} m")
+
+# STEP 4: Verify within workspace limits
+# TODO: max_reach = link1_length_m + link2_length_m
+# TODO: min_reach = abs(link1_length_m - link2_length_m)
+# TODO: print(f"Arm workspace: {min_reach:.2f}m (min, fully folded) to {max_reach:.2f}m (max, fully extended)")
+# TODO: within_workspace = min_reach <= reach_distance <= max_reach
+# TODO: print(f"Within workspace: {'YES' if within_workspace else 'NO -- calculation error, this should be geometrically impossible'}")
+
+# STEP 5: Alternate configuration reaching a DIFFERENT target as a demonstration
+print(f"\\n=== Alternate Configuration Example ===")
+theta1_alt_deg = 60.0
+theta2_alt_deg = 20.0
+# TODO: theta1_alt_rad = math.radians(theta1_alt_deg)
+# TODO: theta2_alt_rad = math.radians(theta2_alt_deg)
+# TODO: elbow_alt_x = link1_length_m * math.cos(theta1_alt_rad)
+# TODO: elbow_alt_y = link1_length_m * math.sin(theta1_alt_rad)
+# TODO: absolute_link2_alt_angle = theta1_alt_rad + theta2_alt_rad
+# TODO: end_effector_alt_x = elbow_alt_x + link2_length_m * math.cos(absolute_link2_alt_angle)
+# TODO: end_effector_alt_y = elbow_alt_y + link2_length_m * math.sin(absolute_link2_alt_angle)
+# TODO: print(f"With theta1={theta1_alt_deg}°, theta2={theta2_alt_deg}°: end-effector at ({end_effector_alt_x:.3f}, {end_effector_alt_y:.3f}) m")
+`,
+    skillTags: ["Forward Kinematics", "Robotic Arm", "Robot Kinematics", "Mechatronics"],
+    hints: [
+      "Forward kinematics answers 'given these joint angles, where is the end-effector' -- this is the more straightforward direction of the kinematics problem, and is the necessary foundation before tackling the much harder INVERSE kinematics problem (given a target end-effector position, what joint angles achieve it), which typically has multiple valid solutions for a given target",
+      "The angle theta2 in this exercise is defined RELATIVE to link1's orientation (a common robotics convention), which is why the absolute angle of link2 in the world frame is theta1 + theta2, not theta2 alone -- getting this relative-vs-absolute angle convention wrong is a very common forward kinematics implementation bug",
+      "The workspace boundary check (reach distance must fall between the fully-folded minimum and fully-extended maximum) is a useful sanity check on the forward kinematics calculation itself -- any valid combination of joint angles for a 2-link arm should always produce a reach distance within these geometric limits, so a result outside this range signals a calculation error, not a genuinely unreachable configuration",
+    ],
+  },
+  {
+    id: "mech-robo-002",
+    title: "Calculate PID Controller Response for a Robotic Joint Position Control Loop",
+    category: "Robotics",
+    icon: "🎚️",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Python", "PID Control"],
+    scenario:
+      "A robotic joint's position controller is oscillating and overshooting its target position instead of smoothly settling -- classic symptoms of poorly tuned PID gains. Before randomly adjusting gains by trial and error, you need to simulate the control loop's response to understand the actual effect of each gain term.",
+    objective:
+      "Implement a discrete-time PID controller simulation for a simple joint position control loop, and compare the step response under different gain configurations to diagnose the oscillation/overshoot issue.",
+    steps: [
+      "Implement the discrete PID control law (proportional, integral, derivative terms)",
+      "Simulate the closed-loop step response for the current (problematic) gain configuration",
+      "Identify the overshoot and settling behavior from the simulated response",
+      "Simulate an alternative gain configuration with reduced proportional gain and added derivative damping",
+      "Compare the two configurations' performance metrics (overshoot, settling time)",
+    ],
+    workstation: "notebook",
+    starterCode: `# PID Controller Simulation for Robotic Joint Position Control
+import numpy as np
+
+# Simplified joint model: first-order response to applied torque (illustrative, not a full dynamic model)
+joint_inertia = 0.8
+joint_damping = 0.3
+
+target_position_deg = 45.0
+dt = 0.01  # simulation timestep, seconds
+simulation_time_s = 3.0
+
+def simulate_pid_response(kp, ki, kd, dt, sim_time, target):
+    steps = int(sim_time / dt)
+    position = 0.0
+    velocity = 0.0
+    integral_error = 0.0
+    previous_error = target - position
+
+    positions = []
+    times = []
+
+    for step in range(steps):
+        error = target - position
+        # TODO: integral_error += error * dt
+        # TODO: derivative_error = (error - previous_error) / dt
+        # TODO: control_torque = kp * error + ki * integral_error + kd * derivative_error
+
+        # Simplified joint dynamics: torque -> acceleration -> velocity -> position
+        # TODO: acceleration = (control_torque - joint_damping * velocity) / joint_inertia
+        # TODO: velocity += acceleration * dt
+        # TODO: position += velocity * dt
+
+        # TODO: previous_error = error
+        # TODO: positions.append(position)
+        # TODO: times.append(step * dt)
+
+    return times, positions
+
+# STEP 2: Current (problematic) gains -- high Kp, no damping (Kd=0), causing oscillation
+print("=== Current Gains (Problematic) ===")
+kp_current, ki_current, kd_current = 25.0, 5.0, 0.0
+# TODO: times1, positions1 = simulate_pid_response(kp_current, ki_current, kd_current, dt, simulation_time_s, target_position_deg)
+
+# STEP 3: Identify overshoot and settling behavior
+# TODO: max_position1 = max(positions1)
+# TODO: overshoot_pct1 = (max_position1 - target_position_deg) / target_position_deg * 100
+# TODO: print(f"Gains: Kp={kp_current}, Ki={ki_current}, Kd={kd_current}")
+# TODO: print(f"Peak position: {max_position1:.1f}° (target: {target_position_deg}°)")
+# TODO: print(f"Overshoot: {overshoot_pct1:.1f}%")
+
+# STEP 4: Alternative gains -- reduced Kp, added Kd for damping
+print("\\n=== Alternative Gains (Damped) ===")
+kp_alt, ki_alt, kd_alt = 15.0, 3.0, 4.0
+# TODO: times2, positions2 = simulate_pid_response(kp_alt, ki_alt, kd_alt, dt, simulation_time_s, target_position_deg)
+# TODO: max_position2 = max(positions2)
+# TODO: overshoot_pct2 = (max_position2 - target_position_deg) / target_position_deg * 100
+# TODO: print(f"Gains: Kp={kp_alt}, Ki={ki_alt}, Kd={kd_alt}")
+# TODO: print(f"Peak position: {max_position2:.1f}° (target: {target_position_deg}°)")
+# TODO: print(f"Overshoot: {overshoot_pct2:.1f}%")
+
+# STEP 5: Comparison
+print(f"\\n=== Comparison ===")
+# TODO: print(f"Current gains overshoot: {overshoot_pct1:.1f}%")
+# TODO: print(f"Alternative gains overshoot: {overshoot_pct2:.1f}%")
+# TODO: print(f"\\nThe derivative term (Kd) directly opposes rate of change of error, acting as a damping")
+# TODO: print(f"force that resists rapid approach to the target -- this is exactly why adding derivative")
+# TODO: print(f"gain (going from Kd=0 to Kd={kd_alt}) while also moderating the proportional gain reduces")
+# TODO: print(f"the oscillatory overshoot behavior seen in the original configuration")
+`,
+    skillTags: ["PID Control", "Robot Control Loop", "Controller Tuning", "Mechatronics"],
+    hints: [
+      "This exercise directly demonstrates the classic tuning intuition behind each PID term: proportional gain (Kp) drives the response toward the target but can cause overshoot/oscillation if too aggressive on its own, integral gain (Ki) eliminates steady-state error but can add oscillatory behavior if too large, and derivative gain (Kd) acts as a damping term that resists rapid changes in error, directly counteracting overshoot -- simulating the response makes this trade-off directly observable rather than abstract",
+      "The joint dynamics model here is deliberately simplified (a basic inertia-damping system) for illustration -- real robotic joint control must also account for factors like gravity compensation, friction (both static/stiction and dynamic), gear backlash, and coupling effects between joints in a multi-joint arm, all of which affect real-world PID tuning beyond what this simplified simulation captures",
+      "Simulating the control loop's response before deploying gain changes to real hardware is a genuinely valuable practice -- it lets an engineer understand the directional effect of a gain change (will reducing Kp and adding Kd actually help this specific oscillation pattern) before risking unexpected or potentially damaging behavior on physical equipment through blind trial-and-error tuning",
+    ],
+  },
+  {
+    id: "mech-robo-003",
+    title: "Calculate Gear Train Ratio and Torque/Speed Requirements for a Robot Joint Actuator",
+    category: "Robotics",
+    icon: "⚙️",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Python", "Actuator Sizing"],
+    scenario:
+      "A robot joint needs to output a specific torque and rotational speed, but the available motor can't directly deliver both requirements -- a gear reduction is needed to translate the motor's characteristics to what the joint actually needs, and selecting the wrong ratio means either insufficient torque or excessive/insufficient speed.",
+    objective:
+      "Calculate the required gear reduction ratio to convert a motor's rated speed and torque into the joint's required output torque and speed, and verify the resulting motor operating point is within its rated capability.",
+    steps: [
+      "Calculate the required gear ratio to achieve the target output speed from the motor's rated speed",
+      "Calculate the resulting output torque at this gear ratio, accounting for gear train efficiency losses",
+      "Compare the calculated output torque against the joint's actual torque requirement",
+      "If inadequate, calculate the gear ratio actually needed to meet the torque requirement",
+      "Verify the resulting output speed at the torque-driven gear ratio still meets application needs",
+    ],
+    workstation: "notebook",
+    starterCode: `# Gear Train Sizing for Robot Joint Actuator
+motor_rated_speed_rpm = 4000.0
+motor_rated_torque_nm = 0.8
+
+joint_required_speed_rpm = 60.0
+joint_required_torque_nm = 45.0
+
+gear_train_efficiency = 0.85  # accounts for friction losses through the gear reduction stages
+
+# STEP 1: Gear ratio for target speed
+# TODO: speed_based_gear_ratio = motor_rated_speed_rpm / joint_required_speed_rpm
+# TODO: print(f"Gear ratio required for target output speed: {speed_based_gear_ratio:.1f}:1")
+
+# STEP 2: Resulting output torque at this gear ratio
+# TODO: output_torque_at_speed_ratio = motor_rated_torque_nm * speed_based_gear_ratio * gear_train_efficiency
+# TODO: print(f"Resulting output torque at this ratio: {output_torque_at_speed_ratio:.1f} Nm")
+# TODO: print(f"(accounting for {gear_train_efficiency:.0%} gear train efficiency)")
+
+# STEP 3: Compare against requirement
+print(f"\\n=== Torque Adequacy Check ===")
+# TODO: print(f"Required output torque: {joint_required_torque_nm} Nm")
+# TODO: print(f"Achieved output torque: {output_torque_at_speed_ratio:.1f} Nm")
+# TODO: torque_adequate = output_torque_at_speed_ratio >= joint_required_torque_nm
+# TODO: print(f"Status: {'ADEQUATE' if torque_adequate else 'INADEQUATE -- need a higher gear ratio for more torque'}")
+
+# STEP 4: If inadequate, calculate the gear ratio actually needed for the torque requirement
+print(f"\\n=== Torque-Driven Gear Ratio ===")
+# TODO: torque_based_gear_ratio = joint_required_torque_nm / (motor_rated_torque_nm * gear_train_efficiency)
+# TODO: print(f"Gear ratio required for target output torque: {torque_based_gear_ratio:.1f}:1")
+
+# STEP 5: Verify resulting speed at the torque-driven ratio
+# TODO: resulting_speed_at_torque_ratio = motor_rated_speed_rpm / torque_based_gear_ratio
+# TODO: print(f"\\nResulting output speed at this ratio: {resulting_speed_at_torque_ratio:.1f} RPM")
+# TODO: print(f"Required output speed: {joint_required_speed_rpm} RPM")
+# TODO: speed_adequate = resulting_speed_at_torque_ratio >= joint_required_speed_rpm
+# TODO: print(f"Speed adequacy at torque-driven ratio: {'ADEQUATE (meets or exceeds requirement)' if speed_adequate else 'BELOW REQUIREMENT -- motor/gear combination cannot simultaneously meet both requirements, need a different motor'}")
+`,
+    skillTags: ["Gear Reduction", "Actuator Sizing", "Torque-Speed Tradeoff", "Robot Joint Design"],
+    hints: [
+      "Gear reduction fundamentally trades speed for torque (and vice versa) -- a higher gear ratio multiplies torque but proportionally divides speed, which is exactly why a gear ratio chosen purely to hit a target output speed might leave torque inadequate, and the gear ratio needs to be selected based on whichever requirement (speed or torque) is actually the binding constraint for the application",
+      "Gear train efficiency losses (from friction between meshing gear teeth, bearing friction, etc.) mean the output torque is always somewhat LESS than the simple ideal gear-ratio-multiplied value would suggest -- ignoring this efficiency factor when sizing an actuator system risks selecting a motor/gearbox combination that falls just short of the actual torque requirement in practice",
+      "When a single gear ratio can't simultaneously satisfy both speed and torque requirements with the given motor (as the final check in this exercise can reveal), the real solution isn't to keep adjusting the gear ratio -- it's to select a different motor with a rated torque/speed combination that, combined with SOME achievable gear ratio, can satisfy both requirements simultaneously",
+    ],
+  },
+  {
+    id: "mech-robo-004",
+    title: "Calculate Robot End-Effector Payload Capacity Considering Joint Torque Limits",
+    category: "Robotics",
+    icon: "📦",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Python", "Robot Payload Analysis"],
+    scenario:
+      "A robotic arm's specification sheet lists a maximum payload rating, but that rating typically assumes a specific arm configuration -- the actual maximum safe payload at a fully extended reach can be significantly lower due to the increased torque demand on the base joints from the longer moment arm.",
+    objective:
+      "Calculate the maximum safe payload at a given arm extension by working backward from the base joint's maximum torque rating, accounting for both the arm's own weight and the payload's contribution to joint torque.",
+    steps: [
+      "Calculate the torque contribution from the arm's own weight at the given configuration",
+      "Calculate the remaining available torque budget for payload after accounting for the arm's self-weight",
+      "Calculate the maximum payload mass that stays within the remaining torque budget at the given reach distance",
+      "Compare this configuration-specific maximum against the arm's nominal rated payload",
+      "Assess the payload capacity at a shorter, more favorable reach distance for comparison",
+    ],
+    workstation: "notebook",
+    starterCode: `# Robot Payload Capacity vs Arm Configuration
+g = 9.81
+
+base_joint_max_torque_nm = 180.0
+
+# Arm segment properties: (mass_kg, center_of_mass_distance_from_base_m)
+arm_segments = [
+    (8.5, 0.35),   # link 1
+    (4.2, 0.75),   # link 2
+]
+
+nominal_rated_payload_kg = 5.0  # spec sheet rating, presumably at a favorable/compact configuration
+
+# Current configuration: fully extended reach
+current_reach_m = 1.10
+
+# STEP 1: Torque from arm's own weight
+print("=== Arm Self-Weight Torque Contribution ===")
+# TODO: arm_self_weight_torque = 0.0
+# TODO: for mass, com_distance in arm_segments:
+# TODO:     segment_torque = mass * g * com_distance
+# TODO:     arm_self_weight_torque += segment_torque
+# TODO:     print(f"Segment mass={mass}kg, COM at {com_distance}m: torque contribution = {segment_torque:.1f} Nm")
+
+# TODO: print(f"\\nTotal arm self-weight torque: {arm_self_weight_torque:.1f} Nm")
+
+# STEP 2: Remaining torque budget for payload
+# TODO: remaining_torque_budget = base_joint_max_torque_nm - arm_self_weight_torque
+# TODO: print(f"Base joint max torque: {base_joint_max_torque_nm} Nm")
+# TODO: print(f"Remaining torque budget for payload: {remaining_torque_budget:.1f} Nm")
+
+# STEP 3: Max payload at current (fully extended) reach
+# TODO: max_payload_at_current_reach_kg = remaining_torque_budget / (g * current_reach_m)
+# TODO: print(f"\\n=== Payload Capacity at {current_reach_m}m Reach ===")
+# TODO: print(f"Maximum safe payload: {max_payload_at_current_reach_kg:.2f} kg")
+
+# STEP 4: Compare against nominal rating
+print(f"\\n=== Comparison to Nominal Spec ===")
+# TODO: print(f"Nominal rated payload (spec sheet): {nominal_rated_payload_kg} kg")
+# TODO: print(f"Actual capacity at {current_reach_m}m reach: {max_payload_at_current_reach_kg:.2f} kg")
+# TODO: if max_payload_at_current_reach_kg < nominal_rated_payload_kg:
+# TODO:     print(f"REDUCED capacity at this extended reach -- {nominal_rated_payload_kg - max_payload_at_current_reach_kg:.2f} kg")
+# TODO:     print(f"less than the nominal spec sheet rating due to increased moment arm at full extension")
+
+# STEP 5: Payload capacity at a shorter, more favorable reach
+shorter_reach_m = 0.50
+# TODO: max_payload_at_shorter_reach_kg = remaining_torque_budget / (g * shorter_reach_m)
+print(f"\\n=== Payload Capacity at Shorter {shorter_reach_m}m Reach ===")
+# TODO: print(f"Maximum safe payload: {max_payload_at_shorter_reach_kg:.2f} kg")
+# TODO: print(f"\\nThis confirms payload capacity is CONFIGURATION-DEPENDENT, not a single fixed number --")
+# TODO: print(f"application engineers must verify payload against the SPECIFIC reach/pose the robot will")
+# TODO: print(f"actually operate at, not just the spec sheet's nominal rating alone")
+`,
+    skillTags: ["Robot Payload", "Joint Torque Limits", "Moment Arm", "Robot Arm Design"],
+    hints: [
+      "A robot arm's spec-sheet payload rating typically corresponds to a specific, often favorable, arm configuration -- treating this single number as valid across the arm's entire workspace is a common and potentially serious application engineering mistake, since actual safe payload capacity varies significantly with reach distance and configuration",
+      "The base joint (or whichever joint is closest to the load path and experiences the largest moment arm) is typically the limiting constraint for payload capacity -- this is why the calculation works backward from that joint's torque limit rather than from the payload requirement forward, since the joint's fixed torque rating is the actual hard physical constraint",
+      "The arm's OWN weight consumes a real, non-negligible portion of the available joint torque budget before any payload is even considered -- this is why remaining torque budget (max torque minus self-weight torque) rather than the joint's full rated torque is the correct starting point for calculating payload capacity, and why longer/heavier arm segments reduce available payload capacity even before adding any actual payload",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MECHANICAL — AUTOMOTIVE ENGINEERING
+// ─────────────────────────────────────────────────────────────────────────────
+export const MECH_AUTOMOTIVE_CHALLENGES = [
+  {
+    id: "mech-auto-001",
+    title: "Calculate Vehicle Braking Distance and Verify Brake System Adequacy",
+    category: "Automotive Engineering",
+    icon: "🚗",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Python", "Vehicle Dynamics"],
+    scenario:
+      "An automotive engineer needs to verify a vehicle's braking system provides adequate stopping distance at highway speed, accounting for both driver reaction time and actual braking deceleration -- an inadequate brake system is a fundamental safety failure.",
+    objective:
+      "Calculate total stopping distance including reaction distance and braking distance, and verify the brake system's deceleration capability meets the required stopping performance standard.",
+    steps: [
+      "Calculate the distance traveled during driver reaction time before braking begins",
+      "Calculate the braking distance from initial speed and deceleration rate",
+      "Calculate total stopping distance",
+      "Compare against a target maximum stopping distance requirement",
+      "Calculate the required deceleration rate if the current system doesn't meet the target",
+    ],
+    workstation: "notebook",
+    starterCode: `# Vehicle Braking Distance Calculation
+initial_speed_kmh = 100.0
+driver_reaction_time_s = 1.5    # typical average reaction time
+brake_deceleration_m_s2 = 7.5    # achievable deceleration for this brake system/tire/road combination
+
+target_max_stopping_distance_m = 70.0  # regulatory or design target for this speed
+
+# STEP 1: Reaction distance (vehicle travels at constant speed during reaction time)
+# TODO: initial_speed_m_s = initial_speed_kmh / 3.6
+# TODO: reaction_distance_m = initial_speed_m_s * driver_reaction_time_s
+# TODO: print(f"Initial speed: {initial_speed_kmh} km/h ({initial_speed_m_s:.2f} m/s)")
+# TODO: print(f"Reaction distance ({driver_reaction_time_s}s reaction time): {reaction_distance_m:.1f} m")
+
+# STEP 2: Braking distance (using v^2 = u^2 - 2as, solved for s at v=0)
+# TODO: braking_distance_m = (initial_speed_m_s ** 2) / (2 * brake_deceleration_m_s2)
+# TODO: print(f"Braking distance (at {brake_deceleration_m_s2} m/s² deceleration): {braking_distance_m:.1f} m")
+
+# STEP 3: Total stopping distance
+# TODO: total_stopping_distance_m = reaction_distance_m + braking_distance_m
+# TODO: print(f"\\nTotal stopping distance: {total_stopping_distance_m:.1f} m")
+
+# STEP 4: Compare against target
+print(f"\\n=== Target Comparison ===")
+# TODO: print(f"Target maximum stopping distance: {target_max_stopping_distance_m} m")
+# TODO: meets_target = total_stopping_distance_m <= target_max_stopping_distance_m
+# TODO: print(f"Status: {'MEETS TARGET' if meets_target else 'EXCEEDS TARGET -- inadequate braking performance'}")
+
+# STEP 5: Required deceleration if inadequate
+# TODO: if not meets_target:
+# TODO:     max_allowable_braking_distance = target_max_stopping_distance_m - reaction_distance_m
+# TODO:     required_deceleration = (initial_speed_m_s ** 2) / (2 * max_allowable_braking_distance)
+# TODO:     print(f"\\nRequired deceleration to meet target: {required_deceleration:.2f} m/s²")
+# TODO:     print(f"(current system achieves {brake_deceleration_m_s2} m/s² -- gap of {required_deceleration - brake_deceleration_m_s2:.2f} m/s²)")
+# TODO:     print(f"Note: this may require larger brake rotors/pads, improved tire grip, or a combination")
+# TODO: else:
+# TODO:     margin_m = target_max_stopping_distance_m - total_stopping_distance_m
+# TODO:     print(f"\\nMargin below target: {margin_m:.1f} m")
+`,
+    skillTags: ["Braking Distance", "Vehicle Dynamics", "Automotive Safety", "Reaction Time"],
+    hints: [
+      "Total stopping distance has two genuinely distinct components that must both be accounted for -- reaction distance (where the vehicle travels at constant speed while the driver perceives the hazard and moves to the brake) and braking distance (where the vehicle actually decelerates) -- and reaction distance alone is often a larger contributor than people intuitively expect, especially at higher speeds",
+      "Achievable brake deceleration is fundamentally limited by tire-road friction, not just brake system torque capacity -- a brake system capable of locking the wheels doesn't improve stopping distance beyond what the tires can actually grip, which is why maximum deceleration is bounded by the tire/road friction coefficient regardless of how much braking torque the calipers and rotors could theoretically apply",
+      "Braking distance scales with the SQUARE of initial speed (from the v²=u²-2as relationship), not linearly -- this means doubling speed quadruples the braking distance component, a critical and often underappreciated safety implication of even modest speed increases, especially relevant when comparing highway speeds to urban speeds",
+    ],
+  },
+  {
+    id: "mech-auto-002",
+    title: "Calculate Engine Volumetric Efficiency and Diagnose Performance Shortfall",
+    category: "Automotive Engineering",
+    icon: "🔧",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Python", "Engine Performance"],
+    scenario:
+      "An engine is producing less power than expected for its displacement and operating speed. Before investigating exotic causes, a technician wants to calculate the engine's actual volumetric efficiency -- a fundamental metric that reveals how effectively the engine is actually filling its cylinders with air, a common and often overlooked root cause of underperformance.",
+    objective:
+      "Calculate engine volumetric efficiency from measured airflow and engine displacement/speed, and diagnose whether the shortfall points toward an intake/breathing restriction issue.",
+    steps: [
+      "Calculate theoretical maximum air intake volume at the given engine displacement and speed",
+      "Calculate actual measured air intake volume from mass airflow sensor data and air density",
+      "Calculate volumetric efficiency as the ratio of actual to theoretical intake",
+      "Compare against typical expected volumetric efficiency ranges for naturally aspirated engines",
+      "Diagnose likely causes if volumetric efficiency is below the expected range",
+    ],
+    workstation: "notebook",
+    starterCode: `# Engine Volumetric Efficiency Calculation
+engine_displacement_liters = 2.0
+engine_speed_rpm = 4000.0
+num_cylinders = 4
+
+# From mass airflow sensor
+measured_mass_airflow_kg_per_hr = 220.0
+air_density_kg_per_m3 = 1.15   # at intake conditions (temperature/altitude dependent)
+
+# STEP 1: Theoretical maximum air intake volume
+# For a 4-stroke engine, one intake stroke per cylinder per 2 crankshaft revolutions
+# TODO: theoretical_volume_per_intake_stroke_l = engine_displacement_liters / num_cylinders  # per cylinder swept volume
+# TODO: intake_strokes_per_minute = (engine_speed_rpm / 2) * num_cylinders  # each cylinder intakes once per 2 revolutions
+# TODO: theoretical_volume_flow_l_per_min = theoretical_volume_per_intake_stroke_l * intake_strokes_per_minute
+# TODO: theoretical_volume_flow_m3_per_hr = (theoretical_volume_flow_l_per_min * 60) / 1000
+# TODO: print(f"Theoretical maximum air volume flow: {theoretical_volume_flow_m3_per_hr:.2f} m³/hr")
+
+# STEP 2: Actual air intake volume from measured mass flow
+# TODO: actual_volume_flow_m3_per_hr = measured_mass_airflow_kg_per_hr / air_density_kg_per_m3
+# TODO: print(f"Actual measured air volume flow: {actual_volume_flow_m3_per_hr:.2f} m³/hr")
+
+# STEP 3: Volumetric efficiency
+# TODO: volumetric_efficiency = (actual_volume_flow_m3_per_hr / theoretical_volume_flow_m3_per_hr) * 100
+# TODO: print(f"\\nVolumetric Efficiency: {volumetric_efficiency:.1f}%")
+
+# STEP 4: Compare against expected range
+print(f"\\n=== Expected Range Comparison ===")
+expected_range_min = 80.0
+expected_range_typical_max = 95.0
+# TODO: print(f"Typical naturally aspirated engine VE range: {expected_range_min}-{expected_range_typical_max}% (peaking near the engine's torque peak RPM)")
+# TODO: print(f"Calculated VE: {volumetric_efficiency:.1f}%")
+
+# STEP 5: Diagnosis
+print(f"\\n=== Diagnosis ===")
+# TODO: if volumetric_efficiency < expected_range_min:
+# TODO:     print("BELOW expected range -- consistent with an intake/breathing restriction issue. Common causes:")
+# TODO:     print("  - Clogged air filter increasing intake restriction")
+# TODO:     print("  - Restrictive intake manifold or throttle body design/sizing")
+# TODO:     print("  - Exhaust backpressure issue (restricted exhaust impedes scavenging, indirectly hurting VE)")
+# TODO:     print("  - Valve timing not optimized for this operating speed")
+# TODO:     print("  - Intake air temperature higher than assumed, reducing actual air density and mass ingested")
+# TODO: else:
+# TODO:     print("Within or above the typical expected range -- volumetric efficiency does not appear to be")
+# TODO:     print("the primary bottleneck; performance shortfall likely stems from a different cause")
+# TODO:     print("(fuel delivery, ignition timing, mechanical friction losses, etc.)")
+`,
+    skillTags: ["Volumetric Efficiency", "Engine Performance", "Automotive Diagnostics", "Intake Airflow"],
+    hints: [
+      "Volumetric efficiency directly measures how effectively an engine actually fills its cylinders with air relative to the theoretical maximum implied by its displacement and speed -- since power output is fundamentally tied to how much air (and correspondingly, fuel) can be combusted per cycle, VE is one of the most diagnostically useful metrics for understanding whether an engine's breathing (not its combustion chemistry or ignition system) is the performance bottleneck",
+      "Volumetric efficiency naturally varies with engine speed for any given engine design, typically peaking somewhere near the engine's torque peak RPM due to intake/exhaust tuning effects (resonance in the intake tract, valve timing overlap effects) -- comparing a single VE measurement against a fixed expected range is a useful screening check, but a full diagnosis would ideally compare VE across the engine's full RPM range against that same engine's known-good baseline curve",
+      "A below-expected VE finding correctly points toward AIRFLOW-related root causes (filter, intake restriction, exhaust backpressure, valve timing) specifically -- this is diagnostically useful because it helps rule OUT unrelated potential causes of underperformance like fuel delivery or ignition timing issues, focusing troubleshooting effort on the intake/exhaust breathing path rather than a broader, less targeted investigation",
+    ],
+  },
+  {
+    id: "mech-auto-003",
+    title: "Calculate Vehicle Fuel Economy Impact from Aerodynamic Drag and Rolling Resistance",
+    category: "Automotive Engineering",
+    icon: "⛽",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Python", "Vehicle Dynamics"],
+    scenario:
+      "A vehicle manufacturer is evaluating whether a proposed aerodynamic improvement (reduced drag coefficient) or a proposed low-rolling-resistance tire upgrade would provide a bigger real-world fuel economy benefit, since engineering resources are limited and only one can be prioritized for the next model year.",
+    objective:
+      "Calculate the power required to overcome aerodynamic drag and rolling resistance at highway speed, and compare the fuel economy impact of the two proposed improvements to determine which provides greater benefit.",
+    steps: [
+      "Calculate aerodynamic drag force and power required at highway cruising speed",
+      "Calculate rolling resistance force and power required at the same speed",
+      "Calculate the power reduction from each proposed improvement individually",
+      "Estimate the resulting fuel economy improvement percentage from each",
+      "Recommend which improvement to prioritize, and note the speed-dependence of the underlying comparison",
+    ],
+    workstation: "notebook",
+    starterCode: `# Fuel Economy Impact: Aerodynamic Drag vs Rolling Resistance
+air_density_kg_m3 = 1.225
+frontal_area_m2 = 2.3
+drag_coefficient_current = 0.32
+drag_coefficient_improved = 0.28   # proposed aerodynamic improvement
+
+vehicle_mass_kg = 1500.0
+rolling_resistance_coefficient_current = 0.012
+rolling_resistance_coefficient_improved = 0.009  # proposed low-rolling-resistance tires
+g = 9.81
+
+cruising_speed_kmh = 110.0
+
+# STEP 1: Aerodynamic drag force and power (current vs improved)
+# TODO: cruising_speed_m_s = cruising_speed_kmh / 3.6
+# TODO: drag_force_current = 0.5 * air_density_kg_m3 * frontal_area_m2 * drag_coefficient_current * cruising_speed_m_s ** 2
+# TODO: drag_force_improved = 0.5 * air_density_kg_m3 * frontal_area_m2 * drag_coefficient_improved * cruising_speed_m_s ** 2
+# TODO: drag_power_current_kw = (drag_force_current * cruising_speed_m_s) / 1000
+# TODO: drag_power_improved_kw = (drag_force_improved * cruising_speed_m_s) / 1000
+# TODO: print(f"Aerodynamic drag power (current Cd={drag_coefficient_current}): {drag_power_current_kw:.2f} kW")
+# TODO: print(f"Aerodynamic drag power (improved Cd={drag_coefficient_improved}): {drag_power_improved_kw:.2f} kW")
+# TODO: drag_power_savings_kw = drag_power_current_kw - drag_power_improved_kw
+# TODO: print(f"Power savings from aero improvement: {drag_power_savings_kw:.2f} kW")
+
+# STEP 2: Rolling resistance force and power (current vs improved)
+# TODO: rolling_force_current = rolling_resistance_coefficient_current * vehicle_mass_kg * g
+# TODO: rolling_force_improved = rolling_resistance_coefficient_improved * vehicle_mass_kg * g
+# TODO: rolling_power_current_kw = (rolling_force_current * cruising_speed_m_s) / 1000
+# TODO: rolling_power_improved_kw = (rolling_force_improved * cruising_speed_m_s) / 1000
+# TODO: print(f"\\nRolling resistance power (current Crr={rolling_resistance_coefficient_current}): {rolling_power_current_kw:.2f} kW")
+# TODO: print(f"Rolling resistance power (improved Crr={rolling_resistance_coefficient_improved}): {rolling_power_improved_kw:.2f} kW")
+# TODO: rolling_power_savings_kw = rolling_power_current_kw - rolling_power_improved_kw
+# TODO: print(f"Power savings from tire improvement: {rolling_power_savings_kw:.2f} kW")
+
+# STEP 3 & 4: Compare total power baseline and estimate fuel economy improvement
+# TODO: total_current_power_kw = drag_power_current_kw + rolling_power_current_kw
+print(f"\\n=== Fuel Economy Impact Comparison ===")
+# TODO: print(f"Total road-load power at cruise (baseline): {total_current_power_kw:.2f} kW")
+# TODO: aero_improvement_pct = (drag_power_savings_kw / total_current_power_kw) * 100
+# TODO: tire_improvement_pct = (rolling_power_savings_kw / total_current_power_kw) * 100
+# TODO: print(f"\\nAerodynamic improvement: {drag_power_savings_kw:.2f} kW savings ({aero_improvement_pct:.1f}% of cruise power)")
+# TODO: print(f"Tire improvement: {rolling_power_savings_kw:.2f} kW savings ({tire_improvement_pct:.1f}% of cruise power)")
+
+# STEP 5: Recommendation
+print(f"\\n=== Recommendation ===")
+# TODO: better_option = "Aerodynamic improvement" if drag_power_savings_kw > rolling_power_savings_kw else "Tire improvement"
+# TODO: print(f"At {cruising_speed_kmh} km/h highway cruise: {better_option} provides greater fuel economy benefit")
+print(f"\\nIMPORTANT speed-dependence note: aerodynamic drag power scales with the CUBE of speed while")
+print(f"rolling resistance power scales linearly with speed -- this comparison's conclusion is specific")
+print(f"to highway cruising speed. At lower speeds (city driving), rolling resistance becomes proportionally")
+print(f"MORE significant relative to aero drag, and the recommended priority could reverse. The right")
+print(f"choice depends on the vehicle's target use case and drive cycle, not a single speed point alone.")
+`,
+    skillTags: ["Aerodynamic Drag", "Rolling Resistance", "Fuel Economy", "Vehicle Dynamics"],
+    hints: [
+      "Aerodynamic drag FORCE scales with the square of speed, and since power is force times speed, drag POWER scales with the CUBE of speed -- this is why aerodynamic improvements matter disproportionately more at highway speeds than at low city speeds, while rolling resistance power scales only linearly with speed and remains proportionally more significant at lower speeds",
+      "This is exactly why a fair comparison between competing engineering improvements must specify the operating conditions (speed, drive cycle) under which the comparison is being made -- a conclusion that's valid at highway cruising speed can genuinely reverse at city driving speeds, and a real fuel economy improvement decision should be evaluated across a representative drive cycle (like an EPA test cycle), not a single speed point",
+      "This exercise deliberately builds in the caveat about drive-cycle dependence as the final takeaway -- resource-constrained engineering prioritization decisions (choosing which of two competing improvements to fund) should be grounded in the vehicle's actual target use case and expected real-world driving pattern, not a single convenient calculation point that might not represent how customers will actually use the vehicle",
+    ],
+  },
+  {
+    id: "mech-auto-004",
+    title: "Design a Suspension Spring Rate for Target Ride Frequency",
+    category: "Automotive Engineering",
+    icon: "🔧",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Python", "Suspension Design"],
+    scenario:
+      "A vehicle's suspension needs spring rates selected to achieve a target ride frequency -- too soft feels floaty and uncontrolled over bumps, too stiff feels harsh and transmits road impacts directly to occupants. The target ride frequency is a deliberate engineering choice balancing comfort and handling.",
+    objective:
+      "Calculate the required suspension spring rate to achieve a target ride (natural) frequency given the vehicle's corner weight, and verify the front-to-rear frequency relationship follows standard ride comfort design guidance.",
+    steps: [
+      "Calculate the sprung mass supported at each corner from vehicle weight distribution",
+      "Calculate the required spring rate to achieve the target ride frequency at each corner",
+      "Verify the resulting spring rates are physically reasonable for this vehicle class",
+      "Check the front-to-rear ride frequency ratio against standard pitch-control design guidance",
+      "Calculate the resulting wheel travel for a given road input to assess if it stays within suspension travel limits",
+    ],
+    workstation: "notebook",
+    starterCode: `# Suspension Spring Rate Design for Target Ride Frequency
+import math
+
+total_vehicle_weight_kg = 1500.0
+front_weight_distribution_pct = 58.0  # % of total weight on front axle
+sprung_mass_ratio = 0.88  # fraction of corner weight that is SPRUNG mass (excludes wheel/tire/brake unsprung mass)
+
+target_front_ride_frequency_hz = 1.3
+target_rear_ride_frequency_hz = 1.4   # rear typically set slightly higher than front for pitch control
+
+g = 9.81
+
+# STEP 1: Sprung mass per corner
+# TODO: front_axle_weight_kg = total_vehicle_weight_kg * (front_weight_distribution_pct / 100)
+# TODO: rear_axle_weight_kg = total_vehicle_weight_kg * (1 - front_weight_distribution_pct / 100)
+# TODO: front_corner_weight_kg = front_axle_weight_kg / 2
+# TODO: rear_corner_weight_kg = rear_axle_weight_kg / 2
+# TODO: front_sprung_mass_per_corner_kg = front_corner_weight_kg * sprung_mass_ratio
+# TODO: rear_sprung_mass_per_corner_kg = rear_corner_weight_kg * sprung_mass_ratio
+# TODO: print(f"Front sprung mass per corner: {front_sprung_mass_per_corner_kg:.1f} kg")
+# TODO: print(f"Rear sprung mass per corner: {rear_sprung_mass_per_corner_kg:.1f} kg")
+
+# STEP 2: Required spring rate for target frequency
+# f = (1/2pi) x sqrt(k/m), solved for k: k = m x (2 pi f)^2
+def required_spring_rate(mass_kg, frequency_hz):
+    # TODO: omega = 2 * math.pi * frequency_hz
+    # TODO: spring_rate_n_per_m = mass_kg * omega ** 2
+    # TODO: return spring_rate_n_per_m
+    pass
+
+# TODO: front_spring_rate_n_per_m = required_spring_rate(front_sprung_mass_per_corner_kg, target_front_ride_frequency_hz)
+# TODO: rear_spring_rate_n_per_m = required_spring_rate(rear_sprung_mass_per_corner_kg, target_rear_ride_frequency_hz)
+# TODO: print(f"\\nRequired front spring rate: {front_spring_rate_n_per_m:.0f} N/m ({front_spring_rate_n_per_m/1000:.1f} N/mm)")
+# TODO: print(f"Required rear spring rate: {rear_spring_rate_n_per_m:.0f} N/m ({rear_spring_rate_n_per_m/1000:.1f} N/mm)")
+
+# STEP 3: Physical reasonableness check
+print(f"\\n=== Reasonableness Check ===")
+print("Typical passenger car spring rates: front 15-35 N/mm, rear 15-35 N/mm (varies with vehicle class")
+print("and suspension geometry/motion ratio -- these are WHEEL-rate equivalent values for comparison)")
+
+# STEP 4: Front-to-rear ride frequency ratio check
+# TODO: frequency_ratio = target_rear_ride_frequency_hz / target_front_ride_frequency_hz
+# TODO: print(f"\\nRear/front ride frequency ratio: {frequency_ratio:.2f}")
+# TODO: print("Standard pitch-control guidance: rear ride frequency should be roughly 1.0-1.2x the front,")
+# TODO: print("which helps the rear suspension 'catch up' after the front encounters a bump, reducing")
+# TODO: print("the pitching/hobby-horse motion that occurs if front and rear move badly out of phase")
+# TODO: guidance_followed = 1.0 <= frequency_ratio <= 1.2
+# TODO: print(f"Follows standard guidance: {'YES' if guidance_followed else 'NO -- reconsider target frequencies'}")
+
+# STEP 5: Wheel travel for a given road input
+road_bump_height_m = 0.05  # a moderate road bump/pothole edge
+print(f"\\n=== Wheel Travel Check (simplified) ===")
+print(f"For a {road_bump_height_m*1000:.0f}mm road input, actual dynamic wheel travel depends on damping")
+print(f"characteristics and input frequency content, not just static spring rate -- full suspension travel")
+print(f"verification requires a proper quarter-car dynamic simulation, not this simplified static check alone")
+`,
+    skillTags: ["Suspension Design", "Ride Frequency", "Spring Rate", "Vehicle Dynamics"],
+    hints: [
+      "Ride frequency (not raw spring rate) is the design parameter that actually correlates with subjective ride feel -- a heavier vehicle needs a proportionally stiffer spring to achieve the SAME ride frequency as a lighter vehicle, which is exactly why spring rate should be calculated backward from a target frequency and the vehicle's actual sprung mass, rather than picking a spring rate number in isolation",
+      "The convention of setting rear ride frequency slightly higher than front (typically front:rear ratio around 1:1.0-1.2) is a deliberate pitch-control design choice -- when the front wheels hit a bump first and the front suspension responds, having the rear respond slightly faster (higher frequency) helps the rear 'catch up' in phase with the front rather than continuing to oscillate out of sync, reducing the pitching motion passengers perceive as an uncomfortable 'porpoising' or 'hobby-horse' ride quality",
+      "Only sprung mass (not the vehicle's total corner weight) should be used in the ride frequency calculation -- unsprung mass (wheels, tires, brakes, and the lower suspension components) sits below the spring and doesn't participate in the sprung-mass oscillation mode this calculation targets, so including it would produce an incorrect, overly conservative spring rate result",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MECHANICAL — FINITE ELEMENT ANALYSIS FUNDAMENTALS
+// ─────────────────────────────────────────────────────────────────────────────
+export const MECH_FEA_CHALLENGES = [
+  {
+    id: "mech-fea-001",
+    title: "Solve a 1D Spring System Using the Finite Element Stiffness Method",
+    category: "Finite Element Analysis",
+    icon: "🔲",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Python", "NumPy", "FEA Fundamentals"],
+    scenario:
+      "Before trusting complex commercial FEA software results on a real structure, an engineer wants to solidify understanding of the underlying method by solving a simple spring assembly by hand using the direct stiffness method -- the same fundamental approach that scales up to millions of elements in real FEA software.",
+    objective:
+      "Assemble the global stiffness matrix for a series of connected springs, apply boundary conditions and loads, and solve for nodal displacements using the direct stiffness method.",
+    steps: [
+      "Build the element stiffness matrix for each individual spring",
+      "Assemble the global stiffness matrix by superimposing element contributions at shared nodes",
+      "Apply boundary conditions (fixed nodes) and reduce the system accordingly",
+      "Solve the reduced system of equations for unknown nodal displacements",
+      "Calculate the internal force in each spring from the solved displacements",
+    ],
+    workstation: "notebook",
+    starterCode: `# 1D Spring System - Direct Stiffness Method
+import numpy as np
+
+# Three springs in series: Node1 --k1-- Node2 --k2-- Node3 --k3-- Node4
+# Node 1 is fixed, Node 4 is fixed, force applied at Node 2 and Node 3
+k1, k2, k3 = 2000.0, 1500.0, 1800.0  # N/m
+force_at_node2 = 500.0   # N
+force_at_node3 = -300.0  # N (negative = opposite direction)
+
+num_nodes = 4
+
+# STEP 1 & 2: Assemble global stiffness matrix
+# Each spring element contributes a 2x2 local stiffness matrix [[k,-k],[-k,k]] to its two connected DOFs
+K_global = np.zeros((num_nodes, num_nodes))
+
+# TODO: springs = [(0, 1, k1), (1, 2, k2), (2, 3, k3)]  # (node_i, node_j, stiffness) -- 0-indexed
+# TODO: for node_i, node_j, k in springs:
+# TODO:     K_global[node_i, node_i] += k
+# TODO:     K_global[node_j, node_j] += k
+# TODO:     K_global[node_i, node_j] -= k
+# TODO:     K_global[node_j, node_i] -= k
+
+print("=== Global Stiffness Matrix ===")
+# TODO: print(K_global)
+
+# Force vector
+# TODO: F_global = np.array([0.0, force_at_node2, force_at_node3, 0.0])
+
+# STEP 3: Apply boundary conditions -- Node 1 (index 0) and Node 4 (index 3) are FIXED
+# Reduce the system to only the free DOFs (Node 2 and Node 3, indices 1 and 2)
+free_dofs = [1, 2]
+# TODO: K_reduced = K_global[np.ix_(free_dofs, free_dofs)]
+# TODO: F_reduced = F_global[free_dofs]
+print("\\n=== Reduced System (free DOFs only) ===")
+# TODO: print(f"K_reduced:\\n{K_reduced}")
+# TODO: print(f"F_reduced: {F_reduced}")
+
+# STEP 4: Solve for unknown displacements
+# TODO: displacements_free = np.linalg.solve(K_reduced, F_reduced)
+# TODO: print(f"\\nDisplacement at Node 2: {displacements_free[0]*1000:.3f} mm")
+# TODO: print(f"Displacement at Node 3: {displacements_free[1]*1000:.3f} mm")
+
+# Full displacement vector (fixed nodes = 0 displacement)
+# TODO: displacements_full = np.array([0.0, displacements_free[0], displacements_free[1], 0.0])
+
+# STEP 5: Internal force in each spring
+print("\\n=== Internal Spring Forces ===")
+# TODO: for node_i, node_j, k in springs:
+# TODO:     relative_displacement = displacements_full[node_j] - displacements_full[node_i]
+# TODO:     internal_force = k * relative_displacement
+# TODO:     print(f"Spring {node_i+1}-{node_j+1} (k={k} N/m): internal force = {internal_force:.1f} N")
+`,
+    skillTags: ["Finite Element Method", "Direct Stiffness Method", "FEA Fundamentals", "Structural Analysis"],
+    hints: [
+      "The direct stiffness assembly process (superimposing each element's local stiffness contribution into the correct positions of the global matrix) is the exact same fundamental mechanism used by commercial FEA software for structures with millions of elements -- this simple spring example demonstrates the core algorithm at a scale small enough to trace by hand, which is genuinely valuable for building intuition about what the software is actually doing internally",
+      "Applying boundary conditions by REDUCING the system (removing rows/columns for fixed DOFs) rather than trying to solve the full singular global stiffness matrix directly is essential -- the unreduced global stiffness matrix is always singular (non-invertible) because rigid body motion is unconstrained until boundary conditions are applied, which is why this reduction step isn't optional",
+      "Verifying results with a simple hand-calculable spring system before trusting complex FEA software output on a real geometry is a genuinely valuable practice -- it builds the intuition needed to sanity-check whether a complex model's results are physically reasonable, since blindly trusting FEA software output without understanding the underlying method is a real source of undetected modeling errors in professional engineering practice",
+    ],
+  },
+  {
+    id: "mech-fea-002",
+    title: "Verify FEA Mesh Convergence Before Trusting Stress Results",
+    category: "Finite Element Analysis",
+    icon: "🕸️",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 18,
+    tools: ["Python", "FEA Verification"],
+    scenario:
+      "An FEA analysis of a stress concentration feature (like a hole in a plate under tension) produced a peak stress result, but before that number gets used to justify a design decision, mesh convergence must be verified -- a single mesh density result without convergence checking is a common and serious FEA misuse.",
+    objective:
+      "Analyze stress results across progressively refined mesh densities to assess convergence, and determine whether the reported peak stress result can be trusted or needs further mesh refinement.",
+    steps: [
+      "Tabulate peak stress results across a mesh refinement study (multiple mesh densities)",
+      "Calculate the percentage change in peak stress between successive refinement levels",
+      "Determine whether the results have converged based on a standard convergence criterion",
+      "Estimate the converged (mesh-independent) stress value using Richardson extrapolation",
+      "Assess whether the originally reported single-mesh result was reliable",
+    ],
+    workstation: "notebook",
+    starterCode: `# FEA Mesh Convergence Study
+# Progressive mesh refinement results for peak stress at a stress concentration feature
+mesh_study = [
+    {"element_count": 500, "peak_stress_mpa": 142.3},
+    {"element_count": 2000, "peak_stress_mpa": 168.7},
+    {"element_count": 8000, "peak_stress_mpa": 178.9},
+    {"element_count": 32000, "peak_stress_mpa": 181.5},
+    {"element_count": 128000, "peak_stress_mpa": 182.1},
+]
+
+original_reported_mesh_index = 1  # the analyst originally only ran the 2000-element mesh and reported that result
+
+# STEP 1 & 2: Percentage change between successive refinement levels
+print("=== Mesh Convergence Study ===")
+# TODO: for i in range(len(mesh_study)):
+# TODO:     entry = mesh_study[i]
+# TODO:     if i == 0:
+# TODO:         print(f"Elements={entry['element_count']}: stress={entry['peak_stress_mpa']} MPa (baseline)")
+# TODO:     else:
+# TODO:         prev_stress = mesh_study[i-1]["peak_stress_mpa"]
+# TODO:         pct_change = abs(entry["peak_stress_mpa"] - prev_stress) / prev_stress * 100
+# TODO:         entry["pct_change"] = pct_change
+# TODO:         print(f"Elements={entry['element_count']}: stress={entry['peak_stress_mpa']} MPa (change from previous: {pct_change:.2f}%)")
+
+# STEP 3: Convergence assessment (common criterion: <2% change between successive refinements)
+convergence_threshold_pct = 2.0
+print(f"\\n=== Convergence Assessment (threshold: {convergence_threshold_pct}% change) ===")
+# TODO: converged_index = None
+# TODO: for i in range(1, len(mesh_study)):
+# TODO:     if mesh_study[i]["pct_change"] < convergence_threshold_pct:
+# TODO:         converged_index = i
+# TODO:         break
+# TODO: if converged_index is not None:
+# TODO:     print(f"Convergence achieved at {mesh_study[converged_index]['element_count']} elements")
+# TODO:     print(f"(change dropped below {convergence_threshold_pct}% threshold)")
+# TODO: else:
+# TODO:     print("Convergence NOT yet achieved even at the finest mesh tested -- further refinement needed")
+
+# STEP 4: Richardson extrapolation estimate of the "true" converged value
+# Using the two finest mesh results to extrapolate toward the theoretical infinite-refinement value
+# TODO: s1 = mesh_study[-2]["peak_stress_mpa"]
+# TODO: s2 = mesh_study[-1]["peak_stress_mpa"]
+# TODO: r = mesh_study[-1]["element_count"] / mesh_study[-2]["element_count"]
+# TODO: extrapolated_estimate = s2 + (s2 - s1) / (r - 1)
+# TODO: print(f"\\nRichardson extrapolation estimate of converged value: {extrapolated_estimate:.1f} MPa")
+
+# STEP 5: Was the original single-mesh report reliable?
+print(f"\\n=== Was the Original Reported Result Reliable? ===")
+# TODO: original_result = mesh_study[original_reported_mesh_index]["peak_stress_mpa"]
+# TODO: error_vs_converged = abs(original_result - extrapolated_estimate) / extrapolated_estimate * 100
+# TODO: print(f"Originally reported result (single mesh, {mesh_study[original_reported_mesh_index]['element_count']} elements): {original_result} MPa")
+# TODO: print(f"Converged estimate: {extrapolated_estimate:.1f} MPa")
+# TODO: print(f"Error in the original reported result: {error_vs_converged:.1f}%")
+# TODO: print(f"\\nA {error_vs_converged:.0f}% error on a stress result used for a design decision (safety factor")
+# TODO: print(f"calculation, fatigue life prediction, etc.) is a genuinely significant discrepancy -- this is")
+# TODO: print(f"exactly why mesh convergence verification is a mandatory step, not an optional nice-to-have,")
+# TODO: print(f"before trusting any single FEA result at a stress concentration feature")
+`,
+    skillTags: ["Mesh Convergence", "FEA Verification", "Stress Concentration", "Finite Element Analysis"],
+    hints: [
+      "Stress concentration features (holes, fillets, sharp corners) are exactly where mesh convergence issues are most severe and most consequential -- the stress gradient near these features is steep, meaning coarse mesh elements average out (and typically underestimate) the true peak stress, which is precisely the pattern shown in this exercise's data (stress increasing with each refinement, not yet plateaued at the originally reported coarse mesh)",
+      "Richardson extrapolation provides an estimate of the theoretical fully-converged result by extrapolating the trend from the two finest available mesh results, rather than simply trusting the finest mesh actually run as if it were exactly correct -- this is a genuinely useful verification technique, though it assumes the convergence trend itself is well-behaved (monotonic and smooth), which should also be checked visually across the full refinement series",
+      "Running a single mesh density and reporting that result without any convergence study is one of the most common and consequential FEA misuse patterns in engineering practice -- it can produce a result that's confidently wrong by a significant margin (as this exercise demonstrates with real numbers), and the fix isn't complicated: run at least 2-3 progressively refined meshes and verify the result has actually stabilized before trusting it for any real design decision",
+    ],
+  },
+  {
+    id: "mech-fea-003",
+    title: "Interpret Von Mises Stress Results and Apply a Safety Factor Check",
+    category: "Finite Element Analysis",
+    icon: "📐",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Python", "Stress Analysis"],
+    scenario:
+      "An FEA stress analysis on a bracket produced a von Mises stress contour with a peak value at a fillet radius. Before approving the design, the engineer needs to properly apply a safety factor check against the material yield strength, and understand what von Mises stress actually represents for a multiaxial stress state.",
+    objective:
+      "Calculate von Mises equivalent stress from a multiaxial stress state, apply the appropriate safety factor check against material yield strength, and verify the design meets the required minimum safety factor.",
+    steps: [
+      "Calculate von Mises equivalent stress from the individual stress tensor components",
+      "Compare against the material's yield strength to determine the factor of safety",
+      "Compare the calculated factor of safety against the required minimum for this application",
+      "Assess sensitivity to a stress concentration factor that may not be fully captured by the mesh",
+      "Determine if the design passes or requires modification",
+    ],
+    workstation: "notebook",
+    starterCode: `# Von Mises Stress and Safety Factor Analysis
+import math
+
+# Stress tensor components at the critical location (from FEA output), in MPa
+sigma_x = 145.0
+sigma_y = 62.0
+sigma_z = 0.0    # plane stress assumption (thin bracket, no through-thickness stress)
+tau_xy = 38.0
+tau_yz = 0.0
+tau_xz = 0.0
+
+material_yield_strength_mpa = 275.0  # e.g. mild steel
+
+required_min_safety_factor = 2.0  # this application's design requirement
+
+# STEP 1: Von Mises equivalent stress (general 3D formula)
+# TODO: term1 = (sigma_x - sigma_y) ** 2
+# TODO: term2 = (sigma_y - sigma_z) ** 2
+# TODO: term3 = (sigma_z - sigma_x) ** 2
+# TODO: term4 = 6 * (tau_xy ** 2 + tau_yz ** 2 + tau_xz ** 2)
+# TODO: von_mises_stress = math.sqrt(0.5 * (term1 + term2 + term3 + term4))
+# TODO: print(f"Von Mises equivalent stress: {von_mises_stress:.1f} MPa")
+
+# STEP 2: Factor of safety
+# TODO: factor_of_safety = material_yield_strength_mpa / von_mises_stress
+# TODO: print(f"\\nMaterial yield strength: {material_yield_strength_mpa} MPa")
+# TODO: print(f"Factor of safety: {factor_of_safety:.2f}")
+
+# STEP 3: Compare against requirement
+print(f"\\n=== Safety Factor Check ===")
+# TODO: print(f"Required minimum safety factor: {required_min_safety_factor}")
+# TODO: meets_requirement = factor_of_safety >= required_min_safety_factor
+# TODO: print(f"Status: {'PASSES' if meets_requirement else 'FAILS -- inadequate safety margin'}")
+
+# STEP 4: Stress concentration sensitivity consideration
+print(f"\\n=== Mesh/Stress Concentration Sensitivity Consideration ===")
+mesh_uncertainty_factor = 1.15  # possible underestimate if mesh isn't fully converged at this fillet
+# TODO: adjusted_stress_estimate = von_mises_stress * mesh_uncertainty_factor
+# TODO: adjusted_safety_factor = material_yield_strength_mpa / adjusted_stress_estimate
+# TODO: print(f"If actual peak stress is {(mesh_uncertainty_factor-1)*100:.0f}% higher than reported (due to")
+# TODO: print(f"potential mesh convergence uncertainty at this fillet feature):")
+# TODO: print(f"  Adjusted stress estimate: {adjusted_stress_estimate:.1f} MPa")
+# TODO: print(f"  Adjusted safety factor: {adjusted_safety_factor:.2f}")
+# TODO: still_passes_adjusted = adjusted_safety_factor >= required_min_safety_factor
+# TODO: print(f"  Still meets requirement under this adjustment: {'YES' if still_passes_adjusted else 'NO -- design margin is not robust to mesh uncertainty'}")
+
+# STEP 5: Final determination
+print(f"\\n=== Final Assessment ===")
+# TODO: if meets_requirement and still_passes_adjusted:
+# TODO:     print("Design passes with adequate margin, robust even under reasonable mesh convergence uncertainty")
+# TODO: elif meets_requirement and not still_passes_adjusted:
+# TODO:     print("Design passes the base check but the margin is THIN -- recommend verifying mesh convergence")
+# TODO:     print("at this specific fillet feature before final design approval, since the safety margin")
+# TODO:     print("could be eroded by mesh-related stress underestimation")
+# TODO: else:
+# TODO:     print("Design FAILS the safety factor requirement -- geometry or material change needed")
+`,
+    skillTags: ["Von Mises Stress", "Safety Factor", "FEA Stress Analysis", "Yield Strength"],
+    hints: [
+      "Von Mises stress is a scalar equivalent stress value derived from the full multiaxial stress tensor specifically to enable comparison against a material's (typically uniaxial tension test-derived) yield strength -- this is why it's the standard failure criterion for ductile materials in FEA post-processing, since raw individual stress tensor components (sigma_x, tau_xy, etc.) don't directly indicate whether yielding will occur",
+      "A safety factor that passes the base calculation but wouldn't survive a modest, plausible stress underestimate (from potential mesh convergence issues at a stress concentration feature) represents a genuinely fragile design margin, not a truly adequate one -- this is why combining the safety factor check with an explicit sensitivity consideration to modeling uncertainty is a more robust design verification practice than a single-point safety factor calculation alone",
+      "The required minimum safety factor itself should reflect the application's consequence of failure and the level of uncertainty in the loading and modeling assumptions -- a safety factor of 2.0 might be entirely appropriate for a well-characterized, benign application but insufficient for a safety-critical component with more uncertain or variable loading, which is a separate engineering judgment from the mechanical calculation itself",
+    ],
+  },
+  {
+    id: "mech-fea-004",
+    title: "Set Up Symmetry Boundary Conditions to Reduce an FEA Model's Computational Size",
+    category: "Finite Element Analysis",
+    icon: "🪞",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Python", "FEA Model Setup"],
+    scenario:
+      "A full 3D FEA model of a symmetric bracket is taking excessive time to solve, slowing down design iteration. The geometry, loading, and boundary conditions are all symmetric about a central plane -- exploiting this symmetry could dramatically reduce model size and solve time without sacrificing accuracy, IF applied correctly.",
+    objective:
+      "Verify whether a model configuration is a valid candidate for symmetry reduction, correctly define the symmetry boundary condition, and calculate the resulting computational savings.",
+    steps: [
+      "Verify the geometry is symmetric about the proposed symmetry plane",
+      "Verify the loading is also symmetric about the same plane (a critical and often-missed requirement)",
+      "Verify the material properties and any other boundary conditions are symmetric",
+      "Define the correct symmetry boundary condition constraints on the cut plane",
+      "Calculate the computational savings from using a half-model versus the full model",
+    ],
+    workstation: "notebook",
+    starterCode: `# Symmetry Boundary Condition Setup for FEA Model Reduction
+model_configuration = {
+    "geometry_symmetric_about_xz_plane": True,
+    "material_properties_symmetric": True,
+    "applied_load_symmetric_about_xz_plane": True,   # load is a single force straddling the symmetry plane, split evenly
+    "support_conditions_symmetric": True,
+    "load_is_actually_a_single_point_load_ON_the_plane": False,  # a subtlety -- checked separately below
+}
+
+full_model_element_count = 480_000
+full_model_solve_time_minutes = 45.0
+
+# STEP 1, 2, 3: Verify all symmetry conditions
+print("=== Symmetry Validity Check ===")
+all_conditions_met = True
+# TODO: for condition, is_met in model_configuration.items():
+# TODO:     if condition == "load_is_actually_a_single_point_load_ON_the_plane":
+# TODO:         continue  # handled separately, not a standard yes/no requirement
+# TODO:     print(f"{condition}: {'OK' if is_met else 'FAILS -- symmetry NOT valid'}")
+# TODO:     if not is_met:
+# TODO:         all_conditions_met = False
+
+# TODO: print(f"\\nAll standard symmetry conditions met: {'YES' if all_conditions_met else 'NO'}")
+
+# STEP 4: Symmetry boundary condition definition
+print(f"\\n=== Symmetry Boundary Condition Definition ===")
+if True:  # TODO: replace with the all_conditions_met check
+    print("On the XZ symmetry plane (cut face of the half-model):")
+    print("  - Constrain displacement NORMAL to the symmetry plane (Y-direction) to ZERO")
+    print("  - Allow displacement IN-PLANE (X and Z directions) to remain FREE")
+    print("  - Constrain rotation ABOUT the in-plane axes (X and Z rotation) to ZERO")
+    print("  - Allow rotation ABOUT the normal axis (Y rotation) to remain FREE")
+    print("\\n(This specific combination of constrained/free DOFs is what correctly represents the")
+    print(" mirrored behavior of the removed half without actually modeling it)")
+
+# STEP 5: Computational savings
+print(f"\\n=== Computational Savings ===")
+# TODO: half_model_element_count_estimate = full_model_element_count / 2
+# TODO: print(f"Full model: {full_model_element_count:,} elements, {full_model_solve_time_minutes} min solve time")
+# TODO: print(f"Half-model estimate: ~{half_model_element_count_estimate:,.0f} elements")
+# Solve time often scales worse than linearly with element count for many solver types
+solve_time_scaling_exponent = 1.5  # illustrative -- actual scaling depends heavily on solver type and problem size
+# TODO: half_model_solve_time_estimate = full_model_solve_time_minutes * (0.5 ** solve_time_scaling_exponent)
+# TODO: print(f"Estimated half-model solve time: {half_model_solve_time_estimate:.1f} min")
+# TODO: time_savings_pct = (1 - half_model_solve_time_estimate / full_model_solve_time_minutes) * 100
+# TODO: print(f"Estimated solve time savings: {time_savings_pct:.0f}%")
+
+print(f"\\n=== Critical Reminder ===")
+print("If the load were a concentrated point load applied EXACTLY on the symmetry plane (rather than")
+print("split evenly across the plane as assumed here), it would need to be halved in magnitude in the")
+print("half-model, since the plane itself doesn't 'see' load applied to a location that would otherwise")
+print("be shared by both mirrored halves -- this specific subtlety is a common source of symmetry")
+print("model setup errors that silently produce a systematically wrong stress/deflection magnitude.")
+`,
+    skillTags: ["FEA Symmetry", "Boundary Conditions", "Model Reduction", "Computational Efficiency"],
+    hints: [
+      "ALL relevant aspects of the model -- geometry, material properties, loading, AND boundary conditions -- must be symmetric about the proposed plane for symmetry reduction to be valid, not just the geometry alone -- a geometrically symmetric part under an asymmetric load (even a subtly asymmetric one) cannot be validly reduced using symmetry boundary conditions, and doing so anyway would produce systematically wrong results",
+      "The symmetry boundary condition definition (constrain normal displacement and in-plane rotations to zero, leave in-plane displacement and normal rotation free) is a specific, standard pattern that correctly represents the mirrored behavior of the removed half -- getting these constraint directions backwards is a common modeling mistake that would produce an incorrect, over- or under-constrained result rather than a true half-model equivalent",
+      "The point-load-on-the-symmetry-plane subtlety flagged at the end is a genuinely common, easy-to-miss source of error -- a load that straddles the symmetry plane in the full model needs to be halved when applied to the half-model (since the plane 'owns' half of that load), while a load located entirely on one side of the plane needs no such adjustment, and getting this wrong silently produces a result that's off by a factor of 2, not an obviously broken result that would be caught by inspection",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MECHANICAL — INDUSTRIAL AUTOMATION & CONTROLS
+// ─────────────────────────────────────────────────────────────────────────────
+export const MECH_AUTOMATION_CHALLENGES = [
+  {
+    id: "mech-ind-001",
+    title: "Design a PLC Ladder Logic Sequence for a Pneumatic Cylinder Cycle",
+    category: "Industrial Automation",
+    icon: "🏭",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Python", "PLC Logic Design"],
+    scenario:
+      "A manufacturing cell uses a pneumatic cylinder to press-fit a component, and the automation sequence needs proper interlocking logic -- without correct sequencing and safety interlocks, the cylinder could cycle at the wrong time, potentially causing equipment damage or a safety hazard.",
+    objective:
+      "Design and simulate a state-machine-based control sequence for a pneumatic cylinder cycle including proper sensor interlocking, and verify the sequence handles both normal operation and a fault condition safely.",
+    steps: [
+      "Define the sequence states and the sensor/input conditions that trigger each state transition",
+      "Implement the state machine logic simulating normal cycle operation",
+      "Verify the sequence correctly interlocks on sensor feedback rather than time-based assumptions alone",
+      "Simulate a fault condition (sensor failure) and verify the safe response",
+      "Verify the sequence cannot re-cycle without the operator/system properly resetting after a fault",
+    ],
+    workstation: "notebook",
+    starterCode: `# PLC-Style State Machine for Pneumatic Cylinder Cycle Control
+class CylinderController:
+    def __init__(self):
+        self.state = "HOME"
+        self.fault = False
+        self.cycle_count = 0
+
+    def step(self, start_button, part_present_sensor, cylinder_extended_sensor, cylinder_retracted_sensor):
+        # STEP 1 & 2: State machine transitions based on SENSOR FEEDBACK, not time delays alone
+        # TODO: if self.fault:
+        # TODO:     return  # locked out until explicit reset -- see reset() method
+
+        # TODO: if self.state == "HOME":
+        # TODO:     if not cylinder_retracted_sensor:
+        # TODO:         self.fault = True  # should be retracted when idle -- sensor mismatch is a fault condition
+        # TODO:         return
+        # TODO:     if start_button and part_present_sensor:
+        # TODO:         self.state = "EXTENDING"
+
+        # TODO: elif self.state == "EXTENDING":
+        # TODO:     if cylinder_extended_sensor:
+        # TODO:         self.state = "DWELL"  # confirmed extended via SENSOR, not assumed after a time delay
+        # TODO:     elif not part_present_sensor:
+        # TODO:         self.fault = True  # part removed mid-cycle -- unsafe, fault immediately
+
+        # TODO: elif self.state == "DWELL":
+        # TODO:     self.state = "RETRACTING"  # after press-fit dwell time completes (simplified here)
+
+        # TODO: elif self.state == "RETRACTING":
+        # TODO:     if cylinder_retracted_sensor:
+        # TODO:         self.state = "HOME"
+        # TODO:         self.cycle_count += 1
+        pass
+
+    def reset(self):
+        # TODO: self.fault = False
+        # TODO: self.state = "HOME"
+        pass
+
+controller = CylinderController()
+
+# STEP 3: Simulate normal cycle operation
+print("=== Normal Cycle Simulation ===")
+controller.step(start_button=True, part_present_sensor=True, cylinder_extended_sensor=False, cylinder_retracted_sensor=True)
+print(f"After start command: state={controller.state}")
+controller.step(start_button=False, part_present_sensor=True, cylinder_extended_sensor=True, cylinder_retracted_sensor=False)
+print(f"After cylinder reaches extended sensor: state={controller.state}")
+controller.step(start_button=False, part_present_sensor=True, cylinder_extended_sensor=True, cylinder_retracted_sensor=False)
+print(f"After dwell: state={controller.state}")
+controller.step(start_button=False, part_present_sensor=True, cylinder_extended_sensor=False, cylinder_retracted_sensor=True)
+print(f"After cylinder returns: state={controller.state}, cycle_count={controller.cycle_count}")
+
+# STEP 4: Simulate a fault condition -- part removed mid-cycle
+print("\\n=== Fault Condition Simulation ===")
+controller2 = CylinderController()
+controller2.step(start_button=True, part_present_sensor=True, cylinder_extended_sensor=False, cylinder_retracted_sensor=True)
+print(f"Cycle started: state={controller2.state}")
+controller2.step(start_button=False, part_present_sensor=False, cylinder_extended_sensor=False, cylinder_retracted_sensor=False)  # part removed!
+print(f"Part removed mid-extension: state={controller2.state}, fault={controller2.fault}")
+
+# STEP 5: Verify lockout persists until explicit reset
+print("\\n=== Fault Lockout Verification ===")
+controller2.step(start_button=True, part_present_sensor=True, cylinder_extended_sensor=False, cylinder_retracted_sensor=True)
+print(f"Start pressed again WITHOUT reset: state={controller2.state}, fault={controller2.fault} (should remain in fault, unchanged)")
+controller2.reset()
+print(f"After explicit reset: state={controller2.state}, fault={controller2.fault}")
+`,
+    skillTags: ["PLC Logic", "State Machine", "Industrial Automation", "Safety Interlocking"],
+    hints: [
+      "Interlocking cycle transitions on actual SENSOR FEEDBACK (cylinder_extended_sensor, cylinder_retracted_sensor) rather than assuming a state is reached after a fixed time delay is a fundamental automation safety principle -- a time-based assumption fails silently if the cylinder is mechanically obstructed or the pneumatic system is underperforming, while sensor-based interlocking would correctly detect that the expected state was never actually reached",
+      "A fault condition should trigger a persistent lockout that requires EXPLICIT operator/system reset, not an automatic recovery -- allowing the machine to simply try again on the next start command (without addressing whatever caused the fault) risks repeating or worsening the unsafe condition, which is exactly why this state machine locks out until reset() is explicitly called",
+      "Detecting a part being removed mid-cycle (rather than only checking part presence once at the start) is a genuinely important safety consideration for many automation applications -- an operator's hand or a dropped part removed during the cycle represents a real hazard, and a control sequence that only checks conditions at the start of the cycle would miss this entirely",
+    ],
+  },
+  {
+    id: "mech-ind-002",
+    title: "Calculate Conveyor System Motor Sizing for a Material Handling Line",
+    category: "Industrial Automation",
+    icon: "📦",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Python", "Conveyor Design"],
+    scenario:
+      "A conveyor system is being designed to move packages at a specified rate, and the drive motor needs to be sized to handle the actual load -- an undersized motor will stall or trip overload protection under real operating loads, disrupting the production line.",
+    objective:
+      "Calculate the required conveyor drive motor power accounting for belt friction, load weight, and incline, and select an appropriately sized motor with margin.",
+    steps: [
+      "Calculate the force required to move the loaded belt against friction resistance",
+      "Calculate additional force required if the conveyor has an incline",
+      "Calculate total required power at the design belt speed",
+      "Account for drive system mechanical efficiency losses",
+      "Select a standard motor size with appropriate safety margin above the calculated requirement",
+    ],
+    workstation: "notebook",
+    starterCode: `# Conveyor Motor Sizing Calculation
+belt_speed_m_per_min = 30.0
+max_load_on_belt_kg = 850.0   # maximum simultaneous load (packages + belt weight in the loaded section)
+friction_coefficient = 0.35     # belt/roller friction resistance coefficient
+incline_angle_deg = 8.0          # conveyor incline angle
+g = 9.81
+
+drive_efficiency = 0.85   # gearbox + drive system mechanical efficiency
+
+import math
+
+# STEP 1: Friction force
+# TODO: friction_force_n = max_load_on_belt_kg * g * friction_coefficient * math.cos(math.radians(incline_angle_deg))
+# TODO: print(f"Friction resistance force: {friction_force_n:.0f} N")
+
+# STEP 2: Incline force component
+# TODO: incline_force_n = max_load_on_belt_kg * g * math.sin(math.radians(incline_angle_deg))
+# TODO: print(f"Incline (gravity) force component: {incline_force_n:.0f} N")
+
+# STEP 3: Total required force and power at belt speed
+# TODO: total_force_n = friction_force_n + incline_force_n
+# TODO: belt_speed_m_per_s = belt_speed_m_per_min / 60
+# TODO: required_power_w = total_force_n * belt_speed_m_per_s
+# TODO: print(f"\\nTotal required force: {total_force_n:.0f} N")
+# TODO: print(f"Required power at belt (before drive losses): {required_power_w:.0f} W ({required_power_w/1000:.2f} kW)")
+
+# STEP 4: Account for drive system efficiency
+# TODO: required_motor_power_w = required_power_w / drive_efficiency
+# TODO: print(f"\\nRequired motor output power (accounting for {drive_efficiency:.0%} drive efficiency): {required_motor_power_w:.0f} W ({required_motor_power_w/1000:.2f} kW)")
+
+# STEP 5: Motor selection with safety margin
+standard_motor_sizes_kw = [0.75, 1.1, 1.5, 2.2, 3.0, 4.0, 5.5, 7.5]
+safety_margin_factor = 1.25  # standard practice margin for starting torque, load variation, etc.
+
+# TODO: required_with_margin_kw = (required_motor_power_w / 1000) * safety_margin_factor
+# TODO: print(f"\\nRequired power with {safety_margin_factor}x safety margin: {required_with_margin_kw:.2f} kW")
+
+# TODO: selected_motor_kw = next(size for size in standard_motor_sizes_kw if size >= required_with_margin_kw)
+# TODO: print(f"Selected standard motor size: {selected_motor_kw} kW")
+# TODO: actual_margin = selected_motor_kw / (required_motor_power_w / 1000)
+# TODO: print(f"Actual margin with selected motor: {actual_margin:.2f}x")
+`,
+    skillTags: ["Conveyor Design", "Motor Sizing", "Material Handling", "Industrial Automation"],
+    hints: [
+      "An inclined conveyor has TWO distinct force components to overcome -- friction resistance (present regardless of incline) and the gravity component along the incline (present only when inclined) -- and both must be calculated and summed, since considering only friction (as would be sufficient for a flat conveyor) would significantly undersize the motor for an inclined application",
+      "The safety margin factor (typically 20-30% above the calculated steady-state running power requirement) exists to handle real-world conditions the steady-state calculation doesn't capture -- higher starting torque needed to overcome static friction and accelerate the loaded belt from rest, momentary load surges, and belt tension variations over time as the belt ages",
+      "Selecting the next STANDARD motor size at or above the margin-adjusted requirement (rather than a custom-sized motor matching the calculation exactly) reflects real procurement practice -- motors are manufactured in standard power ratings, and the actual achieved margin (which can be meaningfully more than the minimum required margin, as seen when the standard size steps are coarse) should be explicitly reported since it affects the system's real operating headroom",
+    ],
+  },
+  {
+    id: "mech-ind-003",
+    title: "Diagnose a Pneumatic Actuator Cycle Time Issue Using Flow Calculations",
+    category: "Industrial Automation",
+    icon: "💨",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Python", "Pneumatic Systems"],
+    scenario:
+      "A pneumatic cylinder's cycle time has increased over time, slowing down the production line, and maintenance needs to determine whether the root cause is a supply pressure issue, an undersized fitting/tubing restriction, or something else -- rather than replacing components by guesswork.",
+    objective:
+      "Calculate the theoretical minimum cycle time for the pneumatic actuator based on system parameters, compare against the actual observed cycle time, and diagnose the most likely bottleneck.",
+    steps: [
+      "Calculate the required air volume to fully extend the cylinder at the given bore/stroke",
+      "Calculate the theoretical airflow rate available given the supply pressure and fitting/tubing restriction",
+      "Calculate the theoretical minimum extend time from volume and available flow rate",
+      "Compare against the actual observed cycle time to quantify the shortfall",
+      "Diagnose the most likely bottleneck based on the calculated versus actual performance gap",
+    ],
+    workstation: "notebook",
+    starterCode: `# Pneumatic Actuator Cycle Time Diagnosis
+import math
+
+cylinder_bore_mm = 50.0
+cylinder_stroke_mm = 200.0
+
+supply_pressure_bar = 6.0
+fitting_cv_rating = 0.35   # flow coefficient of the current (possibly undersized) fitting/tubing
+
+actual_observed_extend_time_s = 2.8   # measured on the production line
+
+# STEP 1: Required air volume to extend the cylinder (simplified, at line pressure -- not accounting for compression)
+# TODO: bore_area_mm2 = math.pi * (cylinder_bore_mm / 2) ** 2
+# TODO: swept_volume_mm3 = bore_area_mm2 * cylinder_stroke_mm
+# TODO: swept_volume_liters = swept_volume_mm3 / 1_000_000
+# TODO: print(f"Cylinder swept volume: {swept_volume_liters:.3f} L")
+
+# Air must be delivered at supply pressure, so actual volume of FREE AIR (at atmospheric) needed is higher
+# TODO: absolute_supply_pressure_bar = supply_pressure_bar + 1.0  # gauge to absolute
+# TODO: free_air_volume_needed_liters = swept_volume_liters * absolute_supply_pressure_bar
+# TODO: print(f"Free air volume needed (accounting for compression): {free_air_volume_needed_liters:.2f} L")
+
+# STEP 2: Theoretical flow rate through the fitting (simplified Cv-based estimate)
+# Simplified relationship: Flow (L/min, free air) ~ Cv x pressure_differential_factor x constant
+# TODO: flow_rate_l_per_min = fitting_cv_rating * supply_pressure_bar * 400  # simplified illustrative Cv flow relationship
+# TODO: flow_rate_l_per_s = flow_rate_l_per_min / 60
+# TODO: print(f"\\nEstimated flow rate through current fitting: {flow_rate_l_per_min:.1f} L/min ({flow_rate_l_per_s:.3f} L/s)")
+
+# STEP 3: Theoretical minimum extend time
+# TODO: theoretical_extend_time_s = free_air_volume_needed_liters / flow_rate_l_per_s
+# TODO: print(f"Theoretical minimum extend time: {theoretical_extend_time_s:.2f} s")
+
+# STEP 4: Compare to actual
+print(f"\\n=== Comparison ===")
+# TODO: print(f"Theoretical minimum: {theoretical_extend_time_s:.2f} s")
+# TODO: print(f"Actual observed: {actual_observed_extend_time_s} s")
+# TODO: shortfall_pct = (actual_observed_extend_time_s - theoretical_extend_time_s) / theoretical_extend_time_s * 100
+# TODO: print(f"Shortfall: {shortfall_pct:.0f}% slower than theoretical minimum")
+
+# STEP 5: Diagnosis
+print(f"\\n=== Diagnosis ===")
+# TODO: if shortfall_pct < 15:
+# TODO:     print("Actual performance is close to theoretical -- the current fitting/tubing sizing appears")
+# TODO:     print("to be roughly consistent with the observed cycle time; look elsewhere for the slowdown")
+# TODO:     print("(mechanical friction increase, seal wear, supply pressure drop under load, etc.)")
+# TODO: else:
+# TODO:     print(f"Significant gap ({shortfall_pct:.0f}%) between theoretical and actual performance suggests")
+# TODO:     print("either the fitting/tubing IS more restrictive than its rated Cv suggests (partial")
+# TODO:     print("obstruction, kinked tubing) or a DIFFERENT bottleneck exists elsewhere in the circuit")
+# TODO:     print("(undersized valve, long tubing run with excessive pressure drop, or actual supply")
+# TODO:     print("pressure at the point of use being lower than the nominal supply pressure assumed here --")
+# TODO:     print("verify with a pressure gauge AT the cylinder inlet, not just at the main supply line)")
+`,
+    skillTags: ["Pneumatic Systems", "Flow Calculations", "Cycle Time Diagnosis", "Industrial Maintenance"],
+    hints: [
+      "Comparing theoretical minimum performance (calculated from first principles) against actual observed performance is a systematic diagnostic approach that avoids guesswork -- a small gap suggests the current system is performing close to its calculated capability and the slowdown likely has a different root cause, while a large gap points toward the flow path itself as the likely bottleneck",
+      "The critical diagnostic follow-up flagged in this exercise -- verifying actual pressure AT the point of use (the cylinder inlet) rather than assuming the nominal supply line pressure applies everywhere -- reflects a very common real pneumatic system issue -- pressure drop across long tubing runs, partially closed valves, or a supply system struggling under total plant demand can mean the pressure actually available at a specific cylinder is meaningfully lower than the main supply gauge reading, which a calculation using only the nominal supply pressure would miss entirely",
+      "This calculation uses a simplified illustrative flow relationship for teaching purposes -- real pneumatic circuit sizing and diagnosis in practice typically references manufacturer-published flow curves for the specific fittings, valves, and tubing actually installed, since real component flow characteristics can deviate from simplified Cv-based approximations, especially near choked flow conditions at higher pressure differentials",
+    ],
+  },
+  {
+    id: "mech-ind-004",
+    title: "Calculate Overall Equipment Effectiveness (OEE) and Identify the Biggest Loss Category",
+    category: "Industrial Automation",
+    icon: "📊",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Python", "Manufacturing Metrics"],
+    scenario:
+      "A production line manager wants to know why a work cell isn't producing as much as expected, and needs a structured way to break down the loss into its component causes -- availability, performance, or quality -- rather than a vague sense that 'the line isn't running well.'",
+    objective:
+      "Calculate Overall Equipment Effectiveness (OEE) from its three component factors (availability, performance, quality), and identify which factor represents the largest opportunity for improvement.",
+    steps: [
+      "Calculate the availability factor from planned production time versus actual run time",
+      "Calculate the performance factor from actual output rate versus ideal rate",
+      "Calculate the quality factor from good units versus total units produced",
+      "Calculate overall OEE as the product of the three factors",
+      "Identify which single factor, if improved to a target level, would provide the biggest OEE improvement",
+    ],
+    workstation: "notebook",
+    starterCode: `# Overall Equipment Effectiveness (OEE) Analysis
+planned_production_time_min = 480.0   # one full shift
+downtime_min = 55.0                    # unplanned stops (changeovers, breakdowns, etc.)
+
+ideal_cycle_time_s = 12.0              # theoretical fastest cycle time per unit
+total_units_produced = 1650.0
+
+good_units = 1580.0
+defective_units = total_units_produced - good_units
+
+# STEP 1: Availability
+# TODO: actual_run_time_min = planned_production_time_min - downtime_min
+# TODO: availability = actual_run_time_min / planned_production_time_min
+# TODO: print(f"Planned production time: {planned_production_time_min} min")
+# TODO: print(f"Downtime: {downtime_min} min")
+# TODO: print(f"Availability: {availability:.1%}")
+
+# STEP 2: Performance
+# TODO: ideal_run_time_min = (total_units_produced * ideal_cycle_time_s) / 60
+# TODO: performance = ideal_run_time_min / actual_run_time_min
+# TODO: print(f"\\nIdeal time to produce {total_units_produced:.0f} units: {ideal_run_time_min:.1f} min")
+# TODO: print(f"Actual run time: {actual_run_time_min:.1f} min")
+# TODO: print(f"Performance: {performance:.1%}")
+
+# STEP 3: Quality
+# TODO: quality = good_units / total_units_produced
+# TODO: print(f"\\nGood units: {good_units:.0f} / {total_units_produced:.0f} total")
+# TODO: print(f"Quality: {quality:.1%}")
+
+# STEP 4: Overall OEE
+# TODO: oee = availability * performance * quality
+# TODO: print(f"\\n=== Overall Equipment Effectiveness (OEE) ===")
+# TODO: print(f"OEE = Availability x Performance x Quality = {availability:.1%} x {performance:.1%} x {quality:.1%} = {oee:.1%}")
+world_class_oee_benchmark = 0.85
+# TODO: print(f"World-class OEE benchmark: {world_class_oee_benchmark:.0%}")
+# TODO: print(f"Gap to world-class: {(world_class_oee_benchmark - oee)*100:.1f} percentage points")
+
+# STEP 5: Identify biggest improvement opportunity
+print(f"\\n=== Improvement Opportunity Analysis ===")
+factors = {"Availability": availability, "Performance": performance, "Quality": quality} if 'availability' in dir() else {}
+# TODO: factors = {"Availability": availability, "Performance": performance, "Quality": quality}
+# TODO: worst_factor = min(factors.items(), key=lambda x: x[1])
+# TODO: print(f"Lowest-performing factor: {worst_factor[0]} at {worst_factor[1]:.1%}")
+
+target_improvement = 0.95  # what if the worst factor were improved to 95%
+# TODO: improved_factors = dict(factors)
+# TODO: improved_factors[worst_factor[0]] = target_improvement
+# TODO: improved_oee = improved_factors["Availability"] * improved_factors["Performance"] * improved_factors["Quality"]
+# TODO: print(f"\\nIf {worst_factor[0]} were improved to {target_improvement:.0%}: OEE would become {improved_oee:.1%}")
+# TODO: print(f"(improvement of {(improved_oee - oee)*100:.1f} percentage points from this single factor)")
+# TODO: print(f"\\nThis quantifies WHERE to focus improvement effort first, rather than spreading attention")
+# TODO: print(f"evenly across all three factors without knowing which one offers the biggest actual gain")
+`,
+    skillTags: ["OEE", "Overall Equipment Effectiveness", "Manufacturing Metrics", "Lean Manufacturing"],
+    hints: [
+      "OEE's multiplicative structure (Availability x Performance x Quality, not an average) means a weakness in ANY single factor drags down the overall number proportionally -- a plant with excellent availability and quality but poor performance (running slower than ideal cycle time) can still have a mediocre overall OEE, which is exactly why decomposing into the three factors reveals WHERE the loss is actually occurring rather than just reporting a single vague overall percentage",
+      "The three factors correspond to genuinely different root causes and different fixes -- availability losses point toward downtime/changeover/breakdown issues, performance losses point toward speed losses (running below ideal rate, minor stops), and quality losses point toward defects and rework -- misdiagnosing which factor is the actual bottleneck leads to improvement efforts aimed at the wrong problem",
+      "Calculating the OEE impact of improving specifically the WORST-performing factor (rather than assuming all three deserve equal improvement attention) is what actually quantifies where limited improvement resources should be focused first -- this kind of targeted, quantified prioritization is the practical value OEE decomposition provides beyond just reporting a single overall percentage number",
+    ],
+  },
+]
+
 export const DOMAIN_CHALLENGES = {
   data:      DATA_ANALYST_CHALLENGES,
   bi_analyst:DATA_ANALYST_CHALLENGES,
