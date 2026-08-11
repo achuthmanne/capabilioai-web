@@ -17263,6 +17263,1557 @@ for s in scenarios:
   },
 ]
 
+// ─────────────────────────────────────────────────────────────────────────────
+// AI/ML — REINFORCEMENT LEARNING
+// ─────────────────────────────────────────────────────────────────────────────
+export const ML_REINFORCEMENT_LEARNING_CHALLENGES = [
+  {
+    id: "rl-001",
+    title: "Multi-Armed Bandit: Epsilon-Greedy Strategy",
+    category: "Reinforcement Learning",
+    icon: "🎰",
+    difficulty: "Easy",
+    timeLimit: "25 min",
+    eloGain: 14,
+    tools: ["Python", "NumPy"],
+    scenario:
+      "A website wants to test 5 different homepage headlines and find the best-converting one WHILE it's live, without wasting too much traffic on obviously-bad variants — a classic multi-armed bandit problem, simpler and more traffic-efficient than a fixed A/B test.",
+    objective:
+      "Implement the epsilon-greedy bandit algorithm to balance exploring all headline variants against exploiting the currently-best-known one.",
+    steps: [
+      "Simulate 5 headlines with different true (unknown to the algorithm) conversion rates",
+      "Implement epsilon-greedy action selection: explore randomly with probability epsilon, else pick the current best",
+      "Update each arm's estimated value after every pull using incremental averaging",
+      "Run for many rounds and track cumulative reward",
+      "Compare total reward against a naive strategy that always explores uniformly (no exploitation)",
+    ],
+    workstation: "notebook",
+    starterCode: `# Multi-Armed Bandit — Epsilon-Greedy
+import numpy as np
+
+np.random.seed(42)
+true_conversion_rates = [0.05, 0.08, 0.12, 0.07, 0.10]  # unknown to the algorithm
+n_arms = len(true_conversion_rates)
+n_rounds = 2000
+epsilon = 0.1
+
+estimated_values = np.zeros(n_arms)
+pull_counts = np.zeros(n_arms)
+total_reward = 0
+
+def pull_arm(arm):
+    return 1 if np.random.random() < true_conversion_rates[arm] else 0
+
+for round_i in range(n_rounds):
+    # STEP 2: epsilon-greedy selection
+    # TODO: if np.random.random() < epsilon:
+    # TODO:     arm = np.random.randint(n_arms)  # explore
+    # TODO: else:
+    # TODO:     arm = np.argmax(estimated_values)  # exploit
+
+    # STEP 3: pull and update
+    # TODO: reward = pull_arm(arm)
+    # TODO: pull_counts[arm] += 1
+    # TODO: estimated_values[arm] += (reward - estimated_values[arm]) / pull_counts[arm]
+    # TODO: total_reward += reward
+    pass
+
+# TODO: print(f"Estimated conversion rates: {np.round(estimated_values, 3)}")
+# TODO: print(f"True conversion rates:      {true_conversion_rates}")
+# TODO: print(f"Pull counts: {pull_counts.astype(int)}")
+# TODO: print(f"Total reward (epsilon-greedy): {total_reward}")
+
+# STEP 5: Compare to uniform random exploration (no exploitation at all)
+uniform_reward = sum(pull_arm(np.random.randint(n_arms)) for _ in range(n_rounds))
+# TODO: print(f"Total reward (uniform random): {uniform_reward}")
+# TODO: print(f"Epsilon-greedy advantage: {total_reward - uniform_reward} more conversions")
+`,
+    skillTags: ["Multi-Armed Bandit", "Epsilon-Greedy", "Reinforcement Learning", "Exploration-Exploitation", "Online Learning"],
+    hints: [
+      "Incremental averaging (estimated_values[arm] += (reward - estimated_values[arm]) / pull_counts[arm]) computes a running mean without storing every past reward — memory-efficient and mathematically equivalent to recomputing the full average",
+      "Epsilon controls the exploration/exploitation trade-off directly — too high wastes traffic on known-bad arms, too low risks getting stuck on a suboptimal arm discovered early by chance",
+      "Bandits should pull ahead of a fixed A/B test specifically because they shift traffic toward the winning variant DURING the test, not just at the end — this is the core efficiency gain",
+    ],
+  },
+  {
+    id: "rl-002",
+    title: "Implement Q-Learning for a Simple Grid World",
+    category: "Reinforcement Learning",
+    icon: "🗺️",
+    difficulty: "Hard",
+    timeLimit: "35 min",
+    eloGain: 24,
+    tools: ["Python", "NumPy"],
+    scenario:
+      "A warehouse robot needs to learn the shortest path to a charging station through a grid of obstacles, without being explicitly programmed with the map — it should learn purely from trial-and-error reward signals, the foundational idea behind reinforcement learning.",
+    objective:
+      "Implement tabular Q-learning to train an agent to navigate a simple grid world from a start position to a goal, avoiding an obstacle.",
+    steps: [
+      "Define a grid world: states, actions (up/down/left/right), rewards (goal=+10, obstacle=-10, step=-1)",
+      "Initialize a Q-table (state x action) to zeros",
+      "Implement the Q-learning update rule using the Bellman equation",
+      "Train over many episodes with epsilon-greedy exploration",
+      "Extract and print the learned optimal policy (best action per state)",
+    ],
+    workstation: "notebook",
+    starterCode: `# Q-Learning — Grid World Navigation
+import numpy as np
+
+np.random.seed(1)
+GRID_SIZE = 4
+GOAL = (3, 3)
+OBSTACLE = (1, 2)
+START = (0, 0)
+ACTIONS = ["up", "down", "left", "right"]
+ACTION_DELTAS = {"up": (-1,0), "down": (1,0), "left": (0,-1), "right": (0,1)}
+
+n_states = GRID_SIZE * GRID_SIZE
+n_actions = len(ACTIONS)
+Q = np.zeros((n_states, n_actions))
+
+def state_to_idx(state):
+    return state[0] * GRID_SIZE + state[1]
+
+def step(state, action):
+    dr, dc = ACTION_DELTAS[action]
+    new_state = (max(0, min(GRID_SIZE-1, state[0]+dr)), max(0, min(GRID_SIZE-1, state[1]+dc)))
+    if new_state == GOAL:
+        return new_state, 10, True
+    if new_state == OBSTACLE:
+        return new_state, -10, True
+    return new_state, -1, False
+
+alpha, gamma, epsilon = 0.1, 0.9, 0.2
+n_episodes = 3000
+
+for episode in range(n_episodes):
+    state = START
+    done = False
+    steps = 0
+    while not done and steps < 50:
+        s_idx = state_to_idx(state)
+        # STEP 4: epsilon-greedy action selection
+        # TODO: if np.random.random() < epsilon:
+        # TODO:     action_idx = np.random.randint(n_actions)
+        # TODO: else:
+        # TODO:     action_idx = np.argmax(Q[s_idx])
+        # TODO: action = ACTIONS[action_idx]
+
+        # TODO: new_state, reward, done = step(state, action)
+        # TODO: new_s_idx = state_to_idx(new_state)
+
+        # STEP 3: Q-learning Bellman update
+        # TODO: best_next_q = np.max(Q[new_s_idx])
+        # TODO: Q[s_idx, action_idx] += alpha * (reward + gamma * best_next_q - Q[s_idx, action_idx])
+
+        # TODO: state = new_state
+        # TODO: steps += 1
+        pass
+
+# STEP 5: Extract learned policy
+print("Learned policy (best action per grid cell):")
+for r in range(GRID_SIZE):
+    row_actions = []
+    for c in range(GRID_SIZE):
+        if (r,c) == GOAL: row_actions.append(" G ")
+        elif (r,c) == OBSTACLE: row_actions.append(" X ")
+        else:
+            # TODO: best_action = ACTIONS[np.argmax(Q[state_to_idx((r,c))])]
+            # TODO: row_actions.append(f"{best_action[:2]:>3}")
+            pass
+    print(row_actions)
+`,
+    skillTags: ["Q-Learning", "Reinforcement Learning", "Bellman Equation", "Grid World", "Tabular RL"],
+    hints: [
+      "The Bellman update (Q[s,a] += alpha * (reward + gamma * max(Q[s']) - Q[s,a])) is THE core equation of Q-learning — it nudges the current estimate toward the observed reward plus the best achievable future value",
+      "Epsilon-greedy exploration is needed even after the agent starts finding good paths — without ongoing exploration, it can get stuck exploiting a suboptimal path discovered early and never find a better one",
+      "Tabular Q-learning (a full table of every state-action pair) doesn't scale to large/continuous state spaces — this is exactly the motivation for Deep Q-Networks (DQN), which approximate the Q-table with a neural network instead",
+    ],
+  },
+  {
+    id: "rl-003",
+    title: "Design a Reward Function — Avoiding Reward Hacking",
+    category: "Reinforcement Learning",
+    icon: "🎯",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 18,
+    tools: ["Python"],
+    scenario:
+      "A team trained a cleaning-robot RL agent with reward = 'amount of dirt collected per episode' — and it learned to occasionally dump collected dirt back onto the floor just to re-collect it for more reward. This is a textbook reward hacking failure, and you need to design a better reward function.",
+    objective:
+      "Diagnose a reward-hacking failure mode, then design and simulate a corrected reward function that removes the exploitable loophole.",
+    steps: [
+      "Simulate the original flawed reward function and show the exploit (dump-and-recollect) scores higher than genuine cleaning",
+      "Identify exactly which aspect of the reward function created the loophole",
+      "Design a corrected reward function that penalizes the exploit while still rewarding genuine cleaning",
+      "Simulate both strategies (genuine cleaning vs the exploit) under the corrected reward",
+      "Verify genuine cleaning now scores higher than the exploit",
+    ],
+    workstation: "notebook",
+    starterCode: `# Reward Function Design — Fixing a Reward Hacking Exploit
+
+def simulate_flawed_reward(strategy, episode_length=20):
+    # ORIGINAL (FLAWED): reward = +1 per unit of dirt collected, no memory of what's already been collected
+    total_reward = 0
+    floor_dirt = 10  # starts with 10 units of dirt on the floor
+    for t in range(episode_length):
+        if strategy == "genuine":
+            collected = min(1, floor_dirt)
+            floor_dirt -= collected
+            total_reward += collected
+        elif strategy == "exploit":
+            # dump-and-recollect: every other step, put ONE unit of already-collected dirt back down, then re-collect it
+            if t % 2 == 0 and floor_dirt < 10:
+                floor_dirt += 1  # dump previously collected dirt back
+            collected = min(1, floor_dirt)
+            floor_dirt -= collected
+            total_reward += collected  # FLAW: this counts as "new" collection every time
+    return total_reward
+
+# TODO: genuine_score_flawed = simulate_flawed_reward("genuine")
+# TODO: exploit_score_flawed = simulate_flawed_reward("exploit")
+# TODO: print(f"[FLAWED REWARD] Genuine cleaning: {genuine_score_flawed}, Exploit: {exploit_score_flawed}")
+# TODO: print("Exploit scores higher!" if exploit_score_flawed > genuine_score_flawed else "No exploit advantage")
+
+def simulate_corrected_reward(strategy, episode_length=20):
+    # CORRECTED: reward is based on NET reduction in TOTAL dirt ever introduced to the environment,
+    # not raw "collection events" -- dumping dirt back down doesn't create new reward opportunity,
+    # and is additionally penalized as a wasted action.
+    total_reward = 0
+    floor_dirt = 10
+    total_dirt_ever_seen = 10
+    for t in range(episode_length):
+        if strategy == "genuine":
+            collected = min(1, floor_dirt)
+            floor_dirt -= collected
+            # TODO: reward = collected  -- reward only for reducing floor_dirt below its historical max
+            # TODO: total_reward += reward
+        elif strategy == "exploit":
+            if t % 2 == 0 and floor_dirt < 10:
+                # TODO: floor_dirt += 1
+                # TODO: total_reward -= 0.5  # PENALTY for dumping dirt back onto the floor
+                pass
+            collected = min(1, floor_dirt)
+            floor_dirt -= collected
+            # TODO: total_reward += collected
+        pass
+    return total_reward
+
+# TODO: genuine_score_corrected = simulate_corrected_reward("genuine")
+# TODO: exploit_score_corrected = simulate_corrected_reward("exploit")
+# TODO: print(f"\\n[CORRECTED REWARD] Genuine cleaning: {genuine_score_corrected}, Exploit: {exploit_score_corrected}")
+# TODO: print("Fixed!" if genuine_score_corrected > exploit_score_corrected else "Still exploitable")
+`,
+    skillTags: ["Reward Hacking", "Reward Shaping", "Reinforcement Learning Safety", "RL System Design", "AI Alignment"],
+    hints: [
+      "Reward hacking happens when the reward function is a PROXY for the true goal, and the agent finds a way to maximize the proxy without achieving the actual intent — 'dirt collected' events is not the same thing as 'floor is actually clean'",
+      "A robust fix usually involves measuring PROGRESS TOWARD THE TRUE GOAL (net reduction in dirt, or final state cleanliness) rather than counting discrete actions that can be gamed by repetition",
+      "This exact failure mode (agents finding unintended loopholes in reward functions) is a well-documented, real phenomenon in RL research — it's a core reason why reward function design deserves as much scrutiny as the learning algorithm itself",
+    ],
+  },
+  {
+    id: "rl-004",
+    title: "Policy Evaluation: Estimate State Values Under a Fixed Policy",
+    category: "Reinforcement Learning",
+    icon: "📐",
+    difficulty: "Medium",
+    timeLimit: "30 min",
+    eloGain: 20,
+    tools: ["Python", "NumPy"],
+    scenario:
+      "Before deploying a rule-based inventory reordering policy, the operations team wants to know its expected long-term value under different states — not just whether it works in a single scenario, but its value function across all possible inventory levels.",
+    objective:
+      "Implement iterative policy evaluation to compute the state-value function for a fixed policy in a simple Markov Decision Process, using the Bellman expectation equation.",
+    steps: [
+      "Define a simple MDP: states (inventory levels), a fixed policy (reorder rule), transition probabilities, and rewards",
+      "Initialize state values to zero",
+      "Implement one sweep of iterative policy evaluation using the Bellman expectation equation",
+      "Repeat sweeps until the value function converges (change below a threshold)",
+      "Interpret the converged values: which states are most/least valuable under this policy",
+    ],
+    workstation: "notebook",
+    starterCode: `# Iterative Policy Evaluation — Bellman Expectation Equation
+import numpy as np
+
+# Simplified MDP: 4 inventory levels (0=empty, 1=low, 2=medium, 3=full)
+states = [0, 1, 2, 3]
+gamma = 0.9
+
+# Fixed policy: reorder if inventory <= 1, else don't (already decided, we're just evaluating it)
+# Transition model given this policy: P(next_state | current_state) -- simplified, deterministic-ish
+transitions = {
+    0: {1: 0.7, 2: 0.3},          # reorder triggered -> likely restocks to level 1 or 2
+    1: {2: 0.6, 1: 0.4},          # reorder triggered -> mostly restocks to level 2
+    2: {1: 0.5, 2: 0.3, 3: 0.2},  # no reorder -> inventory naturally depletes
+    3: {2: 0.6, 3: 0.4},          # no reorder -> inventory depletes from full
+}
+# Reward for being in each state (holding cost for high inventory, stockout risk cost for low)
+rewards = {0: -10, 1: -2, 2: 5, 3: -1}  # empty is very bad (stockout), full has holding cost
+
+V = {s: 0.0 for s in states}
+theta = 0.001  # convergence threshold
+
+for sweep in range(1000):
+    # TODO: delta = 0
+    new_V = V.copy()
+    for s in states:
+        # STEP 3: Bellman expectation update
+        # TODO: expected_future_value = sum(prob * V[next_s] for next_s, prob in transitions[s].items())
+        # TODO: new_V[s] = rewards[s] + gamma * expected_future_value
+        # TODO: delta = max(delta, abs(new_V[s] - V[s]))
+        pass
+    V = new_V
+    # TODO: if delta < theta:
+    # TODO:     print(f"Converged after {sweep+1} sweeps")
+    # TODO:     break
+
+# TODO: print("\\nConverged state values:")
+# TODO: for s in states:
+# TODO:     print(f"  Inventory level {s}: V = {V[s]:.2f}")
+
+# STEP 5: Interpretation
+# TODO: best_state = max(V, key=V.get)
+# TODO: worst_state = min(V, key=V.get)
+# TODO: print(f"\\nMost valuable state under this policy: level {best_state}")
+# TODO: print(f"Least valuable state under this policy: level {worst_state}")
+`,
+    skillTags: ["Policy Evaluation", "Bellman Expectation Equation", "Markov Decision Process", "Reinforcement Learning", "Value Functions"],
+    hints: [
+      "Policy evaluation computes how good a GIVEN (already fixed) policy is — it doesn't try to find a better policy, that's a separate step called policy improvement, together forming policy iteration",
+      "The Bellman expectation equation averages over ALL possible next states weighted by their transition probability — this is what distinguishes it from a simple 'follow one path' simulation",
+      "Convergence is guaranteed for this kind of iterative sweep under standard MDP assumptions (discount factor < 1, bounded rewards) — the threshold theta just controls how precisely 'converged' is defined before stopping",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI/ML — MODEL EVALUATION & METRICS
+// ─────────────────────────────────────────────────────────────────────────────
+export const ML_MODEL_EVALUATION_CHALLENGES = [
+  {
+    id: "ml-eval-001",
+    title: "Build a Confusion Matrix and Derive All Core Metrics",
+    category: "Model Evaluation",
+    icon: "🔢",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python", "NumPy"],
+    scenario:
+      "A stakeholder keeps asking for 'the accuracy' of a fraud detection model, but accuracy alone is dangerously misleading on an imbalanced dataset (99% legitimate transactions). You need to compute and explain the full set of classification metrics from first principles.",
+    objective:
+      "Build a confusion matrix from predictions and ground truth, then derive precision, recall, F1, and specificity from its four cells.",
+    steps: [
+      "Compute the confusion matrix cells: TP, FP, TN, FN",
+      "Derive accuracy and explain why it's misleading here",
+      "Derive precision and recall from the confusion matrix",
+      "Derive F1 score as the harmonic mean of precision and recall",
+      "Derive specificity and explain when it matters more than recall",
+    ],
+    workstation: "notebook",
+    starterCode: `# Confusion Matrix and Core Classification Metrics
+import numpy as np
+
+# Fraud detection: 1 = fraud, 0 = legitimate. Highly imbalanced (only 20 of 1000 are fraud).
+y_true = np.array([0]*980 + [1]*20)
+np.random.seed(5)
+y_pred = y_true.copy()
+# Simulate a realistic model: catches 14/20 frauds, has 30 false alarms on legitimate transactions
+fraud_indices = np.where(y_true == 1)[0]
+y_pred[fraud_indices[:6]] = 0  # misses 6 real frauds (false negatives)
+legit_indices = np.where(y_true == 0)[0]
+np.random.shuffle(legit_indices)
+y_pred[legit_indices[:30]] = 1  # 30 false alarms
+
+# STEP 1: Confusion matrix cells
+# TODO: TP = np.sum((y_true == 1) & (y_pred == 1))
+# TODO: FP = np.sum((y_true == 0) & (y_pred == 1))
+# TODO: TN = np.sum((y_true == 0) & (y_pred == 0))
+# TODO: FN = np.sum((y_true == 1) & (y_pred == 0))
+# TODO: print(f"TP={TP}, FP={FP}, TN={TN}, FN={FN}")
+
+# STEP 2: Accuracy (misleading here)
+# TODO: accuracy = (TP + TN) / (TP + FP + TN + FN)
+# TODO: print(f"\\nAccuracy: {accuracy:.1%}")
+# TODO: print("Misleading: a model predicting 'always legitimate' would ALSO score ~98% accuracy here")
+
+# STEP 3: Precision and Recall
+# TODO: precision = TP / (TP + FP)
+# TODO: recall = TP / (TP + FN)
+# TODO: print(f"\\nPrecision: {precision:.1%} (of flagged transactions, how many were really fraud)")
+# TODO: print(f"Recall: {recall:.1%} (of actual frauds, how many did we catch)")
+
+# STEP 4: F1
+# TODO: f1 = 2 * precision * recall / (precision + recall)
+# TODO: print(f"\\nF1 Score: {f1:.1%}")
+
+# STEP 5: Specificity
+# TODO: specificity = TN / (TN + FP)
+# TODO: print(f"\\nSpecificity: {specificity:.1%} (of legitimate transactions, how many correctly passed)")
+# TODO: print("Specificity matters more when false alarms have a high cost (e.g. blocking real customers)")
+`,
+    skillTags: ["Confusion Matrix", "Precision", "Recall", "F1 Score", "Imbalanced Classification"],
+    hints: [
+      "On heavily imbalanced data, a trivial model that always predicts the majority class can score deceptively high accuracy — this is exactly why precision/recall/F1 are essential companions, not optional extras",
+      "Precision answers 'when the model says fraud, how often is it right' — recall answers 'of all real frauds, how many did the model catch' — these trade off against each other and neither alone tells the full story",
+      "F1's harmonic mean (not simple average) specifically punishes a large imbalance between precision and recall — a model with 100% precision and 1% recall gets a low F1, correctly reflecting that it's not actually useful",
+    ],
+  },
+  {
+    id: "ml-eval-002",
+    title: "Plot and Interpret an ROC Curve and AUC",
+    category: "Model Evaluation",
+    icon: "📈",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Python", "scikit-learn"],
+    scenario:
+      "Two candidate models for a churn predictor have different precision/recall at their default thresholds, and the team can't agree which is 'better' — because they're implicitly comparing at different, uncalibrated decision thresholds. You need the ROC curve and AUC to compare them fairly across ALL thresholds at once.",
+    objective:
+      "Compute the ROC curve (TPR vs FPR across thresholds) for two models' predicted probabilities and compare them using AUC.",
+    steps: [
+      "Given predicted probabilities (not just hard 0/1 labels) for two models",
+      "Compute the ROC curve points for each model across all thresholds",
+      "Compute AUC (area under the ROC curve) for each",
+      "Determine which model is better OVERALL (across all thresholds) via AUC",
+      "Explain a scenario where the lower-AUC model could still be preferred at a SPECIFIC operating threshold",
+    ],
+    workstation: "notebook",
+    starterCode: `# ROC Curve and AUC Comparison
+import numpy as np
+from sklearn.metrics import roc_curve, auc
+
+np.random.seed(11)
+n = 1000
+y_true = np.random.binomial(1, 0.15, n)  # 15% churn rate
+
+# Model A: decent separation between classes
+model_a_scores = np.where(y_true == 1, np.random.beta(5, 3, n), np.random.beta(2, 5, n))
+# Model B: weaker separation
+model_b_scores = np.where(y_true == 1, np.random.beta(3, 3, n), np.random.beta(2.5, 3, n))
+
+# STEP 2: ROC curve for each model
+# TODO: fpr_a, tpr_a, thresholds_a = roc_curve(y_true, model_a_scores)
+# TODO: fpr_b, tpr_b, thresholds_b = roc_curve(y_true, model_b_scores)
+
+# STEP 3: AUC for each
+# TODO: auc_a = auc(fpr_a, tpr_a)
+# TODO: auc_b = auc(fpr_b, tpr_b)
+# TODO: print(f"Model A AUC: {auc_a:.3f}")
+# TODO: print(f"Model B AUC: {auc_b:.3f}")
+
+# STEP 4: Which is better overall?
+# TODO: better_model = "A" if auc_a > auc_b else "B"
+# TODO: print(f"\\nModel {better_model} is better across ALL thresholds (higher AUC)")
+
+# Print a few sample points from the ROC curve for the better model
+print(f"\\nSample ROC points (Model {better_model}):")
+# TODO: sample_fpr, sample_tpr = (fpr_a, tpr_a) if better_model == "A" else (fpr_b, tpr_b)
+# TODO: for i in range(0, len(sample_fpr), max(1, len(sample_fpr)//5)):
+# TODO:     print(f"  FPR={sample_fpr[i]:.2f}, TPR={sample_tpr[i]:.2f}")
+
+# STEP 5: When could the lower-AUC model still be preferred?
+print("\\nIf the business ONLY cares about performance at one specific operating point (e.g.")
+print("a fixed low false-positive-rate budget), the lower-AUC model could still win AT THAT")
+print("SPECIFIC threshold even while being worse averaged across all thresholds — AUC is a")
+print("summary across the whole curve, not a guarantee at any single point you actually use.")
+`,
+    skillTags: ["ROC Curve", "AUC", "Model Comparison", "Threshold-Independent Metrics", "Binary Classification"],
+    hints: [
+      "ROC curves require predicted PROBABILITIES (or scores), not hard 0/1 predictions — you need a continuum of possible thresholds to trace the curve, which hard labels don't provide",
+      "AUC has a clean probabilistic interpretation: it's the probability that a randomly chosen positive example is ranked higher than a randomly chosen negative example by the model",
+      "Comparing models only at their DEFAULT thresholds (as the team was doing) can be misleading precisely because different models may have different 'natural' probability calibrations — AUC sidesteps this by evaluating across the whole threshold range at once",
+    ],
+  },
+  {
+    id: "ml-eval-003",
+    title: "Implement K-Fold Cross-Validation from Scratch",
+    category: "Model Evaluation",
+    icon: "🔄",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Python", "NumPy", "scikit-learn"],
+    scenario:
+      "A single train/test split gave a suspiciously optimistic accuracy that didn't hold up when the model went to production — the split just happened to be lucky. You need k-fold cross-validation to get a more reliable, lower-variance estimate of true model performance.",
+    objective:
+      "Implement k-fold cross-validation manually (fold splitting, train/evaluate loop, result aggregation) and compare its variance to a single train/test split.",
+    steps: [
+      "Manually split the dataset into K folds",
+      "For each fold, train on the other K-1 folds and evaluate on the held-out fold",
+      "Collect the accuracy from each fold",
+      "Compute the mean and standard deviation across folds",
+      "Compare this mean±std to a single random train/test split's single accuracy number",
+    ],
+    workstation: "notebook",
+    starterCode: `# K-Fold Cross-Validation from Scratch
+import numpy as np
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+
+np.random.seed(15)
+n = 300
+X = np.random.randn(n, 4)
+true_w = np.array([1.5, -1.0, 0.5, 2.0])
+y = (X @ true_w + np.random.randn(n) * 1.5 > 0).astype(int)
+
+K = 5
+
+def k_fold_split(n_samples, k):
+    indices = np.arange(n_samples)
+    np.random.shuffle(indices)
+    fold_size = n_samples // k
+    folds = []
+    # TODO: for i in range(k):
+    # TODO:     start = i * fold_size
+    # TODO:     end = start + fold_size if i < k - 1 else n_samples
+    # TODO:     test_idx = indices[start:end]
+    # TODO:     train_idx = np.concatenate([indices[:start], indices[end:]])
+    # TODO:     folds.append((train_idx, test_idx))
+    return folds
+
+# TODO: folds = k_fold_split(n, K)
+
+fold_accuracies = []
+# TODO: for fold_num, (train_idx, test_idx) in enumerate(folds):
+# TODO:     X_train, X_test = X[train_idx], X[test_idx]
+# TODO:     y_train, y_test = y[train_idx], y[test_idx]
+# TODO:     model = LogisticRegression().fit(X_train, y_train)
+# TODO:     acc = model.score(X_test, y_test)
+# TODO:     fold_accuracies.append(acc)
+# TODO:     print(f"Fold {fold_num+1}: accuracy = {acc:.3f}")
+
+# TODO: mean_acc = np.mean(fold_accuracies)
+# TODO: std_acc = np.std(fold_accuracies)
+# TODO: print(f"\\nCross-validated accuracy: {mean_acc:.3f} +/- {std_acc:.3f}")
+
+# STEP 5: Compare to a single random split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=99)
+single_split_model = LogisticRegression().fit(X_train, y_train)
+single_split_acc = single_split_model.score(X_test, y_test)
+# TODO: print(f"\\nSingle train/test split accuracy: {single_split_acc:.3f}")
+# TODO: print(f"Does the single split fall within CV mean +/- std? ", abs(single_split_acc - mean_acc) <= std_acc)
+`,
+    skillTags: ["K-Fold Cross-Validation", "Model Evaluation", "Variance Estimation", "Robust Evaluation", "Statistical Reliability"],
+    hints: [
+      "Every sample appears in exactly ONE test fold across the whole K-fold process — this ensures the CV estimate uses the full dataset for evaluation, not just one lucky (or unlucky) subset",
+      "The standard deviation across folds is just as informative as the mean — a high std means model performance is unstable/sensitive to which data it sees, a red flag worth investigating before trusting the mean number",
+      "A single train/test split's accuracy is really just ONE draw from the same distribution that K-fold estimates the mean and spread of — that's exactly why a single split can look surprisingly good or bad purely by chance",
+    ],
+  },
+  {
+    id: "ml-eval-004",
+    title: "Handle Class Imbalance: Compare Resampling Strategies",
+    category: "Model Evaluation",
+    icon: "⚖️",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 22,
+    tools: ["Python", "scikit-learn", "imbalanced-learn"],
+    scenario:
+      "A rare-disease diagnostic model trained on 98%-healthy, 2%-diseased data learned to just predict 'healthy' for everyone — technically 98% accurate, completely clinically useless. You need to evaluate resampling strategies (oversampling, undersampling, class weighting) to see which actually helps the model learn the minority class.",
+    objective:
+      "Compare a baseline model against class-weighted training and random oversampling on an imbalanced dataset, evaluated with recall on the minority class (not accuracy).",
+    steps: [
+      "Train a baseline model with no imbalance handling and evaluate recall on the minority class",
+      "Train a model with class_weight='balanced' and compare recall",
+      "Implement simple random oversampling of the minority class and retrain",
+      "Compare recall on the minority class across all three approaches",
+      "Discuss the trade-off: minority recall usually improves at some cost to majority precision",
+    ],
+    workstation: "notebook",
+    starterCode: `# Class Imbalance — Resampling Strategy Comparison
+import numpy as np
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import recall_score, precision_score
+
+np.random.seed(20)
+n_majority, n_minority = 980, 20
+X_majority = np.random.randn(n_majority, 3) + [0, 0, 0]
+X_minority = np.random.randn(n_minority, 3) + [1.5, 1.5, 1.5]  # somewhat separable but rare
+X = np.vstack([X_majority, X_minority])
+y = np.array([0]*n_majority + [1]*n_minority)
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, stratify=y, random_state=1)
+
+# STEP 1: Baseline — no imbalance handling
+baseline = LogisticRegression().fit(X_train, y_train)
+# TODO: baseline_recall = recall_score(y_test, baseline.predict(X_test))
+# TODO: baseline_precision = precision_score(y_test, baseline.predict(X_test), zero_division=0)
+# TODO: print(f"Baseline: minority recall={baseline_recall:.2f}, minority precision={baseline_precision:.2f}")
+
+# STEP 2: Class weighting
+weighted = LogisticRegression(class_weight="balanced").fit(X_train, y_train)
+# TODO: weighted_recall = recall_score(y_test, weighted.predict(X_test))
+# TODO: weighted_precision = precision_score(y_test, weighted.predict(X_test), zero_division=0)
+# TODO: print(f"Class-weighted: minority recall={weighted_recall:.2f}, minority precision={weighted_precision:.2f}")
+
+# STEP 3: Simple random oversampling of the minority class
+def random_oversample(X, y, minority_label=1):
+    minority_mask = y == minority_label
+    X_min, y_min = X[minority_mask], y[minority_mask]
+    X_maj, y_maj = X[~minority_mask], y[~minority_mask]
+    n_needed = len(y_maj) - len(y_min)
+    # TODO: oversample_idx = np.random.choice(len(X_min), size=n_needed, replace=True)
+    # TODO: X_min_oversampled = np.vstack([X_min, X_min[oversample_idx]])
+    # TODO: y_min_oversampled = np.concatenate([y_min, y_min[oversample_idx]])
+    # TODO: X_balanced = np.vstack([X_maj, X_min_oversampled])
+    # TODO: y_balanced = np.concatenate([y_maj, y_min_oversampled])
+    # TODO: return X_balanced, y_balanced
+    pass
+
+# TODO: X_over, y_over = random_oversample(X_train, y_train)
+oversampled_model = LogisticRegression()
+# TODO: oversampled_model.fit(X_over, y_over)
+# TODO: over_recall = recall_score(y_test, oversampled_model.predict(X_test))
+# TODO: over_precision = precision_score(y_test, oversampled_model.predict(X_test), zero_division=0)
+# TODO: print(f"Random oversampling: minority recall={over_recall:.2f}, minority precision={over_precision:.2f}")
+
+# STEP 5: Summary
+print("\\nBoth class-weighting and oversampling typically trade some majority-class precision")
+print("for much better minority-class recall — for a rare-disease diagnostic, that trade is")
+print("usually worth it: missing a real case is far costlier than a false alarm requiring follow-up testing.")
+`,
+    skillTags: ["Class Imbalance", "Resampling", "Class Weighting", "Recall Optimization", "Imbalanced Classification"],
+    hints: [
+      "class_weight='balanced' effectively makes minority-class errors cost more during training — it's often the simplest and cheapest fix to try first, requiring no changes to the dataset itself",
+      "Random oversampling with replacement can lead to overfitting on the (few) duplicated minority examples — more sophisticated techniques like SMOTE generate synthetic minority examples instead of just duplicating real ones, worth exploring as a next step",
+      "There's no free lunch here — improving minority recall almost always costs something (majority precision, more false positives) — the right trade-off point is a business/clinical decision, not a purely technical one",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI/ML — FEATURE ENGINEERING
+// ─────────────────────────────────────────────────────────────────────────────
+export const ML_FEATURE_ENGINEERING_CHALLENGES = [
+  {
+    id: "ml-feat-001",
+    title: "Encode Categorical Variables the Right Way",
+    category: "Feature Engineering",
+    icon: "🏷️",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python", "Pandas", "scikit-learn"],
+    scenario:
+      "A junior data scientist label-encoded a 'city' column (Mumbai=0, Delhi=1, Chennai=2...) and fed it directly into a linear model, which then learned a nonsensical ordering implying Chennai > Delhi > Mumbai numerically. You need to fix the encoding strategy to match what each model type can actually handle correctly.",
+    objective:
+      "Implement one-hot encoding for nominal (unordered) categories and ordinal encoding for genuinely ordered categories, and explain why label encoding was wrong for the city example.",
+    steps: [
+      "Demonstrate the problem: label-encode 'city' and show the implied ordering is meaningless",
+      "One-hot encode the nominal 'city' column correctly",
+      "Ordinal-encode a genuinely ordered column ('education_level': high_school < bachelors < masters < phd) correctly",
+      "Compare the resulting feature matrix shapes and explain the trade-off (one-hot increases dimensionality)",
+      "Discuss when label/ordinal encoding is appropriate vs when it silently introduces a false ordering",
+    ],
+    workstation: "notebook",
+    starterCode: `# Categorical Encoding — One-Hot vs Ordinal
+import pandas as pd
+
+df = pd.DataFrame({
+    "city": ["Mumbai", "Delhi", "Chennai", "Mumbai", "Bangalore"],
+    "education_level": ["bachelors", "phd", "high_school", "masters", "bachelors"],
+})
+
+# STEP 1: The WRONG way — label encoding a nominal (unordered) column
+wrong_encoding = {"Mumbai": 0, "Delhi": 1, "Chennai": 2, "Bangalore": 3}
+df["city_label_encoded_WRONG"] = df["city"].map(wrong_encoding)
+print("WRONG: label-encoded city implies Bangalore(3) > Chennai(2) > Delhi(1) > Mumbai(0)")
+print("A linear model would learn nonsensical relationships from this fake numeric ordering.\\n")
+
+# STEP 2: One-hot encode city (correct for nominal/unordered categories)
+# TODO: city_onehot = pd.get_dummies(df["city"], prefix="city")
+# TODO: print("One-hot encoded city columns:", list(city_onehot.columns))
+# TODO: print(city_onehot)
+
+# STEP 3: Ordinal encode education_level (correct for genuinely ORDERED categories)
+education_order = ["high_school", "bachelors", "masters", "phd"]
+ordinal_map = {level: i for i, level in enumerate(education_order)}
+# TODO: df["education_ordinal"] = df["education_level"].map(ordinal_map)
+# TODO: print("\\nOrdinal-encoded education_level:")
+# TODO: print(df[["education_level", "education_ordinal"]])
+
+# STEP 4: Dimensionality comparison
+# TODO: print(f"\\nOriginal city column: 1 column")
+# TODO: print(f"One-hot encoded city: {city_onehot.shape[1]} columns")
+# TODO: print(f"Ordinal encoded education: still 1 column (ordering is meaningful, no expansion needed)")
+
+# STEP 5: Discussion
+print("\\nUse ordinal encoding ONLY when categories have a genuine, meaningful order (education level,")
+print("t-shirt size, star rating). Use one-hot encoding for nominal categories with no inherent order")
+print("(city, color, product category) — label-encoding these introduces a false numeric relationship")
+print("that models (especially linear ones) will incorrectly learn from.")
+`,
+    skillTags: ["Categorical Encoding", "One-Hot Encoding", "Ordinal Encoding", "Feature Engineering", "Data Preprocessing"],
+    hints: [
+      "Tree-based models (decision trees, random forests, gradient boosting) are much more tolerant of label-encoded nominal categories than linear models — they can learn arbitrary splits, but linear models directly multiply the encoded number by a weight, making the false ordering actively harmful",
+      "One-hot encoding trades dimensionality for correctness — a 'city' column with 500 unique values would explode into 500 columns, which is when techniques like target encoding or embeddings become more practical",
+      "Always ask 'is there a genuine, universally-agreed order here' before choosing ordinal encoding — 'small/medium/large' clearly qualifies, 'red/blue/green' clearly doesn't, but some cases are genuinely ambiguous and deserve real thought",
+    ],
+  },
+  {
+    id: "ml-feat-002",
+    title: "Handle Missing Data: Compare Imputation Strategies",
+    category: "Feature Engineering",
+    icon: "🧩",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Python", "Pandas", "scikit-learn"],
+    scenario:
+      "A dataset has 15% missing values in an 'income' column, and the current pipeline just drops any row with a missing value — silently losing 15% of the training data, which turns out to be non-randomly distributed (missingness correlates with the target).",
+    objective:
+      "Compare row-deletion, mean/median imputation, and a missingness indicator flag as strategies for handling missing data, and evaluate their downstream impact on model performance.",
+    steps: [
+      "Quantify how much data row-deletion actually discards",
+      "Check whether missingness is random or correlated with other features/target (a key diagnostic)",
+      "Implement median imputation for the missing income values",
+      "Add a binary 'was_missing' indicator flag alongside the imputed value",
+      "Compare model performance (a simple metric) across all three strategies",
+    ],
+    workstation: "notebook",
+    starterCode: `# Missing Data Imputation Strategy Comparison
+import numpy as np
+import pandas as pd
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+
+np.random.seed(30)
+n = 1000
+age = np.random.uniform(22, 65, n)
+income = 20000 + age * 800 + np.random.normal(0, 5000, n)
+# Missingness is NOT random -- lower earners are more likely to skip reporting income
+missing_prob = np.clip(1 - (income - income.min()) / (income.max() - income.min()), 0.05, 0.4)
+is_missing = np.random.random(n) < missing_prob
+income_with_missing = income.copy()
+income_with_missing[is_missing] = np.nan
+
+target = (income > 45000).astype(int)  # target correlates with the TRUE income, which we sometimes don't observe
+
+df = pd.DataFrame({"age": age, "income": income_with_missing, "target": target})
+
+# STEP 1: How much data would row-deletion discard?
+# TODO: pct_missing = df["income"].isna().mean()
+# TODO: print(f"Percent missing: {pct_missing:.1%}")
+
+# STEP 2: Is missingness correlated with the target? (a MNAR/MAR check)
+# TODO: missing_target_rate = df[df["income"].isna()]["target"].mean()
+# TODO: present_target_rate = df[df["income"].notna()]["target"].mean()
+# TODO: print(f"Target rate when income IS missing: {missing_target_rate:.2f}")
+# TODO: print(f"Target rate when income is present: {present_target_rate:.2f}")
+# TODO: print("If these differ notably, missingness is informative -- dropping rows loses a real signal")
+
+# Strategy 1: Row deletion
+df_deleted = df.dropna(subset=["income"])
+
+# Strategy 2: Median imputation
+df_imputed = df.copy()
+# TODO: median_income = df["income"].median()
+# TODO: df_imputed["income"] = df_imputed["income"].fillna(median_income)
+
+# Strategy 3: Median imputation + missingness indicator
+df_indicator = df_imputed.copy()
+# TODO: df_indicator["income_was_missing"] = df["income"].isna().astype(int)
+
+def evaluate_strategy(data, feature_cols, name):
+    X = data[feature_cols]
+    y = data["target"]
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=1)
+    model = LogisticRegression(max_iter=1000).fit(X_train, y_train)
+    acc = accuracy_score(y_test, model.predict(X_test))
+    print(f"{name}: accuracy={acc:.3f}, n_samples_used={len(data)}")
+    return acc
+
+print()
+# TODO: evaluate_strategy(df_deleted, ["age", "income"], "Row deletion")
+# TODO: evaluate_strategy(df_imputed, ["age", "income"], "Median imputation only")
+# TODO: evaluate_strategy(df_indicator, ["age", "income", "income_was_missing"], "Median imputation + missingness flag")
+`,
+    skillTags: ["Missing Data", "Imputation", "MNAR", "Feature Engineering", "Data Preprocessing"],
+    hints: [
+      "When missingness itself correlates with the target (as simulated here — lower earners are more likely to have missing income, and income predicts the target), that's called MNAR (Missing Not At Random) — row deletion in this case throws away a genuinely informative signal, not just random noise",
+      "A missingness indicator flag lets the model learn from the FACT that a value was missing, separately from whatever value was imputed to fill the gap — cheap to add and often recovers some of the signal lost by imputation alone",
+      "Median (not mean) imputation is generally preferred for skewed data since it's more robust to outliers — always check the distribution shape before choosing between them",
+    ],
+  },
+  {
+    id: "ml-feat-003",
+    title: "Engineer Time-Based Features from a Timestamp",
+    category: "Feature Engineering",
+    icon: "🕐",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Python", "Pandas", "NumPy"],
+    scenario:
+      "A raw transaction timestamp column is being fed directly into a fraud model as a Unix epoch integer — the model has no way to learn that fraud is more common at 3 AM or on weekends, because a raw timestamp doesn't expose those cyclical patterns at all.",
+    objective:
+      "Engineer meaningful time-based features (hour of day, day of week, cyclical encodings) from a raw timestamp column.",
+    steps: [
+      "Extract basic calendar features: hour, day of week, is_weekend",
+      "Implement cyclical encoding for hour-of-day using sin/cos transforms",
+      "Explain why cyclical encoding is needed (hour 23 and hour 0 are adjacent, but naive encoding treats them as far apart)",
+      "Compute a 'time since last transaction for this user' feature (a classic fraud signal)",
+      "Verify the cyclical encoding correctly places hour 23 and hour 0 close together in feature space",
+    ],
+    workstation: "notebook",
+    starterCode: `# Time-Based Feature Engineering
+import pandas as pd
+import numpy as np
+
+df = pd.DataFrame({
+    "user_id": [1, 1, 1, 2, 2, 3],
+    "timestamp": pd.to_datetime([
+        "2026-08-10 23:45:00", "2026-08-11 00:15:00", "2026-08-11 14:30:00",
+        "2026-08-09 03:20:00", "2026-08-09 03:25:00", "2026-08-10 09:00:00",
+    ]),
+})
+
+# STEP 1: Basic calendar features
+# TODO: df["hour"] = df["timestamp"].dt.hour
+# TODO: df["day_of_week"] = df["timestamp"].dt.dayofweek  # 0=Monday
+# TODO: df["is_weekend"] = df["day_of_week"].isin([5, 6]).astype(int)
+
+# STEP 2: Cyclical encoding for hour (0-23 wraps around)
+# TODO: df["hour_sin"] = np.sin(2 * np.pi * df["hour"] / 24)
+# TODO: df["hour_cos"] = np.cos(2 * np.pi * df["hour"] / 24)
+
+# TODO: print(df[["timestamp", "hour", "hour_sin", "hour_cos"]])
+
+# STEP 3 & 5: Verify hour 23 and hour 0 are close in (sin, cos) space
+def cyclical_distance(h1, h2):
+    s1, c1 = np.sin(2*np.pi*h1/24), np.cos(2*np.pi*h1/24)
+    s2, c2 = np.sin(2*np.pi*h2/24), np.cos(2*np.pi*h2/24)
+    # TODO: return np.sqrt((s1-s2)**2 + (c1-c2)**2)
+    pass
+
+naive_distance_23_to_0 = abs(23 - 0)  # naive: looks very far apart (23)
+# TODO: cyclical_dist = cyclical_distance(23, 0)
+# TODO: print(f"\\nNaive numeric distance, hour 23 to hour 0: {naive_distance_23_to_0}")
+# TODO: print(f"Cyclical (sin/cos) distance, hour 23 to hour 0: {cyclical_dist:.3f} (should be small — they're 1 hour apart!)")
+
+# STEP 4: Time since last transaction per user (classic fraud signal — rapid repeat transactions)
+# TODO: df = df.sort_values(["user_id", "timestamp"])
+# TODO: df["time_since_last_tx_minutes"] = df.groupby("user_id")["timestamp"].diff().dt.total_seconds() / 60
+# TODO: print("\\n", df[["user_id", "timestamp", "time_since_last_tx_minutes"]])
+`,
+    skillTags: ["Time-Based Features", "Cyclical Encoding", "Feature Engineering", "Fraud Detection", "Time Series Features"],
+    hints: [
+      "A raw hour value of 23 and 0 are numerically 23 apart, but they're actually only 1 hour apart on the clock — sin/cos cyclical encoding correctly captures this wraparound, which no simple linear scaling of the raw hour can do",
+      "The very first transaction per user will have a NaN 'time since last transaction' — that's expected and correct (there's no prior transaction to measure from), not a bug to silently fill with zero",
+      "Rapid repeat transactions (very short 'time since last') is one of the single most predictive classic fraud signals — this feature alone often carries more signal than dozens of other engineered features combined",
+    ],
+  },
+  {
+    id: "ml-feat-004",
+    title: "Feature Selection: Remove Redundant and Uninformative Features",
+    category: "Feature Engineering",
+    icon: "✂️",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 22,
+    tools: ["Python", "Pandas", "scikit-learn"],
+    scenario:
+      "A model was trained on 80 raw features scraped from a database, most of which are either near-constant, highly correlated duplicates of each other, or pure noise — bloating training time and risking overfitting. You need a systematic feature selection pass before the next training run.",
+    objective:
+      "Implement a multi-stage feature selection pipeline: remove near-zero-variance features, remove highly correlated redundant features, then rank remaining features by importance.",
+    steps: [
+      "Identify and remove near-constant features (variance below a threshold)",
+      "Identify pairs of highly correlated features (correlation above a threshold) and drop one from each pair",
+      "Train a simple model and extract feature importances on the remaining features",
+      "Rank features by importance and identify the bottom performers",
+      "Report the final reduced feature set and the reduction achieved",
+    ],
+    workstation: "notebook",
+    starterCode: `# Feature Selection Pipeline — Variance, Correlation, Importance
+import numpy as np
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+
+np.random.seed(40)
+n = 500
+
+# Build a synthetic dataset with intentional redundancy/noise
+useful_1 = np.random.randn(n)
+useful_2 = np.random.randn(n)
+redundant_of_1 = useful_1 + np.random.normal(0, 0.05, n)  # nearly identical to useful_1
+near_constant = np.full(n, 5.0) + np.random.normal(0, 0.001, n)  # basically constant
+pure_noise_1 = np.random.randn(n)
+pure_noise_2 = np.random.randn(n)
+
+X = pd.DataFrame({
+    "useful_1": useful_1, "useful_2": useful_2,
+    "redundant_of_1": redundant_of_1,
+    "near_constant": near_constant,
+    "noise_1": pure_noise_1, "noise_2": pure_noise_2,
+})
+y = (useful_1 * 2 + useful_2 * 1.5 + np.random.normal(0, 1, n) > 0).astype(int)
+
+# STEP 1: Remove near-zero-variance features
+variance_threshold = 0.01
+# TODO: low_variance_cols = X.columns[X.var() < variance_threshold].tolist()
+# TODO: print(f"Near-zero-variance features to drop: {low_variance_cols}")
+# TODO: X_step1 = X.drop(columns=low_variance_cols)
+
+# STEP 2: Remove highly correlated redundant features
+correlation_threshold = 0.95
+# TODO: corr_matrix = X_step1.corr().abs()
+to_drop = set()
+# TODO: for i in range(len(corr_matrix.columns)):
+# TODO:     for j in range(i+1, len(corr_matrix.columns)):
+# TODO:         if corr_matrix.iloc[i, j] > correlation_threshold:
+# TODO:             to_drop.add(corr_matrix.columns[j])  # drop the second of each highly-correlated pair
+# TODO: print(f"Highly correlated redundant features to drop: {to_drop}")
+# TODO: X_step2 = X_step1.drop(columns=list(to_drop))
+
+# STEP 3 & 4: Feature importance on what remains
+model = RandomForestClassifier(n_estimators=100, random_state=1)
+# TODO: model.fit(X_step2, y)
+# TODO: importances = pd.Series(model.feature_importances_, index=X_step2.columns).sort_values(ascending=False)
+# TODO: print(f"\\nFeature importances (remaining features):")
+# TODO: print(importances)
+
+# STEP 5: Final report
+# TODO: print(f"\\nOriginal feature count: {X.shape[1]}")
+# TODO: print(f"Final feature count: {X_step2.shape[1]}")
+# TODO: print(f"Reduction: {1 - X_step2.shape[1]/X.shape[1]:.0%}")
+`,
+    skillTags: ["Feature Selection", "Variance Threshold", "Correlation Analysis", "Feature Importance", "Dimensionality Reduction"],
+    hints: [
+      "Near-zero-variance features carry almost no information for the model to learn from — they're safe to drop early, before even looking at correlations or importance",
+      "When two features are highly correlated, keeping both adds redundancy without adding real information, and can destabilize some models' coefficient estimates (multicollinearity) — dropping one from each correlated pair is a simple, effective fix",
+      "Feature importance from a trained model should be the LAST step, not the first — it's most reliable once obvious redundancy and noise-only features have already been removed, since correlated features can artificially split importance between them",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI/ML — MODEL EXPLAINABILITY
+// ─────────────────────────────────────────────────────────────────────────────
+export const ML_EXPLAINABILITY_CHALLENGES = [
+  {
+    id: "ml-xai-001",
+    title: "Extract and Interpret Feature Importance from a Tree Model",
+    category: "Model Explainability",
+    icon: "🌳",
+    difficulty: "Easy",
+    timeLimit: "20 min",
+    eloGain: 12,
+    tools: ["Python", "scikit-learn"],
+    scenario:
+      "A loan approval model's decisions need to be explainable to both regulators and rejected applicants — 'the model said no' is not an acceptable answer. You need to extract and correctly interpret which features actually drove the model's decisions.",
+    objective:
+      "Train a tree-based model, extract built-in feature importances, and correctly interpret what they do and don't tell you.",
+    steps: [
+      "Train a Random Forest on loan approval data",
+      "Extract and rank feature importances",
+      "Identify the top 3 most influential features",
+      "Explain the limitation: importance shows influence on the MODEL overall, not necessarily causally on any single decision",
+      "Demonstrate this by checking a single prediction where a 'top important' feature had little bearing on THAT specific outcome",
+    ],
+    workstation: "notebook",
+    starterCode: `# Feature Importance Extraction and Interpretation
+import numpy as np
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+
+np.random.seed(50)
+n = 500
+credit_score = np.random.uniform(300, 850, n)
+income = np.random.uniform(20000, 150000, n)
+debt_ratio = np.random.uniform(0, 0.6, n)
+years_employed = np.random.uniform(0, 30, n)
+loan_amount = np.random.uniform(5000, 50000, n)
+
+X = pd.DataFrame({
+    "credit_score": credit_score, "income": income, "debt_ratio": debt_ratio,
+    "years_employed": years_employed, "loan_amount": loan_amount,
+})
+approval_score = (credit_score / 850) * 0.5 + (1 - debt_ratio) * 0.3 + (income / 150000) * 0.2
+y = (approval_score + np.random.normal(0, 0.1, n) > 0.55).astype(int)
+
+model = RandomForestClassifier(n_estimators=100, random_state=1)
+# TODO: model.fit(X, y)
+
+# STEP 2 & 3: Feature importances
+# TODO: importances = pd.Series(model.feature_importances_, index=X.columns).sort_values(ascending=False)
+# TODO: print("Feature importances:")
+# TODO: print(importances)
+# TODO: print(f"\\nTop 3 most influential features: {list(importances.index[:3])}")
+
+# STEP 5: Check a single prediction where the top feature might not have mattered much
+sample_idx = 0
+sample = X.iloc[[sample_idx]]
+# TODO: prediction = model.predict(sample)[0]
+# TODO: print(f"\\nSample applicant: {sample.to_dict('records')[0]}")
+# TODO: print(f"Prediction: {'Approved' if prediction == 1 else 'Rejected'}")
+
+print("\\nIMPORTANT LIMITATION: global feature_importances_ tells you which features matter")
+print("ON AVERAGE across the whole model — it does NOT tell you why THIS SPECIFIC applicant")
+print("was approved or rejected. For per-decision explanations, you need a LOCAL explanation")
+print("method (e.g. SHAP values) rather than the model's global importance ranking.")
+`,
+    skillTags: ["Feature Importance", "Model Explainability", "Random Forest", "Global vs Local Explanations", "Regulatory Compliance"],
+    hints: [
+      "Built-in feature_importances_ from tree ensembles is a GLOBAL explanation — it summarizes influence across the whole training set, not the reasoning behind any one individual prediction",
+      "Two features can be highly correlated and 'split' importance between them artificially — this can make a genuinely critical feature look less important than it really is, simply because a correlated twin absorbed some of the credit",
+      "For regulatory contexts requiring per-decision explanations (e.g. 'why was THIS applicant rejected'), local explanation methods like SHAP or LIME are the appropriate tool — global feature importance alone doesn't satisfy that requirement",
+    ],
+  },
+  {
+    id: "ml-xai-002",
+    title: "Build a Partial Dependence Plot Manually",
+    category: "Model Explainability",
+    icon: "📊",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 18,
+    tools: ["Python", "scikit-learn", "NumPy"],
+    scenario:
+      "Stakeholders want to understand HOW a trained pricing model's prediction changes as one input (square footage) varies, holding everything else constant — a question that a single feature-importance number can't answer, since it doesn't show the shape or direction of the relationship.",
+    objective:
+      "Implement a manual partial dependence calculation: vary one feature across its range while holding others at their observed values, and average the resulting predictions.",
+    steps: [
+      "Train a model on synthetic housing price data",
+      "Choose a feature (square_footage) and define a grid of values across its observed range",
+      "For each grid value, create a modified dataset with that feature fixed and all others unchanged",
+      "Predict on the modified dataset and average the predictions for each grid value",
+      "Plot/print the resulting partial dependence curve and interpret its shape",
+    ],
+    workstation: "notebook",
+    starterCode: `# Manual Partial Dependence Plot
+import numpy as np
+import pandas as pd
+from sklearn.ensemble import RandomForestRegressor
+
+np.random.seed(60)
+n = 400
+sqft = np.random.uniform(600, 4000, n)
+bedrooms = np.random.randint(1, 6, n)
+age_years = np.random.uniform(0, 50, n)
+
+X = pd.DataFrame({"sqft": sqft, "bedrooms": bedrooms, "age_years": age_years})
+# Price has a NONLINEAR relationship with sqft (diminishing returns above ~2500 sqft)
+price = 50000 + 150 * np.minimum(sqft, 2500) + 50 * np.maximum(sqft - 2500, 0) + 20000 * bedrooms - 800 * age_years
+y = price + np.random.normal(0, 15000, n)
+
+model = RandomForestRegressor(n_estimators=100, random_state=1)
+# TODO: model.fit(X, y)
+
+def partial_dependence(model, X, feature, grid_points=20):
+    grid = np.linspace(X[feature].min(), X[feature].max(), grid_points)
+    pd_values = []
+    for value in grid:
+        # STEP 3: fix 'feature' to 'value' for EVERY row, keep other features as observed
+        # TODO: X_modified = X.copy()
+        # TODO: X_modified[feature] = value
+        # STEP 4: predict and average
+        # TODO: predictions = model.predict(X_modified)
+        # TODO: pd_values.append(predictions.mean())
+        pass
+    return grid, pd_values
+
+# TODO: grid, pd_values = partial_dependence(model, X, "sqft")
+
+# TODO: print("Square footage -> Average predicted price (holding other features at observed values):")
+# TODO: for g, p in zip(grid, pd_values):
+# TODO:     print(f"  {g:.0f} sqft -> \${p:,.0f}")
+
+print("\\nLook for the shape of the curve — does it flatten (diminishing returns), stay linear,")
+print("or have a surprising dip anywhere? The synthetic data here has a deliberate 'kink' around")
+print("2500 sqft where the price-per-sqft slope decreases — a good PDP implementation should reveal it.")
+`,
+    skillTags: ["Partial Dependence Plot", "Model Explainability", "Nonlinear Relationships", "Model Interpretation", "Feature Effects"],
+    hints: [
+      "The key mechanic of a PDP is holding ALL OTHER features at their real observed values while sweeping just one feature across a grid — this averages out the effect of the other features rather than fixing them to some arbitrary value",
+      "PDPs can reveal nonlinear relationships and even non-monotonic effects that a single 'feature importance' number completely hides — importance tells you HOW MUCH a feature matters, PDP tells you HOW (in what direction and shape)",
+      "PDPs assume features are independent when constructing the modified grid — if two features are highly correlated, generating 'impossible' combinations (e.g. a tiny house with 5 bedrooms) can happen and should be interpreted cautiously",
+    ],
+  },
+  {
+    id: "ml-xai-003",
+    title: "Detect Feature Bias by Group in Model Predictions",
+    category: "Model Explainability",
+    icon: "⚖️",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 22,
+    tools: ["Python", "Pandas", "scikit-learn"],
+    scenario:
+      "Before deploying a resume screening model, legal wants assurance it doesn't systematically score candidates differently based on a protected attribute (e.g. inferred gender from name patterns), even if that attribute was never explicitly used as a feature.",
+    objective:
+      "Audit a trained model's predictions across demographic groups for disparate outcomes, even when the protected attribute wasn't used as a training feature (checking for proxy discrimination).",
+    steps: [
+      "Train a model WITHOUT using the protected attribute as a feature",
+      "Generate predictions and group them by the protected attribute (held out separately, for audit purposes only)",
+      "Compute the positive-prediction rate for each group",
+      "Compute the disparate impact ratio (minority group rate / majority group rate)",
+      "Flag if the ratio falls outside a commonly-used fairness threshold (e.g. the 80% rule)",
+    ],
+    workstation: "notebook",
+    starterCode: `# Fairness Audit — Disparate Impact by Protected Group
+import numpy as np
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+
+np.random.seed(70)
+n = 800
+# Protected attribute (NOT used as a training feature, held separately for audit)
+group = np.random.choice(["Group A", "Group B"], n, p=[0.7, 0.3])
+
+years_experience = np.random.uniform(0, 20, n)
+# A PROXY feature that happens to correlate with group membership in this dataset
+# (e.g. schools attended, zip code, etc. -- simulated here as directly correlated for illustration)
+proxy_feature = np.where(group == "Group A", np.random.normal(75, 10, n), np.random.normal(65, 10, n))
+skills_score = np.random.uniform(50, 100, n)
+
+X = pd.DataFrame({"years_experience": years_experience, "proxy_feature": proxy_feature, "skills_score": skills_score})
+# Hiring decision genuinely depends on proxy_feature (which is itself group-correlated) -- this is how
+# proxy discrimination sneaks in even without ever using 'group' directly as a feature
+y = ((years_experience * 2 + proxy_feature * 0.5 + skills_score * 0.3 + np.random.normal(0, 10, n)) > 100).astype(int)
+
+model = RandomForestClassifier(n_estimators=100, random_state=1)
+# TODO: model.fit(X, y)  -- note: 'group' was NEVER passed to fit()
+
+# TODO: predictions = model.predict(X)
+
+# STEP 2 & 3: Positive prediction rate BY GROUP (using the held-out group labels, for audit only)
+audit_df = pd.DataFrame({"group": group, "prediction": predictions if 'predictions' in dir() else None})
+# TODO: rate_by_group = audit_df.groupby("group")["prediction"].mean()
+# TODO: print("Positive prediction rate by group:")
+# TODO: print(rate_by_group)
+
+# STEP 4: Disparate impact ratio (minority rate / majority rate)
+# TODO: rate_a = rate_by_group["Group A"]
+# TODO: rate_b = rate_by_group["Group B"]
+# TODO: disparate_impact_ratio = min(rate_a, rate_b) / max(rate_a, rate_b)
+# TODO: print(f"\\nDisparate impact ratio: {disparate_impact_ratio:.2f}")
+
+# STEP 5: 80% rule check (a common, though not universal, fairness threshold)
+# TODO: if disparate_impact_ratio < 0.8:
+# TODO:     print("FLAG: fails the 80% rule -- disparate impact detected despite 'group' never being a training feature")
+# TODO:     print("Root cause: 'proxy_feature' is correlated with group membership and IS driving predictions")
+# TODO: else:
+# TODO:     print("Passes the 80% rule threshold on this check")
+`,
+    skillTags: ["Fairness Auditing", "Disparate Impact", "Proxy Discrimination", "Model Explainability", "Responsible AI"],
+    hints: [
+      "Removing a protected attribute from the training features does NOT guarantee a fair model — if another feature is correlated with that attribute (a proxy), the model can still learn to discriminate indirectly through it",
+      "The 80% rule (four-fifths rule) is a common regulatory/legal heuristic for disparate impact, not a universal mathematical fairness guarantee — different contexts may require different, more rigorous fairness definitions and thresholds",
+      "This kind of audit should happen BEFORE deployment, using held-out demographic data specifically for fairness testing — it's not something the model can check about itself at inference time without that data being available",
+    ],
+  },
+  {
+    id: "ml-xai-004",
+    title: "Approximate SHAP-Style Local Explanations with Feature Ablation",
+    category: "Model Explainability",
+    icon: "🧮",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 24,
+    tools: ["Python", "NumPy", "scikit-learn"],
+    scenario:
+      "A customer wants to know exactly why THEIR specific loan application was denied — 'debt ratio and income together' isn't good enough, they need the individual contribution of each feature to their specific score. You'll build a simplified, from-scratch approximation of the core idea behind SHAP values.",
+    objective:
+      "Implement a simplified local feature attribution method using feature ablation (removing one feature at a time and measuring the prediction change) to approximate each feature's contribution to one specific prediction.",
+    steps: [
+      "Get a baseline prediction using the average feature values (a 'neutral' reference point)",
+      "Get the actual prediction for the specific applicant of interest",
+      "For each feature, measure how much the prediction changes when only that feature moves from baseline to the applicant's actual value",
+      "Sum the individual contributions and verify they approximately reconstruct the gap between baseline and actual prediction",
+      "Rank features by absolute contribution to explain what most influenced THIS specific decision",
+    ],
+    workstation: "notebook",
+    starterCode: `# Simplified Local Feature Attribution via Ablation
+import numpy as np
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+
+np.random.seed(80)
+n = 500
+credit_score = np.random.uniform(300, 850, n)
+income = np.random.uniform(20000, 150000, n)
+debt_ratio = np.random.uniform(0, 0.6, n)
+
+X = pd.DataFrame({"credit_score": credit_score, "income": income, "debt_ratio": debt_ratio})
+approval_score = (credit_score / 850) * 0.5 + (1 - debt_ratio) * 0.3 + (income / 150000) * 0.2
+y = (approval_score + np.random.normal(0, 0.05, n) > 0.55).astype(int)
+
+model = RandomForestClassifier(n_estimators=100, random_state=1)
+# TODO: model.fit(X, y)
+
+# The specific applicant we need to explain a decision for
+applicant = pd.DataFrame({"credit_score": [580], "income": [35000], "debt_ratio": [0.45]})
+# TODO: applicant_prediction = model.predict_proba(applicant)[0][1]  # probability of approval
+# TODO: print(f"Applicant's approval probability: {applicant_prediction:.3f}")
+
+# STEP 1: Baseline = average feature values across the training set
+baseline = pd.DataFrame({col: [X[col].mean()] for col in X.columns})
+# TODO: baseline_prediction = model.predict_proba(baseline)[0][1]
+# TODO: print(f"Baseline (average applicant) approval probability: {baseline_prediction:.3f}")
+
+# STEP 3: Ablation — for each feature, move ONLY that feature from baseline to applicant's value
+contributions = {}
+for feature in X.columns:
+    # TODO: modified = baseline.copy()
+    # TODO: modified[feature] = applicant[feature].values[0]
+    # TODO: modified_prediction = model.predict_proba(modified)[0][1]
+    # TODO: contributions[feature] = modified_prediction - baseline_prediction
+    pass
+
+# TODO: print("\\nApproximate feature contributions (probability change from baseline):")
+# TODO: for feature, contribution in sorted(contributions.items(), key=lambda x: abs(x[1]), reverse=True):
+# TODO:     direction = "increased" if contribution > 0 else "decreased"
+# TODO:     print(f"  {feature}: {contribution:+.3f} ({direction} approval probability)")
+
+# STEP 4: Sanity check — sum of contributions should roughly explain the gap
+# TODO: total_contribution = sum(contributions.values())
+# TODO: actual_gap = applicant_prediction - baseline_prediction
+# TODO: print(f"\\nSum of individual contributions: {total_contribution:+.3f}")
+# TODO: print(f"Actual gap (applicant - baseline): {actual_gap:+.3f}")
+# TODO: print("(These won't match exactly -- this simplified one-at-a-time ablation ignores feature")
+# TODO: print(" interactions, which is exactly what real SHAP values account for more rigorously)")
+`,
+    skillTags: ["SHAP", "Feature Attribution", "Local Explanations", "Model Explainability", "Feature Ablation"],
+    hints: [
+      "This simplified ablation method captures the CORE INTUITION behind SHAP (attribute a prediction to individual feature contributions relative to a baseline) but ignores feature interactions — real SHAP values average contributions across many different orderings/coalitions of features to handle that rigorously",
+      "The baseline choice matters a lot — using the average applicant is a common, reasonable choice, but a different baseline (e.g. the minimum-qualifying applicant) would produce different-looking contributions for the same prediction",
+      "The mismatch between summed contributions and the actual gap is expected and instructive here — it's exactly the gap that full SHAP's more careful mathematical treatment (Shapley values from cooperative game theory) is designed to close",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI/ML — EXPERIMENT TRACKING & HYPERPARAMETER TUNING
+// ─────────────────────────────────────────────────────────────────────────────
+export const ML_EXPERIMENT_TRACKING_CHALLENGES = [
+  {
+    id: "ml-exp-001",
+    title: "Implement Grid Search for Hyperparameter Tuning",
+    category: "Experiment Tracking",
+    icon: "🔍",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Python", "scikit-learn"],
+    scenario:
+      "A model's hyperparameters (max_depth, n_estimators) were chosen by informal trial-and-error and nobody remembers why those specific values were picked or whether better ones exist. You need a systematic, reproducible grid search to find and document the best combination.",
+    objective:
+      "Implement grid search over a hyperparameter space using cross-validation, tracking every combination's score for full reproducibility.",
+    steps: [
+      "Define a grid of hyperparameter combinations to try",
+      "For each combination, train and evaluate using cross-validation (not a single split)",
+      "Record every combination's mean CV score in a results table",
+      "Identify the best combination and its score",
+      "Verify the chosen hyperparameters generalize by evaluating on a held-out test set the grid search never saw",
+    ],
+    workstation: "notebook",
+    starterCode: `# Grid Search Hyperparameter Tuning with Full Tracking
+import numpy as np
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import cross_val_score, train_test_split
+
+np.random.seed(90)
+n = 500
+X = np.random.randn(n, 5)
+y = (X[:, 0] * 2 - X[:, 1] + np.random.randn(n) * 1.5 > 0).astype(int)
+
+# Hold out a final test set the grid search will NEVER see during tuning
+X_dev, X_test, y_dev, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
+
+# STEP 1: Hyperparameter grid
+param_grid = {
+    "max_depth": [3, 5, 10, None],
+    "n_estimators": [50, 100, 200],
+}
+
+results = []
+# STEP 2 & 3: Try every combination, track CV score
+# TODO: for max_depth in param_grid["max_depth"]:
+# TODO:     for n_estimators in param_grid["n_estimators"]:
+# TODO:         model = RandomForestClassifier(max_depth=max_depth, n_estimators=n_estimators, random_state=1)
+# TODO:         cv_scores = cross_val_score(model, X_dev, y_dev, cv=5)
+# TODO:         results.append({
+# TODO:             "max_depth": max_depth, "n_estimators": n_estimators,
+# TODO:             "mean_cv_score": cv_scores.mean(), "std_cv_score": cv_scores.std(),
+# TODO:         })
+
+results_df = pd.DataFrame(results)
+# TODO: results_df = results_df.sort_values("mean_cv_score", ascending=False)
+# TODO: print("All hyperparameter combinations tried, ranked by CV score:")
+# TODO: print(results_df.to_string(index=False))
+
+# STEP 4: Best combination
+# TODO: best = results_df.iloc[0]
+# TODO: print(f"\\nBest combination: max_depth={best['max_depth']}, n_estimators={best['n_estimators']}")
+# TODO: print(f"Best CV score: {best['mean_cv_score']:.3f} +/- {best['std_cv_score']:.3f}")
+
+# STEP 5: Final check on the untouched test set
+# TODO: final_model = RandomForestClassifier(max_depth=best["max_depth"], n_estimators=int(best["n_estimators"]), random_state=1)
+# TODO: final_model.fit(X_dev, y_dev)
+# TODO: test_score = final_model.score(X_test, y_test)
+# TODO: print(f"\\nFinal held-out test score (never seen during tuning): {test_score:.3f}")
+`,
+    skillTags: ["Grid Search", "Hyperparameter Tuning", "Cross-Validation", "Experiment Tracking", "Reproducibility"],
+    hints: [
+      "Grid search must use cross-validation (not a single train/val split) for each combination — otherwise you're just as susceptible to picking hyperparameters that got lucky on one particular split, the same problem CV solves for model evaluation generally",
+      "The final held-out test set must NEVER be touched during the grid search itself — if you use it to pick the best hyperparameters, your final reported test score becomes optimistically biased, since you've indirectly fit to it",
+      "Recording every combination's result (not just the winner) is what makes an experiment reproducible and auditable — someone reviewing this later can see exactly what was tried and why the winner was chosen, not just trust a single reported number",
+    ],
+  },
+  {
+    id: "ml-exp-002",
+    title: "Design a Reproducible Experiment Configuration",
+    category: "Experiment Tracking",
+    icon: "📋",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 16,
+    tools: ["Python"],
+    scenario:
+      "A model that scored well last month can no longer be reproduced — nobody recorded which random seed, data version, hyperparameters, or preprocessing steps were used to get that result. You need to design an experiment configuration and logging system that would have prevented this.",
+    objective:
+      "Build a structured experiment configuration object that captures everything needed to exactly reproduce a training run, and a logging function that records results alongside the full config.",
+    steps: [
+      "Define an ExperimentConfig capturing random seed, data version, hyperparameters, and preprocessing settings",
+      "Implement a function that runs an experiment given a config and returns results",
+      "Log each experiment's full config alongside its results (not just the results alone)",
+      "Demonstrate that re-running with the SAME config produces identical results",
+      "Demonstrate that changing even one config field (e.g. seed) is clearly visible in the log, explaining any result difference",
+    ],
+    workstation: "notebook",
+    starterCode: `# Reproducible Experiment Configuration and Logging
+import numpy as np
+from dataclasses import dataclass, asdict
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+
+@dataclass
+class ExperimentConfig:
+    random_seed: int
+    data_version: str
+    max_depth: int
+    n_estimators: int
+    test_size: float
+
+def run_experiment(config: ExperimentConfig):
+    # TODO: np.random.seed(config.random_seed)
+    n = 500
+    X = np.random.randn(n, 4)
+    y = (X[:, 0] + X[:, 1] * 0.5 + np.random.randn(n) * 1.2 > 0).astype(int)
+
+    # TODO: X_train, X_test, y_train, y_test = train_test_split(
+    # TODO:     X, y, test_size=config.test_size, random_state=config.random_seed)
+
+    # TODO: model = RandomForestClassifier(
+    # TODO:     max_depth=config.max_depth, n_estimators=config.n_estimators, random_state=config.random_seed)
+    # TODO: model.fit(X_train, y_train)
+    # TODO: accuracy = model.score(X_test, y_test)
+
+    # TODO: return {"config": asdict(config), "accuracy": accuracy}
+    pass
+
+experiment_log = []
+
+# STEP 3, 4: Run twice with the SAME config -- results should be identical
+config_a = ExperimentConfig(random_seed=42, data_version="v1", max_depth=5, n_estimators=100, test_size=0.2)
+# TODO: result_1 = run_experiment(config_a)
+# TODO: result_2 = run_experiment(config_a)
+# TODO: experiment_log.append(result_1)
+# TODO: experiment_log.append(result_2)
+# TODO: print(f"Run 1 accuracy: {result_1['accuracy']:.4f}")
+# TODO: print(f"Run 2 (same config) accuracy: {result_2['accuracy']:.4f}")
+# TODO: print(f"Identical: {result_1['accuracy'] == result_2['accuracy']}")
+
+# STEP 5: Change ONE field -- the difference should be explainable directly from the logged config
+config_b = ExperimentConfig(random_seed=99, data_version="v1", max_depth=5, n_estimators=100, test_size=0.2)
+# TODO: result_3 = run_experiment(config_b)
+# TODO: experiment_log.append(result_3)
+# TODO: print(f"\\nRun 3 (different seed) accuracy: {result_3['accuracy']:.4f}")
+# TODO: print(f"Config diff vs run 1: random_seed {config_a.random_seed} -> {config_b.random_seed}")
+
+# TODO: print(f"\\nFull experiment log ({len(experiment_log)} entries) -- every run is fully reproducible from its config")
+`,
+    skillTags: ["Experiment Tracking", "Reproducibility", "Configuration Management", "MLOps", "Random Seeds"],
+    hints: [
+      "A dataclass (or similar structured config object) forces every relevant setting to be explicit and named — this is what makes 'what exactly produced this result' answerable months later instead of lost to memory",
+      "Setting the SAME random_seed for both data generation/splitting AND the model itself is what guarantees exact reproducibility — missing just one of these seed points is a common way 'reproducible' experiments quietly aren't",
+      "This pattern (config object + logged config-result pairs) is the core idea behind dedicated experiment tracking tools like MLflow or Weights & Biases — building it manually here demonstrates the underlying principle those tools automate",
+    ],
+  },
+  {
+    id: "ml-exp-003",
+    title: "Run an Ablation Study to Justify Model Complexity",
+    category: "Experiment Tracking",
+    icon: "🔬",
+    difficulty: "Hard",
+    timeLimit: "30 min",
+    eloGain: 22,
+    tools: ["Python", "scikit-learn"],
+    scenario:
+      "A model pipeline has grown to include 6 different preprocessing steps and feature engineering tricks, each added because someone thought it 'should help' — but nobody has verified each addition actually improves performance. You need an ablation study to justify (or cut) each piece of complexity.",
+    objective:
+      "Systematically remove one component of a pipeline at a time, measure the performance impact of each removal, and identify which components are actually earning their complexity cost.",
+    steps: [
+      "Define the full pipeline with all components enabled as the baseline",
+      "For each component, create a variant with ONLY that component removed",
+      "Measure performance for each variant relative to the full baseline",
+      "Rank components by how much removing them hurts performance",
+      "Recommend which components (if any) could be removed with minimal performance loss",
+    ],
+    workstation: "notebook",
+    starterCode: `# Ablation Study — Justify Pipeline Complexity
+import numpy as np
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import cross_val_score
+
+np.random.seed(100)
+n = 500
+raw_feature_1 = np.random.randn(n)
+raw_feature_2 = np.random.randn(n)
+raw_feature_3 = np.random.randn(n)  # actually just noise -- doesn't affect the target at all
+target = (raw_feature_1 * 2 + raw_feature_2 * 1.5 + np.random.randn(n) * 1.0 > 0).astype(int)
+
+def build_features(include_interaction=True, include_squared=True, include_noise_feature=True, include_scaling=True):
+    features = {"f1": raw_feature_1, "f2": raw_feature_2}
+    if include_interaction:
+        features["f1_x_f2"] = raw_feature_1 * raw_feature_2
+    if include_squared:
+        features["f1_squared"] = raw_feature_1 ** 2
+    if include_noise_feature:
+        features["f3_noise"] = raw_feature_3
+    X = pd.DataFrame(features)
+    if include_scaling:
+        X = (X - X.mean()) / X.std()
+    return X
+
+def evaluate(X, y):
+    model = RandomForestClassifier(n_estimators=100, random_state=1)
+    scores = cross_val_score(model, X, y, cv=5)
+    return scores.mean()
+
+# STEP 1: Full pipeline baseline (all components enabled)
+# TODO: X_full = build_features(True, True, True, True)
+# TODO: baseline_score = evaluate(X_full, target)
+# TODO: print(f"Full pipeline (all components): {baseline_score:.4f}")
+
+# STEP 2, 3: Ablate one component at a time
+components = ["include_interaction", "include_squared", "include_noise_feature", "include_scaling"]
+ablation_results = {}
+for component in components:
+    kwargs = {"include_interaction": True, "include_squared": True, "include_noise_feature": True, "include_scaling": True}
+    # TODO: kwargs[component] = False  # remove ONLY this one component
+    # TODO: X_ablated = build_features(**kwargs)
+    # TODO: score = evaluate(X_ablated, target)
+    # TODO: impact = baseline_score - score
+    # TODO: ablation_results[component] = impact
+    # TODO: print(f"Without {component}: score={score:.4f}, impact of removing it={impact:+.4f}")
+    pass
+
+# STEP 4 & 5: Rank and recommend
+# TODO: ranked = sorted(ablation_results.items(), key=lambda x: x[1], reverse=True)
+print("\\n=== Components ranked by importance (impact of removing them) ===")
+# TODO: for component, impact in ranked:
+# TODO:     verdict = "KEEP -- meaningfully helps" if impact > 0.01 else "CANDIDATE FOR REMOVAL -- minimal impact"
+# TODO:     print(f"{component}: impact={impact:+.4f} -> {verdict}")
+`,
+    skillTags: ["Ablation Study", "Model Complexity", "Experiment Design", "Feature Justification", "MLOps"],
+    hints: [
+      "An ablation study answers 'is this component actually earning its complexity cost' — without it, pipelines tend to accumulate additions nobody has verified are pulling their weight, adding maintenance burden and overfitting risk for no real benefit",
+      "The include_noise_feature component here is deliberately designed to have near-zero true impact — a well-run ablation study should correctly identify it as a candidate for removal, exactly the kind of finding this method is built to surface",
+      "Ablation should always be run against cross-validated scores (not a single split) — a single-split comparison could easily misattribute noise-driven score differences to a component that doesn't actually matter",
+    ],
+  },
+  {
+    id: "ml-exp-004",
+    title: "Detect Data Leakage Between Train and Test Splits",
+    category: "Experiment Tracking",
+    icon: "🚨",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 22,
+    tools: ["Python", "pandas", "scikit-learn"],
+    scenario:
+      "A model reports a suspiciously perfect 99.8% test accuracy. Before anyone celebrates, you've been asked to audit the pipeline for data leakage -- the single most common reason a model looks great in testing and then falls apart in production.",
+    objective:
+      "Systematically check a training pipeline for the three most common leakage sources: duplicate rows across train/test, target leakage through a feature, and preprocessing fit on the full dataset before splitting.",
+    steps: [
+      "Check for exact duplicate rows appearing in both the train and test sets",
+      "Check whether any feature is suspiciously predictive on its own (a potential proxy for the target that wouldn't be available at real prediction time)",
+      "Check whether scaling/normalization was fit on the full dataset (including test) instead of fit only on train",
+      "Rebuild the pipeline with proper leakage-free ordering: split first, fit preprocessing on train only, transform test with train's fitted parameters",
+      "Compare the leaky vs corrected pipeline's test accuracy to quantify how much the leakage inflated the reported score",
+    ],
+    workstation: "notebook",
+    starterCode: `# Data Leakage Detection and Correction
+import numpy as np
+import pandas as pd
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
+np.random.seed(110)
+n = 500
+feature_1 = np.random.randn(n)
+feature_2 = np.random.randn(n)
+target = (feature_1 + feature_2 + np.random.randn(n) * 0.5 > 0).astype(int)
+
+# LEAKAGE BUG 1: a feature that is actually derived FROM the target (would never exist at prediction time)
+leaky_feature = target + np.random.randn(n) * 0.05
+
+# LEAKAGE BUG 2: some duplicate rows accidentally present in the raw data
+X = pd.DataFrame({"feature_1": feature_1, "feature_2": feature_2, "leaky_feature": leaky_feature})
+X = pd.concat([X, X.iloc[:20]], ignore_index=True)  # 20 accidental duplicates
+y = pd.concat([pd.Series(target), pd.Series(target[:20])], ignore_index=True)
+
+# STEP 1: Check for duplicate rows and see if any land on both sides of a train/test split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
+# TODO: train_test_overlap = pd.merge(X_train, X_test, how="inner")
+# TODO: print(f"Rows appearing in BOTH train and test: {len(train_test_overlap)}")
+
+# STEP 2: Check for suspiciously predictive features (potential target leakage)
+# TODO: for col in ["feature_1", "feature_2", "leaky_feature"]:
+# TODO:     correlation = X[col].corr(y)
+# TODO:     print(f"Correlation between {col} and target: {correlation:.3f}")
+# TODO: print("A correlation near 1.0 on a single feature is a major red flag for target leakage")
+
+# LEAKAGE BUG 3 (the pattern below is WRONG -- scaler fit on ALL data before splitting)
+scaler_leaky = StandardScaler()
+# TODO: X_scaled_leaky = scaler_leaky.fit_transform(X[["feature_1", "feature_2"]])  # fit on train+test combined!
+# TODO: Xl_train, Xl_test, yl_train, yl_test = train_test_split(X_scaled_leaky, y, test_size=0.2, random_state=1)
+# TODO: model_leaky = LogisticRegression().fit(Xl_train, yl_train)
+# TODO: leaky_accuracy = model_leaky.score(Xl_test, yl_test)
+# TODO: print(f"\\nLeaky pipeline (leaky_feature included, scaler fit on all data): {leaky_accuracy:.4f}")
+
+# STEP 4: CORRECTED pipeline -- split first, drop the leaky feature, fit scaler on train only
+X_clean = X[["feature_1", "feature_2"]]
+# TODO: Xc_train, Xc_test, yc_train, yc_test = train_test_split(X_clean, y, test_size=0.2, random_state=1)
+# TODO: scaler_correct = StandardScaler().fit(Xc_train)  # fit ONLY on train
+# TODO: Xc_train_scaled = scaler_correct.transform(Xc_train)
+# TODO: Xc_test_scaled = scaler_correct.transform(Xc_test)
+# TODO: model_correct = LogisticRegression().fit(Xc_train_scaled, yc_train)
+# TODO: correct_accuracy = model_correct.score(Xc_test_scaled, yc_test)
+# TODO: print(f"Corrected pipeline (no leaky feature, scaler fit on train only): {correct_accuracy:.4f}")
+
+# STEP 5: Quantify the inflation
+# TODO: print(f"\\nLeakage inflated reported accuracy by {(leaky_accuracy - correct_accuracy) * 100:.1f} percentage points")
+`,
+    skillTags: ["Data Leakage", "Train-Test Split", "Pipeline Validation", "Experiment Tracking", "Model Evaluation"],
+    hints: [
+      "The three leakage sources checked here (row duplication across splits, a feature derived from the target, and preprocessing fit on data outside the training set) account for the vast majority of real-world 'too good to be true' model results",
+      "The general rule for avoiding preprocessing leakage: EVERY fitted transformation (scalers, encoders, imputers, feature selectors) must be fit ONLY on the training set, then applied (transform, never fit again) to validation and test sets",
+      "A model that looks suspiciously perfect should be treated as a bug report, not a success — in production, a leaked feature or duplicated row won't be there to prop up the score, and the real-world performance will be far worse than reported",
+    ],
+  },
+]
+
 export const DOMAIN_CHALLENGES = {
   data:      DATA_ANALYST_CHALLENGES,
   bi_analyst:DATA_ANALYST_CHALLENGES,
