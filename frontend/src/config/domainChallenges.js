@@ -21751,6 +21751,1529 @@ print("\\n=== Ranking Comparison ===")
   },
 ]
 
+// ─────────────────────────────────────────────────────────────────────────────
+// EEE — RENEWABLE ENERGY INTEGRATION
+// ─────────────────────────────────────────────────────────────────────────────
+export const EEE_RENEWABLE_CHALLENGES = [
+  {
+    id: "eee-ren-001",
+    title: "Size a Solar PV Array for a Target Daily Energy Output",
+    category: "Renewable Energy",
+    icon: "☀️",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Python", "Solar Design Calculations"],
+    scenario:
+      "A rural health clinic needs a solar PV system sized to reliably meet its daily energy consumption, including realistic system losses -- an undersized system means daily power shortfalls, and an oversized one wastes budget.",
+    objective:
+      "Calculate the required PV array size (peak wattage) to meet a target daily energy demand, accounting for peak sun hours and realistic system derating losses.",
+    steps: [
+      "Calculate total daily energy demand from the clinic's load list",
+      "Determine peak sun hours for the site location (given as an input)",
+      "Calculate the required array size accounting for system derating losses (inverter, wiring, dust, temperature)",
+      "Determine the number of panels needed given individual panel wattage",
+      "Verify the sized system meets demand with an appropriate safety margin",
+    ],
+    workstation: "notebook",
+    starterCode: `# Solar PV Array Sizing
+loads = [
+    {"name": "LED lighting", "watts": 200, "hours_per_day": 8},
+    {"name": "Vaccine refrigerator", "watts": 150, "hours_per_day": 24},
+    {"name": "Medical equipment", "watts": 400, "hours_per_day": 6},
+    {"name": "Water pump", "watts": 500, "hours_per_day": 2},
+]
+
+peak_sun_hours = 5.2   # site-specific average, hours of full-intensity equivalent sunlight per day
+system_derating_factor = 0.75  # accounts for inverter efficiency, wiring losses, dust, temperature effects
+panel_wattage = 350     # watts per individual panel
+
+# STEP 1: Total daily energy demand
+# TODO: total_daily_wh = sum(load["watts"] * load["hours_per_day"] for load in loads)
+# TODO: print(f"Total daily energy demand: {total_daily_wh:.0f} Wh ({total_daily_wh/1000:.2f} kWh)")
+
+# STEP 3: Required array size accounting for derating
+# Required array watts = Daily energy demand / (peak sun hours x derating factor)
+# TODO: required_array_watts = total_daily_wh / (peak_sun_hours * system_derating_factor)
+# TODO: print(f"\\nRequired PV array size: {required_array_watts:.0f} W peak")
+# TODO: print(f"(accounting for {system_derating_factor:.0%} system derating and {peak_sun_hours} peak sun hours/day)")
+
+# STEP 4: Number of panels needed
+import math
+# TODO: panels_needed = math.ceil(required_array_watts / panel_wattage)
+# TODO: actual_array_watts = panels_needed * panel_wattage
+# TODO: print(f"\\nPanels needed ({panel_wattage}W each): {panels_needed}")
+# TODO: print(f"Actual installed array size: {actual_array_watts} W")
+
+# STEP 5: Verify with safety margin
+# TODO: actual_daily_generation = actual_array_watts * peak_sun_hours * system_derating_factor
+# TODO: margin_pct = (actual_daily_generation - total_daily_wh) / total_daily_wh * 100
+# TODO: print(f"\\nActual daily generation: {actual_daily_generation:.0f} Wh")
+# TODO: print(f"Demand: {total_daily_wh:.0f} Wh")
+# TODO: print(f"Safety margin: {margin_pct:.1f}%")
+# TODO: if margin_pct < 10:
+# TODO:     print("WARNING: margin below 10% -- consider rounding up to the next panel count for buffer against cloudy days")
+`,
+    skillTags: ["Solar PV Sizing", "Renewable Energy", "System Derating", "Peak Sun Hours"],
+    hints: [
+      "Peak sun hours (not total daylight hours) is the standard unit for solar resource assessment -- it represents the equivalent number of hours at full 1000 W/m² intensity that would deliver the same total daily energy as the site's actual variable sunlight, which is why it's used directly in the sizing formula rather than raw daylight duration",
+      "The system derating factor (typically 0.75-0.80 for a reasonably well-designed system) captures real-world losses that a naive panel-wattage-to-energy calculation would miss entirely -- inverter conversion losses, wiring resistance, dust/soiling accumulation, and temperature-related panel efficiency reduction all compound together",
+      "Rounding panel count UP (not down) when it doesn't divide evenly is a deliberate safety margin, not just arithmetic convenience -- a health clinic with critical loads like a vaccine refrigerator especially benefits from sizing generously above the bare minimum requirement to handle cloudy-day generation shortfalls",
+    ],
+  },
+  {
+    id: "eee-ren-002",
+    title: "Calculate Battery Bank Sizing for Off-Grid Energy Storage",
+    category: "Renewable Energy",
+    icon: "🔋",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 18,
+    tools: ["Python", "Battery Storage Design"],
+    scenario:
+      "The same solar-powered clinic needs battery storage to run through nighttime hours and cloudy-day shortfalls. Undersizing risks the clinic's refrigerated vaccines losing power; oversizing wastes budget on unnecessary battery capacity.",
+    objective:
+      "Calculate required battery bank capacity given daily energy demand, desired autonomy days, and battery depth-of-discharge limits, then determine the battery configuration needed.",
+    steps: [
+      "Calculate required usable energy storage from daily demand and desired days of autonomy",
+      "Convert usable energy to actual battery capacity accounting for maximum allowed depth of discharge",
+      "Convert energy capacity (Wh) to amp-hour capacity at the system's battery bank voltage",
+      "Determine the battery configuration (series/parallel) from individual battery specs",
+      "Verify total configured capacity meets or exceeds the requirement",
+    ],
+    workstation: "notebook",
+    starterCode: `# Off-Grid Battery Bank Sizing
+daily_energy_demand_wh = 6500.0  # from the load calculation
+autonomy_days = 2                # days the system must run with zero solar input (cloudy weather buffer)
+max_depth_of_discharge = 0.5     # 50% DoD is common for lead-acid batteries (deeper discharge shortens battery life)
+system_voltage = 48              # battery bank voltage
+individual_battery_ah = 200      # amp-hour rating per individual battery unit
+individual_battery_voltage = 12  # voltage per individual battery unit
+
+# STEP 1: Required usable energy storage
+# TODO: required_usable_energy_wh = daily_energy_demand_wh * autonomy_days
+# TODO: print(f"Required usable energy storage: {required_usable_energy_wh:.0f} Wh ({required_usable_energy_wh/1000:.1f} kWh)")
+
+# STEP 2: Actual battery capacity needed, accounting for DoD limit
+# TODO: required_battery_capacity_wh = required_usable_energy_wh / max_depth_of_discharge
+# TODO: print(f"Required TOTAL battery capacity (accounting for {max_depth_of_discharge:.0%} max DoD): {required_battery_capacity_wh:.0f} Wh")
+
+# STEP 3: Convert to amp-hours at system voltage
+# TODO: required_capacity_ah = required_battery_capacity_wh / system_voltage
+# TODO: print(f"Required capacity at {system_voltage}V system: {required_capacity_ah:.0f} Ah")
+
+# STEP 4: Battery configuration
+# Batteries in series to reach system voltage, then parallel strings for capacity
+# TODO: batteries_in_series = system_voltage / individual_battery_voltage
+# TODO: print(f"\\nBatteries in series (to reach {system_voltage}V from {individual_battery_voltage}V units): {batteries_in_series:.0f}")
+
+import math
+# TODO: parallel_strings_needed = math.ceil(required_capacity_ah / individual_battery_ah)
+# TODO: total_batteries = int(batteries_in_series) * parallel_strings_needed
+# TODO: print(f"Parallel strings needed: {parallel_strings_needed}")
+# TODO: print(f"Total batteries: {total_batteries}")
+
+# STEP 5: Verify actual configured capacity
+# TODO: actual_capacity_ah = parallel_strings_needed * individual_battery_ah
+# TODO: actual_capacity_wh = actual_capacity_ah * system_voltage
+# TODO: print(f"\\nActual configured capacity: {actual_capacity_ah} Ah ({actual_capacity_wh:.0f} Wh)")
+# TODO: print(f"Meets requirement of {required_capacity_ah:.0f} Ah: {'YES' if actual_capacity_ah >= required_capacity_ah else 'NO'}")
+`,
+    skillTags: ["Battery Sizing", "Off-Grid Systems", "Depth of Discharge", "Renewable Energy"],
+    hints: [
+      "Depth of discharge (DoD) sizing is often the most-missed step in battery calculations -- a battery rated for 400Wh doesn't mean 400Wh of usable energy can be safely drawn from it; discharging deeper than the recommended DoD limit (commonly 50% for lead-acid, higher for lithium) significantly shortens battery cycle life",
+      "Series connections increase voltage while keeping amp-hour capacity constant, while parallel connections increase amp-hour capacity while keeping voltage constant -- getting the series/parallel configuration logic backwards is a common design mistake with real safety and equipment-damage consequences, not just a sizing error",
+      "Autonomy days (how many consecutive zero-solar days the system must survive) is a deliberate design choice reflecting the site's typical cloudy-weather patterns and the criticality of the loads -- a health clinic with vaccine refrigeration has a much lower tolerance for autonomy shortfalls than a non-critical residential application, which should influence this parameter",
+    ],
+  },
+  {
+    id: "eee-ren-003",
+    title: "Calculate Wind Turbine Power Output from Wind Speed Data",
+    category: "Renewable Energy",
+    icon: "💨",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Python", "Wind Energy Calculations"],
+    scenario:
+      "A wind farm developer needs to estimate annual energy production from a candidate turbine model before committing to a site, using the site's measured wind speed distribution and the turbine's power curve.",
+    objective:
+      "Calculate theoretical wind power available, apply the turbine's power coefficient and rated power limits, and estimate annual energy production from a wind speed frequency distribution.",
+    steps: [
+      "Calculate theoretical available wind power at a given wind speed using the wind power density formula",
+      "Apply the turbine's power coefficient (Betz limit-constrained efficiency) to get extractable power",
+      "Cap extractable power at the turbine's rated power (turbines can't exceed their rated output regardless of wind speed)",
+      "Apply this calculation across a wind speed frequency distribution to estimate annual energy production",
+      "Calculate capacity factor and compare against typical industry benchmarks",
+    ],
+    workstation: "notebook",
+    starterCode: `# Wind Turbine Power Output Estimation
+import numpy as np
+
+air_density = 1.225      # kg/m^3, standard air density at sea level
+rotor_diameter_m = 90.0
+power_coefficient = 0.40  # Cp, fraction of available wind power actually captured (Betz limit caps this at 0.593 theoretical max)
+rated_power_kw = 2000.0
+cut_in_speed = 3.0        # m/s, minimum wind speed for turbine to generate any power
+cut_out_speed = 25.0       # m/s, turbine shuts down above this speed for safety
+
+# Wind speed frequency distribution at the site (hours per year at each speed bin)
+wind_speed_distribution = {
+    3: 400, 5: 900, 7: 1200, 9: 1400, 11: 1100, 13: 750, 15: 450, 18: 200, 22: 50,
+}
+
+rotor_area_m2 = np.pi * (rotor_diameter_m / 2) ** 2
+
+def calculate_power_output_kw(wind_speed):
+    # TODO: if wind_speed < cut_in_speed or wind_speed > cut_out_speed:
+    # TODO:     return 0.0
+    # STEP 1: Theoretical available wind power = 0.5 x air_density x rotor_area x wind_speed^3
+    # TODO: theoretical_power_w = 0.5 * air_density * rotor_area_m2 * wind_speed ** 3
+    # STEP 2: Apply power coefficient
+    # TODO: extractable_power_w = theoretical_power_w * power_coefficient
+    # TODO: extractable_power_kw = extractable_power_w / 1000
+    # STEP 3: Cap at rated power
+    # TODO: return min(extractable_power_kw, rated_power_kw)
+    pass
+
+# STEP 4: Annual energy production across the wind speed distribution
+print("=== Power Output by Wind Speed ===")
+total_annual_energy_kwh = 0
+# TODO: for wind_speed, hours in wind_speed_distribution.items():
+# TODO:     power_kw = calculate_power_output_kw(wind_speed)
+# TODO:     energy_kwh = power_kw * hours
+# TODO:     total_annual_energy_kwh += energy_kwh
+# TODO:     print(f"{wind_speed} m/s: {power_kw:.0f} kW output, {hours} hrs/yr -> {energy_kwh:.0f} kWh")
+
+# TODO: print(f"\\nTotal estimated annual energy production: {total_annual_energy_kwh:,.0f} kWh")
+
+# STEP 5: Capacity factor
+total_hours_per_year = 8760
+# TODO: max_possible_annual_energy = rated_power_kw * total_hours_per_year
+# TODO: capacity_factor = total_annual_energy_kwh / max_possible_annual_energy
+# TODO: print(f"\\nCapacity factor: {capacity_factor:.1%}")
+# TODO: print("(Typical onshore wind capacity factors range roughly 25-45% -- compare this result against that range)")
+`,
+    skillTags: ["Wind Energy", "Power Curve", "Betz Limit", "Capacity Factor", "Renewable Energy"],
+    hints: [
+      "Wind power scales with the CUBE of wind speed (not linearly), which is why even modest wind speed differences between candidate sites can produce dramatically different energy yields -- this cubic relationship is the single most important factor in wind site selection",
+      "The Betz limit (theoretical maximum of ~59.3% power coefficient) represents a hard physical ceiling on how much wind energy any turbine design can extract -- real turbines typically achieve power coefficients in the 35-45% range due to additional mechanical and aerodynamic losses beyond the Betz limit itself",
+      "The rated power cap is essential and easy to forget -- without it, the cubic power formula would predict unrealistic (and mechanically impossible) output at high wind speeds; real turbines use pitch control to deliberately limit power capture above their rated wind speed, which is exactly what the min() cap in this calculation represents",
+    ],
+  },
+  {
+    id: "eee-ren-004",
+    title: "Design a Hybrid Solar-Diesel Generator System with Optimal Dispatch Logic",
+    category: "Renewable Energy",
+    icon: "🔄",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 22,
+    tools: ["Python", "Hybrid System Design"],
+    scenario:
+      "A remote telecom tower site currently runs entirely on diesel generation, which is expensive and requires frequent fuel deliveries. You've been asked to design a hybrid solar-diesel dispatch strategy that minimizes diesel fuel consumption while ensuring the load is always met.",
+    objective:
+      "Design a dispatch algorithm that prioritizes solar and battery power, falls back to diesel only when needed, and calculate the resulting fuel savings versus a diesel-only baseline.",
+    steps: [
+      "Model hourly load demand and available solar generation across a representative day",
+      "Implement dispatch logic: use solar first, draw from battery if solar is insufficient, use diesel only as the last resort",
+      "Track battery state of charge across the day given charging/discharging events",
+      "Calculate total diesel generator runtime and fuel consumption under this dispatch strategy",
+      "Compare against a diesel-only baseline to quantify fuel savings",
+    ],
+    workstation: "notebook",
+    starterCode: `# Hybrid Solar-Diesel Dispatch Optimization
+import numpy as np
+
+# 24-hour load and solar generation profile (simplified, kW)
+hourly_load_kw =    [3,3,3,3,3,4,5,6,7,8,8,9,9,9,8,7,6,5,5,4,4,3,3,3]
+hourly_solar_kw =   [0,0,0,0,0,0,1,4,7,9,10,10,9,8,6,3,1,0,0,0,0,0,0,0]
+
+battery_capacity_kwh = 40.0
+battery_max_soc = 40.0    # kWh
+battery_min_soc = 8.0     # kWh (20% reserve, don't fully deplete)
+battery_current_soc = 20.0  # starting state of charge
+diesel_fuel_rate_l_per_kwh = 0.30  # liters of diesel per kWh generated
+
+battery_soc_history = []
+diesel_output_kw_history = []
+total_diesel_kwh = 0.0
+
+# STEP 2, 3: Dispatch logic for each hour
+for hour in range(24):
+    load = hourly_load_kw[hour]
+    solar = hourly_solar_kw[hour]
+    diesel_output = 0.0
+
+    # TODO: if solar >= load:
+    # TODO:     # Solar covers the full load, excess charges the battery
+    # TODO:     excess_solar = solar - load
+    # TODO:     battery_current_soc = min(battery_current_soc + excess_solar, battery_max_soc)
+    # TODO: else:
+    # TODO:     # Solar insufficient -- draw the shortfall from battery first
+    # TODO:     shortfall = load - solar
+    # TODO:     available_from_battery = battery_current_soc - battery_min_soc
+    # TODO:     if available_from_battery >= shortfall:
+    # TODO:         battery_current_soc -= shortfall
+    # TODO:     else:
+    # TODO:         # Battery insufficient too -- diesel covers the remaining shortfall
+    # TODO:         battery_current_soc = battery_min_soc
+    # TODO:         diesel_output = shortfall - available_from_battery
+
+    # TODO: battery_soc_history.append(battery_current_soc)
+    # TODO: diesel_output_kw_history.append(diesel_output)
+    # TODO: total_diesel_kwh += diesel_output
+    pass
+
+print("=== Hourly Dispatch Summary ===")
+# TODO: for hour in range(24):
+# TODO:     print(f"Hour {hour:02d}: load={hourly_load_kw[hour]}kW, solar={hourly_solar_kw[hour]}kW, "
+# TODO:           f"diesel={diesel_output_kw_history[hour]:.1f}kW, battery_soc={battery_soc_history[hour]:.1f}kWh")
+
+# STEP 4: Diesel runtime and fuel consumption
+# TODO: diesel_hours_running = sum(1 for d in diesel_output_kw_history if d > 0)
+# TODO: total_diesel_fuel_liters = total_diesel_kwh * diesel_fuel_rate_l_per_kwh
+# TODO: print(f"\\nDiesel generator runtime: {diesel_hours_running} hours")
+# TODO: print(f"Total diesel energy generated: {total_diesel_kwh:.1f} kWh")
+# TODO: print(f"Total diesel fuel consumed: {total_diesel_fuel_liters:.1f} liters")
+
+# STEP 5: Compare to diesel-only baseline
+# TODO: baseline_total_kwh = sum(hourly_load_kw)
+# TODO: baseline_fuel_liters = baseline_total_kwh * diesel_fuel_rate_l_per_kwh
+# TODO: fuel_savings_liters = baseline_fuel_liters - total_diesel_fuel_liters
+# TODO: fuel_savings_pct = fuel_savings_liters / baseline_fuel_liters * 100
+# TODO: print(f"\\nDiesel-only baseline fuel consumption: {baseline_fuel_liters:.1f} liters/day")
+# TODO: print(f"Hybrid system fuel consumption: {total_diesel_fuel_liters:.1f} liters/day")
+# TODO: print(f"Fuel savings: {fuel_savings_liters:.1f} liters/day ({fuel_savings_pct:.1f}%)")
+`,
+    skillTags: ["Hybrid Power Systems", "Dispatch Optimization", "Battery State of Charge", "Renewable Energy"],
+    hints: [
+      "The dispatch priority order (solar first, battery second, diesel last) directly encodes the economic logic of hybrid system design -- solar has essentially zero marginal cost once installed, battery cycling has a smaller marginal cost (battery wear), and diesel has the highest marginal cost (fuel), so the dispatch algorithm should always exhaust the cheaper sources before falling back to the most expensive one",
+      "Maintaining a minimum battery state of charge (not discharging to zero) is both a battery longevity consideration and a reliability safeguard -- fully depleting a battery repeatedly significantly shortens its usable lifespan, which is why the min_soc reserve exists as a hard floor in the dispatch logic",
+      "This simplified single-day dispatch model doesn't account for day-to-day weather variability (consecutive cloudy days would deplete the battery reserve faster than this model shows) -- a production hybrid system design would need to size the battery and diesel backup against a full year of historical weather data, not just one representative day",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EEE — ELECTRICAL SAFETY & GROUNDING
+// ─────────────────────────────────────────────────────────────────────────────
+export const EEE_SAFETY_CHALLENGES = [
+  {
+    id: "eee-safety-001",
+    title: "Calculate Ground Fault Current and Verify Protective Device Response",
+    category: "Electrical Safety",
+    icon: "⚡",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 18,
+    tools: ["Python", "Ground Fault Analysis"],
+    scenario:
+      "A facility's electrical inspection needs verification that ground fault protection will actually trip fast enough to prevent injury if a fault occurs -- a protective device that's present but too slow to respond doesn't actually protect anyone.",
+    objective:
+      "Calculate expected ground fault current given system parameters, and verify the ground fault protective device will trip within a safe time window according to standard let-go/shock duration curves.",
+    steps: [
+      "Calculate ground fault current using system voltage and total fault loop impedance",
+      "Determine the ground fault protective device's trip threshold and typical response time",
+      "Verify the calculated fault current exceeds the trip threshold",
+      "Verify the response time is within the safe duration for that current level (per shock-duration safety curves)",
+      "Flag if the protection is inadequate and identify what change would fix it",
+    ],
+    workstation: "notebook",
+    starterCode: `# Ground Fault Current and Protective Device Verification
+system_voltage = 230.0  # V, phase to ground
+fault_loop_resistance_ohms = 1.2  # total resistance of the fault current path (conductor + ground path)
+
+gfci_trip_threshold_ma = 30.0    # standard GFCI trip threshold (30mA is common for personnel protection)
+gfci_response_time_ms = 25.0     # typical GFCI response time
+
+# STEP 1: Ground fault current
+# TODO: fault_current_amps = system_voltage / fault_loop_resistance_ohms
+# TODO: fault_current_ma = fault_current_amps * 1000
+# TODO: print(f"Calculated ground fault current: {fault_current_amps:.1f} A ({fault_current_ma:,.0f} mA)")
+
+# STEP 3: Verify fault current exceeds GFCI trip threshold
+# TODO: exceeds_threshold = fault_current_ma > gfci_trip_threshold_ma
+# TODO: print(f"\\nGFCI trip threshold: {gfci_trip_threshold_ma} mA")
+# TODO: print(f"Fault current exceeds threshold: {'YES' if exceeds_threshold else 'NO -- GFCI would not trip on this fault!'}")
+
+# STEP 4: Verify response time is safe for this current level
+# Simplified IEC let-go/shock duration safety reference points (current mA : max safe duration ms)
+safety_duration_reference = [(10, 10000), (30, 300), (100, 40), (500, 10), (1000, 5)]
+
+def max_safe_duration_ms(current_ma):
+    # Find the relevant safety threshold for this current level (conservative: use the lower bound)
+    # TODO: for ref_current, max_duration in sorted(safety_duration_reference, reverse=True):
+    # TODO:     if current_ma >= ref_current:
+    # TODO:         return max_duration
+    # TODO: return safety_duration_reference[0][1]
+    pass
+
+# TODO: safe_duration = max_safe_duration_ms(fault_current_ma)
+# TODO: print(f"\\nMax safe exposure duration at {fault_current_ma:,.0f} mA: {safe_duration} ms")
+# TODO: print(f"GFCI actual response time: {gfci_response_time_ms} ms")
+# TODO: response_is_safe = gfci_response_time_ms <= safe_duration
+# TODO: print(f"Response time is within safe limit: {'YES' if response_is_safe else 'NO -- INADEQUATE PROTECTION'}")
+
+# STEP 5: Overall assessment
+print("\\n=== Overall Safety Assessment ===")
+# TODO: if exceeds_threshold and response_is_safe:
+# TODO:     print("PASS: GFCI will trip fast enough to prevent dangerous shock exposure at this fault current")
+# TODO: else:
+# TODO:     print("FAIL: protection is inadequate for this fault scenario")
+# TODO:     if not exceeds_threshold:
+# TODO:         print("  Issue: fault current too low to trigger GFCI -- check for higher-impedance fault paths that might not trip protection")
+# TODO:     if exceeds_threshold and not response_is_safe:
+# TODO:         print("  Issue: GFCI response time too slow for this current level -- verify device rating/type matches application")
+`,
+    skillTags: ["Ground Fault Protection", "GFCI", "Electrical Safety", "Shock Duration Curves"],
+    hints: [
+      "A protective device being installed and functional is not the same as it providing adequate protection -- verification requires checking BOTH that the fault current will actually exceed the device's trip threshold AND that the device's response time is fast enough for the safety duration limit at that current level, since both conditions must hold",
+      "Shock duration safety curves (like the simplified IEC-style reference used here) reflect a real physiological principle: higher current levels require dramatically shorter safe exposure durations, because the physiological damage (particularly ventricular fibrillation risk) depends on both current magnitude and duration together, not current alone",
+      "A 'FAIL' finding here isn't just an academic exercise -- it represents genuinely inadequate protection in the real system being modeled, and the flagged issue (fault current too low to trip, or response too slow) should point directly to an actionable fix, whether that's addressing high fault-loop impedance or specifying a faster-responding protective device",
+    ],
+  },
+  {
+    id: "eee-safety-002",
+    title: "Calculate Step and Touch Potential for a Substation Grounding Grid",
+    category: "Electrical Safety",
+    icon: "🦶",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 22,
+    tools: ["Python", "Grounding Grid Design"],
+    scenario:
+      "A substation grounding grid design must ensure that during a ground fault, the voltage difference a person could experience (whether touching equipment or walking near the fault) stays within safe limits. This is a critical safety calculation, not a formality -- inadequate grounding design has caused real fatalities.",
+    objective:
+      "Calculate maximum tolerable touch and step potentials for a person during a fault event, and compare against the grid's estimated actual touch and step voltages to determine if the design is safe.",
+    steps: [
+      "Calculate maximum tolerable touch voltage using the standard body-weight-based safety formula",
+      "Calculate maximum tolerable step voltage using the corresponding formula",
+      "Compare the grid's estimated actual touch and step voltages (given as design outputs) against these tolerable limits",
+      "Identify whether the design passes or fails for each potential type",
+      "Recommend a specific grid design change if either safety check fails",
+    ],
+    workstation: "notebook",
+    starterCode: `# Step and Touch Potential Safety Verification
+import math
+
+body_weight_kg = 50.0   # IEEE 80 standard uses 50kg and 70kg reference body weights -- 50kg is more conservative
+fault_clearing_time_s = 0.5   # time for protective relay to clear the fault
+soil_resistivity_ohm_m = 100.0  # native soil resistivity
+surface_layer_resistivity_ohm_m = 3000.0  # crushed rock/gravel surface layer resistivity (much higher, protective)
+surface_layer_thickness_m = 0.1
+
+# STEP 1: Maximum tolerable touch voltage (IEEE 80 simplified formula for 50kg body weight)
+# TODO: reflection_factor = (surface_layer_resistivity_ohm_m - soil_resistivity_ohm_m) / (surface_layer_resistivity_ohm_m + soil_resistivity_ohm_m)
+# TODO: surface_derating_factor = 1 - (0.09 * (1 - soil_resistivity_ohm_m / surface_layer_resistivity_ohm_m)) / (2 * surface_layer_thickness_m + 0.09)
+
+# TODO: max_touch_voltage = (1000 + 1.5 * surface_derating_factor * surface_layer_resistivity_ohm_m) * (0.116 / math.sqrt(fault_clearing_time_s))
+# TODO: print(f"Surface derating factor (Cs): {surface_derating_factor:.3f}")
+# TODO: print(f"Maximum tolerable touch voltage: {max_touch_voltage:.1f} V")
+
+# STEP 2: Maximum tolerable step voltage
+# TODO: max_step_voltage = (1000 + 6 * surface_derating_factor * surface_layer_resistivity_ohm_m) * (0.116 / math.sqrt(fault_clearing_time_s))
+# TODO: print(f"Maximum tolerable step voltage: {max_step_voltage:.1f} V")
+
+# STEP 3: Grid's estimated actual touch and step voltages (from separate grid resistance/current design calculation)
+estimated_actual_touch_voltage = 850.0
+estimated_actual_step_voltage = 1100.0
+
+print(f"\\n=== Design Verification ===")
+# TODO: print(f"Estimated actual touch voltage: {estimated_actual_touch_voltage} V vs max tolerable {max_touch_voltage:.1f} V")
+# TODO: touch_safe = estimated_actual_touch_voltage <= max_touch_voltage
+# TODO: print(f"Touch potential: {'PASS' if touch_safe else 'FAIL -- EXCEEDS SAFE LIMIT'}")
+
+# TODO: print(f"\\nEstimated actual step voltage: {estimated_actual_step_voltage} V vs max tolerable {max_step_voltage:.1f} V")
+# TODO: step_safe = estimated_actual_step_voltage <= max_step_voltage
+# TODO: print(f"Step potential: {'PASS' if step_safe else 'FAIL -- EXCEEDS SAFE LIMIT'}")
+
+# STEP 5: Recommendation if failed
+print(f"\\n=== Recommendation ===")
+# TODO: if not touch_safe or not step_safe:
+# TODO:     print("Design changes to consider: add more ground grid conductors to reduce grid resistance,")
+# TODO:     print("increase surface layer (crushed rock) thickness to raise the derating factor further,")
+# TODO:     print("or verify/reduce fault clearing time if protective relay settings allow it -- all three")
+# TODO:     print("reduce either the actual potential or raise the tolerable limit.")
+# TODO: else:
+# TODO:     print("Design passes both touch and step potential safety checks for this fault scenario.")
+`,
+    skillTags: ["Grounding Grid", "Step Potential", "Touch Potential", "Substation Safety", "IEEE 80"],
+    hints: [
+      "This calculation reflects real IEEE Standard 80 grounding grid safety methodology -- this isn't an academic abstraction, inadequate substation grounding design has caused real electrocution fatalities historically, which is exactly why this verification is mandatory in substation design practice, not optional",
+      "The surface layer (crushed rock or gravel, with much higher resistivity than native soil) is a deliberate, standard safety design element that significantly raises the tolerable touch and step voltage limits by increasing the resistance in the current path through a person's body -- it's not just aesthetic ground cover",
+      "Faster fault clearing time (achieved through relay protection settings) directly raises the tolerable voltage limits, since the safety formula divides by the square root of clearing time -- this creates a real design trade-off between protection relay coordination speed and grounding grid material investment, and either lever can be used to bring a failing design into compliance",
+    ],
+  },
+  {
+    id: "eee-safety-003",
+    title: "Perform an Arc Flash Incident Energy Calculation",
+    category: "Electrical Safety",
+    icon: "🔥",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 22,
+    tools: ["Python", "Arc Flash Analysis"],
+    scenario:
+      "Maintenance technicians need to work on an energized electrical panel, and safety regulations require the correct PPE (personal protective equipment) category be determined from an arc flash incident energy calculation -- wearing insufficient PPE for the actual hazard level is a serious, real injury risk.",
+    objective:
+      "Calculate arc flash incident energy using a simplified IEEE 1584-style approach, and determine the required PPE category from the calculated energy level.",
+    steps: [
+      "Gather system parameters: available fault current, system voltage, working distance, and clearing time",
+      "Calculate the arcing current from the bolted fault current",
+      "Calculate incident energy using the simplified empirical formula",
+      "Determine the required PPE category from the calculated incident energy using standard PPE category thresholds",
+      "Flag the flash protection boundary distance",
+    ],
+    workstation: "notebook",
+    starterCode: `# Arc Flash Incident Energy Calculation (Simplified)
+bolted_fault_current_ka = 25.0   # kA, available fault current at the equipment
+system_voltage_kv = 0.48          # 480V system
+working_distance_mm = 455.0       # standard working distance for LV equipment
+clearing_time_s = 0.2             # protective device clearing time
+gap_mm = 25.0                     # conductor gap distance
+
+# STEP 2: Simplified arcing current estimate (empirical approximation, real IEEE 1584 uses a more complex equation)
+# TODO: arcing_current_ka = bolted_fault_current_ka * 0.85  # simplified approximation for LV switchgear
+# TODO: print(f"Estimated arcing current: {arcing_current_ka:.1f} kA")
+
+# STEP 3: Simplified incident energy calculation (illustrative empirical form, not the full IEEE 1584 equation)
+# E (cal/cm^2) is influenced by arcing current, clearing time, working distance, and system voltage
+# TODO: normalized_energy = 4.184 * arcing_current_ka * clearing_time_s * (610 / working_distance_mm) ** 2
+# TODO: incident_energy_cal_cm2 = normalized_energy * 2.5  # scaling factor for illustration at this voltage class
+# TODO: print(f"\\nCalculated incident energy: {incident_energy_cal_cm2:.1f} cal/cm²")
+
+# STEP 4: PPE category determination (NFPA 70E standard categories)
+def determine_ppe_category(incident_energy):
+    # TODO: if incident_energy <= 1.2:
+    # TODO:     return "PPE Category 1", "4 cal/cm² rated (minimum, arc-rated clothing)"
+    # TODO: elif incident_energy <= 8:
+    # TODO:     return "PPE Category 2", "8 cal/cm² rated"
+    # TODO: elif incident_energy <= 25:
+    # TODO:     return "PPE Category 3", "25 cal/cm² rated"
+    # TODO: elif incident_energy <= 40:
+    # TODO:     return "PPE Category 4", "40 cal/cm² rated"
+    # TODO: else:
+    # TODO:     return "DANGER", "Exceeds 40 cal/cm² -- extreme hazard, requires special engineering controls before work, standard PPE categories insufficient"
+    pass
+
+# TODO: category, rating = determine_ppe_category(incident_energy_cal_cm2)
+# TODO: print(f"\\nRequired PPE: {category} ({rating})")
+
+# STEP 5: Flash protection boundary (simplified)
+# TODO: flash_boundary_mm = working_distance_mm * math.sqrt(incident_energy_cal_cm2 / 1.2)
+import math
+# TODO: flash_boundary_mm = working_distance_mm * math.sqrt(incident_energy_cal_cm2 / 1.2)
+# TODO: print(f"\\nApproximate flash protection boundary: {flash_boundary_mm:.0f} mm ({flash_boundary_mm/1000:.2f} m)")
+# TODO: print("(the distance at which unprotected skin could receive a just-curable second-degree burn)")
+`,
+    skillTags: ["Arc Flash", "IEEE 1584", "NFPA 70E", "PPE Category", "Electrical Safety"],
+    hints: [
+      "This exercise uses a deliberately simplified empirical approximation to illustrate the calculation logic -- real arc flash studies use the full IEEE 1584 equations (or dedicated arc flash software) with equipment-class-specific coefficients, and actual PPE determination for real equipment must use a properly conducted arc flash study, not a simplified classroom approximation like this one",
+      "Clearing time has an outsized effect on incident energy because it's a direct multiplier in the formula -- this is exactly why fast-acting protective devices (and correctly coordinated protection settings) are one of the most effective ways to reduce arc flash hazard, sometimes more practically achievable than physically relocating equipment or increasing working distance",
+      "Underestimating incident energy and specifying insufficient PPE is a genuine, serious injury risk -- arc flash events can cause severe burns in milliseconds, which is why real-world arc flash labeling and PPE category determination is a formal, standards-governed safety process (per NFPA 70E) rather than an informal estimate, and this exercise should be understood as building intuition for that process, not replacing it",
+    ],
+  },
+  {
+    id: "eee-safety-004",
+    title: "Verify Cable Ampacity and Voltage Drop for a Branch Circuit Design",
+    category: "Electrical Safety",
+    icon: "🔌",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Python", "Cable Sizing"],
+    scenario:
+      "An electrical designer needs to verify that a proposed cable size for a long branch circuit run is safe from a thermal (ampacity) standpoint AND won't cause excessive voltage drop at the far end of the run -- a cable can pass one check and fail the other.",
+    objective:
+      "Verify a proposed cable size against both the ampacity (current-carrying capacity) requirement and the voltage drop limit for a given circuit length and load current.",
+    steps: [
+      "Determine the required current-carrying capacity including any derating factors",
+      "Compare against the proposed cable's rated ampacity",
+      "Calculate the voltage drop over the circuit length at the design load current",
+      "Compare the voltage drop against the standard acceptable limit (typically 3-5% for branch circuits)",
+      "Determine the overall pass/fail and, if failed, what cable size change would resolve which failure",
+    ],
+    workstation: "notebook",
+    starterCode: `# Cable Ampacity and Voltage Drop Verification
+load_current_amps = 45.0
+circuit_length_m = 60.0            # one-way run length
+system_voltage = 230.0
+proposed_cable_size_mm2 = 10.0      # cross-sectional area
+cable_resistance_ohm_per_km = 1.83  # for this cable size, at operating temperature (from cable data tables)
+cable_rated_ampacity_amps = 57.0    # base ampacity rating for this cable size under standard conditions
+
+# Derating factors
+ambient_temp_derating = 0.87   # for higher-than-standard ambient temperature
+grouping_derating = 0.80       # for multiple cables grouped together in the same conduit/tray
+
+acceptable_voltage_drop_pct = 4.0  # common branch circuit limit
+
+# STEP 1: Required ampacity after derating is applied to the RATING (not the load)
+# TODO: effective_cable_ampacity = cable_rated_ampacity_amps * ambient_temp_derating * grouping_derating
+# TODO: print(f"Base cable ampacity rating: {cable_rated_ampacity_amps} A")
+# TODO: print(f"Effective ampacity after derating ({ambient_temp_derating:.0%} temp x {grouping_derating:.0%} grouping): {effective_cable_ampacity:.1f} A")
+
+# STEP 2: Ampacity check
+# TODO: ampacity_pass = effective_cable_ampacity >= load_current_amps
+# TODO: print(f"\\nLoad current: {load_current_amps} A")
+# TODO: print(f"Ampacity check: {'PASS' if ampacity_pass else 'FAIL -- cable cannot safely carry this load current after derating'}")
+
+# STEP 3: Voltage drop calculation
+# Vdrop = 2 x I x R x L (single-phase, round trip) -- R is per km, L in km
+# TODO: circuit_length_km = circuit_length_m / 1000
+# TODO: voltage_drop_v = 2 * load_current_amps * cable_resistance_ohm_per_km * circuit_length_km
+# TODO: voltage_drop_pct = (voltage_drop_v / system_voltage) * 100
+# TODO: print(f"\\nVoltage drop: {voltage_drop_v:.2f} V ({voltage_drop_pct:.2f}%)")
+
+# STEP 4: Voltage drop check
+# TODO: vdrop_pass = voltage_drop_pct <= acceptable_voltage_drop_pct
+# TODO: print(f"Acceptable limit: {acceptable_voltage_drop_pct}%")
+# TODO: print(f"Voltage drop check: {'PASS' if vdrop_pass else 'FAIL -- exceeds acceptable voltage drop'}")
+
+# STEP 5: Overall determination
+print(f"\\n=== Overall Cable Sizing Verification ===")
+# TODO: if ampacity_pass and vdrop_pass:
+# TODO:     print(f"{proposed_cable_size_mm2}mm² cable PASSES both checks -- adequate for this application")
+# TODO: else:
+# TODO:     print(f"{proposed_cable_size_mm2}mm² cable FAILS:")
+# TODO:     if not ampacity_pass:
+# TODO:         print("  - Ampacity insufficient: need a larger cable size or reduce derating factors (better ventilation/spacing)")
+# TODO:     if not vdrop_pass:
+# TODO:         print("  - Voltage drop excessive: need a larger cable size (lower resistance) to reduce IR drop over this run length")
+`,
+    skillTags: ["Cable Sizing", "Ampacity", "Voltage Drop", "Derating Factors", "Electrical Design"],
+    hints: [
+      "A cable can pass the ampacity check while failing the voltage drop check, or vice versa -- these are two genuinely independent constraints (ampacity is a thermal/safety limit, voltage drop is a power quality/equipment performance limit), and BOTH must be verified since satisfying one doesn't guarantee the other, especially for long cable runs where voltage drop often becomes the binding constraint before ampacity does",
+      "Derating factors apply multiplicatively to the cable's RATED ampacity (reducing how much current it can safely carry under the actual installation conditions), not to the load current itself -- confusing which side of the comparison the derating applies to is a common calculation error",
+      "For long circuit runs specifically, voltage drop frequently becomes the limiting factor requiring a larger cable size than ampacity alone would demand -- this is exactly why both checks need to be performed independently rather than assuming that satisfying the ampacity requirement is sufficient for the design to be acceptable",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EEE — MOTOR DRIVES & VARIABLE FREQUENCY CONTROL
+// ─────────────────────────────────────────────────────────────────────────────
+export const EEE_DRIVES_CHALLENGES = [
+  {
+    id: "eee-drives-001",
+    title: "Calculate VFD Output Frequency for Target Motor Speed",
+    category: "Motor Drives",
+    icon: "🎛️",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Python", "VFD Control"],
+    scenario:
+      "A pump application needs its motor speed reduced to match a new lower flow requirement, using a variable frequency drive (VFD) rather than a mechanical throttling valve, since VFD speed control saves significant energy compared to throttling a fully-speed pump.",
+    objective:
+      "Calculate the required VFD output frequency to achieve a target motor speed, accounting for motor slip, and verify the resulting speed against the target.",
+    steps: [
+      "Calculate synchronous speed from motor pole count and standard line frequency",
+      "Calculate the VFD output frequency needed for the target speed, accounting for the motor's typical slip percentage",
+      "Verify the resulting actual motor speed at that frequency including slip",
+      "Calculate the energy savings potential of VFD speed control versus throttling, using the pump affinity laws",
+      "Flag the minimum frequency consideration for motor cooling at very low speeds",
+    ],
+    workstation: "notebook",
+    starterCode: `# VFD Frequency Calculation for Target Motor Speed
+motor_poles = 4
+line_frequency_hz = 60.0
+target_speed_rpm = 1350.0   # reduced target speed for the new flow requirement
+rated_slip_pct = 3.5         # typical induction motor slip at rated load
+
+# STEP 1: Synchronous speed at standard line frequency
+# Ns = 120 x f / poles
+# TODO: synchronous_speed_at_60hz = 120 * line_frequency_hz / motor_poles
+# TODO: print(f"Synchronous speed at {line_frequency_hz}Hz: {synchronous_speed_at_60hz:.0f} RPM")
+
+# STEP 2: Required VFD frequency for target speed
+# Approach: target_speed accounts for slip, so first find target synchronous speed, then scale frequency proportionally
+# TODO: target_synchronous_speed = target_speed_rpm / (1 - rated_slip_pct / 100)
+# TODO: required_frequency_hz = target_synchronous_speed * motor_poles / 120
+# TODO: print(f"\\nTarget actual speed: {target_speed_rpm} RPM")
+# TODO: print(f"Required target synchronous speed (before slip): {target_synchronous_speed:.0f} RPM")
+# TODO: print(f"Required VFD output frequency: {required_frequency_hz:.2f} Hz")
+
+# STEP 3: Verify actual speed at this frequency
+# TODO: verification_synchronous_speed = 120 * required_frequency_hz / motor_poles
+# TODO: verification_actual_speed = verification_synchronous_speed * (1 - rated_slip_pct / 100)
+# TODO: print(f"\\nVerification: at {required_frequency_hz:.2f}Hz, actual speed = {verification_actual_speed:.0f} RPM")
+# TODO: print(f"(target was {target_speed_rpm} RPM)")
+
+# STEP 4: Pump affinity laws -- energy savings potential from VFD speed reduction vs throttling
+speed_ratio = target_speed_rpm / (synchronous_speed_at_60hz * (1 - rated_slip_pct / 100))
+# TODO: flow_ratio = speed_ratio               # flow scales linearly with speed
+# TODO: power_ratio = speed_ratio ** 3          # power scales with the CUBE of speed -- this is the key VFD energy savings insight
+# TODO: print(f"\\nSpeed reduced to {speed_ratio:.1%} of full speed")
+# TODO: print(f"Flow reduces to {flow_ratio:.1%} of full flow (linear relationship)")
+# TODO: print(f"Power reduces to {power_ratio:.1%} of full power (CUBIC relationship)")
+# TODO: print(f"This is dramatically more efficient than throttling, which wastes energy across a partially-closed valve")
+# TODO: print(f"instead of actually reducing motor power draw")
+
+# STEP 5: Minimum frequency / cooling consideration
+print("\\n=== Cooling Consideration ===")
+# TODO: if required_frequency_hz < 20:
+# TODO:     print(f"CAUTION: {required_frequency_hz:.1f}Hz is quite low -- standard shaft-mounted cooling fans")
+# TODO:     print("lose effectiveness at reduced speed, risking motor overheating at sustained low frequency")
+# TODO:     print("operation. Consider a separately-powered auxiliary cooling fan for continuous low-speed duty.")
+# TODO: else:
+# TODO:     print(f"{required_frequency_hz:.1f}Hz is within a range where standard motor cooling remains adequate")
+`,
+    skillTags: ["VFD", "Variable Frequency Drive", "Motor Speed Control", "Pump Affinity Laws"],
+    hints: [
+      "The cubic relationship between speed and power (from the pump/fan affinity laws) is THE central economic argument for VFD-based speed control over throttling -- a modest speed reduction produces a disproportionately large power/energy reduction, which is why VFD retrofits on pump and fan applications often have very short payback periods",
+      "Motor slip is a real physical phenomenon (an induction motor's rotor always runs slightly slower than the synchronous speed the stator field would imply) and must be accounted for in both directions of this calculation -- computing the required frequency from a target ACTUAL speed, and then verifying the actual speed that frequency will produce",
+      "The minimum frequency / cooling caution reflects a genuine, common VFD application issue -- standard induction motors have shaft-mounted cooling fans whose airflow depends on shaft speed, so sustained very-low-frequency operation risks motor overheating that wouldn't occur at higher speeds, unless the motor is rated for VFD duty or has independently powered cooling",
+    ],
+  },
+  {
+    id: "eee-drives-002",
+    title: "Design a V/f Ramp Profile to Avoid Motor Starting Current Spikes",
+    category: "Motor Drives",
+    icon: "📈",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Python", "VFD Ramp Control"],
+    scenario:
+      "A conveyor motor keeps tripping its overcurrent protection during VFD-controlled starts, even though the VFD should theoretically produce a smoother start than direct-online starting. The suspected cause is too aggressive an acceleration ramp for the load's inertia.",
+    objective:
+      "Calculate the required acceleration time for a load given its moment of inertia and available motor torque, and design an appropriate V/f ramp profile that avoids exceeding the motor's current limit.",
+    steps: [
+      "Calculate the total load inertia reflected to the motor shaft",
+      "Calculate the minimum required acceleration time given available accelerating torque",
+      "Compare the current (too-fast) ramp time against this minimum required time",
+      "Recommend a corrected ramp time with an appropriate safety margin",
+      "Verify the corrected ramp produces acceptable acceleration current draw",
+    ],
+    workstation: "notebook",
+    starterCode: `# VFD Acceleration Ramp Design
+import math
+
+motor_rated_torque_nm = 150.0
+motor_rated_speed_rpm = 1750.0
+motor_breakdown_torque_multiple = 2.5   # motor can produce up to 2.5x rated torque briefly
+load_torque_nm = 60.0                    # torque required just to overcome friction/load at operating speed
+total_inertia_kg_m2 = 8.5                # motor + load reflected inertia
+
+current_ramp_time_s = 2.0   # the current (problematic) VFD acceleration ramp setting
+
+# STEP 1 & 2: Minimum required acceleration time
+# TODO: rated_speed_rad_s = motor_rated_speed_rpm * 2 * math.pi / 60
+# TODO: max_accelerating_torque = (motor_rated_torque_nm * motor_breakdown_torque_multiple) - load_torque_nm
+# TODO: print(f"Rated speed: {rated_speed_rad_s:.1f} rad/s")
+# TODO: print(f"Maximum available accelerating torque: {max_accelerating_torque:.1f} Nm")
+# TODO: print(f"(motor breakdown torque {motor_rated_torque_nm * motor_breakdown_torque_multiple:.0f} Nm minus load torque {load_torque_nm} Nm)")
+
+# Minimum accel time = (Inertia x delta_omega) / accelerating_torque
+# TODO: minimum_accel_time_s = (total_inertia_kg_m2 * rated_speed_rad_s) / max_accelerating_torque
+# TODO: print(f"\\nMinimum theoretical acceleration time (using MAXIMUM available torque): {minimum_accel_time_s:.2f} s")
+
+# STEP 3: Compare current ramp setting
+print(f"\\n=== Ramp Time Comparison ===")
+# TODO: print(f"Current VFD ramp time setting: {current_ramp_time_s} s")
+# TODO: if current_ramp_time_s < minimum_accel_time_s:
+# TODO:     print(f"PROBLEM CONFIRMED: current ramp ({current_ramp_time_s}s) is FASTER than the minimum")
+# TODO:     print(f"theoretically achievable time ({minimum_accel_time_s:.2f}s) -- the VFD is being asked to")
+# TODO:     print(f"accelerate the load faster than the motor's available torque allows without exceeding")
+# TODO:     print(f"its current limit, which is exactly why overcurrent trips are occurring")
+
+# STEP 4: Recommended corrected ramp time with safety margin
+safety_margin_factor = 1.5  # don't run right at the theoretical minimum -- leave margin
+# TODO: recommended_ramp_time_s = minimum_accel_time_s * safety_margin_factor
+# TODO: print(f"\\nRecommended ramp time (with {safety_margin_factor}x safety margin): {recommended_ramp_time_s:.2f} s")
+
+# STEP 5: Verify accelerating torque required at the recommended ramp time
+# TODO: required_torque_at_recommended = (total_inertia_kg_m2 * rated_speed_rad_s) / recommended_ramp_time_s + load_torque_nm
+# TODO: torque_margin_pct = (max_accelerating_torque + load_torque_nm - required_torque_at_recommended) / (max_accelerating_torque + load_torque_nm) * 100
+# TODO: print(f"\\nRequired total torque at recommended ramp time: {required_torque_at_recommended:.1f} Nm")
+# TODO: print(f"Available maximum torque: {motor_rated_torque_nm * motor_breakdown_torque_multiple:.0f} Nm")
+# TODO: print(f"Margin below motor's torque limit: {torque_margin_pct:.1f}%")
+`,
+    skillTags: ["VFD Ramp Time", "Motor Acceleration", "Load Inertia", "Overcurrent Protection"],
+    hints: [
+      "This is a genuinely common real-world VFD commissioning issue -- a default or too-aggressive ramp time setting demands more accelerating torque than the motor can provide within its current limit, causing overcurrent trips, and the fix is almost always to EXTEND the ramp time (slower acceleration needs less torque), not to increase current limits or breakdown torque settings",
+      "The physics here (torque = inertia x angular acceleration) directly explains why high-inertia loads (large flywheels, conveyor systems with heavy belts and rollers) need proportionally longer VFD ramp times than low-inertia loads -- this is a first-principles mechanical relationship, not an arbitrary VFD parameter",
+      "The safety margin factor above the theoretical minimum ramp time exists because the theoretical minimum assumes the motor can sustain its full breakdown torque throughout the entire acceleration, which isn't realistic in practice -- real VFD commissioning always builds in margin rather than tuning to the theoretical minimum, which would leave no room for load variation or reduced torque availability at certain speed points",
+    ],
+  },
+  {
+    id: "eee-drives-003",
+    title: "Calculate Harmonic Distortion Impact from VFD Non-Linear Loads",
+    category: "Motor Drives",
+    icon: "📊",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Python", "Power Quality Analysis"],
+    scenario:
+      "A facility installing several new VFDs is concerned about harmonic distortion impact on the electrical system -- VFDs are non-linear loads that inject harmonic currents, and excessive distortion can cause equipment overheating, nuisance tripping, and utility power quality penalties.",
+    objective:
+      "Calculate total harmonic distortion (THD) from a set of harmonic current measurements, compare against standard limits, and assess the risk level.",
+    steps: [
+      "Calculate the RMS value of each harmonic current component",
+      "Calculate total harmonic distortion (THD) using the standard formula relative to the fundamental",
+      "Compare the calculated THD against IEEE 519 standard limits for this facility's connection type",
+      "Identify which harmonic order contributes most to the distortion",
+      "Recommend an appropriate mitigation approach given the dominant harmonic order found",
+    ],
+    workstation: "notebook",
+    starterCode: `# Total Harmonic Distortion (THD) Analysis for VFD Loads
+import math
+
+fundamental_current_amps = 100.0  # 60Hz fundamental current
+
+# Harmonic current magnitudes (typical VFD 6-pulse rectifier harmonic signature)
+harmonics = {
+    3: 2.0,    # 3rd harmonic (usually small for balanced 3-phase VFD loads)
+    5: 25.0,   # 5th harmonic (dominant for 6-pulse VFDs)
+    7: 12.0,   # 7th harmonic
+    11: 6.0,   # 11th harmonic
+    13: 4.0,   # 13th harmonic
+}
+
+ieee519_thd_limit_pct = 5.0  # common THD limit for this facility's short-circuit-ratio category
+
+# STEP 2: Total Harmonic Distortion
+# TODO: sum_of_squares = sum(magnitude ** 2 for magnitude in harmonics.values())
+# TODO: thd_pct = (math.sqrt(sum_of_squares) / fundamental_current_amps) * 100
+# TODO: print(f"Fundamental current: {fundamental_current_amps} A")
+# TODO: print(f"\\nHarmonic contributions:")
+# TODO: for order, magnitude in harmonics.items():
+# TODO:     individual_distortion_pct = (magnitude / fundamental_current_amps) * 100
+# TODO:     print(f"  {order}th harmonic: {magnitude} A ({individual_distortion_pct:.1f}% of fundamental)")
+
+# TODO: print(f"\\nTotal Harmonic Distortion (THD): {thd_pct:.2f}%")
+
+# STEP 3: Compare against IEEE 519 limit
+print(f"\\n=== Standard Compliance Check ===")
+# TODO: print(f"IEEE 519 THD limit for this facility category: {ieee519_thd_limit_pct}%")
+# TODO: compliant = thd_pct <= ieee519_thd_limit_pct
+# TODO: print(f"Status: {'COMPLIANT' if compliant else 'NON-COMPLIANT -- EXCEEDS LIMIT'}")
+
+# STEP 4: Dominant harmonic
+# TODO: dominant_harmonic = max(harmonics.items(), key=lambda x: x[1])
+# TODO: print(f"\\nDominant harmonic order: {dominant_harmonic[0]}th ({dominant_harmonic[1]} A)")
+
+# STEP 5: Mitigation recommendation
+print(f"\\n=== Mitigation Recommendation ===")
+# TODO: if not compliant:
+# TODO:     if dominant_harmonic[0] in (5, 7):
+# TODO:         print(f"Dominant {dominant_harmonic[0]}th harmonic is the classic 6-pulse VFD signature.")
+# TODO:         print("Options: install a line reactor or DC bus choke to reduce harmonic injection at the source,")
+# TODO:         print("add a passive harmonic filter tuned near the 5th/7th harmonic, or specify 12-pulse/active")
+# TODO:         print("front-end VFDs for new installations, which inherently produce far less low-order harmonic distortion.")
+# TODO:     else:
+# TODO:         print(f"Dominant harmonic order {dominant_harmonic[0]} suggests investigating other non-linear loads")
+# TODO:         print("on the system beyond just the VFDs, or resonance amplification effects.")
+# TODO: else:
+# TODO:     print("Current THD is within limits -- continue monitoring as additional VFD loads are added,")
+# TODO:     print("since THD is a system-wide cumulative effect, not fixed per device.")
+`,
+    skillTags: ["Total Harmonic Distortion", "IEEE 519", "VFD Harmonics", "Power Quality"],
+    hints: [
+      "The 5th and 7th harmonics dominating is the textbook signature of standard 6-pulse VFD rectifier front-ends -- recognizing this specific pattern (rather than treating all harmonic distortion as generically 'noise') directly points toward well-established, targeted mitigation techniques rather than generic power quality guesswork",
+      "THD is fundamentally a SYSTEM-LEVEL, cumulative effect, not a fixed property of any single VFD in isolation -- adding more non-linear loads to the same electrical system compounds the total distortion, which is why a facility passing a THD check today can fail it later purely from adding more VFDs without changing anything about the existing ones",
+      "Line reactors/DC bus chokes and 12-pulse/active front-end VFD designs address harmonics at the SOURCE (reducing how much distortion is injected in the first place), while passive harmonic filters address it at the SYSTEM level (absorbing/redirecting harmonic currents already present) -- the right choice depends on whether this is new equipment specification (source-side prevention is more elegant) or an existing installation retrofit (filtering may be the only practical option)",
+    ],
+  },
+  {
+    id: "eee-drives-004",
+    title: "Calculate Braking Resistor Sizing for VFD Regenerative Deceleration",
+    category: "Motor Drives",
+    icon: "🛑",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Python", "Dynamic Braking"],
+    scenario:
+      "A crane hoist application needs to rapidly decelerate a heavy load, which causes the motor to regenerate energy back toward the VFD's DC bus. Without a properly sized braking resistor to dissipate this energy, the DC bus voltage will rise dangerously and trip the drive -- or worse, damage components.",
+    objective:
+      "Calculate the regenerated energy during deceleration from load inertia and speed change, determine the required braking resistor power rating, and verify resistor value compatibility with the VFD's braking transistor rating.",
+    steps: [
+      "Calculate kinetic energy that must be dissipated during the deceleration event",
+      "Calculate the required braking resistor power rating given the deceleration time",
+      "Calculate the required resistor resistance value from DC bus voltage and the VFD's maximum braking current",
+      "Verify the calculated resistance is within the VFD manufacturer's specified range",
+      "Calculate duty cycle considerations if the braking event repeats frequently",
+    ],
+    workstation: "notebook",
+    starterCode: `# Braking Resistor Sizing for VFD Regenerative Deceleration
+total_inertia_kg_m2 = 15.0
+initial_speed_rpm = 1450.0
+final_speed_rpm = 200.0       # decelerating to near-stop, not full zero
+deceleration_time_s = 3.0
+
+dc_bus_voltage = 650.0         # typical DC bus voltage for a 480V VFD
+vfd_max_braking_current_amps = 40.0
+braking_duty_cycle_pct = 15.0  # this braking event occurs and repeats this fraction of total operating time
+
+import math
+
+# STEP 1: Kinetic energy to dissipate
+# TODO: initial_speed_rad_s = initial_speed_rpm * 2 * math.pi / 60
+# TODO: final_speed_rad_s = final_speed_rpm * 2 * math.pi / 60
+# TODO: kinetic_energy_initial = 0.5 * total_inertia_kg_m2 * initial_speed_rad_s ** 2
+# TODO: kinetic_energy_final = 0.5 * total_inertia_kg_m2 * final_speed_rad_s ** 2
+# TODO: energy_to_dissipate_j = kinetic_energy_initial - kinetic_energy_final
+# TODO: print(f"Kinetic energy to dissipate: {energy_to_dissipate_j:.0f} J")
+
+# STEP 2: Required average braking power
+# TODO: average_braking_power_w = energy_to_dissipate_j / deceleration_time_s
+# TODO: print(f"Required average braking power: {average_braking_power_w:.0f} W ({average_braking_power_w/1000:.2f} kW)")
+
+# STEP 3: Required resistance from DC bus voltage and max braking current
+# TODO: min_resistance_ohms = dc_bus_voltage / vfd_max_braking_current_amps
+# TODO: print(f"\\nMinimum resistance (to stay within {vfd_max_braking_current_amps}A max braking current): {min_resistance_ohms:.1f} ohms")
+
+# Resistance needed to dissipate the required power at DC bus voltage
+# TODO: resistance_for_required_power = dc_bus_voltage ** 2 / average_braking_power_w
+# TODO: print(f"Resistance to dissipate required power at bus voltage: {resistance_for_required_power:.1f} ohms")
+
+# STEP 4: Verify compatibility -- resistor value must be >= minimum (current limit) but achieve required power
+# TODO: selected_resistance = max(min_resistance_ohms, resistance_for_required_power)
+# TODO: print(f"\\nSelected resistance value: {selected_resistance:.1f} ohms")
+# TODO: actual_braking_current = dc_bus_voltage / selected_resistance
+# TODO: print(f"Resulting braking current: {actual_braking_current:.1f} A (must be <= {vfd_max_braking_current_amps}A max)")
+# TODO: current_ok = actual_braking_current <= vfd_max_braking_current_amps
+# TODO: print(f"Current within VFD limit: {'YES' if current_ok else 'NO -- select a higher resistance value'}")
+
+# STEP 5: Duty cycle power rating consideration
+# TODO: continuous_equivalent_power = average_braking_power_w * (braking_duty_cycle_pct / 100)
+# TODO: print(f"\\n=== Duty Cycle Consideration ===")
+# TODO: print(f"Peak braking power during event: {average_braking_power_w:.0f} W")
+# TODO: print(f"Braking duty cycle: {braking_duty_cycle_pct}% of operating time")
+# TODO: print(f"Required CONTINUOUS resistor power rating: {continuous_equivalent_power:.0f} W")
+# TODO: print(f"(resistor must be rated for continuous duty at this level, not just peak instantaneous power,")
+# TODO: print(f" since this braking event repeats frequently rather than being a rare one-off)")
+`,
+    skillTags: ["Braking Resistor", "Regenerative Braking", "DC Bus Voltage", "Dynamic Braking", "VFD"],
+    hints: [
+      "Braking resistor sizing requires satisfying TWO independent constraints simultaneously: the resistance must be low enough to dissipate the required power fast enough, but high enough that the resulting current doesn't exceed the VFD's braking transistor current rating -- picking a resistor value that satisfies only one of these can either fail to brake fast enough or damage the drive",
+      "The distinction between PEAK power (during a single braking event) and CONTINUOUS/duty-cycle-adjusted power rating is critical and frequently underestimated -- a resistor sized only for peak instantaneous power will overheat and fail if the braking event repeats frequently (as in a crane hoist doing repeated lift cycles), since the resistor needs to dissipate that peak power on a recurring basis, not once",
+      "Without adequate braking resistor capacity, the regenerated energy has nowhere to go and the DC bus voltage rises until the VFD's overvoltage protection trips (a nuisance fault) or, in a worse case without protection, damages the drive's DC bus capacitors -- the braking resistor exists specifically to give that regenerated energy somewhere safe to be dissipated as heat",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EEE — POWER SYSTEM PROTECTION
+// ─────────────────────────────────────────────────────────────────────────────
+export const EEE_PROTECTION_CHALLENGES = [
+  {
+    id: "eee-protect-001",
+    title: "Coordinate Overcurrent Relay Time-Current Curves for Selectivity",
+    category: "Power System Protection",
+    icon: "🛡️",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 22,
+    tools: ["Python", "Protection Coordination"],
+    scenario:
+      "A radial distribution feeder has two overcurrent relays in series -- when a fault occurs downstream, only the closest relay should trip, not both. Without proper coordination (adequate time margin between relays), a downstream fault could unnecessarily black out the entire feeder instead of just the affected downstream section.",
+    objective:
+      "Calculate relay operating times for both an upstream and downstream relay at a given fault current, and verify adequate coordination time margin exists to ensure only the downstream relay trips first.",
+    steps: [
+      "Calculate the downstream relay's operating time using its inverse-time characteristic curve formula",
+      "Calculate the upstream relay's operating time for the same fault current",
+      "Calculate the coordination time margin (CTM) between the two relay operating times",
+      "Compare against the standard minimum CTM requirement",
+      "Determine if the upstream relay's time dial setting needs adjustment",
+    ],
+    workstation: "notebook",
+    starterCode: `# Overcurrent Relay Coordination
+fault_current_amps = 2400.0
+
+# Downstream relay (closer to the fault -- should operate FIRST)
+downstream_pickup_amps = 200.0
+downstream_time_dial = 3.0
+
+# Upstream relay (further from fault -- should operate SECOND, providing backup only if downstream fails)
+upstream_pickup_amps = 400.0
+upstream_time_dial = 8.0
+
+# IEC standard inverse-time curve formula: t = TD x (0.14 / ((I/Ipickup)^0.02 - 1))
+def calculate_relay_time(fault_current, pickup_current, time_dial):
+    # TODO: multiple_of_pickup = fault_current / pickup_current
+    # TODO: operating_time = time_dial * (0.14 / (multiple_of_pickup ** 0.02 - 1))
+    # TODO: return operating_time
+    pass
+
+# STEP 1: Downstream relay operating time
+# TODO: downstream_time = calculate_relay_time(fault_current_amps, downstream_pickup_amps, downstream_time_dial)
+# TODO: print(f"Downstream relay: pickup={downstream_pickup_amps}A, TD={downstream_time_dial}")
+# TODO: print(f"Multiple of pickup: {fault_current_amps/downstream_pickup_amps:.1f}x")
+# TODO: print(f"Operating time: {downstream_time:.3f} s")
+
+# STEP 2: Upstream relay operating time
+# TODO: upstream_time = calculate_relay_time(fault_current_amps, upstream_pickup_amps, upstream_time_dial)
+# TODO: print(f"\\nUpstream relay: pickup={upstream_pickup_amps}A, TD={upstream_time_dial}")
+# TODO: print(f"Multiple of pickup: {fault_current_amps/upstream_pickup_amps:.1f}x")
+# TODO: print(f"Operating time: {upstream_time:.3f} s")
+
+# STEP 3: Coordination time margin
+# TODO: ctm = upstream_time - downstream_time
+# TODO: print(f"\\nCoordination Time Margin (CTM): {ctm:.3f} s")
+
+# STEP 4: Compare against minimum standard CTM
+minimum_ctm_s = 0.3  # typical minimum margin to account for relay/breaker operating tolerances
+print(f"\\n=== Coordination Check ===")
+# TODO: print(f"Minimum required CTM: {minimum_ctm_s} s")
+# TODO: coordinated = ctm >= minimum_ctm_s
+# TODO: print(f"Status: {'PROPERLY COORDINATED' if coordinated else 'INADEQUATE MARGIN -- MISCOORDINATION RISK'}")
+
+# STEP 5: Adjustment recommendation
+# TODO: if not coordinated:
+# TODO:     required_upstream_time = downstream_time + minimum_ctm_s
+# TODO:     print(f"\\nUpstream relay time dial must be increased so operating time reaches at least {required_upstream_time:.3f}s")
+# TODO:     print(f"(currently {upstream_time:.3f}s at TD={upstream_time_dial} -- increase the time dial setting)")
+# TODO: else:
+# TODO:     print(f"\\nCurrent settings provide adequate selectivity -- downstream relay will clear the fault")
+# TODO:     print(f"{ctm:.3f}s before the upstream relay would operate, preventing unnecessary upstream tripping")
+`,
+    skillTags: ["Relay Coordination", "Overcurrent Protection", "IEC Curves", "Protection Selectivity"],
+    hints: [
+      "Protection coordination (selectivity) is about ensuring the relay CLOSEST to a fault clears it first, isolating only the minimum necessary section of the system -- inadequate coordination time margin means an upstream relay could trip before or simultaneously with the downstream relay, unnecessarily blacking out a much larger portion of the system than the actual fault requires",
+      "The minimum CTM (commonly around 0.2-0.4 seconds depending on standards and equipment) isn't an arbitrary safety margin -- it accounts for real physical factors including circuit breaker interrupting time, relay overtravel, and manufacturing tolerances in the relay's actual time-current characteristic versus its published curve",
+      "Adjusting the upstream relay's TIME DIAL (not its pickup current) is typically the correct lever for fixing a coordination margin problem -- changing pickup current affects sensitivity to different fault magnitudes across the relay's entire operating range, while the time dial setting scales operating time without changing which fault currents the relay responds to",
+    ],
+  },
+  {
+    id: "eee-protect-002",
+    title: "Determine Differential Protection Restraint Settings for a Power Transformer",
+    category: "Power System Protection",
+    icon: "⚖️",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 22,
+    tools: ["Python", "Differential Protection"],
+    scenario:
+      "A power transformer's differential protection relay compares current entering and leaving the transformer -- any significant mismatch indicates an internal fault. But CT (current transformer) ratio mismatches and transformer magnetizing inrush current can cause false differential currents even with no actual fault, requiring careful restraint setting design.",
+    objective:
+      "Calculate the differential and restraint currents for a transformer differential protection scheme, verify CT ratio compensation is correctly applied, and determine appropriate percentage restraint slope settings to avoid nuisance tripping.",
+    steps: [
+      "Calculate the CT secondary currents on both the primary and secondary sides of the transformer",
+      "Apply CT ratio correction factors to properly compare currents from different-ratio CTs",
+      "Calculate the differential current (should be near zero for no internal fault) and restraint current",
+      "Verify the operating point falls below the restraint characteristic slope for normal conditions",
+      "Assess whether the setting adequately avoids nuisance tripping during known inrush conditions",
+    ],
+    workstation: "notebook",
+    starterCode: `# Transformer Differential Protection Restraint Calculation
+transformer_primary_kv = 33.0
+transformer_secondary_kv = 11.0
+transformer_rated_mva = 10.0
+
+primary_ct_ratio = 200   # 200:1 CT on primary side
+secondary_ct_ratio = 600  # 600:1 CT on secondary side (higher current side needs higher ratio)
+
+import math
+
+# STEP 1: Rated currents on each side
+# TODO: primary_rated_current = (transformer_rated_mva * 1e6) / (math.sqrt(3) * transformer_primary_kv * 1000)
+# TODO: secondary_rated_current = (transformer_rated_mva * 1e6) / (math.sqrt(3) * transformer_secondary_kv * 1000)
+# TODO: print(f"Primary rated current: {primary_rated_current:.1f} A")
+# TODO: print(f"Secondary rated current: {secondary_rated_current:.1f} A")
+
+# CT secondary currents at rated transformer load (before compensation)
+# TODO: primary_ct_secondary_amps = primary_rated_current / primary_ct_ratio
+# TODO: secondary_ct_secondary_amps = secondary_rated_current / secondary_ct_ratio
+# TODO: print(f"\\nPrimary CT secondary current: {primary_ct_secondary_amps:.3f} A")
+# TODO: print(f"Secondary CT secondary current: {secondary_ct_secondary_amps:.3f} A")
+# TODO: print("(These should be close to matched -- CT ratios are normally selected specifically so relay-side")
+# TODO: print(" currents roughly balance at rated load, which is why CT ratio SELECTION itself matters)")
+
+# STEP 2 & 3: Differential and restraint currents (normal load condition, no fault)
+# TODO: differential_current = abs(primary_ct_secondary_amps - secondary_ct_secondary_amps)
+# TODO: restraint_current = (primary_ct_secondary_amps + secondary_ct_secondary_amps) / 2
+# TODO: print(f"\\nDifferential current (normal load, no fault): {differential_current:.4f} A")
+# TODO: print(f"Restraint current: {restraint_current:.4f} A")
+
+# STEP 4: Percentage differential slope check
+# Operating characteristic: trip if differential_current > slope_pct x restraint_current
+slope_setting_pct = 25.0  # typical percentage restraint slope setting
+# TODO: operating_threshold = (slope_setting_pct / 100) * restraint_current
+# TODO: print(f"\\nSlope setting: {slope_setting_pct}%")
+# TODO: print(f"Trip threshold at this restraint current: {operating_threshold:.4f} A")
+# TODO: would_trip = differential_current > operating_threshold
+# TODO: print(f"Would trip under normal load: {'YES -- PROBLEM, nuisance trip risk' if would_trip else 'NO -- correctly restrained'}")
+
+# STEP 5: Inrush consideration
+print(f"\\n=== Inrush Current Consideration ===")
+print("Transformer energization produces magnetizing inrush current that can be 8-12x rated current")
+print("on the energized side only, appearing as a large 'differential' current with NO actual fault.")
+print("This is why differential relays also use second-harmonic restraint (inrush current is rich in")
+print("2nd harmonic content, while genuine fault current is not) as an additional discriminator beyond")
+print("the basic percentage slope characteristic alone -- slope restraint addresses CT mismatch during")
+print("normal load, harmonic restraint addresses inrush, and these are two DIFFERENT problems requiring")
+print("two different protection features working together.")
+`,
+    skillTags: ["Differential Protection", "Transformer Protection", "CT Ratio", "Percentage Restraint"],
+    hints: [
+      "CT ratio SELECTION (choosing primary/secondary CT ratios that make relay-side currents roughly balance at rated transformer load) is the first line of defense against false differential current, and percentage restraint slope settings exist specifically to accommodate the residual mismatch that remains even with well-chosen CT ratios -- these two design decisions work together, not independently",
+      "The percentage restraint characteristic (trip only when differential current exceeds a percentage of restraint current, rather than a fixed threshold) exists because CT errors scale roughly proportionally with current magnitude -- a fixed differential current threshold would either be too sensitive at low load or too insensitive at high load, while a percentage-based threshold scales appropriately across the load range",
+      "Percentage slope restraint and second-harmonic inrush restraint solve two genuinely different problems and both are typically needed together -- slope restraint handles ongoing CT ratio/accuracy mismatch during normal energized operation, while harmonic restraint specifically handles the transient inrush condition during transformer energization, which a pure percentage-slope characteristic alone would not adequately distinguish from an actual internal fault",
+    ],
+  },
+  {
+    id: "eee-protect-003",
+    title: "Calculate Distance Relay Zone Reach Settings for Transmission Line Protection",
+    category: "Power System Protection",
+    icon: "📏",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 22,
+    tools: ["Python", "Distance Protection"],
+    scenario:
+      "A transmission line distance relay needs its zone reach settings calculated to protect the line without overreaching into the next line section (which would cause miscoordination) or underreaching and leaving part of the protected line unprotected by the primary zone.",
+    objective:
+      "Calculate Zone 1, Zone 2, and Zone 3 reach settings for a distance relay in ohms, based on the protected line's impedance and standard zone reach percentages, and verify the settings avoid overreach into adjacent line sections.",
+    steps: [
+      "Calculate the protected line's positive sequence impedance from its per-km impedance and length",
+      "Calculate Zone 1 reach (typically 80-90% of line impedance, deliberately underreaching to avoid overreach on CT/relay error)",
+      "Calculate Zone 2 reach (typically 120-150% of line impedance, to cover the remaining line plus margin)",
+      "Calculate Zone 3 reach as remote backup, verifying it doesn't overreach past the adjacent line's Zone 2",
+      "Verify Zone 1 setting provides adequate primary protection coverage without overreach risk",
+    ],
+    workstation: "notebook",
+    starterCode: `# Distance Relay Zone Reach Calculation
+protected_line_length_km = 80.0
+line_impedance_ohm_per_km = 0.35   # positive sequence impedance magnitude
+ct_ratio = 400
+vt_ratio = 1320   # voltage transformer ratio (e.g. 132000/100V)
+
+adjacent_line_length_km = 60.0
+adjacent_line_impedance_ohm_per_km = 0.40
+
+# STEP 1: Protected line impedance
+# TODO: protected_line_impedance_primary = protected_line_length_km * line_impedance_ohm_per_km
+# TODO: print(f"Protected line impedance (primary ohms): {protected_line_impedance_primary:.2f} ohm")
+
+# Relay sees impedance in SECONDARY ohms, scaled by CT/VT ratios
+# TODO: ct_vt_scaling = ct_ratio / vt_ratio
+# TODO: protected_line_impedance_secondary = protected_line_impedance_primary * ct_vt_scaling
+# TODO: print(f"Protected line impedance (secondary/relay ohms): {protected_line_impedance_secondary:.2f} ohm")
+
+# STEP 2: Zone 1 -- deliberately underreaching (80% is a common conservative setting)
+zone1_pct = 0.80
+# TODO: zone1_reach_ohms = protected_line_impedance_secondary * zone1_pct
+# TODO: print(f"\\nZone 1 reach ({zone1_pct:.0%}): {zone1_reach_ohms:.2f} ohm secondary")
+# TODO: print(f"Zone 1 covers {zone1_pct:.0%} of the line length with instantaneous tripping (no intentional delay)")
+
+# STEP 3: Zone 2 -- covers remaining line plus margin into adjacent line
+zone2_pct = 1.30  # 130% of protected line
+# TODO: zone2_reach_ohms = protected_line_impedance_secondary * zone2_pct
+# TODO: print(f"\\nZone 2 reach ({zone2_pct:.0%}): {zone2_reach_ohms:.2f} ohm secondary (with time delay, typically 0.3-0.5s)")
+
+# STEP 4: Zone 3 -- remote backup, must NOT overreach past adjacent line's own Zone 2
+# TODO: adjacent_line_impedance_primary = adjacent_line_length_km * adjacent_line_impedance_ohm_per_km
+# TODO: adjacent_line_impedance_secondary = adjacent_line_impedance_primary * ct_vt_scaling
+zone3_pct_of_adjacent = 0.80  # Zone 3 should reach into adjacent line but stop before its Zone 2
+# TODO: zone3_reach_ohms = protected_line_impedance_secondary + (adjacent_line_impedance_secondary * zone3_pct_of_adjacent)
+# TODO: print(f"\\nZone 3 reach: {zone3_reach_ohms:.2f} ohm secondary")
+# TODO: print(f"(covers full protected line + {zone3_pct_of_adjacent:.0%} of adjacent line as remote backup)")
+
+# STEP 5: Overreach verification
+adjacent_zone2_reach = None  # would need adjacent relay's own Zone 2 setting to fully verify -- flag for coordination study
+print(f"\\n=== Coordination Note ===")
+print("Zone 3's reach into the adjacent line must be verified against the ADJACENT line relay's own")
+print("Zone 2 setting (not calculated here) to confirm no overreach past that boundary -- this requires")
+print("a full coordination study across all connected line sections, not just this single line in isolation.")
+print("Zone 1's deliberate 80% underreach exists specifically because CT/VT measurement errors and line")
+print("impedance calculation uncertainty could otherwise cause Zone 1 to occasionally overreach past the")
+print("actual line end, tripping instantaneously for a fault that's technically on the NEXT line section --")
+print("a serious miscoordination event Zone 1's conservative margin is specifically designed to prevent.")
+`,
+    skillTags: ["Distance Protection", "Zone Reach", "Transmission Line Protection", "Relay Coordination"],
+    hints: [
+      "Zone 1's deliberate underreach (typically 80-90%, never 100%) is one of the most important and non-obvious concepts in distance protection -- it exists specifically because line impedance calculations and CT/VT measurement accuracy have inherent uncertainty, and a Zone 1 setting at exactly 100% risks occasionally overreaching into the next line section, causing serious miscoordination for faults that aren't even on the protected line",
+      "The gap left by Zone 1's underreach (the remaining 10-20% of the line) is exactly why Zone 2 exists, with its wider reach and small intentional time delay -- if Zone 1 doesn't clear a fault near the far end of the line instantaneously, Zone 2 provides backup coverage for that remaining section",
+      "Zone 3 reach settings require coordination knowledge of the ADJACENT line's own protection settings (specifically its Zone 2 reach) to avoid overreaching past where that line's own protection should be handling faults -- this is why real distance protection settings can never be calculated for a single line in true isolation, and always require a broader system coordination study",
+    ],
+  },
+  {
+    id: "eee-protect-004",
+    title: "Assess Circuit Breaker Failure Protection Timing Sequence",
+    category: "Power System Protection",
+    icon: "⏲️",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 18,
+    tools: ["Python", "Breaker Failure Protection"],
+    scenario:
+      "If a circuit breaker fails to open after receiving a trip signal during a fault, breaker failure protection (BFP) must detect this and trip the surrounding breakers to clear the fault -- but the BFP timer must be set carefully to avoid nuisance operation for a breaker that's simply operating normally, just slightly slower than average.",
+    objective:
+      "Calculate the appropriate breaker failure protection timer setting given breaker operating time, current detection reset time, and required safety margin, then verify the setting doesn't create nuisance tripping risk for a normally-operating breaker.",
+    steps: [
+      "Determine the breaker's rated maximum operating (interrupting) time",
+      "Determine the fault current detection element's reset/dropout time after the breaker actually opens",
+      "Calculate the total expected time for a normally-functioning breaker to clear the fault and reset detection",
+      "Add an appropriate safety margin to set the BFP timer, avoiding nuisance operation",
+      "Calculate the total fault clearing time if BFP does operate, and assess system impact",
+    ],
+    workstation: "notebook",
+    starterCode: `# Breaker Failure Protection (BFP) Timer Setting
+breaker_rated_max_operating_time_ms = 50.0   # rated maximum interrupting time (worst-case normal operation)
+current_detector_reset_time_ms = 20.0        # time for fault current detection element to reset after breaker actually clears
+safety_margin_ms = 50.0                       # margin to account for measurement/timing tolerances
+
+relay_trip_decision_time_ms = 15.0            # time for protection relay to issue the initial trip signal
+backup_breaker_operating_time_ms = 40.0       # time for the backup/surrounding breakers to operate once BFP trips them
+
+# STEP 1, 2, 3: Total expected time for a NORMALLY functioning breaker
+# TODO: normal_total_time_ms = breaker_rated_max_operating_time_ms + current_detector_reset_time_ms
+# TODO: print(f"Breaker rated max operating time: {breaker_rated_max_operating_time_ms} ms")
+# TODO: print(f"Current detector reset time: {current_detector_reset_time_ms} ms")
+# TODO: print(f"Total expected time for NORMAL breaker operation + detection reset: {normal_total_time_ms} ms")
+
+# STEP 4: BFP timer setting
+# TODO: bfp_timer_setting_ms = normal_total_time_ms + safety_margin_ms
+# TODO: print(f"\\nRecommended BFP timer setting: {bfp_timer_setting_ms} ms")
+# TODO: print(f"(normal operation time {normal_total_time_ms}ms + {safety_margin_ms}ms safety margin)")
+# TODO: print(f"This ensures a NORMALLY operating breaker (even at its rated max time) will never trigger BFP")
+
+# STEP 5: Total fault clearing time if BFP actually operates (breaker failure scenario)
+print(f"\\n=== Total Clearing Time if Breaker Failure Occurs ===")
+# TODO: total_bfp_clearing_time_ms = relay_trip_decision_time_ms + bfp_timer_setting_ms + backup_breaker_operating_time_ms
+# TODO: print(f"Relay trip decision: {relay_trip_decision_time_ms} ms")
+# TODO: print(f"BFP timer (waiting to confirm failure): {bfp_timer_setting_ms} ms")
+# TODO: print(f"Backup breaker operation: {backup_breaker_operating_time_ms} ms")
+# TODO: print(f"TOTAL fault clearing time via BFP: {total_bfp_clearing_time_ms:.0f} ms ({total_bfp_clearing_time_ms/1000:.3f} s)")
+# TODO: print(f"\\nThis extended clearing time (compared to a normal single-breaker clearing) is the direct")
+# TODO: print(f"consequence of a breaker failure event -- the fault remains on the system substantially longer,")
+# TODO: print(f"which is exactly why breaker failure events, though rare, represent a significant system stress")
+# TODO: print(f"event and why BFP settings should never be tuned tighter than necessary to avoid false operation.")
+`,
+    skillTags: ["Breaker Failure Protection", "Timer Coordination", "Circuit Breaker", "Fault Clearing Time"],
+    hints: [
+      "The BFP timer must be set LONGER than the worst-case NORMAL breaker operating time (not the typical/average time) -- using average operating time would cause the BFP to occasionally trigger nuisance backup tripping for a breaker that operated correctly but simply took slightly longer than average, well within its rated performance",
+      "This is a genuine trade-off: setting the BFP timer too short risks nuisance backup breaker operation (unnecessarily tripping a wider portion of the system for a breaker that was actually fine), while setting it too long delays clearing a genuine breaker failure, leaving the fault on the system longer and increasing equipment stress and safety risk during that extended window",
+      "The total fault clearing time when BFP actually operates is substantially longer than normal single-breaker clearing (the sum of the primary relay decision time, the full BFP timer wait, AND the backup breaker operating time) -- this compounding delay is exactly why breaker failure events, while statistically rare, represent a significantly more severe system disturbance than a normal fault clearing sequence",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EEE — SMART GRID & SCADA SYSTEMS
+// ─────────────────────────────────────────────────────────────────────────────
+export const EEE_SMARTGRID_CHALLENGES = [
+  {
+    id: "eee-smart-001",
+    title: "Design a State Estimation Bad Data Detection Check for SCADA Measurements",
+    category: "Smart Grid",
+    icon: "📡",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 22,
+    tools: ["Python", "SCADA State Estimation"],
+    scenario:
+      "A grid control center's state estimator combines redundant SCADA measurements (voltage, power flow) to estimate the true system state -- but a faulty sensor or communication error can inject bad data that, if undetected, could produce a dangerously wrong picture of grid conditions for operators.",
+    objective:
+      "Implement a simplified bad data detection check using redundant measurements and residual analysis to flag a measurement that's inconsistent with the rest of the system's redundant data.",
+    steps: [
+      "Gather redundant measurements for the same quantity from multiple sensors/calculation paths",
+      "Calculate the expected value using the majority/consistent measurements",
+      "Calculate the residual (difference) for each individual measurement against the expected value",
+      "Flag any measurement whose residual exceeds a statistical threshold as potential bad data",
+      "Determine the state estimator's best estimate after excluding flagged bad data",
+    ],
+    workstation: "notebook",
+    starterCode: `# SCADA Bad Data Detection via Residual Analysis
+import numpy as np
+
+# Redundant measurements of the same bus voltage from different sources (SCADA, PMU, calculated from power flow)
+bus_voltage_measurements = {
+    "SCADA_RTU_1": 1.021,
+    "SCADA_RTU_2": 1.019,
+    "PMU_measurement": 1.020,
+    "Calculated_from_flow": 1.018,
+    "SCADA_RTU_3_faulty": 0.892,  # a sensor with a communication/calibration fault
+}
+
+# STEP 2: Expected value (using median, which is robust to outliers -- unlike mean)
+# TODO: values = list(bus_voltage_measurements.values())
+# TODO: expected_value = np.median(values)
+# TODO: print(f"All measurements: {bus_voltage_measurements}")
+# TODO: print(f"\\nExpected value (median, robust to outliers): {expected_value:.4f} pu")
+
+# STEP 3: Residuals for each measurement
+print("\\n=== Residual Analysis ===")
+residuals = {}
+# TODO: for source, value in bus_voltage_measurements.items():
+# TODO:     residual = abs(value - expected_value)
+# TODO:     residuals[source] = residual
+# TODO:     print(f"{source}: {value} pu, residual = {residual:.4f}")
+
+# STEP 4: Bad data threshold (statistical, based on expected measurement noise)
+normal_measurement_noise_std = 0.003  # pu, typical measurement noise standard deviation
+bad_data_threshold_sigma = 3.0        # flag anything beyond 3 standard deviations as statistically anomalous
+# TODO: bad_data_threshold = bad_data_threshold_sigma * normal_measurement_noise_std
+# TODO: print(f"\\nBad data threshold ({bad_data_threshold_sigma} sigma): {bad_data_threshold:.4f}")
+
+flagged_measurements = []
+# TODO: for source, residual in residuals.items():
+# TODO:     if residual > bad_data_threshold:
+# TODO:         flagged_measurements.append(source)
+# TODO:         print(f"FLAGGED: {source} (residual {residual:.4f} exceeds threshold {bad_data_threshold:.4f})")
+
+# STEP 5: Refined estimate excluding bad data
+print(f"\\n=== Refined State Estimate ===")
+# TODO: good_measurements = {s: v for s, v in bus_voltage_measurements.items() if s not in flagged_measurements}
+# TODO: refined_estimate = np.mean(list(good_measurements.values()))
+# TODO: print(f"Excluded {len(flagged_measurements)} flagged measurement(s): {flagged_measurements}")
+# TODO: print(f"Refined state estimate (average of remaining good measurements): {refined_estimate:.4f} pu")
+`,
+    skillTags: ["SCADA", "State Estimation", "Bad Data Detection", "Smart Grid"],
+    hints: [
+      "Using the median rather than the mean for the initial expected value calculation is a deliberate robustness choice -- the mean is heavily influenced by outliers (exactly the bad data being searched for), while the median remains stable even with one significantly erroneous measurement in the set, which is why real state estimators use similarly robust statistical techniques",
+      "This simplified example uses only redundant measurements of a single quantity, but real power system state estimation is a much larger simultaneous estimation problem across the entire network topology using weighted least-squares techniques -- the underlying principle (using measurement redundancy and residual analysis to detect inconsistent data) is the same, just applied at much greater scale and complexity",
+      "Bad data detection is a critical grid operations safety function -- an undetected faulty sensor feeding wrong information into the state estimator could lead operators to believe the grid is in a safe state when it isn't (or vice versa), potentially delaying appropriate corrective action or triggering unnecessary ones during an actual emergency",
+    ],
+  },
+  {
+    id: "eee-smart-002",
+    title: "Calculate Demand Response Load Curtailment Dispatch",
+    category: "Smart Grid",
+    icon: "📉",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 18,
+    tools: ["Python", "Demand Response"],
+    scenario:
+      "A utility control center has issued a demand response event requiring 5 MW of load curtailment during a peak demand period. Multiple enrolled commercial customers have committed different curtailable capacities -- the dispatch algorithm needs to select which customers to call on to meet the target efficiently and fairly.",
+    objective:
+      "Design a demand response dispatch algorithm that selects enrolled customers to meet a curtailment target, considering both curtailment capacity and each customer's response reliability/cost, and calculate the actual achieved curtailment.",
+    steps: [
+      "List enrolled customers with their curtailable capacity, response reliability, and dispatch cost",
+      "Rank customers by a cost-effectiveness metric that accounts for reliability (unreliable capacity is worth less)",
+      "Select customers in rank order until the curtailment target is met",
+      "Calculate expected achieved curtailment accounting for each selected customer's reliability",
+      "Verify the expected achieved curtailment meets the target with adequate margin, and flag if additional customers should be dispatched as backup",
+    ],
+    workstation: "notebook",
+    starterCode: `# Demand Response Load Curtailment Dispatch
+target_curtailment_mw = 5.0
+
+enrolled_customers = [
+    {"name": "Customer A (cold storage)", "curtailable_mw": 1.5, "reliability": 0.95, "cost_per_mwh": 150},
+    {"name": "Customer B (manufacturing)", "curtailable_mw": 2.0, "reliability": 0.80, "cost_per_mwh": 100},
+    {"name": "Customer C (data center)", "curtailable_mw": 1.0, "reliability": 0.98, "cost_per_mwh": 200},
+    {"name": "Customer D (retail HVAC)", "curtailable_mw": 0.8, "reliability": 0.85, "cost_per_mwh": 90},
+    {"name": "Customer E (office HVAC)", "curtailable_mw": 1.2, "reliability": 0.90, "cost_per_mwh": 110},
+]
+
+# STEP 2: Rank by cost-effectiveness, accounting for reliability
+# Effective cost per reliably-delivered MW = cost / reliability (unreliable capacity costs more per GUARANTEED MW)
+# TODO: for customer in enrolled_customers:
+# TODO:     customer["reliability_adjusted_cost"] = customer["cost_per_mwh"] / customer["reliability"]
+
+# TODO: ranked_customers = sorted(enrolled_customers, key=lambda c: c["reliability_adjusted_cost"])
+
+print("=== Customers Ranked by Reliability-Adjusted Cost ===")
+# TODO: for c in ranked_customers:
+# TODO:     print(f"{c['name']}: {c['curtailable_mw']}MW @ \${c['cost_per_mwh']}/MWh, "
+# TODO:           f"reliability={c['reliability']:.0%}, adjusted cost=\${c['reliability_adjusted_cost']:.0f}")
+
+# STEP 3: Select customers until target is met (using NOMINAL curtailable capacity for selection)
+selected = []
+cumulative_mw = 0.0
+# TODO: for customer in ranked_customers:
+# TODO:     if cumulative_mw >= target_curtailment_mw:
+# TODO:         break
+# TODO:     selected.append(customer)
+# TODO:     cumulative_mw += customer["curtailable_mw"]
+
+print(f"\\n=== Selected for Dispatch ===")
+# TODO: for c in selected:
+# TODO:     print(f"{c['name']}: {c['curtailable_mw']}MW")
+# TODO: print(f"Total nominal curtailable capacity selected: {cumulative_mw:.1f} MW")
+
+# STEP 4: Expected ACHIEVED curtailment, accounting for reliability
+# TODO: expected_achieved_mw = sum(c["curtailable_mw"] * c["reliability"] for c in selected)
+# TODO: print(f"\\nExpected achieved curtailment (accounting for reliability): {expected_achieved_mw:.2f} MW")
+# TODO: print(f"Target: {target_curtailment_mw} MW")
+
+# STEP 5: Margin check
+# TODO: margin_mw = expected_achieved_mw - target_curtailment_mw
+print(f"\\n=== Margin Assessment ===")
+# TODO: print(f"Margin: {margin_mw:+.2f} MW")
+# TODO: if margin_mw < 0:
+# TODO:     print("INSUFFICIENT: expected achieved curtailment falls short of target -- dispatch an additional")
+# TODO:     print("customer as backup to provide margin against underperformance")
+# TODO: else:
+# TODO:     print("Expected curtailment meets or exceeds target with the current selection")
+`,
+    skillTags: ["Demand Response", "Load Curtailment", "Smart Grid", "Dispatch Optimization"],
+    hints: [
+      "Selecting customers based purely on nominal curtailable capacity (ignoring reliability) risks falling short of the actual target, since a customer who reliably delivers only 80% of their committed curtailment on average contributes less real, dependable capacity than their nominal number suggests -- the reliability-adjusted cost metric is what actually captures cost-effectiveness for the utility's purposes",
+      "This dispatch logic mirrors the economic dispatch problem used for generation resources, but applied to a DEMAND-side resource -- the same fundamental idea (rank by cost-effectiveness, select in order until the requirement is met) applies whether the resource being dispatched is generation capacity or curtailable load capacity",
+      "Building in margin above the bare target (by dispatching slightly more capacity than the nominal target, or explicitly checking reliability-adjusted expected performance against the target) reflects the real operational reality that demand response events don't always achieve 100% of committed curtailment -- a dispatch plan that only barely meets the target on paper risks actually falling short in practice",
+    ],
+  },
+  {
+    id: "eee-smart-003",
+    title: "Analyze Smart Meter Data for Non-Technical Loss (Energy Theft) Detection",
+    category: "Smart Grid",
+    icon: "🔎",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 22,
+    tools: ["Python", "Smart Meter Analytics"],
+    scenario:
+      "A utility is losing significant revenue to non-technical losses (meter tampering, illegal connections, meter bypass) but investigating every customer manually isn't feasible. You need to build a data-driven screening approach using smart meter data to prioritize which accounts warrant field investigation.",
+    objective:
+      "Analyze smart meter consumption patterns against transformer-level supplied energy to identify accounts or feeder segments with statistically anomalous loss patterns suggestive of non-technical losses.",
+    steps: [
+      "Calculate total metered consumption for all customers on a given distribution transformer",
+      "Compare against the transformer's actual measured energy supplied over the same period",
+      "Calculate the loss percentage and compare against the expected normal technical loss range",
+      "If losses are anomalously high, screen individual customer consumption patterns for suspicious signatures",
+      "Prioritize accounts for field investigation based on anomaly severity and account characteristics",
+    ],
+    workstation: "notebook",
+    starterCode: `# Non-Technical Loss (Energy Theft) Detection via Smart Meter Analysis
+transformer_supplied_energy_kwh = 45000.0  # measured at the transformer over the billing period
+
+customer_meters = [
+    {"account": "C-1001", "metered_kwh": 8200, "historical_avg_kwh": 8100, "meter_type": "smart"},
+    {"account": "C-1002", "metered_kwh": 3100, "historical_avg_kwh": 7900, "meter_type": "smart"},  # sudden large drop
+    {"account": "C-1003", "metered_kwh": 6800, "historical_avg_kwh": 6750, "meter_type": "smart"},
+    {"account": "C-1004", "metered_kwh": 5200, "historical_avg_kwh": 5100, "meter_type": "old_analog"},
+    {"account": "C-1005", "metered_kwh": 4900, "historical_avg_kwh": 9200, "meter_type": "smart"},  # sudden large drop
+    {"account": "C-1006", "metered_kwh": 7100, "historical_avg_kwh": 7050, "meter_type": "smart"},
+    {"account": "C-1007", "metered_kwh": 6300, "historical_avg_kwh": 6200, "meter_type": "smart"},
+]
+
+expected_technical_loss_pct = 6.0  # normal technical losses (resistive line losses etc.) for this transformer/feeder type
+
+# STEP 1: Total metered consumption
+# TODO: total_metered_kwh = sum(c["metered_kwh"] for c in customer_meters)
+# TODO: print(f"Total metered consumption (sum of customer meters): {total_metered_kwh:,.0f} kWh")
+# TODO: print(f"Transformer supplied energy: {transformer_supplied_energy_kwh:,.0f} kWh")
+
+# STEP 2 & 3: Loss calculation
+# TODO: total_loss_kwh = transformer_supplied_energy_kwh - total_metered_kwh
+# TODO: loss_pct = (total_loss_kwh / transformer_supplied_energy_kwh) * 100
+# TODO: print(f"\\nTotal loss: {total_loss_kwh:,.0f} kWh ({loss_pct:.1f}%)")
+# TODO: print(f"Expected normal technical loss: {expected_technical_loss_pct}%")
+
+excess_loss_pct = None
+# TODO: if loss_pct > expected_technical_loss_pct:
+# TODO:     excess_loss_pct = loss_pct - expected_technical_loss_pct
+# TODO:     print(f"EXCESS LOSS: {excess_loss_pct:.1f}% above expected technical loss -- investigate for non-technical losses")
+
+# STEP 4: Screen individual customer consumption for suspicious signatures
+print("\\n=== Individual Customer Screening ===")
+suspicious_accounts = []
+# TODO: for customer in customer_meters:
+# TODO:     if customer["historical_avg_kwh"] > 0:
+# TODO:         change_pct = (customer["metered_kwh"] - customer["historical_avg_kwh"]) / customer["historical_avg_kwh"] * 100
+# TODO:         if change_pct < -30:  # sudden drop of more than 30% from historical average is suspicious
+# TODO:             suspicious_accounts.append({**customer, "change_pct": change_pct})
+# TODO:             print(f"{customer['account']}: {change_pct:.0f}% change from historical average -- FLAGGED")
+
+# STEP 5: Prioritize for field investigation
+print(f"\\n=== Field Investigation Priority ===")
+# TODO: prioritized = sorted(suspicious_accounts, key=lambda c: c["change_pct"])  # most negative change first
+# TODO: for i, c in enumerate(prioritized, start=1):
+# TODO:     print(f"{i}. {c['account']}: consumption dropped {abs(c['change_pct']):.0f}% "
+# TODO:           f"({c['historical_avg_kwh']:.0f} -> {c['metered_kwh']:.0f} kWh), meter type: {c['meter_type']}")
+`,
+    skillTags: ["Non-Technical Losses", "Energy Theft Detection", "Smart Meter Analytics", "Smart Grid"],
+    hints: [
+      "The two-stage screening approach here (first checking transformer-level aggregate losses against expected technical loss benchmarks, THEN screening individual customer consumption patterns only if aggregate losses are anomalous) is exactly how real utility loss investigation programs prioritize limited field investigation resources -- you generally don't have the resources to investigate every customer, so aggregate screening followed by individual anomaly detection is the standard funnel",
+      "A sudden, large drop in metered consumption relative to a customer's own historical baseline is one of the most common real signatures of meter tampering or bypass -- but it's not proof by itself, since it can also reflect legitimate changes (a business closing a section, installing more efficient equipment, or genuinely reducing usage), which is why flagged accounts warrant field investigation rather than automatic enforcement action",
+      "This kind of screening naturally surfaces a caveat worth noting explicitly: accounts still on old analog meters (like C-1004 in this data) can't be screened with the same granular historical comparison that smart meter data enables, which is itself sometimes a relevant risk factor utilities track separately when prioritizing meter upgrade programs",
+    ],
+  },
+  {
+    id: "eee-smart-004",
+    title: "Design a Microgrid Islanding Detection Logic Using Rate-of-Change-of-Frequency",
+    category: "Smart Grid",
+    icon: "🏝️",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 22,
+    tools: ["Python", "Islanding Detection"],
+    scenario:
+      "A microgrid with distributed generation must detect when it becomes accidentally islanded (disconnected from the main utility grid while its generators keep running) and safely shut down or transition to intentional island mode -- undetected islanding is a serious safety hazard for utility line workers who might assume the line is de-energized.",
+    objective:
+      "Implement a rate-of-change-of-frequency (ROCOF) islanding detection check, distinguishing a genuine islanding event from normal grid frequency fluctuations, and determine the appropriate protective action.",
+    steps: [
+      "Calculate the rate of change of frequency from consecutive frequency measurements",
+      "Compare the calculated ROCOF against the islanding detection threshold",
+      "Apply a confirmation time delay to avoid false tripping on transient disturbances",
+      "Determine whether the pattern is consistent with genuine islanding versus a normal grid transient",
+      "Determine the appropriate protective action based on the detection outcome",
+    ],
+    workstation: "notebook",
+    starterCode: `# Rate-of-Change-of-Frequency (ROCOF) Islanding Detection
+import numpy as np
+
+# Frequency measurements over time (Hz), sampled every 100ms -- simulating an islanding event
+timestamps_s =    [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
+frequency_hz =    [50.00, 50.01, 49.99, 50.00, 49.75, 49.40, 49.15, 49.05]  # islanding event starts around t=0.3s
+
+rocof_threshold_hz_per_s = 0.5   # typical ROCOF islanding detection threshold
+confirmation_time_s = 0.2        # must persist above threshold for this long before confirming (avoid transient false trips)
+
+# STEP 1: Calculate ROCOF between consecutive measurements
+print("=== ROCOF Calculation ===")
+rocof_values = []
+# TODO: for i in range(1, len(frequency_hz)):
+# TODO:     delta_f = frequency_hz[i] - frequency_hz[i-1]
+# TODO:     delta_t = timestamps_s[i] - timestamps_s[i-1]
+# TODO:     rocof = delta_f / delta_t
+# TODO:     rocof_values.append(rocof)
+# TODO:     print(f"t={timestamps_s[i]:.1f}s: f={frequency_hz[i]:.2f}Hz, ROCOF={rocof:.2f} Hz/s")
+
+# STEP 2: Compare against threshold
+print(f"\\n=== Threshold Comparison ===")
+# TODO: print(f"ROCOF threshold: {rocof_threshold_hz_per_s} Hz/s")
+exceeding_indices = []
+# TODO: for i, rocof in enumerate(rocof_values):
+# TODO:     if abs(rocof) > rocof_threshold_hz_per_s:
+# TODO:         exceeding_indices.append(i)
+# TODO:         print(f"t={timestamps_s[i+1]:.1f}s: ROCOF {rocof:.2f} Hz/s EXCEEDS threshold")
+
+# STEP 3 & 4: Confirmation time check -- must exceed threshold continuously for the confirmation period
+print(f"\\n=== Confirmation Time Check ===")
+# TODO: samples_needed_for_confirmation = int(confirmation_time_s / 0.1)  # 0.1s sample interval
+# TODO: print(f"Confirmation requires {samples_needed_for_confirmation} consecutive samples exceeding threshold")
+
+# TODO: consecutive_count = 0
+# TODO: max_consecutive = 0
+# TODO: for i in range(len(rocof_values)):
+# TODO:     if abs(rocof_values[i]) > rocof_threshold_hz_per_s:
+# TODO:         consecutive_count += 1
+# TODO:         max_consecutive = max(max_consecutive, consecutive_count)
+# TODO:     else:
+# TODO:         consecutive_count = 0
+
+# TODO: print(f"Maximum consecutive samples exceeding threshold: {max_consecutive}")
+# TODO: islanding_confirmed = max_consecutive >= samples_needed_for_confirmation
+# TODO: print(f"Islanding confirmed: {'YES' if islanding_confirmed else 'NO'}")
+
+# STEP 5: Protective action
+print(f"\\n=== Protective Action ===")
+# TODO: if islanding_confirmed:
+# TODO:     print("ISLANDING DETECTED -- trip the point of common coupling (PCC) breaker to disconnect from")
+# TODO:     print("the main grid within the required standard time window, protecting utility line workers")
+# TODO:     print("and preventing the microgrid from re-energizing a de-energized utility line section.")
+# TODO: else:
+# TODO:     print("No confirmed islanding -- frequency deviation appears to be a normal transient disturbance,")
+# TODO:     print("not sustained grid disconnection. No protective trip action required.")
+`,
+    skillTags: ["Islanding Detection", "ROCOF", "Microgrid Protection", "Distributed Generation"],
+    hints: [
+      "Undetected islanding is a genuine, serious safety hazard, not just a technical inconvenience -- utility line workers performing maintenance typically assume a de-energized line section is actually de-energized, and an undetected island continuing to backfeed that section from local distributed generation can cause severe injury or death, which is why islanding detection is a mandatory protection function for grid-connected distributed generation",
+      "The confirmation time delay exists specifically to distinguish genuine islanding from normal transient grid disturbances (like a large motor starting elsewhere on the grid, which can cause a brief frequency dip that recovers quickly) -- without this delay, the protection would nuisance-trip on normal grid events that aren't actually islanding, undermining the microgrid's reliability unnecessarily",
+      "ROCOF-based detection has a well-known real limitation worth understanding: it can struggle to reliably detect islanding when the local generation happens to be closely matched to the local load at the moment of disconnection (minimal frequency deviation results, since there's little power imbalance to drive frequency change) -- this is exactly why real islanding detection schemes often combine ROCOF with other methods like vector shift or active detection techniques rather than relying on ROCOF alone",
+    ],
+  },
+]
+
 export const DOMAIN_CHALLENGES = {
   data:      DATA_ANALYST_CHALLENGES,
   bi_analyst:DATA_ANALYST_CHALLENGES,
