@@ -23274,6 +23274,1658 @@ print(f"\\n=== Protective Action ===")
   },
 ]
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CIVIL — SURVEYING & GEOMATICS
+// ─────────────────────────────────────────────────────────────────────────────
+export const CIVIL_SURVEY_CHALLENGES = [
+  {
+    id: "civil-survey-001",
+    title: "Calculate Traverse Closure Error and Apply Compass Rule Adjustment",
+    category: "Surveying",
+    icon: "🧭",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 18,
+    tools: ["Python", "Traverse Surveying"],
+    scenario:
+      "A land survey crew has closed a boundary traverse and needs to check the closure error before the survey can be certified -- an uncorrected closure error means the plotted boundary won't actually form a closed shape, which is unacceptable for a legal property survey.",
+    objective:
+      "Calculate the linear closure error from a closed traverse's latitude and departure sums, and distribute the error across all traverse legs using the compass (Bowditch) rule.",
+    steps: [
+      "Calculate the sum of latitudes (north-south components) and sum of departures (east-west components) for the closed traverse",
+      "Calculate the linear closure error from these sums",
+      "Calculate the relative precision (closure error relative to total traverse perimeter)",
+      "Distribute the closure error across each leg proportionally to its length using the compass rule",
+      "Verify the corrected latitudes and departures now sum to exactly zero",
+    ],
+    workstation: "notebook",
+    starterCode: `# Traverse Closure Error and Compass Rule Adjustment
+import math
+
+# Traverse legs: (length_m, bearing_degrees) -- bearing measured clockwise from north
+traverse_legs = [
+    (125.40, 42.5),
+    (98.20, 138.2),
+    (140.75, 205.8),
+    (110.60, 312.4),
+]
+
+# STEP 1: Calculate latitude (north component) and departure (east component) for each leg
+print("=== Latitude and Departure per Leg ===")
+latitudes = []
+departures = []
+# TODO: for length, bearing in traverse_legs:
+# TODO:     bearing_rad = math.radians(bearing)
+# TODO:     latitude = length * math.cos(bearing_rad)
+# TODO:     departure = length * math.sin(bearing_rad)
+# TODO:     latitudes.append(latitude)
+# TODO:     departures.append(departure)
+# TODO:     print(f"Length={length}m, Bearing={bearing}°: Lat={latitude:.3f}, Dep={departure:.3f}")
+
+# TODO: sum_latitude = sum(latitudes)
+# TODO: sum_departure = sum(departures)
+# TODO: print(f"\\nSum of latitudes (should be 0 for perfect closure): {sum_latitude:.3f} m")
+# TODO: print(f"Sum of departures (should be 0 for perfect closure): {sum_departure:.3f} m")
+
+# STEP 2: Linear closure error
+# TODO: closure_error = math.sqrt(sum_latitude ** 2 + sum_departure ** 2)
+# TODO: print(f"\\nLinear closure error: {closure_error:.3f} m")
+
+# STEP 3: Relative precision
+# TODO: total_perimeter = sum(leg[0] for leg in traverse_legs)
+# TODO: relative_precision = closure_error / total_perimeter
+# TODO: print(f"Total traverse perimeter: {total_perimeter:.2f} m")
+# TODO: print(f"Relative precision: 1:{1/relative_precision:.0f}")
+# TODO: print("(Typical acceptable precision for boundary surveys is often 1:5000 to 1:10000 or better,")
+# TODO: print(" depending on survey class -- compare this result against the applicable standard)")
+
+# STEP 4: Compass rule adjustment -- distribute error proportional to leg length
+print("\\n=== Compass Rule Adjustment ===")
+corrected_latitudes = []
+corrected_departures = []
+# TODO: for i, (length, bearing) in enumerate(traverse_legs):
+# TODO:     lat_correction = -sum_latitude * (length / total_perimeter)
+# TODO:     dep_correction = -sum_departure * (length / total_perimeter)
+# TODO:     corrected_lat = latitudes[i] + lat_correction
+# TODO:     corrected_dep = departures[i] + dep_correction
+# TODO:     corrected_latitudes.append(corrected_lat)
+# TODO:     corrected_departures.append(corrected_dep)
+# TODO:     print(f"Leg {i+1}: corrected Lat={corrected_lat:.3f}, corrected Dep={corrected_dep:.3f}")
+
+# STEP 5: Verify corrected sums are now zero
+# TODO: print(f"\\nCorrected sum of latitudes: {sum(corrected_latitudes):.6f} m (should be ~0)")
+# TODO: print(f"Corrected sum of departures: {sum(corrected_departures):.6f} m (should be ~0)")
+`,
+    skillTags: ["Traverse Surveying", "Closure Error", "Compass Rule", "Bowditch Rule"],
+    hints: [
+      "The compass (Bowditch) rule distributes closure error proportionally to each leg's LENGTH, based on the assumption that longer legs are more likely to have accumulated more measurement error -- this is a specific, standard, and defensible adjustment method, not an arbitrary way of forcing the numbers to close",
+      "Relative precision (closure error expressed as a ratio to total traverse length, like 1:8000) is the meaningful way to assess survey quality, since a fixed error magnitude means something very different for a short traverse versus a very long one -- always express and compare precision this way, not raw closure error alone",
+      "A closure error significantly exceeding the acceptable precision standard for the survey class shouldn't simply be adjusted away with the compass rule -- it's a signal that a genuine measurement error (misread angle, wrong distance, blunder) may exist in the raw field data, and the field measurements should be reviewed before applying a mathematical adjustment to data that may contain an actual mistake",
+    ],
+  },
+  {
+    id: "civil-survey-002",
+    title: "Calculate Earthwork Cut and Fill Volumes Using the Average End Area Method",
+    category: "Surveying",
+    icon: "⛏️",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Python", "Earthwork Calculations"],
+    scenario:
+      "A road construction project needs earthwork cut and fill volumes calculated from cross-sectional survey data to estimate excavation costs and determine whether excavated material can be reused as fill elsewhere on the project (balancing cut and fill reduces costly material hauling).",
+    objective:
+      "Calculate cut and fill volumes between survey cross-sections using the average end area method, and determine the overall earthwork balance for the project.",
+    steps: [
+      "Calculate the volume between each pair of consecutive cross-sections using the average end area formula",
+      "Sum cut volumes and fill volumes separately across the full alignment",
+      "Calculate the net earthwork balance (surplus cut material or fill material deficit)",
+      "Estimate hauling cost implications if cut and fill don't balance",
+      "Identify the station range with the largest cut-to-fill mismatch for potential grade line optimization",
+    ],
+    workstation: "notebook",
+    starterCode: `# Earthwork Cut and Fill Volume Calculation (Average End Area Method)
+# Cross-section data: (station, cut_area_m2, fill_area_m2), spaced 20m apart
+cross_sections = [
+    (0,   45.2, 0.0),
+    (20,  38.5, 0.0),
+    (40,  20.1, 5.2),
+    (60,  0.0,  28.7),
+    (80,  0.0,  42.3),
+    (100, 0.0,  35.8),
+    (120, 8.4,  15.2),
+    (140, 22.6, 0.0),
+]
+
+station_interval_m = 20.0
+
+# STEP 1: Average end area volume between each pair of consecutive sections
+print("=== Volume Between Sections (Average End Area Method) ===")
+total_cut_volume = 0.0
+total_fill_volume = 0.0
+# TODO: for i in range(1, len(cross_sections)):
+# TODO:     station_prev, cut_prev, fill_prev = cross_sections[i-1]
+# TODO:     station_curr, cut_curr, fill_curr = cross_sections[i]
+# TODO:     cut_volume = ((cut_prev + cut_curr) / 2) * station_interval_m
+# TODO:     fill_volume = ((fill_prev + fill_curr) / 2) * station_interval_m
+# TODO:     total_cut_volume += cut_volume
+# TODO:     total_fill_volume += fill_volume
+# TODO:     print(f"Station {station_prev}-{station_curr}: cut={cut_volume:.1f} m³, fill={fill_volume:.1f} m³")
+
+# STEP 2 & 3: Totals and balance
+print(f"\\n=== Earthwork Summary ===")
+# TODO: print(f"Total cut volume: {total_cut_volume:,.0f} m³")
+# TODO: print(f"Total fill volume: {total_fill_volume:,.0f} m³")
+# TODO: net_balance = total_cut_volume - total_fill_volume
+# TODO: print(f"Net balance: {net_balance:+,.0f} m³ ({'surplus cut material' if net_balance > 0 else 'fill material deficit'})")
+
+# STEP 4: Hauling cost implication
+shrinkage_factor = 0.90  # cut material typically compacts to less volume when placed as fill
+haul_cost_per_m3 = 8.50   # cost to import fill or dispose of surplus cut material off-site
+# TODO: usable_fill_from_cut = total_cut_volume * shrinkage_factor
+# TODO: adjusted_balance = usable_fill_from_cut - total_fill_volume
+print(f"\\n=== Adjusted Balance (accounting for {shrinkage_factor:.0%} shrinkage factor) ===")
+# TODO: print(f"Usable fill from cut material (after shrinkage): {usable_fill_from_cut:,.0f} m³")
+# TODO: print(f"Adjusted balance: {adjusted_balance:+,.0f} m³")
+# TODO: if adjusted_balance < 0:
+# TODO:     import_needed = abs(adjusted_balance)
+# TODO:     print(f"Need to IMPORT {import_needed:,.0f} m³ of fill material -- estimated cost: \${import_needed * haul_cost_per_m3:,.0f}")
+# TODO: else:
+# TODO:     print(f"Surplus of {adjusted_balance:,.0f} m³ cut material needs off-site disposal -- estimated cost: \${adjusted_balance * haul_cost_per_m3:,.0f}")
+
+# STEP 5: Largest mismatch station range
+print(f"\\n=== Largest Cut-Fill Mismatch ===")
+print("Station 60-100 shows almost pure fill with no offsetting cut nearby -- this range is where")
+print("grade line (vertical alignment) optimization could most reduce imported fill material need,")
+print("by potentially lowering the design grade slightly in that section if geometric constraints allow.")
+`,
+    skillTags: ["Earthwork", "Cut and Fill", "Average End Area Method", "Surveying"],
+    hints: [
+      "The average end area method assumes the ground/design surface varies roughly linearly between cross-sections -- this is a reasonable approximation for evenly-spaced sections with a gradually changing terrain, but becomes less accurate with widely-spaced sections or abrupt terrain changes, where the prismoidal formula (a more precise but more complex method) is sometimes preferred",
+      "The shrinkage factor matters because excavated soil doesn't compact back to the same density when placed and compacted as fill -- ignoring this factor when balancing cut and fill volumes leads to underestimating how much fill material is actually needed, a common and costly earthwork estimation mistake",
+      "Achieving cut-fill balance (minimizing net import or export of material) is a major cost driver in road/site design, since hauling material on or off site is expensive -- this is exactly why earthwork balance analysis often feeds back into iterating on the vertical alignment (grade line) design, not just serving as a final quantity takeoff after the design is already fixed",
+    ],
+  },
+  {
+    id: "civil-survey-003",
+    title: "Design a GNSS/RTK Survey Control Network Redundancy Check",
+    category: "Surveying",
+    icon: "📡",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Python", "GNSS Surveying"],
+    scenario:
+      "A construction site's GNSS base station coordinates were established from a single control point observation, but the project specification requires redundant verification before the control network can be trusted for setting out foundations -- an undetected base station coordinate error would propagate into every subsequent measurement on the project.",
+    objective:
+      "Compare independent observations of the same control point coordinates to verify consistency, calculate the discrepancy, and determine whether the redundancy check passes the required tolerance for construction control surveys.",
+    steps: [
+      "Compare coordinates from multiple independent observation sessions of the same control point",
+      "Calculate the horizontal and vertical discrepancy between observations",
+      "Compare against the required tolerance for the survey classification (construction control)",
+      "Calculate a best estimate (weighted average) if the check passes",
+      "Determine the recommended action if the discrepancy exceeds tolerance",
+    ],
+    workstation: "notebook",
+    starterCode: `# GNSS Control Point Redundancy Verification
+import math
+
+# Independent GNSS observation sessions of the same control monument
+observations = [
+    {"session": "Session 1 (AM)", "easting": 458213.245, "northing": 3721456.892, "elevation": 142.386},
+    {"session": "Session 2 (PM, different satellite geometry)", "easting": 458213.261, "northing": 3721456.878, "elevation": 142.379},
+    {"session": "Session 3 (next day)", "easting": 458213.238, "northing": 3721456.901, "elevation": 142.392},
+]
+
+# Required tolerances for construction control survey classification
+horizontal_tolerance_m = 0.020   # 20mm
+vertical_tolerance_m = 0.030      # 30mm
+
+# STEP 1 & 2: Pairwise discrepancy comparison
+print("=== Pairwise Discrepancy Analysis ===")
+max_horizontal_discrepancy = 0.0
+max_vertical_discrepancy = 0.0
+# TODO: for i in range(len(observations)):
+# TODO:     for j in range(i + 1, len(observations)):
+# TODO:         obs_a = observations[i]
+# TODO:         obs_b = observations[j]
+# TODO:         delta_e = obs_a["easting"] - obs_b["easting"]
+# TODO:         delta_n = obs_a["northing"] - obs_b["northing"]
+# TODO:         horizontal_discrepancy = math.sqrt(delta_e ** 2 + delta_n ** 2)
+# TODO:         vertical_discrepancy = abs(obs_a["elevation"] - obs_b["elevation"])
+# TODO:         max_horizontal_discrepancy = max(max_horizontal_discrepancy, horizontal_discrepancy)
+# TODO:         max_vertical_discrepancy = max(max_vertical_discrepancy, vertical_discrepancy)
+# TODO:         print(f"{obs_a['session']} vs {obs_b['session']}:")
+# TODO:         print(f"  Horizontal discrepancy: {horizontal_discrepancy*1000:.1f} mm")
+# TODO:         print(f"  Vertical discrepancy: {vertical_discrepancy*1000:.1f} mm")
+
+# STEP 3: Tolerance check
+print(f"\\n=== Tolerance Check ===")
+# TODO: print(f"Maximum horizontal discrepancy: {max_horizontal_discrepancy*1000:.1f} mm (tolerance: {horizontal_tolerance_m*1000:.0f} mm)")
+# TODO: print(f"Maximum vertical discrepancy: {max_vertical_discrepancy*1000:.1f} mm (tolerance: {vertical_tolerance_m*1000:.0f} mm)")
+# TODO: horizontal_pass = max_horizontal_discrepancy <= horizontal_tolerance_m
+# TODO: vertical_pass = max_vertical_discrepancy <= vertical_tolerance_m
+# TODO: print(f"\\nHorizontal check: {'PASS' if horizontal_pass else 'FAIL'}")
+# TODO: print(f"Vertical check: {'PASS' if vertical_pass else 'FAIL'}")
+
+# STEP 4: Best estimate if passed
+print(f"\\n=== Best Estimate (Simple Average) ===")
+# TODO: avg_easting = sum(o["easting"] for o in observations) / len(observations)
+# TODO: avg_northing = sum(o["northing"] for o in observations) / len(observations)
+# TODO: avg_elevation = sum(o["elevation"] for o in observations) / len(observations)
+# TODO: print(f"Best estimate coordinates: E={avg_easting:.3f}, N={avg_northing:.3f}, El={avg_elevation:.3f}")
+
+# STEP 5: Recommendation
+print(f"\\n=== Recommendation ===")
+# TODO: if horizontal_pass and vertical_pass:
+# TODO:     print("Redundancy check PASSED -- control point coordinates verified and adopted for project use.")
+# TODO:     print("All three independent sessions agree within tolerance, providing confidence the control")
+# TODO:     print("point is not affected by a single-session error (multipath, poor satellite geometry, etc.)")
+# TODO: else:
+# TODO:     print("Redundancy check FAILED -- do NOT adopt this control point without further investigation.")
+# TODO:     print("Recommend: additional independent observation session, checking for multipath sources near")
+# TODO:     print("the monument, verifying antenna height measurements, and confirming no monument disturbance")
+# TODO:     print("occurred between sessions before using this point for construction layout.")
+`,
+    skillTags: ["GNSS Surveying", "RTK", "Control Network", "Survey Redundancy", "Construction Layout"],
+    hints: [
+      "The core principle here -- never trust a single, unverified observation for critical control -- exists because a single GNSS session can be affected by transient errors (multipath reflections, poor satellite geometry, atmospheric conditions) that a redundant independent session, taken at a different time or under different conditions, is unlikely to replicate identically",
+      "An undetected control point error doesn't just affect that single point -- it propagates into every subsequent measurement and construction layout point derived from that control, which is exactly why construction control surveys require tighter tolerances and more rigorous redundancy verification than lower-precision mapping-grade GNSS work",
+      "A failed redundancy check should trigger investigation into the ROOT CAUSE of the discrepancy (equipment issue, monument disturbance, environmental interference) rather than simply averaging the observations and proceeding -- averaging away a discrepancy that stems from a genuine problem (like a disturbed monument) would propagate that problem into the project rather than resolving it",
+    ],
+  },
+  {
+    id: "civil-survey-004",
+    title: "Calculate Vertical Curve Elevation Points for a Roadway Profile",
+    category: "Surveying",
+    icon: "📐",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Python", "Vertical Curve Design"],
+    scenario:
+      "A roadway design transitions between two different grade lines at a summit, and a smooth parabolic vertical curve must be calculated to connect them -- an incorrectly calculated curve could create a sight-distance hazard at the crest or an uncomfortably abrupt grade transition for drivers.",
+    objective:
+      "Calculate elevation points along a parabolic vertical curve connecting two grade lines, determine the curve's high point, and verify adequate sight distance is provided.",
+    steps: [
+      "Calculate the curve length parameters and station of the point of vertical curvature (PVC) and point of vertical tangency (PVT)",
+      "Calculate elevations at regular stations along the curve using the parabolic vertical curve formula",
+      "Determine the station and elevation of the curve's high point",
+      "Verify the high point calculation using the standard formula for the location of the extreme point",
+      "Assess whether the curve length provides adequate stopping sight distance for the design speed",
+    ],
+    workstation: "notebook",
+    starterCode: `# Parabolic Vertical Curve Calculation (Crest Curve)
+pvi_station = 1000.0    # station of the point of vertical intersection
+pvi_elevation = 245.60   # elevation at the PVI
+grade_in_pct = 3.5        # incoming grade, % (positive = uphill approaching PVI)
+grade_out_pct = -2.8      # outgoing grade, % (negative = downhill leaving PVI)
+curve_length_m = 120.0    # total length of the vertical curve
+
+design_speed_kmh = 80
+
+# STEP 1: PVC and PVT stations
+# TODO: pvc_station = pvi_station - curve_length_m / 2
+# TODO: pvt_station = pvi_station + curve_length_m / 2
+# TODO: pvc_elevation = pvi_elevation - (grade_in_pct / 100) * (curve_length_m / 2)
+# TODO: pvt_elevation = pvi_elevation + (grade_out_pct / 100) * (curve_length_m / 2)
+# TODO: print(f"PVC: station={pvc_station:.1f}, elevation={pvc_elevation:.3f}")
+# TODO: print(f"PVI: station={pvi_station:.1f}, elevation={pvi_elevation:.3f}")
+# TODO: print(f"PVT: station={pvt_station:.1f}, elevation={pvt_elevation:.3f}")
+
+# STEP 2: Elevation at points along the curve using the parabolic formula
+# Elevation(x) = PVC_elevation + (g1 x) + ((g2-g1)/(2L)) x^2, where x = distance from PVC
+def curve_elevation(distance_from_pvc):
+    # TODO: g1 = grade_in_pct / 100
+    # TODO: g2 = grade_out_pct / 100
+    # TODO: elevation = pvc_elevation + g1 * distance_from_pvc + ((g2 - g1) / (2 * curve_length_m)) * distance_from_pvc ** 2
+    # TODO: return elevation
+    pass
+
+print("\\n=== Elevations Along the Curve (20m intervals) ===")
+# TODO: for x in range(0, int(curve_length_m) + 1, 20):
+# TODO:     station = pvc_station + x
+# TODO:     elevation = curve_elevation(x)
+# TODO:     print(f"Station {station:.0f}: elevation = {elevation:.3f} m")
+
+# STEP 3 & 4: High point location (where the curve's slope = 0)
+# x_highpoint = g1 x L / (g1 - g2)
+# TODO: g1 = grade_in_pct / 100
+# TODO: g2 = grade_out_pct / 100
+# TODO: x_highpoint = (g1 * curve_length_m) / (g1 - g2)
+# TODO: highpoint_station = pvc_station + x_highpoint
+# TODO: highpoint_elevation = curve_elevation(x_highpoint)
+# TODO: print(f"\\nHigh point: station={highpoint_station:.1f}, elevation={highpoint_elevation:.3f}")
+
+# STEP 5: Sight distance assessment (simplified crest curve sight distance check)
+# Minimum K value (curve length per % algebraic grade difference) for stopping sight distance at this design speed
+minimum_k_value = 30  # typical K value requirement for 80 km/h design speed crest curves (illustrative reference value)
+# TODO: algebraic_grade_difference = abs(grade_out_pct - grade_in_pct)
+# TODO: actual_k_value = curve_length_m / algebraic_grade_difference
+print(f"\\n=== Sight Distance Check ===")
+# TODO: print(f"Algebraic grade difference (A): {algebraic_grade_difference:.1f}%")
+# TODO: print(f"Actual K value (L/A): {actual_k_value:.1f}")
+# TODO: print(f"Minimum required K value for {design_speed_kmh} km/h design speed: {minimum_k_value}")
+# TODO: sight_distance_adequate = actual_k_value >= minimum_k_value
+# TODO: print(f"Sight distance check: {'ADEQUATE' if sight_distance_adequate else 'INADEQUATE -- curve must be lengthened'}")
+`,
+    skillTags: ["Vertical Curve", "Roadway Design", "Sight Distance", "Highway Geometrics"],
+    hints: [
+      "The K value (curve length divided by algebraic grade difference) is the standard highway design metric for crest vertical curve sight distance adequacy -- it directly encodes the relationship between how sharply the grades change and how long a curve is needed to maintain safe stopping sight distance for a given design speed, which is why highway design tables specify minimum K values by design speed rather than raw curve lengths",
+      "The high point of a crest curve generally does NOT fall exactly at the midpoint (PVI) unless the incoming and outgoing grades happen to be equal in magnitude -- the formula used here correctly locates the true maximum by finding where the curve's derivative (slope) equals zero, which shifts toward whichever grade has the smaller magnitude",
+      "An inadequate sight distance finding on a crest curve is a genuine safety issue with real consequences -- a driver cresting the curve who cannot see far enough ahead to stop for an obstacle or stopped vehicle is exactly the hazard this K-value check is designed to catch before construction, not an abstract design formality",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CIVIL — ENVIRONMENTAL ENGINEERING
+// ─────────────────────────────────────────────────────────────────────────────
+export const CIVIL_ENVIRONMENTAL_CHALLENGES = [
+  {
+    id: "civil-env-001",
+    title: "Design a Sedimentation Basin for Water Treatment",
+    category: "Environmental Engineering",
+    icon: "💧",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 18,
+    tools: ["Python", "Water Treatment Design"],
+    scenario:
+      "A municipal water treatment plant needs a sedimentation basin sized to remove suspended particles before filtration -- undersizing the basin means particles won't have enough time to settle out, degrading downstream water quality.",
+    objective:
+      "Calculate required sedimentation basin dimensions based on the target surface overflow rate and detention time, and verify the design achieves the target particle removal performance.",
+    steps: [
+      "Calculate the required basin surface area from design flow rate and target surface overflow rate",
+      "Calculate the required basin volume from design flow rate and target detention time",
+      "Determine basin depth from the calculated area and volume",
+      "Verify the settling velocity of the target particle size exceeds the design overflow rate (confirming particles will actually settle)",
+      "Check the basin's length-to-width ratio against typical design guidance for flow distribution",
+    ],
+    workstation: "notebook",
+    starterCode: `# Sedimentation Basin Design
+design_flow_m3_per_day = 8000.0
+target_surface_overflow_rate_m_per_day = 24.0  # m/day -- design parameter, particles settling slower than this rate won't be removed
+target_detention_time_hours = 3.0
+
+target_particle_diameter_mm = 0.02   # smallest particle size the basin must remove
+particle_density_kg_m3 = 2650        # typical for silt/fine sand
+water_density_kg_m3 = 1000
+water_viscosity_pa_s = 0.001
+
+import math
+
+# STEP 1: Required surface area
+# Surface overflow rate = Flow / Surface Area, so Area = Flow / SOR
+# TODO: required_surface_area_m2 = design_flow_m3_per_day / target_surface_overflow_rate_m_per_day
+# TODO: print(f"Required basin surface area: {required_surface_area_m2:.1f} m²")
+
+# STEP 2: Required volume
+# TODO: design_flow_m3_per_hour = design_flow_m3_per_day / 24
+# TODO: required_volume_m3 = design_flow_m3_per_hour * target_detention_time_hours
+# TODO: print(f"Required basin volume: {required_volume_m3:.1f} m³")
+
+# STEP 3: Basin depth
+# TODO: basin_depth_m = required_volume_m3 / required_surface_area_m2
+# TODO: print(f"Resulting basin depth: {basin_depth_m:.2f} m")
+
+# STEP 4: Verify target particle settling velocity exceeds design overflow rate (Stokes' Law)
+g = 9.81
+# TODO: particle_diameter_m = target_particle_diameter_mm / 1000
+# TODO: settling_velocity_m_s = (g * (particle_density_kg_m3 - water_density_kg_m3) * particle_diameter_m ** 2) / (18 * water_viscosity_pa_s)
+# TODO: settling_velocity_m_per_day = settling_velocity_m_s * 86400
+# TODO: print(f"\\nStokes' Law settling velocity for {target_particle_diameter_mm}mm particle: {settling_velocity_m_per_day:.1f} m/day")
+# TODO: print(f"Design surface overflow rate: {target_surface_overflow_rate_m_per_day} m/day")
+# TODO: particle_will_settle = settling_velocity_m_per_day >= target_surface_overflow_rate_m_per_day
+# TODO: print(f"Target particle will be removed: {'YES' if particle_will_settle else 'NO -- basin undersized for this particle size, need larger surface area'}")
+
+# STEP 5: Length-to-width ratio guidance check
+proposed_length_m = 30.0
+proposed_width_m = required_surface_area_m2 / proposed_length_m if 'required_surface_area_m2' in dir() else 0
+print(f"\\n=== Basin Geometry Check ===")
+# TODO: proposed_width_m = required_surface_area_m2 / proposed_length_m
+# TODO: length_to_width_ratio = proposed_length_m / proposed_width_m
+# TODO: print(f"Proposed dimensions: {proposed_length_m}m x {proposed_width_m:.1f}m")
+# TODO: print(f"Length-to-width ratio: {length_to_width_ratio:.1f}:1")
+# TODO: print("(Typical design guidance recommends at least 3:1 to 4:1 to promote uniform flow distribution")
+# TODO: print(" and minimize short-circuiting through the basin)")
+`,
+    skillTags: ["Sedimentation Basin", "Water Treatment", "Stokes Law", "Surface Overflow Rate"],
+    hints: [
+      "The critical design insight of sedimentation basin theory is that removal efficiency depends on SURFACE AREA (via the surface overflow rate), not basin DEPTH -- a shallower basin with the same surface area removes particles just as effectively in theory, which is why surface overflow rate (not detention time or depth alone) is the primary design parameter, with detention time as a secondary check",
+      "Stokes' Law settling velocity calculation is what actually verifies the design will work for a SPECIFIC target particle size -- a basin sized purely from a generic surface overflow rate assumption without checking against the actual target particle's settling behavior could be systematically undersized for the particles that actually need to be removed",
+      "The length-to-width ratio guideline exists to minimize short-circuiting (water flowing through the basin faster along a direct path than the average detention time would suggest, giving those water parcels less actual settling time than the design intends) -- a basin that's too short and wide relative to its length is prone to this problem even if its calculated surface area and volume are theoretically correct",
+    ],
+  },
+  {
+    id: "civil-env-002",
+    title: "Calculate Wastewater Treatment Plant BOD Removal and Effluent Compliance",
+    category: "Environmental Engineering",
+    icon: "🏭",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 18,
+    tools: ["Python", "Wastewater Treatment"],
+    scenario:
+      "A wastewater treatment plant's discharge permit requires effluent BOD (biochemical oxygen demand) below a regulatory limit. The plant operator needs to verify the current treatment process is achieving adequate removal before discharge, and calculate the required removal efficiency if it isn't.",
+    objective:
+      "Calculate BOD removal efficiency through primary and secondary treatment stages, verify compliance with the effluent discharge limit, and determine what additional removal would be needed if non-compliant.",
+    steps: [
+      "Calculate BOD removal efficiency and remaining BOD after primary treatment",
+      "Calculate BOD removal efficiency and remaining BOD after secondary treatment",
+      "Compare the final effluent BOD against the regulatory discharge limit",
+      "Calculate the overall plant removal efficiency across both treatment stages",
+      "If non-compliant, calculate the additional removal efficiency needed from a proposed tertiary treatment stage",
+    ],
+    workstation: "notebook",
+    starterCode: `# Wastewater Treatment BOD Removal and Compliance Check
+influent_bod_mg_l = 280.0  # raw influent BOD concentration
+
+primary_treatment_removal_efficiency = 0.35   # typical for primary (physical) treatment
+secondary_treatment_removal_efficiency = 0.85  # typical for secondary (biological) treatment, applied to primary EFFLUENT
+
+regulatory_discharge_limit_mg_l = 20.0  # typical secondary treatment standard for BOD
+
+# STEP 1: Primary treatment
+# TODO: primary_effluent_bod = influent_bod_mg_l * (1 - primary_treatment_removal_efficiency)
+# TODO: print(f"Influent BOD: {influent_bod_mg_l} mg/L")
+# TODO: print(f"After primary treatment ({primary_treatment_removal_efficiency:.0%} removal): {primary_effluent_bod:.1f} mg/L")
+
+# STEP 2: Secondary treatment (applied to primary effluent, not raw influent)
+# TODO: secondary_effluent_bod = primary_effluent_bod * (1 - secondary_treatment_removal_efficiency)
+# TODO: print(f"After secondary treatment ({secondary_treatment_removal_efficiency:.0%} removal of primary effluent): {secondary_effluent_bod:.1f} mg/L")
+
+# STEP 3: Compliance check
+print(f"\\n=== Compliance Check ===")
+# TODO: print(f"Final effluent BOD: {secondary_effluent_bod:.1f} mg/L")
+# TODO: print(f"Regulatory discharge limit: {regulatory_discharge_limit_mg_l} mg/L")
+# TODO: compliant = secondary_effluent_bod <= regulatory_discharge_limit_mg_l
+# TODO: print(f"Status: {'COMPLIANT' if compliant else 'NON-COMPLIANT -- exceeds discharge limit'}")
+
+# STEP 4: Overall plant removal efficiency
+# TODO: overall_removal_efficiency = (influent_bod_mg_l - secondary_effluent_bod) / influent_bod_mg_l
+# TODO: print(f"\\nOverall plant BOD removal efficiency: {overall_removal_efficiency:.1%}")
+
+# STEP 5: Additional removal needed if non-compliant
+print(f"\\n=== Tertiary Treatment Requirement (if needed) ===")
+# TODO: if not compliant:
+# TODO:     required_additional_removal_pct = (secondary_effluent_bod - regulatory_discharge_limit_mg_l) / secondary_effluent_bod
+# TODO:     print(f"Additional removal efficiency needed from tertiary treatment: {required_additional_removal_pct:.1%}")
+# TODO:     print(f"(to bring {secondary_effluent_bod:.1f} mg/L down to the {regulatory_discharge_limit_mg_l} mg/L limit)")
+# TODO: else:
+# TODO:     print("No tertiary treatment required for BOD compliance -- current process meets the discharge limit")
+# TODO:     print(f"with a margin of {regulatory_discharge_limit_mg_l - secondary_effluent_bod:.1f} mg/L below the limit")
+`,
+    skillTags: ["Wastewater Treatment", "BOD Removal", "Effluent Compliance", "Environmental Engineering"],
+    hints: [
+      "Treatment stage removal efficiencies apply SEQUENTIALLY and multiplicatively, not additively -- secondary treatment's stated removal efficiency applies to the BOD remaining AFTER primary treatment, not to the original raw influent BOD, and confusing these two would significantly overstate the overall plant's true removal performance",
+      "Overall plant removal efficiency (calculated from raw influent to final effluent) is a useful single summary metric, but the individual stage efficiencies matter more for troubleshooting -- if a plant is non-compliant, knowing which specific stage is underperforming relative to its typical/design efficiency is what actually points to where a fix is needed",
+      "This simplified calculation uses fixed percentage removal efficiencies for illustration, but real treatment plant performance varies with operating conditions (temperature, hydraulic loading, biological health of the secondary treatment process) -- production compliance monitoring relies on actual measured effluent BOD from regular sampling, not solely on assumed design-stage removal percentages",
+    ],
+  },
+  {
+    id: "civil-env-003",
+    title: "Perform an Air Quality Dispersion Screening Calculation for a Point Source",
+    category: "Environmental Engineering",
+    icon: "🏭",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Python", "Air Quality Modeling"],
+    scenario:
+      "A proposed industrial facility's air permit application requires demonstrating that stack emissions won't cause ground-level pollutant concentrations exceeding air quality standards at the nearest residential property. A simplified Gaussian plume screening calculation is used before committing to a full detailed dispersion modeling study.",
+    objective:
+      "Apply a simplified Gaussian plume dispersion equation to estimate ground-level pollutant concentration at a specified downwind distance, and compare against the applicable air quality standard.",
+    steps: [
+      "Gather stack emission rate, effective stack height, and downwind distance to the receptor location",
+      "Determine appropriate dispersion coefficients for the given atmospheric stability class and distance",
+      "Calculate ground-level centerline concentration using the simplified Gaussian plume equation",
+      "Compare the calculated concentration against the applicable air quality standard",
+      "Assess sensitivity: how would the result change under a less favorable (more stable) atmospheric condition",
+    ],
+    workstation: "notebook",
+    starterCode: `# Simplified Gaussian Plume Air Quality Screening
+import math
+
+emission_rate_g_per_s = 5.2       # pollutant emission rate from the stack
+effective_stack_height_m = 45.0    # physical stack height plus plume rise
+downwind_distance_m = 800.0        # distance to the nearest residential receptor
+wind_speed_m_per_s = 3.5
+
+# Simplified dispersion coefficients (illustrative values for a moderately stable atmospheric condition
+# at this downwind distance -- real applications use Pasquill-Gifford curves or a dispersion model)
+sigma_y_m = 65.0   # horizontal dispersion coefficient at this distance/stability class
+sigma_z_m = 28.0   # vertical dispersion coefficient at this distance/stability class
+
+air_quality_standard_ug_m3 = 50.0  # applicable short-term ambient air quality standard
+
+# STEP 3: Simplified Gaussian plume ground-level centerline concentration
+# C = Q / (pi x sigma_y x sigma_z x u) x exp(-0.5 x (H/sigma_z)^2)
+# TODO: term1 = emission_rate_g_per_s / (math.pi * sigma_y_m * sigma_z_m * wind_speed_m_per_s)
+# TODO: term2 = math.exp(-0.5 * (effective_stack_height_m / sigma_z_m) ** 2)
+# TODO: concentration_g_m3 = term1 * term2
+# TODO: concentration_ug_m3 = concentration_g_m3 * 1e6
+# TODO: print(f"Estimated ground-level centerline concentration at {downwind_distance_m}m downwind: {concentration_ug_m3:.2f} ug/m³")
+
+# STEP 4: Compliance check
+print(f"\\n=== Compliance Screening ===")
+# TODO: print(f"Applicable air quality standard: {air_quality_standard_ug_m3} ug/m³")
+# TODO: compliant = concentration_ug_m3 <= air_quality_standard_ug_m3
+# TODO: print(f"Status: {'PASSES screening -- below standard' if compliant else 'EXCEEDS standard -- detailed modeling required'}")
+
+# STEP 5: Sensitivity check under a more stable atmospheric condition (narrower plume, less dilution)
+print(f"\\n=== Sensitivity: More Stable Atmospheric Condition ===")
+sigma_y_stable_m = 35.0   # narrower plume under stable conditions -- less horizontal spreading
+sigma_z_stable_m = 12.0   # narrower plume vertically too -- LESS dilution, can mean HIGHER ground concentration
+# TODO: term1_stable = emission_rate_g_per_s / (math.pi * sigma_y_stable_m * sigma_z_stable_m * wind_speed_m_per_s)
+# TODO: term2_stable = math.exp(-0.5 * (effective_stack_height_m / sigma_z_stable_m) ** 2)
+# TODO: concentration_stable_ug_m3 = term1_stable * term2_stable * 1e6
+# TODO: print(f"Concentration under more stable conditions: {concentration_stable_ug_m3:.2f} ug/m³")
+# TODO: stable_compliant = concentration_stable_ug_m3 <= air_quality_standard_ug_m3
+# TODO: print(f"Status under stable conditions: {'PASSES' if stable_compliant else 'EXCEEDS standard'}")
+# TODO: if compliant and not stable_compliant:
+# TODO:     print("\\nFLAG: screening passes under the base case but FAILS under more stable atmospheric")
+# TODO:     print("conditions -- a full detailed dispersion model accounting for the full range of expected")
+# TODO:     print("meteorological conditions (not just one scenario) is needed before permit approval,")
+# TODO:     print("since actual atmospheric conditions vary throughout the year and worst-case conditions matter")
+`,
+    skillTags: ["Air Quality Modeling", "Gaussian Plume", "Dispersion Screening", "Environmental Engineering"],
+    hints: [
+      "This is explicitly a SCREENING-level calculation using simplified, illustrative dispersion coefficients -- real regulatory air quality permit applications require validated dispersion models (like AERMOD) with actual site-specific meteorological data and proper Pasquill-Gifford or similar dispersion coefficient determination, not a simplified hand calculation like this exercise",
+      "More stable atmospheric conditions produce a NARROWER plume (smaller sigma_y and sigma_z), which counterintuitively can mean HIGHER ground-level concentrations near the source despite the pollutant being less spread out -- less dispersion means less dilution, which is exactly why 'worst-case' atmospheric stability screening is standard practice rather than checking only typical or average conditions",
+      "A screening result that passes under typical conditions but fails under a more conservative (stable) scenario is precisely the kind of finding that should trigger a full detailed modeling study before regulatory approval -- relying on a single, most-favorable-case screening result would understate real-world exceedance risk across the full range of meteorological conditions the facility will actually experience over time",
+    ],
+  },
+  {
+    id: "civil-env-004",
+    title: "Design a Landfill Leachate Collection System Sizing Check",
+    category: "Environmental Engineering",
+    icon: "🗑️",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Python", "Solid Waste Engineering"],
+    scenario:
+      "A municipal solid waste landfill's leachate collection system must be sized to prevent leachate from building up above the regulatory maximum head on the liner -- excessive leachate head increases the risk of liner leakage into groundwater, a serious environmental compliance issue.",
+    objective:
+      "Calculate expected leachate generation rate from the landfill cell using the water balance method, and verify the leachate collection pipe system capacity is adequate to maintain leachate head below the regulatory limit.",
+    steps: [
+      "Calculate leachate generation rate using a simplified water balance (precipitation infiltration minus evapotranspiration and runoff)",
+      "Convert the generation rate to a design flow for the collection system",
+      "Calculate the pipe capacity needed using Manning's equation for the collection pipe",
+      "Verify the proposed pipe design meets or exceeds the required capacity",
+      "Assess the resulting leachate head against the regulatory maximum head limit",
+    ],
+    workstation: "notebook",
+    starterCode: `# Landfill Leachate Collection System Sizing Check
+import math
+
+landfill_cell_area_m2 = 40000.0     # 4 hectares
+annual_precipitation_mm = 1100.0
+runoff_coefficient = 0.15            # fraction of precipitation that runs off rather than infiltrating (landfill cover dependent)
+evapotranspiration_mm = 450.0        # annual ET loss from the cover soil
+
+# Collection pipe parameters
+pipe_diameter_m = 0.30
+pipe_slope = 0.02          # 2% slope
+mannings_n = 0.013          # for the collection pipe material
+
+regulatory_max_head_m = 0.30  # maximum allowable leachate head on the liner (300mm is a common regulatory limit)
+
+# STEP 1: Leachate generation via simplified water balance
+# Infiltration = Precipitation - Runoff - Evapotranspiration
+# TODO: precipitation_m = annual_precipitation_mm / 1000
+# TODO: runoff_m = precipitation_m * runoff_coefficient
+# TODO: et_m = evapotranspiration_mm / 1000
+# TODO: infiltration_m_per_year = precipitation_m - runoff_m - et_m
+# TODO: print(f"Annual precipitation: {precipitation_m*1000:.0f} mm")
+# TODO: print(f"Runoff: {runoff_m*1000:.0f} mm")
+# TODO: print(f"Evapotranspiration: {et_m*1000:.0f} mm")
+# TODO: print(f"Net infiltration (leachate generation): {infiltration_m_per_year*1000:.0f} mm/year")
+
+# STEP 2: Design flow
+# TODO: annual_leachate_volume_m3 = infiltration_m_per_year * landfill_cell_area_m2
+# TODO: average_daily_flow_m3 = annual_leachate_volume_m3 / 365
+peak_factor = 3.0  # peak flow during heavy rainfall events vs average annual rate
+# TODO: peak_design_flow_m3_per_day = average_daily_flow_m3 * peak_factor
+# TODO: peak_design_flow_m3_per_s = peak_design_flow_m3_per_day / 86400
+# TODO: print(f"\\nAnnual leachate volume: {annual_leachate_volume_m3:,.0f} m³/year")
+# TODO: print(f"Average daily flow: {average_daily_flow_m3:.1f} m³/day")
+# TODO: print(f"Peak design flow (with {peak_factor}x peaking factor): {peak_design_flow_m3_per_day:.1f} m³/day ({peak_design_flow_m3_per_s:.5f} m³/s)")
+
+# STEP 3: Pipe capacity via Manning's equation (assume pipe flowing full for capacity check)
+# TODO: pipe_area_m2 = math.pi * (pipe_diameter_m / 2) ** 2
+# TODO: hydraulic_radius_m = pipe_diameter_m / 4  # for a full circular pipe
+# TODO: pipe_capacity_m3_per_s = (1 / mannings_n) * pipe_area_m2 * hydraulic_radius_m ** (2/3) * pipe_slope ** 0.5
+# TODO: print(f"\\nPipe capacity (Manning's equation, {pipe_diameter_m*1000:.0f}mm pipe): {pipe_capacity_m3_per_s:.5f} m³/s")
+
+# STEP 4: Capacity adequacy check
+print(f"\\n=== Capacity Check ===")
+# TODO: capacity_adequate = pipe_capacity_m3_per_s >= peak_design_flow_m3_per_s
+# TODO: print(f"Required peak design flow: {peak_design_flow_m3_per_s:.5f} m³/s")
+# TODO: print(f"Pipe capacity: {pipe_capacity_m3_per_s:.5f} m³/s")
+# TODO: print(f"Status: {'ADEQUATE' if capacity_adequate else 'INADEQUATE -- increase pipe size or slope'}")
+
+# STEP 5: Regulatory head consideration
+print(f"\\n=== Regulatory Compliance Note ===")
+# TODO: safety_factor = pipe_capacity_m3_per_s / peak_design_flow_m3_per_s if peak_design_flow_m3_per_s > 0 else 0
+# TODO: print(f"Capacity safety factor: {safety_factor:.1f}x")
+print(f"Adequate pipe capacity (flowing well below full) is what keeps leachate head on the liner below")
+print(f"the regulatory maximum of {regulatory_max_head_m*1000:.0f}mm -- an undersized collection system would allow")
+print(f"leachate to pond and build up head on the liner even if the leachate itself is being generated at")
+print(f"a rate the environment can otherwise handle, since the bottleneck would be conveyance capacity, not")
+print(f"generation rate. This is why both generation rate AND collection system capacity must be verified together.")
+`,
+    skillTags: ["Landfill Design", "Leachate Collection", "Water Balance", "Solid Waste Engineering"],
+    hints: [
+      "The water balance method for estimating leachate generation is a simplified but standard approach -- it treats the landfill cover as behaving somewhat like a soil water balance problem, where not all precipitation becomes leachate; some runs off the surface and some is lost to evapotranspiration from the cover vegetation and soil before it can infiltrate down to become leachate",
+      "The peaking factor applied to average annual leachate generation reflects the reality that leachate flow isn't constant -- storm events produce short-term infiltration spikes well above the annual average rate, and the collection system must be sized for these peak conditions, not just the average, or it will be periodically overwhelmed during and after heavy rainfall",
+      "Regulatory leachate head limits exist because excessive head on the liner increases the hydraulic driving force pushing leachate through any liner defect toward groundwater -- an adequately generating-rate-matched but poorly-conveying collection system (undersized pipes, inadequate slope) can still result in unacceptable head buildup even if the underlying leachate generation estimate itself was accurate, which is why conveyance capacity must be verified as a genuinely separate check from generation rate",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CIVIL — EARTHQUAKE & SEISMIC ENGINEERING
+// ─────────────────────────────────────────────────────────────────────────────
+export const CIVIL_SEISMIC_CHALLENGES = [
+  {
+    id: "civil-seismic-001",
+    title: "Calculate Seismic Base Shear Using the Equivalent Static Force Method",
+    category: "Seismic Engineering",
+    icon: "🌍",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 22,
+    tools: ["Python", "Seismic Design"],
+    scenario:
+      "A structural engineer needs to determine the seismic design forces for a mid-rise building using the equivalent static force method -- an underestimated base shear would result in an under-designed lateral force resisting system, a serious life-safety risk in a seismic event.",
+    objective:
+      "Calculate the total seismic base shear for a building using the equivalent static force procedure, given the building's seismic design parameters and structural properties.",
+    steps: [
+      "Calculate the fundamental period of the structure using an approximate empirical formula",
+      "Determine the design spectral acceleration from the building's seismic parameters and calculated period",
+      "Calculate the seismic response coefficient",
+      "Calculate total base shear from the response coefficient and building seismic weight",
+      "Distribute the base shear vertically across building stories using the standard distribution formula",
+    ],
+    workstation: "notebook",
+    starterCode: `# Seismic Base Shear (Equivalent Static Force Method)
+building_height_m = 32.0
+num_stories = 8
+story_height_m = 4.0
+seismic_weight_per_story_kn = [1800, 1800, 1800, 1800, 1800, 1800, 1800, 1600]  # bottom to top, top story lighter
+
+# Seismic design parameters (site-specific, from a seismic hazard analysis)
+sds = 0.85   # design spectral acceleration parameter, short period
+sd1 = 0.42   # design spectral acceleration parameter, 1-second period
+response_modification_factor_r = 8.0  # for the structural system type (e.g. special moment frame)
+importance_factor_ie = 1.0             # standard occupancy
+
+# STEP 1: Approximate fundamental period (Ct and x are structure-type-dependent coefficients)
+ct = 0.0466  # for concrete moment-resisting frames
+x_exponent = 0.9
+# TODO: approximate_period_s = ct * building_height_m ** x_exponent
+# TODO: print(f"Approximate fundamental period (Ta): {approximate_period_s:.3f} s")
+
+# STEP 2: Design spectral acceleration at this period
+# TODO: if approximate_period_s <= sd1 / sds:
+# TODO:     sa = sds  # short-period plateau region
+# TODO: else:
+# TODO:     sa = sd1 / approximate_period_s  # long-period region, decreasing with period
+# TODO: print(f"Design spectral acceleration (Sa): {sa:.3f} g")
+
+# STEP 3: Seismic response coefficient
+# TODO: cs = (sa * importance_factor_ie) / response_modification_factor_r
+# TODO: print(f"\\nSeismic response coefficient (Cs): {cs:.4f}")
+
+# STEP 4: Total base shear
+# TODO: total_seismic_weight_kn = sum(seismic_weight_per_story_kn)
+# TODO: base_shear_kn = cs * total_seismic_weight_kn
+# TODO: print(f"Total building seismic weight: {total_seismic_weight_kn:,.0f} kN")
+# TODO: print(f"TOTAL BASE SHEAR (V): {base_shear_kn:,.1f} kN")
+
+# STEP 5: Vertical distribution of base shear across stories
+# Fx = V x (wx * hx^k) / sum(wi * hi^k), where k depends on period (1.0 for T<=0.5s, 2.0 for T>=2.5s, interpolated between)
+# TODO: if approximate_period_s <= 0.5:
+# TODO:     k = 1.0
+# TODO: elif approximate_period_s >= 2.5:
+# TODO:     k = 2.0
+# TODO: else:
+# TODO:     k = 1.0 + (approximate_period_s - 0.5) / 2.0  # linear interpolation
+
+print(f"\\n=== Vertical Distribution of Base Shear ===")
+story_heights = [story_height_m * (i + 1) for i in range(num_stories)]
+# TODO: weighted_terms = [w * h ** k for w, h in zip(seismic_weight_per_story_kn, story_heights)]
+# TODO: sum_weighted_terms = sum(weighted_terms)
+# TODO: for i, (w, h, wt) in enumerate(zip(seismic_weight_per_story_kn, story_heights, weighted_terms)):
+# TODO:     story_force = base_shear_kn * (wt / sum_weighted_terms)
+# TODO:     print(f"Story {i+1} (height={h:.0f}m, weight={w}kN): lateral force Fx = {story_force:.1f} kN")
+`,
+    skillTags: ["Seismic Base Shear", "Equivalent Static Force", "Building Code Seismic Design"],
+    hints: [
+      "The response modification factor R represents how much the design force can be reduced from the theoretical elastic force demand, based on the structural system's expected ductility and energy dissipation capacity during a major earthquake -- a higher R value (like for a well-detailed special moment frame) means lower design forces, but ONLY if the structure is actually detailed to achieve that ductile behavior, which is why R factor selection must match the actual structural system and detailing being used, not just chosen to minimize design forces",
+      "The vertical distribution exponent k reflects that taller, more flexible buildings experience proportionally MORE force concentration toward the top during an earthquake compared to shorter, stiffer buildings -- this is why k transitions from 1.0 (uniform-ish distribution, shorter/stiffer buildings) to 2.0 (top-heavy distribution, taller/more flexible buildings) as the fundamental period increases",
+      "Underestimating base shear (through an inappropriately optimistic period estimate, R factor, or spectral acceleration) directly under-designs the lateral force resisting system -- unlike many other structural design errors that might cause serviceability issues, this specific type of error creates a genuine life-safety risk in an actual seismic event, which is why seismic design parameters are governed by strict code requirements rather than engineering judgment alone",
+    ],
+  },
+  {
+    id: "civil-seismic-002",
+    title: "Evaluate Soil Liquefaction Potential Using the Simplified Procedure",
+    category: "Seismic Engineering",
+    icon: "🏚️",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 22,
+    tools: ["Python", "Geotechnical Earthquake Engineering"],
+    scenario:
+      "A building site sits on loose, saturated sandy soil in a seismically active region. Before foundation design can proceed, the site must be evaluated for liquefaction potential -- if the soil is liquefaction-susceptible, standard shallow foundations would be inadequate and ground improvement or deep foundations would be required.",
+    objective:
+      "Calculate the cyclic stress ratio (CSR) induced by the design earthquake and the cyclic resistance ratio (CRR) of the soil, and determine the factor of safety against liquefaction using the simplified Seed-Idriss procedure.",
+    steps: [
+      "Calculate the cyclic stress ratio (CSR) induced by the design earthquake at the depth of interest",
+      "Calculate the cyclic resistance ratio (CRR) of the soil from corrected SPT blow count data",
+      "Calculate the factor of safety against liquefaction",
+      "Classify the liquefaction risk level based on the factor of safety",
+      "Recommend a foundation design approach based on the liquefaction assessment",
+    ],
+    workstation: "notebook",
+    starterCode: `# Simplified Liquefaction Potential Evaluation (Seed-Idriss Procedure)
+import math
+
+# Design earthquake parameters
+peak_ground_acceleration_g = 0.35
+earthquake_magnitude = 7.0
+
+# Soil profile at the depth of interest
+depth_m = 5.0
+total_vertical_stress_kpa = 92.0
+effective_vertical_stress_kpa = 58.0  # accounts for pore water pressure reduction from total stress
+
+# Corrected SPT blow count
+n_field = 8            # raw field SPT blow count
+n60_correction = 1.05   # combined equipment/procedure correction factor to N60
+fines_content_pct = 15  # percent fines in the soil sample
+
+# STEP 1: Cyclic Stress Ratio (CSR)
+# rd = stress reduction coefficient, depth-dependent (simplified approximation)
+# TODO: rd = 1.0 - 0.00765 * depth_m  # simplified approximation valid for depth < 9.15m
+# TODO: csr = 0.65 * (peak_ground_acceleration_g) * (total_vertical_stress_kpa / effective_vertical_stress_kpa) * rd
+# TODO: print(f"Stress reduction coefficient (rd): {rd:.3f}")
+# TODO: print(f"Cyclic Stress Ratio (CSR): {csr:.3f}")
+
+# STEP 2: Cyclic Resistance Ratio (CRR) from corrected blow count
+# TODO: n60 = n_field * n60_correction
+# TODO: cn = min(math.sqrt(100 / effective_vertical_stress_kpa), 1.7)  # overburden correction factor, capped at 1.7
+# TODO: n160 = n60 * cn
+# TODO: fines_correction = 5.0 if fines_content_pct > 5 else 0  # simplified fines content adjustment
+# TODO: n160cs = n160 + fines_correction
+# TODO: print(f"\\nN60 (equipment corrected): {n60:.1f}")
+# TODO: print(f"CN (overburden correction): {cn:.3f}")
+# TODO: print(f"(N1)60 (overburden corrected): {n160:.1f}")
+# TODO: print(f"(N1)60cs (fines corrected): {n160cs:.1f}")
+
+# Simplified CRR formula for magnitude 7.5 (Seed et al. approximate relationship)
+# TODO: if n160cs < 30:
+# TODO:     crr_7_5 = (1 / (34 - n160cs)) + (n160cs / 135) + (50 / (10 * n160cs + 45) ** 2) - (1 / 200)
+# TODO: else:
+# TODO:     crr_7_5 = 2.0  # essentially not liquefiable at this density
+# TODO: print(f"\\nCRR at M7.5 reference: {crr_7_5:.3f}")
+
+# Magnitude scaling factor (adjusts CRR for earthquake magnitudes other than 7.5)
+# TODO: msf = 10 ** 2.24 / earthquake_magnitude ** 2.56
+# TODO: crr = crr_7_5 * msf
+# TODO: print(f"Magnitude scaling factor (for M{earthquake_magnitude}): {msf:.3f}")
+# TODO: print(f"CRR adjusted for design earthquake magnitude: {crr:.3f}")
+
+# STEP 3: Factor of safety
+# TODO: factor_of_safety = crr / csr
+# TODO: print(f"\\nFactor of Safety against liquefaction: {factor_of_safety:.2f}")
+
+# STEP 4 & 5: Risk classification and recommendation
+print(f"\\n=== Liquefaction Risk Assessment ===")
+# TODO: if factor_of_safety < 1.0:
+# TODO:     print("HIGH RISK: liquefaction is predicted to occur at this depth during the design earthquake")
+# TODO:     print("Recommendation: ground improvement (densification, e.g. vibro-compaction or stone columns)")
+# TODO:     print("or deep foundations (piles) bypassing the liquefiable layer are required -- standard shallow")
+# TODO:     print("foundations are NOT adequate for this site condition without mitigation")
+# TODO: elif factor_of_safety < 1.3:
+# TODO:     print("MARGINAL: factor of safety is close to 1.0 -- further site-specific investigation and more")
+# TODO:     print("detailed analysis is warranted before finalizing the foundation design approach")
+# TODO: else:
+# TODO:     print("LOW RISK: factor of safety indicates adequate margin against liquefaction at this depth --")
+# TODO:     print("standard foundation design can likely proceed, subject to full geotechnical review")
+`,
+    skillTags: ["Liquefaction", "Seismic Geotechnical Engineering", "SPT", "Seed-Idriss Procedure"],
+    hints: [
+      "The simplified Seed-Idriss procedure compares earthquake-induced cyclic loading (CSR) against the soil's inherent resistance to that loading (CRR) -- both sides of this comparison must be calculated with consistent depth-specific soil properties and appropriately corrected in-situ test data, since using raw uncorrected SPT blow counts would significantly misstate the soil's actual liquefaction resistance",
+      "The magnitude scaling factor exists because the standard CRR curves are calibrated to a reference M7.5 earthquake -- a smaller magnitude earthquake produces fewer significant loading cycles (less cumulative pore pressure buildup) even at the same peak ground acceleration, so CRR must be adjusted upward for smaller design earthquakes and downward for larger ones to reflect this cycle-count effect",
+      "A liquefaction-susceptible site finding has major, genuinely serious foundation design implications, not a minor design adjustment -- proceeding with standard shallow foundations on a site later found to be liquefaction-susceptible risks catastrophic foundation failure during a seismic event (loss of bearing capacity as the soil temporarily behaves like a fluid), which is exactly why this assessment must be completed before foundation type selection, not treated as an afterthought",
+    ],
+  },
+  {
+    id: "civil-seismic-003",
+    title: "Design a Seismic Isolation Bearing System and Calculate Isolated Period",
+    category: "Seismic Engineering",
+    icon: "🔘",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 22,
+    tools: ["Python", "Base Isolation"],
+    scenario:
+      "A hospital building (a critical facility requiring continued operation immediately after a major earthquake) is being designed with base isolation to significantly reduce the seismic forces and floor accelerations transmitted to the structure above, compared to a conventional fixed-base design.",
+    objective:
+      "Calculate the isolated period and effective damping of a base isolation system, and compare the resulting reduced spectral acceleration demand against the fixed-base building's demand.",
+    steps: [
+      "Calculate the fixed-base building's approximate natural period",
+      "Calculate the isolated system's period from the isolator stiffness and supported weight",
+      "Verify the isolated period achieves adequate separation from the fixed-base period (the core isolation design goal)",
+      "Calculate the reduced spectral acceleration at the isolated period versus the fixed-base period",
+      "Quantify the resulting reduction in design base shear from isolation",
+    ],
+    workstation: "notebook",
+    starterCode: `# Base Isolation System Design
+import math
+
+building_weight_kn = 45000.0
+fixed_base_period_s = 0.55   # calculated separately for the superstructure as if fixed at the base
+
+# Isolator system properties
+total_isolator_stiffness_kn_per_m = 8500.0  # combined stiffness of all isolator bearings
+g = 9.81
+
+# Design spectrum parameters (simplified, same site as before)
+sds = 0.85
+sd1 = 0.42
+
+# STEP 2: Isolated period
+mass_kg = (building_weight_kn * 1000) / g
+# TODO: isolated_period_s = 2 * math.pi * math.sqrt(mass_kg / (total_isolator_stiffness_kn_per_m * 1000))
+# TODO: print(f"Fixed-base period: {fixed_base_period_s:.2f} s")
+# TODO: print(f"Isolated system period: {isolated_period_s:.2f} s")
+
+# STEP 3: Period separation check -- isolation is only effective with SUFFICIENT period shift
+# TODO: period_ratio = isolated_period_s / fixed_base_period_s
+# TODO: print(f"\\nPeriod ratio (isolated / fixed-base): {period_ratio:.1f}x")
+# TODO: adequate_separation = period_ratio >= 3.0  # common rule of thumb -- isolated period should be well beyond the structure's fixed-base period
+# TODO: print(f"Adequate period separation: {'YES' if adequate_separation else 'NO -- isolator stiffness may need to be reduced further for effective isolation'}")
+
+# STEP 4: Spectral acceleration comparison
+# TODO: def spectral_acceleration(period):
+# TODO:     if period <= sd1 / sds:
+# TODO:         return sds
+# TODO:     else:
+# TODO:         return sd1 / period
+
+# TODO: sa_fixed_base = spectral_acceleration(fixed_base_period_s)
+# TODO: sa_isolated = spectral_acceleration(isolated_period_s)
+# TODO: print(f"\\nSpectral acceleration at fixed-base period: {sa_fixed_base:.3f} g")
+# TODO: print(f"Spectral acceleration at isolated period: {sa_isolated:.3f} g")
+
+# STEP 5: Design base shear reduction
+# TODO: reduction_pct = (sa_fixed_base - sa_isolated) / sa_fixed_base * 100
+# TODO: print(f"\\nReduction in spectral acceleration demand from isolation: {reduction_pct:.0f}%")
+# TODO: print(f"(This directly translates to a comparable reduction in structural design forces AND, critically")
+# TODO: print(f" for a hospital, floor accelerations transmitted to equipment and non-structural components --")
+# TODO: print(f" reduced non-structural damage is often the primary operational reason for isolating a critical")
+# TODO: print(f" facility, not just structural force reduction alone)")
+`,
+    skillTags: ["Base Isolation", "Seismic Isolation", "Period Shift", "Critical Facility Design"],
+    hints: [
+      "The fundamental principle of base isolation is deliberately shifting the structure's effective period AWAY from the peak of the earthquake response spectrum (typically by lengthening it significantly) so the structure experiences much lower spectral acceleration demand -- this is why the period RATIO between isolated and fixed-base systems (not just the isolated period alone) is the key design check for whether isolation is actually achieving its intended effect",
+      "Base isolation's benefit extends well beyond reduced structural design forces -- for a hospital or other critical facility, reduced floor accelerations mean less damage to sensitive medical equipment, less risk of non-structural component failure (ceiling systems, piping, cabinetry), and a much higher likelihood the facility can remain operational immediately after a major earthquake, which is often the primary motivation for the added cost and complexity of isolation on this building type",
+      "This simplified calculation captures the core period-shift concept, but real base isolation design also requires detailed analysis of isolator displacement demands (isolators must accommodate large lateral displacement during a major earthquake), damping characteristics of the specific isolator type (elastomeric, friction pendulum, etc.), and nonlinear time-history analysis for final design verification -- this exercise builds the underlying intuition, not a complete isolator design",
+    ],
+  },
+  {
+    id: "civil-seismic-004",
+    title: "Evaluate Building Torsional Irregularity from Seismic Displacement Data",
+    category: "Seismic Engineering",
+    icon: "🔄",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 18,
+    tools: ["Python", "Seismic Irregularity Assessment"],
+    scenario:
+      "A building's seismic analysis results show different lateral displacements at opposite ends of the same floor diaphragm under earthquake loading -- this could indicate a torsional irregularity, which building codes specifically flag as requiring additional design provisions because torsionally irregular buildings tend to perform worse in actual earthquakes.",
+    objective:
+      "Calculate the torsional irregularity ratio from story displacement data at opposite ends of a diaphragm, and determine whether the building is classified as torsionally irregular or extremely torsionally irregular per standard code criteria.",
+    steps: [
+      "Gather maximum and average displacement values at each story from seismic analysis",
+      "Calculate the torsional irregularity ratio for each story",
+      "Classify each story as regular, torsionally irregular, or extremely torsionally irregular based on standard ratio thresholds",
+      "Identify which story exhibits the worst irregularity",
+      "Recommend the code-required design response for the identified irregularity",
+    ],
+    workstation: "notebook",
+    starterCode: `# Torsional Irregularity Assessment
+# Story displacements at opposite ends of the diaphragm under seismic loading (mm)
+story_data = [
+    {"story": 1, "displacement_end_a_mm": 12.5, "displacement_end_b_mm": 14.8},
+    {"story": 2, "displacement_end_a_mm": 24.2, "displacement_end_b_mm": 31.5},
+    {"story": 3, "displacement_end_a_mm": 35.8, "displacement_end_b_mm": 48.2},
+    {"story": 4, "displacement_end_a_mm": 44.1, "displacement_end_b_mm": 58.6},
+]
+
+# Standard code thresholds for torsional irregularity classification
+torsionally_irregular_threshold = 1.2      # ratio above this = torsionally irregular
+extremely_irregular_threshold = 1.4         # ratio above this = EXTREMELY torsionally irregular
+
+# STEP 1 & 2: Torsional irregularity ratio per story
+# Ratio = max displacement / average displacement of the two ends
+print("=== Torsional Irregularity Ratio by Story ===")
+results = []
+# TODO: for data in story_data:
+# TODO:     max_displacement = max(data["displacement_end_a_mm"], data["displacement_end_b_mm"])
+# TODO:     avg_displacement = (data["displacement_end_a_mm"] + data["displacement_end_b_mm"]) / 2
+# TODO:     ratio = max_displacement / avg_displacement
+# TODO:     results.append({**data, "ratio": ratio})
+# TODO:     print(f"Story {data['story']}: end A={data['displacement_end_a_mm']}mm, end B={data['displacement_end_b_mm']}mm, "
+# TODO:           f"max={max_displacement}mm, avg={avg_displacement:.1f}mm, ratio={ratio:.3f}")
+
+# STEP 3: Classification
+print("\\n=== Classification ===")
+# TODO: for r in results:
+# TODO:     if r["ratio"] > extremely_irregular_threshold:
+# TODO:         classification = "EXTREMELY TORSIONALLY IRREGULAR"
+# TODO:     elif r["ratio"] > torsionally_irregular_threshold:
+# TODO:         classification = "Torsionally Irregular"
+# TODO:     else:
+# TODO:         classification = "Regular"
+# TODO:     r["classification"] = classification
+# TODO:     print(f"Story {r['story']}: ratio={r['ratio']:.3f} -> {classification}")
+
+# STEP 4: Worst story
+# TODO: worst_story = max(results, key=lambda r: r["ratio"])
+# TODO: print(f"\\nWorst irregularity: Story {worst_story['story']} (ratio={worst_story['ratio']:.3f}, {worst_story['classification']})")
+
+# STEP 5: Design response recommendation
+print(f"\\n=== Code-Required Design Response ===")
+# TODO: if worst_story["classification"] == "EXTREMELY TORSIONALLY IRREGULAR":
+# TODO:     print("EXTREME irregularity triggers the most restrictive code provisions: dynamic (response")
+# TODO:     print("spectrum or time-history) analysis is typically REQUIRED rather than the simpler equivalent")
+# TODO:     print("static method, along with amplified accidental torsion (Ax factor) applied to that story")
+# TODO:     print("and potentially height limitations depending on seismic design category.")
+# TODO: elif worst_story["classification"] == "Torsionally Irregular":
+# TODO:     print("Torsional irregularity requires amplification of accidental torsional moment (Ax factor)")
+# TODO:     print("at the affected story, and may trigger additional analysis requirements depending on the")
+# TODO:     print("building's seismic design category and height.")
+# TODO: else:
+# TODO:     print("No torsional irregularity detected -- standard equivalent static design procedures apply")
+# TODO:     print("without additional torsional design provisions.")
+`,
+    skillTags: ["Torsional Irregularity", "Seismic Design", "Building Code Irregularities", "Diaphragm Displacement"],
+    hints: [
+      "Torsional irregularity matters structurally because buildings with an eccentric distribution of stiffness or mass twist as well as translate during an earthquake -- elements on the 'stiff' side of the twist experience amplified displacement demand beyond what a simple translation-only analysis would predict, which is exactly the additional demand the code's Ax amplification factor is designed to capture",
+      "The distinction between 'torsionally irregular' and 'EXTREMELY torsionally irregular' isn't just a labeling nuance -- it triggers meaningfully different code requirements, with extreme irregularity often mandating more rigorous dynamic analysis procedures rather than allowing the simpler equivalent static method, reflecting that extremely irregular buildings have historically performed particularly poorly in real earthquakes",
+      "Torsional irregularity commonly stems from an asymmetric structural layout -- for example, a building with lateral force resisting elements (shear walls or braced frames) concentrated on one side, or a re-entrant corner floor plan -- which is why this finding often prompts architects and engineers to reconsider the structural layout itself, not just add more design provisions to accommodate an inherently irregular configuration",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CIVIL — STEEL STRUCTURE DESIGN
+// ─────────────────────────────────────────────────────────────────────────────
+export const CIVIL_STEEL_CHALLENGES = [
+  {
+    id: "civil-steel-001",
+    title: "Design a Steel Beam for Flexure Using LRFD Method",
+    category: "Steel Structures",
+    icon: "🏗️",
+    difficulty: "Medium",
+    timeLimit: "25 min",
+    eloGain: 18,
+    tools: ["Python", "Steel Design (LRFD)"],
+    scenario:
+      "A floor beam in a steel-framed building needs to be checked for adequate flexural capacity against the factored design loads, using the Load and Resistance Factor Design (LRFD) method -- an inadequate beam selection is a structural safety issue.",
+    objective:
+      "Calculate factored design moment demand from given loads, calculate the beam's flexural design strength, and verify the section is adequate.",
+    steps: [
+      "Calculate factored (LRFD load combination) distributed load on the beam",
+      "Calculate the maximum factored moment demand for a simply supported beam",
+      "Calculate the beam's nominal flexural strength assuming adequate lateral bracing (compact section, laterally braced)",
+      "Apply the resistance factor to get design flexural strength",
+      "Verify design strength meets or exceeds demand, and calculate the utilization ratio",
+    ],
+    workstation: "notebook",
+    starterCode: `# Steel Beam Flexural Design Check (LRFD)
+span_length_m = 8.0
+dead_load_kn_per_m = 12.0   # includes beam self-weight and superimposed dead load
+live_load_kn_per_m = 18.0
+
+# Proposed beam section properties (W-shape)
+fy_mpa = 345.0              # steel yield strength (Grade 50 equivalent)
+plastic_section_modulus_zx_mm3 = 1_800_000  # Zx for the proposed section
+
+resistance_factor_flexure = 0.90  # phi_b for flexure (LRFD)
+
+# STEP 1: Factored load (LRFD combination: 1.2D + 1.6L is the typically governing combination)
+# TODO: factored_load_kn_per_m = 1.2 * dead_load_kn_per_m + 1.6 * live_load_kn_per_m
+# TODO: print(f"Factored distributed load (1.2D + 1.6L): {factored_load_kn_per_m:.1f} kN/m")
+
+# STEP 2: Maximum factored moment (simply supported, uniform load: M = wL^2/8)
+# TODO: moment_demand_kn_m = (factored_load_kn_per_m * span_length_m ** 2) / 8
+# TODO: print(f"Factored moment demand (Mu): {moment_demand_kn_m:.1f} kN·m")
+
+# STEP 3: Nominal flexural strength (assuming compact section, adequate lateral bracing -- Mn = Fy x Zx)
+# TODO: zx_m3 = plastic_section_modulus_zx_mm3 / 1e9
+# TODO: nominal_moment_capacity_kn_m = (fy_mpa * 1000) * zx_m3
+# TODO: print(f"\\nNominal flexural strength (Mn = Fy x Zx): {nominal_moment_capacity_kn_m:.1f} kN·m")
+
+# STEP 4: Design flexural strength
+# TODO: design_moment_capacity_kn_m = resistance_factor_flexure * nominal_moment_capacity_kn_m
+# TODO: print(f"Design flexural strength (phi_b x Mn): {design_moment_capacity_kn_m:.1f} kN·m")
+
+# STEP 5: Adequacy check and utilization ratio
+print(f"\\n=== Adequacy Check ===")
+# TODO: adequate = design_moment_capacity_kn_m >= moment_demand_kn_m
+# TODO: utilization_ratio = moment_demand_kn_m / design_moment_capacity_kn_m
+# TODO: print(f"Demand (Mu): {moment_demand_kn_m:.1f} kN·m")
+# TODO: print(f"Capacity (phi_b Mn): {design_moment_capacity_kn_m:.1f} kN·m")
+# TODO: print(f"Status: {'ADEQUATE' if adequate else 'INADEQUATE -- select a larger section'}")
+# TODO: print(f"Utilization ratio: {utilization_ratio:.2f} ({utilization_ratio*100:.0f}% of capacity used)")
+# TODO: if adequate and utilization_ratio < 0.70:
+# TODO:     print("Note: utilization is notably below 100% -- a smaller, more economical section could")
+# TODO:     print("potentially be used, worth checking against the next lighter section in the same series")
+`,
+    skillTags: ["LRFD", "Steel Beam Design", "Flexural Strength", "Structural Steel"],
+    hints: [
+      "The LRFD 1.2D + 1.6L load combination reflects that live loads are inherently less predictable than dead loads (which is why live load gets a higher load factor) -- this isn't the only load combination that must be checked in a complete design (other combinations govern under different loading scenarios like wind or seismic), but it's frequently the governing combination for typical gravity-loaded floor beams",
+      "This calculation assumes the beam section is COMPACT and has ADEQUATE LATERAL BRACING -- if either assumption doesn't hold (a slender/non-compact section, or insufficient lateral bracing along the compression flange allowing lateral-torsional buckling), the nominal flexural strength calculation would need to account for those additional strength-reducing effects, which this simplified check doesn't include",
+      "A utilization ratio well below 1.0 isn't necessarily a design flaw -- it may reflect a deliberately conservative section choice, other governing constraints (deflection limits, vibration criteria, or availability of standard sizes), or genuine room for a more economical section -- the follow-up worth checking is whether a lighter section in the same series would still be adequate, not automatically assuming the current selection is wrong",
+    ],
+  },
+  {
+    id: "civil-steel-002",
+    title: "Check Steel Column Axial Capacity Considering Buckling",
+    category: "Steel Structures",
+    icon: "🗼",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Python", "Column Design (LRFD)"],
+    scenario:
+      "A steel column supporting a mezzanine floor needs its axial compressive capacity verified, accounting for buckling behavior -- unlike tension members, compression members can fail by buckling at a load well below their material yield capacity, especially for slender columns.",
+    objective:
+      "Calculate the column's slenderness ratio, determine whether elastic or inelastic buckling governs, calculate the critical buckling stress, and verify design capacity against the factored axial load demand.",
+    steps: [
+      "Calculate the column's effective length and slenderness ratio",
+      "Calculate the elastic (Euler) critical buckling stress",
+      "Determine whether elastic or inelastic buckling governs based on the slenderness threshold",
+      "Calculate the nominal and design compressive strength",
+      "Verify adequacy against the factored axial load demand",
+    ],
+    workstation: "notebook",
+    starterCode: `# Steel Column Axial Capacity Check (Buckling)
+import math
+
+column_length_m = 4.5
+effective_length_factor_k = 1.0   # pinned-pinned assumption
+gross_area_mm2 = 8500.0
+radius_of_gyration_mm = 52.0       # weak-axis radius of gyration (typically governs)
+fy_mpa = 345.0
+elastic_modulus_mpa = 200000.0
+
+factored_axial_load_kn = 1450.0
+
+resistance_factor_compression = 0.90  # phi_c for compression (LRFD)
+
+# STEP 1: Slenderness ratio
+# TODO: effective_length_mm = effective_length_factor_k * column_length_m * 1000
+# TODO: slenderness_ratio = effective_length_mm / radius_of_gyration_mm
+# TODO: print(f"Effective length (KL): {effective_length_mm:.0f} mm")
+# TODO: print(f"Slenderness ratio (KL/r): {slenderness_ratio:.1f}")
+
+# STEP 2: Elastic (Euler) critical buckling stress
+# TODO: fe_mpa = (math.pi ** 2 * elastic_modulus_mpa) / slenderness_ratio ** 2
+# TODO: print(f"\\nElastic critical buckling stress (Fe): {fe_mpa:.1f} MPa")
+
+# STEP 3: Determine governing behavior (threshold: KL/r <= 4.71*sqrt(E/Fy) is the inelastic/elastic boundary)
+# TODO: slenderness_threshold = 4.71 * math.sqrt(elastic_modulus_mpa / fy_mpa)
+# TODO: print(f"Slenderness threshold (elastic/inelastic boundary): {slenderness_threshold:.1f}")
+
+# TODO: if slenderness_ratio <= slenderness_threshold:
+# TODO:     # Inelastic buckling governs
+# TODO:     fcr_mpa = (0.658 ** (fy_mpa / fe_mpa)) * fy_mpa
+# TODO:     governing_mode = "Inelastic buckling"
+# TODO: else:
+# TODO:     # Elastic buckling governs
+# TODO:     fcr_mpa = 0.877 * fe_mpa
+# TODO:     governing_mode = "Elastic buckling"
+
+# TODO: print(f"\\nGoverning behavior: {governing_mode}")
+# TODO: print(f"Critical stress (Fcr): {fcr_mpa:.1f} MPa")
+
+# STEP 4: Nominal and design compressive strength
+# TODO: nominal_capacity_kn = (fcr_mpa * gross_area_mm2) / 1000
+# TODO: design_capacity_kn = resistance_factor_compression * nominal_capacity_kn
+# TODO: print(f"\\nNominal compressive strength (Pn): {nominal_capacity_kn:.0f} kN")
+# TODO: print(f"Design compressive strength (phi_c Pn): {design_capacity_kn:.0f} kN")
+
+# STEP 5: Adequacy check
+print(f"\\n=== Adequacy Check ===")
+# TODO: adequate = design_capacity_kn >= factored_axial_load_kn
+# TODO: utilization = factored_axial_load_kn / design_capacity_kn
+# TODO: print(f"Demand (Pu): {factored_axial_load_kn} kN")
+# TODO: print(f"Capacity (phi_c Pn): {design_capacity_kn:.0f} kN")
+# TODO: print(f"Status: {'ADEQUATE' if adequate else 'INADEQUATE -- column undersized for buckling'}")
+# TODO: print(f"Utilization ratio: {utilization:.2f}")
+`,
+    skillTags: ["Column Buckling", "LRFD", "Steel Design", "Euler Buckling"],
+    hints: [
+      "The critical distinction between elastic and inelastic buckling behavior reflects a real physical difference -- short, stocky columns (low slenderness) develop enough stress before buckling that the material begins to yield, reducing effective stiffness and requiring the inelastic buckling formula, while slender columns buckle elastically at a stress well below yield, governed by the classical Euler buckling formula alone",
+      "A column's compressive capacity can be dramatically lower than what its cross-sectional area and material yield strength alone would suggest -- this is precisely why compression members require this buckling-specific check that tension members (which fail by yielding/rupture at a stress directly tied to material strength, not geometry-dependent buckling) don't need in the same way",
+      "The weak-axis radius of gyration typically governs column buckling capacity (as used in this calculation) because most standard structural shapes have significantly less bending stiffness about their weak axis than their strong axis -- but this assumption should always be verified for the specific section and bracing configuration, since bracing that restrains weak-axis buckling but not strong-axis buckling (or vice versa) would change which axis actually governs",
+    ],
+  },
+  {
+    id: "civil-steel-003",
+    title: "Design a Bolted Shear Connection and Check Bolt Group Capacity",
+    category: "Steel Structures",
+    icon: "🔩",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Python", "Bolted Connection Design"],
+    scenario:
+      "A beam-to-column shear connection needs its bolt group checked for adequate capacity against the factored reaction force -- an undersized bolt group in a shear connection is a critical structural failure point, since connections are often the weakest link if not properly designed.",
+    objective:
+      "Calculate the shear capacity of a bolt group in a beam connection, accounting for bolt shear strength and bearing strength at the bolt holes, and verify adequacy against the factored shear demand.",
+    steps: [
+      "Calculate the total bolt shear capacity for the bolt group",
+      "Calculate the bolt bearing capacity at the connection plate/beam web",
+      "Determine the governing (lower) capacity between bolt shear and bearing",
+      "Compare governing capacity against the factored shear demand",
+      "Calculate the required number of bolts if the current configuration is inadequate",
+    ],
+    workstation: "notebook",
+    starterCode: `# Bolted Shear Connection Design Check
+num_bolts = 4
+bolt_diameter_mm = 22.0        # M22 bolts
+bolt_shear_strength_mpa = 372.0  # nominal shear strength for this bolt grade (single shear plane)
+num_shear_planes = 1             # single shear connection
+
+connected_material_thickness_mm = 12.0  # thickness of the thinner connected material (governs bearing)
+fu_material_mpa = 450.0                  # ultimate tensile strength of the connected material
+
+factored_shear_demand_kn = 320.0
+
+resistance_factor_bolt_shear = 0.75
+resistance_factor_bearing = 0.75
+
+# STEP 1: Total bolt shear capacity
+# TODO: bolt_area_mm2 = 3.14159 * (bolt_diameter_mm / 2) ** 2
+# TODO: nominal_shear_per_bolt_kn = (bolt_shear_strength_mpa * bolt_area_mm2 * num_shear_planes) / 1000
+# TODO: total_nominal_shear_capacity_kn = nominal_shear_per_bolt_kn * num_bolts
+# TODO: design_shear_capacity_kn = resistance_factor_bolt_shear * total_nominal_shear_capacity_kn
+# TODO: print(f"Bolt area: {bolt_area_mm2:.0f} mm²")
+# TODO: print(f"Nominal shear capacity per bolt: {nominal_shear_per_bolt_kn:.1f} kN")
+# TODO: print(f"Total design bolt shear capacity ({num_bolts} bolts): {design_shear_capacity_kn:.1f} kN")
+
+# STEP 2: Bearing capacity at bolt holes (simplified, assumes adequate edge distance and spacing)
+# Nominal bearing strength per bolt = 2.4 x d x t x Fu (simplified standard formula)
+# TODO: nominal_bearing_per_bolt_kn = (2.4 * bolt_diameter_mm * connected_material_thickness_mm * fu_material_mpa) / 1000
+# TODO: total_nominal_bearing_capacity_kn = nominal_bearing_per_bolt_kn * num_bolts
+# TODO: design_bearing_capacity_kn = resistance_factor_bearing * total_nominal_bearing_capacity_kn
+# TODO: print(f"\\nNominal bearing capacity per bolt: {nominal_bearing_per_bolt_kn:.1f} kN")
+# TODO: print(f"Total design bearing capacity ({num_bolts} bolts): {design_bearing_capacity_kn:.1f} kN")
+
+# STEP 3: Governing capacity
+# TODO: governing_capacity_kn = min(design_shear_capacity_kn, design_bearing_capacity_kn)
+# TODO: governing_mode = "Bolt shear" if design_shear_capacity_kn < design_bearing_capacity_kn else "Bearing"
+# TODO: print(f"\\nGoverning failure mode: {governing_mode}")
+# TODO: print(f"Governing design capacity: {governing_capacity_kn:.1f} kN")
+
+# STEP 4: Adequacy check
+print(f"\\n=== Adequacy Check ===")
+# TODO: adequate = governing_capacity_kn >= factored_shear_demand_kn
+# TODO: print(f"Factored shear demand: {factored_shear_demand_kn} kN")
+# TODO: print(f"Governing capacity: {governing_capacity_kn:.1f} kN")
+# TODO: print(f"Status: {'ADEQUATE' if adequate else 'INADEQUATE'}")
+
+# STEP 5: Required bolts if inadequate
+# TODO: if not adequate:
+# TODO:     capacity_per_bolt_governing = governing_capacity_kn / num_bolts
+# TODO:     required_bolts = math.ceil(factored_shear_demand_kn / capacity_per_bolt_governing)
+# TODO:     import math
+# TODO:     print(f"\\nRequired number of bolts: {required_bolts} (currently have {num_bolts})")
+`,
+    skillTags: ["Bolted Connections", "Bolt Shear", "Bearing Strength", "Steel Connection Design"],
+    hints: [
+      "A bolted connection must be checked against BOTH bolt shear failure (the bolt itself shearing off) AND bearing failure (the bolt hole elongating/tearing in the connected material) -- these are genuinely independent failure modes, and the connection's actual capacity is governed by whichever is weaker, not just the bolt shear strength in isolation",
+      "This simplified bearing capacity check assumes adequate edge distance and bolt spacing are already provided -- real connection design must separately verify these geometric requirements are met, since inadequate edge distance or spacing can reduce bearing capacity below what the simplified 2.4dtFu formula assumes, or trigger block shear failure modes not captured in this simplified check at all",
+      "Connections are frequently the weakest link in a structural system if not designed with the same rigor as the members themselves -- a connection failure can be sudden and brittle (especially bolt shear or bearing tear-out) compared to the more ductile failure modes typical of well-designed beam and column members, which is part of why connection design deserves careful, explicit verification rather than being treated as a routine afterthought to member sizing",
+    ],
+  },
+  {
+    id: "civil-steel-004",
+    title: "Calculate Weld Size Requirements for a Fillet Weld Connection",
+    category: "Steel Structures",
+    icon: "⚒️",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Python", "Welded Connection Design"],
+    scenario:
+      "A bracket connection is being designed with fillet welds rather than bolts, and the required weld size and length must be calculated to safely transfer the factored load -- an undersized weld is a brittle, sudden failure risk with essentially no warning before rupture.",
+    objective:
+      "Calculate the required fillet weld size and total weld length to transfer a given factored load, verify against minimum and maximum weld size limits from the connected material thickness, and check the resulting design against available connection geometry.",
+    steps: [
+      "Calculate the required total weld throat area from the factored load and weld metal design strength",
+      "Determine minimum weld size based on the thicker connected material (code minimum requirement)",
+      "Determine maximum weld size based on the thinner connected material edge (code maximum requirement)",
+      "Select an appropriate weld size within the allowable range and calculate required weld length",
+      "Verify the required weld length fits within the available connection geometry",
+    ],
+    workstation: "notebook",
+    starterCode: `# Fillet Weld Size and Length Calculation
+factored_load_kn = 280.0
+weld_electrode_strength_mpa = 483.0  # E70XX electrode nominal strength
+resistance_factor_weld = 0.75
+
+thicker_material_mm = 20.0   # thickness of the thicker connected part (governs minimum weld size)
+thinner_material_mm = 10.0   # thickness of the thinner connected part (governs maximum weld size)
+
+available_connection_length_mm = 300.0  # available edge length for welding on each side
+
+import math
+
+# STEP 2: Minimum weld size (AISC table-based rule of thumb by thicker material thickness)
+def minimum_weld_size_mm(thicker_part_mm):
+    # TODO: if thicker_part_mm <= 6.35:
+    # TODO:     return 3.0
+    # TODO: elif thicker_part_mm <= 12.7:
+    # TODO:     return 5.0
+    # TODO: elif thicker_part_mm <= 19.05:
+    # TODO:     return 6.0
+    # TODO: else:
+    # TODO:     return 8.0
+    pass
+
+# TODO: min_weld_size = minimum_weld_size_mm(thicker_material_mm)
+# TODO: print(f"Minimum weld size (based on {thicker_material_mm}mm thicker material): {min_weld_size}mm")
+
+# STEP 3: Maximum weld size (code limit relative to thinner material edge)
+# TODO: max_weld_size = thinner_material_mm - 1.6 if thinner_material_mm >= 6.35 else thinner_material_mm
+# TODO: print(f"Maximum weld size (based on {thinner_material_mm}mm thinner material edge): {max_weld_size:.1f}mm")
+
+# STEP 4: Select weld size and calculate required length
+selected_weld_size_mm = 8.0  # chosen within the allowable range
+print(f"\\nSelected weld size: {selected_weld_size_mm}mm (must be between {min_weld_size}mm and {max_weld_size:.1f}mm)" if 'min_weld_size' in dir() else "")
+
+# Effective throat = 0.707 x weld leg size (for a standard fillet weld)
+# TODO: effective_throat_mm = 0.707 * selected_weld_size_mm
+# TODO: nominal_weld_strength_kn_per_mm = (weld_electrode_strength_mpa * 0.6 * effective_throat_mm) / 1000
+# TODO: design_weld_strength_kn_per_mm = resistance_factor_weld * nominal_weld_strength_kn_per_mm
+# TODO: print(f"\\nEffective throat: {effective_throat_mm:.2f}mm")
+# TODO: print(f"Design weld strength per mm of weld length: {design_weld_strength_kn_per_mm:.3f} kN/mm")
+
+# TODO: required_total_weld_length_mm = factored_load_kn / design_weld_strength_kn_per_mm
+# TODO: print(f"\\nRequired total weld length: {required_total_weld_length_mm:.0f}mm")
+
+# STEP 5: Geometry check (assume weld split across two sides of the connection)
+# TODO: required_length_per_side_mm = required_total_weld_length_mm / 2
+# TODO: print(f"Required length per side (2 sides): {required_length_per_side_mm:.0f}mm")
+# TODO: fits = required_length_per_side_mm <= available_connection_length_mm
+# TODO: print(f"Available length per side: {available_connection_length_mm}mm")
+# TODO: print(f"Status: {'FITS -- geometry adequate' if fits else 'DOES NOT FIT -- need larger weld size or different connection geometry'}")
+`,
+    skillTags: ["Fillet Weld Design", "Weld Sizing", "Steel Connections", "Welded Joint Design"],
+    hints: [
+      "The minimum weld size requirement (based on the THICKER connected part) exists to ensure adequate heat input for proper fusion -- a weld that's too small relative to a thick base material risks inadequate penetration and fusion quality, independent of whether the calculated strength requirement alone would technically be satisfied by a smaller weld",
+      "The maximum weld size requirement (based on the THINNER connected part's edge) exists for a different reason -- it prevents excessive heat input that could damage or melt through a thin material's edge during welding, which is why minimum and maximum size limits are governed by different connected material thicknesses (thicker part sets the floor, thinner part sets the ceiling)",
+      "An undersized weld represents a genuinely serious safety concern because weld failure tends to be sudden and brittle with limited warning, unlike some more ductile structural failure modes that give visible warning signs (excessive deflection, cracking) before complete failure -- this is exactly why weld sizing follows explicit, code-governed calculation procedures rather than field judgment or approximation",
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CIVIL — QUANTITY ESTIMATING & COSTING
+// ─────────────────────────────────────────────────────────────────────────────
+export const CIVIL_ESTIMATING_CHALLENGES = [
+  {
+    id: "civil-estimate-001",
+    title: "Calculate Concrete Quantity Takeoff for a Building Foundation",
+    category: "Quantity Estimating",
+    icon: "🧮",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 16,
+    tools: ["Python", "Quantity Takeoff"],
+    scenario:
+      "A cost estimator needs an accurate concrete quantity takeoff for a building's foundation system before submitting a project bid -- an inaccurate takeoff directly translates to either an uncompetitive over-bid or a money-losing under-bid.",
+    objective:
+      "Calculate total concrete volume required across footings, foundation walls, and slab-on-grade elements, including an appropriate waste factor, and convert to a delivery order quantity.",
+    steps: [
+      "Calculate concrete volume for the strip footings",
+      "Calculate concrete volume for the foundation walls",
+      "Calculate concrete volume for the slab-on-grade",
+      "Sum all elements and apply a standard waste factor",
+      "Convert to standard concrete truck delivery increments and calculate total material cost",
+    ],
+    workstation: "notebook",
+    starterCode: `# Concrete Quantity Takeoff for Building Foundation
+import math
+
+# Strip footings
+footing_length_total_m = 96.0   # total linear length of all strip footings combined
+footing_width_m = 0.60
+footing_depth_m = 0.45
+
+# Foundation walls
+wall_length_total_m = 96.0       # same total perimeter as footings
+wall_height_m = 2.4
+wall_thickness_m = 0.25
+
+# Slab on grade
+slab_area_m2 = 420.0
+slab_thickness_m = 0.15
+
+waste_factor_pct = 5.0   # standard allowance for spillage, over-excavation, form irregularities
+truck_capacity_m3 = 7.0   # standard concrete mixer truck capacity
+concrete_cost_per_m3 = 145.0
+
+# STEP 1: Footing volume
+# TODO: footing_volume_m3 = footing_length_total_m * footing_width_m * footing_depth_m
+# TODO: print(f"Strip footing volume: {footing_volume_m3:.1f} m³")
+
+# STEP 2: Wall volume
+# TODO: wall_volume_m3 = wall_length_total_m * wall_height_m * wall_thickness_m
+# TODO: print(f"Foundation wall volume: {wall_volume_m3:.1f} m³")
+
+# STEP 3: Slab volume
+# TODO: slab_volume_m3 = slab_area_m2 * slab_thickness_m
+# TODO: print(f"Slab-on-grade volume: {slab_volume_m3:.1f} m³")
+
+# STEP 4: Total with waste factor
+# TODO: subtotal_volume_m3 = footing_volume_m3 + wall_volume_m3 + slab_volume_m3
+# TODO: total_with_waste_m3 = subtotal_volume_m3 * (1 + waste_factor_pct / 100)
+# TODO: print(f"\\nSubtotal volume (before waste): {subtotal_volume_m3:.1f} m³")
+# TODO: print(f"Total volume with {waste_factor_pct}% waste factor: {total_with_waste_m3:.1f} m³")
+
+# STEP 5: Delivery increments and cost
+# TODO: trucks_needed = math.ceil(total_with_waste_m3 / truck_capacity_m3)
+# TODO: order_quantity_m3 = trucks_needed * truck_capacity_m3
+# TODO: total_cost = order_quantity_m3 * concrete_cost_per_m3
+print(f"\\n=== Order Summary ===")
+# TODO: print(f"Trucks needed ({truck_capacity_m3}m³ each): {trucks_needed}")
+# TODO: print(f"Total order quantity (rounded to full truck loads): {order_quantity_m3:.0f} m³")
+# TODO: print(f"Estimated total material cost: \${total_cost:,.0f}")
+# TODO: excess_pct = (order_quantity_m3 - total_with_waste_m3) / total_with_waste_m3 * 100
+# TODO: print(f"Excess from truck-load rounding: {excess_pct:.1f}%")
+`,
+    skillTags: ["Quantity Takeoff", "Concrete Estimating", "Construction Cost Estimating"],
+    hints: [
+      "The waste factor exists to account for real, unavoidable losses during construction -- form leakage, over-excavation requiring extra fill, minor spillage during placement, and testing samples all consume material beyond the theoretical net volume calculated from drawings, and omitting this factor is a common source of under-ordering on real projects",
+      "Rounding up to full truck-load increments (rather than ordering the exact calculated volume) reflects a real logistical constraint -- concrete suppliers typically can't deliver partial truck loads economically, and running short mid-pour to save a small percentage of material cost creates a much larger problem (cold joints, schedule delays, potential structural concerns) than the minor cost of slight overordering",
+      "This takeoff calculates NET concrete volume from the geometric dimensions shown on drawings -- a complete estimate would also need to account for rebar volume displacement (a minor deduction, often ignored in practice for typical reinforcement ratios) and verify the takeoff geometry actually matches the structural drawings' dimensions, not just apply a generic formula to assumed dimensions",
+    ],
+  },
+  {
+    id: "civil-estimate-002",
+    title: "Build a Construction Schedule Critical Path Analysis",
+    category: "Quantity Estimating",
+    icon: "📅",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Python", "CPM Scheduling"],
+    scenario:
+      "A project manager needs to identify the critical path through a construction schedule to know which activities directly determine the project's overall duration -- delays to non-critical activities don't extend the project, but delays to critical path activities do, which fundamentally changes where management attention should focus.",
+    objective:
+      "Perform a forward pass and backward pass Critical Path Method (CPM) calculation to determine each activity's early/late start and finish times, total float, and identify the critical path.",
+    steps: [
+      "Perform a forward pass to calculate early start and early finish for each activity",
+      "Perform a backward pass to calculate late start and late finish for each activity",
+      "Calculate total float for each activity",
+      "Identify the critical path (activities with zero float)",
+      "Determine the overall project duration and verify it matches the critical path sum",
+    ],
+    workstation: "notebook",
+    starterCode: `# Critical Path Method (CPM) Schedule Analysis
+# Activities: (name, duration_days, predecessors)
+activities = {
+    "A": {"duration": 5, "predecessors": []},
+    "B": {"duration": 8, "predecessors": ["A"]},
+    "C": {"duration": 4, "predecessors": ["A"]},
+    "D": {"duration": 6, "predecessors": ["B"]},
+    "E": {"duration": 3, "predecessors": ["C"]},
+    "F": {"duration": 7, "predecessors": ["D", "E"]},
+    "G": {"duration": 2, "predecessors": ["F"]},
+}
+
+# Topological order (given, assumes activities dict is already in valid dependency order)
+activity_order = ["A", "B", "C", "D", "E", "F", "G"]
+
+# STEP 1: Forward pass -- Early Start (ES) and Early Finish (EF)
+print("=== Forward Pass ===")
+# TODO: for name in activity_order:
+# TODO:     act = activities[name]
+# TODO:     if not act["predecessors"]:
+# TODO:         act["ES"] = 0
+# TODO:     else:
+# TODO:         act["ES"] = max(activities[pred]["EF"] for pred in act["predecessors"])
+# TODO:     act["EF"] = act["ES"] + act["duration"]
+# TODO:     print(f"{name}: ES={act['ES']}, EF={act['EF']} (duration={act['duration']})")
+
+# TODO: project_duration = max(act["EF"] for act in activities.values())
+# TODO: print(f"\\nProject duration (from forward pass): {project_duration} days")
+
+# STEP 2: Backward pass -- Late Finish (LF) and Late Start (LS)
+print("\\n=== Backward Pass ===")
+# Find successors for each activity
+successors = {name: [] for name in activities}
+# TODO: for name, act in activities.items():
+# TODO:     for pred in act["predecessors"]:
+# TODO:         successors[pred].append(name)
+
+# TODO: for name in reversed(activity_order):
+# TODO:     act = activities[name]
+# TODO:     if not successors[name]:
+# TODO:         act["LF"] = project_duration
+# TODO:     else:
+# TODO:         act["LF"] = min(activities[succ]["LS"] for succ in successors[name])
+# TODO:     act["LS"] = act["LF"] - act["duration"]
+# TODO:     print(f"{name}: LS={act['LS']}, LF={act['LF']}")
+
+# STEP 3 & 4: Total float and critical path
+print("\\n=== Float and Critical Path ===")
+critical_path = []
+# TODO: for name in activity_order:
+# TODO:     act = activities[name]
+# TODO:     act["total_float"] = act["LS"] - act["ES"]
+# TODO:     is_critical = act["total_float"] == 0
+# TODO:     if is_critical:
+# TODO:         critical_path.append(name)
+# TODO:     print(f"{name}: total float={act['total_float']} days {'-- CRITICAL' if is_critical else ''}")
+
+# TODO: print(f"\\nCritical path: {' -> '.join(critical_path)}")
+# TODO: critical_path_duration = sum(activities[name]["duration"] for name in critical_path)
+# TODO: print(f"Critical path total duration: {critical_path_duration} days")
+
+# STEP 5: Verification
+# TODO: print(f"\\nVerification: critical path duration ({critical_path_duration}) matches project duration ({project_duration}): "
+# TODO:       f"{'YES' if critical_path_duration == project_duration else 'NO -- CHECK CALCULATION'}")
+`,
+    skillTags: ["Critical Path Method", "CPM Scheduling", "Construction Scheduling", "Project Management"],
+    hints: [
+      "The critical path is defined by ZERO total float activities, meaning they have no scheduling slack at all -- any delay to a critical path activity directly extends the overall project duration day-for-day, while activities with positive float can absorb some delay without affecting the project completion date, which is exactly why identifying the critical path tells a project manager where schedule risk actually concentrates",
+      "The forward pass establishes the EARLIEST an activity could start/finish given its predecessors, while the backward pass establishes the LATEST it could start/finish without delaying the overall project -- both passes are necessary because float (the difference between these two) is what actually reveals schedule flexibility, not either pass alone",
+      "A project with multiple parallel paths through the network can have more than one critical path simultaneously (if two or more paths happen to have exactly the same total duration) -- in that case, ALL such paths must be actively managed, since a delay on any one of them extends the project, not just the single path found first",
+    ],
+  },
+  {
+    id: "civil-estimate-003",
+    title: "Perform an Earned Value Management Cost and Schedule Performance Analysis",
+    category: "Quantity Estimating",
+    icon: "📈",
+    difficulty: "Hard",
+    timeLimit: "25 min",
+    eloGain: 20,
+    tools: ["Python", "Earned Value Management"],
+    scenario:
+      "A construction project is midway through execution, and the owner wants an objective assessment of whether the project is actually on schedule and on budget -- 'we're 60% done and spent 60% of the budget' sounds fine but can hide serious problems that earned value analysis reveals clearly.",
+    objective:
+      "Calculate earned value management (EVM) metrics -- planned value, earned value, actual cost, schedule/cost variance and performance indices -- and interpret what they reveal about true project health.",
+    steps: [
+      "Calculate Planned Value (PV) -- the budgeted cost of work scheduled to be complete by now",
+      "Calculate Earned Value (EV) -- the budgeted cost of work actually completed",
+      "Gather Actual Cost (AC) -- what has actually been spent",
+      "Calculate Schedule Variance (SV), Cost Variance (CV), and their performance indices (SPI, CPI)",
+      "Forecast the estimate at completion (EAC) and interpret the overall project health",
+    ],
+    workstation: "notebook",
+    starterCode: `# Earned Value Management (EVM) Analysis
+total_project_budget_bac = 2_400_000.0  # Budget At Completion
+
+# Status as of the current reporting date
+planned_pct_complete = 0.60   # per the original schedule, 60% should be done by now
+actual_pct_complete = 0.52    # actually only 52% of the work is physically complete
+actual_cost_to_date = 1_380_000.0  # what has actually been spent so far
+
+# STEP 1: Planned Value
+# TODO: pv = total_project_budget_bac * planned_pct_complete
+# TODO: print(f"Planned Value (PV): \${pv:,.0f}")
+
+# STEP 2: Earned Value
+# TODO: ev = total_project_budget_bac * actual_pct_complete
+# TODO: print(f"Earned Value (EV): \${ev:,.0f}")
+
+# STEP 3: Actual Cost (given)
+ac = actual_cost_to_date
+print(f"Actual Cost (AC): \${ac:,.0f}")
+
+# STEP 4: Variances and performance indices
+# TODO: schedule_variance = ev - pv
+# TODO: cost_variance = ev - ac
+# TODO: spi = ev / pv
+# TODO: cpi = ev / ac
+# TODO: print(f"\\n=== Variances and Performance Indices ===")
+# TODO: print(f"Schedule Variance (SV = EV - PV): \${schedule_variance:,.0f}")
+# TODO: print(f"Cost Variance (CV = EV - AC): \${cost_variance:,.0f}")
+# TODO: print(f"Schedule Performance Index (SPI = EV/PV): {spi:.3f}")
+# TODO: print(f"Cost Performance Index (CPI = EV/AC): {cpi:.3f}")
+
+# Interpretation
+print(f"\\n=== Interpretation ===")
+# TODO: schedule_status = "AHEAD of schedule" if spi > 1.0 else ("BEHIND schedule" if spi < 1.0 else "ON schedule")
+# TODO: cost_status = "UNDER budget" if cpi > 1.0 else ("OVER budget" if cpi < 1.0 else "ON budget")
+# TODO: print(f"Schedule status: {schedule_status} (SPI={spi:.3f})")
+# TODO: print(f"Cost status: {cost_status} (CPI={cpi:.3f})")
+
+# STEP 5: Forecast Estimate At Completion (EAC), assuming current CPI trend continues
+# TODO: eac = total_project_budget_bac / cpi
+# TODO: projected_overrun = eac - total_project_budget_bac
+# TODO: print(f"\\n=== Forecast ===")
+# TODO: print(f"Estimate At Completion (EAC), assuming current cost performance continues: \${eac:,.0f}")
+# TODO: print(f"Projected overrun vs original budget: \${projected_overrun:,.0f}")
+
+print(f"\\n=== Key Insight ===")
+print(f"'60% of budget spent, roughly 60% done' sounds acceptable on the surface, but EVM reveals the")
+print(f"real picture: only {actual_pct_complete:.0%} of work is actually complete despite spending toward the")
+print(f"{planned_pct_complete:.0%} milestone -- meaning the project is BOTH behind schedule AND over budget")
+print(f"simultaneously, a combination that simple percent-spent tracking alone would have masked.")
+`,
+    skillTags: ["Earned Value Management", "EVM", "Cost Performance Index", "Schedule Performance Index"],
+    hints: [
+      "The critical insight of earned value management is separating THREE distinct numbers (planned value, earned value, and actual cost) rather than the common but inadequate practice of just comparing 'percent of budget spent' to 'percent of time elapsed' -- that simpler comparison can look fine even when a project is simultaneously behind schedule AND over budget, exactly the scenario this exercise is built around",
+      "SPI and CPI below 1.0 indicate underperformance in each respective dimension (schedule and cost), and importantly these are INDEPENDENT metrics -- a project can be ahead of schedule while over budget, behind schedule while under budget, or (as in this scenario) behind AND over simultaneously, and only calculating both metrics separately reveals which combination is actually occurring",
+      "The EAC forecast assuming current CPI trend continues is a standard, useful projection, but it's one of several possible EAC formulas (others account for schedule performance too, or assume future work will proceed at the originally planned rate rather than the current trend) -- the choice of EAC formula should reflect a judgment about whether the root cause of current cost performance is likely to persist or was a one-time issue",
+    ],
+  },
+  {
+    id: "civil-estimate-004",
+    title: "Calculate Life-Cycle Cost Comparison for Alternative Pavement Designs",
+    category: "Quantity Estimating",
+    icon: "🛣️",
+    difficulty: "Medium",
+    timeLimit: "20 min",
+    eloGain: 18,
+    tools: ["Python", "Life-Cycle Cost Analysis"],
+    scenario:
+      "A highway agency is choosing between asphalt and concrete pavement for a road reconstruction project. Asphalt has lower initial cost but requires more frequent maintenance and shorter service life, while concrete costs more upfront but lasts longer with less maintenance -- a fair comparison requires looking at total life-cycle cost, not just initial construction cost.",
+    objective:
+      "Calculate the net present value of life-cycle costs for two pavement alternatives over a common analysis period, including initial construction, periodic maintenance/rehabilitation, and discounting future costs to present value.",
+    steps: [
+      "Define the initial construction cost and maintenance schedule for each alternative",
+      "Calculate the present value of each future maintenance/rehabilitation cost using the discount rate",
+      "Sum initial cost plus all discounted future costs for total life-cycle cost of each alternative",
+      "Compare the two alternatives' total life-cycle costs over the common analysis period",
+      "Identify the breakeven point or sensitivity to the discount rate assumption",
+    ],
+    workstation: "notebook",
+    starterCode: `# Life-Cycle Cost Analysis: Asphalt vs Concrete Pavement
+analysis_period_years = 40
+discount_rate = 0.04
+lane_km = 5.0
+
+# Asphalt alternative
+asphalt_initial_cost_per_km = 450_000.0
+asphalt_maintenance_schedule = [
+    {"year": 10, "cost_per_km": 80_000},   # resurfacing
+    {"year": 20, "cost_per_km": 150_000},  # major rehabilitation
+    {"year": 30, "cost_per_km": 80_000},   # resurfacing
+]
+
+# Concrete alternative
+concrete_initial_cost_per_km = 650_000.0
+concrete_maintenance_schedule = [
+    {"year": 20, "cost_per_km": 60_000},   # joint repair / partial slab replacement
+]
+
+# STEP 1 & 2: Present value of future costs for each alternative
+def calculate_life_cycle_cost(initial_cost_per_km, maintenance_schedule, discount_rate, lane_km):
+    # TODO: initial_cost_total = initial_cost_per_km * lane_km
+    # TODO: pv_maintenance_total = 0
+    # TODO: for item in maintenance_schedule:
+    # TODO:     cost_total = item["cost_per_km"] * lane_km
+    # TODO:     pv = cost_total / (1 + discount_rate) ** item["year"]
+    # TODO:     pv_maintenance_total += pv
+    # TODO: total_lcc = initial_cost_total + pv_maintenance_total
+    # TODO: return initial_cost_total, pv_maintenance_total, total_lcc
+    pass
+
+print("=== Asphalt Pavement ===")
+# TODO: asphalt_initial, asphalt_pv_maint, asphalt_lcc = calculate_life_cycle_cost(
+# TODO:     asphalt_initial_cost_per_km, asphalt_maintenance_schedule, discount_rate, lane_km)
+# TODO: print(f"Initial cost: \${asphalt_initial:,.0f}")
+# TODO: print(f"Present value of future maintenance: \${asphalt_pv_maint:,.0f}")
+# TODO: print(f"Total life-cycle cost: \${asphalt_lcc:,.0f}")
+
+print("\\n=== Concrete Pavement ===")
+# TODO: concrete_initial, concrete_pv_maint, concrete_lcc = calculate_life_cycle_cost(
+# TODO:     concrete_initial_cost_per_km, concrete_maintenance_schedule, discount_rate, lane_km)
+# TODO: print(f"Initial cost: \${concrete_initial:,.0f}")
+# TODO: print(f"Present value of future maintenance: \${concrete_pv_maint:,.0f}")
+# TODO: print(f"Total life-cycle cost: \${concrete_lcc:,.0f}")
+
+# STEP 3 & 4: Comparison
+print(f"\\n=== Life-Cycle Cost Comparison ===")
+# TODO: cheaper_option = "Asphalt" if asphalt_lcc < concrete_lcc else "Concrete"
+# TODO: difference = abs(asphalt_lcc - concrete_lcc)
+# TODO: print(f"Lower total life-cycle cost: {cheaper_option} (by \${difference:,.0f})")
+# TODO: print(f"\\nNote: asphalt has LOWER initial cost (\${asphalt_initial:,.0f} vs \${concrete_initial:,.0f})")
+# TODO: print(f"but the full life-cycle comparison over {analysis_period_years} years tells a different story")
+# TODO: print(f"than initial cost alone would suggest")
+
+# STEP 5: Sensitivity to discount rate
+print(f"\\n=== Sensitivity to Discount Rate ===")
+for alt_discount_rate in [0.02, 0.04, 0.06, 0.08]:
+    # TODO: _, _, asphalt_lcc_alt = calculate_life_cycle_cost(asphalt_initial_cost_per_km, asphalt_maintenance_schedule, alt_discount_rate, lane_km)
+    # TODO: _, _, concrete_lcc_alt = calculate_life_cycle_cost(concrete_initial_cost_per_km, concrete_maintenance_schedule, alt_discount_rate, lane_km)
+    # TODO: cheaper_at_rate = "Asphalt" if asphalt_lcc_alt < concrete_lcc_alt else "Concrete"
+    # TODO: print(f"At {alt_discount_rate:.0%} discount rate: Asphalt=\${asphalt_lcc_alt:,.0f}, Concrete=\${concrete_lcc_alt:,.0f} -> {cheaper_at_rate} is cheaper")
+    pass
+`,
+    skillTags: ["Life-Cycle Cost Analysis", "Pavement Design", "Net Present Value", "Infrastructure Economics"],
+    hints: [
+      "Comparing pavement alternatives on initial construction cost alone systematically favors the option with lower upfront cost but potentially higher long-term maintenance burden -- life-cycle cost analysis exists specifically to correct this bias by capturing the full cost picture over a common analysis period, which is why public infrastructure procurement increasingly requires this kind of analysis rather than lowest-initial-bid selection alone",
+      "The discount rate has a genuinely large effect on which alternative appears cheaper in life-cycle terms -- a higher discount rate makes distant future costs matter less in present-value terms, which tends to favor the lower-initial-cost option (asphalt, with more frequent but smaller maintenance costs spread over time), while a lower discount rate gives more weight to future costs and can favor the higher-initial-cost, lower-maintenance option (concrete)",
+      "Running the sensitivity analysis across a range of plausible discount rates (rather than committing to a single rate) is standard practice precisely because the discount rate assumption is often genuinely debatable and can flip the recommended decision -- presenting the sensitivity range gives decision-makers visibility into how much the conclusion actually depends on this assumption, rather than presenting a single number as if it were unambiguous",
+    ],
+  },
+]
+
 export const DOMAIN_CHALLENGES = {
   data:      DATA_ANALYST_CHALLENGES,
   bi_analyst:DATA_ANALYST_CHALLENGES,
