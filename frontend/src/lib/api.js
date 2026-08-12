@@ -294,6 +294,22 @@ export const epfoApi = {
 }
 
 // ══════════════════════════════════════════
+// EMPLOYER ATTESTATION — second, independent employment-verification path:
+// a former employer/manager confirms a claimed role via a one-time emailed
+// link. resolve/confirm/decline are PUBLIC (no Capabilio account on the
+// attester's side, so request() runs with no auth token — same pattern as
+// orgApi.resolveJoinLink/claimJoinLink).
+// ══════════════════════════════════════════
+export const attestationApi = {
+  request: (expIndex, attesterName, attesterEmail, attesterTitle = "") =>
+    request("POST", "/pro/attestation/request", { expIndex, attesterName, attesterEmail, attesterTitle }),
+  list:    ()               => request("GET", "/pro/attestation/list"),
+  resolve: (token)          => request("GET",  `/attestation/${token}`),
+  confirm: (token, note="") => request("POST", `/attestation/${token}/confirm`, { note }),
+  decline: (token, note="") => request("POST", `/attestation/${token}/decline`, { note }),
+}
+
+// ══════════════════════════════════════════
 // CAREER TIMELINE
 // ══════════════════════════════════════════
 export const timelineApi = {
@@ -359,6 +375,11 @@ export const skillsApi = {
   submitProof:   (id, data) => request("POST", `/pro/skills/${id}/proof`, data),
   getGaps:       (targetRole) => request("GET", `/pro/skills/gaps${targetRole ? `?target_role=${encodeURIComponent(targetRole)}` : ""}`),
   enrichIcons:   () => request("POST", "/pro/skills/enrich-icons"),
+  // Live skill graph (2026-08-12) — pulls real Arena challenge performance +
+  // GitHub Code DNA signals into user_skills. Additive/non-destructive on
+  // the backend (never downgrades or touches a verified row) — see
+  // routes/skillGraph.js's POST /pro/skills/sync-from-work header.
+  syncFromWork:  () => request("POST", "/pro/skills/sync-from-work"),
 }
 
 // ══════════════════════════════════════════

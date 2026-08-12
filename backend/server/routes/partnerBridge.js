@@ -52,6 +52,7 @@ import { Router } from "express"
 import crypto from "crypto"
 import { supabaseAdmin } from "../lib/supabase.js"
 import { fetchLinkStudents, performanceTier, canonicalElo, resolveCareerBySlug, resolveCareerName } from "../lib/orgStudentVisibility.js"
+import * as auditLog from "../lib/verification/auditLog.js"
 
 const router = Router()
 
@@ -1062,6 +1063,94 @@ router.get("/access-requests/:studentId/status", async (req, res) => {
     res.json({ status: data?.status || "none" })
   } catch (err) {
     console.error("[partner-bridge/access-requests/status]", err.message)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// ─── Instant-verify: recruiter-facing summary of real, verified claims ──────
+// 2026-08-12 (resume-free hiring vision) — lets capabilio-recruiter show a
+// candidate's REAL verification status inline (employment + certifications),
+// backed by the same hash-chained verification_audit_log the candidate's own
+// Vault/Trust Center reads (lib/verification/auditLog.js), instead of a
+// recruiter having to trust an unverifiable resume claim. Read-only, no
+// scoring/hiring decision is made here — see project rule against letting AI
+// write authoritative outcomes; this only surfaces facts already established
+// by deterministic, human-in-the-loop verification paths (EPFO match,
+// employer attestation, certificate OCR).
+//
+// Deliberately does NOT run auditLog.verifyChainIntegrity() per request —
+// that walks the ENTIRE global chain (all users), which is fine for an
+// on-demand admin/candidate check but would be an unbounded, ever-growing
+// cost on every recruiter candidate-view. getAuditLog(userId) is a plain
+// indexed lookup instead. Full-chain integrity verification stays available
+// via GET /api/verification/integrity for whoever needs the stronger check.
+router.get("/candidates/:id/verification", async (req, res) => {
+  try {
+    const candidate = await loadVisibleCandidate(req.params.id)
+    if (!candidate) return res.status(404).json({ error: "Candidate not found or not visible to recruiters." })
+
+    const { data: profile, error: profileErr } = await supabaseAdmin
+      .from("profiles")
+      .select("experiences, uan_verified, education_verified")
+      .eq("id", candidate.id)
+      .single()
+    if (profileErr) return res.status(500).json({ error: profileErr.message })
+
+    const experiences = Array.isArray(profile?.experiences) ? profile.experiences : []
+    const verifiedEmployment = experiences
+      .filter(e => e.verificationStatus === "verified")
+      .map(e => ({
+        company: e.company || e.displayCompany || null,
+        role: e.role || e.title || null,
+        startDate: e.startDate || null,
+        endDate: e.endDate || null,
+        isCurrent: !!e.isCurrent,
+        verificationSource: e.verificationSource || null, // "AuthBridge/EPFO" | "Employer Attestation"
+        verifiedAt: e.attestedAt || null,
+      }))
+
+    const { data: certRows, error: certErr } = await supabaseAdmin
+      .from("professional_certifications")
+      .select("cert_name, cert_type, issuer, verification_status, verified_at")
+      .eq("user_id", candidate.id)
+      .eq("verification_status", "verified")
+    if (certErr) console.error("[partner-bridge/verification] cert lookup failed:", certErr.message)
+
+    let auditTrail = []
+    try {
+      const entries = await auditLog.getAuditLog(candidate.id)
+      // Redacted view: no `details` payload (may reference a specific
+      // document/company-search context not meant for a third party) --
+      // just enough for a recruiter to see WHAT was checked, by WHICH
+      // provider, and the outcome, matching the candidate's own Vault view.
+      auditTrail = entries.map(e => ({
+        seq: e.seq,
+        providerId: e.provider_id,
+        capabilityUsed: e.capability_used,
+        result: e.result,
+        confidence: e.confidence,
+        verifiedAt: e.created_at,
+      }))
+    } catch (auditErr) {
+      console.error("[partner-bridge/verification] audit log read failed:", auditErr.message)
+    }
+
+    res.json({
+      candidateId: candidate.id,
+      summary: {
+        verifiedEmploymentCount: verifiedEmployment.length,
+        totalEmploymentCount: experiences.length,
+        verifiedCertificationCount: certRows?.length || 0,
+        auditEntryCount: auditTrail.length,
+      },
+      verifiedEmployment,
+      verifiedCertifications: (certRows || []).map(c => ({
+        certName: c.cert_name, certType: c.cert_type, issuer: c.issuer, verifiedAt: c.verified_at,
+      })),
+      auditTrail,
+    })
+  } catch (err) {
+    console.error("[partner-bridge/candidates/:id/verification]", err.message)
     res.status(500).json({ error: err.message })
   }
 })

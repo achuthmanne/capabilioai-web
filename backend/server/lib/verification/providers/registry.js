@@ -11,9 +11,10 @@
  */
 import certificateOcr from "./certificateOcr.js"
 import github from "./github.js"
+import employerAttestation from "./employerAttestation.js"
 import { DECLARED_PROVIDERS } from "./declared.js"
 
-const PROVIDER_MODULES = [certificateOcr, github, ...DECLARED_PROVIDERS]
+const PROVIDER_MODULES = [certificateOcr, github, employerAttestation, ...DECLARED_PROVIDERS]
 
 const REGISTRY = new Map(PROVIDER_MODULES.map(p => [p.id, p]))
 

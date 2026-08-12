@@ -16,6 +16,8 @@ import { matchEmployerNames } from "../lib/employerMatch.js"
 import { searchCompany as authbridgeSearchCompany, employmentSearch as authbridgeEmploymentSearch, isAuthBridgeConfigured } from "../lib/authbridgeEpfo.js"
 import { groq, GROQ_FAST }            from "../lib/groq.js"
 import { gemini, geminiExtractImage } from "../lib/gemini.js"
+import { recomputeExperienceBonus }   from "../lib/professionalElo/verifiedBonuses.js"
+import * as auditLog                  from "../lib/verification/auditLog.js"
 
 const router = Router()
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } })
@@ -167,6 +169,53 @@ router.post("/epfo/confirm", requireAuth, async (req, res) => {
     .eq("id", uid)
 
   if (saveErr) return res.status(500).json({ verified: false, error: saveErr.message })
+
+  // BUG FIX (see verifiedBonuses.js): this AuthBridge confirmation is the
+  // ONLY real EPFO/employment verification this system performs, but this
+  // route never wrote to epf_records — the one table recomputeExperienceBonus
+  // reads to decide whether to grant the trust-gated experience_bonus_elo.
+  // Meanwhile the unrelated "manual fallback" heuristic in professionalProfile.js
+  // (/pro/epfo/submit) was auto-marking epf_records "verified" from nothing
+  // more than "the user has any career_timeline row" and so was the ONLY path
+  // that could unlock the bonus — the exact inverse of the intended trust
+  // model. That fake auto-verify has been removed (see /pro/epfo/submit);
+  // this real verification path now correctly writes epf_records and
+  // recomputes the bonus. One epf_records row per successful confirmation —
+  // a natural, append-only, per-employer verification audit trail.
+  try {
+    const { data: pp, error: ppErr } = await supabase()
+      .from("professional_profiles")
+      .upsert({ user_id: uid }, { onConflict: "user_id" })
+      .select()
+      .single()
+    if (ppErr) throw ppErr
+    await supabase().from("epf_records").insert({
+      professional_profile_id: pp.id,
+      verification_status:     "verified",
+      source:                  "epfo_api",
+      verified_at:              new Date().toISOString(),
+    })
+    await recomputeExperienceBonus(supabase(), uid)
+    // Hash-chained audit trail (Trust & Verification Center) — this is the
+    // only place a real EPFO match gets recorded into the tamper-evident
+    // log a user/recruiter can independently inspect (GET /api/verification/
+    // audit/mine, GET /api/verification/integrity).
+    await auditLog.appendEntry({
+      userId: uid,
+      providerId: "employer_epfo",
+      capabilityUsed: "authbridge_epfo_v1",
+      result: "verified",
+      confidence: matchConfidence,
+      details: { company: result.employerName, establishmentId: result.establishmentId, expIndex },
+    })
+  } catch (bonusErr) {
+    // Never fail the verification response over this bookkeeping — the
+    // experience entry above is already correctly promoted to "verified".
+    // recomputeExperienceBonus is idempotent, so a future call (next
+    // /pro/epfo/status poll, or any other recompute trigger) will still
+    // pick this up correctly if this step failed transiently.
+    console.error("[epfo/confirm] epf_records write / bonus recompute failed:", bonusErr.message)
+  }
 
   res.json({
     verified: true,

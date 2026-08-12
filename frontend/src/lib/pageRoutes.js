@@ -65,6 +65,7 @@ const RESERVED_PATH_PREFIXES = [
   "/join/",
   "/join-org/",
   "/company-invite/",
+  "/attest/",
 ]
 const RESERVED_EXACT_PATHS = new Set([
   "/career",

@@ -121,6 +121,7 @@ import voiceRoutes            from "./server/routes/voice.js"
 import ttsRoutes              from "./server/routes/tts.js"
 // ── Professional Path modules ─────────────────────────────────────────────────
 import professionalProfileRoutes from "./server/routes/professionalProfile.js"
+import employerAttestationRoutes from "./server/routes/employerAttestation.js"
 import careerTimelineRoutes      from "./server/routes/careerTimeline.js"
 import candidateTasksRoutes      from "./server/routes/candidateTasks.js"
 import skillGraphRoutes          from "./server/routes/skillGraph.js"
@@ -228,6 +229,21 @@ app.use("/api/analyse-assessment",          aiLimiter)
 app.use("/api/analyse-professional-profile", aiLimiter)
 app.use("/api/resolve-role",                aiLimiter)
 app.use("/api/verify",       strictLimiter)
+// BUG FIX (production audit): both of these are Groq-backed (question
+// generation / AI profile-summary drafting) but had no rate limiter at all,
+// unlike every other AI-calling route family above. weekly_pulses has a
+// natural once-per-week-per-user unique constraint that limits *legitimate*
+// reuse, but nothing stopped repeated GENERATION attempts (e.g. hammering
+// pulse creation before the row lands) or repeated summary regeneration.
+app.use("/api/pro/weekly",         aiLimiter)
+app.use("/api/pro/profile/summary", aiLimiter)
+// Employer attestation: /pro/attestation/request sends an email per call
+// (spam/cost vector) and the public /attestation/:token/{confirm,decline}
+// endpoints are token-gated rather than auth-gated — strictLimiter adds
+// defense in depth against token-guessing even though the 256-bit token
+// itself is already infeasible to brute force.
+app.use("/api/pro/attestation", strictLimiter)
+app.use("/api/attestation",     strictLimiter)
 
 // (cors() is registered above, before the rate limiters — see the 2026-07-29
 // bug-fix comment near `const app = express()` for why.)
@@ -328,6 +344,7 @@ app.use("/api/voice",        voiceRoutes)        // transcribe — Deepgram nova
 app.use("/api/tts",          ttsRoutes)          // speak — Deepgram Aura-2 TTS (EchoPitch audio-in-video)
 // ── Professional Path ─────────────────────────────────────────────────────────
 app.use("/api",              professionalProfileRoutes) // pro/profile, pro/epfo, pro/visibility
+app.use("/api",              employerAttestationRoutes) // pro/attestation/{request,list} (auth), attestation/:token/{,confirm,decline} (public, token-gated)
 app.use("/api",              careerTimelineRoutes)      // pro/timeline, pro/vault
 app.use("/api",              candidateTasksRoutes)      // candidate/tasks — recruiter-assigned tasks via partner bridge (2026-08-06)
 app.use("/api",              skillGraphRoutes)          // pro/skills

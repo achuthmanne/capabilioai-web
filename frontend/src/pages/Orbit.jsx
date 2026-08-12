@@ -8,7 +8,7 @@
  */
 import { useState, useCallback, useRef, useEffect } from "react"
 import { userDoc } from "../lib/db"
-import { vaultApi, weeklyCheckApi, skillsApi, careerEventsApi, companyApi, professionalEloApi } from "../lib/api"
+import { vaultApi, weeklyCheckApi, skillsApi, careerEventsApi, companyApi, professionalEloApi, attestationApi } from "../lib/api"
 import { getRoleConfig } from "../config/roleConfig"
 import { SectionErrorBoundary, EvidenceSourceBadge, OutcomeCard, ProfessionalScoreHero, SecondaryDiagnosticsPanel } from "../components/careeros/CareerOSUI"
 import { FLAGS } from "../config/featureFlags"
@@ -839,6 +839,26 @@ function TimelineTab({ud,user,onSave,onNavigate}){
   const[saving,setSaving]=useState(false)
   const blank={company:"",role:"",startDate:"",endDate:"",isCurrent:false,description:"",outcomes:"",verificationStatus:"unverified"}
   const[form,setForm]=useState(blank)
+  // Employer attestation (2026-08-12) — second, independent verification path
+  // alongside EPFO below: a former employer/manager confirms the claim via a
+  // one-time emailed link, no Capabilio account needed on their end. See
+  // routes/employerAttestation.js.
+  const[attestIdx,setAttestIdx]=useState(null)
+  const[attesterName,setAttesterName]=useState("")
+  const[attesterEmail,setAttesterEmail]=useState("")
+  const[attesterTitle,setAttesterTitle]=useState("")
+  const[attestSending,setAttestSending]=useState(false)
+  const[attestResult,setAttestResult]=useState(null)
+  const closeAttestModal=()=>{setAttestIdx(null);setAttesterName("");setAttesterEmail("");setAttesterTitle("");setAttestResult(null)}
+  const sendAttestation=async()=>{
+    if(!attesterName.trim()||!attesterEmail.trim()){setAttestResult({error:"Name and email are required"});return}
+    setAttestSending(true);setAttestResult(null)
+    try{
+      const res=await attestationApi.request(attestIdx,attesterName.trim(),attesterEmail.trim(),attesterTitle.trim())
+      setAttestResult({success:true,emailSent:res.emailSent})
+    }catch(e){setAttestResult({error:e.message||"Could not send the attestation request"})}
+    setAttestSending(false)
+  }
   // Normalise both legacy (roles[] array) and new flat structure so both render correctly
   const exps=(ud?.experiences||[]).map(e=>{
     if(e.role) return e  // already flat — new format
@@ -885,9 +905,32 @@ function TimelineTab({ud,user,onSave,onNavigate}){
       {e.description&&<div style={{fontSize:12,color:DS.ink3,lineHeight:1.6,marginBottom:8,whiteSpace:"pre-line"}}>{e.description}</div>}
       {Array.isArray(e.skills)&&e.skills.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:8}}>{e.skills.slice(0,10).map((s,si)=><span key={si} style={{padding:"2px 9px",background:DS.pBg,border:`1px solid ${DS.pBd||DS.border}`,borderRadius:99,fontSize:10,fontWeight:600,color:DS.primary}}>{s}</span>)}</div>}
       {e.outcomes&&<div style={{padding:"6px 10px",background:DS.gBg,border:`1px solid ${DS.gBd}`,borderRadius:8,fontSize:11,color:DS.green,fontWeight:500}}>↑ Impact: {e.outcomes}</div>}
-      {e.verificationStatus==="unverified"&&<div style={{marginTop:9,padding:"6px 11px",background:DS.aBg,border:`1px solid ${DS.aBd}`,borderRadius:8,fontSize:11,color:DS.amber,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span>Verify via EPFO/UAN to boost your Proof Strength</span><button style={{fontSize:11,fontWeight:700,color:DS.amber,background:"none",border:"none",cursor:"pointer",outline:"none"}}>Verify →</button></div>}
+      {e.verificationStatus==="unverified"&&<div style={{marginTop:9,padding:"6px 11px",background:DS.aBg,border:`1px solid ${DS.aBd}`,borderRadius:8,fontSize:11,color:DS.amber,display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+        <span>Verify via EPFO or ask a former employer to confirm to boost your Proof Strength</span>
+        <button onClick={()=>{setAttestIdx(i);setAttesterName("");setAttesterEmail("");setAttesterTitle("");setAttestResult(null)}} style={{fontSize:11,fontWeight:700,color:DS.amber,background:"none",border:"none",cursor:"pointer",outline:"none",whiteSpace:"nowrap"}}>Ask employer to confirm →</button>
+      </div>}
       </Card>
     </div>)}
+    <Modal show={attestIdx!==null} onClose={closeAttestModal} title="Ask a former employer to confirm">
+      <div style={{display:"flex",flexDirection:"column",gap:11}}>
+        {attestResult?.success?
+          <div style={{padding:"12px 14px",background:DS.gBg,border:`1px solid ${DS.gBd}`,borderRadius:10,fontSize:12,color:DS.green,lineHeight:1.6}}>
+            {attestResult.emailSent
+              ? "Request sent — they'll get an email with a one-time confirmation link. No account needed on their end."
+              : "Request created, but the confirmation email couldn't be sent right now. Try resending it, or share the link with them directly."}
+          </div>
+        :<>
+          <div style={{fontSize:12,color:DS.ink3,lineHeight:1.6}}>
+            They&apos;ll receive a one-time link to confirm or decline this role — no Capabilio account required. This is a real, independent verification path alongside EPFO.
+          </div>
+          <Inp label="Their name" value={attesterName} onChange={setAttesterName} placeholder="e.g. Priya Sharma"/>
+          <Inp label="Their email" value={attesterEmail} onChange={setAttesterEmail} placeholder="manager@company.com"/>
+          <Inp label="Their title (optional)" value={attesterTitle} onChange={setAttesterTitle} placeholder="e.g. Engineering Manager"/>
+          {attestResult?.error&&<div style={{fontSize:12,color:DS.red||"#DC2626"}}>{attestResult.error}</div>}
+          <Btn onClick={sendAttestation} loading={attestSending} full style={{marginTop:4}}>Send confirmation request</Btn>
+        </>}
+      </div>
+    </Modal>
     <Modal show={showAdd} onClose={()=>{setShowAdd(false);setEdit(null);setForm(blank)}} title={edit?"Edit Employment Entry":"Add Employment Entry"}>
       <div style={{display:"flex",flexDirection:"column",gap:11}}>
         <Inp label="Company" value={form.company} onChange={v=>setForm(p=>({...p,company:v}))} placeholder="Company name"/>

@@ -343,6 +343,21 @@ export default function Skills({ user, userData, onNavigate }) {
   const [epfoStatus, setEpfoStatus] = useState(null)
   const [certifications, setCertifications] = useState([])
   const [testHistory, setTestHistory] = useState({ state: "loading", history: [] })
+  // Live skill graph (2026-08-12) — pulls real Arena + GitHub signals into
+  // user_skills. See skillsApi.syncFromWork / routes/skillGraph.js's POST
+  // /pro/skills/sync-from-work for why this is additive/non-destructive.
+  const [syncing, setSyncing] = useState(false)
+  const [syncResult, setSyncResult] = useState(null)
+  const handleSyncFromWork = useCallback(() => {
+    setSyncing(true); setSyncResult(null)
+    skillsApi.syncFromWork()
+      .then(res => {
+        setSyncResult({ updated: res.updated || 0 })
+        if (res.updated > 0) skillsApi.list().then(data => setSkills(data || [])).catch(() => {})
+      })
+      .catch(err => setSyncResult({ error: err.message }))
+      .finally(() => setSyncing(false))
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -418,8 +433,23 @@ export default function Skills({ user, userData, onNavigate }) {
       <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Mono:wght@400;500;600&display=swap');`}</style>
 
       <div style={{ padding: "24px 24px 0", maxWidth: 1100, margin: "0 auto" }}>
-        <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: P, fontFamily: MONO }}>Professional Path · Skills</div>
-        <div style={{ fontFamily: SERIF, fontSize: 26, fontWeight: 800, color: INK, marginTop: 4, marginBottom: 18 }}>Skill Pulse, decay, and learning</div>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: P, fontFamily: MONO }}>Professional Path · Skills</div>
+            <div style={{ fontFamily: SERIF, fontSize: 26, fontWeight: 800, color: INK, marginTop: 4, marginBottom: 4 }}>Skill Pulse, decay, and learning</div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, marginTop: 4 }}>
+            <button onClick={handleSyncFromWork} disabled={syncing} style={{ padding: "8px 16px", background: syncing ? BDR : P, color: "#fff", border: "none", borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: syncing ? "default" : "pointer", fontFamily: BODY, whiteSpace: "nowrap" }}>
+              {syncing ? "Syncing…" : "Sync from real work"}
+            </button>
+            {syncResult && (
+              <div style={{ fontSize: 11, color: syncResult.error ? "#DC2626" : "#166534" }}>
+                {syncResult.error ? syncResult.error : syncResult.updated > 0 ? `Updated ${syncResult.updated} skill${syncResult.updated !== 1 ? "s" : ""} from Arena + GitHub` : "No new signals to add right now"}
+              </div>
+            )}
+          </div>
+        </div>
+        <div style={{ marginBottom: 18 }} />
 
         {FLAGS.career_os_professional_elo && (
           <SectionErrorBoundary name="skills-professional-elo">

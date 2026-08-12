@@ -21,6 +21,7 @@ import AccountType  from "./pages/AccountType"
 import Onboarding   from "./pages/Onboarding"
 import JoinPage     from "./pages/JoinPage"
 import JoinOrgPage  from "./pages/JoinOrgPage"
+import AttestPage   from "./pages/AttestPage"
 import CompanyInvitePage from "./pages/CompanyInvitePage"
 import CareerPicker from "./pages/CareerPicker"
 
@@ -1249,6 +1250,14 @@ function App() {
         }}
       />
     )
+  }
+
+  if (window.location.pathname.startsWith("/attest/")) {
+    // Employer attestation link — the visitor is a former employer/manager
+    // with no Capabilio account, so this never gates on `user` at all
+    // (unlike /join-org/ above, which needs a logged-in student).
+    const attestToken = window.location.pathname.replace("/attest/", "").split("/")[0]
+    return <AttestPage token={attestToken} />
   }
 
   if (window.location.pathname.startsWith("/company-invite/")) {

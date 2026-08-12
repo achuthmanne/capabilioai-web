@@ -179,12 +179,19 @@ router.post("/pro/photo", requireAuth, upload.single("photo"), async (req, res) 
 // that instead. It also previously wrote profiles.epfo_verified/epfo_uan,
 // columns that don't exist either; the real columns are uan_verified/uan_number.
 //
-// Note: supabase/functions/verify-uan is a SEPARATE, REAL integration against
-// Eko's government EPFO API (HMAC-signed), currently called directly from
-// Orbit.jsx. That is the production-grade verification path. This endpoint
-// remains as a manual-fallback / non-realtime path (per the product
-// requirement for a manual fallback when live EPFO lookup fails) and should
-// not be treated as equivalent to the Eko integration.
+// STALE CLAIM CORRECTED: this comment previously said supabase/functions/
+// verify-uan (Eko) was "the production-grade verification path, currently
+// called directly from Orbit.jsx." That stopped being true as of the
+// AuthBridge migration (see routes/verify.js's file header) — the Eko
+// function was confirmed not working in practice and is no longer called
+// from any frontend flow; it's dead code left deployed, not documentation
+// of current behavior. The real, currently-live verification path is
+// routes/verify.js's /epfo/search-company + /epfo/confirm (AuthBridge),
+// called from Orbit.jsx and Aura.jsx. This endpoint remains a manual-
+// fallback path for when a user wants to record a UAN without going
+// through that flow — see the honest "in_progress, no auto-verify" behavior
+// below; it does not and should not claim equivalence to a real AuthBridge
+// match.
 router.post("/pro/epfo/submit", requireAuth, async (req, res) => {
   try {
     const uid  = req.user.id
@@ -198,6 +205,22 @@ router.post("/pro/epfo/submit", requireAuth, async (req, res) => {
       .single()
     if (ppError) return res.status(500).json({ error: ppError.message })
 
+    // BUG FIX (production audit): this used to run an async block that
+    // auto-marked verification_status "verified" purely because the user had
+    // ANY career_timeline row — i.e. self-reported, unvalidated data marking
+    // itself as government-verified. That was also the ONLY code path that
+    // could unlock the trust-gated experience_bonus_elo (verifiedBonuses.js
+    // reads epf_records exclusively), while the real AuthBridge/EPFO
+    // verification (routes/verify.js /epfo/confirm, called from Orbit.jsx)
+    // never wrote to epf_records at all — a fabricated claim outranked a
+    // real one. Fixed on both ends: /epfo/confirm now writes epf_records
+    // correctly on a genuine AuthBridge match (see that route), and this
+    // manual-submission fallback no longer self-verifies anything. It just
+    // records the submission as "in_progress" — an honest, permanently-
+    // pending state until either a real /epfo/confirm match happens for one
+    // of the user's employers, or a genuine manual-review mechanism is
+    // built. No profiles.uan_verified, no legacy ELO signals, no
+    // experience_bonus_elo — none of that should fire without real evidence.
     const { data, error } = await supabaseAdmin
       .from("epf_records")
       .insert({
@@ -211,67 +234,12 @@ router.post("/pro/epfo/submit", requireAuth, async (req, res) => {
 
     if (error) return res.status(500).json({ error: error.message })
 
-    // Async fallback matching against career_timeline. This is explicitly NOT
-    // a real government EPFO lookup (that's the Eko edge function) — it's a
-    // manual-review-adjacent heuristic for when a user submits a UAN here
-    // instead of through the real verification flow.
-    setImmediate(async () => {
-      try {
-        const { data: timeline } = await supabaseAdmin
-          .from("career_timeline")
-          .select("*")
-          .eq("user_id", uid)
-          .order("start_date", { ascending: false })
-
-        const hasTimelineEvidence = (timeline || []).length > 0
-
-        await supabaseAdmin
-          .from("epf_records")
-          .update({
-            verification_status: hasTimelineEvidence ? "verified" : "in_progress",
-            verified_at:          hasTimelineEvidence ? new Date().toISOString() : null,
-          })
-          .eq("id", data.id)
-
-        if (hasTimelineEvidence) {
-          await supabaseAdmin
-            .from("profiles")
-            .update({
-              uan_verified:        true,
-              uan_number:          uan,
-              uan_verified_at:     new Date().toISOString(),
-              verification_state:  "employment_verified",
-            })
-            .eq("id", uid)
-
-          const { data: p } = await supabaseAdmin.from("profiles").select("*").eq("id", uid).single()
-          if (p) {
-            // Legacy pseudo-ELO write — frozen/deprecated, kept only for
-            // backward compatibility with any surface still reading these
-            // columns. See the DEPRECATED comment at the top of this file.
-            const sig = computeEloSignals(p)
-            await supabaseAdmin.from("profiles").update({
-              role_elo: sig.roleElo, market_elo: sig.marketElo,
-              proof_elo: sig.proofElo, mobility_elo: sig.mobilityElo,
-              aura_score: sig.auraScore, profile_completeness: sig.profileCompleteness,
-            }).eq("id", uid)
-          }
-
-          // Skill Rating v2 — the ONLY real trust-gated write triggered by
-          // EPFO verification succeeding. Recomputes (never increments) the
-          // bounded experience_bonus_elo modifier on professional_elo_state.
-          // Safe to call on every EPFO status recheck/webhook retry — it is
-          // a pure function of current verified state (see verifiedBonuses.js).
-          try {
-            await recomputeExperienceBonus(supabaseAdmin, uid)
-          } catch (bonusErr) {
-            console.error("[epfo async] experience bonus recompute failed", bonusErr.message)
-          }
-        }
-      } catch (err) { console.error("[epfo async]", err.message) }
+    res.json({
+      success: true,
+      verification_id: data.id,
+      status: "in_progress",
+      message: "Your UAN has been recorded. This manual submission path can't independently confirm your employment yet — for an instant verified badge, use the EPFO lookup on an individual experience entry in your Career Timeline instead.",
     })
-
-    res.json({ success: true, verification_id: data.id, status: "in_progress" })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
@@ -291,10 +259,10 @@ router.get("/pro/epfo/status", requireAuth, async (req, res) => {
       .single()
     if (error) return res.json({ status: "not_started" })
 
-    // Also covers verification that happened via the separate Eko/UAN edge
-    // function (supabase/functions/verify-uan), which writes epf_records
-    // directly and never passes through the /epfo/submit handler above —
-    // recompute is idempotent, so this is a safe no-op if nothing changed.
+    // Recompute is idempotent (verifiedBonuses.js), so this is always a safe
+    // no-op if nothing changed since the last check — cheap insurance in
+    // case a /epfo/confirm call's own recompute (see routes/verify.js)
+    // failed transiently and this status poll is the next chance to retry it.
     if (data.verification_status === "verified") {
       try {
         await recomputeExperienceBonus(supabaseAdmin, req.user.id)

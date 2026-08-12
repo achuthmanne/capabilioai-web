@@ -29,6 +29,7 @@ import { Router } from "express"
 import { supabaseAdmin }  from "../lib/supabase.js"
 import { groq, GROQ_FAST } from "../lib/groq.js"
 import { requireAuth } from "../lib/auth.js"
+import * as codeDnaRepo from "../lib/codeDna/repository.js"
 
 const router = Router()
 
@@ -390,6 +391,114 @@ Return only valid JSON.`
     }
 
     res.json({ role, user_skills: userSkills || [], gaps })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// ── Live skill graph: sync real work signals into user_skills ────────────────
+// 2026-08-12 (resume-free hiring vision) — pulls REAL, already-recorded work
+// signals (Arena challenge performance by topic_tags, GitHub language/tech
+// usage from Code DNA) into the same canonical user_skills table the Skills
+// page and github.js's read-only /cross-verify already reason about. Additive
+// and non-destructive only:
+//   - never touches a row with verified=true (that flag is reserved for
+//     explicit proof submission / trust-gated verification elsewhere);
+//   - never LOWERS an existing level_score — a real-work signal can raise
+//     confidence in a skill the user already has recorded, never erase or
+//     downgrade a higher-confidence existing entry.
+// Weekly Pulse is NOT re-derived here — weeklyPulse.js already writes
+// directly into user_skills as each pulse completes (see its skill-confidence
+// feedback step), so re-deriving it here would risk double-counting the same
+// signal through a second path.
+router.post("/pro/skills/sync-from-work", requireAuth, async (req, res) => {
+  try {
+    const uid = req.user.id
+    const { data: existing, error: exErr } = await supabaseAdmin.from(TABLE).select("*").eq("user_id", uid)
+    if (exErr) throw exErr
+    const bySlug = new Map((existing || []).filter(s => s.slug).map(s => [s.slug, s]))
+
+    const candidates = []
+
+    // ── Arena: real per-topic performance from challenge_submissions ────────
+    // Same relationship/shape as the existing GET /weak-topics/:uid route
+    // (challenge_submissions.challenges(topic_tags)) — reused, not re-derived
+    // from scratch, so this can't drift from what that route already reports.
+    const { data: subs, error: subsErr } = await supabaseAdmin
+      .from("challenge_submissions")
+      .select("score, submitted_at, challenges(topic_tags)")
+      .eq("user_id", uid)
+      .not("score", "is", null)
+    if (subsErr) console.error("[skills/sync-from-work] arena lookup failed:", subsErr.message)
+
+    const topicMap = {}
+    ;(subs || []).forEach(s => {
+      const tags = s.challenges?.topic_tags || []
+      tags.forEach(tag => {
+        if (!tag) return
+        if (!topicMap[tag]) topicMap[tag] = { total: 0, sumScore: 0 }
+        topicMap[tag].total++
+        topicMap[tag].sumScore += (s.score || 0)
+      })
+    })
+    // Same confidence floor as GET /weak-topics/:uid (>= 2 attempts) — a
+    // single submission is too noisy to promote into the skill graph.
+    for (const [tag, v] of Object.entries(topicMap)) {
+      if (v.total < 2) continue
+      candidates.push({ name: tag, levelScore: Math.min(95, Math.round(v.sumScore / v.total)), source: "arena_derived", groupType: "proof" })
+    }
+
+    // ── GitHub: real language/tech usage from Code DNA, same source data
+    // github.js's read-only GET /cross-verify already inspects. pct here is
+    // usage share (how much of their code is this language), not skill
+    // proficiency, so it's deliberately capped well below what a verified or
+    // Arena-performance-derived score could reach.
+    const codeDnaRow = await codeDnaRepo.getProfile(uid)
+    const analysis = codeDnaRow?.source_ref?.analysis
+    if (analysis) {
+      ;(analysis.languages || []).forEach(l => {
+        if (!l?.lang) return
+        candidates.push({ name: l.lang, levelScore: Math.min(70, Math.max(20, Math.round(l.pct || 20))), source: "github_derived", groupType: "tool_stack" })
+      })
+      ;(analysis.topRepos || []).forEach(r => (r.techStack || []).forEach(t => {
+        if (!t) return
+        candidates.push({ name: t, levelScore: 40, source: "github_derived", groupType: "tool_stack" })
+      }))
+    }
+
+    // ── Merge: additive only ─────────────────────────────────────────────────
+    const rows = []
+    const seenSlugs = new Set()
+    for (const c of candidates) {
+      const slug = makeSlug(c.name)
+      if (!slug || seenSlugs.has(slug)) continue
+      seenSlugs.add(slug)
+      const prior = bySlug.get(slug)
+      if (prior?.verified) continue                                  // never touch a trust-verified skill
+      if (prior && (prior.level_score || 0) >= c.levelScore) continue // never downgrade
+      const meta = enrichSkill(c.name)
+      rows.push({
+        user_id:     uid,
+        name:        prior?.name || c.name,
+        slug,
+        group_type:  prior?.group_type || c.groupType,
+        icon_url:    meta.icon_url,
+        color:       meta.color,
+        level:       levelFromScore(c.levelScore),
+        level_score: c.levelScore,
+        confidence:  c.levelScore / 100,
+        verified:    false,
+        source:      c.source,
+        is_current:  true,
+        updated_at:  new Date().toISOString(),
+      })
+    }
+
+    if (!rows.length) return res.json({ success: true, updated: 0, skills: [] })
+
+    const { data: upserted, error } = await supabaseAdmin
+      .from(TABLE).upsert(rows, { onConflict: "user_id,slug", ignoreDuplicates: false }).select()
+    if (error) throw error
+
+    res.json({ success: true, updated: upserted.length, skills: upserted })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 

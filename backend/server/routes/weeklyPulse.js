@@ -315,6 +315,28 @@ router.post("/pro/weekly/:pulseId/complete", requireAuth, async (req, res) => {
     const { data: pulse } = await supabaseAdmin.from("weekly_pulses").select("*").eq("id", pulseId).single()
     if (!pulse || pulse.user_id !== uid) return res.status(403).json({ error: "Forbidden" })
 
+    // BUG FIX (production audit): this route had no completed-status guard.
+    // Unlike the bonus recomputes in verifiedBonuses.js, applyPulseCompletionToElo
+    // is NOT a pure recompute — it always applies a fresh ELO delta and inserts
+    // a new professional_elo_events row, and the confidence-feedback block
+    // above it always mutates user_skills.level_score again too. A retried
+    // request (double-click, client retry-on-timeout, replay) would therefore
+    // double-apply both. Short-circuit here: once completed, this endpoint is
+    // read-only for that pulse — no re-scoring, no second ELO delta, no
+    // second confidence-feedback pass.
+    if (pulse.status === "completed") {
+      const { count: questionCount } = await supabaseAdmin
+        .from("weekly_questions").select("id", { count: "exact", head: true }).eq("pulse_id", pulseId)
+      return res.json({
+        success: true,
+        alreadyCompleted: true,
+        correct_count: pulse.correct_count,
+        question_count: questionCount || 0,
+        feedback: [], skills_refreshed: [], skills_to_revisit: [],
+        professional_elo: null, // not re-applied on replay — see applyPulseCompletionToElo, it is not idempotent
+      })
+    }
+
     const { data: questions } = await supabaseAdmin
       .from("weekly_questions").select("*").eq("pulse_id", pulseId)
     const { data: answers } = await supabaseAdmin
@@ -323,11 +345,25 @@ router.post("/pro/weekly/:pulseId/complete", requireAuth, async (req, res) => {
     const answerByQ = new Map((answers || []).map(a => [a.question_id, a]))
     const correctCount = (questions || []).filter(q => answerByQ.get(q.id)?.is_correct).length
 
-    await supabaseAdmin.from("weekly_pulses").update({
-      status: "completed",
-      correct_count: correctCount,
-      completed_at: new Date().toISOString(),
-    }).eq("id", pulseId)
+    // Atomic completion guard: the status !== "completed" check above has a
+    // TOCTOU gap (two concurrent /complete calls can both pass it before
+    // either writes). Making the transition itself conditional on the DB's
+    // CURRENT status closes that gap — only the request that actually wins
+    // this race gets rows back and proceeds to apply confidence feedback +
+    // ELO below; a loser gets an empty result and bails out honestly instead
+    // of double-applying.
+    const { data: completedRows } = await supabaseAdmin.from("weekly_pulses")
+      .update({ status: "completed", correct_count: correctCount, completed_at: new Date().toISOString() })
+      .eq("id", pulseId).neq("status", "completed")
+      .select("id")
+    if (!completedRows || completedRows.length === 0) {
+      const { count: questionCount } = await supabaseAdmin
+        .from("weekly_questions").select("id", { count: "exact", head: true }).eq("pulse_id", pulseId)
+      return res.json({
+        success: true, alreadyCompleted: true, correct_count: correctCount, question_count: questionCount || 0,
+        feedback: [], skills_refreshed: [], skills_to_revisit: [], professional_elo: null,
+      })
+    }
 
     // Confidence feedback — capped nudge only, per product constraint that
     // quiz performance must never dominate the skill confidence model.
