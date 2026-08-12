@@ -1,5 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.jsx'
 import { initAnalytics } from './lib/analytics.js'
@@ -29,7 +30,17 @@ window.addEventListener('vite:preloadError', () => {
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ErrorBoundary>
-      <App />
+      {/* react-router-dom was already a listed dependency but never
+          actually used anywhere — App.jsx ran its own in-memory
+          currentPage state machine with no real URLs for any page except
+          a handful of special early-return routes (/portfolio/:username,
+          /admin/*, /join/*, /career, /company-invite/*). BrowserRouter
+          here + the sync logic in App.jsx (see lib/pageRoutes.js) gives
+          every page a real, bookmarkable URL without changing any of the
+          existing page components, nav callbacks, or render logic. */}
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
     </ErrorBoundary>
   </StrictMode>,
 )

@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react"
+import { useNavigate, useLocation } from "react-router-dom"
+import { PAGE_TO_PATH, PATH_TO_PAGE, isReservedPath } from "./lib/pageRoutes"
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/react"
 import { supabase } from "./lib/supabase"
@@ -781,10 +783,20 @@ function AuthModal({ show, onClose, mode, setMode }) {
 // APP ROOT
 // ══════════════════════════════════════════════════════════════════
 function App() {
+  const navigate = useNavigate()
+  const location = useLocation()
   const [user,           setUser]           = useState(null)
   const [loading,        setLoading]        = useState(true)
   const [onboardingDone, setOnboardingDone] = useState(false)
-  const [currentPage,    setCurrentPage]    = useState("studentHome")
+  // Lazy-init from the real URL so a direct/bookmarked visit to e.g.
+  // /arena renders Arena on the very first paint instead of flashing
+  // studentHome first — same pattern the /portfolio/:username and
+  // /admin/* early-return checks below already use with raw
+  // window.location.pathname. See lib/pageRoutes.js for the full mapping
+  // and why "portfolio" is deliberately excluded from it.
+  const [currentPage,    setCurrentPage]    = useState(
+    () => PATH_TO_PAGE[window.location.pathname] || "studentHome"
+  )
   // Arena V2 pilot phase — which candidate's recruiter-facing evidence is
   // currently being viewed (set by ArenaV2MLPilot's "View how recruiters
   // see this proof" link, read by the arenaV2RecruiterView page below).
@@ -1108,6 +1120,43 @@ function App() {
       setActiveNavItem("home")
     }
   }, [userData?.path, onboardingDone]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── URL <-> currentPage sync ──────────────────────────────────────────────
+  // Two-way sync so every one of the 59 pages in PAGE_TO_PATH gets a real,
+  // bookmarkable, back/forward-capable URL, without changing any of the 50+
+  // existing setCurrentPage call sites or the currentPage-driven render tree
+  // below. Both effects bail out immediately on the reserved special routes
+  // (/portfolio/:username, /admin/*, /join/*, /career, /company-invite/*) so
+  // they keep behaving exactly as before -- this never touches those.
+  //
+  // Both directions only apply once we're actually in the main authenticated
+  // app (signed in + onboarding complete) -- currentPage is meaningless
+  // before that (landing page, account-type picker, auth modal, onboarding
+  // wizard don't render from it at all), so syncing it to the URL during
+  // those stages would incorrectly redirect a logged-out visitor away from
+  // "/" to e.g. "/student-home" the instant the component mounts.
+  const inMainApp = !!user && onboardingDone
+
+  // Direction 1: in-app navigation (setCurrentPage(x) called anywhere) pushes
+  // the matching real path into the URL bar.
+  useEffect(() => {
+    if (!inMainApp || isReservedPath(location.pathname)) return
+    const path = PAGE_TO_PATH[currentPage]
+    if (path && path !== location.pathname) navigate(path)
+  }, [currentPage, inMainApp]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Direction 2: the URL changing from outside in-app navigation (browser
+  // back/forward, a bookmarked/shared link, typing a URL directly) updates
+  // currentPage to match. Guarded so it never fights direction 1 above --
+  // if currentPage already matches the URL there's nothing to do.
+  useEffect(() => {
+    if (!inMainApp || isReservedPath(location.pathname)) return
+    const page = PATH_TO_PAGE[location.pathname]
+    if (page && page !== currentPage) {
+      setCurrentPage(page)
+      setActiveNavItem(page)
+    }
+  }, [location.pathname, inMainApp]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (window.location.pathname.startsWith("/portfolio/")) {
     const username = window.location.pathname.replace("/portfolio/", "").split("/")[0]
