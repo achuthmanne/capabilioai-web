@@ -161,7 +161,26 @@ function PageParticleField() {
     <div
       ref={mountRef}
       aria-hidden="true"
-      style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }}
+      // 2026-08-12 Safari fix: this fixed, transparent, continuously-
+      // repainting WebGL canvas sits directly behind ~30 stacked
+      // `backdrop-filter: blur()` panels throughout the page (every card,
+      // badge, and pricing tile). WebKit has a well-documented compositor
+      // bug where a fixed-position layer changing every animation frame
+      // underneath multiple backdrop-filter layers causes visible
+      // strobing/flicker ("vibrating and flashing") during scroll and
+      // pointer movement — Blink (Chrome) composites this pattern fine,
+      // which is why the symptom was Safari-only. `translateZ(0)` +
+      // `willChange` forces this canvas onto its own stable GPU layer
+      // instead of being re-composited together with the blur stack above
+      // it on every frame. Combined with adding the missing
+      // `-webkit-backdrop-filter` prefix to every blur panel (below), this
+      // is the standard, minimal fix for this exact WebKit bug class —
+      // does not change appearance or behavior in any browser.
+      style={{
+        position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden",
+        transform: "translateZ(0)", WebkitTransform: "translateZ(0)",
+        willChange: "transform", WebkitBackfaceVisibility: "hidden", backfaceVisibility: "hidden",
+      }}
     />
   )
 }
@@ -235,7 +254,7 @@ function PortfolioCard({ task }) {
       border: `1px solid ${open ? D.orangeMid : D.border}`,
       borderRadius: 22, overflow: "hidden",
       boxShadow: open ? `0 12px 40px rgba(255,87,1,0.12), 0 0 0 1px ${D.orangeMid}` : `0 4px 24px rgba(0,0,0,0.4)`,
-      backdropFilter: "blur(24px)",
+      backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)",
       transition: "all 200ms cubic-bezier(0.16,1,0.3,1)"
     }}>
       <div onClick={() => setOpen(o => !o)} style={{ padding:"18px 20px", cursor:"pointer", display:"flex", alignItems:"center", gap:14 }}>
@@ -285,7 +304,7 @@ function PortfolioCard({ task }) {
 // is dropped into frontend/public later, swap the icon span for an <img>.
 function TrustBadge({ icon, label, sub }) {
   return (
-    <div style={{ display:"flex", alignItems:"center", gap:10, background:D.glass, border:`1px solid ${D.border}`, borderRadius:14, padding:"10px 16px", backdropFilter:"blur(12px)" }}>
+    <div style={{ display:"flex", alignItems:"center", gap:10, background:D.glass, border:`1px solid ${D.border}`, borderRadius:14, padding:"10px 16px", backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)" }}>
       <span style={{ fontSize:18, flexShrink:0 }}>{icon}</span>
       <div>
         <div style={{ fontSize:12, fontWeight:800, color:D.text1, letterSpacing:"0.02em" }}>{label}</div>
@@ -302,7 +321,7 @@ function FAQItem({ q, a }) {
     <div style={{
       background: open ? "rgba(255,87,1,0.04)" : D.glass,
       border:`1px solid ${open ? D.orangeMid : D.border}`,
-      borderRadius:18, overflow:"hidden", backdropFilter:"blur(20px)",
+      borderRadius:18, overflow:"hidden", backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)",
       transition:"background 200ms, border-color 200ms",
     }}>
       <button
@@ -327,7 +346,7 @@ function FAQItem({ q, a }) {
 // ─── SectionLabel ──────────────────────────────────────────────────────────
 function SectionLabel({ children }) {
   return (
-    <div style={{ display:"inline-flex", alignItems:"center", gap:10, background:"rgba(255,87,1,0.1)", border:"1px solid rgba(255,87,1,0.22)", backdropFilter:"blur(12px)", borderRadius:999, padding:"8px 16px", marginBottom:18 }}>
+    <div style={{ display:"inline-flex", alignItems:"center", gap:10, background:"rgba(255,87,1,0.1)", border:"1px solid rgba(255,87,1,0.22)", backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)", borderRadius:999, padding:"8px 16px", marginBottom:18 }}>
       <div style={{ width:6, height:6, borderRadius:"50%", background:D.orange, boxShadow:`0 0 0 4px rgba(255,87,1,0.18), 0 0 12px ${D.orange}` }} />
       <span style={{ fontSize:11, color:D.orange, fontWeight:700, letterSpacing:"0.14em", fontFamily:"'DM Mono',monospace", textTransform:"uppercase" }}>{children}</span>
     </div>
@@ -351,7 +370,7 @@ function PrimaryButton({ children, onClick }) {
 function GhostButton({ children, onClick }) {
   return (
     <button onClick={onClick}
-      style={{ padding:"14px 22px", borderRadius:14, border:`1px solid ${D.border}`, background:D.glass, backdropFilter:"blur(12px)", color:D.text2, fontSize:12, fontWeight:800, cursor:"pointer", fontFamily:"'DM Mono',monospace", letterSpacing:"0.06em", transition:"all 200ms cubic-bezier(0.16,1,0.3,1)" }}
+      style={{ padding:"14px 22px", borderRadius:14, border:`1px solid ${D.border}`, background:D.glass, backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)", color:D.text2, fontSize:12, fontWeight:800, cursor:"pointer", fontFamily:"'DM Mono',monospace", letterSpacing:"0.06em", transition:"all 200ms cubic-bezier(0.16,1,0.3,1)" }}
       onMouseEnter={e => { e.currentTarget.style.borderColor=D.orangeMid; e.currentTarget.style.color=D.orange; e.currentTarget.style.background="rgba(255,87,1,0.08)"; e.currentTarget.style.transform="translateY(-1px)" }}
       onMouseLeave={e => { e.currentTarget.style.borderColor=D.border; e.currentTarget.style.color=D.text2; e.currentTarget.style.background=D.glass; e.currentTarget.style.transform="translateY(0)" }}
       onMouseDown={e => { e.currentTarget.style.transform="translateY(0) scale(0.97)" }}
@@ -374,7 +393,7 @@ function PathOptionCard({ item, isActive, onClick }) {
         background: isActive ? `${c}12` : hov ? D.glassHover : D.glass,
         border:`1px solid ${isActive ? `${c}40` : hov ? D.borderBright : D.border}`,
         borderRadius:16, cursor:"pointer",
-        backdropFilter:"blur(16px)",
+        backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)",
         transition:"transform 180ms cubic-bezier(0.16,1,0.3,1), background 180ms, border-color 180ms, box-shadow 180ms",
         fontFamily:"inherit",
         transform: isActive ? "translateY(0)" : hov ? "translateY(-2px)" : "translateY(0)",
@@ -403,7 +422,7 @@ function FeatureCard({ item }) {
         background: hov ? D.glassHover : D.glass,
         border:`1px solid ${hov ? D.borderBright : D.border}`,
         borderRadius:22, padding:24, position:"relative", overflow:"hidden",
-        backdropFilter:"blur(24px)",
+        backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)",
         boxShadow: hov ? `0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px ${D.borderBright}, 0 0 40px rgba(255,87,1,0.08)` : `0 4px 24px rgba(0,0,0,0.3)`,
         transform: hov ? "translateY(-4px)" : "translateY(0)",
         transition:"transform 240ms cubic-bezier(0.16,1,0.3,1), box-shadow 240ms cubic-bezier(0.16,1,0.3,1), background 240ms, border-color 240ms",
@@ -439,7 +458,7 @@ function PathCard({ icon, title, desc, badge, badgeColor = "#FF5701", featured, 
         background: hov ? D.glassHover : D.glass,
         border:`1px solid ${hov || featured ? D.borderBright : D.border}`,
         borderRadius:22, padding:24, cursor:"pointer",
-        backdropFilter:"blur(24px)",
+        backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)",
         boxShadow: hov ? `0 24px 60px rgba(0,0,0,0.5), 0 0 40px rgba(255,87,1,0.08)` : featured ? `0 12px 40px rgba(0,0,0,0.4), 0 0 24px rgba(255,87,1,0.06)` : `0 4px 24px rgba(0,0,0,0.3)`,
         transform: hov ? "translateY(-3px)" : "translateY(0)",
         transition:"transform 240ms cubic-bezier(0.16,1,0.3,1), box-shadow 240ms cubic-bezier(0.16,1,0.3,1), background 240ms, border-color 240ms", position:"relative"
@@ -476,7 +495,7 @@ function NetworkCard({ item }) {
         background: hov ? D.glassHover : D.glass,
         border:`1px solid ${hov ? D.borderBright : D.border}`,
         borderRadius:20, padding:18, position:"relative", overflow:"hidden",
-        backdropFilter:"blur(20px)",
+        backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)",
         boxShadow: hov ? `0 16px 48px rgba(0,0,0,0.5), 0 0 0 1px ${D.borderBright}` : `0 4px 20px rgba(0,0,0,0.3)`,
         transform: hov ? "translateY(-3px)" : "translateY(0)",
         transition:"transform 220ms cubic-bezier(0.16,1,0.3,1), box-shadow 220ms cubic-bezier(0.16,1,0.3,1), background 220ms, border-color 220ms",
@@ -525,7 +544,7 @@ function ExecutivePreview() {
     { icon:"✦",  text:"Verified Authority badge active" },
   ]
   return (
-    <div style={{ background:D.glass, border:`1px solid rgba(201,168,76,0.22)`, borderRadius:28, padding:24, backdropFilter:"blur(24px)", boxShadow:`0 24px 60px rgba(0,0,0,0.6), 0 0 40px rgba(201,168,76,0.08), inset 0 1px 0 rgba(255,255,255,0.06)` }}>
+    <div style={{ background:D.glass, border:`1px solid rgba(201,168,76,0.22)`, borderRadius:28, padding:24, backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)", boxShadow:`0 24px 60px rgba(0,0,0,0.6), 0 0 40px rgba(201,168,76,0.08), inset 0 1px 0 rgba(255,255,255,0.06)` }}>
       <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:14, marginBottom:20 }}>
         <div>
           <div style={{ fontSize:10, color:D.text3, fontWeight:800, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:8, fontFamily:"'DM Mono',monospace" }}>Executive Authority Profile</div>
@@ -566,7 +585,7 @@ function OrgPreview() {
     { name:"Cybersecurity — Q2",  avgElo:1320, topElo:1960 },
   ]
   return (
-    <div style={{ background:D.glass, border:`1px solid rgba(217,119,6,0.22)`, borderRadius:28, padding:24, backdropFilter:"blur(24px)", boxShadow:`0 24px 60px rgba(0,0,0,0.6), 0 0 40px rgba(217,119,6,0.06), inset 0 1px 0 rgba(255,255,255,0.06)` }}>
+    <div style={{ background:D.glass, border:`1px solid rgba(217,119,6,0.22)`, borderRadius:28, padding:24, backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)", boxShadow:`0 24px 60px rgba(0,0,0,0.6), 0 0 40px rgba(217,119,6,0.06), inset 0 1px 0 rgba(255,255,255,0.06)` }}>
       <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:14, marginBottom:20 }}>
         <div>
           <div style={{ fontSize:10, color:D.text3, fontWeight:800, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:8, fontFamily:"'DM Mono',monospace" }}>Institution Intelligence Hub</div>
@@ -618,7 +637,7 @@ function ProfessionalOrbitPreview({ eloAnim }) {
   const modules = ["Orbit","Signal","Forge","Nexus","Vault","Launchpad","Mentor Hub","Pulse"]
   const mColors = [D.orange,D.blue,D.green,P,D.amber,D.orange,D.green,D.violet]
   return (
-    <div style={{ background:D.glass, border:`1px solid rgba(139,92,246,0.22)`, borderRadius:28, padding:24, backdropFilter:"blur(24px)", boxShadow:`0 24px 60px rgba(0,0,0,0.6), 0 0 40px rgba(139,92,246,0.06), inset 0 1px 0 rgba(255,255,255,0.06)` }}>
+    <div style={{ background:D.glass, border:`1px solid rgba(139,92,246,0.22)`, borderRadius:28, padding:24, backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)", boxShadow:`0 24px 60px rgba(0,0,0,0.6), 0 0 40px rgba(139,92,246,0.06), inset 0 1px 0 rgba(255,255,255,0.06)` }}>
       <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:18, marginBottom:18 }}>
         <div>
           <div style={{ fontSize:10, color:D.text3, fontWeight:800, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:8, fontFamily:"'DM Mono',monospace" }}>Career Intelligence — Orbit</div>
@@ -664,7 +683,7 @@ function ProfessionalOrbitPreview({ eloAnim }) {
 
 function AuraPreview({ eloAnim, skills }) {
   return (
-    <div style={{ background:D.glass, border:`1px solid rgba(255,87,1,0.22)`, borderRadius:28, padding:24, backdropFilter:"blur(24px)", boxShadow:`0 24px 60px rgba(0,0,0,0.6), 0 0 40px rgba(255,87,1,0.08), inset 0 1px 0 rgba(255,255,255,0.06)` }}>
+    <div style={{ background:D.glass, border:`1px solid rgba(255,87,1,0.22)`, borderRadius:28, padding:24, backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)", boxShadow:`0 24px 60px rgba(0,0,0,0.6), 0 0 40px rgba(255,87,1,0.08), inset 0 1px 0 rgba(255,255,255,0.06)` }}>
       <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:18, marginBottom:20 }}>
         <div>
           <div style={{ fontSize:10, color:D.text3, fontWeight:800, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:8, fontFamily:"'DM Mono',monospace" }}>Live Aura Preview</div>
@@ -876,7 +895,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       sub: "ELO-ranked proof, AI interviews, and market intelligence — start free, no card needed.",
       note: "Monthly plans · Cancel anytime · Powered by Razorpay · Prices in INR",
       plans: [
-        { label:"Free",  price:null,      accent:"#6B6560", featured:false, features:["1 Arena task every 15 days","Portfolio generation","Locked premium previews","Market reports at ₹49/report"], cta:"GET STARTED FREE →", ctaStyle:{ background:D.glass, backdropFilter:"blur(12px)", color:D.text1, border:`1px solid ${D.border}` } },
+        { label:"Free",  price:null,      accent:"#6B6560", featured:false, features:["1 Arena task every 15 days","Portfolio generation","Locked premium previews","Market reports at ₹49/report"], cta:"GET STARTED FREE →", ctaStyle:{ background:D.glass, backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)", color:D.text1, border:`1px solid ${D.border}` } },
         { label:"Pro",   price:"₹299/mo", sub:"Billed monthly", accent:"#3D4EAC", featured:false, features:["3 Arena tasks per day","3 AI Interview sessions/month","1 market report/month","Full Arena access","Portfolio generation"], cta:"START PRO →", ctaStyle:{ background:"#3D4EAC", color:"#fff" } },
         { label:"Elite", price:"₹599/mo", sub:"Best value",     accent:"#B8620A", featured:true,  features:["6 Arena tasks per day","5 AI Interview sessions/month","2 market reports/month","Personal branding video","Full advanced Arena","Portfolio generation"], cta:"GO ELITE →", ctaStyle:{ background:"linear-gradient(135deg,#FF5701,#B8620A)", color:"#fff", boxShadow:"0 8px 28px rgba(255,87,1,0.4)" } },
       ],
@@ -886,7 +905,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       sub: "Compensation Intelligence alone can unlock a ₹2–5L salary bump. Mentor Hub earnings cover your plan in one session.",
       note: "Monthly plans · Cancel anytime · Powered by Razorpay · Prices in INR",
       plans: [
-        { label:"Free",            price:null,      accent:"#6B6560", featured:false, features:["Basic Orbit dashboard","1 Forge challenge/week","Public verified profile","UAN verification"], cta:"START FREE →", ctaStyle:{ background:D.glass, backdropFilter:"blur(12px)", color:D.text1, border:`1px solid ${D.border}` } },
+        { label:"Free",            price:null,      accent:"#6B6560", featured:false, features:["Basic Orbit dashboard","1 Forge challenge/week","Public verified profile","UAN verification"], cta:"START FREE →", ctaStyle:{ background:D.glass, backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)", color:D.text1, border:`1px solid ${D.border}` } },
         { label:"Capabilio Pro",   price:"₹499/mo", sub:"₹3,999/yr — save 33%", accent:D.violet, featured:true,  features:["Full Orbit — all 4 career signals","Unlimited Forge challenges","Signal — 3 market reports/mo","Compensation Intelligence","Gap Mode + Gap Narrative Engine","Vault full verification","Nexus verified network"], cta:"GO CAPABILIO PRO →", ctaStyle:{ background:`linear-gradient(135deg,${D.violet},#7C3AED)`, color:"#fff", boxShadow:"0 8px 28px rgba(139,92,246,0.4)" } },
         { label:"Capabilio Elite", price:"₹999/mo", sub:"₹7,999/yr — save 33%", accent:"#4F46E5", featured:false, features:["Everything in Capabilio Pro","AI Interview — 5 sessions/mo","Mentor Hub listing (15% commission)","Transition Tracks access","Return-Ready Sprint","Signal — unlimited reports","Priority Launchpad matching"], cta:"GO CAPABILIO ELITE →", ctaStyle:{ background:"#4F46E5", color:"#fff" } },
       ],
@@ -896,9 +915,9 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       sub: "Luminary vs Authority: upgrading saves ₹3,000/mo in commissions on ₹50K monthly sessions. The plan pays for itself.",
       note: "Invite-only · Annual pricing available · Powered by Razorpay · All prices in INR",
       plans: [
-        { label:"Authority", price:"₹1,499/mo", sub:"₹14,999/yr — save 17%", accent:D.gold, featured:false, features:["Verified Legacy Profile","Time Market — 18% commission","2 Signal Rooms/month","Insight Cards (unlimited)","Peer Circle access","Influence Index dashboard"], cta:"REQUEST INVITE →", ctaStyle:{ background:D.glass, backdropFilter:"blur(12px)", color:D.gold, border:`1px solid ${D.gold}40` } },
+        { label:"Authority", price:"₹1,499/mo", sub:"₹14,999/yr — save 17%", accent:D.gold, featured:false, features:["Verified Legacy Profile","Time Market — 18% commission","2 Signal Rooms/month","Insight Cards (unlimited)","Peer Circle access","Influence Index dashboard"], cta:"REQUEST INVITE →", ctaStyle:{ background:D.glass, backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)", color:D.gold, border:`1px solid ${D.gold}40` } },
         { label:"Luminary",  price:"₹2,999/mo", sub:"₹29,999/yr — save 17%", accent:D.gold, featured:true,  features:["Everything in Authority","Time Market — 12% commission","Unlimited Signal Rooms","Venture Radar — private matching","Board Seat Exchange","Deal Room (3 active)","Peer Circle hosting"], cta:"REQUEST INVITE →", ctaStyle:{ background:`linear-gradient(135deg,${D.gold},#92680A)`, color:"#fff", boxShadow:`0 8px 28px rgba(201,168,76,0.4)` } },
-        { label:"Legacy",    price:"₹7,999/mo", sub:"Custom annual pricing",  accent:"#92680A", featured:false, features:["Everything in Luminary","Time Market — 8% commission","Unlimited Deal Rooms","Dedicated relationship manager","Co-hosted Signal Rooms","Priority cross-network promotion"], cta:"REQUEST INVITE →", ctaStyle:{ background:D.glassDeep, backdropFilter:"blur(12px)", color:D.gold, border:`1px solid ${D.gold}30` } },
+        { label:"Legacy",    price:"₹7,999/mo", sub:"Custom annual pricing",  accent:"#92680A", featured:false, features:["Everything in Luminary","Time Market — 8% commission","Unlimited Deal Rooms","Dedicated relationship manager","Co-hosted Signal Rooms","Priority cross-network promotion"], cta:"REQUEST INVITE →", ctaStyle:{ background:D.glassDeep, backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)", color:D.gold, border:`1px solid ${D.gold}30` } },
       ],
     },
     institution: {
@@ -935,7 +954,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
 
   // ── Glass card helper for detail rows
   const DetailRow = ({ icon, color, label, desc }) => (
-    <div style={{ display:"flex", gap:14, alignItems:"flex-start", padding:"14px 18px", background:D.glassDeep, border:`1px solid ${D.border}`, borderRadius:16, backdropFilter:"blur(12px)" }}>
+    <div style={{ display:"flex", gap:14, alignItems:"flex-start", padding:"14px 18px", background:D.glassDeep, border:`1px solid ${D.border}`, borderRadius:16, backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)" }}>
       <div style={{ width:36, height:36, borderRadius:10, background:`${color}14`, border:`1px solid ${color}28`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, flexShrink:0, boxShadow:`0 0 12px ${color}18` }}>{icon}</div>
       <div>
         <div style={{ fontSize:14, fontWeight:700, color:D.text1, marginBottom:3 }}>{label}</div>
@@ -1017,7 +1036,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
           <img src="/capabilio-logo-light.png" alt="Capabilio AI" style={{ height:28, width:"auto", display:"block" }} />
 
           {/* ── Live user count pill ────────────── */}
-          <div style={{ display:"flex", alignItems:"center", gap:8, background:"rgba(22,163,74,0.08)", border:"1px solid rgba(22,163,74,0.22)", borderRadius:999, padding:"7px 14px", backdropFilter:"blur(12px)" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8, background:"rgba(22,163,74,0.08)", border:"1px solid rgba(22,163,74,0.22)", borderRadius:999, padding:"7px 14px", backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)" }}>
             <span className="live-dot" style={{ width:7, height:7, borderRadius:"50%", background:"#22C55E", display:"inline-block", flexShrink:0, boxShadow:"0 0 8px #22C55E" }} />
             <span style={{ fontFamily:"'DM Mono',monospace", fontSize:12, fontWeight:800, color:"#22C55E", letterSpacing:"0.02em" }}>
               {liveCount.toLocaleString("en-IN")}
@@ -1107,7 +1126,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       {/* ── PROBLEM ─────────────────────────────────────────────────── */}
       <section ref={problemRevealRef} className={`lp-reveal${problemVisible?" visible":""}`} style={{ padding:"0 0 88px", background:"radial-gradient(50% 300px at 85% 0%, rgba(220,38,38,0.05), transparent 70%)" }}>
         <div className="lp-container">
-          <div style={{ background:D.glass, border:`1px solid ${D.border}`, borderRadius:30, padding:"38px 26px", backdropFilter:"blur(24px)", boxShadow:`0 24px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)` }}>
+          <div style={{ background:D.glass, border:`1px solid ${D.border}`, borderRadius:30, padding:"38px 26px", backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)", boxShadow:`0 24px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)` }}>
             <div style={{ textAlign:"center", marginBottom:36 }}>
               <SectionLabel>The problem nobody talks about</SectionLabel>
               <h2 style={{ fontSize:"clamp(30px,5vw,50px)", lineHeight:1.06, color:D.text1, marginBottom:14, letterSpacing:"-0.04em", fontWeight:800 }}>Resumes are the world&apos;s most<br /><span style={{ color:D.orange, fontStyle:"italic" }}>successful lie.</span></h2>
@@ -1137,18 +1156,18 @@ export default function LandingPage({ onGetStarted, onLogin }) {
               <p style={{ fontSize:15, color:D.text2, marginBottom:28, lineHeight:1.85 }}>Like chess.com — your ELO is earned through real performance. It rises when you solve hard problems, drops when you go inactive, and cannot be self-reported or inflated.</p>
               <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:20 }}>
                 {["400+ Student","800+ Professional","1000+ Proficient","1400+ Expert"].map((tier,i) => (
-                  <span key={i} style={{ padding:"8px 12px", borderRadius:999, fontSize:10, letterSpacing:"0.10em", textTransform:"uppercase", fontWeight:800, fontFamily:"'DM Mono',monospace", background: tier.includes("1000+") ? "rgba(255,87,1,0.12)" : D.glass, color: tier.includes("1000+") ? D.orange : D.text2, border:`1px solid ${tier.includes("1000+") ? "rgba(255,87,1,0.28)" : D.border}`, backdropFilter:"blur(12px)" }}>{tier}</span>
+                  <span key={i} style={{ padding:"8px 12px", borderRadius:999, fontSize:10, letterSpacing:"0.10em", textTransform:"uppercase", fontWeight:800, fontFamily:"'DM Mono',monospace", background: tier.includes("1000+") ? "rgba(255,87,1,0.12)" : D.glass, color: tier.includes("1000+") ? D.orange : D.text2, border:`1px solid ${tier.includes("1000+") ? "rgba(255,87,1,0.28)" : D.border}`, backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)" }}>{tier}</span>
                 ))}
               </div>
               {["Goes up when you solve hard problems.","Drops if you are inactive for 7+ days.","Cannot be self-reported or inflated.","Comparable across all users globally."].map((t,i) => (
-                <div key={i} style={{ display:"flex", gap:10, alignItems:"center", padding:"12px 14px", background:D.glass, border:`1px solid ${D.border}`, borderRadius:16, marginBottom:10, backdropFilter:"blur(12px)" }}>
+                <div key={i} style={{ display:"flex", gap:10, alignItems:"center", padding:"12px 14px", background:D.glass, border:`1px solid ${D.border}`, borderRadius:16, marginBottom:10, backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)" }}>
                   <span style={{ fontSize:14, color:D.orange }}>✦</span>
                   <span style={{ fontSize:14, color:D.text2 }}>{t}</span>
                 </div>
               ))}
             </div>
             {/* ELO card */}
-            <div style={{ background:D.glass, border:`1px solid rgba(255,87,1,0.22)`, borderRadius:28, padding:24, backdropFilter:"blur(24px)", boxShadow:`0 24px 60px rgba(0,0,0,0.5), 0 0 60px rgba(255,87,1,0.06), inset 0 1px 0 rgba(255,255,255,0.06)` }}>
+            <div style={{ background:D.glass, border:`1px solid rgba(255,87,1,0.22)`, borderRadius:28, padding:24, backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)", boxShadow:`0 24px 60px rgba(0,0,0,0.5), 0 0 60px rgba(255,87,1,0.06), inset 0 1px 0 rgba(255,255,255,0.06)` }}>
               <div style={{ textAlign:"center", marginBottom:24 }}>
                 <div style={{ fontFamily:"'DM Mono',monospace", fontSize:66, color:D.orange, lineHeight:1, marginBottom:6, fontWeight:800, textShadow:`0 0 40px rgba(255,87,1,0.4)` }}>1,847</div>
                 <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:D.text3, letterSpacing:"0.14em", textTransform:"uppercase", fontWeight:700 }}>Proficient · Top 8%</div>
@@ -1218,7 +1237,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
         <div className="lp-container">
           <div style={{ background:"radial-gradient(circle at 20% 15%, rgba(0,210,255,0.08), rgba(3,3,8,0) 55%)",
             border:"1px solid rgba(255,255,255,0.1)", borderRadius:30, padding:"44px 30px",
-            backdropFilter:"blur(24px)", boxShadow:"0 24px 80px rgba(0,0,0,0.5)" }}>
+            backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)", boxShadow:"0 24px 80px rgba(0,0,0,0.5)" }}>
             <div style={{ display:"flex", flexWrap:"wrap", gap:36, alignItems:"center", justifyContent:"space-between" }}>
               <div style={{ flex:"1 1 380px", minWidth:280 }}>
                 <span style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"4px 12px", borderRadius:99,
@@ -1249,7 +1268,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       <section ref={portfolioRevealRef} className={`lp-reveal${portfolioVisible?" visible":""}`} style={{ padding:"0 0 88px" }}>
         <div className="lp-container">
           {activeFlow==="executive" ? (
-            <div style={{ background:`linear-gradient(135deg, rgba(201,168,76,0.06), rgba(3,3,8,0) 60%)`, border:`1px solid rgba(201,168,76,0.2)`, borderRadius:30, padding:"38px 26px", backdropFilter:"blur(24px)", boxShadow:`0 24px 80px rgba(0,0,0,0.5), 0 0 60px rgba(201,168,76,0.06)` }}>
+            <div style={{ background:`linear-gradient(135deg, rgba(201,168,76,0.06), rgba(3,3,8,0) 60%)`, border:`1px solid rgba(201,168,76,0.2)`, borderRadius:30, padding:"38px 26px", backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)", boxShadow:`0 24px 80px rgba(0,0,0,0.5), 0 0 60px rgba(201,168,76,0.06)` }}>
               <div style={{ textAlign:"center", marginBottom:36 }}>
                 <SectionLabel>Verified legacy profile</SectionLabel>
                 <h2 style={{ fontSize:"clamp(30px,5vw,50px)", lineHeight:1.06, color:D.text1, marginBottom:14, letterSpacing:"-0.04em", fontWeight:800 }}>Your authority timeline.<br /><span style={{ color:D.gold, fontStyle:"italic" }}>Verified, not claimed.</span></h2>
@@ -1261,7 +1280,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
               <div style={{ textAlign:"center" }}><PrimaryButton onClick={() => openPath("executive","exec-legacy-cta")}>REQUEST EXECUTIVE INVITE →</PrimaryButton></div>
             </div>
           ) : activeFlow==="institution" ? (
-            <div style={{ background:`linear-gradient(135deg, rgba(217,119,6,0.06), rgba(3,3,8,0) 60%)`, border:`1px solid rgba(217,119,6,0.2)`, borderRadius:30, padding:"38px 26px", backdropFilter:"blur(24px)", boxShadow:`0 24px 80px rgba(0,0,0,0.5), 0 0 60px rgba(217,119,6,0.04)` }}>
+            <div style={{ background:`linear-gradient(135deg, rgba(217,119,6,0.06), rgba(3,3,8,0) 60%)`, border:`1px solid rgba(217,119,6,0.2)`, borderRadius:30, padding:"38px 26px", backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)", boxShadow:`0 24px 80px rgba(0,0,0,0.5), 0 0 60px rgba(217,119,6,0.04)` }}>
               <div style={{ textAlign:"center", marginBottom:36 }}>
                 <SectionLabel>Cohort intelligence + company trust</SectionLabel>
                 <h2 style={{ fontSize:"clamp(30px,5vw,50px)", lineHeight:1.06, color:D.text1, marginBottom:14, letterSpacing:"-0.04em", fontWeight:800 }}>Talent health, measured.<br /><span style={{ color:D.amber, fontStyle:"italic" }}>Trust, built automatically.</span></h2>
@@ -1273,7 +1292,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
               <div style={{ textAlign:"center" }}><PrimaryButton onClick={() => openPath("institution","org-cta")}>CREATE INSTITUTION PROFILE →</PrimaryButton></div>
             </div>
           ) : activeFlow==="professional" ? (
-            <div style={{ background:`linear-gradient(135deg, rgba(139,92,246,0.06), rgba(3,3,8,0) 60%)`, border:`1px solid rgba(139,92,246,0.2)`, borderRadius:30, padding:"38px 26px", backdropFilter:"blur(24px)", boxShadow:`0 24px 80px rgba(0,0,0,0.5), 0 0 60px rgba(139,92,246,0.04)` }}>
+            <div style={{ background:`linear-gradient(135deg, rgba(139,92,246,0.06), rgba(3,3,8,0) 60%)`, border:`1px solid rgba(139,92,246,0.2)`, borderRadius:30, padding:"38px 26px", backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)", boxShadow:`0 24px 80px rgba(0,0,0,0.5), 0 0 60px rgba(139,92,246,0.04)` }}>
               <div style={{ textAlign:"center", marginBottom:36 }}>
                 <SectionLabel>Auto-verified career timeline</SectionLabel>
                 <h2 style={{ fontSize:"clamp(30px,5vw,50px)", lineHeight:1.06, color:D.text1, marginBottom:14, letterSpacing:"-0.04em", fontWeight:800 }}>Every career move.<br /><span style={{ color:D.violet, fontStyle:"italic" }}>Verified, not claimed.</span></h2>
@@ -1349,7 +1368,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
                 {pricingFlow==="institution" ? (
                   <div style={{
                     maxWidth:560, margin:"0 auto 24px", textAlign:"center",
-                    background:D.glass, backdropFilter:"blur(24px)",
+                    background:D.glass, backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)",
                     border:`1px solid ${D.amber}40`, borderRadius:22, padding:"40px 32px",
                   }}>
                     <div style={{ fontSize:11, fontWeight:800, color:D.amber, letterSpacing:2, textTransform:"uppercase", marginBottom:10, fontFamily:"'DM Mono',monospace" }}>Organisation</div>
@@ -1367,7 +1386,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
                       background: plan.featured ? `linear-gradient(135deg, ${plan.accent}0D, rgba(3,3,8,0.8))` : D.glass,
                       borderRadius:22, border:`${plan.featured?2:1}px solid ${plan.featured?plan.accent+"50":D.border}`,
                       padding:"28px 24px",
-                      backdropFilter:"blur(24px)",
+                      backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)",
                       boxShadow: plan.featured ? `0 20px 60px rgba(0,0,0,0.5), 0 0 40px ${plan.accent}20, inset 0 1px 0 rgba(255,255,255,0.08)` : `0 4px 24px rgba(0,0,0,0.3)`,
                       position:"relative", display:"flex", flexDirection:"column",
                       transform: plan.featured?"scale(1.03)":"scale(1)"
@@ -1428,7 +1447,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
             background:"linear-gradient(135deg, rgba(255,87,1,0.12), rgba(3,3,8,0.95) 50%, rgba(139,92,246,0.08))",
             border:`1px solid rgba(255,87,1,0.22)`,
             borderRadius:30, padding:"56px 32px", textAlign:"center",
-            backdropFilter:"blur(24px)",
+            backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)",
             boxShadow:"0 30px 80px rgba(0,0,0,0.6), 0 0 80px rgba(255,87,1,0.08), inset 0 1px 0 rgba(255,255,255,0.06)",
             position:"relative", overflow:"hidden"
           }}>
