@@ -136,12 +136,18 @@ router.post("/orbit/verify", requireAuth, async (req, res) => {
     // Record coupon usage
     if (coupon_code) {
       const { data: coupon } = await supabaseAdmin.from("coupons")
-        .select("id").eq("code", coupon_code.toUpperCase()).single()
+        .select("id,used_count").eq("code", coupon_code.toUpperCase()).single()
       if (coupon) {
         await supabaseAdmin.from("coupon_redemptions")
           .insert({ coupon_id: coupon.id, user_id: uid }).catch(() => {})
+        // BUG FIX (production audit, same class as pulseNexus.js's comment
+        // route): supabaseAdmin.raw(...) doesn't exist on the real
+        // @supabase/supabase-js client -- it threw synchronously here,
+        // which escaped the surrounding try block and 500'd the whole
+        // subscription-purchase response even though the subscription
+        // itself (lines 130-134) had already been applied successfully.
         await supabaseAdmin.from("coupons")
-          .update({ used_count: supabaseAdmin.raw("used_count + 1") }).eq("id", coupon.id).catch(() => {})
+          .update({ used_count: (coupon.used_count || 0) + 1 }).eq("id", coupon.id).catch(() => {})
       }
     }
 

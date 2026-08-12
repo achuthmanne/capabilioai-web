@@ -525,6 +525,7 @@ function PostCard({ post, user, onInteract }) {
   const [interactions, setInteractions] = useState(new Set(post.user_interactions||[]))
   const [showReactions,setShowReactions]= useState(false)
   const [expanded,     setExpanded]     = useState(false)
+  const [commentError, setCommentError] = useState(null)
 
   const a     = post.author || {}
   const iLong = (post.content||"").length > 280
@@ -547,11 +548,18 @@ function PostCard({ post, user, onInteract }) {
   async function submitComment() {
     if (!commentText.trim()) return
     setPosting(true)
+    setCommentError(null)
     try {
       const { comment } = await pulseApi.addComment(post.id, commentText.trim())
       setComments(c=>[...c,comment])
       setCommentText("")
-    } catch(e) { console.error(e) }
+    } catch(e) {
+      // BUG FIX (production audit): this previously only console.error'd,
+      // so a failed comment silently did nothing from the user's
+      // perspective -- the text stayed in the box with no explanation.
+      console.error(e)
+      setCommentError(e.message || "Couldn't post your comment — try again.")
+    }
     finally { setPosting(false) }
   }
 
@@ -638,9 +646,16 @@ function PostCard({ post, user, onInteract }) {
               ))}
             </div>
           )}
-          <button className="pbtn"
+          <button className="pbtn" onClick={()=>toggleReaction("acknowledge")}
             style={{ width:"100%", padding:"9px 4px", background:"transparent", border:"none", borderRadius:T.r, color: interactions.size>0?T.indigo:T.ink2, fontSize:13, fontWeight:600, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}>
-            {interactions.size>0?"👏":"👏"} React
+            {/* BUG FIX (production audit): this button previously had no
+                onClick at all -- the only way to react was to hover the
+                wrapping div to reveal the popup above and click one of ITS
+                buttons, which doesn't work on touch devices and isn't what
+                a single click on "React" itself should do. Clicking React
+                directly now toggles the default "acknowledge" (👏) reaction;
+                hovering still reveals the popup for picking a specific one. */}
+            👏 React
           </button>
         </div>
 
@@ -672,15 +687,18 @@ function PostCard({ post, user, onInteract }) {
           ))}
           <div style={{ display:"flex", gap:10, alignItems:"flex-start" }}>
             <Avatar name={user?.user_metadata?.full_name||"?"} size={32}/>
-            <div style={{ flex:1, background:T.surface, border:`1.5px solid ${T.border}`, borderRadius:24, display:"flex", alignItems:"center", gap:8, padding:"6px 12px" }}>
-              <input value={commentText} onChange={e=>setCommentText(e.target.value)}
-                onKeyDown={e=>e.key==="Enter"&&!e.shiftKey&&submitComment()}
-                placeholder="Add a comment…"
-                style={{ flex:1, border:"none", outline:"none", fontSize:13, fontFamily:T.sans, background:"transparent", color:T.ink }}/>
-              <button onClick={submitComment} disabled={posting||!commentText.trim()}
-                style={{ padding:"4px 12px", background:T.indigo, border:"none", borderRadius:99, color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", opacity:posting||!commentText.trim()?0.5:1 }}>
-                {posting ? <Spin size={12} color="#fff"/> : "Post"}
-              </button>
+            <div style={{ flex:1 }}>
+              <div style={{ background:T.surface, border:`1.5px solid ${T.border}`, borderRadius:24, display:"flex", alignItems:"center", gap:8, padding:"6px 12px" }}>
+                <input value={commentText} onChange={e=>{setCommentText(e.target.value); if(commentError)setCommentError(null)}}
+                  onKeyDown={e=>e.key==="Enter"&&!e.shiftKey&&submitComment()}
+                  placeholder="Add a comment…"
+                  style={{ flex:1, border:"none", outline:"none", fontSize:13, fontFamily:T.sans, background:"transparent", color:T.ink }}/>
+                <button onClick={submitComment} disabled={posting||!commentText.trim()}
+                  style={{ padding:"4px 12px", background:T.indigo, border:"none", borderRadius:99, color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", opacity:posting||!commentText.trim()?0.5:1 }}>
+                  {posting ? <Spin size={12} color="#fff"/> : "Post"}
+                </button>
+              </div>
+              {commentError&&<div style={{ fontSize:11.5, color:"#DC2626", marginTop:4, paddingLeft:12 }}>{commentError}</div>}
             </div>
           </div>
         </div>

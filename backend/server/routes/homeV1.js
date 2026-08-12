@@ -35,15 +35,23 @@ router.get("/pro/v1/home/priority", requireAuth, async (req, res) => {
     const uid = req.user.id
     const weekOf = currentWeekOf()
 
-    const [{ data: profile }, { count: skillsCount }, { data: pulse }] = await Promise.all([
+    const [{ data: profile, error: profileErr }, { count: skillsCount }, { data: pulse }] = await Promise.all([
       supabaseAdmin.from("profiles")
-        .select("target_role,keyword,experiences,vault_files,epfo_verified,verified,summary")
+        .select("target_role,keyword,experiences,vault_files,uan_verified,verified,profile_summary")
         .eq("id", uid).single(),
       supabaseAdmin.from("user_skills")
         .select("id", { count: "exact", head: true }).eq("user_id", uid),
       supabaseAdmin.from("weekly_pulses")
         .select("status").eq("user_id", uid).eq("week_of", weekOf).maybeSingle(),
     ])
+
+    // Don't silently treat a failed profile fetch as "no resume data" — that
+    // previously masked a bug where an invalid .select() column list made
+    // this query error on every request, permanently pinning the "upload
+    // resume" banner regardless of actual profile content.
+    if (profileErr) {
+      console.error("[home/priority] profiles fetch failed", profileErr)
+    }
 
     const experiences = Array.isArray(profile?.experiences) ? profile.experiences : []
     const vaultFiles  = Array.isArray(profile?.vault_files)  ? profile.vault_files  : []
@@ -57,9 +65,9 @@ router.get("/pro/v1/home/priority", requireAuth, async (req, res) => {
       hasResumeOrTimeline: experiences.length > 0 || vaultFiles.length > 0,
       weeklyPulseStatus,
       hasTargetRole: !!(profile?.target_role || profile?.keyword),
-      isEmploymentVerified: !!(profile?.epfo_verified || profile?.verified),
+      isEmploymentVerified: !!(profile?.uan_verified || profile?.verified),
       skillsCount: skillsCount || 0,
-      hasSummary: !!profile?.summary,
+      hasSummary: !!profile?.profile_summary,
     }
 
     const priority = computeTodayPriority(ctx)

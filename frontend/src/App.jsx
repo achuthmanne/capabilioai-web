@@ -1433,7 +1433,6 @@ function App() {
     { id: "launchpad", label: "Launchpad", page: "launchpad",        prefix: "🚀" },
     { id: "pulse",     label: "Pulse",     page: "pulse",            prefix: "📰" },
     { id: "nexus",     label: "Connect",   page: "nexus",            prefix: "🤝" },
-    { id: "myTasks",   label: "Tasks",     page: "myTasks",          prefix: "📋" },
     ...(FLAGS.career_os_company ? [{ id: "company", label: "Company", page: "company", prefix: "🏢" }] : []),
     { id: "aura",      label: "Profile",   page: "aura",             prefix: "👤" },
   ] : [
@@ -1442,9 +1441,13 @@ function App() {
     { id: "launchpad", label: "Launchpad", page: "launchpad",        prefix: "🚀" },
     { id: "pulse",     label: "Pulse",     page: "pulse",            prefix: "📰" },
     { id: "nexus",     label: "Connect",   page: "nexus",            prefix: "🤝" },
-    { id: "myTasks",   label: "Tasks",     page: "myTasks",          prefix: "📋" },
     { id: "aura",      label: "Profile",   page: "aura",             prefix: "👤" },
   ]
+  // "Tasks" (My Tasks — recruiter-assigned work samples reached via
+  // College placement-cell approval, see MyTasks.jsx) removed from
+  // PROFESSIONAL_HEADER_NAV (2026-08-12): the feature is designed for the
+  // Student path only (student->college->recruiter access flow), left in
+  // STUDENT_HEADER_NAV above where it belongs.
 
   const AUTHORITY_HEADER_NAV = [
     { id: "home",        label: "Home",        page: "executiveHome",    prefix: "⌂" },

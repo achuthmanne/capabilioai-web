@@ -20,6 +20,16 @@ function ProfileCard({ profile, currentUser, onConnect, onFollow }) {
 
   const isOwn = currentUser?.id === profile.id
   const VER_LABEL = { fully_trusted:"Trusted",employment_verified:"Verified",unverified:"" }
+  // 2026-08-12 fix: the card previously only read `profile.name`, which is
+  // null for most real signups (they populate display_name/username
+  // instead, same fallback chain used everywhere else in pulseNexus.js) —
+  // that's what produced the "?" avatar and literal "Professional" text for
+  // real, named users. Also surface the real path (student vs professional)
+  // instead of always claiming "Professional", since Discover intentionally
+  // is NOT filtered to professionals-only server-side.
+  const displayName = profile.display_name || profile.name || profile.username || "Capabilio member"
+  const PATH_LABEL = { student:"Student", professional:"Professional", authority:"Executive", institution:"Institution" }
+  const pathLabel = PATH_LABEL[profile.path] || "Member"
 
   async function handleConnect() {
     if (isOwn||status!=="none") return
@@ -54,18 +64,26 @@ function ProfileCard({ profile, currentUser, onConnect, onFollow }) {
       {/* Cover + Avatar */}
       <div style={{height:56,background:`linear-gradient(135deg,${T.indigo}22,${T.purple}22)`,position:"relative"}}>
         <div style={{position:"absolute",bottom:-20,left:16,width:48,height:48,borderRadius:"50%",border:"3px solid #fff",overflow:"hidden",background:"#FAF7F2",display:"flex",alignItems:"center",justifyContent:"center"}}>
-          {profile.profile_photo_url?<img src={profile.profile_photo_url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:20,fontWeight:800,color:T.indigo}}>{profile.name?.[0]||"?"}</span>}
+          {profile.profile_photo_url?<img src={profile.profile_photo_url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:20,fontWeight:800,color:T.indigo}}>{displayName?.[0]?.toUpperCase()||"?"}</span>}
         </div>
         {profile.is_mentor&&<div style={{position:"absolute",bottom:8,right:12,fontSize:10,background:T.amber2,color:T.amber,padding:"2px 8px",borderRadius:99,fontWeight:700}}>MENTOR</div>}
       </div>
       <div style={{padding:"28px 16px 16px"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
           <div>
-            <div style={{fontSize:14,fontWeight:700,color:T.ink,marginBottom:1}}>{profile.name||"Professional"}</div>
-            {VER_LABEL[profile.verification_state]&&<span style={{fontSize:10,background:T.green2,color:T.green,padding:"1px 6px",borderRadius:99,fontWeight:700}}>✓ {VER_LABEL[profile.verification_state]}</span>}
+            <div style={{fontSize:14,fontWeight:700,color:T.ink,marginBottom:1}}>{displayName}</div>
+            <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+              <span style={{fontSize:10,background:T.purple2,color:T.purple,padding:"1px 6px",borderRadius:99,fontWeight:700}}>{pathLabel}</span>
+              {VER_LABEL[profile.verification_state]&&<span style={{fontSize:10,background:T.green2,color:T.green,padding:"1px 6px",borderRadius:99,fontWeight:700}}>✓ {VER_LABEL[profile.verification_state]}</span>}
+            </div>
           </div>
         </div>
-        <div style={{fontSize:12,color:T.ink2,marginBottom:4,lineHeight:1.4}}>{profile.headline||profile.current_role_title||""}{profile.current_company?` · ${profile.current_company}`:""}</div>
+        <div style={{fontSize:12,color:T.ink2,marginBottom:4,lineHeight:1.4}}>
+          {profile.headline||profile.current_role_title||profile.keyword||""}{profile.current_company?` · ${profile.current_company}`:""}
+        </div>
+        {typeof profile.elo_rating==="number"&&profile.elo_rating>0&&(
+          <div style={{fontSize:11,color:T.ink3,marginBottom:6,fontWeight:600}}>ELO {profile.elo_rating}</div>
+        )}
         <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:12}}>
           {techTags.filter(Boolean).map((t,i)=><span key={i} style={{fontSize:10,background:T.indigo2,color:T.indigo,padding:"1px 6px",borderRadius:99}}>{t}</span>)}
         </div>
@@ -79,7 +97,7 @@ function ProfileCard({ profile, currentUser, onConnect, onFollow }) {
         )}
         {msgOpen&&(
           <div style={{marginTop:8}}>
-            <textarea value={msgText} onChange={e=>setMsgText(e.target.value)} placeholder={`Message ${profile.name||""}…`} rows={2}
+            <textarea value={msgText} onChange={e=>setMsgText(e.target.value)} placeholder={`Message ${displayName}…`} rows={2}
               style={{width:"100%",padding:"8px 10px",border:`1px solid ${T.border}`,borderRadius:8,fontSize:12,resize:"none",fontFamily:"inherit",outline:"none",boxSizing:"border-box",marginBottom:6}}/>
             <div style={{display:"flex",gap:6}}>
               <button onClick={()=>setMsgOpen(false)} style={{flex:1,padding:"6px",background:"#FAF7F2",border:`1px solid ${T.border}`,borderRadius:7,fontSize:12,cursor:"pointer"}}>Cancel</button>

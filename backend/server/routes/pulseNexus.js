@@ -485,21 +485,35 @@ router.post("/pulse/posts/:id/comments", requireAuth, async (req, res) => {
     }).select("*, author:profiles!author_id(id,name,display_name,username,profile_photo_url)").single()
     if (error) throw error
 
-    await supabaseAdmin.from("pulse_posts")
-      .update({ comment_count: supabaseAdmin.raw("comment_count + 1") })
-      .eq("id", req.params.id)
-      .catch(() => {})
+    // BUG FIX (production audit): `supabaseAdmin.raw(...)` doesn't exist on
+    // the real @supabase/supabase-js client (supabaseAdmin is a thin proxy
+    // over it, see lib/supabase.js) -- calling it threw synchronously while
+    // building the .update() args, BEFORE the attached .catch() could ever
+    // run, which escaped to the route's outer catch and 500'd the whole
+    // request even though the comment row above had already been inserted
+    // successfully. Read-then-write instead, same pattern already used for
+    // acknowledge/signal counts in /nexus/interact above.
+    const { data: post } = await supabaseAdmin.from("pulse_posts").select("author_id,comment_count").eq("id", req.params.id).single()
+    if (post) {
+      await supabaseAdmin.from("pulse_posts")
+        .update({ comment_count: (post.comment_count || 0) + 1 })
+        .eq("id", req.params.id)
+        .catch(() => {})
+    }
 
-    // Notify post author
-    const { data: post } = await supabaseAdmin.from("pulse_posts").select("author_id").eq("id", req.params.id).single()
+    // Notify post author -- same real notifications schema (user_id, type,
+    // actor_id, entity_id, entity_type) used by /nexus/interact above and
+    // /nexus/connect/follow; this insert previously used title/reference_id/
+    // reference_type, none of which exist on the notifications table, so
+    // PostgREST silently rejected every comment notification even before
+    // the .raw() bug above was hit.
     if (post?.author_id && post.author_id !== req.user.id) {
       await supabaseAdmin.from("notifications").insert({
-        user_id:        post.author_id,
-        type:           "post_comment",
-        title:          "New Comment",
-        actor_id:       req.user.id,
-        reference_id:   req.params.id,
-        reference_type: "pulse_post",
+        user_id:     post.author_id,
+        type:        "post_comment",
+        actor_id:    req.user.id,
+        entity_id:   req.params.id,
+        entity_type: "pulse_post",
       }).catch(() => {})
     }
 
@@ -517,7 +531,7 @@ router.get("/nexus/search", optionalAuth, async (req, res) => {
     const offset = (parseInt(page) - 1) * parseInt(limit)
 
     let query = supabaseAdmin.from("profiles")
-      .select("id,name,display_name,username,headline,keyword,elo_rating,profile_photo_url,current_company,current_role_title,verification_state,is_mentor,path,years_of_experience", { count: "exact" })
+      .select("id,name,display_name,username,headline,keyword,elo_rating,profile_photo_url,current_company,current_role_title,verification_state,is_mentor,path,years_of_experience,skill_graph", { count: "exact" })
       .neq("path", "institution")
       // Career OS Tranche 3: enforce the Privacy section's "Appear in
       // Capabilio search" toggle (profiles.searchable, default true) here —
@@ -526,6 +540,11 @@ router.get("/nexus/search", optionalAuth, async (req, res) => {
       // toggle previously wrote to a nonexistent column and did nothing).
       .eq("searchable", true)
       .range(offset, offset + parseInt(limit) - 1)
+
+    // 2026-08-12 fix: a logged-in user's own profile was showing up in
+    // their own Discover grid (never excluded), which is where some of the
+    // "unwanted connections" came from.
+    if (req.user?.id) query = query.neq("id", req.user.id)
 
     if (q) query = query.or(`name.ilike.%${q}%,display_name.ilike.%${q}%,username.ilike.%${q}%,headline.ilike.%${q}%,current_company.ilike.%${q}%,keyword.ilike.%${q}%`)
     if (role) query = query.ilike("current_role_title", `%${role}%`)
