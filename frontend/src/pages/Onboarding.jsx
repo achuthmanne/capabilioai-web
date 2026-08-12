@@ -387,15 +387,17 @@ const getStudentInitialElo = ({ score = 0, total = 25 }) => {
 const getStudentDisplayElo = ({ score, total }) =>
   getStudentInitialElo({ score, total })
 
-const getProfessionalInitialElo = ({ suggestedElo, auraScore }) => {
-  if (typeof suggestedElo === "number") return clamp(suggestedElo, 800, 1600)
-  if (typeof auraScore === "number") {
-    if (auraScore >= 75) return 1400
-    if (auraScore >= 55) return 1200
-    if (auraScore >= 35) return 1000
-  }
-  return 800
-}
+// NEVER use AI's suggested eloRating for professionals either — same
+// reasoning as the student rule above: the AI is guessing seniority from
+// resume text, not measuring anything real. Capabilio's product rule
+// (see AccountType.jsx / LandingPage.jsx marketing copy, and the
+// standalone Weekly Pulse engine at backend/server/lib/professionalElo/
+// eloEngine.js which already hardcodes STARTING_ELO=800) is that every
+// professional starts at a flat 800 and grows their ELO through real,
+// scored Weekly Pulse assessments after onboarding — not from an AI's
+// one-shot resume read. suggestedElo/auraScore are kept as accepted
+// params (unused) so none of this function's call sites need to change.
+const getProfessionalInitialElo = () => getBaseEloByPath("professional")
 const slugifyUsername = (s = "") => {
   const base = String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").replace(/--+/g, "-") || "user"
   // Append 4-char random suffix to guarantee uniqueness across same-name users
@@ -405,6 +407,37 @@ const slugifyUsername = (s = "") => {
 const normalizeSkills = (skills) =>
   Array.from(new Set((skills || []).filter(Boolean).map(s => String(s).trim()).filter(Boolean)))
 const safeNumber = (v, fb = 0) => (typeof v === "number" && !Number.isNaN(v) ? v : fb)
+
+// ─── Resume identity check ─────────────────────────────────────────
+// Business rule: an uploaded resume must plausibly belong to the signed-in
+// account, otherwise the Aura score, extracted experience, and username all
+// get built from a stranger's document. Confirmed in production: an account
+// uploaded a resume for a different person and both the score AND the
+// generated username silently absorbed that other person's identity, with
+// no warning to the user.
+//
+// This is intentionally a loose heuristic (token overlap, not exact string
+// equality) — a legit resume with a middle name, nickname, honorific, or
+// different capitalization/punctuation than the account's display name
+// should still pass. It only needs to catch the case where the resume is
+// for a genuinely different person, which shows up as zero shared name
+// tokens against every identity signal the account has (full name, OAuth
+// name, email local-part — people's emails very often contain their own
+// name, so this triple-check keeps false positives low).
+const normalizeNameStr = (s = "") => String(s).toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim()
+const nameTokens = (s = "") => normalizeNameStr(s).split(" ").filter(t => t.length >= 2)
+
+function resumeNameMatchesAccount(resumeName, candidateIdentities) {
+  const resumeToks = nameTokens(resumeName)
+  if (resumeToks.length === 0) return true // nothing usable extracted — don't block on missing data
+  const candidates = (candidateIdentities || []).filter(Boolean)
+  if (candidates.length === 0) return true // no account identity to compare against either — don't block
+  return candidates.some(candidate => {
+    const candToks = nameTokens(candidate)
+    if (candToks.length === 0) return false
+    return resumeToks.some(rt => candToks.some(ct => ct === rt || ct.includes(rt) || rt.includes(ct)))
+  })
+}
 
 // ─── Resume helpers (shared by payload builders) ───────────────────
 const isProjectEntry = (e) => {
@@ -928,6 +961,35 @@ function ResultModal({ result, keyword, questions, onGoToDashboard, savingResult
           <PrimaryBtn onClick={onGoToDashboard} loading={savingResult}>
             {saveError ? "↻ Try Again" : "🚀 Go to My Dashboard →"}
           </PrimaryBtn>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Resume/Account Name Mismatch Modal ─────────────────────────────
+// Blocks the flow entirely — no Aura scoring call is made while this is up
+// (see runProfessionalAnalysis) — until the user either uploads a matching
+// resume or acknowledges and re-uploads.
+function NameMismatchModal({ resumeName, accountName, onReupload, onClose }) {
+  const [vis, setVis] = useState(false)
+  useEffect(() => { const t = setTimeout(() => setVis(true), 20); return () => clearTimeout(t) }, [])
+  return (
+    <div style={{ position:"fixed",inset:0,zIndex:10000,background:"rgba(255,255,255,0.97)",backdropFilter:"blur(16px)",display:"flex",alignItems:"center",justifyContent:"center",opacity:vis?1:0,transition:"opacity 0.25s",padding:16 }}>
+      <div style={{ width:"100%",maxWidth:420,background:T.surface,border:`1px solid ${T.red}30`,borderRadius:20,padding:"28px 26px",boxShadow:"0 40px 80px rgba(0,0,0,0.7)",transform:vis?"scale(1)":"scale(0.95)",transition:"transform 0.3s cubic-bezier(0.34,1.56,0.64,1)" }}>
+        <div style={{ fontSize:32,marginBottom:12 }}>⚠️</div>
+        <div style={{ fontSize:18,fontWeight:900,color:T.text,marginBottom:10,fontFamily:T.display }}>This resume doesn't match your profile</div>
+        <div style={{ fontSize:13,color:T.muted,lineHeight:1.55,marginBottom:16 }}>
+          Your account is registered as <strong style={{ color:T.text }}>{accountName}</strong>, but the resume you
+          uploaded appears to belong to <strong style={{ color:T.text }}>{resumeName}</strong>. Capabilio scores are
+          tied to your verified identity, so we can't score a resume that doesn't match your profile.
+        </div>
+        <div style={{ fontSize:12,color:T.muted,lineHeight:1.5,marginBottom:20,background:"rgba(0,0,0,0.03)",borderRadius:T.radius,padding:"10px 12px" }}>
+          Please upload your own resume, or update your account name in Settings if <strong style={{ color:T.text }}>{accountName}</strong> isn't correct.
+        </div>
+        <div style={{ display:"flex",gap:10 }}>
+          <button onClick={onClose} style={{ flex:1,padding:"11px 14px",borderRadius:T.radius,border:`1px solid ${T.muted}30`,background:"transparent",color:T.muted,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:T.body }}>Cancel</button>
+          <button onClick={onReupload} style={{ flex:1,padding:"11px 14px",borderRadius:T.radius,border:"none",background:T.primary,color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:T.body }}>Upload a Different Resume</button>
         </div>
       </div>
     </div>
@@ -1767,6 +1829,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
   const [auraResult, setAuraResult] = useState(null)
   const [showAuraModal, setShowAuraModal] = useState(false)
   const [proError, setProError] = useState("")
+  const [nameMismatch, setNameMismatch] = useState(null) // { resumeName, accountName } | null
   const [proResumeData, setProResumeData] = useState(null)
   const [linkedinData, setLinkedinData] = useState(null)
 
@@ -2006,6 +2069,19 @@ export default function Onboarding({ user, onComplete, onBack }) {
     const linkedinOk = linkedinUrlStatus==="done"||linkedinUrlStatus==="limited"
     const hasAny = proResumeStatus==="done"||linkedinOk||githubFetchStatus==="done"
     if (!hasAny) { setProError("Please provide at least one input — resume, LinkedIn URL, or GitHub username."); return }
+
+    // Identity check: only meaningful when a resume was actually uploaded —
+    // a LinkedIn-only or GitHub-only flow has no "wrong person's document"
+    // risk. Runs before any AI scoring call so a mismatched resume is never
+    // silently scored (see resumeNameMatchesAccount above for the rationale).
+    if (proResumeData?.name) {
+      const accountIdentities = [user.user_metadata?.full_name, user.user_metadata?.name, user.email?.split("@")[0]]
+      if (!resumeNameMatchesAccount(proResumeData.name, accountIdentities)) {
+        setNameMismatch({ resumeName: proResumeData.name, accountName: getUserDisplayName() })
+        return
+      }
+    }
+
     setProError(""); setProAnalyzing(true); setProAnalyzingMsg("🔍 Merging your profile data…")
     const mergedSkills = normalizeSkills([...(proResumeData?.skills||[]),...(linkedinData?.skills||[]),...(githubData?.languages?.map(l=>l.name)||[])])
     const mergedExp = [...(proResumeData?.experience||[]),...(linkedinData?.experience||[]).filter(le=>!(proResumeData?.experience||[]).some(re=>re.company===le.company))]
@@ -2190,7 +2266,13 @@ export default function Onboarding({ user, onComplete, onBack }) {
     if (!auraResult||savingResult) return
     setSavingResult(true)
     try {
-      const username = slugifyUsername(auraResult?.extractedData?.name || getUserDisplayName())
+      // BUG FIX: this previously preferred auraResult.extractedData.name (the
+      // RESUME's claimed name, which can be a merge of resume+LinkedIn text)
+      // over the actual signed-in account's own name — so a resume uploaded
+      // under the wrong account minted a username off the resume's identity,
+      // not the account holder's. The username must always identify the
+      // account, never the uploaded document.
+      const username = slugifyUsername(getUserDisplayName())
       let proResumeBase64 = ""
       if (proResumeFile && proResumeFile.size < 3 * 1024 * 1024) {
         try { proResumeBase64 = await fileToBase64(proResumeFile) } catch {}
@@ -3023,6 +3105,17 @@ export default function Onboarding({ user, onComplete, onBack }) {
           </Card>
         </div>
         {showAuraModal&&auraResult&&<ProfessionalResultModal auraResult={auraResult} onGoToDashboard={handleProGoToDashboard} savingResult={savingResult} />}
+        {nameMismatch && (
+          <NameMismatchModal
+            resumeName={nameMismatch.resumeName}
+            accountName={nameMismatch.accountName}
+            onClose={() => setNameMismatch(null)}
+            onReupload={() => {
+              setNameMismatch(null)
+              setProResumeFile(null); setProResumeData(null); setProResumeStatus("idle")
+            }}
+          />
+        )}
       </Screen>
     )
   }

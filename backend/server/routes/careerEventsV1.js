@@ -54,10 +54,19 @@ async function syncUserCareerEvents(uid) {
   const rows = buildSyncRows(uid, { experiences, certifications, legacyTimelineRows: legacyRows || [] })
   if (rows.length === 0) return { inserted: 0, attempted: 0 }
 
-  const { error, data } = await supabaseAdmin
-    .from("career_events")
-    .upsert(rows, { onConflict: "user_id,source_type,source_id,event_type", ignoreDuplicates: true })
-    .select("id")
+  // BUG FIX: career_events' idempotency guarantee is a PARTIAL unique index
+  // (user_id, source_type, source_id, event_type) WHERE source_id IS NOT
+  // NULL AND deleted_at IS NULL — not a plain unique constraint. PostgREST's
+  // .upsert({ onConflict: "..." }) generates `ON CONFLICT (columns) DO
+  // NOTHING` with no WHERE predicate, which Postgres cannot match against a
+  // partial index (42P10: no unique or exclusion constraint matching the ON
+  // CONFLICT specification) — this was throwing on every single sync call
+  // for any user with real experiences/certifications data, surfaced to
+  // users as "Couldn't load your timeline." A plpgsql function can express
+  // the same partial-index-matching ON CONFLICT ... WHERE ... that the REST
+  // upsert endpoint can't, so the sync goes through supabaseAdmin.rpc()
+  // instead of .upsert() here. See migration fix_career_events_sync_upsert.
+  const { error, data } = await supabaseAdmin.rpc("upsert_career_events_sync", { p_rows: rows })
 
   if (error) {
     console.error("[career/timeline sync]", error)
