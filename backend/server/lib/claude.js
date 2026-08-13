@@ -1,21 +1,28 @@
-// ─── Anthropic Claude client ──────────────────────────────────────────────────
-// Use for tasks where output quality matters to the user directly:
-//   - Arena / Forge submission grading  → claude-haiku-4-5 (fast, cheap, accurate)
-//   - Career analysis, Orbit insights  → claude-sonnet-4-6 (best reasoning)
-//   - Executive content generation     → claude-sonnet-4-6
-//   - Professional profile analysis    → claude-sonnet-4-6
-
-import Anthropic from "@anthropic-ai/sdk"
-
-const client = () => {
-  const key = process.env.ANTHROPIC_API_KEY
-  if (!key || key === "your_anthropic_key_here") throw new Error("ANTHROPIC_API_KEY not set in .env")
-  return new Anthropic({ apiKey: key })
-}
+// ─── AI client (Groq-backed) ───────────────────────────────────────────────
+// Historically backed by the Anthropic SDK; switched to Groq (2026-08-13) at
+// the account owner's explicit request — this Capabilio deployment has Groq
+// credits, not Anthropic credits, and Arena V2 grading was hard-failing in
+// production on every submission (score 0 + a real ELO penalty) because the
+// Anthropic account had run out of credit. See groq.js for the underlying
+// client (model fallback chain on 429, native JSON mode) — already used
+// successfully across a dozen other routes in this codebase.
+//
+// Every existing caller of claude() / gradeSubmission() / analyzeCareer()
+// keeps working with ZERO changes to their own code — same function names,
+// same call signature, same return contract (string, or a parsed object
+// when json:true). Only the transport underneath changed.
+//
+// CLAUDE_HAIKU / CLAUDE_SONNET are kept as exported constants (many callers
+// pass them as the `model` option) but no longer name real Claude models —
+// they're semantic labels now mapped to Groq's top-quality model
+// (llama-3.3-70b-versatile), not the fast/cheap 8B tier, so grading and
+// analysis quality isn't silently downgraded just because a label still
+// says "Haiku".
+import { groq, GROQ_BIG } from "./groq.js"
 
 // ── Models ─────────────────────────────────────────────────────────────────────
-export const CLAUDE_HAIKU  = "claude-haiku-4-5"        // grading: ~$0.00025/call
-export const CLAUDE_SONNET = "claude-sonnet-4-6"       // analysis: ~$0.003/call
+export const CLAUDE_HAIKU  = GROQ_BIG   // grading — kept as the highest-quality Groq model, not the fast tier
+export const CLAUDE_SONNET = GROQ_BIG   // analysis — same model; Groq has no higher public tier today
 
 // ── Core call ─────────────────────────────────────────────────────────────────
 export async function claude(messages, {
@@ -24,16 +31,16 @@ export async function claude(messages, {
   system     = null,
   json       = false,
 } = {}) {
-  const ai  = client()
-  const res = await ai.messages.create({
-    model,
-    max_tokens: maxTokens,
-    ...(system ? { system } : {}),
-    messages,
-  })
-  const text = res.content?.[0]?.text || ""
+  // Anthropic's Messages API takes `system` as a separate top-level field;
+  // Groq's OpenAI-compatible endpoint expects it as a leading `system` role
+  // message instead — this is the one real shape difference between the two
+  // providers that callers here don't need to know about.
+  const groqMessages = system ? [{ role: "system", content: system }, ...messages] : messages
+  const text = await groq(groqMessages, { model, max_tokens: maxTokens, json })
   if (json) {
-    // Extract JSON from the response (Claude sometimes wraps in markdown)
+    // Groq's native json_object response_format is more reliable than
+    // Claude's used to be, but keep the same defensive markdown-fence
+    // stripping as before in case a model still wraps its output.
     const match = text.match(/```json\s*([\s\S]*?)```/) || text.match(/(\{[\s\S]*\})/)
     try { return JSON.parse(match?.[1] || text) }
     catch { return { raw: text } }
@@ -42,8 +49,8 @@ export async function claude(messages, {
 }
 
 // ── Grading helper — structured rubric output ─────────────────────────────────
-// Used by arena.js and forge routes. Returns the same shape as the Groq grader
-// so the frontend doesn't need to change.
+// Used by arena.js and forge routes. Returns the same shape as before so no
+// caller (frontend included) needs to change.
 export async function gradeSubmission({
   challengeTitle,
   scenario,
@@ -51,9 +58,9 @@ export async function gradeSubmission({
   candidateAnswer,
   eloRating = 1000,
   taskType  = "technical",   // "technical" | "design" | "debug" | "quiz"
-  fast      = false,         // true = use Haiku, false = use Haiku too (Sonnet for exec path)
+  fast      = false,         // kept for call-site compatibility; both paths use the same top-tier Groq model now
 }) {
-  const model = fast ? CLAUDE_HAIKU : CLAUDE_HAIKU  // always Haiku for grading cost
+  const model = fast ? CLAUDE_HAIKU : CLAUDE_HAIKU  // always the top-tier model for grading
 
   const systemPrompt = `You are a senior engineer grading a technical submission.
 Be direct, specific, and actionable. Never be vague.

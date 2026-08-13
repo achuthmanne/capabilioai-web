@@ -8,13 +8,16 @@
  * POST /api/pro/interview/:id/share    — enable recruiter access (token)
  */
 import { Router }   from "express"
-import Anthropic    from "@anthropic-ai/sdk"
 import { supabaseAdmin }   from "../lib/supabase.js"
-import { groq, GROQ_FAST } from "../lib/groq.js"
+import { groq, GROQ_BIG } from "../lib/groq.js"
 import { requireAuth } from "../lib/auth.js"
 
 const router = Router()
-const claude = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+// Switched from Anthropic to Groq (2026-08-13, account owner request — no
+// Anthropic credits, Groq credits available). GROQ_BIG (llama-3.3-70b) is
+// used directly here rather than GROQ_FAST, since this content is
+// user-facing (interview questions + scoring feedback) and groq.js already
+// has its own 429 fallback chain, so a manual nested fallback isn't needed.
 
 
 // ── Question bank per type ────────────────────────────────────────────────────
@@ -48,26 +51,17 @@ Return only valid JSON.`
 
   let result = {}
   try {
-    const msg = await claude.messages.create({
-      model: "claude-haiku-4-5",
-      max_tokens: 400,
-      messages: [{ role: "user", content: context }],
-    })
-    result = JSON.parse(msg.content[0].text)
+    const raw = await groq([{ role: "user", content: context }], { model: GROQ_BIG, max_tokens: 400, json: true })
+    result = JSON.parse(raw)
   } catch {
-    try {
-      const raw = await groq([{ role: "user", content: context }], { model: GROQ_FAST, max_tokens: 400, json: true })
-      result = JSON.parse(raw)
-    } catch {
-      const fallbacks = {
-        technical:   { question: `Describe a technical challenge you solved recently in ${sessionData.domain || "your domain"}. Walk me through your approach and the outcome.` },
-        behavioral:  { question: "Tell me about a time you had to work under pressure. How did you manage competing priorities?" },
-        role_based:  { question: `What's the most complex system you've designed or contributed to in your role as ${sessionData.role_target || "a professional"}?` },
-        general:     { question: "Where do you see your career in 3 years, and what are you doing today to get there?" },
-        follow_up:   { question: "What would you do differently if you faced the same situation again?" },
-      }
-      result = fallbacks[qType] || fallbacks.general
+    const fallbacks = {
+      technical:   { question: `Describe a technical challenge you solved recently in ${sessionData.domain || "your domain"}. Walk me through your approach and the outcome.` },
+      behavioral:  { question: "Tell me about a time you had to work under pressure. How did you manage competing priorities?" },
+      role_based:  { question: `What's the most complex system you've designed or contributed to in your role as ${sessionData.role_target || "a professional"}?` },
+      general:     { question: "Where do you see your career in 3 years, and what are you doing today to get there?" },
+      follow_up:   { question: "What would you do differently if you faced the same situation again?" },
     }
+    result = fallbacks[qType] || fallbacks.general
   }
 
   return { ...result, question_type: qType }
@@ -95,18 +89,9 @@ Return only valid JSON.`
 
   let result = {}
   try {
-    const msg = await claude.messages.create({
-      model: "claude-haiku-4-5",
-      max_tokens: 400,
-      messages: [{ role: "user", content: prompt }],
-    })
-    result = JSON.parse(msg.content[0].text)
-  } catch {
-    try {
-      const raw = await groq([{ role: "user", content: prompt }], { model: GROQ_FAST, max_tokens: 400, json: true })
-      result = JSON.parse(raw)
-    } catch { result = { score: 70, feedback: "Answer recorded. Good communication of relevant experience.", strengths: [], improvements: [] } }
-  }
+    const raw = await groq([{ role: "user", content: prompt }], { model: GROQ_BIG, max_tokens: 400, json: true })
+    result = JSON.parse(raw)
+  } catch { result = { score: 70, feedback: "Answer recorded. Good communication of relevant experience.", strengths: [], improvements: [] } }
   return result
 }
 
@@ -288,11 +273,8 @@ Generate professional interview performance insights. Return JSON:
 
     let insights = {}
     try {
-      const msg = await claude.messages.create({
-        model: "claude-haiku-4-5", max_tokens: 600,
-        messages: [{ role: "user", content: insightPrompt }],
-      })
-      insights = JSON.parse(msg.content[0].text)
+      const raw = await groq([{ role: "user", content: insightPrompt }], { model: GROQ_BIG, max_tokens: 600, json: true })
+      insights = JSON.parse(raw)
     } catch {
       insights = { summary: `Completed ${questions.length} questions with ${overall}% overall score.`, strengths: [], improvements: [], readiness_level: overall >= 75 ? "ready" : "developing" }
     }

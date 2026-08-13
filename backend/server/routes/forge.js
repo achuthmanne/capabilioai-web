@@ -9,12 +9,14 @@
  */
 import { Router } from "express"
 import { supabaseAdmin }       from "../lib/supabase.js"
-import { groq, GROQ_FAST }     from "../lib/groq.js"
-import Anthropic               from "@anthropic-ai/sdk"
+import { groq, GROQ_BIG }      from "../lib/groq.js"
 import { requireAuth } from "../lib/auth.js"
 
 const router  = Router()
-const claude  = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+// Switched from Anthropic to Groq (2026-08-13, account owner request — no
+// Anthropic credits, Groq credits available). GROQ_BIG is used directly
+// since this evaluation is user-facing (feedback + recruiter-readiness
+// signal) and groq.js already has its own 429 fallback chain.
 
 
 // ── Default forge items per track ─────────────────────────────────────────────
@@ -184,18 +186,9 @@ Return only valid JSON.`
 
     let evaluation = {}
     try {
-      const msg = await claude.messages.create({
-        model: "claude-haiku-4-5",
-        max_tokens: 600,
-        messages: [{ role: "user", content: prompt }],
-      })
-      evaluation = JSON.parse(msg.content[0].text)
-    } catch {
-      try {
-        const raw = await groq([{ role: "user", content: prompt }], { model: GROQ_FAST, max_tokens: 600, json: true })
-        evaluation = JSON.parse(raw)
-      } catch { evaluation = { score: 70, feedback: "Submission received and under review.", meets_criteria: true } }
-    }
+      const raw = await groq([{ role: "user", content: prompt }], { model: GROQ_BIG, max_tokens: 600, json: true })
+      evaluation = JSON.parse(raw)
+    } catch { evaluation = { score: 70, feedback: "Submission received and under review.", meets_criteria: true } }
 
     const newStatus = evaluation.meets_criteria ? "completed" : "revision_needed"
 

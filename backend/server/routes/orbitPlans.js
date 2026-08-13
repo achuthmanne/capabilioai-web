@@ -14,14 +14,16 @@
  */
 import { Router }  from "express"
 import crypto      from "crypto"
-import Anthropic   from "@anthropic-ai/sdk"
 import { supabaseAdmin }   from "../lib/supabase.js"
 import { razorpayClient as razorpay }        from "../lib/razorpay.js"
-import { groq, GROQ_FAST } from "../lib/groq.js"
+import { groq, GROQ_BIG } from "../lib/groq.js"
 import { requireAuth } from "../lib/auth.js"
 
 const router = Router()
-const claude = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+// Switched from Anthropic to Groq (2026-08-13, account owner request — no
+// Anthropic credits, Groq credits available). GROQ_BIG used directly since
+// this is a paid Orbit Pro/Elite report and groq.js already has its own
+// 429 fallback chain.
 
 
 // ── Plan definitions ──────────────────────────────────────────────────────────
@@ -249,17 +251,9 @@ router.post("/intel/report", requireAuth, async (req, res) => {
 
     let sections = {}
     try {
-      const msg = await claude.messages.create({
-        model: "claude-sonnet-4-6", max_tokens: 2000,
-        messages: [{ role: "user", content: prompt }],
-      })
-      sections = JSON.parse(msg.content[0].text)
-    } catch {
-      try {
-        const raw = await groq([{ role: "user", content: prompt }], { model: GROQ_FAST, max_tokens: 2000, json: true })
-        sections = JSON.parse(raw)
-      } catch { sections = { summary: "Report generated. Data analysis in progress.", sections: {}, action_items: [] } }
-    }
+      const raw = await groq([{ role: "user", content: prompt }], { model: GROQ_BIG, max_tokens: 2000, json: true })
+      sections = JSON.parse(raw)
+    } catch { sections = { summary: "Report generated. Data analysis in progress.", sections: {}, action_items: [] } }
 
     const { data: report, error } = await supabaseAdmin.from("career_reports").insert({
       user_id:          uid,
