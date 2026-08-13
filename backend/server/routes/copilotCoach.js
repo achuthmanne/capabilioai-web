@@ -5,9 +5,23 @@
 // untouched and keeps calling Groq directly from the browser as before.
 //
 // This is the first user-facing feature that actually routes through the MCP
-// layer: AI (Claude, with tool-use) → MCP tool → mcp/shared/client.ts →
+// layer: AI (Groq, with tool-use) → MCP tool → mcp/shared/client.ts →
 // this backend's own REST API → Supabase. The model never sees the caller's
 // JWT as a tool argument it can edit — this route injects it on every call.
+//
+// Switched from Anthropic's native tool-use to Groq's OpenAI-style function
+// calling (2026-08-13, account owner request — no Anthropic credits, Groq
+// credits available). Shape differences from the old Anthropic version:
+//   - tool schemas use `parameters` (JSON Schema), not `input_schema`, and
+//     are wrapped in `{ type: "function", function: {...} }`.
+//   - a tool-call turn is detected via `finishReason === "tool_calls"`
+//     (Anthropic: `stop_reason === "tool_use"`).
+//   - each tool call's arguments arrive as a JSON *string* that must be
+//     parsed (Anthropic: already a parsed object).
+//   - tool results are appended as one `{ role: "tool", tool_call_id,
+//     content }` message per call (Anthropic: one batched user turn with
+//     multiple tool_result blocks).
+// See groq.js's groqTools() for the underlying client.
 //
 // Only tools with real, verified backend support are exposed here:
 //   - arena.recommendNextChallenge
@@ -15,59 +29,64 @@
 //   - student.getCurrentRole
 //   - student.getWeakSkills
 // recommendCourse / getLearningProgress / getComparison / anything
-// NOT_IMPLEMENTED are deliberately excluded — giving Claude a tool that
+// NOT_IMPLEMENTED are deliberately excluded — giving the model a tool that
 // always throws would make failures look like a broken feature instead of
 // a known gap.
 
 import { Router } from "express"
-import Anthropic from "@anthropic-ai/sdk"
+import { groqTools, GROQ_BIG } from "../lib/groq.js"
 import { requireAuth } from "../lib/auth.js"
 import { callMcpTool } from "../lib/mcpClient.js"
 
 const router = Router()
 
-const CLAUDE_HAIKU = "claude-haiku-4-5"
 const MAX_TOOL_ITERATIONS = 4 // hard cap — never let the loop run away
 
-function client() {
-  const key = process.env.ANTHROPIC_API_KEY
-  if (!key || key === "your_anthropic_key_here") throw new Error("ANTHROPIC_API_KEY not set")
-  return new Anthropic({ apiKey: key })
-}
-
-// ── Tool schemas exposed to Claude ──────────────────────────────────────────
+// ── Tool schemas exposed to the model (Groq/OpenAI function-calling shape)
 // Note: no `authorization`/`targetUid` params here — the model never handles
 // auth. Each handler below injects the caller's own JWT and never allows a
 // targetUid, keeping this endpoint strictly self-service.
 const TOOLS = [
   {
-    name: "recommendNextChallenge",
-    description: "Recommend the next Arena challenge for the student to attempt, based on their current ELO, weak topics, and role. Call this for 'what should I do next/today' style questions.",
-    input_schema: {
-      type: "object",
-      properties: {
-        roleHint: { type: "string", description: "Optional role hint, e.g. 'frontend', 'ece_embedded'. Omit to use the student's own profile role." },
+    type: "function",
+    function: {
+      name: "recommendNextChallenge",
+      description: "Recommend the next Arena challenge for the student to attempt, based on their current ELO, weak topics, and role. Call this for 'what should I do next/today' style questions.",
+      parameters: {
+        type: "object",
+        properties: {
+          roleHint: { type: "string", description: "Optional role hint, e.g. 'frontend', 'ece_embedded'. Omit to use the student's own profile role." },
+        },
       },
     },
   },
   {
-    name: "getCurrentElo",
-    description: "Get the student's current ELO score, tier, and global rank.",
-    input_schema: { type: "object", properties: {} },
+    type: "function",
+    function: {
+      name: "getCurrentElo",
+      description: "Get the student's current ELO score, tier, and global rank.",
+      parameters: { type: "object", properties: {} },
+    },
   },
   {
-    name: "getCurrentRole",
-    description: "Get the student's current role, stream, and career track, resolved from their profile.",
-    input_schema: { type: "object", properties: {} },
+    type: "function",
+    function: {
+      name: "getCurrentRole",
+      description: "Get the student's current role, stream, and career track, resolved from their profile.",
+      parameters: { type: "object", properties: {} },
+    },
   },
   {
-    name: "getWeakSkills",
-    description: "Get the student's weak-topic signals (topics with a low pass rate in recent Arena submissions).",
-    input_schema: { type: "object", properties: {} },
+    type: "function",
+    function: {
+      name: "getWeakSkills",
+      description: "Get the student's weak-topic signals (topics with a low pass rate in recent Arena submissions).",
+      parameters: { type: "object", properties: {} },
+    },
   },
 ]
 
-// Maps the tool name Claude sees to the real MCP tool name + how to build its arguments.
+// Maps the tool name the model sees to the real MCP tool name + how to build its arguments.
 function mcpCallFor(toolName, input, authorization) {
   switch (toolName) {
     case "recommendNextChallenge":
@@ -98,8 +117,8 @@ Rules:
 // ── Feature flag ────────────────────────────────────────────────────────────
 // ENABLE_MCP_COACH=false (or unset in an env that explicitly sets it false)
 // flips this off with a single env var, no redeploy/code change needed.
-// Returns fast — before touching Claude or spawning the MCP process — so a
-// demo can recover from an MCP/auth/Claude-availability issue instantly.
+// Returns fast — before touching Groq or spawning the MCP process — so a
+// demo can recover from an MCP/auth/Groq-availability issue instantly.
 // The widget's existing fallback-to-Groq logic (any non-2xx response) is
 // what makes this work with ZERO frontend changes: disabling the flag here
 // is enough to route every coach question back through the stable path.
@@ -160,51 +179,48 @@ router.post("/coach", requireAuth, async (req, res) => {
   const toolsUsed = []
 
   try {
-    const ai = client()
-    const messages = [{ role: "user", content: message }]
+    const messages = [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: message },
+    ]
 
     for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
-      const response = await ai.messages.create({
-        model: CLAUDE_HAIKU,
+      const { message: assistantMsg, finishReason } = await groqTools(messages, {
+        model: GROQ_BIG,
         max_tokens: 500,
-        system: SYSTEM_PROMPT,
         tools: TOOLS,
-        messages,
       })
 
-      if (response.stop_reason !== "tool_use") {
-        const text = response.content.find((b) => b.type === "text")?.text || ""
+      if (finishReason !== "tool_calls" || !assistantMsg.tool_calls?.length) {
+        const text = assistantMsg.content || ""
         logCoachInvocation({
           userId, role, prompt: message, toolsUsed,
           latencyMs: Date.now() - startedAt, success: true, fallbackOccurred: false,
         })
-        return res.json({ text, toolCallsUsed: messages.length > 1 })
+        return res.json({ text, toolCallsUsed: messages.length > 2 })
       }
 
-      // Execute every tool_use block in this turn, feed results back.
-      messages.push({ role: "assistant", content: response.content })
+      // Execute every tool call in this turn, feed results back — Groq/
+      // OpenAI convention: the assistant turn carries `tool_calls`, and each
+      // result is its own `{ role: "tool", tool_call_id, content }` message
+      // (not one batched turn like Anthropic's tool_result blocks).
+      messages.push({ role: "assistant", content: assistantMsg.content || null, tool_calls: assistantMsg.tool_calls })
 
-      const toolResults = []
-      for (const block of response.content) {
-        if (block.type !== "tool_use") continue
-        toolsUsed.push(block.name)
+      for (const call of assistantMsg.tool_calls) {
+        toolsUsed.push(call.function?.name)
+        let content
         try {
-          const result = await mcpCallFor(block.name, block.input, authorization)
-          toolResults.push({
-            type: "tool_result",
-            tool_use_id: block.id,
-            content: JSON.stringify(result).slice(0, 4000), // cap payload back to the model
-          })
+          // Groq/OpenAI sends arguments as a JSON string, unlike Anthropic's
+          // already-parsed `input` object — never trust it blindly.
+          let args = {}
+          try { args = call.function?.arguments ? JSON.parse(call.function.arguments) : {} } catch { args = {} }
+          const result = await mcpCallFor(call.function?.name, args, authorization)
+          content = JSON.stringify(result).slice(0, 4000) // cap payload back to the model
         } catch (e) {
-          toolResults.push({
-            type: "tool_result",
-            tool_use_id: block.id,
-            content: `Error: ${e.message || "tool call failed"}`,
-            is_error: true,
-          })
+          content = `Error: ${e.message || "tool call failed"}`
         }
+        messages.push({ role: "tool", tool_call_id: call.id, content })
       }
-      messages.push({ role: "user", content: toolResults })
     }
 
     // Exhausted iterations without a final text answer — fail closed with a
