@@ -22,12 +22,14 @@
 //      of the three), not a hardcoded guess.
 //   2. No V1 equivalent exists yet: Arena V2 has real workstations for
 //      three SAP roles (SAP FI/CO Consultant, SAP MM/SD Consultant, SAP ABAP
-//      Developer) and Data Analyst, but roleConfig.js's `arenaKey` enum has
-//      no "sap_fico"/"sap_mmsd"/"sap_abap"/"data_analyst" value at all —
-//      there's nothing on the V1 side to map FROM. (Data Analyst also has
-//      no dedicated `arenaV2*Pilot` page in App.jsx yet, even though its
-//      challenge template + SqlWorkstationV2 wiring exist — a separate,
-//      already-flagged gap, not something this map can paper over.)
+//      Developer), but roleConfig.js's `arenaKey` enum has no
+//      "sap_fico"/"sap_mmsd"/"sap_abap" value at all — there's nothing on
+//      the V1 side to map FROM. (Data Analyst used to be in this bucket too
+//      — arenaKey "data" existed with no matching arenaV2*Pilot page — until
+//      2026-08-13, when ArenaV2DataAnalystPilot.jsx was added specifically
+//      to close this gap; "data" now maps cleanly below. NOT "data_engineer"
+//      or "bi_analyst" — roleConfig.js keeps those as distinct roles from
+//      "Data Analyst", and neither has a V2 workstation of its own yet.)
 //
 // Extending this map safely means: (a) confirming the new arenaKey really
 // means the same role Arena V2 built a workstation for, and (b) if it's a
@@ -36,6 +38,7 @@
 // just adding a row here.
 export const ARENA_V1_TO_V2_PILOT = {
   dba:        "arenaV2DbaPilot",        // Database Administrator
+  data:       "arenaV2DataAnalystPilot", // Data Analyst
   cyber:      "arenaV2CyberPilot",      // Cybersecurity Analyst
   devops:     "arenaV2DevOpsPilot",     // DevOps Engineer
   ml:         "arenaV2MLPilot",         // ML Engineer
@@ -51,6 +54,7 @@ export const ARENA_V1_TO_V2_PILOT = {
 // slug.
 export const ARENA_V2_ROLE_LABEL = {
   arenaV2DbaPilot:        "Database Administrator",
+  arenaV2DataAnalystPilot: "Data Analyst",
   arenaV2CyberPilot:      "Cybersecurity Analyst",
   arenaV2DevOpsPilot:     "DevOps Engineer",
   arenaV2MLPilot:         "ML Engineer",
@@ -64,4 +68,56 @@ export const ARENA_V2_ROLE_LABEL = {
 /** @param {string} arenaDomainKey — return of resolveArenaDomain(userData) */
 export function getArenaV2PilotFor(arenaDomainKey) {
   return ARENA_V1_TO_V2_PILOT[arenaDomainKey] || null
+}
+
+// ── Phase 2: verified default-to-V2 domains (2026-08-13) ───────────────────
+// Root cause: V1's mission generator (backend/server/lib/gemini.js) writes
+// an AI-generated narrative brief that's structurally disconnected from the
+// actual workstation content (schema/dataset/starter-code), which is always
+// pulled from one of a handful of fixed generic templates instead —
+// backend/server/lib/gemini.js's `geminiGenerateMission` explicitly
+// overwrites whatever the AI wrote. For DBA specifically this doubles up
+// with a second, frontend-only bug: workstationEngine.js's detectScenario()
+// keyword-guesses ecom/fintech/saas from the mission title and silently
+// falls back to ecom when nothing matches — which is why a mission titled
+// "Swiggy Restaurant Database" shows a customers/orders/products schema with
+// no restaurants table anywhere. This is a platform-wide V1 design gap, not
+// a one-off content bug, and it affects every one of V1's ~28 domains, not
+// just DBA (confirmed by reading DOMAIN_CONTEXT in gemini.js).
+//
+// Arena V2 already solves this correctly: aiScenarioGenerator.js generates
+// the narrative AND the workstation-specific structured content (tables,
+// starter code, dataset, etc.) in ONE atomic AI call, validated before use,
+// so they can never disagree. The permanent fix is moving domains onto V2
+// by default rather than patching V1's fundamentally split architecture.
+//
+// This is done ONE domain at a time, only after that domain's V2 workstation
+// content generation has been read and verified end-to-end (not just "a
+// pilot page exists") — see the 2026-08-13 fix to aiScenarioGenerator.js's
+// `dashboard` branch (DBA's workstation) for what "verified" means here:
+// strict server-side validation of every field DbaWorkstationV2.jsx reads,
+// so a malformed AI response can never reach the screen instead of silently
+// rendering empty/zeroed panels.
+//
+// Verified so far: dba (2026-08-13, this fix).
+// NOT yet verified (still show the opt-in banner only, per
+// ARENA_V1_TO_V2_PILOT above): data, cyber, devops, ml, swe, ece, eee,
+// mechanical, civil — each needs the same read-and-verify pass on its own
+// WORKSTATION_SPECS entry (or lack thereof, several currently have NONE —
+// see aiScenarioGenerator.js's WORKSTATION_SPECS) before being added here.
+export const ARENA_V2_DEFAULT_DOMAINS = ["dba"]
+
+// sessionStorage key: set when a user explicitly backs out of a
+// default-to-V2 domain's workstation, so they land back in familiar V1
+// territory for the rest of the session instead of being bounced straight
+// back into V2 the moment they arrive. Cleared on next session automatically
+// (sessionStorage, not localStorage) — this is a "let me look at the old one
+// today" escape hatch, not a permanent per-user preference/setting.
+export const PREFER_CLASSIC_ARENA_KEY = "capabilio_prefer_classic_arena"
+
+/** @param {string} arenaDomainKey */
+export function shouldDefaultToV2(arenaDomainKey) {
+  if (!ARENA_V2_DEFAULT_DOMAINS.includes(arenaDomainKey)) return false
+  if (typeof sessionStorage !== "undefined" && sessionStorage.getItem(PREFER_CLASSIC_ARENA_KEY) === "1") return false
+  return true
 }

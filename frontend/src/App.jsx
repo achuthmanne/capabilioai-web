@@ -8,6 +8,7 @@ import { userDoc } from "./lib/db"
 import { Analytics as PH, identifyUser, resetAnalytics } from "./lib/analytics"
 import { FLAGS } from "./config/featureFlags"
 import { nexusApi } from "./lib/api"
+import { PREFER_CLASSIC_ARENA_KEY } from "./arena-v2/v1ToV2RoleMap"
 
 import PathNav     from "./components/PathNav"
 import { PageLoader } from "./components/CapUI"
@@ -34,6 +35,7 @@ const ArenaV2SoftwarePilot = lazy(() => import("./pages/ArenaV2SoftwarePilot"))
 const ArenaV2CyberPilot  = lazy(() => import("./pages/ArenaV2CyberPilot"))
 const ArenaV2DevOpsPilot = lazy(() => import("./pages/ArenaV2DevOpsPilot"))
 const ArenaV2DbaPilot    = lazy(() => import("./pages/ArenaV2DbaPilot"))
+const ArenaV2DataAnalystPilot = lazy(() => import("./pages/ArenaV2DataAnalystPilot"))
 const ArenaV2EcePilot    = lazy(() => import("./pages/ArenaV2EcePilot"))
 const ArenaV2EeePilot    = lazy(() => import("./pages/ArenaV2EeePilot"))
 const ArenaV2CivilPilot  = lazy(() => import("./pages/ArenaV2CivilPilot"))
@@ -1814,8 +1816,23 @@ function App() {
             <ArenaV2DbaPilot
               user={user}
               userData={userData}
-              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
+              // DBA now defaults into V2 (see v1ToV2RoleMap.js's
+              // ARENA_V2_DEFAULT_DOMAINS), so "Back" here needs a real
+              // escape hatch to the classic V1 experience rather than
+              // bouncing to Home and immediately being redirected right
+              // back into this same page. Setting the sessionStorage flag
+              // is what shouldDefaultToV2() checks to skip the auto-redirect
+              // for the rest of this session.
+              onBack={() => { try { sessionStorage.setItem(PREFER_CLASSIC_ARENA_KEY, "1") } catch (e) { void e } setCurrentPage("arena"); setActiveNavItem("arena") }}
               onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2DbaPilot"); setCurrentPage("arenaV2RecruiterView") }}
+            />
+          )}
+          {currentPage === "arenaV2DataAnalystPilot" && (
+            <ArenaV2DataAnalystPilot
+              user={user}
+              userData={userData}
+              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
+              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2DataAnalystPilot"); setCurrentPage("arenaV2RecruiterView") }}
             />
           )}
           {currentPage === "arenaV2EcePilot" && (

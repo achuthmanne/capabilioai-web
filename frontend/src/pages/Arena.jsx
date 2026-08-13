@@ -23,7 +23,7 @@ import { supabase } from "../lib/supabase"
 import ArenaStreaks  from "./ArenaStreaks"
 import ArenaCommonChallenges from "./ArenaCommonChallenges"
 import { getDomainChallenges, getDomainCategories } from "../config/domainChallenges"
-import { getArenaV2PilotFor, ARENA_V2_ROLE_LABEL } from "../arena-v2/v1ToV2RoleMap"
+import { getArenaV2PilotFor, ARENA_V2_ROLE_LABEL, shouldDefaultToV2 } from "../arena-v2/v1ToV2RoleMap"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DESIGN TOKENS
@@ -3487,6 +3487,13 @@ function ArenaDomain({ user, userData, setUserData, onBack, onNavigateArenaV2 })
   // the full reasoning): only a conservative subset of domains has a
   // confident 1:1 match to a real, Groq-generated Arena V2 workstation.
   const arenaV2PilotPage = getArenaV2PilotFor(domainKey)
+  // Phase 2 (2026-08-13): domains whose V2 workstation content generation
+  // has been read and verified (see ARENA_V2_DEFAULT_DOMAINS's own comment
+  // in v1ToV2RoleMap.js) default straight into V2 instead of V1's daily-
+  // mission slots, since V1's mission brief/schema disconnect is a real,
+  // reproducible bug there — not offered as an opt-in banner for these
+  // domains, because the thing it's opt-in to is broken.
+  const defaultToV2 = shouldDefaultToV2(domainKey) && !!arenaV2PilotPage
 
   const [activeModuleId, setActiveModuleId]   = useState(null)
   const [activeMission, setActiveMission]     = useState(null)
@@ -3506,6 +3513,16 @@ function ArenaDomain({ user, userData, setUserData, onBack, onNavigateArenaV2 })
   const [timeLeft, setTimeLeft]               = useState(null)
   const timerRef                              = useRef(null)
   const [decayBanner, setDecayBanner]         = useState(null) // { penalty, daysOwed, newElo }
+
+  // ── V2 default-domain redirect (Phase 2, 2026-08-13) ────────────────────
+  // Fires once on mount, only for domains in ARENA_V2_DEFAULT_DOMAINS.
+  // Guarded on !activeMission so it can never yank a user out of a V1
+  // mission they're already mid-attempt on (activeMission is always null on
+  // a fresh mount here, but this stays defensive rather than assuming that).
+  useEffect(() => {
+    if (defaultToV2 && !activeMission && onNavigateArenaV2) onNavigateArenaV2(arenaV2PilotPage)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultToV2, arenaV2PilotPage])
 
   // ── ELO inactivity decay ─ -5 ELO/day after 14-day grace period ─────────
   // Single authoritative decay engine. Writes via userDoc.update() so that:
