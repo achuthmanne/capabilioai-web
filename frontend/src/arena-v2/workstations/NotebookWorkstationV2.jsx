@@ -109,6 +109,20 @@ export default function NotebookWorkstationV2({ challengeInstanceId, skill, diff
   const [running, setRunning] = useState(false)
   const [runResult, setRunResult] = useState(null)
   const pyRef = useRef(null)
+  // BUG FIX (2026-08-13): scikit-learn was never actually getting loaded.
+  // `loadPython()` (workstationEngine.js) is a memoized singleton shared
+  // across every Python workstation and only installs pandas+matplotlib by
+  // design — it never knows about scikit-learn. The background warm-up
+  // effect below calls loadPython() on mount and sets pyRef.current almost
+  // immediately, well before a student finishes reading the mission and
+  // clicks Run. The old code gated the scikit-learn install behind
+  // `if (!pyRef.current)`, so by the time a student actually ran their
+  // code, pyRef.current was already truthy (from the warm-up) and that
+  // branch was skipped entirely — every run hit a real
+  // `ModuleNotFoundError: No module named 'sklearn'`, even though the UI
+  // claimed "Real Python (pandas + scikit-learn)". Tracked with its own
+  // ref, independent of whether the interpreter itself was already warm.
+  const sklearnLoadedRef = useRef(false)
 
   const runCode = useCallback(async () => {
     if (!code.trim() || running) return
@@ -117,8 +131,11 @@ export default function NotebookWorkstationV2({ challengeInstanceId, skill, diff
     try {
       if (!pyRef.current) {
         pyRef.current = await loadPython(setPyStatus)
+      }
+      if (!sklearnLoadedRef.current) {
         setPyStatus("Loading scikit-learn (first run only)…")
         await pyRef.current.loadPackage(["scikit-learn"])
+        sklearnLoadedRef.current = true
       }
       const py = pyRef.current
       setPyStatus("Running your code…")
