@@ -827,14 +827,17 @@ function StudentPulse({ user, userData }) {
 
   // ── Who-liked-this modal (tap a reaction count to see the list, same as
   //     Instagram/Facebook/LinkedIn) ──────────────────────────────────────
-  const [likersModal, setLikersModal] = useState({ open: false, postId: null, users: [], loading: false })
-  const openLikers = async (postId) => {
-    setLikersModal({ open: true, postId, users: [], loading: true })
+  // `type` distinguishes a post-level likers list (pulseApi.likers, keyed by
+  // reaction action) from a comment-level one (pulseApi.commentLikers) —
+  // same modal UI, two different sources of "who liked this."
+  const [likersModal, setLikersModal] = useState({ open: false, id: null, type: "post", users: [], loading: false })
+  const openLikers = async (id, type = "post") => {
+    setLikersModal({ open: true, id, type, users: [], loading: true })
     try {
-      const { users } = await pulseApi.likers(postId, "acknowledge")
-      setLikersModal({ open: true, postId, users: users || [], loading: false })
+      const { users } = type === "comment" ? await pulseApi.commentLikers(id) : await pulseApi.likers(id, "acknowledge")
+      setLikersModal({ open: true, id, type, users: users || [], loading: false })
     } catch {
-      setLikersModal({ open: true, postId, users: [], loading: false })
+      setLikersModal({ open: true, id, type, users: [], loading: false })
     }
   }
 
@@ -963,8 +966,19 @@ function StudentPulse({ user, userData }) {
   // ── Per-post interaction state ──────────────────────────────────────────────
   // reactions[postId] = { acknowledge: bool, signal: bool, save: bool }
   const [reactions, setReactions] = useState({})
-  // commentPanels[postId] = { open, comments, text, loading, submitting }
+  // commentPanels[postId] = { open, comments, text, loading, submitting,
+  //   replyingTo: commentId|null, replyText }
   const [commentPanels, setCommentPanels] = useState({})
+  // commentReplies[commentId] = { open, loading, items } — replies are
+  // lazy-loaded per thread, same "load on demand" idea as the likers list,
+  // so opening a post with many comments doesn't pull every reply upfront.
+  const [commentReplies, setCommentReplies] = useState({})
+  // commentLikes[commentId] = { liked, count } — local like state for
+  // comments. Count seeds from the server's like_count; "liked" is unknown
+  // until the user actually taps (no bulk "did I like these" endpoint yet,
+  // same tradeoff the post-level reaction state doesn't have to make since
+  // that comes back on the feed payload) — a known limitation, not a bug.
+  const [commentLikes, setCommentLikes] = useState({})
 
   // ── Domain selector ─────────────────────────────────────────────────────────
   const [showDomainPicker, setShowDomainPicker] = useState(false)
@@ -1316,21 +1330,79 @@ function StudentPulse({ user, userData }) {
   const updateCommentText = (postId, text) =>
     setCommentPanels(cp => ({ ...cp, [postId]: { ...cp[postId], text } }))
 
-  const submitComment = async (postId) => {
+  // Start/cancel replying to a specific comment — Instagram/LinkedIn-style
+  // "Reply" link under a comment that opens a scoped input, rather than one
+  // shared box for both top-level comments and replies.
+  const startReply = (postId, commentId) =>
+    setCommentPanels(cp => ({ ...cp, [postId]: { ...cp[postId], replyingTo: commentId, replyText: "" } }))
+  const cancelReply = (postId) =>
+    setCommentPanels(cp => ({ ...cp, [postId]: { ...cp[postId], replyingTo: null, replyText: "" } }))
+  const updateReplyText = (postId, text) =>
+    setCommentPanels(cp => ({ ...cp, [postId]: { ...cp[postId], replyText: text } }))
+
+  const submitComment = async (postId, parentId = null) => {
     const panel = commentPanels[postId]
-    if (!panel?.text?.trim() || panel.submitting) return
+    const text = parentId ? panel?.replyText : panel?.text
+    if (!text?.trim() || panel?.submitting) return
     setCommentPanels(cp => ({ ...cp, [postId]: { ...cp[postId], submitting: true } }))
     try {
-      const result = await pulseApi.addComment(postId, panel.text.trim())
+      const result = await pulseApi.addComment(postId, text.trim(), parentId || undefined)
       if (result.comment) {
-        setCommentPanels(cp => ({
-          ...cp,
-          [postId]: { ...cp[postId], comments: [...(cp[postId]?.comments || []), result.comment], text: "", submitting: false }
-        }))
+        if (parentId) {
+          // Append to the open replies thread (if the thread is currently
+          // expanded) and bump the parent's visible reply_count, without a
+          // full refetch.
+          setCommentReplies(cr => ({
+            ...cr,
+            [parentId]: { open: true, loading: false, items: [...(cr[parentId]?.items || []), result.comment] }
+          }))
+          setCommentPanels(cp => ({
+            ...cp,
+            [postId]: {
+              ...cp[postId],
+              comments: (cp[postId]?.comments || []).map(c =>
+                c.id === parentId ? { ...c, reply_count: (c.reply_count || 0) + 1 } : c),
+              replyingTo: null, replyText: "", submitting: false
+            }
+          }))
+        } else {
+          setCommentPanels(cp => ({
+            ...cp,
+            [postId]: { ...cp[postId], comments: [...(cp[postId]?.comments || []), result.comment], text: "", submitting: false }
+          }))
+        }
         setPosts(ps => ps.map(p => p.id === postId ? { ...p, comment_count: (p.comment_count || 0) + 1 } : p))
       }
     } catch {
       setCommentPanels(cp => ({ ...cp, [postId]: { ...cp[postId], submitting: false } }))
+    }
+  }
+
+  // Toggle a comment's replies thread open/closed, lazy-loading on first open.
+  const toggleReplies = async (commentId) => {
+    const existing = commentReplies[commentId]
+    if (existing?.open) { setCommentReplies(cr => ({ ...cr, [commentId]: { ...existing, open: false } })); return }
+    if (existing?.items?.length) { setCommentReplies(cr => ({ ...cr, [commentId]: { ...existing, open: true } })); return }
+    setCommentReplies(cr => ({ ...cr, [commentId]: { open: true, loading: true, items: [] } }))
+    try {
+      const items = await pulseApi.commentReplies(commentId)
+      setCommentReplies(cr => ({ ...cr, [commentId]: { open: true, loading: false, items: items || [] } }))
+    } catch {
+      setCommentReplies(cr => ({ ...cr, [commentId]: { open: true, loading: false, items: [] } }))
+    }
+  }
+
+  // Toggle like on a comment — optimistic local update, same pattern as
+  // handleReact for posts (see below), scoped to commentLikes since
+  // comments aren't in the `reactions` map.
+  const toggleCommentLike = async (commentId, baseCount) => {
+    const cur = commentLikes[commentId] || { liked: false, count: baseCount || 0 }
+    const next = { liked: !cur.liked, count: cur.liked ? Math.max(0, cur.count - 1) : cur.count + 1 }
+    setCommentLikes(cl => ({ ...cl, [commentId]: next }))
+    try {
+      await pulseApi.likeComment(commentId)
+    } catch {
+      setCommentLikes(cl => ({ ...cl, [commentId]: cur }))
     }
   }
 
@@ -1808,11 +1880,11 @@ function StudentPulse({ user, userData }) {
                   counts are already public on the feed), so no auth gate. */}
               {likersModal.open && (
                 <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:210,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}
-                  onClick={()=>setLikersModal({open:false,postId:null,users:[],loading:false})}>
+                  onClick={()=>setLikersModal({open:false,id:null,type:"post",users:[],loading:false})}>
                   <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:14,width:"100%",maxWidth:340,maxHeight:"70vh",display:"flex",flexDirection:"column",overflow:"hidden",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
                     <div style={{padding:"14px 16px",borderBottom:`1px solid ${P.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                       <div style={{fontSize:14,fontWeight:800,color:P.ink}}>❤️ Liked by</div>
-                      <button onClick={()=>setLikersModal({open:false,postId:null,users:[],loading:false})} style={{border:"none",background:"none",fontSize:16,color:P.ink4,cursor:"pointer"}}>✕</button>
+                      <button onClick={()=>setLikersModal({open:false,id:null,type:"post",users:[],loading:false})} style={{border:"none",background:"none",fontSize:16,color:P.ink4,cursor:"pointer"}}>✕</button>
                     </div>
                     <div style={{flex:1,overflowY:"auto",padding:"6px 8px"}}>
                       {likersModal.loading && <div style={{padding:"24px 0",textAlign:"center",fontSize:12,color:P.ink4}}>Loading…</div>}
@@ -2309,7 +2381,7 @@ function StudentPulse({ user, userData }) {
                               style={{padding:"5px 12px",border:`1.5px solid ${reacted.acknowledge?"#DC262640":P.border}`,borderRadius:8,fontSize:12,color:reacted.acknowledge?"#DC2626":P.ink3,fontWeight:500,background:reacted.acknowledge?"#FEF2F2":"transparent",display:"flex",alignItems:"center",gap:5}}>
                               <span>{reacted.acknowledge?"❤️":"🤍"}</span>
                               {post.acknowledge_count>0 ? (
-                                <span onClick={(e)=>{e.stopPropagation();openLikers(post.id)}} style={{textDecoration:"underline",textDecorationColor:"transparent"}}
+                                <span onClick={(e)=>{e.stopPropagation();openLikers(post.id,"post")}} style={{textDecoration:"underline",textDecorationColor:"transparent"}}
                                   onMouseEnter={e=>e.currentTarget.style.textDecorationColor="currentColor"} onMouseLeave={e=>e.currentTarget.style.textDecorationColor="transparent"}>
                                   {post.acknowledge_count}
                                 </span>
@@ -2326,27 +2398,120 @@ function StudentPulse({ user, userData }) {
                           </div>
                         </div>
 
-                        {/* Comment panel */}
+                        {/* Comment panel — threaded (reply-to-comment),
+                            each comment shows name · domain · ELO (same
+                            identity strip as post cards) plus its own
+                            like + reply actions and count, not just a bare
+                            name and timestamp. */}
                         {panel?.open && (
                           <div style={{borderTop:`1px solid ${P.border}`,background:"rgba(0,0,0,0.015)",padding:"12px 16px"}}>
                             {panel.loading&&<div style={{padding:"10px 0",textAlign:"center"}}><div style={{width:18,height:18,border:`2px solid ${P.accent}33`,borderTopColor:P.accent,borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto"}}/></div>}
                             {!panel.loading&&panel.comments?.length===0&&<div style={{fontSize:12,color:P.ink4,marginBottom:10}}>No comments yet. Be first!</div>}
                             {(panel.comments||[]).map((c,ci)=>{
-                              const cName = c.author?.display_name||c.author?.name||"User"
+                              const cName = c.author?.display_name||c.author?.name||c.author?.username||"User"
+                              const cDomain = c.author?.keyword||""
+                              const cElo = c.author?.elo_rating
+                              const cLike = commentLikes[c.id] || { liked:false, count:c.like_count||0 }
+                              const replyThread = commentReplies[c.id]
+                              const replyCount = c.reply_count||0
                               return (
-                                <div key={c.id||ci} style={{display:"flex",gap:8,marginBottom:10}}>
-                                  <div style={{width:28,height:28,borderRadius:"50%",background:colorForId(c.author_id||ci.toString()),display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#fff",flexShrink:0}}>{cName[0]?.toUpperCase()}</div>
-                                  <div style={{flex:1,background:"#FFFFFF",borderRadius:8,padding:"8px 10px",border:`1px solid ${P.border}`}}>
-                                    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
-                                      <span style={{fontSize:11,fontWeight:700,color:P.ink}}>{cName}</span>
-                                      <span style={{fontSize:10,color:P.ink4}}>{timeAgo(c.created_at)}</span>
+                                <div key={c.id||ci} style={{marginBottom:12}}>
+                                  <div style={{display:"flex",gap:8}}>
+                                    <div style={{width:28,height:28,borderRadius:"50%",background:colorForId(c.author_id||ci.toString()),display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#fff",flexShrink:0}}>{cName[0]?.toUpperCase()}</div>
+                                    <div style={{flex:1,minWidth:0}}>
+                                      <div style={{background:"#FFFFFF",borderRadius:8,padding:"8px 10px",border:`1px solid ${P.border}`}}>
+                                        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2,flexWrap:"wrap"}}>
+                                          <span style={{fontSize:11,fontWeight:700,color:P.ink}}>{cName}</span>
+                                          {cDomain && <span style={{fontSize:10,color:P.ink4}}>· {cDomain}</span>}
+                                          {cElo!=null && <span style={{fontSize:9,fontFamily:"'DM Mono',monospace",fontWeight:700,color:P.accent}}>🔥{cElo}</span>}
+                                          <span style={{fontSize:10,color:P.ink4}}>· {timeAgo(c.created_at)}</span>
+                                        </div>
+                                        <div style={{fontSize:12,color:P.ink2,lineHeight:1.5}}>{c.content}</div>
+                                      </div>
+                                      {/* Like / Reply row — mirrors the post action bar's split between
+                                          the heart (toggles) and the count (opens who-liked-this). */}
+                                      <div style={{display:"flex",alignItems:"center",gap:12,marginTop:4,paddingLeft:2}}>
+                                        <button onClick={()=>toggleCommentLike(c.id,c.like_count)}
+                                          style={{border:"none",background:"none",padding:0,cursor:"pointer",fontSize:11,fontWeight:700,color:cLike.liked?"#DC2626":P.ink4,display:"flex",alignItems:"center",gap:3}}>
+                                          <span>{cLike.liked?"❤️":"🤍"}</span>
+                                          {cLike.count>0 ? (
+                                            <span onClick={(e)=>{e.stopPropagation();openLikers(c.id,"comment")}} style={{textDecoration:"underline",textDecorationColor:"transparent"}}
+                                              onMouseEnter={e=>e.currentTarget.style.textDecorationColor="currentColor"} onMouseLeave={e=>e.currentTarget.style.textDecorationColor="transparent"}>
+                                              {cLike.count}
+                                            </span>
+                                          ) : "Like"}
+                                        </button>
+                                        <button onClick={()=>startReply(post.id,c.id)}
+                                          style={{border:"none",background:"none",padding:0,cursor:"pointer",fontSize:11,fontWeight:700,color:P.ink4}}>
+                                          Reply
+                                        </button>
+                                        {replyCount>0 && (
+                                          <button onClick={()=>toggleReplies(c.id)}
+                                            style={{border:"none",background:"none",padding:0,cursor:"pointer",fontSize:11,fontWeight:700,color:P.accent}}>
+                                            {replyThread?.open ? "Hide replies" : `View ${replyCount} ${replyCount===1?"reply":"replies"}`}
+                                          </button>
+                                        )}
+                                      </div>
+
+                                      {/* Reply input, scoped to this comment */}
+                                      {panel.replyingTo===c.id && (
+                                        <div style={{display:"flex",gap:6,marginTop:6}}>
+                                          <input value={panel.replyText||""} onChange={e=>updateReplyText(post.id,e.target.value)}
+                                            onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();submitComment(post.id,c.id)}if(e.key==="Escape")cancelReply(post.id)}}
+                                            placeholder={`Reply to ${cName}…`} autoFocus
+                                            style={{flex:1,padding:"6px 10px",border:`1px solid ${P.border}`,borderRadius:8,fontSize:12,fontFamily:"inherit",outline:"none",color:P.ink}}/>
+                                          <button className="pb" onClick={()=>submitComment(post.id,c.id)} disabled={!panel.replyText?.trim()||panel.submitting}
+                                            style={{padding:"6px 12px",background:panel.replyText?.trim()&&!panel.submitting?P.accent:"rgba(0,0,0,0.08)",border:"none",borderRadius:8,color:panel.replyText?.trim()&&!panel.submitting?"#fff":P.ink4,fontSize:11,fontWeight:700}}>
+                                            {panel.submitting?"...":"Reply"}
+                                          </button>
+                                          <button onClick={()=>cancelReply(post.id)}
+                                            style={{padding:"6px 10px",background:"none",border:"none",color:P.ink4,fontSize:11,cursor:"pointer"}}>
+                                            Cancel
+                                          </button>
+                                        </div>
+                                      )}
+
+                                      {/* Threaded replies, indented under the parent comment */}
+                                      {replyThread?.open && (
+                                        <div style={{marginTop:8,paddingLeft:14,borderLeft:`2px solid ${P.border}`,display:"flex",flexDirection:"column",gap:8}}>
+                                          {replyThread.loading && <div style={{fontSize:11,color:P.ink4}}>Loading replies…</div>}
+                                          {!replyThread.loading && (replyThread.items||[]).map((r,ri)=>{
+                                            const rName = r.author?.display_name||r.author?.name||r.author?.username||"User"
+                                            const rDomain = r.author?.keyword||""
+                                            const rElo = r.author?.elo_rating
+                                            const rLike = commentLikes[r.id] || { liked:false, count:r.like_count||0 }
+                                            return (
+                                              <div key={r.id||ri} style={{display:"flex",gap:6}}>
+                                                <div style={{width:22,height:22,borderRadius:"50%",background:colorForId(r.author_id||ri.toString()),display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"#fff",flexShrink:0}}>{rName[0]?.toUpperCase()}</div>
+                                                <div style={{flex:1,minWidth:0}}>
+                                                  <div style={{background:"#FFFFFF",borderRadius:8,padding:"6px 9px",border:`1px solid ${P.border}`}}>
+                                                    <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:1,flexWrap:"wrap"}}>
+                                                      <span style={{fontSize:10.5,fontWeight:700,color:P.ink}}>{rName}</span>
+                                                      {rDomain && <span style={{fontSize:9,color:P.ink4}}>· {rDomain}</span>}
+                                                      {rElo!=null && <span style={{fontSize:8.5,fontFamily:"'DM Mono',monospace",fontWeight:700,color:P.accent}}>🔥{rElo}</span>}
+                                                      <span style={{fontSize:9,color:P.ink4}}>· {timeAgo(r.created_at)}</span>
+                                                    </div>
+                                                    <div style={{fontSize:11.5,color:P.ink2,lineHeight:1.5}}>{r.content}</div>
+                                                  </div>
+                                                  <button onClick={()=>toggleCommentLike(r.id,r.like_count)}
+                                                    style={{border:"none",background:"none",padding:"2px 0 0",cursor:"pointer",fontSize:10,fontWeight:700,color:rLike.liked?"#DC2626":P.ink4,display:"flex",alignItems:"center",gap:3}}>
+                                                    <span>{rLike.liked?"❤️":"🤍"}</span>
+                                                    {rLike.count>0 ? (
+                                                      <span onClick={(e)=>{e.stopPropagation();openLikers(r.id,"comment")}} style={{textDecoration:"underline",textDecorationColor:"transparent"}}>{rLike.count}</span>
+                                                    ) : "Like"}
+                                                  </button>
+                                                </div>
+                                              </div>
+                                            )
+                                          })}
+                                        </div>
+                                      )}
                                     </div>
-                                    <div style={{fontSize:12,color:P.ink2,lineHeight:1.5}}>{c.content}</div>
                                   </div>
                                 </div>
                               )
                             })}
-                            {/* Add comment */}
+                            {/* Add top-level comment */}
                             <div style={{display:"flex",gap:8,marginTop:8}}>
                               <div style={{width:28,height:28,borderRadius:"50%",background:P.accent,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#fff",flexShrink:0}}>{initials}</div>
                               <input value={panel.text||""} onChange={e=>updateCommentText(post.id,e.target.value)}

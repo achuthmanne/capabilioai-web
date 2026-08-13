@@ -550,6 +550,11 @@ export const pulseApi = {
   interact:      (postId, action) => request("POST", `/pulse/posts/${postId}/interact`, { action }),
   comments:      (postId) => request("GET", `/pulse/posts/${postId}/comments`),
   addComment:    (postId, content, parentId) => request("POST", `/pulse/posts/${postId}/comments`, { content, parent_id: parentId }),
+  // Threaded replies (lazy-loaded per comment) + comment-level likes —
+  // same "who liked this" pattern as post likers.
+  commentReplies:  (commentId) => request("GET", `/pulse/comments/${commentId}/replies`),
+  likeComment:     (commentId) => request("POST", `/pulse/comments/${commentId}/like`),
+  commentLikers:   (commentId) => request("GET", `/pulse/comments/${commentId}/likers`),
   // New routes
   builders:      (domain = "", elo = 400, limit = 8) => {
     const qs = new URLSearchParams({ domain, elo, limit }).toString()

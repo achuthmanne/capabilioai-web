@@ -8,8 +8,11 @@
  *   PUT  /api/pulse/posts/:id      — edit post
  *   DELETE /api/pulse/posts/:id    — delete post
  *   POST /api/pulse/posts/:id/interact — acknowledge/signal/save/repost
- *   GET  /api/pulse/posts/:id/comments — get comments
- *   POST /api/pulse/posts/:id/comments — add comment
+ *   GET  /api/pulse/posts/:id/comments — get top-level comments (parent_id null)
+ *   POST /api/pulse/posts/:id/comments — add comment or reply (parent_id)
+ *   GET  /api/pulse/comments/:id/replies — get replies to a comment
+ *   POST /api/pulse/comments/:id/like  — toggle like on a comment
+ *   GET  /api/pulse/comments/:id/likers — who liked a comment
  *   GET  /api/pulse/posts/:id/likers   — who reacted (defaults to "acknowledge"/like)
  *   GET  /api/pulse/stories            — active (unexpired) stories, grouped by author
  *   POST /api/pulse/stories            — create a story (image upload or text)
@@ -487,12 +490,33 @@ router.post("/pulse/posts/:id/interact", requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
+// Author select now also carries keyword (domain) + elo_rating so comment
+// cards can show the same "name · domain · ELO" identity strip post cards
+// already show — previously comments only showed a bare name, which is why
+// "who is this person" wasn't answerable from the comment thread itself.
+const COMMENT_AUTHOR_SELECT = "id,name,display_name,username,profile_photo_url,keyword,elo_rating"
+
 router.get("/pulse/posts/:id/comments", async (req, res) => {
   try {
     const { data, error } = await supabaseAdmin.from("post_comments")
-      .select("*, author:profiles!author_id(id,name,display_name,username,profile_photo_url)")
+      .select(`*, author:profiles!author_id(${COMMENT_AUTHOR_SELECT})`)
       .eq("post_id", req.params.id)
       .is("parent_id", null)
+      .order("created_at", { ascending: true })
+    if (error) throw error
+    res.json(data || [])
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// GET /pulse/comments/:id/replies — threaded replies to a top-level comment.
+// Kept as a separate lazy-loaded call (not embedded in the comments payload)
+// so a post with 200 comments and no expanded threads doesn't pull every
+// reply on every load — same "load on demand" shape as the likers list.
+router.get("/pulse/comments/:id/replies", async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin.from("post_comments")
+      .select(`*, author:profiles!author_id(${COMMENT_AUTHOR_SELECT})`)
+      .eq("parent_id", req.params.id)
       .order("created_at", { ascending: true })
     if (error) throw error
     res.json(data || [])
@@ -504,13 +528,37 @@ router.post("/pulse/posts/:id/comments", requireAuth, async (req, res) => {
     const { content, parent_id } = req.body
     if (!content?.trim()) return res.status(400).json({ error: "content required" })
 
+    // A reply's parent_id must actually belong to this post — otherwise a
+    // client could thread a "reply" onto an arbitrary comment on a
+    // different post by just passing any comment id.
+    if (parent_id) {
+      const { data: parent } = await supabaseAdmin.from("post_comments")
+        .select("id,post_id").eq("id", parent_id).single()
+      if (!parent || parent.post_id !== req.params.id) {
+        return res.status(400).json({ error: "invalid parent_id" })
+      }
+    }
+
     const { data, error } = await supabaseAdmin.from("post_comments").insert({
       post_id:   req.params.id,
       author_id: req.user.id,
       content:   content.trim(),
       parent_id: parent_id || null,
-    }).select("*, author:profiles!author_id(id,name,display_name,username,profile_photo_url)").single()
+    }).select(`*, author:profiles!author_id(${COMMENT_AUTHOR_SELECT})`).single()
     if (error) throw error
+
+    // Bump the parent comment's reply_count (same read-then-write pattern
+    // as the post comment_count bump below — no .raw() / atomic increment
+    // available on this client).
+    if (parent_id) {
+      const { data: parentRow } = await supabaseAdmin.from("post_comments")
+        .select("reply_count").eq("id", parent_id).single()
+      if (parentRow) {
+        await supabaseAdmin.from("post_comments")
+          .update({ reply_count: (parentRow.reply_count || 0) + 1 })
+          .eq("id", parent_id).catch(() => {})
+      }
+    }
 
     // BUG FIX (production audit): `supabaseAdmin.raw(...)` doesn't exist on
     // the real @supabase/supabase-js client (supabaseAdmin is a thin proxy
@@ -545,6 +593,62 @@ router.post("/pulse/posts/:id/comments", requireAuth, async (req, res) => {
     }
 
     res.json({ success: true, comment: data })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST /pulse/comments/:id/like — toggle like on a comment. Same
+// insert-or-delete-by-unique-constraint toggle shape as /nexus/interact
+// uses for posts (comment_likes has a UNIQUE(comment_id,user_id)), kept as
+// its own small table rather than reusing post_interactions because that
+// table's post_id FK points at pulse_posts, not post_comments.
+router.post("/pulse/comments/:id/like", requireAuth, async (req, res) => {
+  try {
+    const { data: existing } = await supabaseAdmin.from("comment_likes")
+      .select("id").eq("comment_id", req.params.id).eq("user_id", req.user.id).maybeSingle()
+
+    const { data: comment } = await supabaseAdmin.from("post_comments")
+      .select("id,like_count,author_id,post_id").eq("id", req.params.id).single()
+    if (!comment) return res.status(404).json({ error: "comment not found" })
+
+    let liked
+    if (existing) {
+      await supabaseAdmin.from("comment_likes").delete().eq("id", existing.id)
+      await supabaseAdmin.from("post_comments")
+        .update({ like_count: Math.max(0, (comment.like_count || 0) - 1) })
+        .eq("id", req.params.id)
+      liked = false
+    } else {
+      await supabaseAdmin.from("comment_likes").insert({ comment_id: req.params.id, user_id: req.user.id })
+      await supabaseAdmin.from("post_comments")
+        .update({ like_count: (comment.like_count || 0) + 1 })
+        .eq("id", req.params.id)
+      liked = true
+
+      if (comment.author_id && comment.author_id !== req.user.id) {
+        await supabaseAdmin.from("notifications").insert({
+          user_id:     comment.author_id,
+          type:        "comment_like",
+          actor_id:    req.user.id,
+          entity_id:   req.params.id,
+          entity_type: "post_comment",
+        }).catch(() => {})
+      }
+    }
+    res.json({ success: true, liked })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// GET /pulse/comments/:id/likers — who liked a comment, same "who liked
+// this" pattern as the post-level likers endpoint.
+router.get("/pulse/comments/:id/likers", async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin.from("comment_likes")
+      .select(`created_at, user:profiles!user_id(${COMMENT_AUTHOR_SELECT})`)
+      .eq("comment_id", req.params.id)
+      .order("created_at", { ascending: false })
+      .limit(200)
+    if (error) throw error
+    res.json({ users: (data || []).map(r => r.user).filter(Boolean), total: (data || []).length })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
@@ -706,6 +810,12 @@ router.get("/nexus/search", optionalAuth, async (req, res) => {
       // control (see career_os_ws0_privacy_toggle_columns migration; the
       // toggle previously wrote to a nonexistent column and did nothing).
       .eq("searchable", true)
+      // Exclude profiles with no identity signal at all (display_name, name,
+      // AND username all null — incomplete/abandoned signups). These were
+      // rendering as a literal "User" card with no domain/role in Discover,
+      // which isn't a useful discovery result for anyone. username is set
+      // for every real onboarded account, so this is a safe, narrow filter.
+      .not("username", "is", null)
       .range(offset, offset + parseInt(limit) - 1)
 
     // 2026-08-12 fix: a logged-in user's own profile was showing up in
