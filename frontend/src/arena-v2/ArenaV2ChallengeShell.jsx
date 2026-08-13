@@ -121,6 +121,12 @@ function loadWorkstationComponent(componentKey) {
     if (componentKey === "CalculatorWorkstation" && entry?.status === "ready") {
       workstationComponentCache[componentKey] = lazy(() => import("./workstations/ClinicalLabWorkstationV2.jsx"))
     }
+    // SAP domain (FI/CO + MM/SD functional consultant, ABAP developer),
+    // thirteenth role workspace family — a genuinely new componentKey
+    // (SapConsoleWorkstation), not a reuse. Same explicit wiring discipline.
+    if (componentKey === "SapConsoleWorkstation" && entry?.status === "ready") {
+      workstationComponentCache[componentKey] = lazy(() => import("./workstations/SapConsoleWorkstationV2.jsx"))
+    }
   }
   return workstationComponentCache[componentKey] || null
 }

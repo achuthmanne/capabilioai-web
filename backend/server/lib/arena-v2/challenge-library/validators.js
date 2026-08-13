@@ -30,6 +30,14 @@ export const WORKSTATION_IDS = [
   "code", "sql", "notebook", "react_frontend", "api", "terminal",
   "excel", "dashboard", "report", "system_design", "embedded",
   "calculator", "full_stack",
+  // Added for the SAP domain (functional consultant + ABAP developer roles)
+  // — every other existing componentKey was already claimed by a distinct
+  // role workspace by the twelfth phase (see ClinicalLabWorkstationV2.jsx's
+  // header), so there was no free slot left to reuse this time. This is an
+  // additive-only enum entry: nothing existing is renamed or removed, and
+  // registry.js's own consistency guard fails the module load if this ever
+  // drifts from the backend/frontend registries below.
+  "sap_console",
 ]
 
 export const VALIDATOR_TYPES = [

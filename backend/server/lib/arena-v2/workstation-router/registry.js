@@ -81,6 +81,14 @@ export const WORKSTATION_REGISTRY = {
     uiModules: ["code_editor", "browser_live_preview", "api_client", "sql_editor"],
     artifactType: "code",
   },
+  // SAP domain (functional consultant: FI/CO, MM/SD — and ABAP developer).
+  // See validators.js's WORKSTATION_IDS comment for why this is a new
+  // entry rather than a reused key.
+  sap_console: {
+    componentKey: "SapConsoleWorkstation",
+    uiModules: ["code_editor", "terminal", "answer_panel"],
+    artifactType: "code",
+  },
 }
 
 // Consistency guard, evaluated at import time (fails fast on module load if

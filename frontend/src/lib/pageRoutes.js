@@ -32,6 +32,7 @@ export const PAGE_KEYS = [
   "arenaV2EcePilot", "arenaV2EeePilot", "arenaV2MLPilot",
   "arenaV2MechanicalPilot", "arenaV2MedicalBiotechPilot",
   "arenaV2RecruiterView", "arenaV2SoftwarePilot",
+  "arenaV2SapFicoPilot", "arenaV2SapMmSdPilot", "arenaV2SapAbapPilot",
   "aura", "authority", "candidateSearch", "challenges", "communities",
   "company", "events", "execnetwork", "executiveHome", "executivefeed",
   "forge", "funding", "growth", "jobPostings", "launchpad", "marketplace",

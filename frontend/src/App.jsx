@@ -41,6 +41,9 @@ const ArenaV2MechanicalPilot = lazy(() => import("./pages/ArenaV2MechanicalPilot
 const ArenaV2BiotechPilot = lazy(() => import("./pages/ArenaV2BiotechPilot"))
 const ArenaV2MedicalBiotechPilot = lazy(() => import("./pages/ArenaV2MedicalBiotechPilot"))
 const ArenaV2ClinicalLabPilot = lazy(() => import("./pages/ArenaV2ClinicalLabPilot"))
+const ArenaV2SapFicoPilot = lazy(() => import("./pages/ArenaV2SapFicoPilot"))
+const ArenaV2SapMmSdPilot = lazy(() => import("./pages/ArenaV2SapMmSdPilot"))
+const ArenaV2SapAbapPilot = lazy(() => import("./pages/ArenaV2SapAbapPilot"))
 const ArenaV2RecruiterView = lazy(() => import("./pages/ArenaV2RecruiterView"))
 const Pulse              = lazy(() => import("./pages/Pulse"))
 const HardwareChallenges = lazy(() => import("./pages/HardwareChallenges"))
@@ -1850,6 +1853,30 @@ function App() {
               userData={userData}
               onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
               onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2ClinicalLabPilot"); setCurrentPage("arenaV2RecruiterView") }}
+            />
+          )}
+          {currentPage === "arenaV2SapFicoPilot" && (
+            <ArenaV2SapFicoPilot
+              user={user}
+              userData={userData}
+              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
+              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2SapFicoPilot"); setCurrentPage("arenaV2RecruiterView") }}
+            />
+          )}
+          {currentPage === "arenaV2SapMmSdPilot" && (
+            <ArenaV2SapMmSdPilot
+              user={user}
+              userData={userData}
+              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
+              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2SapMmSdPilot"); setCurrentPage("arenaV2RecruiterView") }}
+            />
+          )}
+          {currentPage === "arenaV2SapAbapPilot" && (
+            <ArenaV2SapAbapPilot
+              user={user}
+              userData={userData}
+              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
+              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2SapAbapPilot"); setCurrentPage("arenaV2RecruiterView") }}
             />
           )}
           {currentPage === "arenaV2RecruiterView" && (

@@ -35,6 +35,11 @@ export const FRONTEND_WORKSTATION_REGISTRY = {
   // WORKSTATION_IDS entry) is the schema-safe choice for a 12th domain.
   CalculatorWorkstation:     { status: "ready",          importPath: "./workstations/ClinicalLabWorkstationV2.jsx" },
   FullStackWorkstation:      { status: "ready",          importPath: "./workstations/MedicalBiotechWorkstationV2.jsx" },
+  // SAP domain, thirteenth role workspace family — a genuinely new
+  // WORKSTATION_IDS entry (sap_console), not a reused key, since all 12
+  // prior keys were already claimed. See backend validators.js's comment
+  // on the same enum for the reasoning.
+  SapConsoleWorkstation:     { status: "ready",          importPath: "./workstations/SapConsoleWorkstationV2.jsx" },
 }
 
 export function isWorkstationReady(componentKey) {
