@@ -79,6 +79,13 @@ const WORKSTATION_SPECS = {
   "starterCode": "<a short ABAP snippet with a real bug, only when sapMode is abap>"`,
     requiredExtra: [],
   },
+  dashboard: {
+    extraFieldsPrompt: `"tables": [{"name":"<table_name>","rowCount":<integer, realistic scale for the scenario (e.g. hundreds of thousands to millions for the slow table)>,"columns":[{"name":"<col>","type":"<sql type, e.g. 'int, primary key' or 'timestamp'>"}] (3-6 columns),"indexes":[{"name":"<index_name>","type":"<e.g. 'btree, unique'>","columns":["<col>"]}] (existing indexes only — the slow table should usually have just its primary key)}] (2-4 tables, including the one referenced in slowQuery.sql),
+  "relationships": [{"from":{"table":"<table_name>"},"to":{"table":"<table_name>"}}] (foreign-key relationships between the tables above),
+  "slowQuery": {"sql":"<the real, complete SQL query from the ticket, formatted with newlines>","currentPlan":{"planText":"<a realistic multi-line EXPLAIN ANALYZE output — Seq Scan, Filter, Rows Removed by Filter, Planning Time, Execution Time — consistent with the table's rowCount>","rowsScanned":<integer, should roughly equal the slow table's rowCount>,"executionTimeMs":<number, consistent with the ticket's reported slowness>}},
+  "candidateIndexes": [{"id":"<short id, e.g. 'idx_a'>","ddl":"<a real CREATE INDEX statement>","table":"<table_name>","columns":["<col>"],"estimated":{"planText":"<a realistic Index Scan EXPLAIN ANALYZE output after this index is applied>","rowsScanned":<integer>,"executionTimeMs":<number>}}] (2-3 candidates: at least one clearly correct/optimal composite index, and 1-2 plausible-but-suboptimal alternatives with worse but non-zero executionTimeMs)`,
+    requiredExtra: ["tables", "slowQuery"],
+  },
 }
 
 const CORE_FIELDS_SPEC = `{
@@ -200,6 +207,73 @@ function validateWorkstationExtras(raw, workstation) {
     extras.logs = raw.logs
     if (Array.isArray(raw?.iocDatabase)) extras.iocDatabase = raw.iocDatabase.slice(0, 20)
     if (Array.isArray(raw?.mitreReference)) extras.mitreReference = raw.mitreReference.slice(0, 20)
+  } else if (workstation === "dashboard") {
+    // DBA workstation (DbaWorkstationV2.jsx) — schema explorer, ER diagram,
+    // query plan viewer, and index manager all read straight off these
+    // fields with no other fallback; if any of tables/slowQuery is missing
+    // or malformed, the workstation silently renders zeroed/empty panels
+    // (this is exactly the bug that motivated adding this branch — see
+    // 2026-08-13 fix note in DbaWorkstationV2.jsx). Validate strictly rather
+    // than let a half-shaped AI response through to production.
+    const rawTables = Array.isArray(raw?.tables) ? raw.tables : []
+    const tables = rawTables
+      .filter((t) => isNonEmptyString(t?.name) && Number.isFinite(Number(t?.rowCount)) && Array.isArray(t?.columns) && t.columns.length)
+      .map((t) => ({
+        name: clampStr(t.name, 60),
+        rowCount: Math.max(0, Math.round(Number(t.rowCount))),
+        columns: t.columns
+          .filter((c) => isNonEmptyString(c?.name) && isNonEmptyString(c?.type))
+          .map((c) => ({ name: clampStr(c.name, 60), type: clampStr(c.type, 60) }))
+          .slice(0, 12),
+        indexes: Array.isArray(t.indexes)
+          ? t.indexes
+              .filter((ix) => isNonEmptyString(ix?.name) && Array.isArray(ix?.columns) && ix.columns.every(isNonEmptyString))
+              .map((ix) => ({ name: clampStr(ix.name, 60), type: clampStr(ix.type, 40) || "btree", columns: ix.columns.map((c) => clampStr(c, 60)).slice(0, 6) }))
+              .slice(0, 8)
+          : [],
+      }))
+      .slice(0, 8)
+    if (tables.length < 1) return null
+
+    const relationships = Array.isArray(raw?.relationships)
+      ? raw.relationships
+          .filter((r) => isNonEmptyString(r?.from?.table) && isNonEmptyString(r?.to?.table))
+          .map((r) => ({ from: { table: clampStr(r.from.table, 60) }, to: { table: clampStr(r.to.table, 60) } }))
+          .slice(0, 20)
+      : []
+
+    const sq = raw?.slowQuery
+    const sqSql = clampStr(sq?.sql, 2000)
+    const sqPlan = sq?.currentPlan
+    const sqPlanText = clampStr(sqPlan?.planText, 2000)
+    const sqRows = Number(sqPlan?.rowsScanned)
+    const sqTime = Number(sqPlan?.executionTimeMs)
+    if (!sqSql || !sqPlanText || !Number.isFinite(sqRows) || sqRows <= 0 || !Number.isFinite(sqTime) || sqTime <= 0) return null
+    extras.slowQuery = { sql: sqSql, currentPlan: { planText: sqPlanText, rowsScanned: Math.round(sqRows), executionTimeMs: Math.round(sqTime * 10) / 10 } }
+
+    const rawCandidates = Array.isArray(raw?.candidateIndexes) ? raw.candidateIndexes : []
+    const candidateIndexes = rawCandidates
+      .filter((c) => isNonEmptyString(c?.id) && isNonEmptyString(c?.ddl) && isNonEmptyString(c?.table))
+      .map((c) => {
+        const est = c?.estimated
+        const estRows = Number(est?.rowsScanned)
+        const estTime = Number(est?.executionTimeMs)
+        const estPlanText = clampStr(est?.planText, 2000)
+        if (!estPlanText || !Number.isFinite(estRows) || estRows < 0 || !Number.isFinite(estTime) || estTime < 0) return null
+        return {
+          id: clampStr(c.id, 40),
+          ddl: clampStr(c.ddl, 400),
+          table: clampStr(c.table, 60),
+          columns: Array.isArray(c.columns) ? c.columns.filter(isNonEmptyString).map((s) => clampStr(s, 60)).slice(0, 6) : [],
+          estimated: { planText: estPlanText, rowsScanned: Math.round(estRows), executionTimeMs: Math.round(estTime * 10) / 10 },
+        }
+      })
+      .filter(Boolean)
+      .slice(0, 6)
+
+    extras.tables = tables
+    extras.relationships = relationships
+    extras.candidateIndexes = candidateIndexes
   } else if (workstation === "sap_console") {
     const sapMode = raw?.sapMode === "abap" ? "abap" : "gui_config"
     extras.sapMode = sapMode

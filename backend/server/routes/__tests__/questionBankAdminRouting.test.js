@@ -67,7 +67,17 @@ function signToken(userId) {
 function makeFakeSupabase() {
   const profiles = {
     [ADMIN_ID]: { id: ADMIN_ID, is_admin: true },
-    [NON_ADMIN_ID]: { id: NON_ADMIN_ID, is_admin: false },
+    // org_type: "company" added 2026-08-13 — recruiterComms.js's POST /jobs
+    // gained its own requireRecruiter() gate (org_type==='company') on
+    // 2026-08-03, after this test was written. Without it, this fixture's
+    // non-admin user 403's for a real, unrelated reason ("not a recruiter
+    // account") that the test can't distinguish from the routing-shadow bug
+    // it actually exists to catch — making the assertion below a false
+    // failure, not a real regression. This user is a non-admin so the
+    // question-bank-admin-gate assertions elsewhere in this file are
+    // unaffected; it just also needs to look like a legitimate recruiter to
+    // reach POST /jobs at all.
+    [NON_ADMIN_ID]: { id: NON_ADMIN_ID, is_admin: false, org_type: "company" },
   }
 
   function chain(table) {

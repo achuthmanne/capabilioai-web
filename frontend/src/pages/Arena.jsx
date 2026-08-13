@@ -23,6 +23,7 @@ import { supabase } from "../lib/supabase"
 import ArenaStreaks  from "./ArenaStreaks"
 import ArenaCommonChallenges from "./ArenaCommonChallenges"
 import { getDomainChallenges, getDomainCategories } from "../config/domainChallenges"
+import { getArenaV2PilotFor, ARENA_V2_ROLE_LABEL } from "../arena-v2/v1ToV2RoleMap"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DESIGN TOKENS
@@ -3422,7 +3423,7 @@ function ArenaLanding({ userData, onSelect }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN ARENA COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
-export default function Arena({ user, userData, setUserData }) {
+export default function Arena({ user, userData, setUserData, onNavigateArenaV2 }) {
   // arenaView: "landing" | "common" | "domain"
   const [arenaView, setArenaView]             = useState("landing")
   // streamCategories: array of DB category strings to filter problems, or null for all
@@ -3469,7 +3470,7 @@ export default function Arena({ user, userData, setUserData }) {
     )
   }
 
-  return <ArenaDomain user={user} userData={userData} setUserData={setUserData} onBack={handleBack} />
+  return <ArenaDomain user={user} userData={userData} setUserData={setUserData} onBack={handleBack} onNavigateArenaV2={onNavigateArenaV2} />
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -3477,11 +3478,15 @@ export default function Arena({ user, userData, setUserData }) {
 // Keeps all existing workstation / mission / history / leaderboard logic.
 // Only change: removed the DSA/Domain/Missions sub-tabs — domain challenges only.
 // ─────────────────────────────────────────────────────────────────────────────
-function ArenaDomain({ user, userData, setUserData, onBack }) {
+function ArenaDomain({ user, userData, setUserData, onBack, onNavigateArenaV2 }) {
   // Domain is locked to the user's profile — no switching allowed
   // honour domain override set by ArenaLanding domain quick-switch
   const domainOverride = sessionStorage.getItem("capabilio_arena_domain")
   const domainKey = (domainOverride && ARENA_DOMAINS[domainOverride]) ? domainOverride : resolveArenaDomain(userData)
+  // Arena V1↔V2 integration, Phase 1 (routing only, see v1ToV2RoleMap.js for
+  // the full reasoning): only a conservative subset of domains has a
+  // confident 1:1 match to a real, Groq-generated Arena V2 workstation.
+  const arenaV2PilotPage = getArenaV2PilotFor(domainKey)
 
   const [activeModuleId, setActiveModuleId]   = useState(null)
   const [activeMission, setActiveMission]     = useState(null)
@@ -4590,6 +4595,30 @@ function ArenaDomain({ user, userData, setUserData, onBack }) {
               CodeEditor={CodeEditor}
               uid={user?.id || user?.uid}
             />
+          )}
+
+          {/* Arena V1↔V2 integration, Phase 1: a real, Groq-generated,
+              role-specific workstation exists for this domain — offer it
+              alongside V1's own daily slots/library, never in place of
+              them. See v1ToV2RoleMap.js for why only some domains show
+              this. */}
+          {!activeMission && !showLibrary && arenaV2PilotPage && onNavigateArenaV2 && (
+            <div style={{ margin: "0 24px 12px", padding: "12px 16px", background: "#EEF2FF", border: "1px solid #C7D2FE", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#3730A3" }}>
+                  Try the real {ARENA_V2_ROLE_LABEL[arenaV2PilotPage]} workstation
+                </div>
+                <div style={{ fontSize: 12, color: "#4338CA" }}>
+                  A fresh, AI-generated mission every attempt — real tools, real ELO, graded by AI.
+                </div>
+              </div>
+              <button
+                onClick={() => onNavigateArenaV2(arenaV2PilotPage)}
+                style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 700, fontSize: 13, background: "#4338CA", color: "#fff", border: "none", cursor: "pointer", whiteSpace: "nowrap" }}
+              >
+                Open workstation →
+              </button>
+            </div>
           )}
 
           {/* SLOT VIEW — plan-gated daily challenges */}

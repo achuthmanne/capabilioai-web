@@ -32,8 +32,20 @@ describe('2026-07-26 Pulse redesign — no hardcoded feed/people content, real A
     assert.ok(routeSource.includes('pulse_posts'), 'trending-tags must be computed from the real pulse_posts table')
   })
 
-  test('market-insights response is honestly labeled — live_search vs ai_estimate vs unavailable', () => {
-    assert.ok(routeSource.includes('source: hasGemini ? "live_search" : "ai_estimate"'), 'must label whether the report came from real search grounding or an LLM estimate')
+  test('market-insights response is honestly labeled — ai_estimate vs unavailable', () => {
+    // 2026-07-29 (see pulseNexus.js's own header comment on this route): the
+    // Gemini live-search-grounded path this test originally checked for
+    // (`hasGemini ? "live_search" : "ai_estimate"`) was deliberately removed
+    // — GEMINI_API_KEY was unreliable/unset in production, every call threw
+    // before ever reaching the Groq fallback, and users saw a false
+    // "signals unavailable" state as a result. The route is Groq-only now,
+    // with an unconditional, honest `source: "ai_estimate"` label — still
+    // exactly the "never silently claim this is Live/real-time search"
+    // guarantee this test exists to protect, just without a code path that
+    // was actively causing outages. Updated to match the current, documented,
+    // intentional behavior rather than the pre-incident implementation.
+    assert.ok(routeSource.includes('source: "ai_estimate"'), 'must label a successful report as an LLM estimate, never as live/real-time search')
+    assert.ok(!/source:\s*["'`]live["'`]/i.test(routeSource), 'must never claim results are "live" without real search grounding behind them')
     assert.ok(routeSource.includes('source: "unavailable"'), 'the last-resort error path must explicitly say data is unavailable, not silently return empty-but-unlabeled data')
   })
 

@@ -1777,7 +1777,7 @@ function App() {
           )}
           {currentPage === "nexus"     && <Nexus user={user} userData={userData} setUserData={setUserData} />}
           {currentPage === "myTasks"   && <MyTasks />}
-          {currentPage === "arena"     && <Arena user={user} userData={userData} setUserData={setUserData} onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }} onNavigatePricing={() => setCurrentPage("pricing")} />}
+          {currentPage === "arena"     && <Arena user={user} userData={userData} setUserData={setUserData} onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }} onNavigatePricing={() => setCurrentPage("pricing")} onNavigateArenaV2={(pageKey) => { setCurrentPage(pageKey); setActiveNavItem("arena") }} />}
           {currentPage === "arenaV2MLPilot" && (
             <ArenaV2MLPilot
               user={user}

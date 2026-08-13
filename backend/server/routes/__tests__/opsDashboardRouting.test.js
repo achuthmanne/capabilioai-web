@@ -71,9 +71,14 @@ before(async () => {
 
   const app = express()
   app.use(express.json())
-  // Mirrors backend/server.js's actual mount order/paths.
+  // Mirrors backend/server.js's actual mount order/paths (server.js:383 mounts
+  // mentorMarketplaceAdminRoutes at "/api/admin/mentor" specifically — its
+  // own routes are declared relative, e.g. router.get("/applications", ...),
+  // so mounting it at bare "/api" here (the previous version of this test)
+  // meant GET /api/admin/mentor/applications 404'd against a router that only
+  // ever registered GET /applications. Fixed to match the real mount path.
   app.use("/api/admin/ops", opsDashboardRoutes)
-  app.use("/api", mentorMarketplaceAdminRoutes)
+  app.use("/api/admin/mentor", mentorMarketplaceAdminRoutes)
 
   server = http.createServer(app)
   await new Promise(resolve => server.listen(0, resolve))

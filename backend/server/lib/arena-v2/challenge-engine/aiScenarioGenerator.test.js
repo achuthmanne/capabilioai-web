@@ -96,6 +96,51 @@ test("generateAiScenario returns a scenario with no workstation-specific extras 
   assert.equal(result.content.starterCode, undefined)
 })
 
+const VALID_DASHBOARD_EXTRAS = {
+  tables: [
+    { name: "orders", rowCount: 2400000, columns: [{ name: "order_id", type: "int, primary key" }, { name: "customer_id", type: "int" }], indexes: [{ name: "orders_pkey", type: "btree, unique", columns: ["order_id"] }] },
+    { name: "customers", rowCount: 180000, columns: [{ name: "customer_id", type: "int, primary key" }], indexes: [] },
+  ],
+  relationships: [{ from: { table: "orders" }, to: { table: "customers" } }],
+  slowQuery: {
+    sql: "SELECT * FROM orders WHERE customer_id = 1;",
+    currentPlan: { planText: "Seq Scan on orders (actual time=812.4..812.6 rows=6)\nExecution Time: 814.2 ms", rowsScanned: 2400000, executionTimeMs: 814.2 },
+  },
+  candidateIndexes: [
+    { id: "idx_a", ddl: "CREATE INDEX idx_orders_customer_id ON orders (customer_id);", table: "orders", columns: ["customer_id"], estimated: { planText: "Index Scan (actual time=4.2..48.9 rows=412)", rowsScanned: 412, executionTimeMs: 49.4 } },
+  ],
+}
+
+test("generateAiScenario requires dashboard-specific fields (tables + slowQuery) and accepts a full valid response", async () => {
+  const result = await generateAiScenario(
+    { role: "Database Administrator", skill: "Query Optimization", difficulty: "Medium", workstation: "dashboard" },
+    { callAi: async () => ({ ...VALID_CORE, ...VALID_DASHBOARD_EXTRAS }) }
+  )
+  assert.ok(result)
+  assert.equal(result.content.tables.length, 2)
+  assert.equal(result.content.tables[0].name, "orders")
+  assert.equal(result.content.slowQuery.currentPlan.rowsScanned, 2400000)
+  assert.equal(result.content.candidateIndexes.length, 1)
+})
+
+test("generateAiScenario rejects dashboard content missing tables", async () => {
+  // eslint-disable-next-line no-unused-vars -- destructured only to exclude `tables` from `rest`
+  const { tables, ...rest } = VALID_DASHBOARD_EXTRAS
+  const result = await generateAiScenario(
+    { role: "Database Administrator", skill: "Query Optimization", difficulty: "Medium", workstation: "dashboard" },
+    { callAi: async () => ({ ...VALID_CORE, ...rest }) }
+  )
+  assert.equal(result, null)
+})
+
+test("generateAiScenario rejects dashboard content missing/zeroed slowQuery metrics", async () => {
+  const result = await generateAiScenario(
+    { role: "Database Administrator", skill: "Query Optimization", difficulty: "Medium", workstation: "dashboard" },
+    { callAi: async () => ({ ...VALID_CORE, tables: VALID_DASHBOARD_EXTRAS.tables, slowQuery: { sql: "SELECT 1;", currentPlan: { planText: "x", rowsScanned: 0, executionTimeMs: 0 } } }) }
+  )
+  assert.equal(result, null)
+})
+
 test("generateAiScenario returns null for missing required ctx (no role)", async () => {
   const result = await generateAiScenario({ skill: "X", difficulty: "Medium", workstation: "notebook" }, { callAi: async () => VALID_CORE })
   assert.equal(result, null)
