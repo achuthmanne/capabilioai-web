@@ -39,12 +39,84 @@
 import { useEffect, useState } from "react"
 import { fetchSkillGraph, fetchMyProgress } from "../api/arenaV2Library.js"
 import { formatEloDelta } from "./evidenceFormatting.js"
+import ArenaCopilotPanel from "./ArenaCopilotPanel.jsx"
 
 const STATUS_BADGE = {
   idle: { label: "In progress", color: "#94a3b8" },
   submitting: { label: "Grading…", color: "#fbbf24" },
   done: { label: "Graded", color: "#4ade80" },
   error: { label: "Submission failed", color: "#f87171" },
+}
+
+// Honest bucketing of the real finalScore into a label — a deterministic
+// function of a real number, not a fabricated category. Thresholds match
+// the same "Excellent/Good/Fair/Needs work" language already used in
+// ArenaV2RecruiterView.jsx for consistency.
+function scoreLabel(score) {
+  if (score >= 90) return { label: "Excellent", color: "#4ade80" }
+  if (score >= 75) return { label: "Good", color: "#60a5fa" }
+  if (score >= 60) return { label: "Fair", color: "#fbbf24" }
+  return { label: "Needs work", color: "#f87171" }
+}
+
+function ScoreRing({ score }) {
+  const sl = scoreLabel(score)
+  const pct = Math.max(0, Math.min(100, score))
+  const circumference = 2 * Math.PI * 34
+  const offset = circumference * (1 - pct / 100)
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+      <div style={{ position: "relative", width: 80, height: 80 }}>
+        <svg width="80" height="80" style={{ transform: "rotate(-90deg)" }}>
+          <circle cx="40" cy="40" r="34" fill="none" stroke="#1e293b" strokeWidth="8" />
+          <circle cx="40" cy="40" r="34" fill="none" stroke={sl.color} strokeWidth="8"
+            strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" />
+        </svg>
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 800, color: "#e2e8f0" }}>
+          {score}
+        </div>
+      </div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: sl.color }}>{sl.label}</div>
+    </div>
+  )
+}
+
+function fmtClock(iso) {
+  if (!iso) return null
+  try { return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) } catch { return null }
+}
+
+// Real events only — no fabricated "data loaded" / "feature engineering
+// completed" steps, since this shell has no signal for those. Extending
+// this to a richer timeline needs real lifecycle events emitted by the
+// workstation/backend first (tracked separately, not faked here).
+function MissionTimeline({ dto, submissionState }) {
+  const started = fmtClock(dto?.startedAt)
+  const graded = submissionState.status === "done" ? fmtClock(submissionState.feedback?.gradedAt) : null
+  if (!started) return null
+  return (
+    <div style={{ background: "#0b1220", border: "1px solid #1e293b", borderRadius: 10, padding: 12 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0", marginBottom: 8 }}>Proof timeline</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: 12 }}>
+          <span style={{ color: "#64748b", fontFamily: "monospace", minWidth: 52 }}>{started}</span>
+          <span style={{ color: "#cbd5e1" }}>Mission started</span>
+        </div>
+        {submissionState.status === "submitting" && (
+          <div style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: 12 }}>
+            <span style={{ color: "#64748b", fontFamily: "monospace", minWidth: 52 }}>now</span>
+            <span style={{ color: "#fbbf24" }}>Submitted — AI grading in progress…</span>
+          </div>
+        )}
+        {graded && (
+          <div style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: 12 }}>
+            <span style={{ color: "#64748b", fontFamily: "monospace", minWidth: 52 }}>{graded}</span>
+            <span style={{ color: "#4ade80" }}>Graded — score recorded</span>
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
 
 function useElapsedTimer(startedAt, stoppedAt) {
@@ -91,14 +163,20 @@ function LeftBriefPanel({ ticket, prompt }) {
   return (
     <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
       {ticket && (
-        <div style={{ padding: 10, background: "#0f172a", borderRadius: 8, fontSize: 12 }}>
+        <div style={{ padding: 10, background: "#0f172a", border: "1px solid #1e293b", borderRadius: 8, fontSize: 12 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#64748b", letterSpacing: 0.5, marginBottom: 4 }}>COMPANY TICKET</div>
           <div style={{ fontWeight: 700, color: "#e2e8f0" }}>{ticket.id}</div>
           <div style={{ color: "#94a3b8", marginTop: 2 }}>{ticket.title}</div>
-          {ticket.priority && <div style={{ marginTop: 4, color: "#fbbf24", fontSize: 11 }}>{ticket.priority}</div>}
+          {ticket.priority && (
+            <div style={{ marginTop: 6, display: "inline-block", color: "#fbbf24", background: "#78350f33", fontSize: 10.5, fontWeight: 700, padding: "1px 7px", borderRadius: 999 }}>{ticket.priority}</div>
+          )}
         </div>
       )}
       {prompt && (
-        <div style={{ padding: 12, background: "#0f172a", borderRadius: 8, fontSize: 13, lineHeight: 1.5, color: "#cbd5e1" }}>{prompt}</div>
+        <div style={{ padding: 12, background: "#0f172a", border: "1px solid #1e293b", borderRadius: 8, fontSize: 13, lineHeight: 1.5, color: "#cbd5e1" }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#64748b", letterSpacing: 0.5, marginBottom: 6 }}>PROBLEM STATEMENT</div>
+          {prompt}
+        </div>
       )}
     </div>
   )
@@ -110,9 +188,21 @@ function MissionControlPanel({ checklist = [], acceptanceCriteria = [], submissi
     <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 14 }}>
       {checklist.length > 0 && (
         <div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0", marginBottom: 6 }}>Mission checklist</div>
-          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#cbd5e1", display: "flex", flexDirection: "column", gap: 4 }}>
-            {checklist.map((c, i) => <li key={i}>{c}</li>)}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0" }}>Mission checklist</div>
+            {fb?.passed && <span style={{ fontSize: 11, color: "#4ade80", fontWeight: 700 }}>{checklist.length}/{checklist.length}</span>}
+          </div>
+          <ul style={{ margin: 0, padding: 0, listStyle: "none", fontSize: 12, color: "#cbd5e1", display: "flex", flexDirection: "column", gap: 5 }}>
+            {checklist.map((c, i) => (
+              <li key={i} style={{ display: "flex", gap: 7, alignItems: "flex-start" }}>
+                {/* Only the overall pass/fail is a real signal — no per-item
+                    completion exists in the payload, so every item shows
+                    the same real state rather than fabricating which
+                    specific step is "done". */}
+                <span style={{ color: fb?.passed ? "#4ade80" : "#475569", flexShrink: 0 }}>{fb?.passed ? "✓" : "○"}</span>
+                <span>{c}</span>
+              </li>
+            ))}
           </ul>
         </div>
       )}
@@ -137,9 +227,14 @@ function MissionControlPanel({ checklist = [], acceptanceCriteria = [], submissi
 
       {fb && (
         <div>
+          {typeof fb.finalScore === "number" && (
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
+              <ScoreRing score={fb.finalScore} />
+            </div>
+          )}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
             <div style={{ fontWeight: 700, color: fb.passed ? "#4ade80" : "#f87171" }}>
-              {fb.passed ? "✓ Passed" : "✗ Not yet"} — {fb.finalScore}/100
+              {fb.passed ? "✓ Passed" : "✗ Not yet"}
               {fb.isZeroEffort ? " (capped — late)" : ""}
             </div>
           </div>
@@ -223,10 +318,15 @@ function SkillsRadar({ role, careerFamily, refetchToken }) {
   )
 }
 
-function BottomEvidenceArea({ submissionState, role, careerFamily, userId, onViewRecruiterEvidence }) {
+function BottomEvidenceArea({ dto, submissionState, role, careerFamily, userId, onViewRecruiterEvidence }) {
   const fb = submissionState.status === "done" ? submissionState.feedback : null
+  const payload = dto?.payload || {}
   return (
     <div style={{ padding: 12, borderTop: "1px solid #1e293b", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <ArenaCopilotPanel role={role} skill={dto?.skill} payload={{ ticket: payload.ticket, prompt: payload.prompt, checklist: payload.checklist, datasetSchemaDescription: payload.datasetSchemaDescription }} />
+        <MissionTimeline dto={dto} submissionState={submissionState} />
+      </div>
       {fb?.rewards && (
         <div style={{ fontSize: 12, color: "#94a3b8" }}>
           {fb.rewards.type === "elo" && fb.rewards.elo && (
@@ -276,7 +376,7 @@ export default function ArenaV2WorkspaceShell({ dto, submissionState, role, care
   return (
     <div>
       <TopMissionBar role={role} skill={dto?.skill} difficulty={dto?.difficulty} resumed={dto?.resumed} dto={dto} submissionState={submissionState} />
-      <div style={{ display: "grid", gridTemplateColumns: "220px 1fr 280px", gap: 0 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "240px 1fr 300px", gap: 0 }}>
         <div style={{ borderRight: "1px solid #1e293b" }}>
           <LeftBriefPanel ticket={payload.ticket} prompt={payload.prompt} />
         </div>
@@ -285,7 +385,7 @@ export default function ArenaV2WorkspaceShell({ dto, submissionState, role, care
           <MissionControlPanel checklist={payload.checklist} acceptanceCriteria={payload.acceptanceCriteria} submissionState={submissionState} />
         </div>
       </div>
-      <BottomEvidenceArea submissionState={submissionState} role={role} careerFamily={careerFamily} userId={userId} onViewRecruiterEvidence={onViewRecruiterEvidence} />
+      <BottomEvidenceArea dto={dto} submissionState={submissionState} role={role} careerFamily={careerFamily} userId={userId} onViewRecruiterEvidence={onViewRecruiterEvidence} />
     </div>
   )
 }
