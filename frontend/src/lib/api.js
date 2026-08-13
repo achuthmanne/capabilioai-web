@@ -580,6 +580,21 @@ export const pulseApi = {
   // (proof_objects / Professional ELO events / verified skills). Feeds the
   // "Share Proof" picker; every fact is re-verified server-side on create.
   proofCandidates: () => request("GET", "/pulse/proof-candidates"),
+  // Who reacted to a post (defaults to "acknowledge"/like) — powers the
+  // Instagram/LinkedIn-style "who liked this" list.
+  likers: (postId, action = "acknowledge") => request("GET", `/pulse/posts/${postId}/likers?action=${action}`),
+  // Stories — real 24h-expiry feature (image or text), separate from posts.
+  storiesFeed:  () => request("GET", "/pulse/stories"),
+  createStory:  ({ file, textContent, backgroundColor }) => {
+    const fd = new FormData()
+    if (file) fd.append("media", file)
+    if (textContent) fd.append("text_content", textContent)
+    if (backgroundColor) fd.append("background_color", backgroundColor)
+    return upload("/pulse/stories", fd)
+  },
+  viewStory:    (storyId) => request("POST", `/pulse/stories/${storyId}/view`),
+  storyViewers: (storyId) => request("GET", `/pulse/stories/${storyId}/viewers`),
+  deleteStory:  (storyId) => request("DELETE", `/pulse/stories/${storyId}`),
 }
 
 // ══════════════════════════════════════════

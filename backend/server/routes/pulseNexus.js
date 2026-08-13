@@ -10,6 +10,12 @@
  *   POST /api/pulse/posts/:id/interact — acknowledge/signal/save/repost
  *   GET  /api/pulse/posts/:id/comments — get comments
  *   POST /api/pulse/posts/:id/comments — add comment
+ *   GET  /api/pulse/posts/:id/likers   — who reacted (defaults to "acknowledge"/like)
+ *   GET  /api/pulse/stories            — active (unexpired) stories, grouped by author
+ *   POST /api/pulse/stories            — create a story (image upload or text)
+ *   POST /api/pulse/stories/:id/view   — mark viewed by current user
+ *   GET  /api/pulse/stories/:id/viewers — who viewed (author-only)
+ *   DELETE /api/pulse/stories/:id      — owner-only early delete
  *
  * Nexus:
  *   GET  /api/nexus/search         — search professionals
@@ -25,11 +31,13 @@
  *   GET  /api/pulse/trending-tags     — real tech_tags counts from recent posts
  */
 import { Router }     from "express"
+import multer         from "multer"
 import { supabaseAdmin } from "../lib/supabase.js"
 import { groq, GROQ_FAST } from "../lib/groq.js"
 import { requireAuth } from "../lib/auth.js"
 
 const router = Router()
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } })
 
 // ── Simple in-memory cache — market insights change slowly, no need to hit
 //    Groq on every page load. Cache per domain for 2 hours.
@@ -204,8 +212,13 @@ router.get("/pulse/feed", optionalAuth, async (req, res) => {
     const offset = (parseInt(page) - 1) * parseInt(limit)
     // Map sort param → DB column
     const sortCol = sort === "discussed" ? "comment_count"
-                  : sort === "signal"    ? "signal_count"
+                  // "liked" is the current sort id (Pulse redesign — Signal
+                  // was consolidated into the single Like/Acknowledge
+                  // reaction). "signal"/"acknowledged" kept mapped for any
+                  // stale client/bookmark still sending the old param names.
+                  : sort === "liked"     ? "acknowledge_count"
                   : sort === "acknowledged" ? "acknowledge_count"
+                  : sort === "signal"    ? "signal_count"
                   : "created_at"
 
     let q = supabaseAdmin.from("pulse_posts")
@@ -365,7 +378,7 @@ router.get("/pulse/proof-candidates", requireAuth, async (req, res) => {
 
 router.post("/pulse/posts", requireAuth, async (req, res) => {
   try {
-    const { post_type = "text", content, media_urls = [], poll_data, event_data, tech_tags = [], role_tags = [], visibility = "public", proof_ref } = req.body
+    const { post_type = "text", content, media_urls = [], poll_data, event_data, type_data, tech_tags = [], role_tags = [], visibility = "public", proof_ref } = req.body
 
     let proofData = null
     if (post_type === "proof") {
@@ -373,6 +386,19 @@ router.post("/pulse/posts", requireAuth, async (req, res) => {
       if (!proofData) return res.status(400).json({ error: "Could not verify this achievement — it may not belong to you or no longer exists" })
     } else if (!content?.trim()) {
       return res.status(400).json({ error: "content required" })
+    }
+
+    // Structured per-type data (Win/Ask/Code) — light server-side validation
+    // so a malformed client payload can't silently produce a broken card.
+    let typeData = null
+    if (post_type === "win") {
+      if (!type_data?.metric?.trim() && !type_data?.result?.trim()) return res.status(400).json({ error: "Add what you achieved (metric or result)" })
+      typeData = { metric: (type_data?.metric || "").trim() || null, result: (type_data?.result || "").trim() || null }
+    } else if (post_type === "question") {
+      typeData = { lookingFor: type_data?.lookingFor || null }
+    } else if (post_type === "code") {
+      if (!type_data?.code?.trim()) return res.status(400).json({ error: "Paste the code snippet" })
+      typeData = { language: (type_data?.language || "text").trim(), code: type_data.code }
     }
 
     const { data, error } = await supabaseAdmin.from("pulse_posts").insert({
@@ -384,6 +410,7 @@ router.post("/pulse/posts", requireAuth, async (req, res) => {
       poll_data:  poll_data || null,
       event_data: event_data || null,
       proof_data: proofData,
+      type_data:  typeData,
       tech_tags:  post_type === "proof" && !tech_tags.length ? (proofData.skillTags || []) : tech_tags,
       role_tags,
       visibility,
@@ -518,6 +545,146 @@ router.post("/pulse/posts/:id/comments", requireAuth, async (req, res) => {
     }
 
     res.json({ success: true, comment: data })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// GET /pulse/posts/:id/likers — the list of users behind a reaction count
+// (defaults to "acknowledge", i.e. the Like button), most recent first.
+// Powers the "who liked this" list, same idea as tapping the like count on
+// Instagram/Facebook/LinkedIn. Public (no auth required) since the reaction
+// counts themselves are already public on the feed.
+router.get("/pulse/posts/:id/likers", async (req, res) => {
+  try {
+    const action = ["acknowledge", "signal", "save", "repost"].includes(req.query.action) ? req.query.action : "acknowledge"
+    const { data, error } = await supabaseAdmin.from("post_interactions")
+      .select("created_at, user:profiles!user_id(id,name,display_name,username,profile_photo_url,elo_rating,verification_state,keyword)")
+      .eq("post_id", req.params.id)
+      .eq("action", action)
+      .order("created_at", { ascending: false })
+      .limit(200)
+    if (error) throw error
+    res.json({ users: (data || []).map(r => r.user).filter(Boolean), total: (data || []).length })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// ══════════════════════════════════════════
+// PULSE — STORIES (24h, real feature)
+// ══════════════════════════════════════════
+// A story is either an uploaded image (+ optional caption) or a text-only
+// card (content + background color), always expires 24h after creation
+// (enforced both by the RLS policy on pulse_stories, "expires_at > now()",
+// and by the WHERE clause below — belt and suspenders, no separate cleanup
+// job needed since expired rows simply stop being selectable/visible).
+
+// GET /pulse/stories — active stories from the viewer + people they follow +
+// the same domain community (kept simple: everyone's active stories, same
+// visibility model as the main feed — Pulse has no private-story concept).
+// Grouped by author for the stories row UI.
+router.get("/pulse/stories", optionalAuth, async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin.from("pulse_stories")
+      .select("id,author_id,media_type,media_url,text_content,background_color,view_count,created_at,expires_at, author:profiles!author_id(id,name,display_name,username,profile_photo_url)")
+      .gt("expires_at", new Date().toISOString())
+      .order("created_at", { ascending: true })
+      .limit(300)
+    if (error) throw error
+
+    // Group into one entry per author, each holding their ordered stories —
+    // this is what the story-ring row and the tap-to-advance viewer need.
+    const byAuthor = new Map()
+    for (const s of data || []) {
+      if (!byAuthor.has(s.author_id)) byAuthor.set(s.author_id, { author: s.author, stories: [] })
+      byAuthor.get(s.author_id).stories.push(s)
+    }
+
+    // Seen/unseen ring state for the current viewer.
+    let seenStoryIds = new Set()
+    if (req.user && data?.length) {
+      const { data: views } = await supabaseAdmin.from("pulse_story_views")
+        .select("story_id").eq("viewer_id", req.user.id).in("story_id", data.map(s => s.id))
+      seenStoryIds = new Set((views || []).map(v => v.story_id))
+    }
+
+    const groups = [...byAuthor.values()].map(g => ({
+      ...g,
+      allSeen: g.stories.every(s => seenStoryIds.has(s.id)),
+    }))
+    res.json({ groups })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST /pulse/stories — create a story. multipart/form-data with an optional
+// "media" file (image story) or JSON body with text_content (text story).
+router.post("/pulse/stories", requireAuth, upload.single("media"), async (req, res) => {
+  try {
+    const file = req.file
+    const textContent = (req.body.text_content || "").trim()
+    const backgroundColor = req.body.background_color || "#FF5701"
+
+    if (!file && !textContent) return res.status(400).json({ error: "Add a photo or write something first" })
+
+    let mediaUrl = null
+    if (file) {
+      const ext = (file.mimetype.split("/")[1] || "jpg").replace(/[^a-z0-9]/gi, "")
+      const path = `stories/${req.user.id}/${Date.now()}.${ext}`
+      const { error: uploadErr } = await supabaseAdmin.storage
+        .from("pulse-media")
+        .upload(path, file.buffer, { contentType: file.mimetype, upsert: false })
+      if (uploadErr) return res.status(500).json({ error: uploadErr.message })
+      const { data: { publicUrl } } = supabaseAdmin.storage.from("pulse-media").getPublicUrl(path)
+      mediaUrl = publicUrl
+    }
+
+    const { data, error } = await supabaseAdmin.from("pulse_stories").insert({
+      author_id:        req.user.id,
+      media_type:        file ? "image" : "text",
+      media_url:         mediaUrl,
+      text_content:      textContent || null,
+      background_color:  backgroundColor,
+    }).select("id,author_id,media_type,media_url,text_content,background_color,view_count,created_at,expires_at").single()
+    if (error) throw error
+
+    res.json({ success: true, story: data })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST /pulse/stories/:id/view — mark viewed by the current user (idempotent
+// via the UNIQUE(story_id, viewer_id) constraint) and bump view_count on
+// first view only.
+router.post("/pulse/stories/:id/view", requireAuth, async (req, res) => {
+  try {
+    const { error } = await supabaseAdmin.from("pulse_story_views")
+      .insert({ story_id: req.params.id, viewer_id: req.user.id })
+    // Unique violation = already viewed — not an error, just a no-op.
+    if (error && error.code !== "23505") throw error
+    if (!error) {
+      const { data: story } = await supabaseAdmin.from("pulse_stories").select("view_count").eq("id", req.params.id).single()
+      if (story) await supabaseAdmin.from("pulse_stories").update({ view_count: (story.view_count || 0) + 1 }).eq("id", req.params.id)
+    }
+    res.json({ success: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// GET /pulse/stories/:id/viewers — who viewed this story, author-only.
+router.get("/pulse/stories/:id/viewers", requireAuth, async (req, res) => {
+  try {
+    const { data: story } = await supabaseAdmin.from("pulse_stories").select("author_id").eq("id", req.params.id).single()
+    if (!story || story.author_id !== req.user.id) return res.status(403).json({ error: "Forbidden" })
+    const { data, error } = await supabaseAdmin.from("pulse_story_views")
+      .select("viewed_at, viewer:profiles!viewer_id(id,name,display_name,username,profile_photo_url)")
+      .eq("story_id", req.params.id).order("viewed_at", { ascending: false })
+    if (error) throw error
+    res.json({ viewers: (data || []).map(v => ({ ...v.viewer, viewed_at: v.viewed_at })) })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// DELETE /pulse/stories/:id — owner-only early delete (before the 24h expiry).
+router.delete("/pulse/stories/:id", requireAuth, async (req, res) => {
+  try {
+    const { data: story } = await supabaseAdmin.from("pulse_stories").select("author_id,media_url").eq("id", req.params.id).single()
+    if (!story || story.author_id !== req.user.id) return res.status(403).json({ error: "Forbidden" })
+    await supabaseAdmin.from("pulse_stories").delete().eq("id", req.params.id)
+    res.json({ success: true })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 

@@ -810,6 +810,103 @@ function StudentPulse({ user, userData }) {
   const [postType,     setPostType]     = useState("insight")
   const [postTags,     setPostTags]     = useState("")
   const [posting,      setPosting]      = useState(false)
+  // Structured fields — only used by their matching postType, distinct from
+  // the shared postText/postTags above (see composer render for why: Win/
+  // Ask/Code each need their own real inputs, not one reused textarea).
+  const [winMetric,     setWinMetric]     = useState("")
+  const [winResult,     setWinResult]     = useState("")
+  const [askLookingFor, setAskLookingFor] = useState("advice")
+  const [codeLanguage,  setCodeLanguage]  = useState("javascript")
+  const [codeSnippet,   setCodeSnippet]   = useState("")
+
+  const resetComposer = () => {
+    setPostText(""); setPostTags(""); setComposerOpen(false)
+    setWinMetric(""); setWinResult(""); setAskLookingFor("advice")
+    setCodeLanguage("javascript"); setCodeSnippet("")
+  }
+
+  // ── Who-liked-this modal (tap a reaction count to see the list, same as
+  //     Instagram/Facebook/LinkedIn) ──────────────────────────────────────
+  const [likersModal, setLikersModal] = useState({ open: false, postId: null, users: [], loading: false })
+  const openLikers = async (postId) => {
+    setLikersModal({ open: true, postId, users: [], loading: true })
+    try {
+      const { users } = await pulseApi.likers(postId, "acknowledge")
+      setLikersModal({ open: true, postId, users: users || [], loading: false })
+    } catch {
+      setLikersModal({ open: true, postId, users: [], loading: false })
+    }
+  }
+
+  // ── Stories (real 24h feature) ──────────────────────────────────────────────
+  const [storyGroups,    setStoryGroups]    = useState([])   // [{author, stories, allSeen}]
+  const [storiesLoading, setStoriesLoading] = useState(true)
+  const loadStories = useCallback(() => {
+    setStoriesLoading(true)
+    pulseApi.storiesFeed()
+      .then(d => setStoryGroups(d?.groups || []))
+      .catch(() => setStoryGroups([]))
+      .finally(() => setStoriesLoading(false))
+  }, [])
+  useEffect(() => { loadStories() }, [loadStories])
+
+  // Story composer (create) — a photo upload or a text card, not the post composer.
+  const [storyComposerOpen, setStoryComposerOpen] = useState(false)
+  const [storyFile,     setStoryFile]     = useState(null)
+  const [storyPreview,  setStoryPreview]  = useState(null)
+  const [storyText,     setStoryText]     = useState("")
+  const [storyBg,       setStoryBg]       = useState("#FF5701")
+  const [storyPosting,  setStoryPosting]  = useState(false)
+  const [storyError,    setStoryError]    = useState("")
+  const STORY_COLORS = ["#FF5701", "#7C3AED", "#059669", "#0891B2", "#D97706", "#DB2777"]
+
+  const pickStoryFile = (file) => {
+    setStoryFile(file)
+    setStoryPreview(file ? URL.createObjectURL(file) : null)
+  }
+
+  const submitStory = async () => {
+    if ((!storyFile && !storyText.trim()) || storyPosting) return
+    setStoryPosting(true); setStoryError("")
+    try {
+      await pulseApi.createStory({ file: storyFile, textContent: storyText.trim(), backgroundColor: storyBg })
+      setStoryComposerOpen(false)
+      setStoryFile(null); setStoryPreview(null); setStoryText(""); setStoryBg("#FF5701")
+      loadStories()
+    } catch (e) {
+      setStoryError("Could not post story: " + e.message)
+    } finally {
+      setStoryPosting(false)
+    }
+  }
+
+  // Story viewer (tap-to-advance, like IG/WhatsApp status)
+  const [storyViewer, setStoryViewer] = useState({ open: false, groupIdx: 0, storyIdx: 0 })
+  const openStoryViewer = (groupIdx) => {
+    setStoryViewer({ open: true, groupIdx, storyIdx: 0 })
+    const story = storyGroups[groupIdx]?.stories?.[0]
+    if (story) pulseApi.viewStory(story.id).catch(() => {})
+  }
+  const advanceStory = (dir) => {
+    setStoryViewer(v => {
+      const group = storyGroups[v.groupIdx]
+      if (!group) return { ...v, open: false }
+      let { groupIdx, storyIdx } = v
+      storyIdx += dir
+      if (storyIdx < 0) {
+        groupIdx -= 1
+        if (groupIdx < 0) return { open: false, groupIdx: 0, storyIdx: 0 }
+        storyIdx = (storyGroups[groupIdx]?.stories?.length || 1) - 1
+      } else if (storyIdx >= group.stories.length) {
+        groupIdx += 1
+        if (groupIdx >= storyGroups.length) return { open: false, groupIdx: 0, storyIdx: 0 }
+        storyIdx = 0
+      }
+      const nextStory = storyGroups[groupIdx]?.stories?.[storyIdx]
+      if (nextStory) pulseApi.viewStory(nextStory.id).catch(() => {})
+      return { open: true, groupIdx, storyIdx }
+    })
+  }
 
   // ── Proof Posts — "Share Proof" picker state ──────────────────────────────
   // Unlike the free-text composer, this never lets the user type the facts —
@@ -851,7 +948,7 @@ function StudentPulse({ user, userData }) {
       })
       if (result.post) {
         setPosts(p => [result.post, ...p])
-        setReactions(r => ({ ...r, [result.post.id]: { acknowledge: false, signal: false, save: false } }))
+        setReactions(r => ({ ...r, [result.post.id]: { acknowledge: false, save: false } }))
         setProofPickerOpen(false)
         setProofSelected(null)
         setProofCaption("")
@@ -899,7 +996,7 @@ function StudentPulse({ user, userData }) {
 
       if (feedTab === "community") {
         const sortParam = sortTab === "discussed" ? "discussed"
-                        : sortTab === "signal"    ? "signal"
+                        : sortTab === "liked"     ? "liked"
                         : "created_at"
         result = await pulseApi.feed({ page: pg, limit: 15, sort: sortParam })
       } else if (feedTab === "capsules") {
@@ -915,7 +1012,6 @@ function StudentPulse({ user, userData }) {
       newPosts.forEach(post => {
         rState[post.id] = {
           acknowledge: (post.user_interactions || []).includes("acknowledge"),
-          signal:      (post.user_interactions || []).includes("signal"),
           save:        (post.user_interactions || []).includes("save"),
         }
       })
@@ -1128,8 +1224,21 @@ function StudentPulse({ user, userData }) {
   }
 
   // ── Post creation ────────────────────────────────────────────────────────────
+  // Each type has its own required field(s) now instead of one shared
+  // textarea being valid for everything — see the composer render for the
+  // matching per-type inputs (winMetric/winResult, askLookingFor,
+  // codeLanguage/codeSnippet). postText is still the caption/body for every
+  // type (Insight uses it as the whole post; Win/Ask/Code use it as
+  // context/explanation alongside their structured field).
+  const postValid = () => {
+    if (postType === "win")      return !!(winMetric.trim() || winResult.trim())
+    if (postType === "code")     return !!codeSnippet.trim()
+    if (postType === "question") return !!postText.trim()
+    return !!postText.trim()
+  }
+
   const submitPost = async () => {
-    if (!postText.trim() || posting) return
+    if (!postValid() || posting) return
     setPosting(true)
     setError("")
     try {
@@ -1137,19 +1246,24 @@ function StudentPulse({ user, userData }) {
         t.startsWith("#") ? t.toLowerCase() : "#" + t.toLowerCase()
       ).filter(Boolean)
 
+      const type_data =
+        postType === "win"      ? { metric: winMetric.trim(), result: winResult.trim() } :
+        postType === "question" ? { lookingFor: askLookingFor } :
+        postType === "code"     ? { language: codeLanguage, code: codeSnippet } :
+        undefined
+
       const result = await pulseApi.createPost({
         post_type:  postType,
         content:    postText.trim(),
+        type_data,
         tech_tags:  tags,
         role_tags:  [domain.toLowerCase()],
         visibility: "public",
       })
       if (result.post) {
         setPosts(p => [result.post, ...p])
-        setReactions(r => ({ ...r, [result.post.id]: { acknowledge: false, signal: false, save: false } }))
-        setPostText("")
-        setPostTags("")
-        setComposerOpen(false)
+        setReactions(r => ({ ...r, [result.post.id]: { acknowledge: false, save: false } }))
+        resetComposer()
       }
     } catch (e) {
       setError("Could not post: " + e.message)
@@ -1339,7 +1453,7 @@ function StudentPulse({ user, userData }) {
               </button>
               <button className="pb" onClick={()=>{ setFeedTab("community"); setComposerOpen(true) }}
                 style={{padding:"6px 16px",background:P.accent,border:"none",borderRadius:99,fontSize:12,fontWeight:700,color:"#fff"}}>
-                + Share a Signal
+                + New Post
               </button>
             </div>
           </div>
@@ -1381,32 +1495,140 @@ function StudentPulse({ user, userData }) {
 
           {/* ── Left feed column ── */}
           <div>
-            {/* Stories row */}
+            {/* Stories row — real 24h stories now (photo or text), not an
+                alias for the post composer. Your own ring always opens the
+                story composer; a builder's ring (real, unexpired stories
+                only — decorative avatars with no stories are just not
+                shown, rather than rendering a dead click) opens the viewer. */}
             <div style={{background:P.surface,border:`1px solid ${P.border}`,borderRadius:P.r,padding:"14px 16px",marginBottom:14,boxShadow:P.shadow}}>
               <div style={{fontSize:10,fontWeight:800,letterSpacing:"0.1em",color:P.ink4,textTransform:"uppercase",marginBottom:12}}>STORIES · 24H</div>
               <div style={{display:"flex",gap:14,overflowX:"auto",paddingBottom:4}}>
                 {/* Your story */}
-                <div className="story" onClick={()=>setComposerOpen(true)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5,flexShrink:0}}>
-                  <div style={{width:52,height:52,borderRadius:"50%",padding:2,background:`linear-gradient(135deg,${P.accent},#f97316)`}}>
-                    <div style={{width:"100%",height:"100%",borderRadius:"50%",border:"2px solid #fff",background:P.accent,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:800,color:"#fff"}}>+</div>
-                  </div>
-                  <span style={{fontSize:10,fontWeight:500,color:P.ink3}}>Your Story</span>
-                </div>
-                {/* Builder stories */}
-                {builders.slice(0,5).map((b,i)=>{
-                  const bName = b.display_name || b.name || "User"
-                  const bColor = colorForId(b.id)
+                {(() => {
+                  const myGroup = storyGroups.find(g => g.author?.id === user?.id)
                   return (
-                    <div key={b.id||i} className="story" style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5,flexShrink:0}}>
-                      <div style={{width:52,height:52,borderRadius:"50%",padding:2,background:`linear-gradient(135deg,${bColor},${bColor}88)`}}>
+                    <div className="story" onClick={()=> myGroup ? openStoryViewer(storyGroups.indexOf(myGroup)) : setStoryComposerOpen(true)}
+                      style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5,flexShrink:0,position:"relative"}}>
+                      <div style={{width:52,height:52,borderRadius:"50%",padding:2,background:myGroup?`linear-gradient(135deg,${P.accent},#f97316)`:"#E5E1DA"}}>
+                        <div style={{width:"100%",height:"100%",borderRadius:"50%",border:"2px solid #fff",background:P.accent,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:800,color:"#fff",overflow:"hidden"}}>
+                          {initials}
+                        </div>
+                      </div>
+                      <button onClick={(e)=>{e.stopPropagation(); setStoryComposerOpen(true)}}
+                        title="Add a story"
+                        style={{position:"absolute",top:32,left:32,width:20,height:20,borderRadius:"50%",background:P.accent,border:"2px solid #fff",color:"#fff",fontSize:12,fontWeight:800,lineHeight:1,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+                      <span style={{fontSize:10,fontWeight:500,color:P.ink3}}>Your Story</span>
+                    </div>
+                  )
+                })()}
+                {/* Other builders' real, unexpired stories */}
+                {!storiesLoading && storyGroups.filter(g => g.author?.id !== user?.id).map((g, gi)=>{
+                  const realIdx = storyGroups.indexOf(g)
+                  const bName = g.author?.display_name || g.author?.name || "User"
+                  const bColor = colorForId(g.author?.id || bName)
+                  return (
+                    <div key={g.author?.id||gi} className="story" onClick={()=>openStoryViewer(realIdx)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5,flexShrink:0}}>
+                      <div style={{width:52,height:52,borderRadius:"50%",padding:2,background:g.allSeen?"#E5E1DA":`linear-gradient(135deg,${bColor},${bColor}88)`}}>
                         <div style={{width:"100%",height:"100%",borderRadius:"50%",border:"2px solid #fff",background:bColor,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,color:"#fff"}}>{bName[0]?.toUpperCase()}</div>
                       </div>
                       <span style={{fontSize:10,fontWeight:500,color:P.ink3,maxWidth:54,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{bName.split(" ")[0]}</span>
                     </div>
                   )
                 })}
+                {!storiesLoading && storyGroups.filter(g => g.author?.id !== user?.id).length===0 && (
+                  <div style={{fontSize:11,color:P.ink4,alignSelf:"center",paddingLeft:4}}>No active stories from the community yet.</div>
+                )}
               </div>
             </div>
+
+            {/* Story composer modal */}
+            {storyComposerOpen && (
+              <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:220,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}
+                onClick={()=>setStoryComposerOpen(false)}>
+                <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:14,width:"100%",maxWidth:360,overflow:"hidden",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
+                  <div style={{padding:"14px 16px",borderBottom:`1px solid ${P.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                    <div style={{fontSize:14,fontWeight:800,color:P.ink}}>Add to your story</div>
+                    <button onClick={()=>setStoryComposerOpen(false)} style={{border:"none",background:"none",fontSize:16,color:P.ink4,cursor:"pointer"}}>✕</button>
+                  </div>
+                  <div style={{padding:16}}>
+                    {storyPreview ? (
+                      <div style={{position:"relative",marginBottom:10}}>
+                        <img src={storyPreview} alt="" style={{width:"100%",height:280,objectFit:"cover",borderRadius:10}}/>
+                        <button onClick={()=>pickStoryFile(null)} style={{position:"absolute",top:8,right:8,background:"rgba(0,0,0,0.55)",color:"#fff",border:"none",borderRadius:99,width:26,height:26,cursor:"pointer"}}>✕</button>
+                      </div>
+                    ) : storyText.trim() ? (
+                      <div style={{width:"100%",height:280,borderRadius:10,background:storyBg,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",padding:20,textAlign:"center",fontSize:20,fontWeight:700,marginBottom:10,whiteSpace:"pre-wrap"}}>
+                        {storyText}
+                      </div>
+                    ) : (
+                      <label style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:120,border:`1.5px dashed ${P.border}`,borderRadius:10,cursor:"pointer",marginBottom:10,color:P.ink4,fontSize:12}}>
+                        📷 Choose a photo
+                        <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>pickStoryFile(e.target.files?.[0]||null)}/>
+                      </label>
+                    )}
+
+                    {!storyFile && (
+                      <>
+                        <textarea value={storyText} onChange={e=>setStoryText(e.target.value)}
+                          placeholder="...or write a text story"
+                          style={{width:"100%",minHeight:50,padding:"8px 10px",border:`1.5px solid ${P.border}`,borderRadius:8,fontSize:13,color:P.ink,resize:"vertical",fontFamily:"inherit",outline:"none",boxSizing:"border-box",marginBottom:8}}/>
+                        {storyText.trim() && (
+                          <div style={{display:"flex",gap:6,marginBottom:10}}>
+                            {STORY_COLORS.map(c=>(
+                              <button key={c} onClick={()=>setStoryBg(c)} style={{width:22,height:22,borderRadius:"50%",background:c,border:storyBg===c?"2px solid #111":"2px solid transparent",cursor:"pointer"}}/>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {storyError && <div style={{fontSize:12,color:"#DC2626",marginBottom:8}}>{storyError}</div>}
+                    <button onClick={submitStory} disabled={(!storyFile && !storyText.trim())||storyPosting}
+                      style={{width:"100%",padding:10,borderRadius:8,border:"none",background:(storyFile||storyText.trim())&&!storyPosting?P.accent:"rgba(0,0,0,0.1)",color:(storyFile||storyText.trim())&&!storyPosting?"#fff":P.ink4,fontSize:13,fontWeight:700}}>
+                      {storyPosting?"Sharing…":"Share to Story"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Story viewer — full-screen, tap left/right to go back/forward,
+                auto-marks each story viewed via pulseApi.viewStory as you
+                advance (see openStoryViewer/advanceStory). */}
+            {storyViewer.open && storyGroups[storyViewer.groupIdx] && (() => {
+              const group = storyGroups[storyViewer.groupIdx]
+              const story = group.stories[storyViewer.storyIdx]
+              if (!story) return null
+              const authorName = group.author?.display_name || group.author?.name || "User"
+              return (
+                <div style={{position:"fixed",inset:0,background:"#000",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  <button onClick={()=>setStoryViewer({open:false,groupIdx:0,storyIdx:0})}
+                    style={{position:"absolute",top:16,right:16,background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",width:32,height:32,borderRadius:"50%",fontSize:16,cursor:"pointer",zIndex:2}}>✕</button>
+                  <div style={{position:"absolute",top:10,left:10,right:10,display:"flex",gap:4}}>
+                    {group.stories.map((s,si)=>(
+                      <div key={s.id} style={{flex:1,height:3,borderRadius:2,background:si<storyViewer.storyIdx?"#fff":si===storyViewer.storyIdx?"rgba(255,255,255,0.9)":"rgba(255,255,255,0.3)"}}/>
+                    ))}
+                  </div>
+                  <div style={{position:"absolute",top:22,left:14,display:"flex",alignItems:"center",gap:8,color:"#fff"}}>
+                    <div style={{width:28,height:28,borderRadius:"50%",background:colorForId(group.author?.id||authorName),display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800}}>{authorName[0]?.toUpperCase()}</div>
+                    <span style={{fontSize:13,fontWeight:700}}>{authorName}</span>
+                    <span style={{fontSize:11,opacity:0.7}}>{timeAgo(story.created_at)}</span>
+                  </div>
+                  <div onClick={()=>advanceStory(-1)} style={{position:"absolute",left:0,top:0,bottom:0,width:"35%",cursor:"pointer"}}/>
+                  <div onClick={()=>advanceStory(1)} style={{position:"absolute",right:0,top:0,bottom:0,width:"35%",cursor:"pointer"}}/>
+                  {story.media_type==="image" ? (
+                    <img src={story.media_url} alt="" style={{maxWidth:"100%",maxHeight:"92vh",objectFit:"contain"}}/>
+                  ) : (
+                    <div style={{width:"min(420px,92vw)",height:"70vh",borderRadius:12,background:story.background_color||P.accent,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",padding:28,textAlign:"center",fontSize:24,fontWeight:700,whiteSpace:"pre-wrap"}}>
+                      {story.text_content}
+                    </div>
+                  )}
+                  {story.media_type==="image" && story.text_content && (
+                    <div style={{position:"absolute",bottom:24,left:16,right:16,color:"#fff",fontSize:14,textAlign:"center",textShadow:"0 1px 4px rgba(0,0,0,0.6)"}}>{story.text_content}</div>
+                  )}
+                </div>
+              )
+            })()}
 
             {/* Feed tabs + content card */}
             <div style={{background:P.surface,border:`1px solid ${P.border}`,borderRadius:P.r,overflow:"hidden",boxShadow:P.shadow}}>
@@ -1430,26 +1652,70 @@ function StudentPulse({ user, userData }) {
                     <div>
                       {/* Post type selector */}
                       <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
-                        {Object.entries(POST_TYPE_CFG).filter(([k])=>k!=="text").map(([k,v])=>(
+                        {/* "proof" is deliberately excluded here too — it has
+                            its own dedicated picker flow (openProofPicker)
+                            since facts must come from a real verified
+                            achievement, never typed free text. */}
+                        {Object.entries(POST_TYPE_CFG).filter(([k])=>k!=="text"&&k!=="proof").map(([k,v])=>(
                           <button key={k} className="pb" onClick={()=>setPostType(k)}
                             style={{padding:"3px 12px",borderRadius:99,border:`1.5px solid ${postType===k?v.color+"60":P.border}`,background:postType===k?v.bg:"transparent",color:postType===k?v.color:P.ink4,fontSize:11,fontWeight:700}}>
                             {v.label}
                           </button>
                         ))}
                       </div>
+                      {/* Per-type structured fields — each type below is a
+                          genuinely different form, not the same textarea
+                          relabeled (2026-08-13 redesign: previously Insight/
+                          Win/Ask/Code were pixel-identical). */}
+                      {postType === "win" && (
+                        <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:8}}>
+                          <input value={winMetric} onChange={e=>setWinMetric(e.target.value)}
+                            placeholder={`What's the headline result? e.g. "Cracked 3 System Design rounds" or "+120 ELO this month"`}
+                            style={{width:"100%",padding:"9px 12px",border:`1.5px solid #05966950`,borderRadius:8,fontSize:13,color:P.ink,fontFamily:"inherit",outline:"none",boxSizing:"border-box",fontWeight:700}}/>
+                          <input value={winResult} onChange={e=>setWinResult(e.target.value)}
+                            placeholder="Optional detail — company, score, or metric"
+                            style={{width:"100%",padding:"8px 12px",border:`1px solid ${P.border}`,borderRadius:8,fontSize:12,color:P.ink,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+                        </div>
+                      )}
+                      {postType === "question" && (
+                        <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
+                          {[["advice","💡 Advice"],["resource","📚 A resource"],["reviewer","👀 Someone to review my work"],["collaborator","🤝 A collaborator"]].map(([v,l])=>(
+                            <button key={v} onClick={()=>setAskLookingFor(v)}
+                              style={{padding:"4px 10px",borderRadius:99,border:`1.5px solid ${askLookingFor===v?"#0891B260":P.border}`,background:askLookingFor===v?"#EFF6FF":"transparent",color:askLookingFor===v?"#0891B2":P.ink4,fontSize:11,fontWeight:700}}>
+                              {l}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {postType === "code" && (
+                        <div style={{marginBottom:8}}>
+                          <select value={codeLanguage} onChange={e=>setCodeLanguage(e.target.value)}
+                            style={{padding:"6px 10px",border:`1px solid ${P.border}`,borderRadius:8,fontSize:12,color:P.ink,fontFamily:"inherit",outline:"none",marginBottom:6}}>
+                            {["javascript","python","typescript","sql","java","go","c++","bash","other"].map(l=><option key={l} value={l}>{l}</option>)}
+                          </select>
+                          <textarea value={codeSnippet} onChange={e=>setCodeSnippet(e.target.value)}
+                            placeholder="Paste your code snippet…"
+                            style={{width:"100%",minHeight:110,padding:"10px 12px",border:`1.5px solid #D9770650`,borderRadius:10,fontSize:12,color:P.ink,resize:"vertical",fontFamily:"'DM Mono',monospace",outline:"none",boxSizing:"border-box",background:"#FFF7ED"}}/>
+                        </div>
+                      )}
                       <textarea value={postText} onChange={e=>setPostText(e.target.value)}
-                        placeholder={`Share an insight, code snippet, or win in ${domain}...`}
-                        style={{width:"100%",minHeight:90,padding:"10px 12px",border:`1.5px solid rgba(255,87,1,0.3)`,borderRadius:10,fontSize:13,color:P.ink,resize:"vertical",fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+                        placeholder={
+                          postType==="win"      ? "Tell the story behind it — what did it take?" :
+                          postType==="question" ? `What's your question? Be specific — the ${domain} community can only help if they know what you're stuck on…` :
+                          postType==="code"     ? "Explain what this snippet does or the problem it solves…" :
+                          `Share an insight in ${domain}...`
+                        }
+                        style={{width:"100%",minHeight:postType==="win"||postType==="code"?60:90,padding:"10px 12px",border:`1.5px solid rgba(255,87,1,0.3)`,borderRadius:10,fontSize:13,color:P.ink,resize:"vertical",fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
                       <input value={postTags} onChange={e=>setPostTags(e.target.value)}
                         placeholder="Add tags: #python #sql #interview"
                         style={{width:"100%",padding:"8px 12px",border:`1px solid ${P.border}`,borderRadius:8,fontSize:12,color:P.ink,fontFamily:"inherit",outline:"none",marginTop:8,boxSizing:"border-box"}}/>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10}}>
                         <span style={{fontSize:11,color:P.ink4}}>{postText.length}/500</span>
                         <div style={{display:"flex",gap:8}}>
-                          <button className="pb" onClick={()=>{setComposerOpen(false);setPostText("");setPostTags("")}}
+                          <button className="pb" onClick={resetComposer}
                             style={{padding:"7px 14px",borderRadius:8,border:`1px solid ${P.border}`,color:P.ink3,fontSize:12,fontWeight:600}}>Cancel</button>
-                          <button className="pb" onClick={submitPost} disabled={!postText.trim()||posting}
-                            style={{padding:"7px 16px",borderRadius:8,border:"none",background:postText.trim()&&!posting?P.accent:"rgba(0,0,0,0.1)",color:postText.trim()&&!posting?"#fff":P.ink4,fontSize:12,fontWeight:700,opacity:posting?0.7:1}}>
+                          <button className="pb" onClick={submitPost} disabled={!postValid()||posting}
+                            style={{padding:"7px 16px",borderRadius:8,border:"none",background:postValid()&&!posting?P.accent:"rgba(0,0,0,0.1)",color:postValid()&&!posting?"#fff":P.ink4,fontSize:12,fontWeight:700,opacity:posting?0.7:1}}>
                             {posting?"Posting...":"Post"}
                           </button>
                         </div>
@@ -1537,14 +1803,44 @@ function StudentPulse({ user, userData }) {
                 </div>
               )}
 
+              {/* "Who liked this" modal — tap a like count to see the list,
+                  same as Instagram/Facebook/LinkedIn. Public data (reaction
+                  counts are already public on the feed), so no auth gate. */}
+              {likersModal.open && (
+                <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:210,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}
+                  onClick={()=>setLikersModal({open:false,postId:null,users:[],loading:false})}>
+                  <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:14,width:"100%",maxWidth:340,maxHeight:"70vh",display:"flex",flexDirection:"column",overflow:"hidden",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
+                    <div style={{padding:"14px 16px",borderBottom:`1px solid ${P.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                      <div style={{fontSize:14,fontWeight:800,color:P.ink}}>❤️ Liked by</div>
+                      <button onClick={()=>setLikersModal({open:false,postId:null,users:[],loading:false})} style={{border:"none",background:"none",fontSize:16,color:P.ink4,cursor:"pointer"}}>✕</button>
+                    </div>
+                    <div style={{flex:1,overflowY:"auto",padding:"6px 8px"}}>
+                      {likersModal.loading && <div style={{padding:"24px 0",textAlign:"center",fontSize:12,color:P.ink4}}>Loading…</div>}
+                      {!likersModal.loading && likersModal.users.length===0 && <div style={{padding:"24px 16px",textAlign:"center",fontSize:12,color:P.ink4}}>No likes yet.</div>}
+                      {likersModal.users.map((u,ui)=>(
+                        <div key={u.id||ui} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px"}}>
+                          <div style={{width:32,height:32,borderRadius:"50%",background:colorForId(u.id||ui.toString()),display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:"#fff",flexShrink:0}}>
+                            {(u.display_name||u.name||"U")[0]?.toUpperCase()}
+                          </div>
+                          <div style={{minWidth:0}}>
+                            <div style={{fontSize:12,fontWeight:700,color:P.ink,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.display_name||u.name||"Member"}</div>
+                            {u.keyword && <div style={{fontSize:10,color:P.ink4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.keyword}</div>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Sort bar — not shown on Mentors/Sparks/Network/Saved. "For
-                  You"/"Most Discussed"/"High Signal" are feed-ranking modes;
+                  You"/"Most Discussed"/"Most Liked" are feed-ranking modes;
                   meaningless on a personal saved list (which has no ranking,
                   just your own bookmarks), so Saved is excluded too. */}
               {feedTab !== "mentors" && feedTab !== "following" && feedTab !== "network" && feedTab !== "capsules" && (
                 <div style={{padding:"8px 16px",display:"flex",alignItems:"center",gap:6,borderBottom:`1px solid ${P.border}`,overflowX:"auto"}}>
                   <span style={{fontSize:11,fontWeight:600,color:P.ink4,marginRight:4,flexShrink:0}}>SORT</span>
-                  {[{id:"foryou",label:"For You"},{id:"latest",label:"Latest"},{id:"discussed",label:"Most Discussed"},{id:"signal",label:"High Signal"}].map(s=>(
+                  {[{id:"foryou",label:"For You"},{id:"latest",label:"Latest"},{id:"discussed",label:"Most Discussed"},{id:"liked",label:"Most Liked"}].map(s=>(
                     <button key={s.id} className="pb" onClick={()=>setSortTab(s.id)}
                       style={{padding:"4px 12px",borderRadius:99,border:`1px solid ${sortTab===s.id?P.accent+"40":P.border}`,background:sortTab===s.id?P.accent2:"transparent",color:sortTab===s.id?P.accent:P.ink3,fontSize:11,fontWeight:sortTab===s.id?700:500,flexShrink:0}}>
                       {s.label}
@@ -1887,7 +2183,7 @@ function StudentPulse({ user, userData }) {
                          : feedTab==="capsules" ? "No saved posts yet — save posts to find them here"
                          : "No posts yet — be the first to share!"}
                       </div>
-                      {feedTab==="community"&&<button className="pb" onClick={()=>setComposerOpen(true)} style={{padding:"8px 20px",background:P.accent,border:"none",borderRadius:8,color:"#fff",fontSize:13,fontWeight:700}}>Share the first signal</button>}
+                      {feedTab==="community"&&<button className="pb" onClick={()=>setComposerOpen(true)} style={{padding:"8px 20px",background:P.accent,border:"none",borderRadius:8,color:"#fff",fontSize:13,fontWeight:700}}>Share the first post</button>}
                     </div>
                   )}
 
@@ -1958,7 +2254,42 @@ function StudentPulse({ user, userData }) {
                             </div>
                           )}
 
-                          {/* Content — for proof posts this is just the optional caption */}
+                          {/* Win card — headline result + optional detail, real
+                              structured fields (post.type_data), not a plain
+                              paragraph like the old shared rendering. */}
+                          {post.post_type==="win" && post.type_data && (
+                            <div style={{background:"#ECFDF5",border:"1.5px solid #05966930",borderRadius:10,padding:"12px 14px",marginBottom:10}}>
+                              <div style={{fontSize:14,fontWeight:800,color:"#065F46"}}>🏆 {post.type_data.metric}</div>
+                              {post.type_data.result&&<div style={{fontSize:12,color:"#059669",marginTop:2}}>{post.type_data.result}</div>}
+                            </div>
+                          )}
+
+                          {/* Ask card — the "looking for" tag up front, so
+                              people scanning the feed know at a glance what
+                              kind of help is being requested. */}
+                          {post.post_type==="question" && post.type_data?.lookingFor && (
+                            <div style={{marginBottom:8}}>
+                              <span style={{fontSize:11,fontWeight:800,color:"#0891B2",background:"#EFF6FF",padding:"3px 10px",borderRadius:99}}>
+                                {{advice:"💡 Looking for advice",resource:"📚 Looking for a resource",reviewer:"👀 Looking for a reviewer",collaborator:"🤝 Looking for a collaborator"}[post.type_data.lookingFor] || "❓ Question"}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Code card — real monospace code block with a
+                              language badge, not free text. */}
+                          {post.post_type==="code" && post.type_data?.code && (
+                            <div style={{background:"#0f172a",borderRadius:10,marginBottom:10,overflow:"hidden"}}>
+                              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 12px",background:"#1e293b"}}>
+                                <span style={{fontSize:10,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:"0.06em"}}>{post.type_data.language||"code"}</span>
+                                <button onClick={()=>navigator.clipboard?.writeText(post.type_data.code)} style={{fontSize:10,fontWeight:700,color:"#94a3b8",background:"none",border:"none",cursor:"pointer"}}>Copy</button>
+                              </div>
+                              <pre style={{margin:0,padding:"12px 14px",overflowX:"auto",fontFamily:"'DM Mono',monospace",fontSize:12,color:"#e2e8f0",whiteSpace:"pre"}}>{post.type_data.code}</pre>
+                            </div>
+                          )}
+
+                          {/* Content — for proof posts this is just the optional
+                              caption; for Win/Ask/Code this is the explanation
+                              text underneath the structured card above. */}
                           {post.content&&<p style={{fontSize:13,color:P.ink2,lineHeight:1.65,margin:"0 0 10px",whiteSpace:"pre-wrap"}}>{post.content}</p>}
 
                           {/* Tags */}
@@ -1966,19 +2297,27 @@ function StudentPulse({ user, userData }) {
                             {tags.slice(0,6).map((t,j)=><span key={j} style={{fontSize:11,color:"#0891B2",fontWeight:600,cursor:"pointer"}}>{t.startsWith("#")?t:"#"+t}</span>)}
                           </div>}
 
-                          {/* Action bar */}
-                          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                          {/* Action bar — one Like (was Acknowledge+Signal,
+                              consolidated 2026-08-13 to match IG/FB/LinkedIn's
+                              single-reaction pattern), Comment, Save. Tapping
+                              the like COUNT (not the heart itself) opens the
+                              "who liked this" list, same split as those
+                              platforms — the heart toggles your own like,
+                              the number is a separate tap target. */}
+                          <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
                             <button className="pb" onClick={()=>handleReact(post.id,"acknowledge")}
-                              style={{padding:"5px 12px",border:`1.5px solid ${reacted.acknowledge?"#7C3AED40":P.border}`,borderRadius:8,fontSize:12,color:reacted.acknowledge?"#7C3AED":P.ink3,fontWeight:500,background:reacted.acknowledge?"#F4F0FF":"transparent"}}>
-                              👏 {post.acknowledge_count||0}
+                              style={{padding:"5px 12px",border:`1.5px solid ${reacted.acknowledge?"#DC262640":P.border}`,borderRadius:8,fontSize:12,color:reacted.acknowledge?"#DC2626":P.ink3,fontWeight:500,background:reacted.acknowledge?"#FEF2F2":"transparent",display:"flex",alignItems:"center",gap:5}}>
+                              <span>{reacted.acknowledge?"❤️":"🤍"}</span>
+                              {post.acknowledge_count>0 ? (
+                                <span onClick={(e)=>{e.stopPropagation();openLikers(post.id)}} style={{textDecoration:"underline",textDecorationColor:"transparent"}}
+                                  onMouseEnter={e=>e.currentTarget.style.textDecorationColor="currentColor"} onMouseLeave={e=>e.currentTarget.style.textDecorationColor="transparent"}>
+                                  {post.acknowledge_count}
+                                </span>
+                              ) : "Like"}
                             </button>
                             <button className="pb" onClick={()=>toggleComments(post.id)}
                               style={{padding:"5px 12px",border:`1.5px solid ${panel?.open?"#0891B240":P.border}`,borderRadius:8,fontSize:12,color:panel?.open?"#0891B2":P.ink3,fontWeight:500,background:panel?.open?"#EFF6FF":"transparent"}}>
                               💬 {post.comment_count||0}
-                            </button>
-                            <button className="pb" onClick={()=>handleReact(post.id,"signal")}
-                              style={{padding:"5px 12px",border:`1.5px solid ${reacted.signal?"#059669"+"40":P.border}`,borderRadius:8,fontSize:12,color:reacted.signal?"#059669":P.ink3,fontWeight:500,background:reacted.signal?"#ECFDF5":"transparent"}}>
-                              ↗ Signal {post.signal_count>0?post.signal_count:""}
                             </button>
                             <button className="pb" onClick={()=>handleReact(post.id,"save")}
                               style={{padding:"5px 12px",border:`1.5px solid ${reacted.save?"#D97706"+"40":P.border}`,borderRadius:8,fontSize:12,color:reacted.save?"#D97706":P.ink3,fontWeight:500,background:reacted.save?"#FFF7ED":"transparent",marginLeft:"auto"}}>
@@ -1998,7 +2337,10 @@ function StudentPulse({ user, userData }) {
                                 <div key={c.id||ci} style={{display:"flex",gap:8,marginBottom:10}}>
                                   <div style={{width:28,height:28,borderRadius:"50%",background:colorForId(c.author_id||ci.toString()),display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#fff",flexShrink:0}}>{cName[0]?.toUpperCase()}</div>
                                   <div style={{flex:1,background:"#FFFFFF",borderRadius:8,padding:"8px 10px",border:`1px solid ${P.border}`}}>
-                                    <div style={{fontSize:11,fontWeight:700,color:P.ink,marginBottom:2}}>{cName}</div>
+                                    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
+                                      <span style={{fontSize:11,fontWeight:700,color:P.ink}}>{cName}</span>
+                                      <span style={{fontSize:10,color:P.ink4}}>{timeAgo(c.created_at)}</span>
+                                    </div>
                                     <div style={{fontSize:12,color:P.ink2,lineHeight:1.5}}>{c.content}</div>
                                   </div>
                                 </div>
@@ -2107,7 +2449,7 @@ function StudentPulse({ user, userData }) {
               )}
               <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
                 {trendingTags.map((t,i)=>(
-                  <button key={i} className="pb" onClick={()=>setSortTab("signal")}
+                  <button key={i} className="pb" onClick={()=>setSortTab("liked")}
                     style={{padding:"3px 9px",background:P.accent2,borderRadius:99,border:"none",fontSize:11,fontWeight:600,color:P.accent,cursor:"pointer"}}>
                     {t}
                   </button>
