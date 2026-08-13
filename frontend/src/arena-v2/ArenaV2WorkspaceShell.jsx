@@ -336,20 +336,57 @@ function BottomEvidenceArea({ dto, submissionState, role, careerFamily, userId, 
           {fb.portfolio && <span>· Portfolio: {fb.portfolio.artifactCreated ? (fb.portfolio.publishState || "recorded") : fb.portfolio.decisionType}</span>}
         </div>
       )}
-      {fb?.feedback?.detail?.length > 0 && (
-        <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
-          <tbody>
-            {fb.feedback.detail.map((d, i) => (
-              <tr key={i} style={{ borderTop: "1px solid #1e293b" }}>
-                <td style={{ padding: "4px 6px", color: d.passed ? "#4ade80" : "#f87171" }}>{d.passed ? "✓" : "✗"}</td>
-                <td style={{ padding: "4px 6px" }}>{d.metric}</td>
-                <td style={{ padding: "4px 6px", color: "#94a3b8" }}>expected {String(d.expected)}</td>
-                <td style={{ padding: "4px 6px", color: "#94a3b8" }}>{String(d.actual)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      {fb?.feedback?.detail?.length > 0 && (() => {
+        // Split real evidence rows into two honest groups: rubric criteria
+        // that carry a real "N/100" AI-reviewer score (rendered as labeled
+        // progress bars, e.g. "Correctness 95/100" — same shape as
+        // rubricReview.js's per-criterion criteriaScores, already real,
+        // already weighted per-role in av2_challenge_template_versions),
+        // vs. other evidence rows (e.g. real client-executed test results)
+        // that only have a pass/fail signal, kept as a compact list.
+        const scoreRowRe = /^(\d{1,3})\/100$/
+        const scored = fb.feedback.detail.filter((d) => scoreRowRe.test(String(d.actual)))
+        const other = fb.feedback.detail.filter((d) => !scoreRowRe.test(String(d.actual)))
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {scored.length > 0 && (
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0", marginBottom: 8 }}>Score breakdown</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {scored.map((d, i) => {
+                    const n = Number(scoreRowRe.exec(String(d.actual))[1])
+                    return (
+                      <div key={i}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#cbd5e1", marginBottom: 3 }}>
+                          <span>{d.metric}</span>
+                          <span style={{ fontWeight: 700, color: d.passed ? "#4ade80" : "#f87171" }}>{n}/100</span>
+                        </div>
+                        <div style={{ height: 6, background: "#1e293b", borderRadius: 999, overflow: "hidden" }}>
+                          <div style={{ width: `${Math.max(0, Math.min(100, n))}%`, height: "100%", background: d.passed ? "#4ade80" : "#f87171", borderRadius: 999 }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+            {other.length > 0 && (
+              <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
+                <tbody>
+                  {other.map((d, i) => (
+                    <tr key={i} style={{ borderTop: "1px solid #1e293b" }}>
+                      <td style={{ padding: "4px 6px", color: d.passed ? "#4ade80" : "#f87171" }}>{d.passed ? "✓" : "✗"}</td>
+                      <td style={{ padding: "4px 6px" }}>{d.metric}</td>
+                      <td style={{ padding: "4px 6px", color: "#94a3b8" }}>expected {String(d.expected)}</td>
+                      <td style={{ padding: "4px 6px", color: "#94a3b8" }}>{String(d.actual)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )
+      })()}
       <SkillsRadar role={role} careerFamily={careerFamily} refetchToken={fb ? fb.submissionId : null} />
       {userId && onViewRecruiterEvidence && (
         <button
