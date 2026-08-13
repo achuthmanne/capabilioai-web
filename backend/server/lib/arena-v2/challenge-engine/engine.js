@@ -21,6 +21,7 @@ import * as libraryRepo from "../challenge-library/repository.js"
 import * as engineRepo from "./repository.js"
 import { pickNextSkill, pickDifficulty, pickTemplate, pickScenario } from "./selection.js"
 import { generateChallengePayload } from "./payloadGenerator.js"
+import { generateAiScenario } from "./aiScenarioGenerator.js"
 
 export class ChallengeEngineError extends Error {}
 export class EntitlementError extends ChallengeEngineError {}
@@ -44,6 +45,11 @@ export const defaultDeps = {
   getSkillProgress: engineRepo.getSkillProgress,
   hasActiveDomainGrant: engineRepo.hasActiveDomainGrant,
   getRecentTemplateIdsForSkill: engineRepo.getRecentTemplateIdsForSkill,
+  // AI scenario generation — additive, optional. A `deps` object that
+  // doesn't define this key (e.g. every pre-existing unit test's hand-built
+  // fake deps) simply gets the pre-existing static-content behavior
+  // unchanged, since the call site below guards with `deps.generateAiScenario?.(...)`.
+  generateAiScenario,
 }
 
 export async function selectAndGenerateChallenge(input, deps = defaultDeps) {
@@ -104,6 +110,37 @@ export async function selectAndGenerateChallenge(input, deps = defaultDeps) {
   const declaredTiers = Object.keys(templateVersion.difficulty_variants || {})
   const difficulty = pickDifficulty({ masteryState, declaredTiers, requested: requestedDifficulty })
 
+  // 5b. AI-generated scenario content — overlays a fresh, real Claude-
+  // generated mission onto this SAME skill+difficulty+workstation
+  // selection.js already resolved from the student's real mastery state
+  // above. Never changes WHICH skill/difficulty a student gets (that
+  // personalization-to-weak-skills logic is untouched); only replaces WHAT
+  // the mission says, so it stops being hand-authored/hardcoded. Domain
+  // challenges only — Common Challenges have no `role`, and the generator's
+  // prompt is written around a real job role, so this is an explicit scope
+  // boundary, not an oversight. `templateVersion` here is a real, valid,
+  // already-fetched row (its FK-eligible `id`/`version` are always used
+  // downstream regardless of whether generation succeeds), so a template
+  // row always exists for av2_challenge_instances.challenge_template_id's
+  // NOT NULL constraint even when the content itself is freshly generated.
+  let effectiveTemplateVersion = templateVersion
+  let aiGenerated = false
+  if (challengeType === "domain" && typeof deps.generateAiScenario === "function") {
+    const generated = await deps.generateAiScenario({ role, careerFamily, skill, difficulty, workstation: template.workstation, industry })
+    if (generated) {
+      aiGenerated = true
+      effectiveTemplateVersion = {
+        ...templateVersion,
+        difficulty_variants: { ...templateVersion.difficulty_variants, [difficulty]: generated.content },
+        validator: { ...templateVersion.validator, config: { ...templateVersion.validator.config, rubric: generated.rubric } },
+      }
+    }
+    // generated === null (AI failure or failed validation, already logged
+    // inside aiScenarioGenerator.js) simply falls through with
+    // effectiveTemplateVersion left as the real static templateVersion —
+    // the exact pre-existing behavior, never a broken/empty challenge.
+  }
+
   // 6. Scenario Pack + Scenario + Dataset (domain only, and only if the
   //    template is actually scenario-tagged — not every domain template has
   //    to be, per content_spec/06)
@@ -136,7 +173,7 @@ export async function selectAndGenerateChallenge(input, deps = defaultDeps) {
     scenarioPack,
     scenario,
     template,
-    templateVersion,
+    templateVersion: effectiveTemplateVersion,
     datasetVersion,
     difficulty,
     skillGraphVersion,
@@ -145,6 +182,6 @@ export async function selectAndGenerateChallenge(input, deps = defaultDeps) {
 
   return {
     payload,
-    meta: { masteryState, degradedToRepeat, resolvedSkill: skill },
+    meta: { masteryState, degradedToRepeat, resolvedSkill: skill, aiGenerated },
   }
 }

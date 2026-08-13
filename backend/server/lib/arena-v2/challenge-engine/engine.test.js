@@ -131,3 +131,55 @@ test("selectAndGenerateChallenge stamps a workstationVersion for every payload",
   )
   assert.equal(payload.workstationVersion, "v1")
 })
+
+// ── AI-generated scenario overlay (additive, deps.generateAiScenario) ──────
+
+test("selectAndGenerateChallenge overlays AI-generated content onto a real template's difficulty_variants when generation succeeds", async () => {
+  const aiContent = { prompt: "A freshly generated mission.", ticket: { id: "GEN-1" } }
+  const aiRubric = [{ key: "correctness", label: "Correctness", weight: 1 }]
+  const { payload, meta } = await selectAndGenerateChallenge(
+    { userId: "u1", challengeType: "domain", role: "Data Analyst", difficulty: "Medium" },
+    makeDeps({ generateAiScenario: async () => ({ content: aiContent, rubric: aiRubric }) })
+  )
+  assert.equal(meta.aiGenerated, true)
+  assert.deepEqual(payload.payload.prompt, "A freshly generated mission.")
+  assert.deepEqual(payload.payload.ticket, { id: "GEN-1" })
+  assert.deepEqual(payload.validator.config.rubric, aiRubric)
+  // The real template's id/version are still what's used for FK purposes —
+  // generation never invents a template, only overlays content onto a real one.
+  assert.equal(payload.challengeTemplateId, domainTemplate.id)
+  assert.equal(payload.challengeTemplateVersion, domainTemplateVersion.version)
+})
+
+test("selectAndGenerateChallenge falls back to the real static difficulty_variant content when AI generation returns null", async () => {
+  const { payload, meta } = await selectAndGenerateChallenge(
+    { userId: "u1", challengeType: "domain", role: "Data Analyst", difficulty: "Medium" },
+    makeDeps({ generateAiScenario: async () => null })
+  )
+  assert.equal(meta.aiGenerated, false)
+  // Medium's static difficulty_variant in this fixture is {} (empty object,
+  // per domainTemplateVersion above) — confirms the untouched static path ran.
+  assert.deepEqual(payload.payload.prompt, undefined)
+  assert.equal(payload.challengeTemplateId, domainTemplate.id)
+})
+
+test("selectAndGenerateChallenge never calls generateAiScenario for Common Challenges (no role context)", async () => {
+  let called = false
+  await selectAndGenerateChallenge(
+    { userId: "u1", challengeType: "common" },
+    makeDeps({ generateAiScenario: async () => { called = true; return null } })
+  )
+  assert.equal(called, false)
+})
+
+test("selectAndGenerateChallenge behaves exactly as before when deps has no generateAiScenario key at all", async () => {
+  // makeDeps() (no override) omits generateAiScenario entirely — the exact
+  // shape every pre-existing test in this file already uses — confirming
+  // the new branch is a true no-op for callers that don't opt in.
+  const { payload, meta } = await selectAndGenerateChallenge(
+    { userId: "u1", challengeType: "domain", role: "Data Analyst" },
+    makeDeps()
+  )
+  assert.equal(meta.aiGenerated, false)
+  assert.equal(payload.challengeTemplateId, domainTemplate.id)
+})
