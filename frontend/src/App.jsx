@@ -1117,8 +1117,27 @@ function App() {
     // building a separate global event bus for one number.
   }, [navPath, currentPage])
 
+  // Bug fix (2026-08-13): this effect used to fire on EVERY resolution of
+  // userData?.path (which happens on every fresh page load, since userData
+  // loads asynchronously after auth), unconditionally overwriting
+  // currentPage back to the user's home page. That silently defeated the
+  // deep-linking system pageRoutes.js exists to provide (see its header:
+  // "bookmarkable/shareable" URLs, tasks #106-108) -- a signed-in user
+  // hard-navigating to, or refreshing, any non-home URL (e.g. a shared
+  // /arena-v2-ml-pilot link) was bounced straight back to /aura or
+  // /professional-home before ever seeing the requested page.
+  // Fix: only apply the home redirect once per page load, and only when the
+  // page actually loaded on a URL that ISN'T a recognized deep link (e.g.
+  // "/" right after sign-in/onboarding, which is the real case this effect
+  // exists for). If the user arrived on a valid, mapped URL, respect it --
+  // currentPage's initial useState value (PATH_TO_PAGE[pathname]) already
+  // resolved it correctly before this effect ever runs.
+  const didInitialHomeRedirect = useRef(false)
+  const initialPathWasValidPage = useRef(!!PATH_TO_PAGE[window.location.pathname])
   useEffect(() => {
-    if (userData?.path && onboardingDone) {
+    if (userData?.path && onboardingDone && !didInitialHomeRedirect.current) {
+      didInitialHomeRedirect.current = true
+      if (initialPathWasValidPage.current) return
       const home = navPath === "student" ? "aura" : (HOME_PAGE[navPath] || "studentHome")
       setCurrentPage(home)
       setActiveNavItem("home")
