@@ -99,13 +99,28 @@ export function getArenaV2PilotFor(arenaDomainKey) {
 // so a malformed AI response can never reach the screen instead of silently
 // rendering empty/zeroed panels.
 //
-// Verified so far: dba (2026-08-13, this fix).
+// Verified so far: dba (2026-08-13), data (2026-08-14).
+//
+// data (Data Analyst) verification note: user-reported bug was the "Your
+// Role" landing card showing academic-stream content instead of the chosen
+// Data Analyst role (fixed separately in Arena.jsx — see that file's
+// ArenaLanding "Your Role" card comment). While auditing the real V2 path
+// this routes to, found a second, independent bug: Data Analyst's only
+// template ("sql-total-revenue") is validated by ground_truth_compare (a
+// fixed, deterministic SQL query match), but engine.js's AI-scenario
+// overlay was firing unconditionally for every domain challenge and
+// overwriting the prompt with unrelated AI-invented content — same
+// schema/narrative-mismatch bug shape as DBA's, just prompt-vs-grading
+// instead of prompt-vs-schema. Fixed in engine.js (`isAiScenarioSafe` guard,
+// AI overlay now rubric_review-only) with a regression test in
+// engine.test.js before adding "data" here.
+//
 // NOT yet verified (still show the opt-in banner only, per
-// ARENA_V1_TO_V2_PILOT above): data, cyber, devops, ml, swe, ece, eee,
+// ARENA_V1_TO_V2_PILOT above): cyber, devops, ml, swe, ece, eee,
 // mechanical, civil — each needs the same read-and-verify pass on its own
 // WORKSTATION_SPECS entry (or lack thereof, several currently have NONE —
 // see aiScenarioGenerator.js's WORKSTATION_SPECS) before being added here.
-export const ARENA_V2_DEFAULT_DOMAINS = ["dba"]
+export const ARENA_V2_DEFAULT_DOMAINS = ["dba", "data"]
 
 // sessionStorage key: set when a user explicitly backs out of a
 // default-to-V2 domain's workstation, so they land back in familiar V1

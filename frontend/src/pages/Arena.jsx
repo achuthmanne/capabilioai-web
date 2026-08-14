@@ -3257,26 +3257,40 @@ function ArenaLanding({ userData, onSelect }) {
 
             {/* ── YOUR ROLE card ── */}
             {(() => {
-              // Non-IT: use stream domain practice config
-              const cfg    = isEngineering ? streamCfg.role : null
-              const col    = cfg ? cfg.color    : D.indigo
-              const bg     = cfg ? cfg.colorBg  : "rgba(99,102,241,0.1)"
-              const border = cfg ? cfg.colorBorder : "rgba(99,102,241,0.2)"
-              const icon   = cfg ? cfg.icon     : domain.icon
-              const label  = cfg ? cfg.label    : domain.label
-              const desc   = cfg
-                ? cfg.desc
-                : `Real-world ${domain.label} scenarios — practice the exact skills recruiters hire for. ELO-scored, timestamped, recruiter-visible.`
-              const tags   = cfg ? cfg.tags : domainCategories.slice(0,4).map(c => `${c.icon} ${c.category}`)
-              const cta    = cfg ? cfg.cta : `Open ${domain.label} Challenges`
-              const count  = cfg ? null : `${domainChallenges.length} challenges`
-              // Routing: non-IT engineering streams → common challenges filtered by domain categories
-              // DevOps (categories:null) and IT → domain workstation
-              const handleClick = () => isEngineering
-                ? (streamCfg.role.categories
-                    ? onSelect("common", { categories: streamCfg.role.categories })
-                    : onSelect("domain"))
-                : onSelect("domain")
+              // 2026-08-14 fix: "Your Role" must always reflect the student's
+              // actual chosen/resolved career domain (ARENA_DOMAINS[domainKey],
+              // via the canonical getRoleConfig-backed resolveArenaDomain() —
+              // same resolver Aura's header uses) — never the academic stream.
+              // User-reported bug: a student who selected "Data Analyst" as
+              // their role (correctly shown in the header pill above, and a
+              // fully real domain here — SQL Studio, Python/Pandas, Excel,
+              // BI Dashboard, Analysis Report, Visualization) saw this card
+              // overridden to "Data Science Coding Practice" — a generic
+              // LeetCode-style list with no real workstation — purely because
+              // their college branch/career_track_slug (detectStudentStream)
+              // happened to be AI_DS. Every stream this override used to serve
+              // (ECE, EEE, Mechanical, Civil, Pharmacy, MBA, IoT, AI_DS, AI_ML,
+              // DevOps) now has its own full ARENA_DOMAINS entry with a real
+              // workstation, so domain-role selection should always win here —
+              // this is the same class of bug as the DBA Arena V2 fix earlier
+              // this session, just for the "Your Role" card across every
+              // domain instead of one workstation. The COMMON CHALLENGES card
+              // below intentionally keeps the stream-based flavor (e.g. "Data
+              // Science Fundamentals" for AI_DS students) — that split (domain
+              // role → your chosen career; common → your academic stream) is
+              // a deliberate, user-confirmed product decision, not part of
+              // this bug.
+              const cfg    = null
+              const col    = D.indigo
+              const bg     = "rgba(99,102,241,0.1)"
+              const border = "rgba(99,102,241,0.2)"
+              const icon   = domain.icon
+              const label  = domain.label
+              const desc   = `Real-world ${domain.label} scenarios — practice the exact skills recruiters hire for. ELO-scored, timestamped, recruiter-visible.`
+              const tags   = domainCategories.slice(0,4).map(c => `${c.icon} ${c.category}`)
+              const cta    = `Open ${domain.label} Challenges`
+              const count  = `${domainChallenges.length} challenges`
+              const handleClick = () => onSelect("domain")
 
               return (
                 <div
