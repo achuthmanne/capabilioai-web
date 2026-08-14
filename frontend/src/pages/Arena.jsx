@@ -3257,26 +3257,41 @@ function ArenaLanding({ userData, onSelect }) {
 
             {/* ── YOUR ROLE card ── */}
             {(() => {
-              // Non-IT: use stream domain practice config
-              const cfg    = isEngineering ? streamCfg.role : null
-              const col    = cfg ? cfg.color    : D.indigo
-              const bg     = cfg ? cfg.colorBg  : "rgba(99,102,241,0.1)"
-              const border = cfg ? cfg.colorBorder : "rgba(99,102,241,0.2)"
-              const icon   = cfg ? cfg.icon     : domain.icon
-              const label  = cfg ? cfg.label    : domain.label
-              const desc   = cfg
-                ? cfg.desc
-                : `Real-world ${domain.label} scenarios — practice the exact skills recruiters hire for. ELO-scored, timestamped, recruiter-visible.`
-              const tags   = cfg ? cfg.tags : domainCategories.slice(0,4).map(c => `${c.icon} ${c.category}`)
-              const cta    = cfg ? cfg.cta : `Open ${domain.label} Challenges`
-              const count  = cfg ? null : `${domainChallenges.length} challenges`
-              // Routing: non-IT engineering streams → common challenges filtered by domain categories
-              // DevOps (categories:null) and IT → domain workstation
-              const handleClick = () => isEngineering
-                ? (streamCfg.role.categories
-                    ? onSelect("common", { categories: streamCfg.role.categories })
-                    : onSelect("domain"))
-                : onSelect("domain")
+              // 2026-08-14 fix (account owner, applies to every domain, not
+              // just Data Analyst): this card must always reflect the
+              // student's actual chosen/resolved career role — `domain`,
+              // from resolveArenaDomain()/getRoleConfig(), the SAME resolver
+              // the header ELO badge and page title already read — never
+              // the academic stream's generic practice config.
+              //
+              // Root cause: detectStudentStream() short-circuits on
+              // userData.branch (e.g. "AI_DS") before ever looking at the
+              // student's actually-chosen role/keyword ("Data Analyst",
+              // "ML Engineer", etc.), so a CSE/AI_DS-branch student who
+              // picked "Data Analyst" as their target career had this card
+              // silently overridden to STREAM_CARD_CONFIG.AI_DS.role
+              // ("Data Science Coding Practice" — ML Metrics/Python
+              // Coding/Statistics tags, "Open DS Challenges") while the
+              // header correctly showed "Data Analyst" the whole time —
+              // same domain/stream mismatch bug reported before, now fixed
+              // for every stream key (AI_DS, ECE, EEE, Mechanical, Civil,
+              // Pharmacy, MBA, IoT, AI_ML, DevOps), not just this one case.
+              //
+              // The Common Challenges card below is UNCHANGED and still
+              // uses streamCfg — that split (Your Role = domain-only, ever;
+              // Common Challenges = stream-aware) is an explicit, previously
+              // confirmed product decision, not an oversight.
+              const cfg    = null
+              const col    = D.indigo
+              const bg     = "rgba(99,102,241,0.1)"
+              const border = "rgba(99,102,241,0.2)"
+              const icon   = domain.icon
+              const label  = domain.label
+              const desc   = `Real-world ${domain.label} scenarios — practice the exact skills recruiters hire for. ELO-scored, timestamped, recruiter-visible.`
+              const tags   = domainCategories.slice(0,4).map(c => `${c.icon} ${c.category}`)
+              const cta    = `Open ${domain.label} Challenges`
+              const count  = `${domainChallenges.length} challenges`
+              const handleClick = () => onSelect("domain")
 
               return (
                 <div
