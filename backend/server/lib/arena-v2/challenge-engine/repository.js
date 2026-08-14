@@ -37,6 +37,23 @@ export async function hasActiveDomainGrant(userId) {
   return (data || []).some((g) => !g.expires_at || new Date(g.expires_at).getTime() > now)
 }
 
+// grantTrialDomainAccess — auto-provisions a non-expiring 'trial' grant
+// (2026-08-14, product decision: Domain Challenges should be as open as V1
+// ever was, since no self-serve subscription/paywall flow exists yet).
+// 'trial' is one of the four values av2_domain_challenge_grants_source_check
+// already allows (subscription/promo/admin_grant/trial) — this is the first
+// thing that actually uses it. Not idempotent-guarded with a SELECT-then-
+// INSERT because the caller (engine.js) only calls this after
+// hasActiveDomainGrant already returned false for this user, and a user
+// briefly ending up with two overlapping trial grants is harmless (the
+// entitlement check only cares whether ANY active grant exists).
+export async function grantTrialDomainAccess(userId) {
+  const { error } = await supabaseAdmin
+    .from("av2_domain_challenge_grants")
+    .insert({ user_id: userId, source: "trial", expires_at: null })
+  if (error) throw error
+}
+
 export async function getRecentTemplateIdsForSkill(userId, skill, limit = 3) {
   const { data, error } = await supabaseAdmin
     .from("av2_challenge_instances")

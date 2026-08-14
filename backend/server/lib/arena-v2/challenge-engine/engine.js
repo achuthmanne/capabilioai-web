@@ -44,6 +44,7 @@ export const defaultDeps = {
   getActiveDatasetVersion: engineRepo.getActiveDatasetVersion,
   getSkillProgress: engineRepo.getSkillProgress,
   hasActiveDomainGrant: engineRepo.hasActiveDomainGrant,
+  grantTrialDomainAccess: engineRepo.grantTrialDomainAccess,
   getRecentTemplateIdsForSkill: engineRepo.getRecentTemplateIdsForSkill,
   // AI scenario generation — additive, optional. A `deps` object that
   // doesn't define this key (e.g. every pre-existing unit test's hand-built
@@ -70,9 +71,21 @@ export async function selectAndGenerateChallenge(input, deps = defaultDeps) {
 
   // Entitlement gate — Domain Challenges only, per content_spec/08 +
   // av2_domain_challenge_grants (Milestone 1). Common Challenges stay ungated.
+  //
+  // 2026-08-14, product decision: no self-serve way for a user to ever get a
+  // grant existed (only manual admin_grant inserts) — since real Arena V1
+  // domains are moving onto V2 by default (see frontend's
+  // ARENA_V2_DEFAULT_DOMAINS), and V1 never gated Domain Challenges at all,
+  // a hard EntitlementError here locked every real user out entirely. Until
+  // a real subscription/paywall flow exists, auto-provision a non-expiring
+  // 'trial' grant on first use instead of rejecting — this keeps the
+  // grants/audit table and EntitlementError machinery fully intact (a real
+  // payment-gated model can replace this auto-provision call later without
+  // touching anything else here) while matching V1's actually-open behavior
+  // today.
   if (challengeType === "domain") {
     const granted = await deps.hasActiveDomainGrant(userId)
-    if (!granted) throw new EntitlementError("No active Domain Challenge grant for this user")
+    if (!granted) await deps.grantTrialDomainAccess(userId)
   }
 
   // 1. Candidate templates for this type (+ role, if domain)

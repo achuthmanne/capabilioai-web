@@ -5,7 +5,7 @@
  */
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { selectAndGenerateChallenge, EntitlementError, NoEligibleContentError, ChallengeEngineError } from "./engine.js"
+import { selectAndGenerateChallenge, NoEligibleContentError, ChallengeEngineError } from "./engine.js"
 
 const domainTemplate = {
   id: "tmpl-sql-1", slug: "sql-joins", challenge_type: "domain",
@@ -42,6 +42,7 @@ function makeDeps(overrides = {}) {
     getActiveDatasetVersion: async () => ({ dataset_id: "amazon-orders", version: "v2", schema: {}, seed_sql: "..." }),
     getSkillProgress: async () => [],
     hasActiveDomainGrant: async () => true,
+    grantTrialDomainAccess: async () => {},
     getRecentTemplateIdsForSkill: async () => [],
     ...overrides,
   }
@@ -72,14 +73,28 @@ test("selectAndGenerateChallenge leaves scenario/dataset/skillGraph null for Com
   assert.equal(payload.skillGraphVersion, null)
 })
 
-test("selectAndGenerateChallenge rejects a domain request with no active grant", async () => {
-  await assert.rejects(
-    () => selectAndGenerateChallenge(
-      { userId: "u1", challengeType: "domain", role: "Data Analyst" },
-      makeDeps({ hasActiveDomainGrant: async () => false })
-    ),
-    EntitlementError
+// CHANGED 2026-08-14 (product decision, see engine.js's entitlement-gate
+// comment): a domain request with no active grant used to reject with
+// EntitlementError outright. Since no self-serve way for a real user to
+// ever get a grant existed, that meant every V1 domain moving onto V2 by
+// default (V1 never gated this at all) permanently locked every real user
+// out. Now it auto-provisions a 'trial' grant instead of rejecting — this
+// test asserts THAT behavior: the request succeeds, and
+// grantTrialDomainAccess was actually called. EntitlementError itself
+// still exists and is still exported/tested-for-throwability elsewhere in
+// this file isn't required here anymore, but the class stays intact for a
+// real future payment-gated path to reuse.
+test("selectAndGenerateChallenge auto-provisions a trial grant for a domain request with no active grant, rather than rejecting", async () => {
+  let grantCalledFor = null
+  const { payload } = await selectAndGenerateChallenge(
+    { userId: "u1", challengeType: "domain", role: "Data Analyst" },
+    makeDeps({
+      hasActiveDomainGrant: async () => false,
+      grantTrialDomainAccess: async (userId) => { grantCalledFor = userId },
+    })
   )
+  assert.equal(grantCalledFor, "u1")
+  assert.ok(payload)
 })
 
 test("selectAndGenerateChallenge never grant-checks Common Challenges", async () => {
