@@ -3434,10 +3434,24 @@ export default function Arena({ user, userData, setUserData, onNavigateArenaV2 }
     // Only restore domain view from session — for "common" we need to re-derive
     // streamCategories from userData (they are never persisted to sessionStorage).
     // Restoring "common" without its categories causes the unfiltered 1000-challenge dump.
-    if (saved === "domain") setArenaView(saved)
+    //
+    // EXCEPTION (2026-08-14): domains in ARENA_V2_DEFAULT_DOMAINS auto-redirect
+    // straight into V2 the instant ArenaDomain mounts (see the effect in
+    // ArenaDomain below) — V2 has no Common Challenges content of its own yet
+    // (only Domain Challenge templates exist per role so far). Restoring
+    // "domain" here for those domains means every reload after the FIRST time
+    // a student ever clicked "Your Role" skips this landing page and its
+    // Common Challenges card entirely — they'd have no way back to Algorithm
+    // Challenges without manually hitting Back first. Landing (with both
+    // cards) must stay the entry point for these domains every time; clicking
+    // "Your Role" from here still routes into V2 exactly as before.
+    const domainKey = (sessionStorage.getItem("capabilio_arena_domain") && ARENA_DOMAINS[sessionStorage.getItem("capabilio_arena_domain")])
+      ? sessionStorage.getItem("capabilio_arena_domain")
+      : resolveArenaDomain(userData)
+    if (saved === "domain" && !shouldDefaultToV2(domainKey)) setArenaView(saved)
     // "common" is intentionally NOT restored here — user goes through landing to
     // re-derive their stream categories correctly on every hard reload.
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // onSelect(view) for IT students  |  onSelect(view, { categories }) for non-IT
   const handleSelectView = (view, opts) => {
