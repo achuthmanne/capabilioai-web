@@ -5,7 +5,7 @@
  */
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { selectAndGenerateChallenge, NoEligibleContentError, ChallengeEngineError } from "./engine.js"
+import { selectAndGenerateChallenge, EntitlementError, NoEligibleContentError, ChallengeEngineError } from "./engine.js"
 
 const domainTemplate = {
   id: "tmpl-sql-1", slug: "sql-joins", challenge_type: "domain",
@@ -17,17 +17,6 @@ const domainTemplateVersion = {
   validator: { type: "ground_truth_compare", version: "v1", config: {} },
   reward_rules: { common: { elo: false }, domain: { elo: true, baseEloGain: 20 } },
   portfolio_decision: { artifactType: "code" },
-}
-// 2026-08-14: a second fixture, identical except validator.type, for the
-// AI-scenario-overlay tests below. Real production data: Data Analyst's
-// only template ("sql-total-revenue") is ground_truth_compare — every other
-// seeded role is rubric_review. The AI overlay is now guarded to
-// rubric_review only (see engine.js), so its tests need a rubric_review
-// fixture; the plain ground_truth_compare fixture above is what confirms
-// the guard actually blocks the overlay.
-const domainTemplateVersionRubricReview = {
-  ...domainTemplateVersion,
-  validator: { type: "rubric_review", version: "v1", config: {} },
 }
 const commonTemplate = {
   id: "tmpl-sql-common", slug: "sql-practice", challenge_type: "common",
@@ -53,7 +42,6 @@ function makeDeps(overrides = {}) {
     getActiveDatasetVersion: async () => ({ dataset_id: "amazon-orders", version: "v2", schema: {}, seed_sql: "..." }),
     getSkillProgress: async () => [],
     hasActiveDomainGrant: async () => true,
-    grantTrialDomainAccess: async () => {},
     getRecentTemplateIdsForSkill: async () => [],
     ...overrides,
   }
@@ -84,28 +72,14 @@ test("selectAndGenerateChallenge leaves scenario/dataset/skillGraph null for Com
   assert.equal(payload.skillGraphVersion, null)
 })
 
-// CHANGED 2026-08-14 (product decision, see engine.js's entitlement-gate
-// comment): a domain request with no active grant used to reject with
-// EntitlementError outright. Since no self-serve way for a real user to
-// ever get a grant existed, that meant every V1 domain moving onto V2 by
-// default (V1 never gated this at all) permanently locked every real user
-// out. Now it auto-provisions a 'trial' grant instead of rejecting — this
-// test asserts THAT behavior: the request succeeds, and
-// grantTrialDomainAccess was actually called. EntitlementError itself
-// still exists and is still exported/tested-for-throwability elsewhere in
-// this file isn't required here anymore, but the class stays intact for a
-// real future payment-gated path to reuse.
-test("selectAndGenerateChallenge auto-provisions a trial grant for a domain request with no active grant, rather than rejecting", async () => {
-  let grantCalledFor = null
-  const { payload } = await selectAndGenerateChallenge(
-    { userId: "u1", challengeType: "domain", role: "Data Analyst" },
-    makeDeps({
-      hasActiveDomainGrant: async () => false,
-      grantTrialDomainAccess: async (userId) => { grantCalledFor = userId },
-    })
+test("selectAndGenerateChallenge rejects a domain request with no active grant", async () => {
+  await assert.rejects(
+    () => selectAndGenerateChallenge(
+      { userId: "u1", challengeType: "domain", role: "Data Analyst" },
+      makeDeps({ hasActiveDomainGrant: async () => false })
+    ),
+    EntitlementError
   )
-  assert.equal(grantCalledFor, "u1")
-  assert.ok(payload)
 })
 
 test("selectAndGenerateChallenge never grant-checks Common Challenges", async () => {
@@ -160,15 +134,12 @@ test("selectAndGenerateChallenge stamps a workstationVersion for every payload",
 
 // ── AI-generated scenario overlay (additive, deps.generateAiScenario) ──────
 
-test("selectAndGenerateChallenge overlays AI-generated content onto a real rubric_review template's difficulty_variants when generation succeeds", async () => {
+test("selectAndGenerateChallenge overlays AI-generated content onto a real template's difficulty_variants when generation succeeds", async () => {
   const aiContent = { prompt: "A freshly generated mission.", ticket: { id: "GEN-1" } }
   const aiRubric = [{ key: "correctness", label: "Correctness", weight: 1 }]
   const { payload, meta } = await selectAndGenerateChallenge(
     { userId: "u1", challengeType: "domain", role: "Data Analyst", difficulty: "Medium" },
-    makeDeps({
-      getActiveChallengeTemplateVersion: async () => domainTemplateVersionRubricReview,
-      generateAiScenario: async () => ({ content: aiContent, rubric: aiRubric }),
-    })
+    makeDeps({ generateAiScenario: async () => ({ content: aiContent, rubric: aiRubric }) })
   )
   assert.equal(meta.aiGenerated, true)
   assert.deepEqual(payload.payload.prompt, "A freshly generated mission.")
@@ -177,27 +148,7 @@ test("selectAndGenerateChallenge overlays AI-generated content onto a real rubri
   // The real template's id/version are still what's used for FK purposes —
   // generation never invents a template, only overlays content onto a real one.
   assert.equal(payload.challengeTemplateId, domainTemplate.id)
-  assert.equal(payload.challengeTemplateVersion, domainTemplateVersionRubricReview.version)
-})
-
-// 2026-08-14 regression test: found live while auditing Data Analyst's real
-// V2 template ahead of a default-to-V2 migration. Data Analyst's only
-// template is ground_truth_compare (graded by an exact, fixed SQL query
-// match) — before this guard existed, the AI overlay unconditionally
-// replaced payload.prompt with a freely-invented scenario that had no
-// relationship to the fixed groundTruthQuery, so the student would read one
-// question and be graded against another. This asserts the guard: the
-// engine must not even call generateAiScenario for a ground_truth_compare
-// template, and must serve the real static content untouched.
-test("selectAndGenerateChallenge never calls generateAiScenario for a ground_truth_compare template (prompt must stay pinned to what's actually graded)", async () => {
-  let called = false
-  const { payload, meta } = await selectAndGenerateChallenge(
-    { userId: "u1", challengeType: "domain", role: "Data Analyst", difficulty: "Medium" },
-    makeDeps({ generateAiScenario: async () => { called = true; return { content: { prompt: "should never appear" }, rubric: [] } } })
-  )
-  assert.equal(called, false)
-  assert.equal(meta.aiGenerated, false)
-  assert.notEqual(payload.payload.prompt, "should never appear")
+  assert.equal(payload.challengeTemplateVersion, domainTemplateVersion.version)
 })
 
 test("selectAndGenerateChallenge falls back to the real static difficulty_variant content when AI generation returns null", async () => {

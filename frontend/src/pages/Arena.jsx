@@ -23,7 +23,7 @@ import { supabase } from "../lib/supabase"
 import ArenaStreaks  from "./ArenaStreaks"
 import ArenaCommonChallenges from "./ArenaCommonChallenges"
 import { getDomainChallenges, getDomainCategories } from "../config/domainChallenges"
-import { getArenaV2PilotFor, ARENA_V2_ROLE_LABEL, shouldDefaultToV2 } from "../arena-v2/v1ToV2RoleMap"
+import { getArenaV2PilotFor, ARENA_V2_ROLE_LABEL } from "../arena-v2/v1ToV2RoleMap"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DESIGN TOKENS
@@ -3257,40 +3257,26 @@ function ArenaLanding({ userData, onSelect }) {
 
             {/* ── YOUR ROLE card ── */}
             {(() => {
-              // 2026-08-14 fix: "Your Role" must always reflect the student's
-              // actual chosen/resolved career domain (ARENA_DOMAINS[domainKey],
-              // via the canonical getRoleConfig-backed resolveArenaDomain() —
-              // same resolver Aura's header uses) — never the academic stream.
-              // User-reported bug: a student who selected "Data Analyst" as
-              // their role (correctly shown in the header pill above, and a
-              // fully real domain here — SQL Studio, Python/Pandas, Excel,
-              // BI Dashboard, Analysis Report, Visualization) saw this card
-              // overridden to "Data Science Coding Practice" — a generic
-              // LeetCode-style list with no real workstation — purely because
-              // their college branch/career_track_slug (detectStudentStream)
-              // happened to be AI_DS. Every stream this override used to serve
-              // (ECE, EEE, Mechanical, Civil, Pharmacy, MBA, IoT, AI_DS, AI_ML,
-              // DevOps) now has its own full ARENA_DOMAINS entry with a real
-              // workstation, so domain-role selection should always win here —
-              // this is the same class of bug as the DBA Arena V2 fix earlier
-              // this session, just for the "Your Role" card across every
-              // domain instead of one workstation. The COMMON CHALLENGES card
-              // below intentionally keeps the stream-based flavor (e.g. "Data
-              // Science Fundamentals" for AI_DS students) — that split (domain
-              // role → your chosen career; common → your academic stream) is
-              // a deliberate, user-confirmed product decision, not part of
-              // this bug.
-              const cfg    = null
-              const col    = D.indigo
-              const bg     = "rgba(99,102,241,0.1)"
-              const border = "rgba(99,102,241,0.2)"
-              const icon   = domain.icon
-              const label  = domain.label
-              const desc   = `Real-world ${domain.label} scenarios — practice the exact skills recruiters hire for. ELO-scored, timestamped, recruiter-visible.`
-              const tags   = domainCategories.slice(0,4).map(c => `${c.icon} ${c.category}`)
-              const cta    = `Open ${domain.label} Challenges`
-              const count  = `${domainChallenges.length} challenges`
-              const handleClick = () => onSelect("domain")
+              // Non-IT: use stream domain practice config
+              const cfg    = isEngineering ? streamCfg.role : null
+              const col    = cfg ? cfg.color    : D.indigo
+              const bg     = cfg ? cfg.colorBg  : "rgba(99,102,241,0.1)"
+              const border = cfg ? cfg.colorBorder : "rgba(99,102,241,0.2)"
+              const icon   = cfg ? cfg.icon     : domain.icon
+              const label  = cfg ? cfg.label    : domain.label
+              const desc   = cfg
+                ? cfg.desc
+                : `Real-world ${domain.label} scenarios — practice the exact skills recruiters hire for. ELO-scored, timestamped, recruiter-visible.`
+              const tags   = cfg ? cfg.tags : domainCategories.slice(0,4).map(c => `${c.icon} ${c.category}`)
+              const cta    = cfg ? cfg.cta : `Open ${domain.label} Challenges`
+              const count  = cfg ? null : `${domainChallenges.length} challenges`
+              // Routing: non-IT engineering streams → common challenges filtered by domain categories
+              // DevOps (categories:null) and IT → domain workstation
+              const handleClick = () => isEngineering
+                ? (streamCfg.role.categories
+                    ? onSelect("common", { categories: streamCfg.role.categories })
+                    : onSelect("domain"))
+                : onSelect("domain")
 
               return (
                 <div
@@ -3448,24 +3434,10 @@ export default function Arena({ user, userData, setUserData, onNavigateArenaV2 }
     // Only restore domain view from session — for "common" we need to re-derive
     // streamCategories from userData (they are never persisted to sessionStorage).
     // Restoring "common" without its categories causes the unfiltered 1000-challenge dump.
-    //
-    // EXCEPTION (2026-08-14): domains in ARENA_V2_DEFAULT_DOMAINS auto-redirect
-    // straight into V2 the instant ArenaDomain mounts (see the effect in
-    // ArenaDomain below) — V2 has no Common Challenges content of its own yet
-    // (only Domain Challenge templates exist per role so far). Restoring
-    // "domain" here for those domains means every reload after the FIRST time
-    // a student ever clicked "Your Role" skips this landing page and its
-    // Common Challenges card entirely — they'd have no way back to Algorithm
-    // Challenges without manually hitting Back first. Landing (with both
-    // cards) must stay the entry point for these domains every time; clicking
-    // "Your Role" from here still routes into V2 exactly as before.
-    const domainKey = (sessionStorage.getItem("capabilio_arena_domain") && ARENA_DOMAINS[sessionStorage.getItem("capabilio_arena_domain")])
-      ? sessionStorage.getItem("capabilio_arena_domain")
-      : resolveArenaDomain(userData)
-    if (saved === "domain" && !shouldDefaultToV2(domainKey)) setArenaView(saved)
+    if (saved === "domain") setArenaView(saved)
     // "common" is intentionally NOT restored here — user goes through landing to
     // re-derive their stream categories correctly on every hard reload.
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   // onSelect(view) for IT students  |  onSelect(view, { categories }) for non-IT
   const handleSelectView = (view, opts) => {
@@ -3515,13 +3487,6 @@ function ArenaDomain({ user, userData, setUserData, onBack, onNavigateArenaV2 })
   // the full reasoning): only a conservative subset of domains has a
   // confident 1:1 match to a real, Groq-generated Arena V2 workstation.
   const arenaV2PilotPage = getArenaV2PilotFor(domainKey)
-  // Phase 2 (2026-08-13): domains whose V2 workstation content generation
-  // has been read and verified (see ARENA_V2_DEFAULT_DOMAINS's own comment
-  // in v1ToV2RoleMap.js) default straight into V2 instead of V1's daily-
-  // mission slots, since V1's mission brief/schema disconnect is a real,
-  // reproducible bug there — not offered as an opt-in banner for these
-  // domains, because the thing it's opt-in to is broken.
-  const defaultToV2 = shouldDefaultToV2(domainKey) && !!arenaV2PilotPage
 
   const [activeModuleId, setActiveModuleId]   = useState(null)
   const [activeMission, setActiveMission]     = useState(null)
@@ -3541,16 +3506,6 @@ function ArenaDomain({ user, userData, setUserData, onBack, onNavigateArenaV2 })
   const [timeLeft, setTimeLeft]               = useState(null)
   const timerRef                              = useRef(null)
   const [decayBanner, setDecayBanner]         = useState(null) // { penalty, daysOwed, newElo }
-
-  // ── V2 default-domain redirect (Phase 2, 2026-08-13) ────────────────────
-  // Fires once on mount, only for domains in ARENA_V2_DEFAULT_DOMAINS.
-  // Guarded on !activeMission so it can never yank a user out of a V1
-  // mission they're already mid-attempt on (activeMission is always null on
-  // a fresh mount here, but this stays defensive rather than assuming that).
-  useEffect(() => {
-    if (defaultToV2 && !activeMission && onNavigateArenaV2) onNavigateArenaV2(arenaV2PilotPage)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultToV2, arenaV2PilotPage])
 
   // ── ELO inactivity decay ─ -5 ELO/day after 14-day grace period ─────────
   // Single authoritative decay engine. Writes via userDoc.update() so that:

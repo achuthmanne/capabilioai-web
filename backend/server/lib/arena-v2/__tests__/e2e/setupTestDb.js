@@ -48,12 +48,6 @@ export async function setupTestDb({ schema001Path, schema002Path }) {
     CREATE TABLE IF NOT EXISTS profiles (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       email text,
-      -- elo_rating: the student's single continuous ELO number (same field
-      -- Arena V1 and the onboarding assessment read/write). reward-engine/
-      -- repository.js's getLegacyElo reads this to seed a Domain Challenge
-      -- role's first-ever attempt from the student's real rating instead of
-      -- a flat constant — see eloFormula.js's 2026-08-14 header note.
-      elo_rating integer,
       created_at timestamptz DEFAULT now()
     );
   `)

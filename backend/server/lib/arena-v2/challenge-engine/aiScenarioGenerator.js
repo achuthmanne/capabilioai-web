@@ -41,28 +41,18 @@
 import { claude, CLAUDE_SONNET } from "../../claude.js"
 
 // ── Per-workstation extra-field specs ───────────────────────────────────────
-// CORRECTION 2026-08-14: this comment previously claimed every domain
-// challenge uses the rubric_review validator with "zero ground_truth_compare
-// ... in production data." That was true when written but is no longer
-// accurate — Data Analyst's "sql-total-revenue" template is
-// ground_truth_compare (graded by an exact, fixed SQL query match), and
-// engine.js was calling this generator for it unguarded, silently
-// overwriting the student's prompt with content unrelated to what was
-// actually graded. engine.js now only invokes this generator when
-// `templateVersion.validator.type === "rubric_review"` — see its
-// `isAiScenarioSafe` guard. The CORE fields below (prompt/ticket/checklist/
-// acceptanceCriteria/answerLabel/groundTruth/rubric) are a rubric-style
-// shape and are ONLY valid to overlay onto rubric_review templates; they
-// must never be used for ground_truth_compare or any other deterministic
-// validator, whose grading config is fixed and cannot be regenerated per
-// attempt. Only the workstation-specific extra fields differ within
-// rubric_review, and only for the workstations whose exact field shape is
-// already known from reading their real components (NotebookWorkstationV2.jsx,
-// CodeWorkstationV2.jsx, TerminalWorkstationV2.jsx, SapConsoleWorkstationV2.jsx).
-// Workstations without a dedicated spec here still get a fully real, unique,
-// AI-generated core scenario — they just don't get workstation-specific
-// extras (e.g. a generated dataset table), which is a known,
-// explicitly-flagged limitation, not a fake fallback.
+// Every domain challenge in this codebase uses the rubric_review validator
+// (confirmed against the live database before writing this file — zero
+// ground_truth_compare/other validator types in production data), so the
+// CORE fields below (prompt/ticket/checklist/acceptanceCriteria/answerLabel/
+// groundTruth/rubric) are universal across every role. Only the workstation-
+// specific extra fields differ, and only for the workstations whose exact
+// field shape is already known from reading their real components
+// (NotebookWorkstationV2.jsx, CodeWorkstationV2.jsx, TerminalWorkstationV2.jsx,
+// SapConsoleWorkstationV2.jsx). Workstations without a dedicated spec here
+// still get a fully real, unique, AI-generated core scenario — they just
+// don't get workstation-specific extras (e.g. a generated dataset table),
+// which is a known, explicitly-flagged limitation, not a fake fallback.
 const WORKSTATION_SPECS = {
   notebook: {
     extraFieldsPrompt: `"starterCode": "<a short Python starter snippet, 2-4 lines, e.g. imports and a pd.read_csv('/data/customers.csv') call>",

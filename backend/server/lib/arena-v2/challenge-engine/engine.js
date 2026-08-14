@@ -44,7 +44,6 @@ export const defaultDeps = {
   getActiveDatasetVersion: engineRepo.getActiveDatasetVersion,
   getSkillProgress: engineRepo.getSkillProgress,
   hasActiveDomainGrant: engineRepo.hasActiveDomainGrant,
-  grantTrialDomainAccess: engineRepo.grantTrialDomainAccess,
   getRecentTemplateIdsForSkill: engineRepo.getRecentTemplateIdsForSkill,
   // AI scenario generation — additive, optional. A `deps` object that
   // doesn't define this key (e.g. every pre-existing unit test's hand-built
@@ -71,21 +70,9 @@ export async function selectAndGenerateChallenge(input, deps = defaultDeps) {
 
   // Entitlement gate — Domain Challenges only, per content_spec/08 +
   // av2_domain_challenge_grants (Milestone 1). Common Challenges stay ungated.
-  //
-  // 2026-08-14, product decision: no self-serve way for a user to ever get a
-  // grant existed (only manual admin_grant inserts) — since real Arena V1
-  // domains are moving onto V2 by default (see frontend's
-  // ARENA_V2_DEFAULT_DOMAINS), and V1 never gated Domain Challenges at all,
-  // a hard EntitlementError here locked every real user out entirely. Until
-  // a real subscription/paywall flow exists, auto-provision a non-expiring
-  // 'trial' grant on first use instead of rejecting — this keeps the
-  // grants/audit table and EntitlementError machinery fully intact (a real
-  // payment-gated model can replace this auto-provision call later without
-  // touching anything else here) while matching V1's actually-open behavior
-  // today.
   if (challengeType === "domain") {
     const granted = await deps.hasActiveDomainGrant(userId)
-    if (!granted) await deps.grantTrialDomainAccess(userId)
+    if (!granted) throw new EntitlementError("No active Domain Challenge grant for this user")
   }
 
   // 1. Candidate templates for this type (+ role, if domain)
@@ -138,25 +125,7 @@ export async function selectAndGenerateChallenge(input, deps = defaultDeps) {
   // NOT NULL constraint even when the content itself is freshly generated.
   let effectiveTemplateVersion = templateVersion
   let aiGenerated = false
-  // 2026-08-14 fix: only overlay AI content onto rubric_review-validated
-  // templates. aiScenarioGenerator.js's CORE_FIELDS_SPEC generates a
-  // rubric-style scenario (ticket/prompt/checklist/acceptanceCriteria/
-  // groundTruth.rootCause+correctFix/rubric) — that shape has no
-  // relationship to a ground_truth_compare template's fixed, deterministic
-  // config (e.g. Data Analyst's "sql-total-revenue" template, whose grading
-  // is pinned to `groundTruthQuery: SELECT SUM(amount) FROM orders`).
-  // Without this guard, every Data Analyst domain-challenge request had its
-  // `payload.prompt` silently overwritten with an unrelated AI-invented
-  // scenario while the actual grading stayed pinned to the fixed query —
-  // the student would read one question and be graded against another.
-  // Same bug shape as the DBA schema/narrative mismatch that started this
-  // investigation, just prompt-vs-grading instead of schema-vs-narrative.
-  // rubric_review templates are unaffected — they're what this feature was
-  // built and validated for (confirmed: 15 of 16 seeded roles use
-  // rubric_review; Data Analyst is currently the only ground_truth_compare
-  // template in the system).
-  const isAiScenarioSafe = templateVersion?.validator?.type === "rubric_review"
-  if (challengeType === "domain" && isAiScenarioSafe && typeof deps.generateAiScenario === "function") {
+  if (challengeType === "domain" && typeof deps.generateAiScenario === "function") {
     const generated = await deps.generateAiScenario({ role, careerFamily, skill, difficulty, workstation: template.workstation, industry })
     if (generated) {
       aiGenerated = true

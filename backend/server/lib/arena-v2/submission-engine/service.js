@@ -62,13 +62,6 @@ import { buildFeedbackResponseDto } from "./dto.js"
 // idempotent contract this MUST uphold: a Skill Studio bug must never
 // become a 500 on a real Arena submission.
 import { notifySkillStudio, defaultDeps as skillStudioDefaultDeps } from "../../skillStudio/arenaIngestion.js"
-// Legacy ELO bridge (2026-08-13) — keeps profiles.elo_rating (the field
-// pre-V2 surfaces like the header badge and Pulse still read) in sync with
-// av2_elo_ledger, so a domain defaulting into V2 doesn't leave those
-// surfaces silently frozen. See legacyEloSync.js's header for the full
-// rationale. Same best-effort/non-throwing contract as notifySkillStudio
-// above — wired the same defensive way at the call site below.
-import { syncLegacyElo } from "../reward-engine/legacyEloSync.js"
 
 export class SubmissionEngineError extends Error {}
 export class InstanceNotFoundError extends SubmissionEngineError {}
@@ -88,7 +81,6 @@ export const defaultDeps = {
   portfolioDeps: portfolioDefaultDeps,
   notifySkillStudio,
   skillStudioDeps: skillStudioDefaultDeps,
-  syncLegacyElo,
 }
 
 /**
@@ -211,18 +203,6 @@ export async function submitChallenge(input, deps = defaultDeps) {
       await deps.notifySkillStudio(assessmentCompletedEvent, deps.skillStudioDeps)
     } catch (e) {
       console.error("[submission-engine] notifySkillStudio threw despite its non-throwing contract:", e?.message)
-    }
-  }
-
-  // Legacy ELO bridge — same defensive guard as notifySkillStudio above:
-  // typeof-checked so hand-built test fixtures without this key are
-  // unaffected, and try/caught so a sync failure can never fail a real,
-  // already-graded, already-rewarded submission. See legacyEloSync.js.
-  if (typeof deps.syncLegacyElo === "function") {
-    try {
-      await deps.syncLegacyElo(rewardResult, userId)
-    } catch (e) {
-      console.error("[submission-engine] syncLegacyElo threw despite its non-throwing contract:", e?.message)
     }
   }
 
