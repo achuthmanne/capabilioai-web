@@ -1,46 +1,40 @@
 /**
  * reward-engine/eloFormula.js — Milestone 9
  * ---------------------------------------------------------------------------
- * Pure ELO math for Domain Challenges. No I/O, no knowledge of validators,
- * submissions, or workstations — takes a current rating, a difficulty tier,
- * and a 0-100 score, returns the new rating. This is exactly the "Result ->
- * Reward Engine" boundary from your diagram: the only input this formula
- * needs is the number Assessment already computed.
+ * Pure ELO math for Domain Challenges. No I/O — takes a current rating, a
+ * difficulty tier, and a 0-100 final score, returns the new rating. This is
+ * the "Result -> Reward Engine" boundary: the only input this formula needs
+ * is the number Assessment already computed.
  *
- * LINEAGE: the same standard ELO shape (logistic expected-score curve,
- * rating-tiered K-factor) Arena V1 already uses in
- * backend/server/lib/grading-worker.js's `computeEloUpdate` — reimplemented
- * here rather than imported, to keep av2_ fully isolated from legacy Arena
- * V1 modules (the same isolation principle established since Milestone 1's
- * schema comment: "Arena V1 stays frozen and running exactly as it does
- * today"). Deliberately narrower than V1's version: V1 also applies an
- * attempt-count decay multiplier and a time-taken bonus, both of which need
- * submission-level metadata (attempt number, time taken) that this
- * milestone's Reward Engine does not accept as input, by design — see
- * docs/future-improvements.md for the trade-off.
+ * 2026-08-14 — REPLACED the previous logistic expected-score / rating-tiered
+ * K-factor curve entirely (explicit product decision, account owner). That
+ * model computed a delta relative to the student's current rating vs. the
+ * challenge's own "difficulty rating" (e.g. Easy = 800, Expert = 1700),
+ * which is exactly what produced the reported bug: a student's very first
+ * submission in a role had no rating history to compare against, so the
+ * math effectively anchored on the challenge's own rating band (~800) as
+ * "current," compounding with a separate seeding bug to jump a student's
+ * visible ELO by hundreds of points off one Easy question. Confusing and
+ * wrong for students to see, on top of being the wrong mental model for
+ * this product: ELO here does not need to reflect a matchmaking-style
+ * expected-outcome comparison between "player rating" and "challenge
+ * rating" — it needs to reward real, graded progress in small, predictable,
+ * difficulty-scaled steps on top of wherever the student already is.
+ *
+ * New rule, stated plainly by the account owner: passing a Domain Challenge
+ * awards a FLAT amount based on difficulty (Easy +5, Medium +10, Hard +15,
+ * Expert +20 — extending the same +5-per-tier step the owner specified for
+ * Easy/Medium/Hard). A failing submission awards nothing — ELO does not
+ * move. No comparison to current rating, no K-factor, no negative delta.
+ * "Passing" is judged purely on Assessment's own `final_score` (the one
+ * number this module is allowed to know about, preserving the Reward
+ * Engine's zero-knowledge-of-validators boundary — see engine.js's header)
+ * against PASSING_SCORE_THRESHOLD.
  */
-export const CHALLENGE_ELO_BY_DIFFICULTY = { Easy: 800, Medium: 1100, Hard: 1400, Expert: 1700 }
-export const START_ELO = 800
+export const START_ELO = 800   // last-resort seed ONLY for an account with no rating anywhere at all — see reward-engine/repository.js's getLegacyElo, which normally seeds a role's first attempt from the student's real, existing rating instead.
+export const FLAT_ELO_AWARD_BY_DIFFICULTY = { Easy: 5, Medium: 10, Hard: 15, Expert: 20 }
+export const PASSING_SCORE_THRESHOLD = 70
 const ELO_FLOOR = 100
-const MAX_NEGATIVE_DELTA = -30
-const MIN_PASSING_DELTA = 3
-// 2026-07-27 P0 fix (mirrors the same fix in lib/grading-worker.js's
-// computeEloUpdate — kept in sync deliberately even though these two
-// engines stay isolated per this file's LINEAGE note): the logistic
-// expected-score curve has no ceiling of its own, so a low-rated user
-// facing a Hard/Expert Domain Challenge could swing past +30-40 on a single
-// submission. Product rule: Hard maxes at +15, Medium +12, Easy +8. Applies
-// only to positive deltas going forward — MAX_NEGATIVE_DELTA and
-// MIN_PASSING_DELTA below are untouched, and existing av2_elo_ledger rows
-// are not retroactively recomputed.
-export const MAX_POSITIVE_DELTA_BY_DIFFICULTY = { Easy: 8, Medium: 12, Hard: 15, Expert: 18 }
-// 2026-07-27 P0 fix (mirrors grading-worker.js): a near-empty/trivial
-// submission can still net a small POSITIVE delta purely from ELO
-// expectancy math when the user is far below the challenge's rating —
-// the "expected" win probability is so low that even a token score
-// exceeds it. Gate positive deltas on a minimum quality bar; negative
-// deltas are untouched.
-const MIN_SCORE_FOR_POSITIVE_DELTA = 20
 
 /**
  * @param {{ currentElo: number, difficulty: string, score: number }} input
@@ -50,21 +44,12 @@ export function computeEloDelta({ currentElo, difficulty, score }) {
   if (typeof currentElo !== "number" || Number.isNaN(currentElo)) throw new Error("computeEloDelta: currentElo must be a number")
   if (typeof score !== "number" || Number.isNaN(score)) throw new Error("computeEloDelta: score must be a number")
 
-  const challengeElo = CHALLENGE_ELO_BY_DIFFICULTY[difficulty] || CHALLENGE_ELO_BY_DIFFICULTY.Medium
-  const expected = 1 / (1 + Math.pow(10, (challengeElo - currentElo) / 400))
-  const actual = Math.max(0, Math.min(1, score / 100))
-  const K = currentElo < 800 ? 48 : currentElo < 1100 ? 36 : currentElo < 1400 ? 28 : 20
-
-  let delta = Math.round(K * (actual - expected))
-  if (actual * 100 < MIN_SCORE_FOR_POSITIVE_DELTA && delta > 0) delta = 0
-  // A genuinely passing attempt (score >= 70) should never net a token
-  // +0/+1 against a much stronger opponent rating — carries forward the
-  // same floor V1 applies.
-  if (actual >= 0.7 && delta < MIN_PASSING_DELTA) delta = MIN_PASSING_DELTA
-  if (delta < MAX_NEGATIVE_DELTA) delta = MAX_NEGATIVE_DELTA
-  const positiveCap = MAX_POSITIVE_DELTA_BY_DIFFICULTY[difficulty] ?? MAX_POSITIVE_DELTA_BY_DIFFICULTY.Medium
-  if (delta > positiveCap) delta = positiveCap
-
+  const passed = score >= PASSING_SCORE_THRESHOLD
+  const delta = passed ? (FLAT_ELO_AWARD_BY_DIFFICULTY[difficulty] ?? FLAT_ELO_AWARD_BY_DIFFICULTY.Medium) : 0
+  // Floor is defensive only — delta is never negative under this rule, so
+  // this only matters if currentElo itself was already below 100 (e.g. a
+  // corrupted/legacy row), which should never happen but must never make
+  // things worse if it does.
   const newElo = Math.max(ELO_FLOOR, currentElo + delta)
   return { delta, newElo }
 }

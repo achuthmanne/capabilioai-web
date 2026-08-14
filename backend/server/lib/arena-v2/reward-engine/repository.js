@@ -28,6 +28,24 @@ export async function getLatestEloForRole(userId, role) {
 
 // Idempotency guard — see engine.js's header note on why applyRewards
 // checks for an existing ledger row before writing.
+// 2026-08-14 fix: when a student attempts a role for the very first time,
+// there is no av2_elo_ledger row yet for (user, role) — getLatestEloForRole
+// above correctly returns null for that case. The engine used to fall back
+// straight to a flat START_ELO (800), silently discarding the student's
+// real, already-established rating from profiles.elo_rating (their
+// onboarding-assessment ELO, e.g. 456). That meant a student's very first
+// Domain Challenge attempt in ANY new role jumped their visible ELO to
+// ~800 instead of continuing from where they actually were. This reads the
+// same single continuous elo_rating the student's assessment and Arena V1
+// already use, so a first-time-in-a-new-role attempt starts from the
+// student's real number, not a hardcoded constant.
+export async function getLegacyElo(userId) {
+  const { data, error } = await supabaseAdmin
+    .from("profiles").select("elo_rating").eq("id", userId).maybeSingle()
+  if (error) throw error
+  return typeof data?.elo_rating === "number" ? data.elo_rating : null
+}
+
 export async function getEloEntryForAssessment(assessmentId) {
   const { data, error } = await supabaseAdmin
     .from("av2_elo_ledger").select("*").eq("assessment_id", assessmentId).maybeSingle()

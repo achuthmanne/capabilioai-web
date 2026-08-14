@@ -41,6 +41,7 @@ export class RewardRulesViolationError extends RewardEngineError {}
 
 export const defaultDeps = {
   getLatestEloForRole: repo.getLatestEloForRole,
+  getLegacyElo: repo.getLegacyElo,
   getEloEntryForAssessment: repo.getEloEntryForAssessment,
   getXpEntryForAssessment: repo.getXpEntryForAssessment,
   insertEloLedgerEntry: repo.insertEloLedgerEntry,
@@ -98,7 +99,13 @@ export async function applyRewards({ assessment, instance }, deps = defaultDeps)
   let xpEntry = null
 
   if (isDomain) {
-    const currentElo = (await deps.getLatestEloForRole(assessment.user_id, instance.role)) ?? START_ELO
+    // A role's first-ever attempt starts from the student's REAL current
+    // ELO (profiles.elo_rating), not a flat constant — see
+    // repository.js's getLegacyElo. START_ELO is only the final fallback
+    // for a genuinely fresh account with no rating at all anywhere.
+    const currentElo = (await deps.getLatestEloForRole(assessment.user_id, instance.role))
+      ?? (await deps.getLegacyElo(assessment.user_id))
+      ?? START_ELO
     const { delta, newElo } = computeEloDelta({
       currentElo,
       difficulty: instance.difficulty,
