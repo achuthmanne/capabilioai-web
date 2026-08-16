@@ -22,12 +22,24 @@
 //      of the three), not a hardcoded guess.
 //   2. No V1 equivalent exists yet: Arena V2 has real workstations for
 //      three SAP roles (SAP FI/CO Consultant, SAP MM/SD Consultant, SAP ABAP
-//      Developer) and Data Analyst, but roleConfig.js's `arenaKey` enum has
-//      no "sap_fico"/"sap_mmsd"/"sap_abap"/"data_analyst" value at all —
-//      there's nothing on the V1 side to map FROM. (Data Analyst also has
-//      no dedicated `arenaV2*Pilot` page in App.jsx yet, even though its
-//      challenge template + SqlWorkstationV2 wiring exist — a separate,
-//      already-flagged gap, not something this map can paper over.)
+//      Developer), but roleConfig.js's `arenaKey` enum has no
+//      "sap_fico"/"sap_mmsd"/"sap_abap" value at all — there's nothing on
+//      the V1 side to map FROM. (Data Analyst used to be in this bucket too
+//      — arenaKey "data" existed with no matching arenaV2*Pilot page — until
+//      2026-08-14, when ArenaV2DataAnalystPilot.jsx was added specifically
+//      to close this gap; "data" now maps cleanly below. This is an
+//      additive, opt-in row only — it does NOT add "data" to
+//      ARENA_V2_DEFAULT_DOMAINS below, so Data Analyst students still land
+//      on V1's Arena by default, exactly like every other role; this only
+//      makes the V2 workstation reachable via the same "Open workstation ->"
+//      button the other 9 roles already use. Before enabling this row, the
+//      AI-scenario overlay in challenge-engine/engine.js was confirmed to
+//      correctly skip Data Analyst's ground_truth_compare template
+//      (isAiScenarioSafe guard, same commit) — without that guard this role
+//      would show students one question while grading against a different,
+//      fixed one. NOT "data_engineer" or "bi_analyst" — roleConfig.js keeps
+//      those as distinct roles from "Data Analyst", and neither has a V2
+//      workstation of its own yet.)
 //
 // Extending this map safely means: (a) confirming the new arenaKey really
 // means the same role Arena V2 built a workstation for, and (b) if it's a
@@ -36,6 +48,8 @@
 // just adding a row here.
 export const ARENA_V1_TO_V2_PILOT = {
   dba:        "arenaV2DbaPilot",        // Database Administrator
+  data:       "arenaV2DataAnalystPilot", // Data Analyst
+  frontend:   "arenaV2FrontendPilot",   // Frontend Developer
   cyber:      "arenaV2CyberPilot",      // Cybersecurity Analyst
   devops:     "arenaV2DevOpsPilot",     // DevOps Engineer
   ml:         "arenaV2MLPilot",         // ML Engineer
@@ -51,6 +65,8 @@ export const ARENA_V1_TO_V2_PILOT = {
 // slug.
 export const ARENA_V2_ROLE_LABEL = {
   arenaV2DbaPilot:        "Database Administrator",
+  arenaV2DataAnalystPilot: "Data Analyst",
+  arenaV2FrontendPilot:   "Frontend Developer",
   arenaV2CyberPilot:      "Cybersecurity Analyst",
   arenaV2DevOpsPilot:     "DevOps Engineer",
   arenaV2MLPilot:         "ML Engineer",

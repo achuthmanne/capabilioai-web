@@ -40,6 +40,11 @@ export const FRONTEND_WORKSTATION_REGISTRY = {
   // prior keys were already claimed. See backend validators.js's comment
   // on the same enum for the reasoning.
   SapConsoleWorkstation:     { status: "ready",          importPath: "./workstations/SapConsoleWorkstationV2.jsx" },
+  // Frontend Developer's real workstation — a genuinely new componentKey
+  // (not a reuse of ReactFrontendWorkstation, which stays pointed at
+  // BiotechWorkstationV2.jsx exactly as it already is for live Biotech
+  // students; see backend workstation-router/registry.js's comment).
+  FrontendPreviewWorkstation: { status: "ready",          importPath: "./workstations/FrontendWorkstationV2.jsx" },
 }
 
 export function isWorkstationReady(componentKey) {

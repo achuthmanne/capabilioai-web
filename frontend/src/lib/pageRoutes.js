@@ -28,8 +28,8 @@
 export const PAGE_KEYS = [
   "aicopilot", "analytics", "arena",
   "arenaV2BiotechPilot", "arenaV2CivilPilot", "arenaV2ClinicalLabPilot",
-  "arenaV2CyberPilot", "arenaV2DbaPilot", "arenaV2DevOpsPilot",
-  "arenaV2EcePilot", "arenaV2EeePilot", "arenaV2MLPilot",
+  "arenaV2CyberPilot", "arenaV2DataAnalystPilot", "arenaV2DbaPilot", "arenaV2DevOpsPilot",
+  "arenaV2EcePilot", "arenaV2EeePilot", "arenaV2FrontendPilot", "arenaV2MLPilot",
   "arenaV2MechanicalPilot", "arenaV2MedicalBiotechPilot",
   "arenaV2RecruiterView", "arenaV2SoftwarePilot",
   "arenaV2SapFicoPilot", "arenaV2SapMmSdPilot", "arenaV2SapAbapPilot",

@@ -38,6 +38,16 @@ export const WORKSTATION_IDS = [
   // registry.js's own consistency guard fails the module load if this ever
   // drifts from the backend/frontend registries below.
   "sap_console",
+  // 2026-08-14: Frontend Developer's real workstation. NOT reusing the
+  // existing "react_frontend" id/componentKey — that id already exists in
+  // this enum and content_spec/04-workstations.md, but its frontend
+  // component (ReactFrontendWorkstation) was pragmatically pointed at
+  // BiotechWorkstationV2.jsx before a real frontend workstation existed
+  // (see workstationRegistry.js's own comment). Reclaiming that key now
+  // would silently change what Biotech students see on their next attempt —
+  // exactly the kind of unrelated regression this project's engineering
+  // rules forbid. Additive-only, same precedent as sap_console above.
+  "frontend_preview",
 ]
 
 export const VALIDATOR_TYPES = [

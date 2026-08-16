@@ -89,6 +89,14 @@ export const WORKSTATION_REGISTRY = {
     uiModules: ["code_editor", "terminal", "answer_panel"],
     artifactType: "code",
   },
+  // Frontend Developer's real workstation — additive entry, see
+  // validators.js's WORKSTATION_IDS comment on why this isn't the existing
+  // "react_frontend" id (that componentKey is already live for Biotech).
+  frontend_preview: {
+    componentKey: "FrontendPreviewWorkstation",
+    uiModules: ["code_editor", "browser_live_preview", "console_output"],
+    artifactType: "code",
+  },
 }
 
 // Consistency guard, evaluated at import time (fails fast on module load if

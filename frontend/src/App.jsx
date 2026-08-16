@@ -34,6 +34,8 @@ const ArenaV2SoftwarePilot = lazy(() => import("./pages/ArenaV2SoftwarePilot"))
 const ArenaV2CyberPilot  = lazy(() => import("./pages/ArenaV2CyberPilot"))
 const ArenaV2DevOpsPilot = lazy(() => import("./pages/ArenaV2DevOpsPilot"))
 const ArenaV2DbaPilot    = lazy(() => import("./pages/ArenaV2DbaPilot"))
+const ArenaV2DataAnalystPilot = lazy(() => import("./pages/ArenaV2DataAnalystPilot"))
+const ArenaV2FrontendPilot = lazy(() => import("./pages/ArenaV2FrontendPilot"))
 const ArenaV2EcePilot    = lazy(() => import("./pages/ArenaV2EcePilot"))
 const ArenaV2EeePilot    = lazy(() => import("./pages/ArenaV2EeePilot"))
 const ArenaV2CivilPilot  = lazy(() => import("./pages/ArenaV2CivilPilot"))
@@ -1816,6 +1818,22 @@ function App() {
               userData={userData}
               onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
               onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2DbaPilot"); setCurrentPage("arenaV2RecruiterView") }}
+            />
+          )}
+          {currentPage === "arenaV2DataAnalystPilot" && (
+            <ArenaV2DataAnalystPilot
+              user={user}
+              userData={userData}
+              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
+              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2DataAnalystPilot"); setCurrentPage("arenaV2RecruiterView") }}
+            />
+          )}
+          {currentPage === "arenaV2FrontendPilot" && (
+            <ArenaV2FrontendPilot
+              user={user}
+              userData={userData}
+              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
+              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2FrontendPilot"); setCurrentPage("arenaV2RecruiterView") }}
             />
           )}
           {currentPage === "arenaV2EcePilot" && (

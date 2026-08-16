@@ -141,6 +141,24 @@ test("generateAiScenario rejects dashboard content missing/zeroed slowQuery metr
   assert.equal(result, null)
 })
 
+test("generateAiScenario requires frontend_preview-specific fields (starterHtml + starterJs) and accepts a valid response", async () => {
+  const result = await generateAiScenario(
+    { role: "Frontend Developer", skill: "DOM Manipulation", difficulty: "Easy", workstation: "frontend_preview" },
+    { callAi: async () => ({ ...VALID_CORE, starterHtml: "<button id=\"go\">Go</button>", starterCss: "button{color:red}", starterJs: "document.getElementById('go').onclick=()=>{}" }) }
+  )
+  assert.ok(result)
+  assert.equal(result.content.starterHtml, "<button id=\"go\">Go</button>")
+  assert.equal(result.content.starterJs, "document.getElementById('go').onclick=()=>{}")
+})
+
+test("generateAiScenario rejects frontend_preview content missing starterJs", async () => {
+  const result = await generateAiScenario(
+    { role: "Frontend Developer", skill: "DOM Manipulation", difficulty: "Easy", workstation: "frontend_preview" },
+    { callAi: async () => ({ ...VALID_CORE, starterHtml: "<div></div>" }) }
+  )
+  assert.equal(result, null)
+})
+
 test("generateAiScenario returns null for missing required ctx (no role)", async () => {
   const result = await generateAiScenario({ skill: "X", difficulty: "Medium", workstation: "notebook" }, { callAi: async () => VALID_CORE })
   assert.equal(result, null)

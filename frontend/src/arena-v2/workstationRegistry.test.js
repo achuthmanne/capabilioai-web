@@ -2,16 +2,24 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 import { FRONTEND_WORKSTATION_REGISTRY, isWorkstationReady } from "./workstationRegistry.js"
 
-// Same 13 keys as backend/server/lib/arena-v2/workstation-router/registry.js's
+// Same keys as backend/server/lib/arena-v2/workstation-router/registry.js's
 // WORKSTATION_REGISTRY — kept as a literal list here (rather than importing
 // the backend file, which would need a bundler alias to resolve across the
 // frontend/backend boundary) so this test still catches drift if someone
 // adds/renames a key on one side and forgets the other.
+//
+// 2026-08-14: this list had already gone stale once more since the last fix
+// noted below — missing SapConsoleWorkstation entirely, so this test was
+// silently failing (15 vs its old expectation of 13) before FrontendPreview
+// was even added. Corrected to the real current set: 13 original keys +
+// SapConsoleWorkstation (SAP domain) + FrontendPreviewWorkstation (Frontend
+// Developer, 2026-08-14) = 15.
 const BACKEND_COMPONENT_KEYS = [
   "CodeWorkstation", "SqlWorkstation", "NotebookWorkstation", "ReactFrontendWorkstation",
   "ApiWorkstation", "TerminalWorkstation", "ExcelWorkstation", "DashboardWorkstation",
   "ReportWorkstation", "SystemDesignWorkstation", "EmbeddedWorkstation",
-  "CalculatorWorkstation", "FullStackWorkstation",
+  "CalculatorWorkstation", "FullStackWorkstation", "SapConsoleWorkstation",
+  "FrontendPreviewWorkstation",
 ]
 
 test("FRONTEND_WORKSTATION_REGISTRY has an entry for every backend componentKey", () => {
@@ -44,18 +52,13 @@ test("isWorkstationReady reflects the registry status", () => {
   assert.equal(isWorkstationReady("not_a_real_key"), false)
 })
 
-// This assertion has already gone stale once (originally asserted
-// readyCount === 1, back when only SqlWorkstation was wired — a fact this
-// file's own git history preserves, this comment does not need to). It
-// was never actually caught by CI because this file was never included in
-// any npm test script (see the newly-added "test:arena-v2-frontend"
-// script in the repo root package.json, added in the same consolidation
-// pass that fixed this line) — a real regression-hardening gap for a
-// frontend-only pure-JS test, now closed. Update this number deliberately
-// whenever a workstation is wired, rather than letting it silently drift
-// again.
-test("all thirteen workstations are integrated — sanity check on current milestone scope, updated through the Clinical Lab phase", () => {
+// This assertion has now gone stale twice (originally asserted readyCount
+// === 1, then === 13 — both preserved in git history, not repeated here).
+// Update this number deliberately whenever a workstation is wired, rather
+// than letting it silently drift again — see the 2026-08-14 note above on
+// how the 13->15 gap (SAP + Frontend Developer) went uncaught.
+test("all fifteen workstations are integrated — sanity check on current milestone scope, updated through the Frontend Developer phase", () => {
   const readyCount = Object.values(FRONTEND_WORKSTATION_REGISTRY).filter((e) => e.status === "ready").length
   assert.equal(readyCount, BACKEND_COMPONENT_KEYS.length)
-  assert.equal(readyCount, 13)
+  assert.equal(readyCount, 15)
 })

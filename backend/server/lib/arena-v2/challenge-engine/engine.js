@@ -125,7 +125,23 @@ export async function selectAndGenerateChallenge(input, deps = defaultDeps) {
   // NOT NULL constraint even when the content itself is freshly generated.
   let effectiveTemplateVersion = templateVersion
   let aiGenerated = false
-  if (challengeType === "domain" && typeof deps.generateAiScenario === "function") {
+  // 2026-08-14 fix: only overlay AI content onto rubric_review-validated
+  // templates. aiScenarioGenerator.js's CORE_FIELDS_SPEC generates a
+  // rubric-style scenario (ticket/prompt/checklist/acceptanceCriteria/
+  // groundTruth.rootCause+correctFix/rubric) — that shape has no
+  // relationship to a ground_truth_compare template's fixed, deterministic
+  // config (e.g. Data Analyst's "sql-total-revenue" template, whose grading
+  // is pinned to `groundTruthQuery: SELECT SUM(amount) FROM orders`).
+  // Without this guard, every Data Analyst domain-challenge request had its
+  // `payload.prompt` silently overwritten with an unrelated AI-invented
+  // scenario while the actual grading stayed pinned to the fixed query —
+  // the student would read one question and be graded against another.
+  // rubric_review templates are unaffected — they're what this feature was
+  // built and validated for (15 of 16 seeded roles use rubric_review; Data
+  // Analyst is currently the only ground_truth_compare template in the
+  // system).
+  const isAiScenarioSafe = templateVersion?.validator?.type === "rubric_review"
+  if (challengeType === "domain" && isAiScenarioSafe && typeof deps.generateAiScenario === "function") {
     const generated = await deps.generateAiScenario({ role, careerFamily, skill, difficulty, workstation: template.workstation, industry })
     if (generated) {
       aiGenerated = true

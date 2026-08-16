@@ -79,6 +79,18 @@ const WORKSTATION_SPECS = {
   "starterCode": "<a short ABAP snippet with a real bug, only when sapMode is abap>"`,
     requiredExtra: [],
   },
+  // 2026-08-14: Frontend Developer's workstation (FrontendWorkstationV2.jsx)
+  // — plain HTML/CSS/JS, deliberately NOT React/JSX. A real in-browser
+  // transpiler (Babel standalone) would be a much larger, separately-risked
+  // addition; vanilla HTML/CSS/JS still renders a genuine, live running
+  // interface (the spec's actual requirement — "frontend -> running
+  // interface") via a real sandboxed iframe, without needing a bundler.
+  frontend_preview: {
+    extraFieldsPrompt: `"starterHtml": "<a short, realistic starter HTML fragment (body content only, no <html>/<head> tags) with a real bug or missing piece the candidate must fix, 5-25 lines>",
+  "starterCss": "<starter CSS for the fragment above, may be empty string if not needed>",
+  "starterJs": "<starter JS that runs against the fragment above (DOM APIs only, no imports/modules), containing a real bug or incomplete logic the candidate must fix, 3-20 lines>"`,
+    requiredExtra: ["starterHtml", "starterJs"],
+  },
   dashboard: {
     extraFieldsPrompt: `"tables": [{"name":"<table_name>","rowCount":<integer, realistic scale for the scenario (e.g. hundreds of thousands to millions for the slow table)>,"columns":[{"name":"<col>","type":"<sql type, e.g. 'int, primary key' or 'timestamp'>"}] (3-6 columns),"indexes":[{"name":"<index_name>","type":"<e.g. 'btree, unique'>","columns":["<col>"]}] (existing indexes only — the slow table should usually have just its primary key)}] (2-4 tables, including the one referenced in slowQuery.sql),
   "relationships": [{"from":{"table":"<table_name>"},"to":{"table":"<table_name>"}}] (foreign-key relationships between the tables above),
@@ -289,6 +301,11 @@ function validateWorkstationExtras(raw, workstation) {
       if (!sapScreen.length) return null
       extras.sapScreen = sapScreen
     }
+  } else if (workstation === "frontend_preview") {
+    if (!isNonEmptyString(raw?.starterHtml) || !isNonEmptyString(raw?.starterJs)) return null
+    extras.starterHtml = clampStr(raw.starterHtml, 4000)
+    extras.starterCss = clampStr(raw.starterCss, 4000)
+    extras.starterJs = clampStr(raw.starterJs, 4000)
   }
   return extras
 }
