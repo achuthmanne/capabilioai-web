@@ -63,28 +63,50 @@ const MAX_HISTORY_LIMIT = 100
 // curve is wanted; nothing else in the file depends on the exact values.
 const ELO_FAIL_PENALTY = { easy: 2, medium: 3, hard: 5 }
 
+// Bounded, cheap summary of a result set for the feedback prompt — column
+// names + row count + up to 3 sample rows, never the full result. Keeps
+// the prompt short regardless of how large a query's actual output is
+// (token cost is a first-class constraint here, not an afterthought).
+function summarizeRowsForFeedback(result, label) {
+  if (!result || !Array.isArray(result.columns)) return `${label}: (not available)`
+  const rowCount = Array.isArray(result.rows) ? result.rows.length : 0
+  const sample = (result.rows || []).slice(0, 3).map(r => `(${r.join(", ")})`).join("; ")
+  return `${label}: columns [${result.columns.join(", ")}], ${rowCount} row(s)${sample ? `, sample: ${sample}` : ""}`
+}
+
 // Best-effort AI *explanation* layered on top of the already-final,
 // deterministic score/passed/elo_delta — never the other way around. Score,
 // pass/fail, and ELO are all decided above this call and never revisited by
 // it. If Groq errors, is slow, or isn't configured, this just returns null
 // and the frontend falls back to the deterministic `insight`/`error` text
 // already computed — a submission never fails or blocks on this.
-async function generateAiFeedback({ prompt, sql, passed, score, reason }) {
+//
+// 2026-08-17: tightened for the Domain Role mission-generation feature's
+// integrity requirements (applies to every submission through this route,
+// seeded Data Analyst missions included, not just newly-generated ones,
+// since this is the one shared feedback path both use). Two changes:
+// (1) explicitly forbids an encouraging/ambiguous tone on a FAILED result
+// — a wrong answer paired with feedback that reads positive is a bad
+// signal to the student and to any recruiter later viewing it on the
+// portfolio; (2) grounds the explanation in the actual values returned
+// vs. expected (bounded sample, see summarizeRowsForFeedback), not just
+// the short mismatch-type `reason` string alone.
+async function generateAiFeedback({ prompt, sql, passed, score, reason, actual, expected }) {
   if (!process.env.GROQ_API_KEY) return null
   try {
     const text = await groq([
       {
         role: "system",
-        content: "You coach students on SQL mission attempts. In 2-3 short sentences, explain the result plainly — what they got right or wrong — using ONLY the facts given. Never invent a pass/fail verdict or a score; those are already decided and given to you as fact.",
+        content: "You coach students on SQL mission attempts. In 2-3 short sentences, explain the result plainly — what their query did, and what values it actually returned vs. what was expected — using ONLY the facts given. Never invent a pass/fail verdict or a score; those are already decided and given to you as fact. If the result FAILED, your tone must be direct and unambiguous that it failed — never encouraging, never softened to sound like a near-success, never vague about whether it worked. If it PASSED, be genuinely positive and specific about what was done right.",
       },
       {
         role: "user",
-        content: `Mission: ${prompt}\nSubmitted SQL: ${sql}\nResult: ${passed ? "PASSED" : "FAILED"} (score ${score}/100)\nDeterministic reason: ${reason || "n/a"}`,
+        content: `Mission: ${prompt}\nSubmitted SQL: ${sql}\nResult: ${passed ? "PASSED" : "FAILED"} (score ${score}/100)\nDeterministic reason: ${reason || "n/a"}\n${summarizeRowsForFeedback(actual, "Actual output")}\n${summarizeRowsForFeedback(expected, "Expected output")}`,
       },
     ], { model: GROQ_FAST, max_tokens: 150, temperature: 0.4 })
     return text?.trim() || null
   } catch (err) {
-    console.error("[arenaDomainRole] AI feedback generation failed (non-blocking)", err.message)
+    logger.error("[arenaDomainRole] AI feedback generation failed (non-blocking)", { err })
     return null
   }
 }
@@ -512,6 +534,7 @@ router.post("/missions/:id/submit", requireAuth, async (req, res) => {
     // Best-effort — never blocks the response, never changes score/passed/elo.
     const aiFeedback = await generateAiFeedback({
       prompt: mission.prompt, sql, passed: comparison.passed, score: comparison.score, reason: comparison.reason,
+      actual, expected: mission.expected_result,
     })
 
     const { data: submission, error: subErr } = await supabaseAdmin
