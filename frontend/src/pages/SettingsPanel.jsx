@@ -13,6 +13,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { supabase } from "../lib/supabase"
 import { getPlan } from "../config/plans"
+import { upsertProfileEducation } from "../lib/profileEducation"
 
 const API = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
 
@@ -273,25 +274,6 @@ function InfoBox({ icon, text, color=T.blue, bg=T.blue2 }) {
       <p style={{ fontSize:12, color:T.ink2, margin:0, lineHeight:1.6 }}>{text}</p>
     </div>
   )
-}
-
-// 2026-08-03: whenever a student updates their college name here, it also
-// upserts a matching entry (tagged _source:"profile") into userData.education
-// — the same array Aura's EducationPanel timeline renders — so the two
-// never diverge. Never touches resume-imported or manually-added degree
-// entries; only owns the single "profile"-tagged slot. Clearing the field
-// removes that entry rather than leaving a blank one in the timeline.
-function upsertProfileEducation(existingEducation, collegeName) {
-  const list = Array.isArray(existingEducation) ? existingEducation : []
-  const trimmed = (collegeName || "").trim()
-  const idx = list.findIndex(e => e?._source === "profile")
-  if (!trimmed) {
-    if (idx === -1) return list
-    const next = [...list]; next.splice(idx, 1); return next
-  }
-  const entry = { ...(idx !== -1 ? list[idx] : {}), institution: trimmed, _source: "profile" }
-  if (idx === -1) return [...list, entry]
-  const next = [...list]; next[idx] = entry; return next
 }
 
 // ── Section: Profile ──────────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { userDoc } from "../lib/db";
 import { collegeApi } from "../lib/api"
+import { upsertProfileEducation } from "../lib/profileEducation"
 import { PLANS, getPlansByPath, getPlansByPathWithDiscount, getDefaultPlanForPath, getInviteContext, applyDiscount } from "../config/plans"
 import { useRazorpay } from "../hooks/useRazorpay"
 import { getSkillModule } from "../config/skillModules"
@@ -569,12 +570,19 @@ const buildStudentSavePayload = ({ path, user, username, data }) => {
   })
   const resumeProjects = buildResumeProjects(allExp, resumeData?.projects, resumeFileObj?.name)
   const vaultEntry = buildVaultEntry(resumeFileObj, resumeBase64)
+  const resolvedCollege = college || user.user_metadata?.college || ""
 
   return {
     displayName: user.user_metadata?.full_name || user.user_metadata?.name || resumeData?.name || user.email?.split("@")[0] || "", email: user.email || resumeData?.email || "",
     username, path: "student", keyword: keyword || "", onboardingComplete: true, onboarding_complete: true,
-    college: college || user.user_metadata?.college || "",
+    college: resolvedCollege,
     branch:  branch  || user.user_metadata?.branch  || "",
+    // Keep profiles.education's "profile"-tagged entry in sync with
+    // profiles.college from the very first save — same sync SettingsPanel.jsx
+    // performs on every later edit. Fixes Aura's Education card showing
+    // "No education yet" for students whose college was set at signup
+    // (invite-locked or freely typed) and never touched in Settings since.
+    education: upsertProfileEducation([], resolvedCollege),
     // Student/Job Seeker split (2026-08-03) — already valid snake_case, no
     // CAMEL_TO_SNAKE mapping needed (see db.js). null/undefined dropped by
     // toSnake automatically, so pre-split flows are unaffected.
