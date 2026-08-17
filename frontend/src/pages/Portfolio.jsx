@@ -13,6 +13,7 @@ import { getPortfolioConfig, ARCHETYPES } from "../config/portfolioArchetypes"
 import { userDoc } from "../lib/db"
 import { supabase } from "../lib/supabase"
 import { portfolioApi } from "../lib/api"
+import { ELO_TIERS as CANONICAL_TIERS } from "../theme"
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   Radar, ResponsiveContainer, Tooltip,
@@ -235,13 +236,18 @@ function SkillIconEl({ name, size=22 }) {
   )
 }
 
-const ELO_TIERS = [
-  { min:0,    max:500,  label:"Beginner",    color:"#6B6560" },
-  { min:500,  max:800,  label:"Developing",  color:"#D97706" },
-  { min:800,  max:1100, label:"Proficient",  color:"#2563EB" },
-  { min:1100, max:1500, label:"Advanced",    color:"#7C3AED" },
-  { min:1500, max:9999, label:"Elite",       color:"#DC2626" },
-]
+// Tier name/boundary sourced from ../theme's canonical ELO_TIERS (Rookie→Elite);
+// this page's own color palette (C.*) is preserved by recoloring the canonical
+// tiers rather than importing them as-is.
+const TIER_COLOR = {
+  Rookie:       C.ink4,   // was Beginner's muted gray
+  Apprentice:   C.green,
+  Practitioner: C.blue,   // was Proficient's blue
+  Expert:       C.purple,
+  Master:       C.amber,  // was Developing's amber
+  Elite:        C.red,    // was Elite's red, unchanged
+}
+const ELO_TIERS = CANONICAL_TIERS.map(t => ({ ...t, color: TIER_COLOR[t.label] }))
 const getTier = elo => ELO_TIERS.find(t => elo >= t.min && elo < t.max) || ELO_TIERS[0]
 
 // Professional-path career stage label (2026-07-26) — deliberately decoupled
@@ -614,10 +620,14 @@ function ChallengeDetailModal({ t, onClose }) {
             </div>
           )}
 
-          {/* Expected output (if any) */}
+          {/* Program output — the field name (expectedOutput) predates this
+              being wired to real data; what's actually shown here is the
+              output the submission produced, not a reference answer, so
+              the label says "Program Output" to match History's own
+              wording for the same underlying data. */}
           {t.expectedOutput && (
             <div>
-              <div style={{ fontSize:10, fontWeight:800, color:C.green, textTransform:"uppercase", letterSpacing:1.5, marginBottom:8 }}>✅ Expected Output</div>
+              <div style={{ fontSize:10, fontWeight:800, color:C.green, textTransform:"uppercase", letterSpacing:1.5, marginBottom:8 }}>📤 Program Output</div>
               <pre style={{ margin:0, fontSize:11.5, color:C.ink2, background:C.green2,
                 padding:"14px 18px", borderRadius:12, border:`1px solid rgba(34,197,94,0.2)`,
                 whiteSpace:"pre-wrap", wordBreak:"break-word", fontFamily:"'DM Mono','DM Mono',monospace",
@@ -712,7 +722,7 @@ function ChallengeCard({ t, last }) {
               <span style={{ fontSize:22, fontWeight:900, color:col, fontFamily:"monospace" }}>{gradeFor(t.score)}</span>
               <span style={{ fontSize:12, color:col, fontWeight:700 }}>{t.score}/100</span>
             </div>
-            <div style={{ fontSize:11, fontWeight:700, color:C.blue }}>+{t.eloDelta} ELO</div>
+            <div style={{ fontSize:11, fontWeight:700, color:t.eloDelta<0?C.red:C.blue }}>{t.eloDelta>=0?"+":""}{t.eloDelta} ELO</div>
             <button onClick={() => setShowModal(true)}
               style={{ padding:"6px 14px", background:"rgba(59,130,246,0.12)",
                 border:"1px solid rgba(59,130,246,0.35)",
@@ -793,8 +803,8 @@ function ArenaChallengesSection({ tasks, commonTasks, domainTasks, avgScore, aCo
           padding:"2px 7px", borderRadius:99, flexShrink:0 }}>{t.difficulty}</span>
         <span style={{ fontSize:13, fontWeight:900, color:col, fontFamily:"monospace",
           flexShrink:0, minWidth:36, textAlign:"right" }}>{t.score}</span>
-        <span style={{ fontSize:10, fontWeight:700, color:C.blue,
-          flexShrink:0, minWidth:44, textAlign:"right" }}>+{t.eloDelta}</span>
+        <span style={{ fontSize:10, fontWeight:700, color:t.eloDelta<0?C.red:C.blue,
+          flexShrink:0, minWidth:44, textAlign:"right" }}>{t.eloDelta>=0?"+":""}{t.eloDelta}</span>
       </div>
     )
   }
@@ -861,7 +871,7 @@ function ArenaChallengesSection({ tasks, commonTasks, domainTasks, avgScore, aCo
         <div style={{ marginBottom:22 }}>
           <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
             <div style={{ width:3, height:16, background:C.blue, borderRadius:99 }}/>
-            <span style={{ fontSize:12, fontWeight:700, color:C.ink3 }}>Common Challenges — DSA / Algorithms</span>
+            <span style={{ fontSize:12, fontWeight:700, color:C.ink3 }}>Academic Tasks — DSA / Algorithms</span>
             <span style={{ fontSize:11, color:C.ink4 }}>· {remainingCommon.length} more</span>
           </div>
           <div style={{ background:"rgba(255,255,255,0.02)", border:`1px solid ${C.border}`, borderRadius:12, padding:"6px 6px 2px" }}>
@@ -884,7 +894,7 @@ function ArenaChallengesSection({ tasks, commonTasks, domainTasks, avgScore, aCo
         <div>
           <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
             <div style={{ width:3, height:16, background:C.teal, borderRadius:99 }}/>
-            <span style={{ fontSize:12, fontWeight:700, color:C.ink3 }}>Domain Challenges</span>
+            <span style={{ fontSize:12, fontWeight:700, color:C.ink3 }}>Domain Tasks</span>
             <span style={{ fontSize:11, color:C.ink4 }}>
               · {domainTasks.filter(t=>!featuredIds.has(t.id)).length} across {Object.keys(domainGroups).length} domain{Object.keys(domainGroups).length>1?"s":""}
             </span>
@@ -1253,14 +1263,16 @@ function PerformanceSummary({ ud, skills, tasks, interviews, accent }) {
       <SectionTitle icon="📊" title="Performance Summary" accent={accent||C.blue}
         sub="Arena tier, challenge scores, and growth trajectory"/>
 
-      {/* Score metrics — large dark metric cards. Product rule (2026-07-26):
-          no raw ELO number anywhere in portfolios for either path — the tier
-          label (qualitative) still communicates standing without a digit. */}
+      {/* Score metrics — large dark metric cards. Product rule REVERSED
+          2026-08-16 (explicit product decision, supersedes the 2026-07-26
+          "no raw ELO" rule): recruiters now see the exact ELO number
+          alongside the tier label, for full transparency into student
+          standing — not just a qualitative bucket. */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
         {[
           tasks.length>0
-            ? {icon:"⚡",label:"Arena Tier", value:tier.label,sub:`${Math.round(tierProg)}% to next tier`, color:tier.color,  bar:Math.min(((ud.eloRating-tier.min)/Math.max(1,(tier.max||ud.eloRating+1)-tier.min))*100,100)}
-            : {icon:"⚡",label:"Arena Tier", value:"—",sub:"Not started",color:C.ink4,bar:0},
+            ? {icon:"⚡",label:"Arena Tier", value:tier.label,sub:`ELO ${ud.eloRating} · ${Math.round(tierProg)}% to next tier`, color:tier.color,  bar:Math.min(((ud.eloRating-tier.min)/Math.max(1,(tier.max||ud.eloRating+1)-tier.min))*100,100)}
+            : {icon:"⚡",label:"Arena Tier", value:"—",sub:`ELO ${ud.eloRating}`,color:C.ink4,bar:0},
           {icon:"🎯",label:"Avg Score",  value:`${avgScore}/100`,sub:`${passRate}% pass rate`,color:scoreColor(avgScore),bar:avgScore},
           {icon:"🏆",label:"Best Score", value:best>0?`${best}/100`:"–",sub:best>=90?"Excellent":best>=80?"Strong":best>=60?"Good":"No data",color:scoreColor(best),bar:best},
         ].map((m,i)=>(
@@ -1306,12 +1318,12 @@ function PerformanceSummary({ ud, skills, tasks, interviews, accent }) {
 
       {/* Tier progress to next tier — only meaningful once the user has an
           actual Arena track record (Tranche A: no progress bar toward a
-          "next tier" for a score that has never moved). No raw ELO number
-          shown (product rule, 2026-07-26) — tier labels only. */}
+          "next tier" for a score that has never moved). Raw ELO shown
+          alongside the tier label (product decision, 2026-08-16). */}
       {tierNext && tasks.length>0 && (
         <div style={{padding:"16px 18px",background:C.surface2,borderRadius:14,border:`1px solid ${C.border2}`}}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:10,alignItems:"center"}}>
-            <span style={{fontSize:13,fontWeight:700,color:tier.color}}>● {tier.label}</span>
+            <span style={{fontSize:13,fontWeight:700,color:tier.color}}>● {tier.label} <span style={{fontWeight:500,color:C.ink4}}>· ELO {ud.eloRating}</span></span>
             <span style={{fontSize:12,color:C.ink4}}>Next tier: <strong style={{color:tierNext.color}}>{tierNext.label}</strong></span>
           </div>
           <div style={{height:8,background:"rgba(255,255,255,0.06)",borderRadius:99,overflow:"hidden"}}>
@@ -1396,9 +1408,10 @@ export default function Portfolio({ username: usernameProp }) {
     const domain    = ud.keyword || "technology"
     const pathLabel = ud.path === "authority" ? "expert" : ud.path || "professional"
 
-    // Sentence 1 — identity + tier (no raw ELO number — product rule, 2026-07-26:
-    // portfolios never show a bare ELO score to either students or professionals)
-    let s1 = `${name} is a ${tier.label.toLowerCase()} ${pathLabel} in ${domain}, placing them in the ${tier.label} tier on Capabilio.`
+    // Sentence 1 — identity + tier + raw ELO (product decision, 2026-08-16,
+    // supersedes the 2026-07-26 "no raw ELO number" rule — recruiters get
+    // the exact figure, not just the qualitative tier bucket)
+    let s1 = `${name} is a ${tier.label.toLowerCase()} ${pathLabel} in ${domain}, holding an ELO of ${ud.eloRating} — placing them in the ${tier.label} tier on Capabilio.`
 
     // Sentence 2 — performance record
     if(tasks.length === 0) {
@@ -1573,6 +1586,44 @@ export default function Portfolio({ username: usernameProp }) {
           completedAt:    r.completed_at||"",
           attempts:       attemptMap[r.task_id||r.title||r.id] || 1,
         }))
+
+        // arena_history only ever stores the summary shown on each card
+        // (score/ELO/title) — scenario/userAnswer/expectedOutput/feedback
+        // above are always "" in practice, since those columns don't exist
+        // on this table. The real detail lives in domain_submissions/
+        // college_submissions, the same tables Arena's own History tab
+        // reads its expanded per-attempt view from. Batch-fetch it for
+        // every task with a real (domain|academic) type so the "View
+        // Details" modal opens instantly with full detail already in
+        // state, matching this page's existing no-per-click-fetch modal
+        // pattern instead of adding a new loading state to the modal.
+        const detailable = tasks.filter(t => t.type === "domain" || t.type === "academic")
+        if (detailable.length) {
+          try {
+            const { details } = await portfolioApi.getTaskDetails(
+              row.id,
+              detailable.map(t => ({ taskId: t.id, type: t.type })),
+            )
+            tasks = tasks.map(t => {
+              const d = details?.[`${t.type}:${t.id}`]
+              if (!d) return t
+              return {
+                ...t,
+                scenario: t.scenario || d.scenario || "",
+                userAnswer: t.userAnswer || d.userAnswer || "",
+                expectedOutput: t.expectedOutput || d.output || "",
+                feedback: t.feedback || d.feedback || "",
+              }
+            })
+          } catch {
+            // Best-effort enrichment — a failure here still leaves the
+            // existing score/grade/ELO/attempts summary intact (same as
+            // before this feature existed); the modal's rich sections just
+            // stay hidden, since they're already conditionally rendered on
+            // these fields being non-empty, rather than failing the whole
+            // Portfolio page load.
+          }
+        }
       } catch {}
 
       let ivs=[]
@@ -1632,8 +1683,15 @@ export default function Portfolio({ username: usernameProp }) {
     ? aConfig.recruiterSummary(ud, tier, tasks.length)
     : null
 
-  // challenge_type: "dsa"/"common" = algorithm/DSA challenge, "domain" = role-specific
+  // arena_history.type is stamped reliably by the backend now — 'academic'
+  // (College Stream submissions) or 'domain' (Domain Role submissions), see
+  // arenaCollegeStream.js / arenaDomainRole.js. Preferred over the older
+  // challenge_type/domain-string heuristics below, which remain only as a
+  // fallback for legacy or third-party-sourced rows that predate the type
+  // field being set consistently.
   const isCommonTask = t => {
+    if (t.type === "academic") return true
+    if (t.type === "domain") return false
     const ct = (t.challenge_type || "").toLowerCase()
     if (ct === "dsa" || ct === "common" || ct === "common_challenge") return true
     if (ct === "domain") return false
@@ -1940,11 +1998,11 @@ export default function Portfolio({ username: usernameProp }) {
               </div>
 
               {/* Floating credibility card — Arena Rating for students/
-                  Arena-track users (never a bare digit — no score/tier shown
-                  until an Arena challenge has actually been completed);
-                  Professional Verification for the professional path (real
-                  verification-gated facts, never a raw ELO number, per
-                  product rule). */}
+                  Arena-track users; Professional Verification for the
+                  professional path. Shows the raw ELO number front and
+                  center (product decision, 2026-08-16, supersedes the prior
+                  "never a bare digit" rule) — the tier label is secondary
+                  context under it, not a substitute for the number. */}
               {!isPro ? (
                 <div style={{
                   background:"rgba(255,255,255,0.06)",
@@ -1957,12 +2015,15 @@ export default function Portfolio({ username: usernameProp }) {
                 }}>
                   <div style={{fontSize:10,fontWeight:800,color:"rgba(255,255,255,0.35)",
                     textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>Arena Rating</div>
+                  <div style={{fontSize:26,fontWeight:900,color:"#fff",fontFamily:"'DM Mono',monospace",lineHeight:1}}>
+                    {ud.eloRating}
+                  </div>
                   {tasks.length>0 ? (
-                    <div style={{fontSize:13,fontWeight:700,color:tier.color,marginTop:2}}>
+                    <div style={{fontSize:12,fontWeight:700,color:tier.color,marginTop:4}}>
                       {tier.label} Tier
                     </div>
                   ) : (
-                    <div style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.4)",marginTop:2}}>
+                    <div style={{fontSize:12,fontWeight:700,color:"rgba(255,255,255,0.4)",marginTop:4}}>
                       Not started
                     </div>
                   )}

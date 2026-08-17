@@ -708,6 +708,11 @@ export const companyApi = {
 // why: select("*") on a public/verified profile leaked email + uan_number).
 export const portfolioApi = {
   lookup: (identifier) => request("GET", `/portfolio/lookup/${encodeURIComponent(identifier)}`),
+  // tasks: [{ taskId, type: "domain"|"academic" }, ...], max 50 per call
+  // (see backend/server/routes/portfolioPublic.js). Returns
+  // { details: { "domain:<id>": {...}, "academic:<id>": {...} } } —
+  // entries the viewer isn't allowed to see are simply absent, not errors.
+  getTaskDetails: (userId, tasks) => request("POST", `/portfolio/${encodeURIComponent(userId)}/task-details`, { tasks }),
 }
 
 // Multi-turn AI chat (routes/chat.js — Claude Haiku -> Groq fallback, no

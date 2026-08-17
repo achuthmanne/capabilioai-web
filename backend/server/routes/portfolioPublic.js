@@ -37,8 +37,10 @@
  */
 import { Router } from "express"
 import { supabaseAdmin } from "../lib/supabase.js"
-import { buildCodeDnaRecruiterView } from "../lib/arena-v2/portfolio/recruiterEvidence.js"
+import { buildCodeDnaRecruiterView } from "../lib/recruiterEvidence.js"
 import { SOURCE as CODE_DNA_SOURCE, PROOF_TYPE as CODE_DNA_PROOF_TYPE } from "../lib/codeDna/repository.js"
+import { resolvePortfolioViewer, checkPortfolioAccess } from "../lib/portfolioVisibility.js"
+import { logger } from "../lib/logger.js"
 
 const router = Router()
 
@@ -125,14 +127,7 @@ router.get("/portfolio/lookup/:identifier", async (req, res) => {
     // Resolve viewer (optional — portfolios are public pages, but we need
     // the viewer's identity for the owner-fallback strategies and for the
     // owner-bypass on the verified/cert_visible gates below).
-    let viewer = null
-    const token = (req.headers.authorization || "").replace("Bearer ", "").trim()
-    if (token) {
-      try {
-        const { data: { user } } = await supabaseAdmin.auth.getUser(token)
-        viewer = user || null
-      } catch { /* invalid/expired token — treat as anonymous viewer */ }
-    }
+    const viewer = await resolvePortfolioViewer(req)
 
     let row = null
 
@@ -214,67 +209,12 @@ router.get("/portfolio/lookup/:identifier", async (req, res) => {
 
     if (!row) return res.status(404).json({ error: "Portfolio not found." })
 
-    const isOwner = !!viewer?.id && viewer.id === row.id
-
-    // 2026-08-08: institution staff bypass — placement cell / college admin
-    // need to open a linked student's real portfolio from the roster (see
-    // college.js's GET /institutions/:id/students), even when that student
-    // hasn't completed the separate "verified" review this gate otherwise
-    // requires for the general public. This is scoped, not a general
-    // bypass: it only applies when the viewer is an ACTIVE staff member of
-    // an institution the student is actually linked to via
-    // institution_students (the same relationship the roster itself is
-    // built on) -- an institution can't use this to view a student they
-    // have no roster relationship with.
-    //
-    // 2026-08-10 fix: this only ever checked the institution_staff table,
-    // but an institution's OWNER (institutions.admin_user_id) isn't
-    // necessarily also given a row there -- institution_staff is for
-    // invited staff (professors, dept heads, placement officers), while
-    // ownership is tracked separately. Every other place in the codebase
-    // that checks this relationship (the canonical is_institution_staff()/
-    // is_institution_admin() SQL functions, used throughout RLS policies)
-    // already OR's both paths together. This endpoint had drifted out of
-    // sync with that convention, so an institution's own admin/owner (who
-    // has no institution_staff row) got "Portfolio not found" opening their
-    // own roster's students -- confirmed live for institution
-    // f2f0bf23-5b27-4abe-9467-9c25d3592f35 / admin_user_id
-    // 620c125d-fe7f-4ecc-9904-8f5e697d30ab. Now checks both, matching the
-    // rest of the platform.
-    let isInstitutionStaffViewer = false
-    if (!isOwner && viewer?.id && row.verified !== true) {
-      const { data: links } = await supabaseAdmin
-        .from("institution_students")
-        .select("institution_id")
-        .eq("student_user_id", row.id)
-      const institutionIds = [...new Set((links || []).map((l) => l.institution_id))]
-      if (institutionIds.length) {
-        const [{ data: staffRow }, { data: ownedInstitution }] = await Promise.all([
-          supabaseAdmin
-            .from("institution_staff")
-            .select("id")
-            .eq("user_id", viewer.id)
-            .eq("status", "active")
-            .in("institution_id", institutionIds)
-            .limit(1)
-            .maybeSingle(),
-          supabaseAdmin
-            .from("institutions")
-            .select("id")
-            .eq("admin_user_id", viewer.id)
-            .in("id", institutionIds)
-            .limit(1)
-            .maybeSingle(),
-        ])
-        isInstitutionStaffViewer = !!staffRow || !!ownedInstitution
-      }
-    }
-
-    // Visibility gate — replicates what the old RLS row policy would have
-    // allowed a non-owner to see (verified=true), now actually enforced at
-    // the column level too via the whitelist above. Institution staff of a
-    // linked institution are treated the same as the owner here.
-    if (!isOwner && !isInstitutionStaffViewer && row.verified !== true) {
+    // Owner/institution-staff/verified visibility rule — see
+    // lib/portfolioVisibility.js for the full rationale and fix history
+    // (this used to be inline here; extracted so the Arena task-details
+    // route below enforces the exact same rule, permanently in sync).
+    const { allowed, isOwner, isInstitutionStaffViewer } = await checkPortfolioAccess(row, viewer)
+    if (!allowed) {
       return res.status(404).json({ error: "Portfolio not found." })
     }
 
@@ -331,6 +271,155 @@ router.get("/portfolio/lookup/:identifier", async (req, res) => {
     res.json({ profile: safe })
   } catch (e) {
     res.status(500).json({ error: e.message })
+  }
+})
+
+// Renders a domain_submissions.result_json ({columns, rows}) table as plain
+// text for the portfolio modal's existing <pre> block — that block is a
+// single text slot (see Portfolio.jsx's ChallengeDetailModal), not a table
+// component, and porting a full table renderer into Portfolio.jsx wasn't
+// warranted just for this. college_submissions' execution_output.stdout is
+// already plain text and needs no such formatting.
+function formatResultAsText(result) {
+  if (!result || !Array.isArray(result.columns) || !Array.isArray(result.rows)) return ""
+  if (result.rows.length === 0) return `${result.columns.join(" | ")}\n(no rows returned)`
+  const lines = [result.columns.join(" | ")]
+  for (const row of result.rows) lines.push(row.map(v => (v === null || v === undefined ? "null" : String(v))).join(" | "))
+  return lines.join("\n")
+}
+
+const MAX_TASK_DETAIL_BATCH = 50
+
+// POST /api/portfolio/:userId/task-details
+// Body: { tasks: [{ taskId, type: "domain"|"academic" }, ...] }
+//
+// Full Arena challenge detail (problem statement, submitted code/answer,
+// program output, AI feedback) for a batch of tasks the Portfolio page's
+// Arena Challenges section already has score/ELO/title summaries for (from
+// a client-side arena_history read — that table only stores the summary
+// fields, not this detail). Joins domain_submissions/college_submissions —
+// the same tables Arena's own History tab reads its expanded per-attempt
+// view from (routes/arenaDomainRole.js, routes/arenaCollegeStream.js) —
+// using the identical two-query-and-merge shape those routes already use,
+// rather than a PostgREST embedded-join select (`table(column)`), matching
+// this codebase's established convention for these tables.
+//
+// Public read, no requireAuth — mirrors this file's /lookup/:identifier
+// route above: a recruiter viewing a shared portfolio isn't logged in.
+// Access is gated by the SAME portfolio-visibility rule as
+// /lookup/:identifier (lib/portfolioVisibility.js) — checked independently
+// here rather than trusted from a prior /lookup call, since this route can
+// be hit directly. On top of that, each requested (taskId, type) pair is
+// only fulfilled if it matches a real arena_history row for this user with
+// visible_in_portfolio = true — the caller's `type` claim is never trusted
+// on its own to pick which table to query. Tasks that don't pass either
+// check are silently omitted from the response rather than erroring the
+// whole batch, since a portfolio can legitimately mix visible and
+// not-yet-visible challenges.
+router.post("/portfolio/:userId/task-details", async (req, res) => {
+  try {
+    const { userId } = req.params
+    const { tasks } = req.body || {}
+
+    if (!Array.isArray(tasks) || tasks.length === 0) {
+      return res.status(400).json({ error: "tasks must be a non-empty array" })
+    }
+    if (tasks.length > MAX_TASK_DETAIL_BATCH) {
+      return res.status(400).json({ error: `tasks cannot exceed ${MAX_TASK_DETAIL_BATCH} items` })
+    }
+    const validated = []
+    for (const t of tasks) {
+      if (!t || typeof t.taskId !== "string" || !t.taskId.trim()) {
+        return res.status(400).json({ error: "Each task requires a non-empty taskId" })
+      }
+      if (t.type !== "domain" && t.type !== "academic") {
+        return res.status(400).json({ error: 'Each task requires type "domain" or "academic"' })
+      }
+      validated.push({ taskId: t.taskId.trim(), type: t.type })
+    }
+
+    const { data: profileRow, error: profileErr } = await supabaseAdmin
+      .from("profiles").select("id, verified").eq("id", userId).maybeSingle()
+    if (profileErr) throw profileErr
+    if (!profileRow) return res.status(404).json({ error: "Not found" })
+
+    const viewer = await resolvePortfolioViewer(req)
+    const { allowed } = await checkPortfolioAccess(profileRow, viewer)
+    if (!allowed) return res.status(404).json({ error: "Not found" })
+
+    const { data: historyRows, error: historyErr } = await supabaseAdmin
+      .from("arena_history")
+      .select("task_id, type")
+      .eq("user_id", userId)
+      .eq("visible_in_portfolio", true)
+      .in("task_id", validated.map(t => t.taskId))
+    if (historyErr) throw historyErr
+
+    const visibleKeys = new Set((historyRows || []).map(r => `${r.type}:${r.task_id}`))
+    const domainIds   = validated.filter(t => t.type === "domain"   && visibleKeys.has(`domain:${t.taskId}`)).map(t => t.taskId)
+    const academicIds = validated.filter(t => t.type === "academic" && visibleKeys.has(`academic:${t.taskId}`)).map(t => t.taskId)
+
+    const details = {}
+
+    if (domainIds.length) {
+      const { data: missions, error: mErr } = await supabaseAdmin
+        .from("domain_missions").select("id, prompt").in("id", domainIds)
+      if (mErr) throw mErr
+      const promptByMission = new Map(missions.map(m => [m.id, m.prompt]))
+
+      const { data: submissions, error: sErr } = await supabaseAdmin
+        .from("domain_submissions")
+        .select("mission_id, sql_text, result_json, ai_feedback, created_at")
+        .eq("user_id", userId)
+        .in("mission_id", domainIds)
+        .order("created_at", { ascending: false })
+      if (sErr) throw sErr
+
+      const seen = new Set()
+      for (const s of submissions || []) {
+        if (seen.has(s.mission_id)) continue // most recent attempt only — matches Portfolio's own one-entry-per-challenge dedup
+        seen.add(s.mission_id)
+        details[`domain:${s.mission_id}`] = {
+          scenario: promptByMission.get(s.mission_id) || "",
+          userAnswer: s.sql_text || "",
+          output: formatResultAsText(s.result_json),
+          feedback: s.ai_feedback || "",
+        }
+      }
+    }
+
+    if (academicIds.length) {
+      const { data: experiments, error: eErr } = await supabaseAdmin
+        .from("experiments").select("id, prompt").in("id", academicIds)
+      if (eErr) throw eErr
+      const promptByExperiment = new Map(experiments.map(e => [e.id, e.prompt]))
+
+      const { data: submissions, error: sErr } = await supabaseAdmin
+        .from("college_submissions")
+        .select("experiment_id, answer, execution_output, ai_feedback, submitted_at")
+        .eq("user_id", userId)
+        .in("experiment_id", academicIds)
+        .order("submitted_at", { ascending: false })
+      if (sErr) throw sErr
+
+      const seen = new Set()
+      for (const s of submissions || []) {
+        if (seen.has(s.experiment_id)) continue
+        seen.add(s.experiment_id)
+        const answer = s.answer && typeof s.answer === "object" ? (s.answer.value ?? JSON.stringify(s.answer)) : s.answer
+        details[`academic:${s.experiment_id}`] = {
+          scenario: promptByExperiment.get(s.experiment_id) || "",
+          userAnswer: answer || "",
+          output: s.execution_output?.stdout || "",
+          feedback: s.ai_feedback || "",
+        }
+      }
+    }
+
+    res.json({ details })
+  } catch (err) {
+    logger.error("[portfolioPublic] POST /portfolio/:userId/task-details failed", { err, userId: req.params.userId })
+    res.status(500).json({ error: "Internal error" })
   }
 })
 
