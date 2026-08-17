@@ -819,3 +819,83 @@ export const certificationsApi = {
     return upload(`/pro/certifications/${id}/upload`, fd)
   },
 }
+
+// ══════════════════════════════════════════
+// ARENA — COLLEGE STREAM (Arena rebuild, Phase 1)
+// Static/curriculum/rule-based branch — structurally separate from the
+// not-yet-built Domain Role branch, which will get its own namespaced
+// object here later rather than sharing any of these calls.
+// ══════════════════════════════════════════
+export const arenaCollegeStreamApi = {
+  listStreams:     ()                     => request("GET", "/arena/college-stream/streams"),
+  listSemesters:   (streamSlug)           => request("GET", `/arena/college-stream/streams/${streamSlug}/semesters`),
+  listSubjects:    (semesterId)           => request("GET", `/arena/college-stream/semesters/${semesterId}/subjects`),
+  listUnits:       (subjectId)            => request("GET", `/arena/college-stream/subjects/${subjectId}/units`),
+  listExperiments: (unitId)               => request("GET", `/arena/college-stream/units/${unitId}/experiments`),
+  getExperiment:   (experimentId)         => request("GET", `/arena/college-stream/experiments/${experimentId}`),
+  submit:          (experimentId, answer) => request("POST", `/arena/college-stream/experiments/${experimentId}/submit`, { answer }),
+  getNextExperiment: (streamSlug)         => request("GET", `/arena/college-stream/streams/${streamSlug}/next-experiment`),
+  // params: { cursor, limit, passed } — passed is a boolean; the query
+  // string sends "true"/"false" strings, matching what the backend expects.
+  getHistory: (streamSlug, params = {}) => {
+    const { cursor, limit, passed } = params
+    const qs = new URLSearchParams()
+    if (cursor) qs.set("cursor", cursor)
+    if (limit) qs.set("limit", String(limit))
+    if (passed !== undefined) qs.set("passed", String(passed))
+    const s = qs.toString()
+    return request("GET", `/arena/college-stream/streams/${streamSlug}/history${s ? `?${s}` : ""}`)
+  },
+  getHistoryCounts: (streamSlug) => request("GET", `/arena/college-stream/streams/${streamSlug}/history/counts`),
+  getLeaderboard: (streamSlug)            => request("GET", `/arena/college-stream/streams/${streamSlug}/leaderboard`),
+  getAllExperiments: (streamSlug)         => request("GET", `/arena/college-stream/streams/${streamSlug}/all-experiments`),
+}
+
+// ══════════════════════════════════════════
+// Arena — Domain Role branch (Phase 2)
+// Config-driven (panel_types/domain_roles/evaluation_axes/domain_missions),
+// deterministic scoring (SQL Runner panel, sql.js sandbox server-side) —
+// structurally separate from arenaCollegeStreamApi above per the rebuild spec.
+// ══════════════════════════════════════════
+export const arenaDomainRoleApi = {
+  listMissions: (roleId)          => request("GET", `/arena/domain-role/${roleId}/missions`),
+  getMission:   (missionId)       => request("GET", `/arena/domain-role/missions/${missionId}`),
+  submitMission: (missionId, sql) => request("POST", `/arena/domain-role/missions/${missionId}/submit`, { sql }),
+  getNextMission: (roleId)        => request("GET", `/arena/domain-role/${roleId}/next-mission`),
+  // params: { cursor, limit, passed } — passed is a boolean; the query
+  // string sends "true"/"false" strings, matching what the backend expects.
+  getHistory: (roleId, params = {}) => {
+    const { cursor, limit, passed } = params
+    const qs = new URLSearchParams()
+    if (cursor) qs.set("cursor", cursor)
+    if (limit) qs.set("limit", String(limit))
+    if (passed !== undefined) qs.set("passed", String(passed))
+    const s = qs.toString()
+    return request("GET", `/arena/domain-role/${roleId}/history${s ? `?${s}` : ""}`)
+  },
+  getHistoryCounts: (roleId) => request("GET", `/arena/domain-role/${roleId}/history/counts`),
+  getLeaderboard: (roleId)        => request("GET", `/arena/domain-role/${roleId}/leaderboard`),
+}
+
+// ══════════════════════════════════════════
+// Arena — cross-branch activity (Phase B)
+// Read-only: calendar/streak/week stats computed from both branches'
+// submission history. See backend/server/lib/activity/computeSummary.js.
+// ══════════════════════════════════════════
+export const arenaActivityApi = {
+  getSummary: () => request("GET", "/arena/activity/summary"),
+}
+
+// ══════════════════════════════════════════
+// Arena — Subscription tab checkout
+// Same /api/create-order + /api/verify-payment endpoints Pricing.jsx calls,
+// but routed through this module's shared request() helper instead of a
+// raw fetch() — request() already retries once on the Render free-tier
+// cold-start "Failed to fetch" (see its comment above), which a bare
+// fetch() call does not. Fixes the Subscription tab's checkout failing on
+// the very first request after the backend has been idle.
+// ══════════════════════════════════════════
+export const arenaPaymentsApi = {
+  createOrder:   (planId, uid) => request("POST", "/create-order", { planId, uid }),
+  verifyPayment: (payload)     => request("POST", "/verify-payment", payload),
+}
