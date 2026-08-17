@@ -542,11 +542,16 @@ function ChallengeDetailModal({ t, onClose }) {
       <div
         onClick={e => e.stopPropagation()}
         style={{ background:C.bg, border:`1px solid ${C.border2}`, borderRadius:20,
-          width:"100%", maxWidth:760, maxHeight:"92vh", overflowY:"auto",
+          width:"100%", maxWidth:760, maxHeight:"92vh", overflow:"hidden",
           boxShadow:"0 40px 120px rgba(0,0,0,0.7)", display:"flex", flexDirection:"column" }}
       >
-        {/* ── Modal header — sticky so close button always visible ── */}
-        <div style={{ padding:"20px 24px 16px", borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"flex-start", gap:16, flexShrink:0, position:"sticky", top:0, background:C.bg, zIndex:10, borderRadius:"20px 20px 0 0" }}>
+        {/* ── Modal header — NOT sticky-within-scroll: it's a normal
+            flex-shrink-0 sibling of the scrollable body below, outside the
+            scroll region entirely, so it can never visually overlap content
+            scrolling underneath it (the previous sticky-inside-the-scroll-
+            container approach clipped content, see the footer's comment
+            below for the full explanation — same fix, same reason). ── */}
+        <div style={{ padding:"20px 24px 16px", borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"flex-start", gap:16, flexShrink:0, background:C.bg, borderRadius:"20px 20px 0 0" }}>
           <ScoreRing score={t.score} size={56} />
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ fontSize:17, fontWeight:800, color:C.ink, marginBottom:5, lineHeight:1.3 }}>{t.title}</div>
@@ -580,8 +585,19 @@ function ChallengeDetailModal({ t, onClose }) {
           </div>
         </div>
 
-        {/* ── Scrollable body ── */}
-        <div style={{ padding:"20px 24px", display:"flex", flexDirection:"column", gap:20 }}>
+        {/* ── Scrollable body — the ONLY scrolling region in this modal.
+            flex:1 makes it fill whatever space is left between the
+            fixed-height header above and footer below; overflowY:auto
+            scrolls just this region. Previously overflowY:auto was on the
+            OUTER modal box, with the header/footer set to position:sticky
+            inside it — sticky elements reserve no extra clearance in the
+            surrounding scroll content, so the sticky footer's own height
+            visually overlapped (clipped) the bottom of Result Summary /
+            AI Feedback for most of the scroll, and the sticky header did
+            the same to whatever content started at the very top. Moving
+            header/footer entirely outside the scroll region removes the
+            overlap structurally instead of trying to pad around it. ── */}
+        <div style={{ flex:1, overflowY:"auto", padding:"20px 24px", display:"flex", flexDirection:"column", gap:20 }}>
 
           {/* Scenario */}
           {t.scenario && (
@@ -669,19 +685,21 @@ function ChallengeDetailModal({ t, onClose }) {
               ))}
             </div>
           </div>
+        </div>
 
-          {/* Footer close bar — sticky at bottom */}
-          <div style={{ padding:"16px 24px", borderTop:`1px solid ${C.border}`, display:"flex", justifyContent:"center", flexShrink:0, position:"sticky", bottom:0, background:C.bg, zIndex:10, borderRadius:"0 0 20px 20px" }}>
-            <button onClick={onClose} style={{
-              display:"inline-flex", alignItems:"center", gap:8,
-              padding:"10px 32px", borderRadius:99,
-              background:"rgba(239,68,68,0.12)", border:"1.5px solid rgba(239,68,68,0.4)",
-              color:"#EF4444", fontSize:14, fontWeight:700, cursor:"pointer",
-              fontFamily:"'DM Sans',sans-serif", letterSpacing:0.3,
-            }}>
-              ✕ Close
-            </button>
-          </div>
+        {/* ── Footer close bar — a normal flex-shrink-0 sibling of the
+            scrollable body above, outside the scroll region (see that
+            div's comment for why this moved out of sticky-within-scroll). ── */}
+        <div style={{ padding:"16px 24px", borderTop:`1px solid ${C.border}`, display:"flex", justifyContent:"center", flexShrink:0, background:C.bg, borderRadius:"0 0 20px 20px" }}>
+          <button onClick={onClose} style={{
+            display:"inline-flex", alignItems:"center", gap:8,
+            padding:"10px 32px", borderRadius:99,
+            background:"rgba(239,68,68,0.12)", border:"1.5px solid rgba(239,68,68,0.4)",
+            color:"#EF4444", fontSize:14, fontWeight:700, cursor:"pointer",
+            fontFamily:"'DM Sans',sans-serif", letterSpacing:0.3,
+          }}>
+            ✕ Close
+          </button>
         </div>
       </div>
     </div>
