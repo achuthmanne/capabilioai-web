@@ -99,16 +99,26 @@ export const ease = {
   std:    "cubic-bezier(0.4, 0, 0.2, 1)",
 }
 
-// ── ELO tiers (unchanged — colour semantics) ───────────────────────────────────
+// ── ELO tiers ──────────────────────────────────────────────────────────────────
+// Single source of truth for ELO tier naming, imported by Aura.jsx,
+// StudentHome.jsx, Portfolio.jsx, and copilotConfig.js — do not redefine
+// tier boundaries/labels/colors locally in any of those files.
+//
+// Mirrored server-side at backend/server/lib/eloTiers.js (no frontend<->
+// backend import boundary exists in this monorepo, so a plain copy was
+// used instead of introducing one). THIS file is canonical — if
+// backend/server/lib/eloTiers.test.js ever fails, fix the backend copy to
+// match here, never the reverse.
 export const ELO_TIERS = [
-  { min: 0,    max: 600,      label: "Rookie",     color: "#A8A29E", icon: "🌱" },
-  { min: 600,  max: 900,      label: "Contender",  color: "#16A34A", icon: "⚔️" },
-  { min: 900,  max: 1200,     label: "Specialist", color: "#2563EB", icon: "🎯" },
-  { min: 1200, max: 1500,     label: "Expert",     color: "#7C3AED", icon: "💎" },
-  { min: 1500, max: 1800,     label: "Master",     color: "#D97706", icon: "👑" },
-  { min: 1800, max: Infinity, label: "Legend",     color: "#FF5701", icon: "🔥" },
+  { min: 0,    max: 600,  label: "Rookie",       color: "#A8A29E", icon: "🌱" },
+  { min: 600,  max: 800,  label: "Apprentice",   color: "#22C55E", icon: "⚡" },
+  { min: 800,  max: 1000, label: "Practitioner", color: "#3B82F6", icon: "🔵" },
+  { min: 1000, max: 1200, label: "Expert",       color: "#8B5CF6", icon: "💜" },
+  { min: 1200, max: 1500, label: "Master",       color: "#F59E0B", icon: "🏆" },
+  { min: 1500, max: 9999, label: "Elite",        color: "#EF4444", icon: "🔥" },
 ]
 export const getTier = elo => ELO_TIERS.find(t => elo >= t.min && elo < t.max) || ELO_TIERS[0]
+export const getNextTier = elo => ELO_TIERS.find(t => elo < t.max && t.max < 9999) || null
 
 // ── Difficulty helpers ─────────────────────────────────────────────────────────
 export const diffColor = d =>

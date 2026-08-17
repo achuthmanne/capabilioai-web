@@ -16,6 +16,7 @@ import { supabaseAdmin } from "../lib/supabase.js"
 import { groq, GROQ_FAST } from "../lib/groq.js"
 import { requireAuth } from "../lib/auth.js"
 import { recomputeExperienceBonus } from "../lib/professionalElo/verifiedBonuses.js"
+import { getTier } from "../lib/eloTiers.js"
 
 const router = Router()
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } })
@@ -276,36 +277,80 @@ router.get("/pro/epfo/status", requireAuth, async (req, res) => {
 })
 
 // ── Profile Summary — auto-generate from real profile data ────────────────────
-// POST /api/pro/profile/summary/generate (2026-07-26)
+// POST /api/pro/profile/summary/generate (2026-07-26; generalized to the
+// student path 2026-08-17)
 // Builds a 2-4 sentence recruiter-facing summary from the user's OWN real
-// skills/experience/domain/headline — never invents credentials not present
-// on the profile. Writes to profiles.profile_summary (same field the user
-// can also hand-edit) — this is a user-triggered regenerate, not a silent
+// profile data — never invents credentials not present on the profile.
+// Writes to profiles.profile_summary (same field the user can also
+// hand-edit) — this is a user-triggered regenerate, not a silent
 // background job, so a manual edit is never overwritten without the user
-// explicitly asking for a fresh one.
+// explicitly asking for a fresh one AND confirming (frontend gate, see
+// ProfileSummaryCard — this route trusts the client already got that
+// confirmation; profile_summary_source records which kind of write this
+// was so the frontend can enforce it).
+//
+// Despite the /pro/ prefix (this route predates the student path having
+// this feature at all), it now branches on profile.path: the professional
+// prompt is unchanged from 2026-07-26; students get a separate prompt
+// grounded in Arena performance instead of work experience, since that's
+// what's actually real and available for a student profile.
 router.post("/pro/profile/summary/generate", requireAuth, async (req, res) => {
   try {
     const uid = req.user.id
     const { data: profile } = await supabaseAdmin.from("profiles").select("*").eq("id", uid).single()
     if (!profile) return res.status(404).json({ error: "Profile not found" })
 
-    const skills = (profile.skill_graph || profile.skills || []).map(s => (typeof s === "string" ? s : s.name)).filter(Boolean).slice(0, 12)
-    const experiences = profile.experiences || []
-    const topExp = experiences[0] || {}
-    const yearsExp = profile.years_of_experience || null
-    const domain = profile.keyword || profile.target_role || topExp.title || topExp.role || null
+    const isStudent = profile.path !== "professional"
+    let prompt
 
-    if (skills.length === 0 && experiences.length === 0 && !domain) {
-      return res.status(400).json({ error: "Add some skills or experience first — there's nothing real to summarize yet." })
-    }
+    if (isStudent) {
+      const skills = (profile.skill_graph || profile.skills || []).map(s => (typeof s === "string" ? s : s.name)).filter(Boolean).slice(0, 8)
+      const role = profile.keyword || profile.target_role || profile.job_role || profile.current_role_title || null
+      const eloRating = Number(profile.elo_rating) || 0
+      const tier = getTier(eloRating)
 
-    const prompt = `Write a first-person professional summary (2-4 sentences, no headers, no bullet points, no markdown) for a job-seeking professional's portfolio, based ONLY on these real facts — do not invent anything not listed:
+      // arena_history is the same summary ledger Portfolio.jsx's old
+      // client-side template read from — reused here rather than a new
+      // query pattern. Capped at 200 (matches that existing precedent);
+      // this is a rough recent-performance stat for a prompt input, not a
+      // figure that needs to be exact to the last submission.
+      const { data: history } = await supabaseAdmin
+        .from("arena_history").select("score").eq("user_id", uid).limit(200)
+      const scores = (history || []).map(h => h.score).filter(s => typeof s === "number")
+      const challengeCount = scores.length
+      const avgScore = challengeCount ? Math.round(scores.reduce((a, b) => a + b, 0) / challengeCount) : null
+
+      if (!role && skills.length === 0 && challengeCount === 0) {
+        return res.status(400).json({ error: "Complete a few Arena challenges or add skills first — there's nothing real to summarize yet." })
+      }
+
+      prompt = `Write a first-person professional summary (2-4 sentences, no headers, no bullet points, no markdown) for a student's portfolio, based ONLY on these real facts — do not invent anything not listed:
+- Target role: ${role || "not specified"}
+- Current ELO tier: ${tier.label} (ELO ${eloRating || "not yet rated"})
+- Arena challenges completed: ${challengeCount}
+- Average challenge score: ${avgScore !== null ? `${avgScore}/100` : "not specified"}
+- Strongest skills: ${skills.length ? skills.join(", ") : "not specified"}
+
+Tone: confident, concrete, recruiter-facing — no generic filler like "hardworking team player," no apologizing for being a student. Return ONLY the summary text, nothing else.`
+    } else {
+      const skills = (profile.skill_graph || profile.skills || []).map(s => (typeof s === "string" ? s : s.name)).filter(Boolean).slice(0, 12)
+      const experiences = profile.experiences || []
+      const topExp = experiences[0] || {}
+      const yearsExp = profile.years_of_experience || null
+      const domain = profile.keyword || profile.target_role || topExp.title || topExp.role || null
+
+      if (skills.length === 0 && experiences.length === 0 && !domain) {
+        return res.status(400).json({ error: "Add some skills or experience first — there's nothing real to summarize yet." })
+      }
+
+      prompt = `Write a first-person professional summary (2-4 sentences, no headers, no bullet points, no markdown) for a job-seeking professional's portfolio, based ONLY on these real facts — do not invent anything not listed:
 - Current/target role or domain: ${domain || "not specified"}
 - Years of experience: ${yearsExp || "not specified"}
 - Most recent role: ${topExp.title || topExp.role || "not specified"}${topExp.company ? ` at ${topExp.company}` : ""}
 - Skills: ${skills.length ? skills.join(", ") : "not specified"}
 
 Tone: confident, concrete, recruiter-facing — no generic filler like "hardworking team player." Return ONLY the summary text, nothing else.`
+    }
 
     let generated = ""
     try {
@@ -315,7 +360,7 @@ Tone: confident, concrete, recruiter-facing — no generic filler like "hardwork
     }
     if (!generated) return res.status(502).json({ error: "Couldn't generate a summary right now — try again shortly." })
 
-    await supabaseAdmin.from("profiles").update({ profile_summary: generated }).eq("id", uid)
+    await supabaseAdmin.from("profiles").update({ profile_summary: generated, profile_summary_source: "ai" }).eq("id", uid)
 
     res.json({ success: true, summary: generated })
   } catch (e) { res.status(500).json({ error: e.message }) }
@@ -328,7 +373,7 @@ router.post("/pro/profile/summary", requireAuth, async (req, res) => {
     const { summary } = req.body
     if (typeof summary !== "string") return res.status(400).json({ error: "summary is required" })
     if (summary.length > 1000) return res.status(400).json({ error: "Summary must be under 1000 characters" })
-    await supabaseAdmin.from("profiles").update({ profile_summary: summary }).eq("id", req.user.id)
+    await supabaseAdmin.from("profiles").update({ profile_summary: summary, profile_summary_source: "manual" }).eq("id", req.user.id)
     res.json({ success: true, summary })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })

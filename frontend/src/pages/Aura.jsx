@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { userDoc } from "../lib/db"
 import { supabase } from "../lib/supabase"
+import { getTier, getNextTier } from "../theme"
 
 // PC-5: /api/verify/* now requires auth — attach the Supabase bearer token.
 async function vHeaders() {
@@ -92,12 +93,17 @@ function SectionLabel({ children, color = T.indigo }) {
   )
 }
 
-// ─── Profile Summary (2026-07-26) ────────────────────────────────────────────
-// Auto-generates a recruiter-facing summary from the user's real skills/
-// experience/domain (POST /api/pro/profile/summary/generate — Groq, grounded
-// only in what's actually on the profile), with a manual edit option that
-// always wins until the user explicitly asks to regenerate again. Never
-// silently overwrites a hand-written summary in the background.
+// ─── Profile Summary (2026-07-26; generalized to the student path and
+// given a real manual-vs-AI distinction 2026-08-17) ───────────────────────
+// Auto-generates a recruiter-facing summary from the user's real profile
+// data (POST /api/pro/profile/summary/generate — Groq; grounded in real
+// skills/experience for professionals, real Arena performance for
+// students), with a manual edit option that always wins until the user
+// explicitly asks to regenerate again. profiles.profile_summary_source
+// ('ai' | 'manual') records which kind of write produced the current
+// value — Regenerate confirms before overwriting a manual edit; it never
+// needs to confirm before overwriting a PREVIOUS ai-generated one, since
+// there's no hand-written work to lose in that case.
 function ProfileSummaryCard({ userData, onSave }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(userData?.profileSummary || "")
@@ -106,11 +112,15 @@ function ProfileSummaryCard({ userData, onSave }) {
   const [errorMsg, setErrorMsg] = useState("")
 
   const handleGenerate = async () => {
+    if (userData?.profileSummary && userData?.profileSummarySource === "manual") {
+      const proceed = window.confirm("This will replace the summary you wrote by hand with a new AI-generated one. Continue?")
+      if (!proceed) return
+    }
     setGenerating(true); setErrorMsg("")
     try {
       const res = await profileApi.generateSummary()
       setDraft(res.summary)
-      await onSave({ profileSummary: res.summary })
+      await onSave({ profileSummary: res.summary, profileSummarySource: "ai" })
       setEditing(false)
     } catch (e) {
       setErrorMsg(e.message || "Couldn't generate a summary right now.")
@@ -121,7 +131,7 @@ function ProfileSummaryCard({ userData, onSave }) {
     setSaving(true); setErrorMsg("")
     try {
       await profileApi.saveSummary(draft)
-      await onSave({ profileSummary: draft })
+      await onSave({ profileSummary: draft, profileSummarySource: "manual" })
       setEditing(false)
     } catch (e) {
       setErrorMsg(e.message || "Couldn't save your summary right now.")
@@ -326,17 +336,7 @@ function getSkillsForDomain(keyword) {
 }
 
 // ─── ELO SPARKLINE ───────────────────────────────────────────────────────────
-// ─── ELO RANK TIERS ──────────────────────────────────────────────────────────
-const ELO_TIERS = [
-  {min:0,   max:600,  label:"Rookie",      color:"#A8A29E", icon:"🌱"},
-  {min:600, max:800,  label:"Apprentice",  color:"#22C55E", icon:"⚡"},
-  {min:800, max:1000, label:"Practitioner",color:"#3B82F6", icon:"🔵"},
-  {min:1000,max:1200, label:"Expert",      color:"#8B5CF6", icon:"💜"},
-  {min:1200,max:1500, label:"Master",      color:"#F59E0B", icon:"🏆"},
-  {min:1500,max:9999, label:"Elite",       color:"#EF4444", icon:"🔥"},
-]
-const getTier = elo => ELO_TIERS.find(t => elo >= t.min && elo < t.max) || ELO_TIERS[0]
-const getNextTier = elo => ELO_TIERS.find(t => elo < t.max && t.max < 9999) || null
+// ELO_TIERS/getTier/getNextTier imported from ../theme (single source of truth)
 
 function EloHistoryCard({ history, currentElo, eloDecayToday }) {
   const tier = getTier(currentElo)
@@ -484,7 +484,9 @@ function EloHistoryCard({ history, currentElo, eloDecayToday }) {
               const cardBg  = isGain ? "#F0FDF4" : isNeutral ? "#F9F9F9" : "#FFF1F2"
               const cardBdr = isGain ? "#BBF7D0" : isNeutral ? "#E5E5E5" : "#FECDD3"
               const deltaColor = isGain ? "#16A34A" : isNeutral ? "#A8A29E" : "#DC2626"
-              const source = ev.source || ev.reason || (isGain ? "Arena Challenge" : d < 0 ? "ELO Decay" : "Rating Update")
+              const source = ev.title || ev.source || ev.reason || (isGain ? "Arena Challenge" : d < 0 ? "ELO Decay" : "Rating Update")
+              const typeBadge = ev.type === "academic" ? { label: "Academic", color: "#4F46E5" }
+                : ev.type === "domain" ? { label: "Domain", color: "#0F766E" } : null
               const isLatest = i === 0
 
               return (
@@ -515,6 +517,7 @@ function EloHistoryCard({ history, currentElo, eloDecayToday }) {
                         whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"
                       }}>
                         {isLatest && <span style={{fontSize:8,fontWeight:800,color:tier.color,background:tier.color+"15",padding:"1px 5px",borderRadius:4,marginRight:5,verticalAlign:"middle"}}>NOW</span>}
+                        {typeBadge && <span style={{fontSize:8,fontWeight:800,color:typeBadge.color,background:typeBadge.color+"15",padding:"1px 5px",borderRadius:4,marginRight:5,verticalAlign:"middle"}}>{typeBadge.label}</span>}
                         {source}
                       </div>
                       <div style={{fontSize:9,color:T.ink4}}>{dateStr}</div>
@@ -1775,9 +1778,8 @@ function MonthlyReportPanel({ userData, skillGraph, eloHistory, eloRating, keywo
   const topSkillName = skillGraph[0]?.label||skillGraph[0]?.skill||"—"
   const topSkillScore = Math.round(skillGraph[0]?.value||skillGraph[0]?.score||0)
 
-  // Tier
-  const TIERS=[{min:0,max:600,label:"Rookie",color:"#A8A29E"},{min:600,max:800,label:"Apprentice",color:"#22C55E"},{min:800,max:1000,label:"Practitioner",color:"#3B82F6"},{min:1000,max:1200,label:"Expert",color:"#8B5CF6"},{min:1200,max:1500,label:"Master",color:"#F59E0B"},{min:1500,max:9999,label:"Elite",color:"#EF4444"}]
-  const tier = TIERS.find(t=>eloRating>=t.min&&eloRating<t.max)||TIERS[0]
+  // Tier — theme.js is the single source of truth now
+  const tier = getTier(eloRating)
 
   // Recommended actions
   const actions = [
@@ -2596,7 +2598,7 @@ function MissionTicker({ userData, keyword, onNavigate }) {
 
   return (
     <div
-      onClick={() => onNavigate && onNavigate("arena")}
+      onClick={() => onNavigate && onNavigate("arenaCollegeStream")}
       style={{
         marginBottom: 16,
         borderRadius: 12,
@@ -4391,7 +4393,12 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
     })
   })()
 
-  // Synthesize ELO history from arena_history rows (Supabase) when eloHistory is sparse
+  // Synthesize ELO history from arena_history rows (Supabase) when eloHistory is sparse.
+  // One point PER EVENT (not collapsed by date) — carries title/type/domain
+  // through so the timeline feed below can show the actual task name and an
+  // Academic/Domain badge instead of a generic "Arena Challenge" fallback.
+  // The sparkline still renders fine with multiple same-day points; this is
+  // strictly more information than the old date-collapsed version.
   const eloHistoryDisplay = (() => {
     if (eloHistory.length >= 2) return eloHistory
     // arenaHistRows is ordered ASC by completed_at — use it to reconstruct trajectory
@@ -4402,15 +4409,18 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
     const points = []
     const rev = [...subs].reverse()
     rev.forEach(s => {
-      points.unshift({ date: (s.completed_at || "").slice(0, 10), elo: Math.max(runningElo, eloFloorDefault) })
+      points.unshift({
+        date: (s.completed_at || "").slice(0, 10),
+        elo: Math.max(runningElo, eloFloorDefault),
+        delta: s.elo_delta,
+        title: s.title,
+        type: s.type,
+        domain: s.domain,
+      })
       runningElo = Math.max(runningElo - (s.elo_delta || 0), eloFloorDefault)
     })
     points.unshift({ date: (subs[0].completed_at || "").slice(0, 10), elo: Math.max(runningElo, eloFloorDefault) })
-    // Deduplicate by date, keep last per date
-    const dateMap = {}
-    points.forEach(p => { dateMap[p.date] = p })
-    const deduped = Object.values(dateMap).sort((a, b) => a.date.localeCompare(b.date))
-    if (deduped.length >= 2) return deduped
+    if (points.length >= 2) return points
     // Fall through to baseline synthesis below
   })() || (() => {
     // Final fallback: user has ELO > floor but no reconstructable history.
@@ -4708,7 +4718,7 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
               const role = getRoleConfig(userData)
               const workbenchName = role?.label ? `${role.label} Arena` : "Arena"
               const steps = [
-                { n:"1", icon:"⚔️", title:`Complete your first ${workbenchName} challenge`, sub:"Solve a real coding challenge to earn your first ELO points and unlock your skill graph.", cta:"Go to Arena →", action:()=>onNavigate("arena"), color:T.indigo, bg:T.indigo+"10", border:T.indigo+"30" },
+                { n:"1", icon:"⚔️", title:`Complete your first ${workbenchName} challenge`, sub:"Solve a real coding challenge to earn your first ELO points and unlock your skill graph.", cta:"Go to Arena →", action:()=>onNavigate("arenaCollegeStream"), color:T.indigo, bg:T.indigo+"10", border:T.indigo+"30" },
                 { n:"2", icon:"📄", title:"Upload your resume", sub:"We'll extract your skills, projects, and experience to populate your Aura profile automatically.", cta:"Upload Resume", action:()=>resumeFileInputRef.current?.click(), color:T.green, bg:T.green+"10", border:T.green+"30" },
                 { n:"3", icon:"🔗", title:"Add your LinkedIn & GitHub", sub:"Connect your profiles so recruiters can verify your work and reach you directly.", cta:"Edit Profile →", action:()=>setActiveTab("vault"), color:"#E67E22", bg:"rgba(230,126,34,0.08)", border:"rgba(230,126,34,0.25)" },
               ]
@@ -4940,7 +4950,7 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
 
                       {/* CTA */}
                       <button
-                        onClick={()=>onNavigate("arena")}
+                        onClick={()=>onNavigate("arenaCollegeStream")}
                         style={{marginTop:10,width:"100%",padding:"7px",background:`linear-gradient(135deg,${momentumForm.color},${momentumForm.color}BB)`,border:"none",borderRadius:8,color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:"0.02em"}}
                       >
                         {graphSkills.length > 0 && graphSkills[0] ? `Practice ${graphSkills[0].label||graphSkills[0].skill} in Arena →` : "Practice in Arena →"}
@@ -4957,7 +4967,7 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
                         <div style={{fontSize:11,fontWeight:700,color:T.red}}>ELO Decay Active — {daysSinceActive}d inactive</div>
                         <div style={{fontSize:10,color:T.ink3}}>Decay starts after 15 days: −5 ELO/day, goes to 0. Complete Arena tasks to stop it.</div>
                       </div>
-                      <button onClick={()=>onNavigate("arena")} style={{padding:"5px 12px",background:T.red,border:"none",borderRadius:7,color:"#fff",fontSize:10,fontWeight:700,cursor:"pointer",flexShrink:0}}>Go →</button>
+                      <button onClick={()=>onNavigate("arenaCollegeStream")} style={{padding:"5px 12px",background:T.red,border:"none",borderRadius:7,color:"#fff",fontSize:10,fontWeight:700,cursor:"pointer",flexShrink:0}}>Go →</button>
                     </div>
                     <button onClick={()=>setDecayDropdownOpen(p=>!p)} style={{width:"100%",padding:"7px 12px",background:"rgba(192,57,43,0.08)",border:`1px solid rgba(192,57,43,0.2)`,borderRadius:8,color:T.red,fontSize:11,fontWeight:700,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                       <span>⚠️ View which {keyword} skills are decaying</span>
@@ -4986,7 +4996,7 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
                             Complete Arena tasks for these skills to restore their ELO contribution.
                           </div>
                         )}
-                        <button onClick={()=>onNavigate("arena")} style={{marginTop:8,width:"100%",padding:"8px",background:T.red,border:"none",borderRadius:8,color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>🎯 Go to Arena to stop decay →</button>
+                        <button onClick={()=>onNavigate("arenaCollegeStream")} style={{marginTop:8,width:"100%",padding:"8px",background:T.red,border:"none",borderRadius:8,color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>🎯 Go to Arena to stop decay →</button>
                       </div>
                     )}
                   </div>
@@ -5113,7 +5123,7 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
                   </div>
                 </div>
                 {practiceSkill&&(
-                  <button onClick={()=>onNavigate("arena")}
+                  <button onClick={()=>onNavigate("arenaCollegeStream")}
                     style={{padding:"9px 20px",background:T.indigo,border:"none",borderRadius:10,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:6,boxShadow:"0 4px 14px rgba(61,78,172,0.25)"}}>
                     ⚔️ Practice in Arena →
                   </button>
@@ -5160,7 +5170,7 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
                       Arena will generate a <strong style={{color:"#fff"}}>{practiceSkill}</strong> challenge tailored to your level
                     </div>
                   </div>
-                  <button onClick={()=>onNavigate("arena")} style={{padding:"10px 22px",background:"#FFFFFF",border:"none",borderRadius:10,color:T.indigo,fontSize:12,fontWeight:800,cursor:"pointer",flexShrink:0,boxShadow:"0 2px 8px rgba(0,0,0,0.12)"}}>
+                  <button onClick={()=>onNavigate("arenaCollegeStream")} style={{padding:"10px 22px",background:"#FFFFFF",border:"none",borderRadius:10,color:T.indigo,fontSize:12,fontWeight:800,cursor:"pointer",flexShrink:0,boxShadow:"0 2px 8px rgba(0,0,0,0.12)"}}>
                     Go Practice →
                   </button>
                 </div>
@@ -5173,10 +5183,14 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
 
             {/* ══ PORTFOLIO COMMAND CENTER ══ */}
             {(()=>{
-              // Derive challenge counts for the preview
-              // challenge_type field: "dsa" = common, "domain" = role-specific.
-              // Legacy records may not have challenge_type — fall back to domain-name heuristic.
+              // Derive challenge counts for the preview. arena_history.type
+              // is stamped reliably by the backend now — 'academic' (College
+              // Stream) or 'domain' (Domain Role), see arenaCollegeStream.js
+              // / arenaDomainRole.js — preferred over challenge_type/domain
+              // heuristics, which only exist for legacy or third-party rows.
               const isCommon = h => {
+                if (h.type === "academic") return true
+                if (h.type === "domain") return false
                 const ct = (h.challenge_type || "").toLowerCase()
                 if (ct === "dsa" || ct === "common" || ct === "common_challenge") return true
                 if (ct === "domain") return false
@@ -5266,8 +5280,8 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
                     padding:"8px 12px",background:"#FFFFFF",borderRadius:10,marginBottom:8,
                     border:"1px solid rgba(61,78,172,0.08)"}}>
                     <div>
-                      <div style={{fontSize:12,fontWeight:700,color:T.ink}}>Common Challenges</div>
-                      <div style={{fontSize:10,color:T.ink4}}>DSA · Algorithms · SWE</div>
+                      <div style={{fontSize:12,fontWeight:700,color:T.ink}}>Academic Tasks</div>
+                      <div style={{fontSize:10,color:T.ink4}}>DSA · Algorithms · Foundations</div>
                     </div>
                     <div style={{textAlign:"right"}}>
                       <div style={{fontSize:18,fontWeight:900,color:T.indigo,fontFamily:"'DM Mono',monospace"}}>{commonChs.length}</div>
@@ -5280,7 +5294,7 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
                     padding:"8px 12px",background:"#FFFFFF",borderRadius:10,marginBottom:8,
                     border:"1px solid rgba(61,78,172,0.08)"}}>
                     <div>
-                      <div style={{fontSize:12,fontWeight:700,color:T.ink}}>Domain Challenges</div>
+                      <div style={{fontSize:12,fontWeight:700,color:T.ink}}>Domain Tasks</div>
                       <div style={{fontSize:10,color:T.ink4}}>Industry · Applied skills</div>
                     </div>
                     <div style={{textAlign:"right"}}>
@@ -6286,12 +6300,23 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
         {/* ═══════════ VAULT TAB ═══════════ */}
         {activeTab==="vault"&&path!=="professional"&&(
           <div style={{animation:"fadeUp 0.3s ease both"}}>
-            {/* ── Student Vault: only Verification + EPFO + Upload ── */}
+            {/* ── Student Vault: Summary + Verification + EPFO + Upload ── */}
             <div style={{marginBottom:24}}>
               <SectionLabel color={T.indigo}>🗄️ Career & Vault</SectionLabel>
               <h2 style={{fontSize:22,fontWeight:800,color:T.ink,margin:"4px 0 0"}}>Your Documents & Verification</h2>
               <p style={{fontSize:13,color:T.ink3,margin:"6px 0 0"}}>Verify your identity, upload your resume and documents — everything syncs to your portfolio.</p>
             </div>
+
+            {/* ── Profile Summary (2026-08-17) — same on-demand Groq
+                generator the professional path already has, grounded in
+                real Arena performance instead of work experience. ── */}
+            <ProfileSummaryCard
+              userData={userData}
+              onSave={async(updates)=>{
+                await save(updates)
+                if(setUserData) setUserData(p=>({...p,...updates}))
+              }}
+            />
 
             {/* Profile Verification */}
             <VerificationSection
