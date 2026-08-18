@@ -28,6 +28,7 @@ import { useState, useEffect, useCallback } from "react"
 import { arenaCollegeStreamApi, arenaDomainRoleApi, arenaActivityApi, arenaPaymentsApi } from "../../lib/api"
 import { getRoleConfig } from "../../config/roleConfig"
 import { useRazorpay } from "../../hooks/useRazorpay"
+import SqlEditor from "./SqlEditor"
 
 // Ticks once a second, returns { text, expired } counting down to `targetIso`.
 // Used for both the daily-quota unlock countdown and the per-mission time
@@ -268,21 +269,25 @@ function ResultTable({ columns, rows }) {
   if (!rows || rows.length === 0) {
     return <div style={{ padding: 12, color: T.ink3, fontSize: 13, fontFamily: MONO }}>(no rows)</div>
   }
+  // Numeric columns right-align (spreadsheet convention, easier to scan
+  // sums/counts) — determined per-column from the actual data, not guessed
+  // from the column name.
+  const isNumericCol = columns.map((_, j) => rows.every(r => r[j] === null || typeof r[j] === "number"))
   return (
-    <div style={{ overflowX: "auto", border: `1px solid ${T.border}`, borderRadius: 10 }}>
+    <div style={{ overflowX: "auto", border: `1px solid ${T.border}`, borderRadius: 10, maxHeight: 360 }}>
       <table style={{ borderCollapse: "collapse", fontFamily: MONO, fontSize: 12, width: "100%" }}>
         <thead>
-          <tr style={{ background: T.cream }}>
-            {columns.map(c => (
-              <th key={c} style={{ textAlign: "left", padding: "6px 12px", borderBottom: `1px solid ${T.border}`, color: T.ink3 }}>{c}</th>
+          <tr style={{ background: T.cream, position: "sticky", top: 0 }}>
+            {columns.map((c, j) => (
+              <th key={c} style={{ textAlign: isNumericCol[j] ? "right" : "left", padding: "6px 12px", borderBottom: `1px solid ${T.border}`, color: T.ink3, whiteSpace: "nowrap" }}>{c}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr key={i}>
+            <tr key={i} style={{ background: i % 2 === 1 ? T.cream : "transparent" }}>
               {row.map((cell, j) => (
-                <td key={j} style={{ padding: "6px 12px", borderBottom: `1px solid ${T.border}`, color: T.ink2 }}>{String(cell)}</td>
+                <td key={j} style={{ padding: "6px 12px", borderBottom: `1px solid ${T.border}`, color: T.ink2, textAlign: isNumericCol[j] ? "right" : "left", fontVariantNumeric: "tabular-nums" }}>{String(cell)}</td>
               ))}
             </tr>
           ))}
@@ -332,16 +337,64 @@ function TopTabBar({ tabs, active, onSelect }) {
   )
 }
 
+// Small segmented control — reused for both the window (All-time/Weekly/
+// Monthly) and scope (This Role/Global/College) leaderboard dimensions.
+// `disabledKeys` renders an option greyed-out with its own tooltip reason
+// instead of hiding it — used for College, a real documented extension
+// point (see arenaDomainRole.js's leaderboard route comment), not silently
+// omitted.
+function SegmentedControl({ options, active, onSelect, disabledKeys }) {
+  return (
+    <div style={{ display: "inline-flex", gap: 2, padding: 3, background: T.cream, borderRadius: 8 }}>
+      {options.map(opt => {
+        const isDisabled = disabledKeys?.[opt.key]
+        return (
+          <button
+            key={opt.key}
+            onClick={() => !isDisabled && onSelect(opt.key)}
+            disabled={isDisabled}
+            title={isDisabled || undefined}
+            style={{
+              padding: "5px 11px", fontSize: 12, fontWeight: 700, fontFamily: BODY, borderRadius: 6, border: "none",
+              background: active === opt.key ? T.cream2 : "transparent",
+              boxShadow: active === opt.key ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+              color: isDisabled ? T.ink3 : (active === opt.key ? T.ink : T.ink4),
+              cursor: isDisabled ? "not-allowed" : "pointer", opacity: isDisabled ? 0.6 : 1,
+            }}
+          >
+            {opt.label}{isDisabled ? " (soon)" : ""}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+const LEADERBOARD_WINDOW_OPTIONS = [{ key: "all_time", label: "All-Time" }, { key: "weekly", label: "Weekly" }, { key: "monthly", label: "Monthly" }]
+const LEADERBOARD_SCOPE_OPTIONS = [{ key: "role", label: "This Role" }, { key: "global", label: "Global" }, { key: "college", label: "College" }]
+
 // `items` normalized to { rank, userId, displayName, elo, isYou } by the
 // caller — Domain (roleElo) and Stream (streamElo) leaderboards use
 // different backend field names, mapped to this common shape before
-// reaching this shared component.
-function LeaderboardPage({ items, loading, label }) {
+// reaching this shared component. `window`/`scope`/`onWindowChange`/
+// `onScopeChange` are optional — the College Stream branch's leaderboard
+// doesn't pass them and simply renders without the segmented controls,
+// unchanged from before.
+function LeaderboardPage({ items, loading, label, window: activeWindow, scope, onWindowChange, onScopeChange }) {
   const medals = ["🥇", "🥈", "🥉"]
   return (
     <div style={{ background: T.cream2, border: `1px solid ${T.border}`, borderRadius: 16, padding: 24, boxShadow: T.shadow, maxWidth: 640 }}>
       <Eyebrow color={T.indigo}>{label} Leaderboard</Eyebrow>
       <div style={{ fontSize: 13, color: T.ink4, marginBottom: 18 }}>Ranked by ELO earned on {label} — real, computed from passed submissions.</div>
+      {onWindowChange && onScopeChange && (
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 18 }}>
+          <SegmentedControl options={LEADERBOARD_WINDOW_OPTIONS} active={activeWindow || "all_time"} onSelect={onWindowChange} />
+          <SegmentedControl
+            options={LEADERBOARD_SCOPE_OPTIONS} active={scope || "role"} onSelect={onScopeChange}
+            disabledKeys={{ college: "College leaderboard needs student-to-college membership resolved first — coming in a later phase." }}
+          />
+        </div>
+      )}
       {loading && <LoadingRow />}
       {!loading && (!items || items.length === 0) && <div style={{ color: T.ink3, fontSize: 14, padding: "12px 0" }}>No one has scored yet — be the first.</div>}
       {!loading && items && items.length > 0 && (
@@ -596,20 +649,33 @@ function HistoryPage({ label, history }) {
  */
 function DomainMissionWorkspace({
   mission, missions, sql, setSql, submitting, submitError, result, deadline, onRun, onOpenMission, onBackToMissions,
+  onValidate, validating, validateResult, validateError,
 }) {
   const currentIndex = missions.findIndex(m => m.id === mission.id)
   const nextMission = currentIndex >= 0 ? missions[currentIndex + 1] : null
   const timer = useCountdown(result ? null : deadline)
+  const listEntry = missions.find(m => m.id === mission.id)
+  const alreadyCompleted = !!listEntry?.passed
 
   const missionInfo = (
     <>
-      <div style={{ fontWeight: 700, color: T.ink, fontSize: 15, marginBottom: 10 }}>{mission.title}</div>
       <div style={{ display: "flex", gap: 10, alignItems: "center", fontFamily: MONO, fontSize: 11, marginBottom: 10 }}>
         <span style={{ color: DIFFICULTY_COLOR[mission.difficulty] || T.ink3, fontWeight: 700, textTransform: "uppercase" }}>
           {mission.difficulty}
         </span>
         <span style={{ color: T.indigo, fontWeight: 700 }}>+{mission.elo_reward} ELO on pass</span>
       </div>
+      {alreadyCompleted && (
+        <div style={{ display: "inline-block", padding: "3px 9px", borderRadius: 6, background: T.green2, color: T.green, fontWeight: 800, fontSize: 11, marginBottom: 10 }}>
+          ✓ Completed
+        </div>
+      )}
+      {mission.dataset_preview?.columns && (
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: 1 }}>Dataset</div>
+          <div style={{ fontSize: 12, color: T.ink2, fontFamily: MONO }}>{mission.dataset_preview.columns.length} columns</div>
+        </div>
+      )}
       {timer.text && (
         <div style={{ marginBottom: 10 }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: 1 }}>Time Target</div>
@@ -623,20 +689,32 @@ function DomainMissionWorkspace({
   )
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 20 }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        {/* Workplace context card */}
-        {(mission.company || mission.manager || mission.sprint) && (
-          <div style={{ background: T.indigo3, border: `1px solid ${T.border}`, borderRadius: 16, padding: 18 }}>
-            <div style={{ display: "flex", gap: 18, flexWrap: "wrap", fontSize: 12, fontFamily: MONO, color: T.ink4 }}>
-              {mission.company && <span><b style={{ color: T.ink }}>Company:</b> {mission.company}</span>}
-              {mission.manager && <span><b style={{ color: T.ink }}>Manager:</b> {mission.manager}</span>}
-              {mission.sprint && <span><b style={{ color: T.ink }}>Sprint:</b> {mission.sprint}</span>}
-              {mission.estimated_minutes && <span><b style={{ color: T.ink }}>Est. time:</b> {mission.estimated_minutes} min</span>}
-            </div>
-          </div>
-        )}
+    <div>
+      {/* Same pattern as PortalCard's @keyframes tag above — the file has
+          no CSS-in-JS system, so a scoped <style> tag is how a media query
+          gets in at all. Collapses the 1fr/300px workspace grid to a
+          single column below tablet width; the editor itself doesn't need
+          to be mobile-first, but the layout shouldn't force horizontal
+          scrolling on a narrow screen either. */}
+      <style>{`@media (max-width: 900px) { .domain-workspace-grid { grid-template-columns: 1fr !important; } }`}</style>
+      {/* Workspace header strip — title + full company/team/sprint context
+          in one place, promoted out of a small inline card so it reads
+          like a real work ticket, not a footnote. */}
+      <div style={{ background: T.cream2, border: `1px solid ${T.border}`, borderRadius: 16, padding: "18px 22px", boxShadow: T.shadow, marginBottom: 16 }}>
+        <div style={{ fontWeight: 800, color: T.ink, fontSize: 18, marginBottom: 10 }}>{mission.title}</div>
+        <div style={{ display: "flex", gap: 20, flexWrap: "wrap", fontSize: 12, fontFamily: MONO, color: T.ink4 }}>
+          {mission.company && <span><b style={{ color: T.ink }}>Company</b> {mission.company}</span>}
+          {mission.manager && <span><b style={{ color: T.ink }}>Manager</b> {mission.manager}</span>}
+          {mission.sprint && <span><b style={{ color: T.ink }}>Sprint</b> {mission.sprint}</span>}
+          <span><b style={{ color: T.ink }}>Difficulty</b> <span style={{ color: DIFFICULTY_COLOR[mission.difficulty], textTransform: "uppercase" }}>{mission.difficulty}</span></span>
+          {mission.estimated_minutes && <span><b style={{ color: T.ink }}>Est. Time</b> {mission.estimated_minutes} min</span>}
+          <span><b style={{ color: T.ink }}>Reward</b> <span style={{ color: T.indigo }}>+{mission.elo_reward} ELO</span></span>
+          <span><b style={{ color: T.ink }}>Status</b> <span style={{ color: alreadyCompleted ? T.green : T.amber }}>{alreadyCompleted ? "Completed" : "In Progress"}</span></span>
+        </div>
+      </div>
 
+      <div className="domain-workspace-grid" style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 20 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {/* Problem statement + schema */}
         <div style={{ background: T.cream2, border: `1px solid ${T.border}`, borderRadius: 16, padding: 22, boxShadow: T.shadow }}>
           <Eyebrow color={T.ink3}>Problem Statement</Eyebrow>
@@ -653,32 +731,68 @@ function DomainMissionWorkspace({
         {/* SQL editor */}
         <div style={{ background: T.cream2, border: `1px solid ${T.border}`, borderRadius: 16, padding: 22, boxShadow: T.shadow }}>
           <Eyebrow color={T.ink3}>SQL Editor</Eyebrow>
-          <textarea
-            value={sql}
-            onChange={e => setSql(e.target.value)}
-            placeholder="SELECT …"
-            rows={5}
-            disabled={submitting}
-            style={{
-              width: "100%", padding: "12px 14px", borderRadius: 10, border: `1px solid ${T.border}`,
-              fontFamily: MONO, fontSize: 13, resize: "vertical", marginBottom: 12, boxSizing: "border-box",
-              background: T.cream,
-            }}
-          />
+          <div style={{ marginBottom: 12 }}>
+            <SqlEditor value={sql} onChange={setSql} disabled={submitting || validating} T={T} MONO={MONO} />
+          </div>
           {submitError && <div style={{ color: T.red, fontSize: 13, marginBottom: 10 }}>{submitError}</div>}
-          <button
-            onClick={onRun}
-            disabled={!sql.trim() || submitting}
-            style={{
-              padding: "10px 20px", borderRadius: 10, border: "none",
-              background: !sql.trim() || submitting ? T.border : T.indigo,
-              color: !sql.trim() || submitting ? T.ink3 : "#fff",
-              fontWeight: 700, fontFamily: BODY, cursor: !sql.trim() || submitting ? "default" : "pointer",
-            }}
-          >
-            {submitting ? "Running…" : "Run Query"}
-          </button>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button
+              onClick={onValidate}
+              disabled={!sql.trim() || submitting || validating}
+              title="Run against the sandbox without scoring — iterate freely, this never counts as an attempt."
+              style={{
+                padding: "10px 20px", borderRadius: 10, border: `1px solid ${T.border}`,
+                background: !sql.trim() || submitting || validating ? T.border : T.cream,
+                color: !sql.trim() || submitting || validating ? T.ink3 : T.ink,
+                fontWeight: 700, fontFamily: BODY, cursor: !sql.trim() || submitting || validating ? "default" : "pointer",
+              }}
+            >
+              {validating ? "Running…" : "▶ Run (Preview)"}
+            </button>
+            <button
+              onClick={onRun}
+              disabled={!sql.trim() || submitting}
+              style={{
+                padding: "10px 20px", borderRadius: 10, border: "none",
+                background: !sql.trim() || submitting ? T.border : T.indigo,
+                color: !sql.trim() || submitting ? T.ink3 : "#fff",
+                fontWeight: 700, fontFamily: BODY, cursor: !sql.trim() || submitting ? "default" : "pointer",
+              }}
+            >
+              {submitting ? "Submitting…" : "Submit"}
+            </button>
+          </div>
         </div>
+
+        {/* Preview panel — non-scoring "Run" output, visually distinct
+            (dashed border, explicit "not scored" label) from the real
+            submission result below, so it can never be mistaken for one. */}
+        {(validateResult || validateError) && !result && (
+          <div style={{ background: T.cream, border: `1px dashed ${T.ink3}`, borderRadius: 16, padding: 22 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <Eyebrow color={T.ink3}>Preview — Not Scored</Eyebrow>
+              {validateResult && (
+                <div style={{ display: "flex", gap: 8 }}>
+                  <StatChip label="Executed" value={`${validateResult.executionTimeMs} ms`} />
+                  <StatChip label="Rows" value={validateResult.rowCount} />
+                </div>
+              )}
+            </div>
+            {validateError && <div style={{ fontSize: 13, color: T.red }}>{validateError}</div>}
+            {validateResult && (
+              <>
+                <ResultTable columns={validateResult.columns} rows={validateResult.rows} />
+                {validateResult.warnings?.length > 0 && (
+                  <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+                    {validateResult.warnings.map((w, i) => (
+                      <div key={i} style={{ fontSize: 12, color: T.amber }}>⚠ {w}</div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         {/* Output workspace — only appears after a run */}
         {result && (
@@ -755,6 +869,7 @@ function DomainMissionWorkspace({
       <div style={{ background: T.cream2, border: `1px solid ${T.border}`, borderRadius: 16, padding: 18, boxShadow: T.shadow, height: "fit-content" }}>
         <Eyebrow color={T.ink3}>Mission</Eyebrow>
         {missionInfo}
+      </div>
       </div>
     </div>
   )
@@ -1032,11 +1147,23 @@ function ArenaPlanTeaser({ currentPlan, onUpgrade, upgradingPlan, error }) {
 // Activity summary's streak, and the role's own completed-mission count).
 // No fabricated progress, no new table — a badge is either earned by real
 // history or it isn't.
+// Extended 2026-08-18 (Phase 2). The three new booleans below (completed,
+// hasCleanPass, hasFastPass) come from GET /:roleId/history/counts (see
+// arenaDomainRole.js's comment on that route for exactly what each one
+// means and why it's a real, non-fabricated signal) — modeled as value=1
+// target=1 to fit the same value(ctx)>=target pattern every existing
+// threshold achievement already uses, no change to AchievementBadge.
 const DOMAIN_ACHIEVEMENT_DEFS = [
   { id: "first-mission", icon: "🚀", label: "First Mission", desc: "Complete your first mission", tier: "bronze", value: ctx => ctx.completed, target: 1 },
+  { id: "ten-queries", icon: "🧮", label: "10 SQL Queries", desc: "Submit 10 SQL attempts (pass or fail)", tier: "bronze", value: ctx => ctx.totalAttempts, target: 10 },
   { id: "five-missions", icon: "🎯", label: "Five Down", desc: "Complete 5 missions", tier: "silver", value: ctx => ctx.completed, target: 5 },
+  { id: "clean-pass", icon: "🎖️", label: "No Wrong Attempts", desc: "Pass a mission on your very first try", tier: "silver", value: ctx => (ctx.hasCleanPass ? 1 : 0), target: 1 },
+  { id: "flawless-record", icon: "💎", label: "Perfect Score", desc: "Every attempt so far has been a pass — zero failures", tier: "silver", value: ctx => (ctx.completed > 0 && ctx.failed === 0 ? 1 : 0), target: 1 },
+  { id: "fast-query", icon: "⚙️", label: "Fast Query", desc: "Beat the median query time on a mission, vs. every other student", tier: "silver", value: ctx => (ctx.hasFastPass ? 1 : 0), target: 1 },
   { id: "streak-3", icon: "🔥", label: "On a Roll", desc: "3-day activity streak", tier: "bronze", value: ctx => ctx.streakCurrent, target: 3 },
   { id: "streak-7", icon: "⚡", label: "Consistent", desc: "7-day activity streak (current or best)", tier: "silver", value: ctx => ctx.streakLongest, target: 7 },
+  { id: "streak-10", icon: "🌟", label: "10 Day Streak", desc: "10-day activity streak (current or best)", tier: "gold", value: ctx => ctx.streakLongest, target: 10 },
+  { id: "elo-1000", icon: "🧭", label: "1000 ELO", desc: "Reach 1000 ELO", tier: "bronze", value: ctx => ctx.elo || 0, target: 1000 },
   { id: "elo-1300", icon: "📈", label: "Rising", desc: "Reach 1300 ELO", tier: "silver", value: ctx => ctx.elo || 0, target: 1300 },
   { id: "elo-1500", icon: "🏆", label: "Sharpshooter", desc: "Reach 1500 ELO", tier: "gold", value: ctx => ctx.elo || 0, target: 1500 },
 ]
@@ -1084,8 +1211,12 @@ function AchievementBadge({ a, ctx }) {
   )
 }
 
-function AchievementsPanel({ elo, completed, streakCurrent, streakLongest }) {
-  const ctx = { elo, completed: completed || 0, streakCurrent: streakCurrent || 0, streakLongest: streakLongest || 0 }
+function AchievementsPanel({ elo, completed, failed, totalAttempts, hasCleanPass, hasFastPass, streakCurrent, streakLongest }) {
+  const ctx = {
+    elo, completed: completed || 0, failed: failed || 0, totalAttempts: totalAttempts || 0,
+    hasCleanPass: !!hasCleanPass, hasFastPass: !!hasFastPass,
+    streakCurrent: streakCurrent || 0, streakLongest: streakLongest || 0,
+  }
   const earnedCount = DOMAIN_ACHIEVEMENT_DEFS.filter(a => a.value(ctx) >= a.target).length
   return (
     <div>
@@ -1345,6 +1476,13 @@ export default function ArenaCollegeStream({ userData, onNavigate, user, setUser
   const [domainResult, setDomainResult] = useState(null)
   const [domainSubmitError, setDomainSubmitError] = useState(null)
   const [missionDeadline, setMissionDeadline] = useState(null)
+  // Non-scoring preflight ("Run Preview," Phase 2) — deliberately separate
+  // from domainSubmitting/domainResult/domainSubmitError above, never a
+  // fork of that state, so a preview run can never be mistaken for or
+  // interfere with a real scored submission.
+  const [validating, setValidating] = useState(false)
+  const [validateResult, setValidateResult] = useState(null)
+  const [validateError, setValidateError] = useState(null)
 
   // Top-level tabs for the whole Domain Role section — Workspace (mission
   // list / current mission), Leaderboard (role-scoped, real ELO ranking),
@@ -1353,6 +1491,8 @@ export default function ArenaCollegeStream({ userData, onNavigate, user, setUser
   const [domainMainTab, setDomainMainTab] = useState("workspace")
   const [leaderboardItems, setLeaderboardItems] = useState(null)
   const [leaderboardLoading, setLeaderboardLoading] = useState(false)
+  const [leaderboardWindow, setLeaderboardWindow] = useState("all_time")
+  const [leaderboardScope, setLeaderboardScope] = useState("role")
 
   // History (Passed/Failed toggle + pagination) and its counts — see
   // useHistoryTabs above. Achievements needs `counts` only (a real
@@ -1372,9 +1512,9 @@ export default function ArenaCollegeStream({ userData, onNavigate, user, setUser
     itemsEnabled: domainMainTab === "history",
   })
 
-  function loadLeaderboard() {
+  function loadLeaderboard(windowParam, scopeParam) {
     setLeaderboardLoading(true)
-    arenaDomainRoleApi.getLeaderboard(roleConfig.id)
+    arenaDomainRoleApi.getLeaderboard(roleConfig.id, { window: windowParam || leaderboardWindow, scope: scopeParam || leaderboardScope })
       .then(res => setLeaderboardItems((res.leaderboard || []).map(r => ({ ...r, elo: r.roleElo }))))
       .catch(() => setLeaderboardItems([]))
       .finally(() => setLeaderboardLoading(false))
@@ -1384,6 +1524,9 @@ export default function ArenaCollegeStream({ userData, onNavigate, user, setUser
     setDomainMainTab(tab)
     if (tab === "leaderboard" && leaderboardItems === null) loadLeaderboard()
   }
+
+  function changeLeaderboardWindow(w) { setLeaderboardWindow(w); loadLeaderboard(w, leaderboardScope) }
+  function changeLeaderboardScope(s) { setLeaderboardScope(s); loadLeaderboard(leaderboardWindow, s) }
 
   // Stream branch gets the same Workspace/Leaderboard/History/Streaks tab
   // set as the Domain branch — separate state (own history/leaderboard
@@ -1651,6 +1794,7 @@ export default function ArenaCollegeStream({ userData, onNavigate, user, setUser
 
   function openDomainMission(mission) {
     setSql(""); setDomainResult(null); setDomainSubmitError(null); setMissionDeadline(null); setDomainMainTab("workspace")
+    setValidateResult(null); setValidateError(null)
     setDomainLoading(true); setDomainError(null)
     arenaDomainRoleApi.getMission(mission.id)
       .then(res => {
@@ -1668,9 +1812,22 @@ export default function ArenaCollegeStream({ userData, onNavigate, user, setUser
       .finally(() => setDomainLoading(false))
   }
 
+  // Non-scoring preflight — same sandbox, never writes a submission, never
+  // touches ELO/quota. Kept fully separate from submitSql below so a
+  // preview run can never be confused with, or block, a real attempt.
+  function validateSql() {
+    if (!sql.trim() || validating) return
+    setValidating(true); setValidateError(null); setValidateResult(null)
+    arenaDomainRoleApi.validateMission(domainMission.id, sql.trim())
+      .then(res => setValidateResult(res))
+      .catch(e => setValidateError(e.message))
+      .finally(() => setValidating(false))
+  }
+
   function submitSql() {
     if (!sql.trim() || domainSubmitting) return
     setDomainSubmitting(true); setDomainSubmitError(null)
+    setValidateResult(null); setValidateError(null) // clear the preview panel — the real scored result below takes over
     arenaDomainRoleApi.submitMission(domainMission.id, sql.trim())
       .then(res => {
         setDomainResult(res.submission)
@@ -1814,7 +1971,11 @@ export default function ArenaCollegeStream({ userData, onNavigate, user, setUser
             />
 
             {domainMainTab === "leaderboard" && (
-              <LeaderboardPage items={leaderboardItems} loading={leaderboardLoading} label={domainLabel} />
+              <LeaderboardPage
+                items={leaderboardItems} loading={leaderboardLoading} label={domainLabel}
+                window={leaderboardWindow} scope={leaderboardScope}
+                onWindowChange={changeLeaderboardWindow} onScopeChange={changeLeaderboardScope}
+              />
             )}
 
             {domainMainTab === "history" && (
@@ -1829,6 +1990,10 @@ export default function ArenaCollegeStream({ userData, onNavigate, user, setUser
               <AchievementsPanel
                 elo={userData?.eloRating}
                 completed={domainHistory.counts?.passed}
+                failed={domainHistory.counts?.failed}
+                totalAttempts={domainHistory.counts?.totalAttempts}
+                hasCleanPass={domainHistory.counts?.hasCleanPass}
+                hasFastPass={domainHistory.counts?.hasFastPass}
                 streakCurrent={activitySummary?.streak?.current}
                 streakLongest={activitySummary?.streak?.longest}
               />
@@ -1893,6 +2058,10 @@ export default function ArenaCollegeStream({ userData, onNavigate, user, setUser
                 onRun={submitSql}
                 onOpenMission={openDomainMission}
                 onBackToMissions={openDomainMissions}
+                onValidate={validateSql}
+                validating={validating}
+                validateResult={validateResult}
+                validateError={validateError}
               />
             )}
           </>

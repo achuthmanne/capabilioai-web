@@ -866,6 +866,9 @@ export const arenaDomainRoleApi = {
   listMissions: (roleId)          => request("GET", `/arena/domain-role/${roleId}/missions`),
   getMission:   (missionId)       => request("GET", `/arena/domain-role/missions/${missionId}`),
   submitMission: (missionId, sql) => request("POST", `/arena/domain-role/missions/${missionId}/submit`, { sql }),
+  // Non-scoring preflight run (Phase 2) — never writes a submission, never
+  // touches ELO/quota. Same request shape as submitMission, different path.
+  validateMission: (missionId, sql) => request("POST", `/arena/domain-role/missions/${missionId}/validate`, { sql }),
   getNextMission: (roleId)        => request("GET", `/arena/domain-role/${roleId}/next-mission`),
   // params: { cursor, limit, passed } — passed is a boolean; the query
   // string sends "true"/"false" strings, matching what the backend expects.
@@ -879,7 +882,17 @@ export const arenaDomainRoleApi = {
     return request("GET", `/arena/domain-role/${roleId}/history${s ? `?${s}` : ""}`)
   },
   getHistoryCounts: (roleId) => request("GET", `/arena/domain-role/${roleId}/history/counts`),
-  getLeaderboard: (roleId)        => request("GET", `/arena/domain-role/${roleId}/leaderboard`),
+  // params: { window: "all_time"|"weekly"|"monthly", scope: "role"|"global" }
+  // — both optional, additive; omitting either preserves the original
+  // all-time/role-scoped behavior.
+  getLeaderboard: (roleId, params = {}) => {
+    const { window, scope } = params
+    const qs = new URLSearchParams()
+    if (window) qs.set("window", window)
+    if (scope) qs.set("scope", scope)
+    const s = qs.toString()
+    return request("GET", `/arena/domain-role/${roleId}/leaderboard${s ? `?${s}` : ""}`)
+  },
 }
 
 // ══════════════════════════════════════════

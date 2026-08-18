@@ -124,3 +124,12 @@ export const skillStudioLimiter = createRateLimiter(60_000, 60, "Skill Studio is
 // (pythonSandbox.js) is the hard backstop; this is the first line of
 // defense that keeps requests from piling up against that cap at all.
 export const codeExecutionLimiter = createRateLimiter(60_000, 20, "Too many submissions right now. Please wait a moment before trying again.")
+
+// Domain Role SQL preflight ("Run Preview," 2026-08-18) — applied at the
+// specific POST /missions/:id/validate route only, same reasoning as
+// codeExecutionLimiter above: this button gets clicked far more than a
+// real Submit, so it needs its own, more generous budget rather than
+// sharing Submit's implicit allowance under the blanket generalLimiter.
+// Sized higher than codeExecutionLimiter since the sandbox here is cheap
+// in-memory SQLite against a handful of rows, not a subprocess spawn.
+export const sqlValidateLimiter = createRateLimiter(60_000, 40, "Too many preview runs right now. Please wait a moment before trying again.")

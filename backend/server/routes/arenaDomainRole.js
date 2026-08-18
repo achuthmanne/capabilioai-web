@@ -17,6 +17,7 @@ import { runAgainstDataset, compareResults, computeInsight, buildChecklist, SqlS
 import { groq, GROQ_FAST } from "../lib/groq.js"
 import { logger } from "../lib/logger.js"
 import { decodeCursor, encodeCursor } from "../lib/pagination.js"
+import { sqlValidateLimiter } from "../lib/rateLimiters.js"
 
 // Best-effort, non-fatal — feeds the same global profiles.elo_rating the
 // header badge and Portfolio tier read (see arenaCollegeStream.js's fuller
@@ -277,6 +278,20 @@ router.get("/:roleId/history", requireAuth, async (req, res) => {
 // toggle buttons without fetching full history just to count it, and to
 // decouple the Achievements tab's passed-count from the (now paginated,
 // no-longer-complete-in-one-fetch) history list.
+// Extended 2026-08-18 (Phase 2) with two achievement-only signals, both
+// computed from real data already in domain_submissions — no schema
+// change, no fabricated progress:
+//   - hasCleanPass: some mission's very FIRST submission (by created_at)
+//     was itself a pass — "No Wrong Attempts".
+//   - hasFastPass: some own passed submission's execution_time_ms beats
+//     that SAME mission's median passed execution_time_ms across ALL
+//     students — "Fast Completion". Deliberately a peer comparison, not a
+//     self-relative "my own fastest quartile" — the latter is degenerate
+//     (a student's single fastest submission is always in their own
+//     fastest quartile by definition, so it would reward nothing beyond
+//     "have you passed anything," not actual speed).
+// "Perfect Score" (a flawless record — zero failed attempts) needs no new
+// field here: it's just failed === 0 && passed > 0 on the existing counts.
 router.get("/:roleId/history/counts", requireAuth, async (req, res) => {
   try {
     const { data: missions, error: missionsErr } = await supabaseAdmin
@@ -284,19 +299,54 @@ router.get("/:roleId/history/counts", requireAuth, async (req, res) => {
       .select("id")
       .eq("domain_role_id", req.params.roleId)
     if (missionsErr) throw missionsErr
-    if (!missions.length) return res.json({ passed: 0, failed: 0 })
+    if (!missions.length) return res.json({ passed: 0, failed: 0, totalAttempts: 0, hasCleanPass: false, hasFastPass: false })
 
     const missionIds = missions.map(m => m.id)
-    const [passedRes, failedRes] = await Promise.all([
+    const [passedRes, failedRes, ownSubs, peerPassed] = await Promise.all([
       supabaseAdmin.from("domain_submissions").select("id", { count: "exact", head: true })
         .eq("user_id", req.user.id).in("mission_id", missionIds).eq("passed", true),
       supabaseAdmin.from("domain_submissions").select("id", { count: "exact", head: true })
         .eq("user_id", req.user.id).in("mission_id", missionIds).eq("passed", false),
+      supabaseAdmin.from("domain_submissions").select("mission_id, passed, execution_time_ms, created_at")
+        .eq("user_id", req.user.id).in("mission_id", missionIds).order("created_at", { ascending: true }),
+      // Peer benchmark only — every passed submission (any user) on this
+      // role's missions, used solely to compute each mission's median
+      // execution time. No individual peer data is ever returned.
+      supabaseAdmin.from("domain_submissions").select("mission_id, execution_time_ms")
+        .in("mission_id", missionIds).eq("passed", true).not("execution_time_ms", "is", null),
     ])
     if (passedRes.error) throw passedRes.error
     if (failedRes.error) throw failedRes.error
+    if (ownSubs.error) throw ownSubs.error
+    if (peerPassed.error) throw peerPassed.error
 
-    res.json({ passed: passedRes.count || 0, failed: failedRes.count || 0 })
+    const firstByMission = new Map()
+    for (const s of ownSubs.data || []) {
+      if (!firstByMission.has(s.mission_id)) firstByMission.set(s.mission_id, s)
+    }
+    const hasCleanPass = [...firstByMission.values()].some(s => s.passed)
+
+    const timesByMission = new Map()
+    for (const s of peerPassed.data || []) {
+      if (!timesByMission.has(s.mission_id)) timesByMission.set(s.mission_id, [])
+      timesByMission.get(s.mission_id).push(Number(s.execution_time_ms))
+    }
+    const medianOf = arr => {
+      const sorted = [...arr].sort((a, b) => a - b)
+      const mid = Math.floor(sorted.length / 2)
+      return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
+    }
+    let hasFastPass = false
+    for (const s of ownSubs.data || []) {
+      if (!s.passed || s.execution_time_ms == null) continue
+      const peerTimes = timesByMission.get(s.mission_id) || []
+      if (peerTimes.length < 3) continue // not enough peer data yet for a meaningful median
+      if (Number(s.execution_time_ms) <= medianOf(peerTimes)) { hasFastPass = true; break }
+    }
+
+    const passed = passedRes.count || 0
+    const failed = failedRes.count || 0
+    res.json({ passed, failed, totalAttempts: passed + failed, hasCleanPass, hasFastPass })
   } catch (err) {
     logger.error("[arenaDomainRole] GET /:roleId/history/counts failed", { err, userId: req.user?.id, roleId: req.params.roleId })
     res.status(500).json({ error: "Internal error" })
@@ -313,18 +363,48 @@ router.get("/:roleId/history/counts", requireAuth, async (req, res) => {
 // Privacy default (assumption, flagged for review): shows first name +
 // last-initial only, never email or full profile. Change the `displayName`
 // derivation below if a different display policy is wanted.
+//
+// Extended 2026-08-18 (Phase 2) with two optional, additive query params —
+// response shape is unchanged, so this is backward compatible with every
+// existing caller:
+//   - window: "all_time" (default, unchanged) | "weekly" | "monthly" —
+//     filters domain_submissions by created_at before aggregating.
+//   - scope: "role" (default, unchanged, this role's missions only) |
+//     "global" (every Domain Role mission, any role — a cross-role
+//     ranking) | "college" — NOT implemented. Returns 501 with the real
+//     reason: student->college membership is split across two
+//     non-unified pre-existing tables (org_members vs
+//     institution_students, see routes/college.js), which is exactly the
+//     kind of schema debt this phase was told not to touch. Documented
+//     extension point rather than a guess, per the Phase 1 precedent.
+const LEADERBOARD_WINDOW_MS = { weekly: 7 * 24 * 60 * 60 * 1000, monthly: 30 * 24 * 60 * 60 * 1000 }
 router.get("/:roleId/leaderboard", optionalAuth, async (req, res) => {
   try {
-    const { data: missions, error: missionsErr } = await supabaseAdmin
-      .from("domain_missions").select("id").eq("domain_role_id", req.params.roleId)
-    if (missionsErr) throw missionsErr
-    if (!missions.length) return res.json({ leaderboard: [] })
+    const scope = req.query.scope === "global" || req.query.scope === "college" ? req.query.scope : "role"
+    if (scope === "college") {
+      return res.status(501).json({
+        error: "College leaderboard isn't available yet — student-to-college membership is currently split across two separate, unmerged tables (org_members and institution_students), so this can't be scoped correctly without picking one arbitrarily. Flagged as a real extension point, not built on a guess.",
+      })
+    }
+    const window = LEADERBOARD_WINDOW_MS[req.query.window] ? req.query.window : "all_time"
 
-    const { data: submissions, error } = await supabaseAdmin
-      .from("domain_submissions")
-      .select("user_id, elo_delta")
-      .eq("passed", true)
-      .in("mission_id", missions.map(m => m.id))
+    let missionIds = null
+    if (scope === "role") {
+      const { data: missions, error: missionsErr } = await supabaseAdmin
+        .from("domain_missions").select("id").eq("domain_role_id", req.params.roleId)
+      if (missionsErr) throw missionsErr
+      if (!missions.length) return res.json({ leaderboard: [] })
+      missionIds = missions.map(m => m.id)
+    }
+    // scope === "global": no mission_id filter at all — every passed
+    // domain_submissions row across every Domain Role mission counts.
+
+    let query = supabaseAdmin.from("domain_submissions").select("user_id, elo_delta").eq("passed", true)
+    if (missionIds) query = query.in("mission_id", missionIds)
+    if (window !== "all_time") {
+      query = query.gte("created_at", new Date(Date.now() - LEADERBOARD_WINDOW_MS[window]).toISOString())
+    }
+    const { data: submissions, error } = await query
     if (error) throw error
 
     const totals = new Map()
@@ -435,6 +515,67 @@ router.get("/missions/:id", async (req, res) => {
     })
   } catch (err) {
     console.error("[arenaDomainRole] GET /missions/:id", err)
+    res.status(500).json({ error: "Internal error" })
+  }
+})
+
+// POST /api/arena/domain-role/missions/:id/validate  (Phase 2, 2026-08-18)
+// A genuine, non-scoring "Run" — the workspace previously had only one
+// execution path (Submit), which is a real, scored, once-only attempt.
+// This lets a student iterate against the sandbox before committing to a
+// real Submit, the way any real query tool separates "run" from "commit."
+//
+// Reuses runAgainstDataset unchanged (same sandbox, same integrity
+// discipline) but never loads expected_result/match_mode (same leak-
+// prevention as GET /missions/:id below) and never writes anything —
+// no domain_submissions row, no ELO, no quota consumption. Purely a
+// read against the ephemeral sandbox, safe to call repeatedly.
+router.post("/missions/:id/validate", optionalAuth, sqlValidateLimiter, async (req, res) => {
+  try {
+    const { sql } = req.body || {}
+    if (!sql || typeof sql !== "string" || !sql.trim()) {
+      return res.status(400).json({ error: "sql is required" })
+    }
+
+    const { data: mission, error: missionErr } = await supabaseAdmin
+      .from("domain_missions")
+      .select("id, dataset, panel_type")
+      .eq("id", req.params.id)
+      .maybeSingle()
+    if (missionErr) throw missionErr
+    if (!mission) return res.status(404).json({ error: "Mission not found" })
+    if (mission.panel_type !== "sql_runner") {
+      return res.status(400).json({ error: `Panel type "${mission.panel_type}" is not yet supported.` })
+    }
+
+    let actual
+    try {
+      actual = await runAgainstDataset(mission.dataset, sql)
+    } catch (sandboxErr) {
+      if (sandboxErr instanceof SqlSandboxError) {
+        return res.status(400).json({ error: sandboxErr.message })
+      }
+      throw sandboxErr
+    }
+
+    // Only real, mechanically-derived warnings — never a fabricated
+    // "confidence" or "possible match" signal (the latter would require
+    // comparing against expected_result, which this endpoint deliberately
+    // never loads).
+    const warnings = []
+    if (!actual.rows || actual.rows.length === 0) warnings.push("Query returned 0 rows.")
+    if (actual.executionTimeMs > 200) warnings.push(`Query took ${actual.executionTimeMs}ms — unusually slow for a dataset this small, check for an unintended cross join.`)
+
+    const MAX_PREVIEW_ROWS = 50
+    res.json({
+      columns: actual.columns,
+      rows: (actual.rows || []).slice(0, MAX_PREVIEW_ROWS),
+      rowCount: (actual.rows || []).length,
+      executionTimeMs: actual.executionTimeMs,
+      warnings,
+    })
+  } catch (err) {
+    console.error("[arenaDomainRole] POST /missions/:id/validate", err)
     res.status(500).json({ error: "Internal error" })
   }
 })
