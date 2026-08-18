@@ -1,10 +1,12 @@
 /**
- * SqlEditor.jsx — Phase 2, 2026-08-18.
+ * SqlEditor.jsx — Phase 2, 2026-08-18. Moved into workspaces/sql/ in
+ * Phase 2.5 (content unchanged) as the panel-registry architecture's
+ * first real workspace implementation.
  *
  * Thin CodeMirror 6 wrapper replacing the bare <textarea> the Domain Role
  * SQL workspace used before. Owns no mission/submission state of its own —
- * ArenaCollegeStream.jsx still owns `sql`/`setSql` exactly as it did with
- * the textarea; this component only renders and edits that string.
+ * the parent still owns `sql`/`setSql` exactly as it did with the
+ * textarea; this component only renders and edits that string.
  *
  * CodeMirror 6 (via @uiw/react-codemirror) over Monaco: pure ESM, no
  * special Vite plugin/worker config needed, small bundle footprint, ships
@@ -16,10 +18,10 @@ import CodeMirror from "@uiw/react-codemirror"
 import { sql } from "@codemirror/lang-sql"
 import { EditorView } from "@codemirror/view"
 
-// Theme built from the page's own T-token palette (frontend/src/pages/
-// arenaCollegeStream/ArenaCollegeStream.jsx) rather than one of
-// CodeMirror's canned dark themes — keeps the editor visually inside the
-// same cream/indigo product, not a bolted-on IDE widget.
+// Theme built from the page's own T-token palette (shared/tokens.js)
+// rather than one of CodeMirror's canned dark themes — keeps the editor
+// visually inside the same cream/indigo product, not a bolted-on IDE
+// widget.
 function buildTheme(T, MONO) {
   return EditorView.theme({
     "&": { fontFamily: MONO, fontSize: "13px", backgroundColor: T.cream2, borderRadius: "10px", border: `1px solid ${T.border}` },
