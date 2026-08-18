@@ -28,7 +28,7 @@ import { useState, useEffect, useCallback } from "react"
 import { arenaCollegeStreamApi, arenaDomainRoleApi, arenaActivityApi, arenaPaymentsApi } from "../../lib/api"
 import { getRoleConfig } from "../../config/roleConfig"
 import { useRazorpay } from "../../hooks/useRazorpay"
-import SqlWorkspace from "./workspaces/sql/SqlWorkspace"
+import WorkspaceRenderer from "./workspaces/WorkspaceRenderer"
 import { T, MONO, BODY, DIFFICULTY_COLOR } from "./shared/tokens"
 import { Eyebrow, LoadingRow, StatChip, ResultTable, ChecklistPanel } from "./shared/primitives"
 import { useCountdown } from "./shared/useCountdown"
@@ -1706,7 +1706,7 @@ export default function ArenaCollegeStream({ userData, onNavigate, user, setUser
             )}
 
             {domainMainTab === "workspace" && level === "domainMission" && domainMission && (
-              <SqlWorkspace
+              <WorkspaceRenderer
                 mission={domainMission}
                 missions={domainMissions}
                 sql={sql}
