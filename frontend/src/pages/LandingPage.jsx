@@ -1,1512 +1,1055 @@
-import { useState, useEffect, useRef } from "react"
-import * as THREE from "three"
-import EchoPitchDemoPlayer from "./EchoPitchDemoPlayer"
+import { useState, useRef, useEffect } from "react"
+import { motion, useReducedMotion, useInView, animate } from "framer-motion"
+import {
+  ClipboardCheck, Network, BookOpen, Swords, FolderCheck, Search,
+  ArrowRight, Check, ChevronDown,
+  ShieldCheck, XCircle, Play, Loader2, Rocket, Factory, TrendingUp,
+} from "lucide-react"
+import { T, EASE } from "../lib/osDesignTokens"
+import { PRIMARY_PATHS, withAlpha } from "../lib/pathIdentity"
 
-// ─── Design tokens ─────────────────────────────────────────────────────────
-const D = {
-  bg:         "#030308",
-  glass:      "rgba(255,255,255,0.04)",
-  glassHover: "rgba(255,255,255,0.07)",
-  glassDeep:  "rgba(255,255,255,0.02)",
-  border:     "rgba(255,255,255,0.08)",
-  borderBright:"rgba(255,255,255,0.14)",
-  text1:      "#F0EDE8",
-  text2:      "rgba(240,237,232,0.72)",
-  text3:      "rgba(240,237,232,0.48)",
-  orange:     "#FF5701",
-  orangeDim:  "rgba(255,87,1,0.12)",
-  orangeMid:  "rgba(255,87,1,0.22)",
-  orangeGlow: "rgba(255,87,1,0.35)",
-  gold:       "#C9A84C",
-  goldDim:    "rgba(201,168,76,0.12)",
-  violet:     "#8B5CF6",
-  violetDim:  "rgba(139,92,246,0.12)",
-  amber:      "#D97706",
-  amberDim:   "rgba(217,119,6,0.12)",
-  green:      "#16A34A",
-  blue:       "#3B82F6",
+// ─── useCountUp — imperative numeric tween via framer-motion's animate().
+// Shared by the Arena preview's ELO step and the ELO Growth card so both
+// use the exact same mechanism (no separate counter implementation).
+function useCountUp(target, { start = target, duration = 0.7, delay = 0, active = true, reduce = false } = {}) {
+  const [value, setValue] = useState(reduce ? target : start)
+  useEffect(() => {
+    if (!active) return
+    if (reduce) { setValue(target); return }
+    setValue(start)
+    const controls = animate(start, target, { duration, delay, ease: EASE, onUpdate: v => setValue(Math.round(v)) })
+    return () => controls.stop()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, target, start, duration, delay, reduce])
+  return value
 }
 
-// ─── PageParticleField ─────────────────────────────────────────────────
-// Ambient three.js particle field, fixed behind the entire page (not just
-// the hero). Purely decorative (pointer-events disabled), stays subtle so
-// it never fights section content for attention, respects
-// prefers-reduced-motion, and cleans up its WebGL context on unmount.
-function PageParticleField() {
-  const mountRef = useRef(null)
+// ─── useReveal — scroll-triggered entrance, no-op under reduced motion ────
+function useReveal() {
+  const ref = useRef(null)
+  const reduce = useReducedMotion()
+  return {
+    ref,
+    initial: reduce ? false : { opacity: 0, y: 20 },
+    whileInView: { opacity: 1, y: 0 },
+    viewport: { once: true, margin: "-60px" },
+    transition: { duration: 0.5, ease: EASE },
+  }
+}
 
-  useEffect(() => {
-    const mount = mountRef.current
-    if (!mount) return
-
-    const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches
-    const isSmallScreen = window.innerWidth < 768
-
-    let width = mount.clientWidth
-    let height = mount.clientHeight
-    if (width === 0 || height === 0) return
-
-    // WebGL context creation can fail/throw outright -- most notably in
-    // Safari with Lockdown Mode enabled, which restricts WebGL and made
-    // `new THREE.WebGLRenderer(...)` throw synchronously here, crashing the
-    // ENTIRE landing page to the generic ErrorBoundary fallback ("Something
-    // went wrong") for every visitor in that mode, since this decorative,
-    // aria-hidden particle field was previously created unconditionally
-    // with no fallback. It's pure decoration (pointer-events disabled, not
-    // required for any content or functionality), so treat WebGL as
-    // progressive enhancement: if context creation fails for any reason,
-    // skip the effect entirely and let the rest of the landing page render
-    // normally with no particle field, exactly like the existing
-    // width===0/height===0 bail-out above.
-    let renderer
-    try {
-      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true })
-    } catch (err) {
-      console.warn("[PageParticleField] WebGL unavailable, skipping decorative particle field:", err)
-      return
-    }
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
-    renderer.setSize(width, height)
-    renderer.domElement.style.display = "block"
-    mount.appendChild(renderer.domElement)
-
-    const scene = new THREE.Scene()
-    const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100)
-    camera.position.z = 5.2
-
-    const PALETTE = [
-      [1.0, 0.341, 0.004],   // D.orange  #FF5701
-      [0.788, 0.659, 0.298], // D.gold    #C9A84C
-      [0.545, 0.361, 0.965], // D.violet  #8B5CF6
-    ]
-    // Deliberately sparse — this now sits behind the ENTIRE page (fixed),
-    // not just the hero, so density/opacity are tuned down to stay ambient
-    // and never compete with section content or reduce text contrast.
-    const count = isSmallScreen ? 55 : 130
-    const positions = new Float32Array(count * 3)
-    const colors = new Float32Array(count * 3)
-    for (let i = 0; i < count; i++) {
-      positions[i * 3]     = (Math.random() - 0.5) * 13
-      positions[i * 3 + 1] = (Math.random() - 0.5) * 8.5
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 6
-      const c = PALETTE[i % PALETTE.length]
-      colors[i * 3] = c[0]; colors[i * 3 + 1] = c[1]; colors[i * 3 + 2] = c[2]
-    }
-    const geometry = new THREE.BufferGeometry()
-    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3))
-    geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3))
-    const material = new THREE.PointsMaterial({
-      size: 0.05,
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.4,
-      sizeAttenuation: true,
-      depthWrite: false,
-    })
-    const points = new THREE.Points(geometry, material)
-    scene.add(points)
-
-    renderer.render(scene, camera)
-
-    let frameId = null
-    let targetX = 0, targetY = 0, camX = 0, camY = 0
-
-    const handlePointerMove = (e) => {
-      const rect = mount.getBoundingClientRect()
-      targetX = ((e.clientX - rect.left) / rect.width - 0.5) * 2
-      targetY = ((e.clientY - rect.top) / rect.height - 0.5) * 2
-    }
-
-    const animate = () => {
-      frameId = requestAnimationFrame(animate)
-      points.rotation.y += 0.0008
-      points.rotation.x += 0.0002
-      camX += (targetX * 0.35 - camX) * 0.02
-      camY += (-targetY * 0.25 - camY) * 0.02
-      camera.position.x = camX
-      camera.position.y = camY
-      camera.lookAt(scene.position)
-      renderer.render(scene, camera)
-    }
-
-    if (!prefersReducedMotion) {
-      window.addEventListener("mousemove", handlePointerMove)
-      animate()
-    }
-
-    const handleResize = () => {
-      if (!mount) return
-      width = mount.clientWidth
-      height = mount.clientHeight
-      if (width === 0 || height === 0) return
-      camera.aspect = width / height
-      camera.updateProjectionMatrix()
-      renderer.setSize(width, height)
-      if (prefersReducedMotion) renderer.render(scene, camera)
-    }
-    window.addEventListener("resize", handleResize)
-
-    return () => {
-      if (frameId) cancelAnimationFrame(frameId)
-      window.removeEventListener("mousemove", handlePointerMove)
-      window.removeEventListener("resize", handleResize)
-      geometry.dispose()
-      material.dispose()
-      renderer.dispose()
-      if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement)
-    }
-  }, [])
-
+// ─── Primitives ─────────────────────────────────────────────────────────
+function PrimaryButton({ children, onClick, href, target }) {
+  const Tag = href ? "a" : "button"
   return (
-    <div
-      ref={mountRef}
-      aria-hidden="true"
-      // 2026-08-12 Safari fix: this fixed, transparent, continuously-
-      // repainting WebGL canvas sits directly behind ~30 stacked
-      // `backdrop-filter: blur()` panels throughout the page (every card,
-      // badge, and pricing tile). WebKit has a well-documented compositor
-      // bug where a fixed-position layer changing every animation frame
-      // underneath multiple backdrop-filter layers causes visible
-      // strobing/flicker ("vibrating and flashing") during scroll and
-      // pointer movement — Blink (Chrome) composites this pattern fine,
-      // which is why the symptom was Safari-only. `translateZ(0)` +
-      // `willChange` forces this canvas onto its own stable GPU layer
-      // instead of being re-composited together with the blur stack above
-      // it on every frame. Combined with adding the missing
-      // `-webkit-backdrop-filter` prefix to every blur panel (below), this
-      // is the standard, minimal fix for this exact WebKit bug class —
-      // does not change appearance or behavior in any browser.
+    <Tag
+      href={href} target={target} rel={target ? "noopener noreferrer" : undefined}
+      onClick={onClick}
       style={{
-        position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden",
-        transform: "translateZ(0)", WebkitTransform: "translateZ(0)",
-        willChange: "transform", WebkitBackfaceVisibility: "hidden", backfaceVisibility: "hidden",
+        display: "inline-flex", alignItems: "center", gap: 8,
+        padding: "12px 20px", borderRadius: 10, border: "none",
+        background: T.accent, color: "#fff", fontSize: 14, fontWeight: 600,
+        cursor: "pointer", fontFamily: "'DM Sans',sans-serif", textDecoration: "none",
+        transition: "background 150ms ease, transform 150ms ease",
       }}
-    />
+      onMouseEnter={e => { e.currentTarget.style.background = T.accentDark }}
+      onMouseLeave={e => { e.currentTarget.style.background = T.accent }}
+      onMouseDown={e => { e.currentTarget.style.transform = "scale(0.98)" }}
+      onMouseUp={e => { e.currentTarget.style.transform = "scale(1)" }}
+    >{children}</Tag>
   )
 }
 
-// ─── useReveal ─────────────────────────────────────────────────────────────
-// Scroll-triggered entrance hook — returns [ref, isVisible] for a section to
-// spread onto itself directly (avoids wrapping every section in an extra
-// element). Uses IntersectionObserver (no per-frame scroll-listener cost),
-// fires once per mount (unobserves itself after first intersection so it
-// never re-triggers on scroll-up), and reports visible=true immediately when
-// prefers-reduced-motion is set so motion-sensitive users see content as-is.
-function useReveal() {
-  const ref = useRef(null)
-  const [visible, setVisible] = useState(false)
-
-  useEffect(() => {
-    const node = ref.current
-    if (!node) return
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) {
-      setVisible(true)
-      return
-    }
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setVisible(true)
-            observer.unobserve(node)
-          }
-        })
-      },
-      { threshold: 0.12, rootMargin: "0px 0px -60px 0px" }
-    )
-    observer.observe(node)
-    return () => observer.disconnect()
-  }, [])
-
-  return [ref, visible]
+function GhostButton({ children, onClick, href, target }) {
+  const Tag = href ? "a" : "button"
+  return (
+    <Tag
+      href={href} target={target} rel={target ? "noopener noreferrer" : undefined}
+      onClick={onClick}
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 8,
+        padding: "12px 20px", borderRadius: 10, border: `1px solid ${T.border}`,
+        background: "transparent", color: T.ink, fontSize: 14, fontWeight: 600,
+        cursor: "pointer", fontFamily: "'DM Sans',sans-serif", textDecoration: "none",
+        transition: "border-color 150ms ease",
+      }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = T.borderHover }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = T.border }}
+    >{children}</Tag>
+  )
 }
 
-// ─── EloSparkline ──────────────────────────────────────────────────────────
-function EloSparkline({ points, color = "#FF5701", width = 340, height = 78 }) {
+function Eyebrow({ children }) {
+  return (
+    <div style={{
+      fontSize: 12, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase",
+      color: T.accent, marginBottom: 12, fontFamily: "'DM Sans',sans-serif",
+    }}>{children}</div>
+  )
+}
+
+// ─── IllustrativeTag — every fictional persona/company/mission on this page
+// carries this, consistently, so nothing reads as real user or platform
+// data. Quiet by design (DESIGN.md's "quiet, not loud" rule) — plain text,
+// no border/background ceremony.
+function IllustrativeTag({ style }) {
+  return (
+    <span style={{ fontSize: 10.5, color: T.ink3, fontWeight: 500, ...style }}>Illustrative example</span>
+  )
+}
+
+// ─── Hover-lift card wrapper — the entire hover vocabulary for this page ──
+// hoverColor: optional per-path accent (pathIdentity.js) for the four
+// signup-path cards — every other LiftCard use stays neutral (T.borderHover).
+function LiftCard({ children, style, onClick, as = "div", hoverColor }) {
+  const [hov, setHov] = useState(false)
+  const Tag = as
+  return (
+    <Tag
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        background: T.surface, border: `1px solid ${hov ? (hoverColor || T.borderHover) : T.border}`,
+        borderRadius: 16, transform: hov ? "translateY(-4px)" : "translateY(0)",
+        transition: "transform 200ms cubic-bezier(0.16,1,0.3,1), border-color 200ms ease",
+        cursor: onClick ? "pointer" : "default", textAlign: "left",
+        fontFamily: "inherit", textDecoration: "none", color: "inherit",
+        ...style,
+      }}
+    >{children}</Tag>
+  )
+}
+
+// ─── EloSparkline — kept, restyled flat (no glow, no drop-shadow) ─────────
+function EloSparkline({ points, width = 340, height = 64 }) {
+  const reduce = useReducedMotion()
   if (!points || points.length < 2) return null
   const min = Math.min(...points), max = Math.max(...points), range = max - min || 1
   const xs = points.map((_, i) => (i / (points.length - 1)) * width)
-  const ys = points.map((v) => height - ((v - min) / range) * (height * 0.78) - height * 0.08)
+  const ys = points.map(v => height - ((v - min) / range) * (height * 0.8) - height * 0.1)
   const path = xs.map((x, i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${ys[i].toFixed(1)}`).join(" ")
   const fill = `${path} L${width},${height} L0,${height} Z`
   return (
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display: "block", width: "100%" }}>
       <defs>
-        <linearGradient id="landingEloGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.38" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        <linearGradient id="eloFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={T.accent} stopOpacity="0.14" />
+          <stop offset="100%" stopColor={T.accent} stopOpacity="0" />
         </linearGradient>
       </defs>
-      <path d={fill} fill="url(#landingEloGrad)" />
-      <path d={path} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
-      <circle cx={xs[xs.length - 1]} cy={ys[ys.length - 1]} r="4.5" fill={color} style={{ filter:`drop-shadow(0 0 6px ${color})` }} />
+      <motion.path d={fill} fill="url(#eloFill)"
+        initial={reduce ? false : { opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.4, delay: 0.7, ease: EASE }}
+      />
+      <motion.path d={path} fill="none" stroke={T.accent} strokeWidth="2" strokeLinecap="round"
+        initial={reduce ? false : { pathLength: 0 }}
+        whileInView={{ pathLength: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.9, ease: EASE }}
+      />
+      <motion.circle cx={xs[xs.length - 1]} cy={ys[ys.length - 1]} fill={T.accent}
+        initial={reduce ? false : { r: 0, opacity: 0 }}
+        whileInView={{ r: 3.5, opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.25, delay: 0.9, ease: EASE }}
+      />
     </svg>
   )
 }
 
-// ─── PortfolioCard ─────────────────────────────────────────────────────────
-function PortfolioCard({ task }) {
-  const [open, setOpen] = useState(false)
-  const diffColor = { Easy: D.green, Medium: D.amber, Hard: "#DC2626" }[task.difficulty] || D.orange
+// Illustrative growth arc — reused by both the Claim vs. Proof section's
+// chart and the Student journey card's mini sparkline, so the "1,847"
+// story is the same thread in both places, not two different numbers.
+const ELO_HISTORY = [400, 420, 450, 490, 560, 640, 750, 900, 1050, 1200, 1400, 1620, 1847]
+
+// ─── Hero workflow diagram — the "live animated workflow" ─────────────────
+const FLOW_NODES = [
+  { icon: ClipboardCheck, label: "Assessment" },
+  { icon: Network,        label: "Skill Graph" },
+  { icon: BookOpen,       label: "SkillStudio" },
+  { icon: Swords,         label: "Arena" },
+  { icon: FolderCheck,    label: "Portfolio" },
+  { icon: Search,         label: "Recruiters" },
+]
+
+function WorkflowDiagram() {
+  const reduce = useReducedMotion()
   return (
     <div style={{
-      background: open ? "rgba(255,87,1,0.05)" : D.glass,
-      border: `1px solid ${open ? D.orangeMid : D.border}`,
-      borderRadius: 22, overflow: "hidden",
-      boxShadow: open ? `0 12px 40px rgba(255,87,1,0.12), 0 0 0 1px ${D.orangeMid}` : `0 4px 24px rgba(0,0,0,0.4)`,
-      backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)",
-      transition: "all 200ms cubic-bezier(0.16,1,0.3,1)"
+      background: T.surfaceRaised, border: `1px solid ${T.border}`, borderRadius: 20,
+      padding: "40px 28px", display: "flex", flexDirection: "column", gap: 4,
     }}>
-      <div onClick={() => setOpen(o => !o)} style={{ padding:"18px 20px", cursor:"pointer", display:"flex", alignItems:"center", gap:14 }}>
-        <div style={{ width:42, height:42, background:`${diffColor}18`, border:`1px solid ${diffColor}30`, borderRadius:12, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{task.icon}</div>
-        <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:18, fontWeight:700, color:D.text1, lineHeight:1.15, marginBottom:5 }}>{task.title}</div>
-          <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
-            <span style={{ fontSize:10, fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase", color:diffColor, background:`${diffColor}14`, border:`1px solid ${diffColor}28`, borderRadius:999, padding:"4px 8px", fontFamily:"'DM Mono',monospace" }}>{task.difficulty}</span>
-            <span style={{ fontSize:11, color:D.text3, fontFamily:"'DM Mono',monospace" }}>{task.type} · {task.date}</span>
+      {FLOW_NODES.map((node, i) => {
+        const Icon = node.icon
+        return (
+          <div key={node.label} style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 40 }}>
+              <motion.div
+                initial={reduce ? false : { opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.4, delay: reduce ? 0 : i * 0.35, ease: EASE }}
+                style={{
+                  width: 40, height: 40, borderRadius: 10, background: T.surface,
+                  border: `1px solid ${T.border}`, display: "flex", alignItems: "center",
+                  justifyContent: "center", flexShrink: 0,
+                }}
+              >
+                <Icon size={18} color={T.accent} strokeWidth={1.75} />
+              </motion.div>
+              {i < FLOW_NODES.length - 1 && (
+                <motion.div
+                  initial={reduce ? false : { scaleY: 0 }}
+                  animate={{ scaleY: 1 }}
+                  transition={{ duration: 0.3, delay: reduce ? 0 : i * 0.35 + 0.25, ease: EASE }}
+                  style={{ width: 1, height: 28, background: T.border, transformOrigin: "top" }}
+                />
+              )}
+            </div>
+            <motion.span
+              initial={reduce ? false : { opacity: 0, x: -6 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.4, delay: reduce ? 0 : i * 0.35 + 0.1, ease: EASE }}
+              style={{ fontSize: 15, fontWeight: 600, color: T.ink, paddingBottom: i < FLOW_NODES.length - 1 ? 28 : 0 }}
+            >{node.label}</motion.span>
           </div>
-        </div>
-        <div style={{ textAlign:"right", flexShrink:0 }}>
-          <div style={{ fontFamily:"'DM Mono',monospace", fontSize:24, fontWeight:800, color:diffColor, lineHeight:1 }}>{task.score}</div>
-          <div style={{ fontSize:10, color:diffColor, opacity:0.7, letterSpacing:"0.12em", textTransform:"uppercase", fontFamily:"'DM Mono',monospace", marginTop:3 }}>Score</div>
-        </div>
-        <span style={{ color:D.text3, fontSize:11, transition:"transform 0.2s", display:"inline-block", transform:open?"rotate(180deg)":"rotate(0)" }}>▼</span>
+        )
+      })}
+      <motion.p
+        initial={reduce ? false : { opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4, delay: reduce ? 0 : (FLOW_NODES.length - 1) * 0.35 + 0.5, ease: EASE }}
+        style={{ fontSize: 12.5, color: T.ink3, margin: "12px 0 0", paddingTop: 16, borderTop: `1px solid ${T.hairline}` }}
+      >Every step is logged. Nothing is self-reported.</motion.p>
+    </div>
+  )
+}
+
+// ─── How It Works — one line, each node expands ────────────────────────────
+const HOW_IT_WORKS = [
+  { icon: ClipboardCheck, label: "Assessment", detail: "A short calibration sets your starting ELO — no guessing your own level." },
+  { icon: BookOpen,       label: "SkillStudio", detail: "Targeted lessons close the exact gaps your assessment found, not a generic course path." },
+  { icon: Swords,         label: "Arena",       detail: "Real, scored tasks from real company scenarios. Every submission updates your ELO." },
+  { icon: FolderCheck,    label: "Aura",        detail: "Your living skill graph and portfolio — every Arena task becomes verifiable proof." },
+  { icon: Search,         label: "Recruiters",  detail: "Recruiters search by verified ELO and real task history, not keywords on a resume." },
+]
+
+function HowItWorksLine() {
+  const [openIdx, setOpenIdx] = useState(null)
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 0, alignItems: "flex-start" }}>
+      {HOW_IT_WORKS.map((step, i) => {
+        const Icon = step.icon
+        const open = openIdx === i
+        return (
+          <div key={step.label} style={{ display: "flex", alignItems: "flex-start", flex: "1 1 180px", minWidth: 160 }}>
+            <button
+              onClick={() => setOpenIdx(open ? null : i)}
+              style={{
+                background: "none", border: "none", cursor: "pointer", textAlign: "left",
+                padding: 0, fontFamily: "inherit", width: "100%",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 9, flexShrink: 0,
+                  background: open ? T.accentDim : T.surfaceRaised,
+                  border: `1px solid ${open ? T.accent : T.border}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "background 150ms ease, border-color 150ms ease",
+                }}>
+                  <Icon size={16} color={open ? T.accent : T.ink2} strokeWidth={1.75} />
+                </div>
+                <span style={{ fontSize: 14, fontWeight: 600, color: T.ink }}>{step.label}</span>
+              </div>
+              <motion.div
+                initial={false}
+                animate={{ height: open ? "auto" : 0, opacity: open ? 1 : 0 }}
+                transition={{ duration: 0.25, ease: EASE }}
+                style={{ overflow: "hidden" }}
+              >
+                <p style={{ fontSize: 13, color: T.ink2, lineHeight: 1.6, margin: "0 24px 4px 0" }}>{step.detail}</p>
+              </motion.div>
+            </button>
+            {i < HOW_IT_WORKS.length - 1 && (
+              <div style={{ height: 1, background: T.border, flex: 1, marginTop: 18, minWidth: 16 }} />
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── Arena preview — Company → Mission → Notebook → Output → AI Eval → Verified
+// Illustrative only — fictional student, fictional company, matching every
+// other demo figure on this page (never presented as live platform data).
+// -3 ELO on the fail path is the real medium-difficulty fail penalty from
+// CAPABILIO_ARCHITECTURE.md §8.4, not an invented number.
+const ARENA_SCRIPTS = {
+  pass: {
+    code: [
+      'cancelled = orders[orders.status == "cancelled"]',
+      'late = cancelled[(cancelled.day.isin(["Sat","Sun"])) & (cancelled.hour >= 21)]',
+      'late.groupby("reason").order_id.count().sort_values(ascending=False).head(3)',
+    ],
+    output: [
+      ["delivery_partner_unavailable", 342],
+      ["restaurant_closed", 198],
+      ["payment_failed", 87],
+    ],
+    passed: true, score: 88, eloDelta: 16,
+    feedback: "Correct filter logic and a clean groupby — you identified delivery-partner availability as the dominant driver.",
+  },
+  fail: {
+    code: [
+      'cancelled = orders[orders.status == "cancelled"]',
+      'late = cancelled[(cancelled.day.isin(["Sat","Sun"])) & (cancelled.hour >= 12)]',
+      'late.groupby("reason").order_id.count().sort_values(ascending=False).head(3)',
+    ],
+    output: [
+      ["restaurant_closed", 511],
+      ["delivery_partner_unavailable", 289],
+      ["payment_failed", 140],
+    ],
+    passed: false, score: 34, eloDelta: -3,
+    feedback: "Your filter used hour ≥ 12, not hour ≥ 21 — this captures afternoon cancellations, not the weekend-night spike the mission asked about. This didn't pass.",
+  },
+}
+const ARENA_ELO_BASE = 1324
+
+// Three-state Run/Submit beat (idle → running → executed) — a small,
+// self-contained timer distinct from the ELO tween above; skipped entirely
+// under reduced motion (renders straight to "executed").
+function ArenaRunBeat({ reduce }) {
+  const [phase, setPhase] = useState(reduce ? "done" : "idle")
+  useEffect(() => {
+    if (reduce) return
+    const t1 = setTimeout(() => setPhase("running"), 700)
+    const t2 = setTimeout(() => setPhase("done"), 1100)
+    return () => { clearTimeout(t1); clearTimeout(t2) }
+  }, [reduce])
+  const Icon = phase === "running" ? Loader2 : phase === "done" ? Check : Play
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: phase === "done" ? T.success : T.ink2, margin: "2px 0 14px" }}>
+      <Icon size={13} strokeWidth={2.5} style={phase === "running" ? { animation: "arenaSpin 0.6s linear infinite" } : undefined} />
+      {phase === "idle" ? "Run notebook" : phase === "running" ? "Running…" : "Executed"}
+    </div>
+  )
+}
+
+function ArenaPreview() {
+  const [outcome, setOutcome] = useState("pass")
+  const reduce = useReducedMotion()
+  const ref = useRef(null)
+  const inView = useInView(ref, { once: true, margin: "-60px" })
+  const script = ARENA_SCRIPTS[outcome]
+  const eloTarget = ARENA_ELO_BASE + script.eloDelta
+  const eloValue = useCountUp(eloTarget, { start: ARENA_ELO_BASE, duration: 0.7, delay: 2.7, active: inView, reduce })
+  const VerdictIcon = script.passed ? ShieldCheck : XCircle
+  const verdictColor = script.passed ? T.success : T.error
+  const verdictDim = script.passed ? T.successDim : T.errorDim
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+        {[["pass", "Passing attempt"], ["fail", "Failing attempt"]].map(([key, label]) => (
+          <button key={key} onClick={() => setOutcome(key)} style={{
+            padding: "5px 11px", borderRadius: 999, border: `1px solid ${outcome === key ? T.accent : T.border}`,
+            background: outcome === key ? T.accentDim : "transparent",
+            color: outcome === key ? T.accent : T.ink3, fontSize: 11.5, fontWeight: 600,
+            cursor: "pointer", fontFamily: "inherit",
+          }}>{label}</button>
+        ))}
       </div>
-      {open && (
-        <div style={{ padding:"0 20px 20px", borderTop:`1px solid ${D.border}` }}>
-          <div style={{ background:"rgba(255,87,1,0.06)", border:"1px solid rgba(255,87,1,0.14)", padding:"12px 14px", marginTop:16, marginBottom:12, borderRadius:14 }}>
-            <div style={{ fontSize:10, fontWeight:800, color:D.orange, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:6, fontFamily:"'DM Mono',monospace" }}>Scenario</div>
-            <div style={{ fontSize:13, color:D.text2, lineHeight:1.72 }}>{task.scenario}</div>
+      <div ref={ref} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, overflow: "hidden" }}>
+        <div style={{ padding: "16px 20px", borderBottom: `1px solid ${T.hairline}`, display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 28, height: 28, borderRadius: 7, background: T.surfaceRaised, border: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: T.ink2 }}>S</div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>Swiggy — Data Analyst mission</div>
+            <IllustrativeTag />
           </div>
-          <div style={{ background:"#0D0D0D", borderRadius:14, padding:"12px 14px", fontFamily:"'DM Mono',monospace", fontSize:12, color:"#BBF7D0", marginBottom:12, border:`1px solid ${D.border}`, lineHeight:1.7, whiteSpace:"pre-wrap" }}>{task.code}</div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-            <div style={{ background:"rgba(22,163,74,0.07)", border:"1px solid rgba(22,163,74,0.16)", borderRadius:14, padding:"10px 12px" }}>
-              <div style={{ fontSize:10, fontWeight:800, color:D.green, textTransform:"uppercase", letterSpacing:"0.12em", marginBottom:5, fontFamily:"'DM Mono',monospace" }}>Strength</div>
-              <div style={{ fontSize:12, color:D.text2, lineHeight:1.6 }}>{task.strength}</div>
-            </div>
-            <div style={{ background:"rgba(217,119,6,0.07)", border:"1px solid rgba(217,119,6,0.16)", borderRadius:14, padding:"10px 12px" }}>
-              <div style={{ fontSize:10, fontWeight:800, color:D.amber, textTransform:"uppercase", letterSpacing:"0.12em", marginBottom:5, fontFamily:"'DM Mono',monospace" }}>Improve</div>
-              <div style={{ fontSize:12, color:D.text2, lineHeight:1.6 }}>{task.improve}</div>
-            </div>
+        </div>
+        <div key={outcome + String(inView)} style={{ padding: 20 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: T.ink3, marginBottom: 6 }}>Mission</div>
+          <p style={{ fontSize: 13.5, color: T.ink2, lineHeight: 1.6, margin: "0 0 16px" }}>
+            Weekend order cancellations spike after 9 PM. Find the dominant cause in the last 30 days of order data.
+          </p>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: T.ink3, marginBottom: 6 }}>Notebook</div>
+          <div style={{
+            background: T.surfaceRaised, border: `1px solid ${T.hairline}`, borderRadius: 10,
+            padding: "12px 14px", fontFamily: "'DM Mono',monospace", fontSize: 12, color: T.ink,
+            lineHeight: 1.7, marginBottom: 4, overflowX: "auto",
+          }}>
+            {script.code.map((line, i) => (
+              <motion.div key={i}
+                initial={reduce || !inView ? false : { opacity: 0, x: -6 }}
+                animate={inView ? { opacity: 1, x: 0 } : {}}
+                transition={{ duration: 0.25, delay: reduce ? 0 : i * 0.15 }}
+                style={{ whiteSpace: "pre" }}
+              >{line}</motion.div>
+            ))}
           </div>
-          {task.eloDelta > 0 && <div style={{ fontSize:12, color:D.green, fontWeight:700, marginTop:12, fontFamily:"'DM Mono',monospace" }}>+{task.eloDelta} ELO earned</div>}
+
+          <ArenaRunBeat reduce={reduce || !inView} />
+
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: T.ink3, marginBottom: 6 }}>Output</div>
+          <div style={{
+            background: T.ink, borderRadius: 10, padding: "12px 14px",
+            fontFamily: "'DM Mono',monospace", fontSize: 12, color: "#D4F5DE", lineHeight: 1.7, marginBottom: 16,
+          }}>
+            {script.output.map(([label, count], i) => (
+              <motion.div key={label}
+                initial={reduce || !inView ? false : { opacity: 0 }}
+                animate={inView ? { opacity: 1 } : {}}
+                transition={{ duration: 0.2, delay: reduce ? 0 : 1.15 + i * 0.12 }}
+                style={{ display: "flex", justifyContent: "space-between", gap: 12 }}
+              >
+                <span>{label}</span><span>{count}</span>
+              </motion.div>
+            ))}
+          </div>
+
+          <motion.div
+            initial={reduce || !inView ? false : { opacity: 0, scale: 0.96 }}
+            animate={inView ? { opacity: 1, scale: 1 } : {}}
+            transition={{ duration: 0.25, delay: reduce ? 0 : 1.9 }}
+            style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: verdictDim, border: `1px solid ${verdictColor}30`, borderRadius: 10, marginBottom: 10 }}
+          >
+            <VerdictIcon size={16} color={verdictColor} strokeWidth={2} />
+            <span style={{ fontSize: 13, fontWeight: 700, color: verdictColor }}>{script.passed ? "Verified" : "Not verified"}</span>
+            <span style={{ fontSize: 12, color: T.ink3, marginLeft: "auto" }}>Score {script.score}</span>
+          </motion.div>
+
+          <motion.div
+            initial={reduce || !inView ? false : { opacity: 0 }}
+            animate={inView ? { opacity: 1 } : {}}
+            transition={{ duration: 0.25, delay: reduce ? 0 : 2.35 }}
+            style={{ padding: "12px 14px", background: T.surfaceRaised, border: `1px solid ${T.hairline}`, borderRadius: 10, marginBottom: 14 }}
+          >
+            <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: T.ink3, marginBottom: 4 }}>Feedback</div>
+            <p style={{ fontSize: 12.5, color: T.ink2, lineHeight: 1.55, margin: 0 }}>{script.feedback}</p>
+          </motion.div>
+
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 600, color: T.ink, fontVariantNumeric: "tabular-nums" }}>{eloValue.toLocaleString()}</div>
+              <span style={{ fontSize: 10, color: T.ink3, letterSpacing: "0.05em", textTransform: "uppercase" }}>ELO</span>
+              <motion.span
+                initial={reduce || !inView ? false : { opacity: 0 }}
+                animate={inView ? { opacity: 1 } : {}}
+                transition={{ duration: 0.2, delay: reduce ? 0 : 3.1 }}
+                style={{ fontSize: 12, fontWeight: 600, color: script.passed ? T.success : T.error }}
+              >{script.passed ? `+${script.eloDelta}` : script.eloDelta}</motion.span>
+            </div>
+            <motion.div
+              initial={reduce || !inView ? false : { opacity: 0 }}
+              animate={inView ? { opacity: 1 } : {}}
+              transition={{ duration: 0.2, delay: reduce ? 0 : 3.5 }}
+              style={{ display: "flex", alignItems: "center", gap: 6 }}
+            >
+              <motion.div
+                initial={reduce || !inView ? false : { scale: 0.85 }}
+                animate={inView && script.passed ? { scale: [0.85, 1.15, 1] } : {}}
+                transition={{ duration: 0.4, delay: reduce ? 0 : 3.6 }}
+                style={{
+                  width: 18, height: 18, borderRadius: "50%",
+                  background: script.passed ? T.accent : "transparent",
+                  border: `1.5px solid ${script.passed ? T.accent : T.border}`,
+                }}
+              />
+              <span style={{ fontSize: 11, color: T.ink3 }}>SQL skill</span>
+            </motion.div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── SkillStudio preview — an original animated skill graph ───────────────
+function SkillStudioPreview() {
+  const reveal = useReveal()
+  const reduce = useReducedMotion()
+  const nodes = [
+    { id: "py",  label: "Python",         x: 40,  y: 40,  mastered: true },
+    { id: "sql", label: "SQL",            x: 200, y: 24,  mastered: true },
+    { id: "api", label: "APIs",           x: 320, y: 70,  mastered: false },
+    { id: "sd",  label: "System Design",  x: 150, y: 120, mastered: false },
+  ]
+  const edges = [["py", "sql"], ["sql", "api"], ["py", "sd"], ["sd", "api"]]
+  const byId = Object.fromEntries(nodes.map(n => [n.id, n]))
+  return (
+    <motion.div ref={reveal.ref} {...reveal}
+      style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: 24 }}
+    >
+      <div style={{ fontSize: 13, fontWeight: 600, color: T.ink, marginBottom: 4 }}>Your skill graph</div>
+      <p style={{ fontSize: 12.5, color: T.ink3, margin: "0 0 4px" }}>Grows with every SkillStudio lesson and Arena mission.</p>
+      <IllustrativeTag style={{ display: "block", marginBottom: 12 }} />
+      <svg width="100%" height="160" viewBox="0 0 360 160" style={{ display: "block" }}>
+        {edges.map(([a, b], i) => {
+          const n1 = byId[a], n2 = byId[b]
+          return (
+            <motion.line
+              key={i} x1={n1.x} y1={n1.y} x2={n2.x} y2={n2.y}
+              stroke={T.border} strokeWidth="1.5"
+              initial={reduce ? false : { pathLength: 0 }}
+              whileInView={{ pathLength: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: i * 0.15, ease: EASE }}
+            />
+          )
+        })}
+        {nodes.map((n, i) => (
+          <g key={n.id}>
+            <motion.circle
+              cx={n.x} cy={n.y} r={n.mastered ? 7 : 6}
+              fill={n.mastered ? T.accent : T.surface}
+              stroke={n.mastered ? T.accent : T.ink3} strokeWidth="1.5"
+              initial={reduce ? false : { scale: 0 }}
+              whileInView={{ scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.35, delay: 0.5 + i * 0.12, ease: EASE }}
+            />
+            <text x={n.x} y={n.y - 14} textAnchor="middle" fontSize="11" fontWeight="600" fill={T.ink2} fontFamily="'DM Sans',sans-serif">{n.label}</text>
+          </g>
+        ))}
+      </svg>
+    </motion.div>
+  )
+}
+
+// ─── Recruiter preview — what a recruiter actually receives ───────────────
+function RecruiterPreview() {
+  const reveal = useReveal()
+  return (
+    <motion.div ref={reveal.ref} {...reveal}
+      style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: 24 }}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: T.ink }}>Ananya Rao</div>
+          <div style={{ fontSize: 12.5, color: T.ink3, marginBottom: 3 }}>Data Analyst · Verified</div>
+          <IllustrativeTag />
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 22, fontWeight: 600, color: T.accent, lineHeight: 1 }}>1,340</div>
+          <div style={{ fontSize: 10, color: T.ink3, letterSpacing: "0.05em", textTransform: "uppercase", marginTop: 3 }}>ELO</div>
+        </div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {[
+          { t: "Swiggy — cancellation root-cause", s: 88 },
+          { t: "Razorpay — payment failure analysis", s: 92 },
+          { t: "BigBasket — inventory SQL audit", s: 79 },
+        ].map(row => (
+          <div key={row.t} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", background: T.surfaceRaised, border: `1px solid ${T.hairline}`, borderRadius: 8 }}>
+            <span style={{ fontSize: 12.5, color: T.ink2 }}>{row.t}</span>
+            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12.5, fontWeight: 600, color: T.ink }}>{row.s}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 14, color: T.success, fontSize: 12, fontWeight: 600 }}>
+        <ShieldCheck size={14} strokeWidth={2} /> Every score links back to the real submission — nothing self-reported.
+      </div>
+    </motion.div>
+  )
+}
+
+// ─── Claim vs. proof section — ELO number ticks up, sparkline draws itself,
+// claim/reality rows stagger in after, all keyed off one scroll-into-view
+// trigger so the eye lands on the number first, then the supporting rows.
+function ClaimVsProofSection({ problemRows, eloHistory }) {
+  const reduce = useReducedMotion()
+  const ref = useRef(null)
+  const inView = useInView(ref, { once: true, margin: "-80px" })
+  const eloTarget = eloHistory[eloHistory.length - 1]
+  const eloValue = useCountUp(eloTarget, { start: eloHistory[0], duration: 0.9, active: inView, reduce })
+
+  return (
+    <section ref={ref} style={{ padding: "96px 0" }}>
+      <div className="lp-container lp-grid-2" style={{ alignItems: "center", gap: 64 }}>
+        <div>
+          <Eyebrow>Claim vs. proof</Eyebrow>
+          <h2 style={{ fontSize: "clamp(28px,3.6vw,40px)", fontWeight: 700, letterSpacing: "-0.015em", color: T.ink, margin: "0 0 16px" }}>A number that can&apos;t be faked.</h2>
+          <p style={{ fontSize: 15, color: T.ink2, lineHeight: 1.65, marginBottom: 24 }}>
+            Like chess.com — ELO is earned through real performance. It rises when you solve hard problems, and it cannot be self-reported or inflated.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {problemRows.map((r, i) => (
+              <motion.div key={r.claim}
+                initial={reduce ? false : { opacity: 0, y: 6 }}
+                animate={inView ? { opacity: 1, y: 0 } : {}}
+                transition={{ duration: 0.3, delay: reduce ? 0 : 0.9 + i * 0.12, ease: EASE }}
+                style={{ display: "grid", gridTemplateColumns: "1fr 1fr", border: `1px solid ${T.border}`, borderRadius: 10, overflow: "hidden" }}
+              >
+                <div style={{ padding: "12px 14px", fontSize: 13, color: T.ink3, fontStyle: "italic", borderRight: `1px solid ${T.hairline}` }}>{r.claim}</div>
+                <div style={{ padding: "12px 14px", fontSize: 13, color: T.error }}>{r.reality}</div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+        <div style={{ background: T.surfaceRaised, border: `1px solid ${T.border}`, borderRadius: 16, padding: 28 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <TrendingUp size={16} color={T.accent} strokeWidth={2} />
+            <span style={{ fontSize: 12, fontWeight: 600, color: T.ink3, letterSpacing: "0.04em", textTransform: "uppercase" }}>ELO growth</span>
+          </div>
+          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 42, fontWeight: 600, color: T.ink, margin: "8px 0 6px", fontVariantNumeric: "tabular-nums" }}>{eloValue.toLocaleString()}</div>
+          <p style={{ fontSize: 12.5, color: T.ink3, margin: "0 0 16px" }}>Every point on this line is a real submission.</p>
+          <EloSparkline points={eloHistory} />
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ─── Journey cards ─────────────────────────────────────────────────────────
+// Sourced from pathIdentity.js's PRIMARY_PATHS (shared with AuthModal's
+// in-modal chooser step) — see that file for why "path"/"instType" are
+// kept separate from each card's own "key"/"title".
+
+// Persona per card — kept local to this page (not pathIdentity.js) since
+// AuthModal's compact step-1 chooser doesn't need personas, only these
+// marketing cards do. Checked against every other name on this page
+// (RecruiterPreview's Ananya Rao; the Network section's Rohan Mehta, Dr.
+// Priya Singh, Arjun Kapoor, BITS Pilani) — all four below are distinct,
+// each used exactly once.
+const JOURNEY_PERSONAS = {
+  student: { name: "Meera Iyer", role: "Student · Computer Science" },
+  professional: { name: "Vikram Nair", role: "Professional · Full Stack Developer" },
+  executive: { name: "Devika Shah", role: "Executive · Founder" },
+  institution: { name: "VIT Vellore", role: "College" },
+}
+
+// One reused animated mechanism per path — same patterns already built for
+// the "Show, don't explain" section (sparkline draw, node-graph draw,
+// verified-badge pop), miniaturized. No fabricated stat grids, no numbers
+// presented as real — student's sparkline reuses the exact same
+// illustrative ELO_HISTORY the Claim vs. Proof section already uses.
+function JourneyProof({ pathKey, color }) {
+  const reduce = useReducedMotion()
+
+  if (pathKey === "student") {
+    return (
+      <div>
+        <EloSparkline points={ELO_HISTORY} width={200} height={36} />
+        <p style={{ fontSize: 11.5, color: T.ink3, margin: "6px 0 0" }}>ELO grows with every submission.</p>
+      </div>
+    )
+  }
+
+  if (pathKey === "professional") {
+    const nodes = [{ x: 20, y: 26 }, { x: 100, y: 12 }, { x: 180, y: 30 }]
+    return (
+      <div>
+        <svg width="200" height="40" viewBox="0 0 200 40" style={{ display: "block" }}>
+          {[[0, 1], [1, 2]].map(([a, b], i) => (
+            <motion.line key={i} x1={nodes[a].x} y1={nodes[a].y} x2={nodes[b].x} y2={nodes[b].y}
+              stroke={T.border} strokeWidth="1.5"
+              initial={reduce ? false : { pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: i * 0.15, ease: EASE }}
+            />
+          ))}
+          {nodes.map((n, i) => (
+            <motion.circle key={i} cx={n.x} cy={n.y} fill={color} stroke={color} strokeWidth="1.5"
+              initial={reduce ? false : { r: 0 }} whileInView={{ r: 4.5 }} viewport={{ once: true }}
+              transition={{ duration: 0.3, delay: 0.4 + i * 0.12, ease: EASE }}
+            />
+          ))}
+        </svg>
+        <p style={{ fontSize: 11.5, color: T.ink3, margin: "2px 0 0" }}>Skills stay verified automatically.</p>
+      </div>
+    )
+  }
+
+  if (pathKey === "executive") {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <motion.div
+          initial={reduce ? false : { scale: 0, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }} viewport={{ once: true }}
+          transition={{ duration: 0.35, ease: EASE }}
+          style={{ width: 30, height: 30, borderRadius: 9, background: withAlpha(color, 0.12), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+        >
+          <ShieldCheck size={15} color={color} strokeWidth={2} />
+        </motion.div>
+        <p style={{ fontSize: 11.5, color: T.ink3, margin: 0 }}>Every profile identity-verified before it goes live.</p>
+      </div>
+    )
+  }
+
+  // institution
+  const bars = [{ label: "Cohort avg", pct: 55 }, { label: "Top scorer", pct: 90 }]
+  return (
+    <div>
+      {bars.map((b, i) => (
+        <div key={b.label} style={{ marginBottom: i === 0 ? 6 : 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5, color: T.ink3, marginBottom: 3 }}>
+            <span>{b.label}</span>
+          </div>
+          <div style={{ height: 5, borderRadius: 99, background: T.hairline, overflow: "hidden" }}>
+            <motion.div
+              initial={reduce ? false : { width: 0 }} whileInView={{ width: `${b.pct}%` }} viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: i * 0.15, ease: EASE }}
+              style={{ height: "100%", borderRadius: 99, background: color }}
+            />
+          </div>
+        </div>
+      ))}
+      <p style={{ fontSize: 11.5, color: T.ink3, margin: "6px 0 0" }}>Every bar reflects real submitted work.</p>
+    </div>
+  )
+}
+
+function JourneyCard({ item, onOpen }) {
+  const Icon = item.icon
+  const persona = JOURNEY_PERSONAS[item.key]
+  return (
+    <LiftCard
+      onClick={() => onOpen(item.path, "journey-card", item.instType ? { instType: item.instType } : {})}
+      style={{ padding: 28 }}
+      hoverColor={withAlpha(item.color, 0.5)}
+    >
+      <div style={{ width: 44, height: 44, borderRadius: 11, background: withAlpha(item.color, 0.12), display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 18 }}>
+        <Icon size={20} color={item.color} strokeWidth={1.75} />
+      </div>
+      <div style={{ fontSize: 19, fontWeight: 700, color: T.ink, marginBottom: 8 }}>{item.title}</div>
+      <p style={{ fontSize: 13.5, color: T.ink2, lineHeight: 1.6, margin: "0 0 16px" }}>{item.desc}</p>
+
+      {persona && (
+        <div style={{ padding: "14px 14px", background: T.surfaceRaised, border: `1px solid ${T.hairline}`, borderRadius: 12, marginBottom: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>{persona.name}</div>
+          <div style={{ fontSize: 11, color: T.ink3, marginBottom: 3 }}>{persona.role}</div>
+          <IllustrativeTag style={{ display: "block", marginBottom: 10 }} />
+          <JourneyProof pathKey={item.key} color={item.color} />
         </div>
       )}
-    </div>
-  )
-}
 
-// ─── TrustBadge ────────────────────────────────────────────────────────────
-// Text/icon badges only — deliberately NOT scraped/hotlinked government
-// emblem images (Startup India / Udyam / MCA marks include protected
-// government insignia with usage restrictions we can't verify from here).
-// If official badge artwork from the company's own registration dashboard
-// is dropped into frontend/public later, swap the icon span for an <img>.
-function TrustBadge({ icon, label, sub }) {
-  return (
-    <div style={{ display:"flex", alignItems:"center", gap:10, background:D.glass, border:`1px solid ${D.border}`, borderRadius:14, padding:"10px 16px", backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)" }}>
-      <span style={{ fontSize:18, flexShrink:0 }}>{icon}</span>
-      <div>
-        <div style={{ fontSize:12, fontWeight:800, color:D.text1, letterSpacing:"0.02em" }}>{label}</div>
-        {sub && <div style={{ fontSize:10, color:D.text3, fontFamily:"'DM Mono',monospace", marginTop:1 }}>{sub}</div>}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 18 }}>
+        {item.points.map(p => (
+          <div key={p} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12.5, color: T.ink3 }}>
+            <Check size={13} color={item.color} strokeWidth={2.5} /> {p}
+          </div>
+        ))}
       </div>
-    </div>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: item.color }}>
+        Get started <ArrowRight size={13} />
+      </span>
+    </LiftCard>
   )
 }
 
-// ─── FAQItem ───────────────────────────────────────────────────────────────
+// ─── Network card (verified authority network) ─────────────────────────────
+function NetworkCard({ item }) {
+  return (
+    <LiftCard style={{ padding: 20 }}>
+      <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+        <div style={{ width: 38, height: 38, borderRadius: 10, background: T.surfaceRaised, border: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: T.ink2, flexShrink: 0 }}>{item.name[0]}</div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: T.ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.name}</div>
+          <div style={{ fontSize: 12, color: T.ink3, marginTop: 2 }}>{item.role} · {item.co}</div>
+        </div>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: T.success, fontWeight: 600 }}>
+        <ShieldCheck size={13} strokeWidth={2} /> Verified
+      </div>
+    </LiftCard>
+  )
+}
+
+// ─── FAQ ─────────────────────────────────────────────────────────────────
 function FAQItem({ q, a }) {
   const [open, setOpen] = useState(false)
   return (
-    <div style={{
-      background: open ? "rgba(255,87,1,0.04)" : D.glass,
-      border:`1px solid ${open ? D.orangeMid : D.border}`,
-      borderRadius:18, overflow:"hidden", backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)",
-      transition:"background 200ms, border-color 200ms",
-    }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          width:"100%", textAlign:"left", padding:"18px 20px", background:"none", border:"none", cursor:"pointer",
-          display:"flex", alignItems:"center", justifyContent:"space-between", gap:16, fontFamily:"inherit",
-        }}
-      >
-        <span style={{ fontSize:15, fontWeight:700, color:D.text1, lineHeight:1.4 }}>{q}</span>
-        <span style={{ color:open?D.orange:D.text3, fontSize:13, flexShrink:0, transition:"transform 200ms", transform:open?"rotate(45deg)":"rotate(0)" }}>＋</span>
+    <div style={{ border: `1px solid ${T.border}`, borderRadius: 12, overflow: "hidden" }}>
+      <button onClick={() => setOpen(o => !o)} style={{
+        width: "100%", textAlign: "left", padding: "16px 18px", background: "none", border: "none",
+        cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, fontFamily: "inherit",
+      }}>
+        <span style={{ fontSize: 14.5, fontWeight: 600, color: T.ink, lineHeight: 1.4 }}>{q}</span>
+        <ChevronDown size={16} color={T.ink3} strokeWidth={2} style={{ flexShrink: 0, transition: "transform 200ms ease", transform: open ? "rotate(180deg)" : "rotate(0)" }} />
       </button>
-      {open && (
-        <div style={{ padding:"0 20px 20px" }}>
-          <div style={{ fontSize:14, color:D.text2, lineHeight:1.75 }}>{a}</div>
-        </div>
-      )}
+      {open && <div style={{ padding: "0 18px 18px" }}><p style={{ fontSize: 13.5, color: T.ink2, lineHeight: 1.7, margin: 0 }}>{a}</p></div>}
     </div>
   )
 }
 
-// ─── SectionLabel ──────────────────────────────────────────────────────────
-function SectionLabel({ children }) {
+function TrustBadge({ icon: Icon, label, sub }) {
   return (
-    <div style={{ display:"inline-flex", alignItems:"center", gap:10, background:"rgba(255,87,1,0.1)", border:"1px solid rgba(255,87,1,0.22)", backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)", borderRadius:999, padding:"8px 16px", marginBottom:18 }}>
-      <div style={{ width:6, height:6, borderRadius:"50%", background:D.orange, boxShadow:`0 0 0 4px rgba(255,87,1,0.18), 0 0 12px ${D.orange}` }} />
-      <span style={{ fontSize:11, color:D.orange, fontWeight:700, letterSpacing:"0.14em", fontFamily:"'DM Mono',monospace", textTransform:"uppercase" }}>{children}</span>
-    </div>
-  )
-}
-
-// ─── PrimaryButton ─────────────────────────────────────────────────────────
-function PrimaryButton({ children, onClick }) {
-  return (
-    <button onClick={onClick}
-      style={{ padding:"14px 22px", borderRadius:14, border:"1px solid rgba(255,87,1,0.5)", background:"linear-gradient(135deg,#FF5701,#E04800)", color:"#FFFFFF", fontSize:12, fontWeight:800, cursor:"pointer", fontFamily:"'DM Mono',monospace", letterSpacing:"0.06em", boxShadow:"0 8px 32px rgba(255,87,1,0.38), 0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.18)", transition:"transform 150ms cubic-bezier(0.16,1,0.3,1), box-shadow 200ms cubic-bezier(0.16,1,0.3,1)" }}
-      onMouseEnter={e => { e.currentTarget.style.transform="translateY(-2px) scale(1.015)"; e.currentTarget.style.boxShadow="0 14px 40px rgba(255,87,1,0.5), 0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2)" }}
-      onMouseLeave={e => { e.currentTarget.style.transform="translateY(0) scale(1)"; e.currentTarget.style.boxShadow="0 8px 32px rgba(255,87,1,0.38), 0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.18)" }}
-      onMouseDown={e => { e.currentTarget.style.transform="translateY(0) scale(0.97)" }}
-      onMouseUp={e => { e.currentTarget.style.transform="translateY(-2px) scale(1.015)" }}
-    >{children}</button>
-  )
-}
-
-// ─── GhostButton ───────────────────────────────────────────────────────────
-function GhostButton({ children, onClick }) {
-  return (
-    <button onClick={onClick}
-      style={{ padding:"14px 22px", borderRadius:14, border:`1px solid ${D.border}`, background:D.glass, backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)", color:D.text2, fontSize:12, fontWeight:800, cursor:"pointer", fontFamily:"'DM Mono',monospace", letterSpacing:"0.06em", transition:"all 200ms cubic-bezier(0.16,1,0.3,1)" }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor=D.orangeMid; e.currentTarget.style.color=D.orange; e.currentTarget.style.background="rgba(255,87,1,0.08)"; e.currentTarget.style.transform="translateY(-1px)" }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor=D.border; e.currentTarget.style.color=D.text2; e.currentTarget.style.background=D.glass; e.currentTarget.style.transform="translateY(0)" }}
-      onMouseDown={e => { e.currentTarget.style.transform="translateY(0) scale(0.97)" }}
-      onMouseUp={e => { e.currentTarget.style.transform="translateY(-1px) scale(1)" }}
-    >{children}</button>
-  )
-}
-
-// ─── PathOptionCard ────────────────────────────────────────────────────────
-function PathOptionCard({ item, isActive, onClick }) {
-  const c = item.color || D.orange
-  const [hov, setHov] = useState(false)
-  return (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        textAlign:"left", padding:"14px 16px",
-        background: isActive ? `${c}12` : hov ? D.glassHover : D.glass,
-        border:`1px solid ${isActive ? `${c}40` : hov ? D.borderBright : D.border}`,
-        borderRadius:16, cursor:"pointer",
-        backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)",
-        transition:"transform 180ms cubic-bezier(0.16,1,0.3,1), background 180ms, border-color 180ms, box-shadow 180ms",
-        fontFamily:"inherit",
-        transform: isActive ? "translateY(0)" : hov ? "translateY(-2px)" : "translateY(0)",
-        boxShadow: isActive ? `0 8px 28px ${c}25, inset 0 1px 0 rgba(255,255,255,0.08)` : hov ? `0 8px 24px rgba(0,0,0,0.35)` : `0 2px 12px rgba(0,0,0,0.3)`,
-      }}
-    >
-      <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, color:isActive ? c : D.text1, marginBottom:4, fontWeight:700 }}>{item.label}</div>
-      <div style={{ fontSize:11, color:isActive ? `${c}AA` : D.text3, fontWeight:600, fontFamily:"'DM Mono',monospace" }}>{item.subtitle}</div>
-    </button>
-  )
-}
-
-// ─── FeatureCard ───────────────────────────────────────────────────────────
-function FeatureCard({ item }) {
-  const [hov, setHov] = useState(false)
-  const [spot, setSpot] = useState({ x: 50, y: 50 })
-  return (
-    <div
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      onMouseMove={(e) => {
-        const rect = e.currentTarget.getBoundingClientRect()
-        setSpot({ x: ((e.clientX - rect.left) / rect.width) * 100, y: ((e.clientY - rect.top) / rect.height) * 100 })
-      }}
-      style={{
-        background: hov ? D.glassHover : D.glass,
-        border:`1px solid ${hov ? D.borderBright : D.border}`,
-        borderRadius:22, padding:24, position:"relative", overflow:"hidden",
-        backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)",
-        boxShadow: hov ? `0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px ${D.borderBright}, 0 0 40px rgba(255,87,1,0.08)` : `0 4px 24px rgba(0,0,0,0.3)`,
-        transform: hov ? "translateY(-4px)" : "translateY(0)",
-        transition:"transform 240ms cubic-bezier(0.16,1,0.3,1), box-shadow 240ms cubic-bezier(0.16,1,0.3,1), background 240ms, border-color 240ms",
-      }}
-    >
-      <div aria-hidden style={{
-        position:"absolute", inset:0, pointerEvents:"none", borderRadius:22,
-        opacity: hov ? 1 : 0, transition:"opacity 300ms ease",
-        background:`radial-gradient(280px circle at ${spot.x}% ${spot.y}%, rgba(255,87,1,0.10), transparent 60%)`,
-      }} />
-      <div style={{ width:46, height:46, background:"rgba(255,87,1,0.12)", border:"1px solid rgba(255,87,1,0.22)", borderRadius:14, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, marginBottom:16, boxShadow:"0 4px 16px rgba(255,87,1,0.12)", position:"relative" }}>{item.icon}</div>
-      <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:20, fontWeight:700, color:D.text1, marginBottom:8, position:"relative" }}>{item.title}</div>
-      <div style={{ fontSize:14, color:D.text2, lineHeight:1.75, position:"relative" }}>{item.desc}</div>
-    </div>
-  )
-}
-
-// ─── PathCard ──────────────────────────────────────────────────────────────
-function PathCard({ icon, title, desc, badge, badgeColor = "#FF5701", featured, onClick }) {
-  const [hov, setHov] = useState(false)
-  const [spot, setSpot] = useState({ x: 50, y: 50 })
-  const bColors = { "#FF5701":D.orange, purple:D.violet, green:D.green, amber:D.amber }
-  const bc = bColors[badgeColor] || D.orange
-  return (
-    <div onClick={onClick}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      onMouseMove={(e) => {
-        const rect = e.currentTarget.getBoundingClientRect()
-        setSpot({ x: ((e.clientX - rect.left) / rect.width) * 100, y: ((e.clientY - rect.top) / rect.height) * 100 })
-      }}
-      style={{
-        background: hov ? D.glassHover : D.glass,
-        border:`1px solid ${hov || featured ? D.borderBright : D.border}`,
-        borderRadius:22, padding:24, cursor:"pointer",
-        backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)",
-        boxShadow: hov ? `0 24px 60px rgba(0,0,0,0.5), 0 0 40px rgba(255,87,1,0.08)` : featured ? `0 12px 40px rgba(0,0,0,0.4), 0 0 24px rgba(255,87,1,0.06)` : `0 4px 24px rgba(0,0,0,0.3)`,
-        transform: hov ? "translateY(-3px)" : "translateY(0)",
-        transition:"transform 240ms cubic-bezier(0.16,1,0.3,1), box-shadow 240ms cubic-bezier(0.16,1,0.3,1), background 240ms, border-color 240ms", position:"relative"
-      }}
-    >
-      <div aria-hidden style={{
-        position:"absolute", inset:0, pointerEvents:"none", borderRadius:22,
-        opacity: hov ? 1 : 0, transition:"opacity 300ms ease",
-        background:`radial-gradient(320px circle at ${spot.x}% ${spot.y}%, rgba(255,255,255,0.05), transparent 60%)`,
-      }} />
-      {featured && <div style={{ position:"absolute", top:0, right:20, background:"linear-gradient(135deg,#FF5701,#E04800)", color:"#fff", fontSize:10, fontWeight:700, padding:"6px 10px", borderRadius:"0 0 10px 10px", letterSpacing:"0.12em", fontFamily:"'DM Mono',monospace", textTransform:"uppercase", boxShadow:"0 4px 14px rgba(255,87,1,0.3)" }}>Popular</div>}
-      {featured && <div style={{ position:"absolute", inset:0, borderRadius:22, background:"linear-gradient(135deg, rgba(255,87,1,0.06), transparent 60%)", pointerEvents:"none" }} />}
-      <div style={{ width:48, height:48, background:D.orangeDim, border:"1px solid rgba(255,87,1,0.2)", borderRadius:14, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, marginBottom:18 }}>{icon}</div>
-      <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:22, fontWeight:700, color:D.text1, marginBottom:10 }}>{title}</div>
-      <div style={{ fontSize:14, color:D.text2, lineHeight:1.75, marginBottom:16 }}>{desc}</div>
-      <span style={{ display:"inline-flex", alignItems:"center", fontSize:11, fontWeight:700, padding:"5px 10px", borderRadius:999, background:`${bc}14`, color:bc, border:`1px solid ${bc}30`, fontFamily:"'DM Mono',monospace" }}>{badge}</span>
-    </div>
-  )
-}
-
-// ─── NetworkCard ───────────────────────────────────────────────────────────
-function NetworkCard({ item }) {
-  const [hov, setHov] = useState(false)
-  const [spot, setSpot] = useState({ x: 50, y: 50 })
-  return (
-    <div
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      onMouseMove={(e) => {
-        const rect = e.currentTarget.getBoundingClientRect()
-        setSpot({ x: ((e.clientX - rect.left) / rect.width) * 100, y: ((e.clientY - rect.top) / rect.height) * 100 })
-      }}
-      style={{
-        background: hov ? D.glassHover : D.glass,
-        border:`1px solid ${hov ? D.borderBright : D.border}`,
-        borderRadius:20, padding:18, position:"relative", overflow:"hidden",
-        backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)",
-        boxShadow: hov ? `0 16px 48px rgba(0,0,0,0.5), 0 0 0 1px ${D.borderBright}` : `0 4px 20px rgba(0,0,0,0.3)`,
-        transform: hov ? "translateY(-3px)" : "translateY(0)",
-        transition:"transform 220ms cubic-bezier(0.16,1,0.3,1), box-shadow 220ms cubic-bezier(0.16,1,0.3,1), background 220ms, border-color 220ms",
-      }}
-    >
-      <div aria-hidden style={{
-        position:"absolute", inset:0, pointerEvents:"none", borderRadius:20,
-        opacity: hov ? 1 : 0, transition:"opacity 300ms ease",
-        background:`radial-gradient(240px circle at ${spot.x}% ${spot.y}%, ${item.color}18, transparent 60%)`,
-      }} />
-      <div style={{ display:"flex", gap:10, marginBottom:14 }}>
-        <div style={{ width:42, height:42, borderRadius:12, background:`${item.color}18`, border:`1px solid ${item.color}30`, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'DM Sans',sans-serif", fontSize:16, color:item.color, flexShrink:0, fontWeight:700, boxShadow:`0 0 16px ${item.color}20` }}>{item.name[0]}</div>
-        <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontSize:15, fontWeight:700, color:D.text1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.name}</div>
-          <div style={{ fontSize:12, color:D.text3, marginTop:3 }}>{item.role} · {item.co}</div>
-        </div>
-      </div>
-      <div style={{ display:"flex", gap:6, marginBottom:14, flexWrap:"wrap" }}>
-        <span style={{ fontSize:10, color:D.violet, background:D.violetDim, border:`1px solid rgba(139,92,246,0.18)`, borderRadius:999, padding:"4px 8px", fontWeight:700, fontFamily:"'DM Mono',monospace" }}>{item.type}</span>
-        <span style={{ fontSize:10, color:D.green, background:"rgba(22,163,74,0.1)", border:"1px solid rgba(22,163,74,0.18)", borderRadius:999, padding:"4px 8px", fontWeight:700, fontFamily:"'DM Mono',monospace" }}>Verified</span>
-      </div>
-      <div style={{ display:"flex", borderTop:`1px solid ${D.border}`, paddingTop:12 }}>
-        {[{ l:"Followers", v:item.followers },{ l:"Posts", v:item.posts }].map((s,j) => (
-          <div key={j} style={{ flex:1, textAlign:"center", borderRight:j===0?`1px solid ${D.border}`:"none" }}>
-            <div style={{ fontFamily:"'DM Mono',monospace", fontSize:14, fontWeight:800, color:D.text1 }}>{s.v}</div>
-            <div style={{ fontSize:10, color:D.text3, textTransform:"uppercase", letterSpacing:"0.08em", marginTop:3, fontFamily:"'DM Mono',monospace" }}>{s.l}</div>
-          </div>
-        ))}
+    <div style={{ display: "flex", alignItems: "center", gap: 10, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 16px" }}>
+      <Icon size={16} color={T.ink3} strokeWidth={1.75} />
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: T.ink }}>{label}</div>
+        {sub && <div style={{ fontSize: 10.5, color: T.ink3, marginTop: 1 }}>{sub}</div>}
       </div>
     </div>
   )
 }
 
-// ─── Preview cards ─────────────────────────────────────────────────────────
-function ExecutivePreview() {
-  const G = D.gold
-  const metrics = [
-    { label:"Influence Score", value:"9,240" },
-    { label:"Network Reach",   value:"12.4K" },
-    { label:"Mentees",         value:"47"    },
-  ]
-  const activity = [
-    { icon:"🏛", text:"Board seat at Fintech Series B secured" },
-    { icon:"🎤", text:"Keynote confirmed — India SaaS Summit 2026" },
-    { icon:"🤝", text:"3 mentorship requests this week" },
-    { icon:"✦",  text:"Verified Authority badge active" },
-  ]
-  return (
-    <div style={{ background:D.glass, border:`1px solid rgba(201,168,76,0.22)`, borderRadius:28, padding:24, backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)", boxShadow:`0 24px 60px rgba(0,0,0,0.6), 0 0 40px rgba(201,168,76,0.08), inset 0 1px 0 rgba(255,255,255,0.06)` }}>
-      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:14, marginBottom:20 }}>
-        <div>
-          <div style={{ fontSize:10, color:D.text3, fontWeight:800, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:8, fontFamily:"'DM Mono',monospace" }}>Executive Authority Profile</div>
-          <div style={{ fontFamily:"'DM Sans',serif", fontSize:24, fontWeight:800, color:D.text1, marginBottom:4 }}>Arjun Mehta</div>
-          <div style={{ fontSize:13, color:D.text2 }}>Founder & CEO · SaaS Advisor</div>
-        </div>
-        <div style={{ background:`${G}14`, border:`1.5px solid ${G}40`, borderRadius:16, padding:"12px 14px", textAlign:"center", flexShrink:0, boxShadow:`0 0 20px ${G}20` }}>
-          <div style={{ fontFamily:"'DM Sans',serif", fontSize:13, fontWeight:800, color:G, lineHeight:1.2 }}>✦</div>
-          <div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:G, letterSpacing:"0.12em", marginTop:5, fontWeight:800, textTransform:"uppercase" }}>Verified</div>
-        </div>
-      </div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginBottom:20 }}>
-        {metrics.map((m,i) => (
-          <div key={i} style={{ background:D.glassDeep, border:`1px solid ${D.border}`, borderRadius:14, padding:"12px 10px", textAlign:"center" }}>
-            <div style={{ fontFamily:"'DM Mono',monospace", fontSize:18, fontWeight:800, color:G, marginBottom:3 }}>{m.value}</div>
-            <div style={{ fontSize:9, color:D.text3, fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase", fontFamily:"'DM Mono',monospace" }}>{m.label}</div>
-          </div>
-        ))}
-      </div>
-      <div style={{ fontSize:10, color:D.text3, fontWeight:800, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:10, fontFamily:"'DM Mono',monospace" }}>Recent Activity</div>
-      <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
-        {activity.map((a,i) => (
-          <div key={i} style={{ display:"flex", gap:10, alignItems:"center", padding:"9px 12px", background:D.glassDeep, border:`1px solid ${D.border}`, borderRadius:12 }}>
-            <span style={{ fontSize:14, flexShrink:0 }}>{a.icon}</span>
-            <span style={{ fontSize:12, color:D.text2, lineHeight:1.5 }}>{a.text}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function OrgPreview() {
-  const A = D.amber
-  const cohorts = [
-    { name:"Web Dev Batch 12",    avgElo:1240, topElo:1890 },
-    { name:"Data Science — Jan",  avgElo:1080, topElo:1740 },
-    { name:"Cybersecurity — Q2",  avgElo:1320, topElo:1960 },
-  ]
-  return (
-    <div style={{ background:D.glass, border:`1px solid rgba(217,119,6,0.22)`, borderRadius:28, padding:24, backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)", boxShadow:`0 24px 60px rgba(0,0,0,0.6), 0 0 40px rgba(217,119,6,0.06), inset 0 1px 0 rgba(255,255,255,0.06)` }}>
-      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:14, marginBottom:20 }}>
-        <div>
-          <div style={{ fontSize:10, color:D.text3, fontWeight:800, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:8, fontFamily:"'DM Mono',monospace" }}>Institution Intelligence Hub</div>
-          <div style={{ fontFamily:"'DM Sans',serif", fontSize:24, fontWeight:800, color:D.text1, marginBottom:4 }}>BITS Pilani</div>
-          <div style={{ fontSize:13, color:D.text2 }}>Premier Institution · Est. 1964</div>
-        </div>
-        <div style={{ background:`${A}14`, border:`1.5px solid ${A}40`, borderRadius:16, padding:"10px 12px", textAlign:"center", flexShrink:0, boxShadow:`0 0 20px ${A}18` }}>
-          <div style={{ fontFamily:"'DM Mono',monospace", fontSize:18, fontWeight:800, color:A }}>45K</div>
-          <div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:A, letterSpacing:"0.12em", marginTop:4, fontWeight:800, textTransform:"uppercase" }}>Followers</div>
-        </div>
-      </div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginBottom:18 }}>
-        {[{l:"Active Cohorts",v:"8"},{l:"Total Students",v:"1,240"},{l:"Hired this yr",v:"312"}].map((s,i)=>(
-          <div key={i} style={{ background:D.glassDeep, border:`1px solid ${D.border}`, borderRadius:14, padding:"12px 10px", textAlign:"center" }}>
-            <div style={{ fontFamily:"'DM Mono',monospace", fontSize:18, fontWeight:800, color:D.text1, marginBottom:3 }}>{s.v}</div>
-            <div style={{ fontSize:9, color:D.text3, fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase", fontFamily:"'DM Mono',monospace" }}>{s.l}</div>
-          </div>
-        ))}
-      </div>
-      <div style={{ fontSize:10, color:D.text3, fontWeight:800, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:10, fontFamily:"'DM Mono',monospace" }}>Cohort ELO Leaderboard</div>
-      <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-        {cohorts.map((c,i)=>(
-          <div key={i} style={{ padding:"10px 14px", background:D.glassDeep, border:`1px solid ${D.border}`, borderRadius:12 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
-              <span style={{ fontSize:12, fontWeight:700, color:D.text1 }}>{c.name}</span>
-              <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:A, fontWeight:800 }}>Top: {c.topElo}</span>
-            </div>
-            <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-              <div style={{ flex:1, height:6, borderRadius:999, background:"rgba(255,255,255,0.06)", overflow:"hidden" }}>
-                <div style={{ height:"100%", width:`${Math.round(c.avgElo/2000*100)}%`, borderRadius:999, background:`linear-gradient(90deg,${A},#F59E0B)`, boxShadow:`0 0 8px ${A}50` }}/>
-              </div>
-              <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:D.text3, fontWeight:700, whiteSpace:"nowrap" }}>avg {c.avgElo}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function ProfessionalOrbitPreview({ eloAnim }) {
-  const P = D.violet
-  const skills = [
-    { label:"Python",        value:78, color:P },
-    { label:"System Design", value:84, color:D.orange },
-    { label:"SQL",           value:71, color:D.blue },
-    { label:"AWS",           value:65, color:D.amber },
-  ]
-  const modules = ["Orbit","Signal","Forge","Nexus","Vault","Launchpad","Mentor Hub","Pulse"]
-  const mColors = [D.orange,D.blue,D.green,P,D.amber,D.orange,D.green,D.violet]
-  return (
-    <div style={{ background:D.glass, border:`1px solid rgba(139,92,246,0.22)`, borderRadius:28, padding:24, backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)", boxShadow:`0 24px 60px rgba(0,0,0,0.6), 0 0 40px rgba(139,92,246,0.06), inset 0 1px 0 rgba(255,255,255,0.06)` }}>
-      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:18, marginBottom:18 }}>
-        <div>
-          <div style={{ fontSize:10, color:D.text3, fontWeight:800, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:8, fontFamily:"'DM Mono',monospace" }}>Career Intelligence — Orbit</div>
-          <div style={{ fontFamily:"'DM Sans',serif", fontSize:24, fontWeight:800, color:D.text1, marginBottom:4 }}>Priya Nambiar</div>
-          <div style={{ fontSize:13, color:D.text2 }}>Senior SDE · Verified ✓</div>
-        </div>
-        <div style={{ minWidth:108, background:`${P}12`, border:`1.5px solid ${P}38`, borderRadius:18, padding:"12px 12px 10px", textAlign:"center", boxShadow:`0 0 24px ${P}20` }}>
-          <div style={{ fontFamily:"'DM Mono',monospace", fontSize:28, fontWeight:800, color:P, lineHeight:1 }}>{eloAnim.toLocaleString()}</div>
-          <div style={{ fontSize:9, color:P, letterSpacing:"0.12em", marginTop:5, textTransform:"uppercase", fontFamily:"'DM Mono',monospace", fontWeight:800 }}>ELO Score</div>
-        </div>
-      </div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:18 }}>
-        {[{ l:"Market Value", v:"₹21.4L" },{ l:"Layoff Shield", v:"82/100" },{ l:"Career Velocity", v:"+14%" }].map((s,i) => (
-          <div key={i} style={{ background:D.glassDeep, border:`1px solid ${D.border}`, borderRadius:14, padding:"10px 8px", textAlign:"center" }}>
-            <div style={{ fontFamily:"'DM Mono',monospace", fontSize:i===0?13:15, fontWeight:800, color:D.text1, marginBottom:2, lineHeight:1.1 }}>{s.v}</div>
-            <div style={{ fontSize:9, color:D.text3, fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase", fontFamily:"'DM Mono',monospace" }}>{s.l}</div>
-          </div>
-        ))}
-      </div>
-      <div style={{ fontSize:10, color:D.text3, fontWeight:800, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:10, fontFamily:"'DM Mono',monospace" }}>Skill Half-Life Radar</div>
-      <div style={{ display:"flex", flexDirection:"column", gap:9, marginBottom:16 }}>
-        {skills.map((sk,i) => (
-          <div key={i}>
-            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-              <span style={{ fontSize:13, color:D.text1, fontWeight:600 }}>{sk.label}</span>
-              <span style={{ fontSize:11, color:sk.color, fontWeight:800, fontFamily:"'DM Mono',monospace" }}>{sk.value}% fresh</span>
-            </div>
-            <div style={{ height:6, borderRadius:999, background:"rgba(255,255,255,0.06)", overflow:"hidden" }}>
-              <div style={{ height:"100%", width:`${sk.value}%`, borderRadius:999, background:sk.color, boxShadow:`0 0 8px ${sk.color}50` }} />
-            </div>
-          </div>
-        ))}
-      </div>
-      <div style={{ fontSize:10, color:D.text3, fontWeight:800, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:8, fontFamily:"'DM Mono',monospace" }}>Your modules</div>
-      <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-        {modules.map((m,i) => (
-          <span key={i} style={{ fontSize:10, fontWeight:700, padding:"4px 10px", borderRadius:999, background:`${mColors[i]}12`, color:mColors[i], border:`1px solid ${mColors[i]}28`, fontFamily:"'DM Mono',monospace" }}>{m}</span>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function AuraPreview({ eloAnim, skills }) {
-  return (
-    <div style={{ background:D.glass, border:`1px solid rgba(255,87,1,0.22)`, borderRadius:28, padding:24, backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)", boxShadow:`0 24px 60px rgba(0,0,0,0.6), 0 0 40px rgba(255,87,1,0.08), inset 0 1px 0 rgba(255,255,255,0.06)` }}>
-      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:18, marginBottom:20 }}>
-        <div>
-          <div style={{ fontSize:10, color:D.text3, fontWeight:800, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:8, fontFamily:"'DM Mono',monospace" }}>Live Aura Preview</div>
-          <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:26, fontWeight:700, color:D.text1, marginBottom:4 }}>Rahul Sharma</div>
-          <div style={{ fontSize:13, color:D.text2, lineHeight:1.6 }}>Professional · Full Stack Developer</div>
-        </div>
-        <div style={{ minWidth:110, background:"rgba(255,87,1,0.12)", border:"1px solid rgba(255,87,1,0.28)", borderRadius:18, padding:"14px 14px 12px", textAlign:"center", boxShadow:"0 0 28px rgba(255,87,1,0.22)" }}>
-          <div style={{ fontFamily:"'DM Mono',monospace", fontSize:30, fontWeight:800, color:D.orange, lineHeight:1 }}>{eloAnim.toLocaleString()}</div>
-          <div style={{ fontSize:10, color:D.orange, letterSpacing:"0.12em", marginTop:6, textTransform:"uppercase", fontFamily:"'DM Mono',monospace", fontWeight:700 }}>Live ELO</div>
-        </div>
-      </div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginBottom:22 }}>
-        {[{ label:"Streak", value:"12" },{ label:"Tasks", value:"94" },{ label:"Job ready", value:"87%" }].map(stat => (
-          <div key={stat.label} style={{ background:D.glassDeep, border:`1px solid ${D.border}`, borderRadius:16, padding:"14px 12px" }}>
-            <div style={{ fontFamily:"'DM Mono',monospace", fontSize:20, fontWeight:800, color:D.text1, marginBottom:4 }}>{stat.value}</div>
-            <div style={{ fontSize:10, color:D.text3, fontWeight:700, letterSpacing:"0.10em", textTransform:"uppercase", fontFamily:"'DM Mono',monospace" }}>{stat.label}</div>
-          </div>
-        ))}
-      </div>
-      <div style={{ fontSize:11, color:D.text3, fontWeight:800, letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:12, fontFamily:"'DM Mono',monospace" }}>Skill graph</div>
-      <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-        {skills.map((skill,i) => (
-          <div key={i}>
-            <div style={{ display:"flex", justifyContent:"space-between", gap:12, marginBottom:5, alignItems:"center" }}>
-              <span style={{ fontSize:13, color:D.text1, fontWeight:600 }}>{skill.label}</span>
-              <span style={{ fontSize:12, color:skill.color||D.orange, fontWeight:800, fontFamily:"'DM Mono',monospace" }}>{skill.value}%</span>
-            </div>
-            <div style={{ height:7, borderRadius:999, background:"rgba(255,255,255,0.06)", overflow:"hidden" }}>
-              <div style={{ height:"100%", width:`${skill.value}%`, borderRadius:999, background:skill.color||D.orange, boxShadow:`0 0 8px ${skill.color||D.orange}50` }} />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// ─── Main Page ─────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
 export default function LandingPage({ onGetStarted, onLogin }) {
-  const [eloAnim,     setEloAnim]     = useState(800)
-  const [activeFlow,  setActiveFlow]  = useState("student")
   const [pricingFlow, setPricingFlow] = useState("student")
-  const [pricingKey,  setPricingKey]  = useState(0)
 
-  // ── Live user counter ────────────────────────────────────────────
-  const BASE_COUNT = 3000
-  const getStoredCount = () => {
+  // extra.instType seeds AuthModal's institution sub-type toggle (College/
+  // Company/...). Always writes or clears the key on every call — never
+  // leaves a stale value from a previous click (e.g. clicking the College
+  // card after the "company profile instead" link) to leak into the next.
+  // path=null (the generic nav/hero "Get started" buttons) clears any
+  // stale path instead — AuthModal opens fresh at its step-1 chooser
+  // rather than inheriting a path from an earlier, unrelated visit.
+  const openPath = (path, source = "landing", extra = {}) => {
     try {
-      const stored = localStorage.getItem("cap_user_count")
-      const ts     = localStorage.getItem("cap_user_count_ts")
-      if (!stored) return BASE_COUNT
-      // Simulate growth even when away: +1 per 30s offline (max +200)
-      const elapsed = ts ? Math.floor((Date.now() - Number(ts)) / 30000) : 0
-      return Math.min(Number(stored) + Math.min(elapsed, 200), 99999)
-    } catch { return BASE_COUNT }
-  }
-  const [liveCount, setLiveCount] = useState(getStoredCount)
-
-  const switchPricingFlow = (path) => { setPricingFlow(path); setPricingKey(k => k+1) }
-
-  useEffect(() => {
-    const target=1847; let cur=800
-    const t = setInterval(() => { cur=Math.min(cur+18,target); setEloAnim(cur); if(cur>=target) clearInterval(t) }, 22)
-    return () => clearInterval(t)
-  }, [])
-
-  // Auto-increment live count while on page
-  useEffect(() => {
-    const tick = () => {
-      setLiveCount(prev => {
-        const next = prev + 1
-        try {
-          localStorage.setItem("cap_user_count", String(next))
-          localStorage.setItem("cap_user_count_ts", String(Date.now()))
-        } catch {}
-        return next
-      })
-    }
-    // Random interval 8–18s between each increment
-    let timer
-    const schedule = () => { timer = setTimeout(() => { tick(); schedule() }, 8000 + Math.random() * 10000) }
-    schedule()
-    return () => clearTimeout(timer)
-  }, [])
-
-  const openPath = (path, source="landing") => {
-    try { localStorage.setItem("capabilio_selected_path", path) } catch {}
+      if (path) localStorage.setItem("capabilio_selected_path", path)
+      else localStorage.removeItem("capabilio_selected_path")
+      if (extra.instType) localStorage.setItem("capabilio_selected_inst_type", extra.instType)
+      else localStorage.removeItem("capabilio_selected_inst_type")
+    } catch (_) { /* localStorage unavailable */ }
     if (typeof onGetStarted === "function") onGetStarted({ path, source })
   }
 
-  const FLOWS = {
-    student:      { color:D.orange, label:"Student",      cta:"Start as student",          subtitle:"ELO starts at 400" },
-    professional: { color:D.violet, label:"Professional", cta:"Build your Orbit profile",  subtitle:"Verified career · ELO starts at 800" },
-    executive:    { color:D.gold,   label:"Executive",    cta:"Request invite",             subtitle:"Invite-only · Verified authority · Time marketplace" },
-    institution:  { color:D.amber,  label:"Organisation", cta:"Create institution profile", subtitle:"College · Company · Verified ecosystem" },
-  }
-  const flow = FLOWS[activeFlow]
-
-  const HERO = {
-    student: {
-      sectionLabel:"India's first ELO-rated hiring platform",
-      stats:[{val:eloAnim.toLocaleString(),lbl:"Live ELO"},{val:"94",lbl:"Tasks done"},{val:"Top 3%",lbl:"Full stack"},{val:"18+",lbl:"Domains"}],
-      desc:"Anyone can write \"5 years experience.\" Nobody can fake an ELO of 1,847. Prove your skills through real daily challenges matched to your actual level.",
-    },
-    professional: {
-      sectionLabel:"India's first verified professional network",
-      stats:[{val:eloAnim.toLocaleString(),lbl:"Live ELO"},{val:"₹21L",lbl:"Avg market value"},{val:"82/100",lbl:"Layoff shield"},{val:"8",lbl:"Pro modules"}],
-      desc:"Upload your resume or LinkedIn URL. AI extracts your career timeline, skills, and JDs. Verify via UAN — employment history cross-matched automatically. Unverified profiles never appear in anyone's feed.",
-    },
-    executive: {
-      sectionLabel:"Invite-only · Verified authority network",
-      stats:[{val:"₹2.8L",lbl:"Avg monthly earnings"},{val:"340+",lbl:"Board seats filled"},{val:"92%",lbl:"Session repeat rate"},{val:"Invite-only",lbl:"Access model"}],
-      desc:"Founders, CEOs, and domain authorities — sell your time through the Time Market, build Peer Circles, open Signal Rooms, and match privately on Venture Radar. Every profile is invite-only and identity-verified. This is not LinkedIn.",
-    },
-    institution: {
-      sectionLabel:"Verified campus + company intelligence",
-      stats:[{val:"220+",lbl:"Institutions"},{val:"1,240",lbl:"Students tracked"},{val:"Anonymous",lbl:"Rating system"},{val:"Auto",lbl:"Path transitions"}],
-      desc:"Colleges track cohort ELO, run professor-assigned tasks, and pipeline placements automatically. Companies post verified profiles, anonymous employee ratings build your Company ELO, and ATS integration connects to recruiter.capabilio.online.",
-    },
-  }
-  const hero = HERO[activeFlow]
-
-  const SKILLS = [
-    { label:"Python",           value:82 },
-    { label:"SQL",              value:74 },
-    { label:"Machine learning", value:61, color:D.violet },
-    { label:"Tableau",          value:85 },
-    { label:"Statistics",       value:78 },
-  ]
-  const ELO_HISTORY = [400,420,450,490,560,640,750,900,1050,1200,1400,1620,1847]
-  const PORTFOLIO_TASKS = [
-    { icon:"🗃️", title:"Razorpay Payment Failure Analysis", difficulty:"Hard",   type:"Data Analytics",      date:"Apr 13, 2026", score:92, eloDelta:32, scenario:"Analyse transaction failure patterns across 20 merchants. Identify top 3 with highest failure rates and primary failure payment methods.", code:"failure = df[df['status']=='failed']\nresult = failure.groupby('merchant_name')\\\n  .agg({'txn_id':'count','amount':'sum'})\\\n  .sort_values('txn_id',ascending=False).head(3)", strength:"Efficient groupby aggregation. Correct failure rate methodology.", improve:"Add percentage calculation. Visualise with matplotlib." },
-    { icon:"💻", title:"Swiggy Order Management API",       difficulty:"Medium", type:"Software Engineering", date:"Apr 11, 2026", score:85, eloDelta:18, scenario:"Design a REST endpoint for Swiggy order management with paginated history, status and date range filtering.", code:"app.get('/orders/:id', async (req,res) => {\n  const {status,page=1} = req.query\n  const orders = await Order.find({customerId:req.params.id})\n    .skip((page-1)*20).limit(20)\n  res.json({orders})\n})", strength:"Clean pagination. Correct query structure.", improve:"Add input validation. Handle empty results." },
-    { icon:"🔐", title:"Brute Force Attack Investigation",  difficulty:"Hard",   type:"Cyber Security",      date:"Apr 9, 2026",  score:78, eloDelta:14, scenario:"SOC alert: 847 failed login attempts from 192.168.1.45 in 3 minutes. Investigate and recommend mitigation.", code:"failed = logs[logs['status']=='FAILED_AUTH']\nattack_ip = failed.groupby('source_ip')['count'].sum()\nprint(f'Peak: {failed.resample(\"1T\").count().max()} req/min')", strength:"Correct pattern identification. Good timeline analysis.", improve:"Add SIEM query. Include MITRE ATT&CK reference." },
-  ]
-  const FEATURES = [
-    { icon:"⚔️", title:"ARENA",          desc:"Daily real tasks from Indian companies. Python notebooks, SOC workstations, SQL editors. Every submission updates your ELO." },
-    { icon:"✦",  title:"AURA DASHBOARD", desc:"Living skill graph. ELO history, radar chart, career momentum, verification badges. Your entire identity in one view." },
-    { icon:"🎬", title:"BRANDING VIDEO", desc:"AI compiles your top Arena moments into a 53-second video. ELO animates, radar builds, portfolio plays. One click to share." },
-    { icon:"📋", title:"PORTFOLIO",      desc:"Every task shows scenario, your actual code, AI review, and score. Recruiters see how you think — not what you claimed." },
-    { icon:"🚀", title:"LAUNCHPAD",      desc:"Jobs matched by ELO, not keywords. Recruiters filter by real performance. You get found based on what you proved." },
-    { icon:"📡", title:"PULSE",          desc:"Intelligence feed for your domain. GitHub trending, Reddit signals, authority drops — personalised to your ELO and keywords." },
-  ]
-  const PROFESSIONAL_FEATURES = [
-    { icon:"🔆", title:"ORBIT",      desc:"Career Intelligence Dashboard. Career Health Score, Market Value, Layoff Shield, Skill Half-Life radar, and your auto-verified career timeline — all in one view." },
-    { icon:"📶", title:"SIGNAL",     desc:"Market intelligence for your exact role. Live role demand trends, JD skill gap analysis, and compensation benchmarks updated weekly from real job postings." },
-    { icon:"🔥", title:"FORGE",      desc:"Quiet Mode Challenges. 2–3 domain micro-questions, 5 minutes/week. Prevents skill ELO decay. Staying sharp, not being tested." },
-    { icon:"🔗", title:"NEXUS",      desc:"Verified professional network. Connections, endorsements, and peer benchmarking — only with profiles that have passed UAN cross-match. No noise." },
-    { icon:"🗃️", title:"VAULT",      desc:"Private store for credentials, offer letters, certs, and achievements. Share a custom link — recruiters see only what you unlock for them." },
-    { icon:"🚀", title:"LAUNCHPAD",  desc:"Passive job matching. Opportunities find you by ELO + verified skills. You never upload a resume. Toggle: Open to work / Passive / Not looking." },
-    { icon:"🎓", title:"MENTOR HUB", desc:"ELO 1400+ unlocks paid consultation listings. Set your rate and domains. Capabilio handles scheduling + payment. Revenue while employed." },
-    { icon:"📡", title:"PULSE",      desc:"Verified-only professional newsfeed. Unverified profiles never appear. Industry signals, peer achievements, and domain insights — 100% real." },
-  ]
-  const EXECUTIVE_FEATURES = [
-    { icon:"✦",  title:"LEGACY PROFILE",      desc:"Verified timeline of funding rounds, exits, board seats, patents, and keynotes. Cross-checked with news and company data. Not self-reported." },
-    { icon:"⏱",  title:"TIME MARKET",         desc:"Sell 1:1 slots, group sessions, workshops, and async Q&A. Dynamic pricing. Capabilio handles booking and payment. Full earnings dashboard." },
-    { icon:"🎙",  title:"SIGNAL ROOMS",        desc:"Live audio/video rooms for verified executives only. Scheduled, recorded, notified to followers. Every speaker is identity-verified." },
-    { icon:"🃏",  title:"INSIGHT CARDS",       desc:"Structured short-form content: Problem → Insight → Lesson → Role verified. Forces quality over volume. Not tweets. Not LinkedIn posts." },
-    { icon:"🔭",  title:"VENTURE RADAR",       desc:"Private signal matching for fundraising, co-founder search, and acqui-hire interest. Fully private until both sides match. Zero cold outreach." },
-    { icon:"🪑",  title:"BOARD SEAT EXCHANGE", desc:"Companies post board seat openings. Executives apply with verified credentials. Capabilio verifies before match is shown. No LinkedIn DM spam." },
-    { icon:"👥",  title:"PEER CIRCLE",         desc:"Private rooms of 5–15 verified executives at the same stage. Seed, Series A, IPO — curated by Capabilio. Safe space for board-level conversations." },
-    { icon:"📊",  title:"INFLUENCE INDEX",     desc:"Executive ELO equivalent. Calculated from reach growth, session ratings, mentee outcomes, and verified achievements. Cannot be bought or inflated." },
-    { icon:"🗺",  title:"DEAL ROOM",           desc:"Private encrypted workspace for pitch decks, term sheets, and cap tables. Shared with selected people only. Capabilio never reads the content." },
-  ]
-  const INSTITUTION_FEATURES = [
-    { icon:"🏛️", title:"CAMPUS HUB",         desc:"Verified campus social layer. Only verified college email holders join. Posts, announcements, events, and student groups — all in one place." },
-    { icon:"📋", title:"TASK ENGINE",         desc:"Professors assign custom Arena-style tasks to classes or batches. AI auto-grades. Results flow directly into student ELO and skill graph." },
-    { icon:"📈", title:"COHORT INTELLIGENCE", desc:"Live ELO leaderboard per batch, department, campus. Placement team sees who is hire-ready. HOD sees department health. Principal sees institution-wide." },
-    { icon:"💼", title:"PLACEMENT COMMAND",   desc:"Real-time: who got placed, what company, what package, which recruiter. In-campus offers auto-promote student to Professional path." },
-    { icon:"🗂",  title:"PROJECT VAULT",       desc:"Final year projects and research papers auto-linked to student Aura portfolio. Professors endorse. Verified academic work, not self-claimed." },
-    { icon:"🔗", title:"ALUMNI INTELLIGENCE", desc:"Graduates tracked on Capabilio. Institution sees alumni ELO growth as proof of education quality. A live, verifiable ranking signal." },
-    { icon:"⭐", title:"ANONYMOUS RATINGS",   desc:"Day-30 onboarding + exit ratings. Company never knows who rated. Identity stripped. Min 5 ratings before company sees aggregated data." },
-    { icon:"🧬", title:"COMPANY ELO",         desc:"Built from anonymous ratings + hire quality + retention data. Cannot be faked. Updated quarterly. A Glassdoor killer powered by verified timelines." },
-    { icon:"🔌", title:"ATS INTEGRATION",     desc:"Sync with Workday, Greenhouse, Lever, Keka. Jobs posted here auto-sync to Launchpad. Webhook: 'Candidate X is now open to work.'" },
-  ]
-  const VERSUS_ROWS = [
-    { old:'"5 yrs Python exp."',  new:"ELO 1,847 · 94 tasks"    },
-    { old:'"ML Expert"',          new:"ML: 61% · Growing"        },
-    { old:'"AWS Certified"',      new:"Arena: EC2 scored 89%"    },
-    { old:'"Led eng team of 10"', new:"12-day streak · Hard: 23" },
-  ]
-  const problemRows = [
-    { icon:"🐍", claim:'"5 years Python experience"',  reality:"Can't explain list comprehensions" },
-    { icon:"🤖", claim:'"Machine Learning Expert"',    reality:"Never trained an end-to-end model" },
-    { icon:"👥", claim:'"Led team of 10 engineers"',   reality:"Was a member of a team of 10" },
-    { icon:"📊", claim:'"Data-driven decision maker"', reality:"Used Excel once in 2019" },
-    { icon:"☁️", claim:'"AWS Certified"',              reality:"Watched 3 YouTube videos" },
-    { icon:"💬", claim:'"Strong communication skills"',reality:"Copied from the last resume" },
-  ]
-  const networkRows = [
-    { name:"Rohan Mehta",     role:"Founder & CEO",       co:"PayStack India", followers:"12.4K", posts:38, color:D.violet, type:"Founder"     },
-    { name:"Dr. Priya Singh", role:"Professor",           co:"IIT Hyderabad",  followers:"8.2K",  posts:24, color:D.orange, type:"Professor"   },
-    { name:"Arjun Kapoor",    role:"CTO",                 co:"Razorpay",       followers:"19.1K", posts:51, color:D.green,  type:"Executive"   },
-    { name:"BITS Pilani",     role:"Premier Institution", co:"Est. 1964",      followers:"45K",   posts:67, color:D.amber,  type:"Institution" },
+  const PROBLEM_ROWS = [
+    { claim: "“5 years Python experience”", reality: "Can't explain list comprehensions" },
+    { claim: "“Machine Learning Expert”", reality: "Never trained an end-to-end model" },
+    { claim: "“AWS Certified”", reality: "Watched 3 YouTube videos" },
   ]
 
   const FAQ_ITEMS = [
-    { q:"What actually is ELO here, and how is it different from a resume claim?", a:"It's the same rating-system idea as chess.com — a number that only moves when you complete real, scored Arena tasks. Students start at 400. It rises when you solve harder problems well, and it can drop if you're inactive for an extended stretch. Nobody can type in a higher number; there's no field for it." },
-    { q:"Is Capabilio free to start?", a:"Yes. Every path — Student, Professional, Executive (invite-only), and Organisation — has a free tier you can start on with no card required. Paid plans unlock more daily Arena tasks, AI interview sessions, and market intelligence reports; they're not required to build a verified profile." },
-    { q:"How does verification actually work for professionals?", a:"You upload a resume or LinkedIn URL and our AI extracts your career timeline and skills. Your employment history is then cross-matched against UAN/EPFO records. If something can't be verified this way, it's shown on your public profile as \"self-claimed\" rather than presented as fact — we don't hide the difference." },
-    { q:"Can recruiters or anyone else see my data without my consent?", a:"No. Your Vault (documents, certificates, offer letters) is private by default — you generate a share link and choose what's visible on it. Your public profile only ever shows what you've explicitly made public: your ELO, portfolio tasks, and verified badges." },
-    { q:"What happens if I stop doing Arena tasks for a while?", a:"Your ELO can decay if you're inactive for 7+ days, the same way a chess rating drifts without play — it's designed to reflect current skill, not a one-time score you can bank and coast on. Professionals on paid plans have access to Forge's low-effort \"Quiet Mode\" challenges specifically to prevent this without daily grinding." },
-    { q:"How is the Executive path different from LinkedIn?", a:"It's invite-only and identity-verified — you can't self-onboard. Every claim on a Legacy Profile (funding rounds, board seats, exits) is cross-checked against news and company data rather than self-reported, and the Time Market/Signal Rooms/Venture Radar are built for monetizing verified authority, not for follower-count posting." },
+    { q: "What actually is ELO here, and how is it different from a resume claim?", a: "The same rating-system idea as chess.com — a number that only moves when you complete real, scored Arena tasks. Students start at 400. It rises when you solve harder problems well, and can drop if you're inactive. Nobody can type in a higher number." },
+    { q: "Is Capabilio free to start?", a: "Yes. Student, Professional, and College all have a free tier with no card required. Paid plans unlock more daily Arena tasks and AI interview sessions — they're not required to build a verified profile." },
+    { q: "How does verification work for professionals?", a: "You upload a resume or LinkedIn URL and AI extracts your career timeline. Employment history is then cross-matched against UAN/EPFO records. Anything that can't be verified this way is shown as “self-claimed,” not presented as fact." },
+    { q: "What happens if I stop doing Arena tasks for a while?", a: "Your ELO can decay after 7+ days of inactivity, the same way a chess rating drifts without play — it reflects current skill, not a score you can bank and coast on." },
   ]
 
   const PRICING = {
-    student: {
-      headline: <>Pick your pace.<br /><span style={{ color:D.orange, fontStyle:"italic" }}>Invest in your career.</span></>,
-      sub: "ELO-ranked proof, AI interviews, and market intelligence — start free, no card needed.",
-      note: "Monthly plans · Cancel anytime · Powered by Razorpay · Prices in INR",
-      plans: [
-        { label:"Free",  price:null,      accent:"#6B6560", featured:false, features:["1 Arena task every 15 days","Portfolio generation","Locked premium previews","Market reports at ₹49/report"], cta:"GET STARTED FREE →", ctaStyle:{ background:D.glass, backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)", color:D.text1, border:`1px solid ${D.border}` } },
-        { label:"Pro",   price:"₹299/mo", sub:"Billed monthly", accent:"#3D4EAC", featured:false, features:["3 Arena tasks per day","3 AI Interview sessions/month","1 market report/month","Full Arena access","Portfolio generation"], cta:"START PRO →", ctaStyle:{ background:"#3D4EAC", color:"#fff" } },
-        { label:"Elite", price:"₹599/mo", sub:"Best value",     accent:"#B8620A", featured:true,  features:["6 Arena tasks per day","5 AI Interview sessions/month","2 market reports/month","Personal branding video","Full advanced Arena","Portfolio generation"], cta:"GO ELITE →", ctaStyle:{ background:"linear-gradient(135deg,#FF5701,#B8620A)", color:"#fff", boxShadow:"0 8px 28px rgba(255,87,1,0.4)" } },
-      ],
-    },
-    professional: {
-      headline: <>Career intelligence,<br /><span style={{ color:D.violet, fontStyle:"italic" }}>worth every rupee.</span></>,
-      sub: "Compensation Intelligence alone can unlock a ₹2–5L salary bump. Mentor Hub earnings cover your plan in one session.",
-      note: "Monthly plans · Cancel anytime · Powered by Razorpay · Prices in INR",
-      plans: [
-        { label:"Free",            price:null,      accent:"#6B6560", featured:false, features:["Basic Orbit dashboard","1 Forge challenge/week","Public verified profile","UAN verification"], cta:"START FREE →", ctaStyle:{ background:D.glass, backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)", color:D.text1, border:`1px solid ${D.border}` } },
-        { label:"Capabilio Pro",   price:"₹499/mo", sub:"₹3,999/yr — save 33%", accent:D.violet, featured:true,  features:["Full Orbit — all 4 career signals","Unlimited Forge challenges","Signal — 3 market reports/mo","Compensation Intelligence","Gap Mode + Gap Narrative Engine","Vault full verification","Nexus verified network"], cta:"GO CAPABILIO PRO →", ctaStyle:{ background:`linear-gradient(135deg,${D.violet},#7C3AED)`, color:"#fff", boxShadow:"0 8px 28px rgba(139,92,246,0.4)" } },
-        { label:"Capabilio Elite", price:"₹999/mo", sub:"₹7,999/yr — save 33%", accent:"#4F46E5", featured:false, features:["Everything in Capabilio Pro","AI Interview — 5 sessions/mo","Mentor Hub listing (15% commission)","Transition Tracks access","Return-Ready Sprint","Signal — unlimited reports","Priority Launchpad matching"], cta:"GO CAPABILIO ELITE →", ctaStyle:{ background:"#4F46E5", color:"#fff" } },
-      ],
-    },
-    executive: {
-      headline: <>Your plan lowers commission.<br /><span style={{ color:D.gold, fontStyle:"italic" }}>One session pays for it.</span></>,
-      sub: "Luminary vs Authority: upgrading saves ₹3,000/mo in commissions on ₹50K monthly sessions. The plan pays for itself.",
-      note: "Invite-only · Annual pricing available · Powered by Razorpay · All prices in INR",
-      plans: [
-        { label:"Authority", price:"₹1,499/mo", sub:"₹14,999/yr — save 17%", accent:D.gold, featured:false, features:["Verified Legacy Profile","Time Market — 18% commission","2 Signal Rooms/month","Insight Cards (unlimited)","Peer Circle access","Influence Index dashboard"], cta:"REQUEST INVITE →", ctaStyle:{ background:D.glass, backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)", color:D.gold, border:`1px solid ${D.gold}40` } },
-        { label:"Luminary",  price:"₹2,999/mo", sub:"₹29,999/yr — save 17%", accent:D.gold, featured:true,  features:["Everything in Authority","Time Market — 12% commission","Unlimited Signal Rooms","Venture Radar — private matching","Board Seat Exchange","Deal Room (3 active)","Peer Circle hosting"], cta:"REQUEST INVITE →", ctaStyle:{ background:`linear-gradient(135deg,${D.gold},#92680A)`, color:"#fff", boxShadow:`0 8px 28px rgba(201,168,76,0.4)` } },
-        { label:"Legacy",    price:"₹7,999/mo", sub:"Custom annual pricing",  accent:"#92680A", featured:false, features:["Everything in Luminary","Time Market — 8% commission","Unlimited Deal Rooms","Dedicated relationship manager","Co-hosted Signal Rooms","Priority cross-network promotion"], cta:"REQUEST INVITE →", ctaStyle:{ background:D.glassDeep, backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)", color:D.gold, border:`1px solid ${D.gold}30` } },
-      ],
-    },
-    institution: {
-      headline: <>One plan per campus.<br /><span style={{ color:D.amber, fontStyle:"italic" }}>Priced for your institution.</span></>,
-      sub: "A bad hire costs ₹80,000+. One better placement decision pays for the year. Pricing is scoped to your student/employee count — talk to us.",
-      note: "Annual contracts · Custom scoping per institution · Powered by Razorpay · GST applicable",
-      // Deliberately no plan cards with numbers here (2026-08-02) — institution
-      // pricing is negotiated per-college, not a fixed self-serve tier like the
-      // other three paths. Showing a number here would undercut that negotiation
-      // before a conversation even starts.
-      plans: [],
+    student: { plans: [
+      { label: "Free", price: null, features: ["1 Arena task every 15 days", "Portfolio generation", "Locked premium previews", "Market reports at ₹49/report"], cta: "Get started free" },
+      { label: "Pro", price: "₹299/mo", sub: "Billed monthly", features: ["3 Arena tasks per day", "3 AI Interview sessions/month", "1 market report/month", "Full Arena access", "Portfolio generation"], cta: "Start Pro" },
+      { label: "Elite", price: "₹599/mo", sub: "Best value", recommended: true, features: ["6 Arena tasks per day", "5 AI Interview sessions/month", "2 market reports/month", "Personal branding video", "Full advanced Arena", "Portfolio generation"], cta: "Go Elite" },
+    ]},
+    professional: { plans: [
+      { label: "Free", price: null, features: ["Basic Orbit dashboard", "1 Forge challenge/week", "Public verified profile", "UAN verification"], cta: "Start free" },
+      { label: "Capabilio Pro", price: "₹499/mo", sub: "₹3,999/yr — save 33%", recommended: true, features: ["Full Orbit — all 4 career signals", "Unlimited Forge challenges", "Signal — 3 market reports/mo", "Compensation Intelligence", "Gap Mode + Gap Narrative Engine", "Vault full verification", "Nexus verified network"], cta: "Go Capabilio Pro" },
+      { label: "Capabilio Elite", price: "₹999/mo", sub: "₹7,999/yr — save 33%", features: ["Everything in Capabilio Pro", "AI Interview — 5 sessions/mo", "Mentor Hub listing (15% commission)", "Transition Tracks access", "Return-Ready Sprint", "Signal — unlimited reports", "Priority Launchpad matching"], cta: "Go Capabilio Elite" },
+    ]},
+    college: {
+      custom: true,
+      sub: "A bad hire costs ₹80,000+. One better placement decision pays for the year. Pricing is scoped to your student/employee count.",
+      cta: "Talk to us",
     },
   }
 
-  // ── Inline row list used in "Timeline" / "Institution" sections
-  const proTimelineRows = [
-    { icon:"✦", color:D.green,  label:"Verified via UAN",         desc:"Employment history cross-matched with EPFO records. Start and end dates locked." },
-    { icon:"⚡", color:D.violet, label:"Auto-updates on new role", desc:"JD, skills, salary band, and start date populate automatically. No form filling." },
-    { icon:"🌿", color:D.orange, label:"Promotion branches",       desc:"Role changes appear as a new branch on your timeline — set by your recruiter, never self-reported." },
-    { icon:"⚠",  color:"#DC2626",label:"Self-claims flagged",       desc:"Anything entered manually is marked 'Self-claimed' in your public profile. Recruiters see the difference." },
-  ]
-  const execLegacyRows = [
-    { icon:"📰", color:D.gold,   label:"Cross-verified with news sources",     desc:"Funding rounds, acquisitions, and keynotes are matched against public records. No fake claims." },
-    { icon:"⏱",  color:D.orange, label:"Time Market earnings tracked",         desc:"Session history, ratings, repeat client rate, and total earnings visible to you — private from others." },
-    { icon:"🔒", color:D.violet, label:"Invite-only access model",             desc:"You cannot self-onboard. Capabilio verifies every executive before their profile goes live." },
-    { icon:"📊", color:D.green,  label:"Influence Index replaces follower count",desc:"Calculated from mentee outcomes, session ratings, community engagement, and verified achievements." },
-  ]
-  const orgRows = [
-    { icon:"📈", color:D.amber,  label:"Live Cohort ELO",      desc:"Placement team sees hire-ready students in real time. No manual reporting." },
-    { icon:"🔄", color:D.green,  label:"Auto path transitions", desc:"In-campus offer → Professional path. Graduate without offer → Student path. Fully automatic." },
-    { icon:"⭐", color:D.blue,   label:"Anonymous ratings",     desc:"Day-30 + exit ratings. Reviewer identity never disclosed. Min 5 ratings before company sees data." },
-    { icon:"🧬", color:D.orange, label:"Company ELO",           desc:"Built from hire quality + retention + ratings. Cannot be faked. Updated quarterly." },
-  ]
-
-  // ── Glass card helper for detail rows
-  const DetailRow = ({ icon, color, label, desc }) => (
-    <div style={{ display:"flex", gap:14, alignItems:"flex-start", padding:"14px 18px", background:D.glassDeep, border:`1px solid ${D.border}`, borderRadius:16, backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)" }}>
-      <div style={{ width:36, height:36, borderRadius:10, background:`${color}14`, border:`1px solid ${color}28`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, flexShrink:0, boxShadow:`0 0 12px ${color}18` }}>{icon}</div>
-      <div>
-        <div style={{ fontSize:14, fontWeight:700, color:D.text1, marginBottom:3 }}>{label}</div>
-        <div style={{ fontSize:13, color:D.text2, lineHeight:1.6 }}>{desc}</div>
-      </div>
-    </div>
-  )
-
-  // ── Scroll-reveal refs — one per below-the-fold section (hero excluded,
-  // it already animates on load via .lp-fade-up)
-  const [pathsRevealRef,    pathsVisible]    = useReveal()
-  const [problemRevealRef,  problemVisible]  = useReveal()
-  const [eloRevealRef,      eloVisible]      = useReveal()
-  const [featuresRevealRef, featuresVisible] = useReveal()
-  const [echoRevealRef,     echoVisible]     = useReveal()
-  const [portfolioRevealRef,portfolioVisible]= useReveal()
-  const [pricingRevealRef,  pricingVisible]  = useReveal()
-  const [networkRevealRef,  networkVisible]  = useReveal()
-  const [ctaRevealRef,      ctaVisible]      = useReveal()
-  const [faqRevealRef,      faqVisible]      = useReveal()
-
   return (
-    <div style={{ minHeight:"100vh", background:D.bg, color:D.text1, overflowX:"hidden", fontFamily:"'DM Sans',sans-serif", position:"relative" }}>
-
-      {/* ── Global ambient particle field (whole page, fixed) ───────── */}
-      <PageParticleField />
-
-      {/* ── Global ambient glow orbs ───────────────────────────────── */}
-      <div aria-hidden style={{ position:"fixed", inset:0, pointerEvents:"none", zIndex:0, overflow:"hidden" }}>
-        <div style={{ position:"absolute", top:"-20%", left:"-10%", width:"60vw", height:"60vw", borderRadius:"50%", background:"radial-gradient(circle, rgba(255,87,1,0.09) 0%, transparent 70%)", filter:"blur(80px)" }} />
-        <div style={{ position:"absolute", top:"30%",  right:"-15%", width:"50vw", height:"50vw", borderRadius:"50%", background:"radial-gradient(circle, rgba(139,92,246,0.07) 0%, transparent 70%)", filter:"blur(80px)" }} />
-        <div style={{ position:"absolute", bottom:"-10%", left:"20%", width:"50vw", height:"50vw", borderRadius:"50%", background:"radial-gradient(circle, rgba(201,168,76,0.05) 0%, transparent 70%)", filter:"blur(80px)" }} />
-      </div>
-
+    <div style={{ minHeight: "100vh", background: T.surface, color: T.ink, fontFamily: "'DM Sans',sans-serif" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Mono:wght@400;500;600&display=swap');
-        * { box-sizing:border-box; }
-        .lp-container { max-width:1180px; margin:0 auto; padding-left:24px; padding-right:24px; position:relative; z-index:1; }
-        .lp-grid-hero { display:grid; grid-template-columns:1.05fr 0.95fr; gap:40px; align-items:center; }
-        .lp-grid-2 { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; }
-        .lp-grid-3 { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; }
-        .lp-grid-4 { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:18px; }
-        .lp-fade-up   { animation:lpFadeUp 0.5s ease both; }
-        .lp-fade-up-2 { animation:lpFadeUp 0.65s ease both; }
-        @keyframes lpFadeUp { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
-        .lp-reveal { opacity:0; transform:translateY(28px); transition:opacity 0.7s cubic-bezier(0.16,1,0.3,1), transform 0.7s cubic-bezier(0.16,1,0.3,1); }
-        .lp-reveal.visible { opacity:1; transform:translateY(0); }
-        @media (prefers-reduced-motion: reduce) { .lp-reveal { opacity:1; transform:none; transition:none; } }
-        @media (max-width:1024px) { .lp-grid-hero,.lp-grid-2,.lp-grid-3,.lp-grid-4 { grid-template-columns:1fr; } }
-        @media (max-width:720px)  { .lp-container { padding-left:18px; padding-right:18px; } }
-
-        .pricing-path-tile { cursor:pointer; border-radius:20px; padding:18px 16px; border:2px solid transparent; transition:all 240ms cubic-bezier(0.16,1,0.3,1); position:relative; overflow:hidden; backdrop-filter:blur(16px); }
-        .pricing-path-tile:hover { transform:translateY(-3px) scale(1.02); }
-        .pricing-path-tile.active { transform:translateY(-4px) scale(1.03); }
-
-        @keyframes planIn { from { opacity:0; transform:translateY(28px) scale(0.96) } to { opacity:1; transform:translateY(0) scale(1) } }
-        .plan-card-anim { animation:planIn 0.45s cubic-bezier(0.16,1,0.3,1) both; }
-        .plan-card-anim:nth-child(1) { animation-delay:0s; }
-        .plan-card-anim:nth-child(2) { animation-delay:0.08s; }
-        .plan-card-anim:nth-child(3) { animation-delay:0.16s; }
-
-        .pricing-tiles-row { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:36px; }
-        @media (max-width:880px) { .pricing-tiles-row { grid-template-columns:repeat(2,1fr); } }
-        @media (max-width:500px) { .pricing-tiles-row { grid-template-columns:1fr 1fr; gap:10px; } }
-
-        ::selection { background:rgba(255,87,1,0.25); }
-        ::-webkit-scrollbar { width:6px; }
-        ::-webkit-scrollbar-track { background:rgba(255,255,255,0.02); }
-        ::-webkit-scrollbar-thumb { background:rgba(255,87,1,0.3); border-radius:999px; }
-        @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
-        .live-dot { animation: pulse-dot 1.8s ease-in-out infinite; }
-        @keyframes count-bump { 0%{transform:translateY(0)} 50%{transform:translateY(-3px)} 100%{transform:translateY(0)} }
-        .count-bump { animation: count-bump 0.3s cubic-bezier(0.16,1,0.3,1); }
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap');
+        * { box-sizing: border-box; }
+        .lp-container { max-width: 1120px; margin: 0 auto; padding-left: 24px; padding-right: 24px; }
+        .lp-hero-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 64px; align-items: center; }
+        .lp-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; }
+        .lp-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; }
+        .lp-grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 16px; }
+        @media (max-width: 960px) { .lp-hero-grid, .lp-grid-2, .lp-grid-3, .lp-grid-4 { grid-template-columns: 1fr; } }
+        @keyframes arenaSpin { to { transform: rotate(360deg) } }
+        @media (prefers-reduced-motion: reduce) { .lp-hero-grid *, .lp-grid-2 *, .lp-grid-3 *, .lp-grid-4 * { animation: none !important; } }
       `}</style>
 
       {/* ── NAV ─────────────────────────────────────────────────────── */}
-      <nav style={{ position:"sticky", top:0, zIndex:50, background:"rgba(3,3,8,0.82)", backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", borderBottom:`1px solid ${D.border}` }}>
-        <div className="lp-container" style={{ minHeight:68, display:"flex", alignItems:"center", justifyContent:"space-between", gap:16, flexWrap:"wrap", paddingTop:10, paddingBottom:10 }}>
-          <img src="/capabilio-logo-light.png" alt="Capabilio AI" style={{ height:28, width:"auto", display:"block" }} />
-
-          {/* ── Live user count pill ────────────── */}
-          <div style={{ display:"flex", alignItems:"center", gap:8, background:"rgba(22,163,74,0.08)", border:"1px solid rgba(22,163,74,0.22)", borderRadius:999, padding:"7px 14px", backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)" }}>
-            <span className="live-dot" style={{ width:7, height:7, borderRadius:"50%", background:"#22C55E", display:"inline-block", flexShrink:0, boxShadow:"0 0 8px #22C55E" }} />
-            <span style={{ fontFamily:"'DM Mono',monospace", fontSize:12, fontWeight:800, color:"#22C55E", letterSpacing:"0.02em" }}>
-              {liveCount.toLocaleString("en-IN")}
-            </span>
-            <span style={{ fontSize:11, color:"rgba(240,237,232,0.55)", fontFamily:"'DM Mono',monospace", fontWeight:600 }}>users online</span>
-          </div>
-
-          <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
-            <GhostButton onClick={onLogin}>SIGN IN</GhostButton>
-            <PrimaryButton onClick={() => openPath(activeFlow,"nav")}>GET STARTED</PrimaryButton>
+      <nav style={{ borderBottom: `1px solid ${T.border}`, position: "sticky", top: 0, background: T.surface, zIndex: 50 }}>
+        <div className="lp-container" style={{ height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <img src="/capabilio-logo-dark.png" alt="Capabilio AI" style={{ height: 24, width: "auto" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+            <a href="#how-it-works" style={{ fontSize: 14, color: T.ink2, textDecoration: "none", fontWeight: 500 }}>How it works</a>
+            <a href="#pricing" style={{ fontSize: 14, color: T.ink2, textDecoration: "none", fontWeight: 500 }}>Pricing</a>
+            <GhostButton onClick={onLogin}>Sign in</GhostButton>
+            <PrimaryButton onClick={() => openPath(null, "nav")}>Get started</PrimaryButton>
           </div>
         </div>
       </nav>
 
       {/* ── HERO ────────────────────────────────────────────────────── */}
-      <section style={{ padding:"72px 0 88px", position:"relative" }}>
+      <section style={{ padding: "88px 0 96px" }}>
+        <div className="lp-container lp-hero-grid">
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}>
+            <h1 style={{ fontSize: "clamp(34px,4.6vw,54px)", lineHeight: 1.08, fontWeight: 700, letterSpacing: "-0.02em", color: T.ink, margin: "0 0 20px" }}>
+              Your Career Needs More Than A Resume.<br />Build. Practice. Prove. Get Hired.
+            </h1>
+            <p style={{ fontSize: 17, color: T.ink2, lineHeight: 1.6, maxWidth: 480, margin: "0 0 32px" }}>
+              Capabilio is an AI Career Operating System that continuously builds, verifies, and showcases your professional skills.
+            </p>
+            <div style={{ display: "flex", gap: 12 }}>
+              <PrimaryButton onClick={() => openPath(null, "hero")}>Get started <ArrowRight size={15} /></PrimaryButton>
+              <GhostButton href="#how-it-works">See how it works</GhostButton>
+            </div>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1, ease: EASE }}>
+            <WorkflowDiagram />
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── CHOOSE YOUR JOURNEY ─────────────────────────────────────── */}
+      <section style={{ padding: "0 0 96px" }}>
         <div className="lp-container">
-          <div className="lp-grid-hero">
-            <div className="lp-fade-up">
-              <SectionLabel>{hero.sectionLabel}</SectionLabel>
-              <h1 style={{ color:D.text1, marginBottom:20, fontSize:"clamp(38px,6vw,66px)", lineHeight:0.98, letterSpacing:"-0.05em", fontWeight:800 }}>
-                {activeFlow==="student" ? (
-                  <>Your resume lies.<br /><span style={{ color:D.orange, fontStyle:"italic" }}>Your ELO doesn&apos;t.</span></>
-                ) : activeFlow==="professional" ? (
-                  <>Your title is claimed.<br /><span style={{ color:D.violet, fontStyle:"italic" }}>Your career is proven.</span></>
-                ) : activeFlow==="executive" ? (
-                  <>Your authority is real.<br /><span style={{ color:D.gold, fontStyle:"italic" }}>Now monetize it.</span></>
-                ) : (
-                  <>One platform.<br /><span style={{ color:D.amber, fontStyle:"italic" }}>Two institution types.</span></>
-                )}
-              </h1>
-              <p style={{ fontSize:17, color:D.text2, maxWidth:560, marginBottom:32, lineHeight:1.85 }}>{hero.desc}</p>
-
-              {/* Path selector */}
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:28 }}>
-                {Object.entries(FLOWS).map(([key,f]) => (
-                  <PathOptionCard key={key} item={f} isActive={activeFlow===key} onClick={() => setActiveFlow(key)} />
-                ))}
-              </div>
-
-              {/* CTAs */}
-              <div style={{ display:"flex", gap:12, flexWrap:"wrap", marginBottom:32 }}>
-                <PrimaryButton onClick={() => openPath(activeFlow,"hero")}>{flow.cta.toUpperCase()} →</PrimaryButton>
-                <GhostButton onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior:"smooth" })}>SEE HOW IT WORKS</GhostButton>
-              </div>
-
-              {/* Stats bar */}
-              <div style={{ display:"flex", gap:28, paddingTop:22, borderTop:`1px solid ${D.border}`, flexWrap:"wrap" }}>
-                {hero.stats.map((s,i) => (
-                  <div key={i}>
-                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:22, color:flow.color, lineHeight:1, fontWeight:800, textShadow:`0 0 20px ${flow.color}50` }}>{s.val}</div>
-                    <div style={{ fontSize:10, color:D.text3, textTransform:"uppercase", letterSpacing:"0.12em", fontWeight:700, marginTop:5, fontFamily:"'DM Mono',monospace" }}>{s.lbl}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Right: preview card */}
-            <div className="lp-fade-up-2">
-              {activeFlow==="executive"   ? <ExecutivePreview /> :
-               activeFlow==="institution" ? <OrgPreview /> :
-               activeFlow==="professional"? <ProfessionalOrbitPreview eloAnim={eloAnim} /> :
-               <AuraPreview eloAnim={eloAnim} skills={SKILLS} />}
-            </div>
+          <div style={{ textAlign: "center", marginBottom: 40 }}>
+            <Eyebrow>Choose your journey</Eyebrow>
+            <h2 style={{ fontSize: "clamp(28px,3.6vw,40px)", fontWeight: 700, letterSpacing: "-0.015em", color: T.ink, margin: "0 0 12px" }}>One platform. Four journeys.</h2>
+            <p style={{ fontSize: 15, color: T.ink2, maxWidth: 560, margin: "0 auto" }}>Students prove readiness. Professionals stay verified. Executives monetize authority. Colleges measure cohort health.</p>
+          </div>
+          <div className="lp-grid-4">
+            {PRIMARY_PATHS.map(item => <JourneyCard key={item.key} item={item} onOpen={openPath} />)}
+          </div>
+          <div style={{ textAlign: "center", marginTop: 16 }}>
+            <a onClick={() => openPath("institution", "journey-company-link", { instType: "Company" })} style={{ fontSize: 13, color: T.ink3, cursor: "pointer", textDecoration: "none" }}>
+              Building a company profile instead? <span style={{ color: T.accent, fontWeight: 600 }}>&rarr;</span>
+            </a>
           </div>
         </div>
       </section>
 
-      {/* ── PATHS ───────────────────────────────────────────────────── */}
-      <section id="how-it-works" ref={pathsRevealRef} className={`lp-reveal${pathsVisible?" visible":""}`} style={{ padding:"10px 0 88px", background:`radial-gradient(60% 320px at 50% 0%, ${flow.color}0F, transparent 70%)` }}>
+      {/* ── HOW IT WORKS ────────────────────────────────────────────── */}
+      <section id="how-it-works" style={{ padding: "0 0 96px" }}>
         <div className="lp-container">
-          <div style={{ textAlign:"center", marginBottom:40 }}>
-            <SectionLabel>Choose your path</SectionLabel>
-            <h2 style={{ fontSize:"clamp(32px,5vw,54px)", lineHeight:1.05, letterSpacing:"-0.04em", color:D.text1, marginBottom:14, fontWeight:800 }}>One platform.<br /><span style={{ color:D.orange, fontStyle:"italic" }}>Four journeys.</span></h2>
-            <p style={{ fontSize:16, color:D.text2, maxWidth:760, margin:"0 auto 10px", lineHeight:1.85 }}>Students prove readiness. Professionals maintain relevance. Organisations measure talent health. Executives monetize authority.</p>
-            <p style={{ fontSize:13, color:D.text3, maxWidth:600, margin:"0 auto", lineHeight:1.7, fontFamily:"'DM Mono',monospace", fontWeight:600 }}>All powered by one trust-and-ELO backbone.</p>
+          <div style={{ textAlign: "center", marginBottom: 40 }}>
+            <Eyebrow>How it works</Eyebrow>
+            <h2 style={{ fontSize: "clamp(28px,3.6vw,40px)", fontWeight: 700, letterSpacing: "-0.015em", color: T.ink, margin: 0 }}>Five steps. One verified career.</h2>
           </div>
-          <div className="lp-grid-2">
-            <PathCard icon="🎓" title="Student"      desc="25 beginner MCQs calibrate your starting radar. ELO begins at 400 and compounds through daily Arena challenges." badge="ELO starts at 400" onClick={() => openPath("student","path-card")} />
-            <PathCard icon="💼" title="Professional" desc="Upload resume or LinkedIn URL. AI auto-builds your verified career timeline, Skill Half-Life radar, and compensation intelligence. UAN cross-match locks your history." badge="Verified network" badgeColor="purple" featured onClick={() => openPath("professional","path-card")} />
-            <PathCard icon="✦"  title="Executive"    desc="Invite-only. Founders and CEOs sell time via Time Market, host Signal Rooms, match privately on Venture Radar, and access the Board Seat Exchange. Verified legacy profile." badge="Invite-only" badgeColor="amber" onClick={() => openPath("executive","path-card")} />
-            <PathCard icon="🏛️" title="Organisation" desc="Colleges: Cohort ELO, professor tasks, auto placement pipeline, alumni intelligence. Companies: verified profile, anonymous rating system, Company ELO, ATS integration." badge="College · Company" badgeColor="amber" onClick={() => openPath("institution","path-card")} />
-          </div>
+          <HowItWorksLine />
         </div>
       </section>
 
-      {/* ── PROBLEM ─────────────────────────────────────────────────── */}
-      <section ref={problemRevealRef} className={`lp-reveal${problemVisible?" visible":""}`} style={{ padding:"0 0 88px", background:"radial-gradient(50% 300px at 85% 0%, rgba(220,38,38,0.05), transparent 70%)" }}>
-        <div className="lp-container">
-          <div style={{ background:D.glass, border:`1px solid ${D.border}`, borderRadius:30, padding:"38px 26px", backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)", boxShadow:`0 24px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)` }}>
-            <div style={{ textAlign:"center", marginBottom:36 }}>
-              <SectionLabel>The problem nobody talks about</SectionLabel>
-              <h2 style={{ fontSize:"clamp(30px,5vw,50px)", lineHeight:1.06, color:D.text1, marginBottom:14, letterSpacing:"-0.04em", fontWeight:800 }}>Resumes are the world&apos;s most<br /><span style={{ color:D.orange, fontStyle:"italic" }}>successful lie.</span></h2>
-              <p style={{ fontSize:15, color:D.text2, maxWidth:680, margin:"0 auto", lineHeight:1.8 }}>Every hiring manager knows this. They spend 6 seconds on a resume and still can't tell who can actually do the job.</p>
-            </div>
-            <div className="lp-grid-3">
-              {problemRows.map((r,i) => (
-                <div key={i} style={{ background:D.glassDeep, border:`1px solid ${D.border}`, borderRadius:20, padding:20 }}>
-                  <div style={{ fontSize:26, marginBottom:12 }}>{r.icon}</div>
-                  <div style={{ fontSize:15, fontWeight:700, color:D.text1, marginBottom:10, lineHeight:1.45, fontStyle:"italic" }}>{r.claim}</div>
-                  <div style={{ height:1, background:"rgba(220,38,38,0.22)", marginBottom:10 }} />
-                  <div style={{ fontSize:13, color:"#EF4444", lineHeight:1.6 }}>Reality: {r.reality}</div>
-                </div>
-              ))}
-            </div>
+      {/* ── SHOW, DON'T EXPLAIN ─────────────────────────────────────── */}
+      <section style={{ padding: "0 0 96px", background: T.surfaceRaised, borderTop: `1px solid ${T.hairline}`, borderBottom: `1px solid ${T.hairline}` }}>
+        <div className="lp-container" style={{ paddingTop: 80, paddingBottom: 16 }}>
+          <div style={{ textAlign: "center", marginBottom: 44 }}>
+            <Eyebrow>See it, don&apos;t read about it</Eyebrow>
+            <h2 style={{ fontSize: "clamp(28px,3.6vw,40px)", fontWeight: 700, letterSpacing: "-0.015em", color: T.ink, margin: 0 }}>What actually happens on Capabilio.</h2>
           </div>
-        </div>
-      </section>
-
-      {/* ── ELO ─────────────────────────────────────────────────────── */}
-      <section ref={eloRevealRef} className={`lp-reveal${eloVisible?" visible":""}`} style={{ padding:"0 0 88px", background:"radial-gradient(55% 340px at 15% 40%, rgba(255,87,1,0.06), transparent 70%)" }}>
-        <div className="lp-container">
-          <div className="lp-grid-2" style={{ alignItems:"center" }}>
+          <div className="lp-grid-3">
             <div>
-              <SectionLabel>Live skill rating</SectionLabel>
-              <h2 style={{ fontSize:"clamp(32px,5vw,52px)", lineHeight:1.05, color:D.text1, marginBottom:16, letterSpacing:"-0.04em", fontWeight:800 }}>A number that<br /><span style={{ color:D.orange, fontStyle:"italic" }}>can&apos;t be faked.</span></h2>
-              <p style={{ fontSize:15, color:D.text2, marginBottom:28, lineHeight:1.85 }}>Like chess.com — your ELO is earned through real performance. It rises when you solve hard problems, drops when you go inactive, and cannot be self-reported or inflated.</p>
-              <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:20 }}>
-                {["400+ Student","800+ Professional","1000+ Proficient","1400+ Expert"].map((tier,i) => (
-                  <span key={i} style={{ padding:"8px 12px", borderRadius:999, fontSize:10, letterSpacing:"0.10em", textTransform:"uppercase", fontWeight:800, fontFamily:"'DM Mono',monospace", background: tier.includes("1000+") ? "rgba(255,87,1,0.12)" : D.glass, color: tier.includes("1000+") ? D.orange : D.text2, border:`1px solid ${tier.includes("1000+") ? "rgba(255,87,1,0.28)" : D.border}`, backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)" }}>{tier}</span>
-                ))}
-              </div>
-              {["Goes up when you solve hard problems.","Drops if you are inactive for 7+ days.","Cannot be self-reported or inflated.","Comparable across all users globally."].map((t,i) => (
-                <div key={i} style={{ display:"flex", gap:10, alignItems:"center", padding:"12px 14px", background:D.glass, border:`1px solid ${D.border}`, borderRadius:16, marginBottom:10, backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)" }}>
-                  <span style={{ fontSize:14, color:D.orange }}>✦</span>
-                  <span style={{ fontSize:14, color:D.text2 }}>{t}</span>
-                </div>
-              ))}
+              <div style={{ fontSize: 13, fontWeight: 600, color: T.ink3, marginBottom: 12 }}>Arena</div>
+              <ArenaPreview />
             </div>
-            {/* ELO card */}
-            <div style={{ background:D.glass, border:`1px solid rgba(255,87,1,0.22)`, borderRadius:28, padding:24, backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)", boxShadow:`0 24px 60px rgba(0,0,0,0.5), 0 0 60px rgba(255,87,1,0.06), inset 0 1px 0 rgba(255,255,255,0.06)` }}>
-              <div style={{ textAlign:"center", marginBottom:24 }}>
-                <div style={{ fontFamily:"'DM Mono',monospace", fontSize:66, color:D.orange, lineHeight:1, marginBottom:6, fontWeight:800, textShadow:`0 0 40px rgba(255,87,1,0.4)` }}>1,847</div>
-                <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:D.text3, letterSpacing:"0.14em", textTransform:"uppercase", fontWeight:700 }}>Proficient · Top 8%</div>
-              </div>
-              <div style={{ marginBottom:20 }}>
-                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8, gap:14 }}>
-                  <span style={{ fontSize:10, color:D.text3, letterSpacing:"0.10em", textTransform:"uppercase", fontWeight:700, fontFamily:"'DM Mono',monospace" }}>ELO Growth</span>
-                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:D.orange, fontWeight:700 }}>400 → 1,847</span>
-                </div>
-                <EloSparkline points={ELO_HISTORY} width={380} height={70} />
-              </div>
-              <div style={{ border:`1px solid ${D.border}`, borderRadius:18, overflow:"hidden" }}>
-                {VERSUS_ROWS.map((row,i) => (
-                  <div key={i} style={{ display:"grid", gridTemplateColumns:"1fr 1fr", borderBottom:i!==VERSUS_ROWS.length-1?`1px solid ${D.border}`:"none" }}>
-                    <div style={{ padding:"12px 14px", background:D.glassDeep, color:D.text3, fontSize:13, lineHeight:1.6 }}>{row.old}</div>
-                    <div style={{ padding:"12px 14px", background:"rgba(255,87,1,0.06)", color:D.orange, fontSize:13, lineHeight:1.6, fontWeight:700, fontFamily:"'DM Mono',monospace" }}>{row.new}</div>
-                  </div>
-                ))}
-              </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: T.ink3, marginBottom: 12 }}>SkillStudio</div>
+              <SkillStudioPreview />
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: T.ink3, marginBottom: 12 }}>Recruiter view</div>
+              <RecruiterPreview />
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── FEATURES ────────────────────────────────────────────────── */}
-      <section ref={featuresRevealRef} className={`lp-reveal${featuresVisible?" visible":""}`} style={{ padding:"0 0 88px", background:`radial-gradient(55% 340px at 85% 20%, ${flow.color}0C, transparent 70%)` }}>
-        <div className="lp-container">
-          <div style={{ textAlign:"center", marginBottom:40 }}>
-            <SectionLabel>Platform modules</SectionLabel>
-            {activeFlow==="professional" ? (
-              <>
-                <h2 style={{ fontSize:"clamp(32px,5vw,52px)", lineHeight:1.05, color:D.text1, marginBottom:14, letterSpacing:"-0.04em", fontWeight:800 }}>Eight modules.<br /><span style={{ color:D.violet, fontStyle:"italic" }}>One verified career.</span></h2>
-                <p style={{ fontSize:15, color:D.text2, maxWidth:700, margin:"0 auto", lineHeight:1.85 }}>Career intelligence, market signals, skill maintenance, and passive job matching — for professionals who are employed and want to stay ahead without grinding daily tasks.</p>
-              </>
-            ) : activeFlow==="executive" ? (
-              <>
-                <h2 style={{ fontSize:"clamp(32px,5vw,52px)", lineHeight:1.05, color:D.text1, marginBottom:14, letterSpacing:"-0.04em", fontWeight:800 }}>Nine surfaces.<br /><span style={{ color:D.gold, fontStyle:"italic" }}>One authority network.</span></h2>
-                <p style={{ fontSize:15, color:D.text2, maxWidth:700, margin:"0 auto", lineHeight:1.85 }}>A premium verified network where founders, CEOs, and domain authorities monetize time, match privately, and build influence — with an integrity floor no other platform enforces.</p>
-              </>
-            ) : activeFlow==="institution" ? (
-              <>
-                <h2 style={{ fontSize:"clamp(32px,5vw,52px)", lineHeight:1.05, color:D.text1, marginBottom:14, letterSpacing:"-0.04em", fontWeight:800 }}>Nine modules.<br /><span style={{ color:D.amber, fontStyle:"italic" }}>One verified ecosystem.</span></h2>
-                <p style={{ fontSize:15, color:D.text2, maxWidth:700, margin:"0 auto", lineHeight:1.85 }}>Colleges track cohort ELO and automate placements. Companies build verified profiles and earn trust through anonymous ratings. Both run on the same talent intelligence backbone.</p>
-              </>
-            ) : (
-              <>
-                <h2 style={{ fontSize:"clamp(32px,5vw,52px)", lineHeight:1.05, color:D.text1, marginBottom:14, letterSpacing:"-0.04em", fontWeight:800 }}>Five modules.<br /><span style={{ color:D.orange, fontStyle:"italic" }}>Zero resumes.</span></h2>
-                <p style={{ fontSize:15, color:D.text2, maxWidth:700, margin:"0 auto", lineHeight:1.85 }}>Interlocking modules replace your resume, cover letter, and LinkedIn with live, verifiable proof of work.</p>
-              </>
-            )}
-          </div>
-          {activeFlow==="professional" ? <div className="lp-grid-4">{PROFESSIONAL_FEATURES.map((f,i)=><FeatureCard key={i} item={f}/>)}</div>
-          : activeFlow==="executive"   ? <div className="lp-grid-3">{EXECUTIVE_FEATURES.map((f,i)=><FeatureCard key={i} item={f}/>)}</div>
-          : activeFlow==="institution" ? <div className="lp-grid-3">{INSTITUTION_FEATURES.map((f,i)=><FeatureCard key={i} item={f}/>)}</div>
-          : <div className="lp-grid-3">{FEATURES.map((f,i)=><FeatureCard key={i} item={f}/>)}</div>}
-        </div>
-      </section>
+      {/* ── TRUST / PROOF ───────────────────────────────────────────── */}
+      <ClaimVsProofSection problemRows={PROBLEM_ROWS} eloHistory={ELO_HISTORY} />
 
-      {/* ── ECHOPITCH ─────────────────────────────────────────────────
-          Real, generated video+audio demo (Canvas + Deepgram TTS, the
-          same engine EchoPitch itself uses) — not a static/uploaded
-          video file. No user data is available on this public page, so
-          the demo runs generic product narration with no profile photo
-          (EchoPitchDemoPlayer only draws a portrait when avatarUrl is
-          passed — see its header comment). */}
-      <section ref={echoRevealRef} className={`lp-reveal${echoVisible?" visible":""}`} style={{ padding:"0 0 88px" }}>
+      {/* ── PRICING ─────────────────────────────────────────────────── */}
+      <section id="pricing" style={{ padding: "0 0 96px" }}>
         <div className="lp-container">
-          <div style={{ background:"radial-gradient(circle at 20% 15%, rgba(0,210,255,0.08), rgba(3,3,8,0) 55%)",
-            border:"1px solid rgba(255,255,255,0.1)", borderRadius:30, padding:"44px 30px",
-            backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)", boxShadow:"0 24px 80px rgba(0,0,0,0.5)" }}>
-            <div style={{ display:"flex", flexWrap:"wrap", gap:36, alignItems:"center", justifyContent:"space-between" }}>
-              <div style={{ flex:"1 1 380px", minWidth:280 }}>
-                <span style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"4px 12px", borderRadius:99,
-                  background:"linear-gradient(135deg,#F5C453,#D89B2A)", color:"#1a1408", fontSize:10, fontWeight:900,
-                  letterSpacing:1, marginBottom:14 }}>✦ ELITE EXCLUSIVE</span>
-                <h2 style={{ fontSize:"clamp(30px,5vw,48px)", lineHeight:1.06, color:D.text1, marginBottom:12,
-                  letterSpacing:"-0.04em", fontWeight:800 }}>
-                  Introducing <span style={{ color:"#00D2FF", fontStyle:"italic" }}>EchoPitch</span>
-                </h2>
-                <p style={{ fontSize:15, color:D.text2, maxWidth:520, lineHeight:1.85, marginBottom:18 }}>
-                  A cinematic, narrated video pitch built entirely from your real Capabilio evidence — Arena
-                  missions, ELO growth, and skills. Real AI voiceover, baked into a video you download and share.
-                  Not a template. Not a resume.
-                </p>
-                <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
-                  <PrimaryButton onClick={() => openPath(activeFlow,"echopitch-cta")}>BUILD YOUR ECHOPITCH →</PrimaryButton>
-                </div>
-              </div>
-              <div style={{ flex:"1 1 380px", minWidth:280, display:"flex", justifyContent:"center" }}>
-                <EchoPitchDemoPlayer />
-              </div>
-            </div>
+          <div style={{ textAlign: "center", marginBottom: 32 }}>
+            <Eyebrow>Pricing</Eyebrow>
+            <h2 style={{ fontSize: "clamp(28px,3.6vw,40px)", fontWeight: 700, letterSpacing: "-0.015em", color: T.ink, margin: "0 0 12px" }}>Simple pricing.</h2>
           </div>
-        </div>
-      </section>
-
-      {/* ── PORTFOLIO / PATH-SPECIFIC PROOF ─────────────────────────── */}
-      <section ref={portfolioRevealRef} className={`lp-reveal${portfolioVisible?" visible":""}`} style={{ padding:"0 0 88px" }}>
-        <div className="lp-container">
-          {activeFlow==="executive" ? (
-            <div style={{ background:`linear-gradient(135deg, rgba(201,168,76,0.06), rgba(3,3,8,0) 60%)`, border:`1px solid rgba(201,168,76,0.2)`, borderRadius:30, padding:"38px 26px", backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)", boxShadow:`0 24px 80px rgba(0,0,0,0.5), 0 0 60px rgba(201,168,76,0.06)` }}>
-              <div style={{ textAlign:"center", marginBottom:36 }}>
-                <SectionLabel>Verified legacy profile</SectionLabel>
-                <h2 style={{ fontSize:"clamp(30px,5vw,50px)", lineHeight:1.06, color:D.text1, marginBottom:14, letterSpacing:"-0.04em", fontWeight:800 }}>Your authority timeline.<br /><span style={{ color:D.gold, fontStyle:"italic" }}>Verified, not claimed.</span></h2>
-                <p style={{ fontSize:15, color:D.text2, maxWidth:680, margin:"0 auto 28px", lineHeight:1.8 }}>Every funding round, board seat, exit, patent, and keynote — cross-verified with news sources and company data. Not self-reported. Your legacy profile is the single most credible executive record in India.</p>
-              </div>
-              <div style={{ display:"flex", flexDirection:"column", gap:10, maxWidth:680, margin:"0 auto 28px" }}>
-                {execLegacyRows.map((r,i) => <DetailRow key={i} {...r} />)}
-              </div>
-              <div style={{ textAlign:"center" }}><PrimaryButton onClick={() => openPath("executive","exec-legacy-cta")}>REQUEST EXECUTIVE INVITE →</PrimaryButton></div>
-            </div>
-          ) : activeFlow==="institution" ? (
-            <div style={{ background:`linear-gradient(135deg, rgba(217,119,6,0.06), rgba(3,3,8,0) 60%)`, border:`1px solid rgba(217,119,6,0.2)`, borderRadius:30, padding:"38px 26px", backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)", boxShadow:`0 24px 80px rgba(0,0,0,0.5), 0 0 60px rgba(217,119,6,0.04)` }}>
-              <div style={{ textAlign:"center", marginBottom:36 }}>
-                <SectionLabel>Cohort intelligence + company trust</SectionLabel>
-                <h2 style={{ fontSize:"clamp(30px,5vw,50px)", lineHeight:1.06, color:D.text1, marginBottom:14, letterSpacing:"-0.04em", fontWeight:800 }}>Talent health, measured.<br /><span style={{ color:D.amber, fontStyle:"italic" }}>Trust, built automatically.</span></h2>
-                <p style={{ fontSize:15, color:D.text2, maxWidth:680, margin:"0 auto 28px", lineHeight:1.8 }}>Colleges see cohort ELO in real time. Students auto-transition to Professional path when placed. Companies earn a verified Company ELO from anonymous employee ratings — and it cannot be gamed.</p>
-              </div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, maxWidth:720, margin:"0 auto 28px" }}>
-                {orgRows.map((r,i) => <DetailRow key={i} {...r} />)}
-              </div>
-              <div style={{ textAlign:"center" }}><PrimaryButton onClick={() => openPath("institution","org-cta")}>CREATE INSTITUTION PROFILE →</PrimaryButton></div>
-            </div>
-          ) : activeFlow==="professional" ? (
-            <div style={{ background:`linear-gradient(135deg, rgba(139,92,246,0.06), rgba(3,3,8,0) 60%)`, border:`1px solid rgba(139,92,246,0.2)`, borderRadius:30, padding:"38px 26px", backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)", boxShadow:`0 24px 80px rgba(0,0,0,0.5), 0 0 60px rgba(139,92,246,0.04)` }}>
-              <div style={{ textAlign:"center", marginBottom:36 }}>
-                <SectionLabel>Auto-verified career timeline</SectionLabel>
-                <h2 style={{ fontSize:"clamp(30px,5vw,50px)", lineHeight:1.06, color:D.text1, marginBottom:14, letterSpacing:"-0.04em", fontWeight:800 }}>Every career move.<br /><span style={{ color:D.violet, fontStyle:"italic" }}>Verified, not claimed.</span></h2>
-                <p style={{ fontSize:15, color:D.text2, maxWidth:680, margin:"0 auto 28px", lineHeight:1.8 }}>When you join a new company through Capabilio, your timeline auto-updates with the JD, skills, and start date. When you're promoted, your recruiter updates it and a new branch appears. You never touch it. Anything you add yourself is flagged as self-claimed.</p>
-              </div>
-              <div style={{ display:"flex", flexDirection:"column", gap:10, maxWidth:680, margin:"0 auto 28px" }}>
-                {proTimelineRows.map((r,i) => <DetailRow key={i} {...r} />)}
-              </div>
-              <div style={{ textAlign:"center" }}><PrimaryButton onClick={() => openPath("professional","timeline-cta")}>BUILD YOUR VERIFIED TIMELINE →</PrimaryButton></div>
+          <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 32 }}>
+            {["student", "professional", "college"].map(key => (
+              <button key={key} onClick={() => setPricingFlow(key)} style={{
+                padding: "8px 16px", borderRadius: 999, border: `1px solid ${pricingFlow === key ? T.accent : T.border}`,
+                background: pricingFlow === key ? T.accentDim : "transparent",
+                color: pricingFlow === key ? T.accent : T.ink2, fontSize: 13, fontWeight: 600,
+                cursor: "pointer", fontFamily: "inherit", textTransform: "capitalize",
+              }}>{key}</button>
+            ))}
+          </div>
+          {PRICING[pricingFlow].custom ? (
+            <div style={{ maxWidth: 480, margin: "0 auto", textAlign: "center", border: `1px solid ${T.border}`, borderRadius: 16, padding: "36px 28px" }}>
+              <div style={{ fontSize: 22, fontWeight: 700, color: T.ink, marginBottom: 8 }}>Custom pricing</div>
+              <p style={{ fontSize: 13.5, color: T.ink2, lineHeight: 1.6, margin: "0 0 20px" }}>{PRICING.college.sub}</p>
+              <PrimaryButton onClick={() => openPath("institution", "pricing-college-cta")}>{PRICING.college.cta}</PrimaryButton>
             </div>
           ) : (
-            <>
-              <div style={{ textAlign:"center", marginBottom:34 }}>
-                <SectionLabel>Public portfolio</SectionLabel>
-                <h2 style={{ fontSize:"clamp(32px,5vw,52px)", lineHeight:1.05, color:D.text1, marginBottom:14, letterSpacing:"-0.04em", fontWeight:800 }}>Show recruiters<br /><span style={{ color:D.orange, fontStyle:"italic" }}>how you think.</span></h2>
-                <p style={{ fontSize:15, color:D.text2, maxWidth:700, margin:"0 auto", lineHeight:1.85 }}>Every Arena task builds your public portfolio. Recruiters see the actual problem, your solution, and the AI review.</p>
-              </div>
-              <div style={{ display:"flex", flexDirection:"column", gap:14 }}>{PORTFOLIO_TASKS.map((t,i) => <PortfolioCard key={i} task={t}/>)}</div>
-              <div style={{ textAlign:"center", marginTop:28 }}><PrimaryButton onClick={() => openPath(activeFlow,"portfolio-cta")}>START BUILDING YOUR PORTFOLIO →</PrimaryButton></div>
-            </>
+            <div className="lp-grid-3">
+              {PRICING[pricingFlow].plans.map(plan => (
+                <div key={plan.label} style={{
+                  border: `1px solid ${T.border}`, borderTop: plan.recommended ? `3px solid ${T.accent}` : `1px solid ${T.border}`,
+                  borderRadius: 16, padding: "24px 22px", display: "flex", flexDirection: "column",
+                }}>
+                  {plan.recommended && <div style={{ fontSize: 10.5, fontWeight: 700, color: T.accent, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 10 }}>Recommended</div>}
+                  <div style={{ fontSize: 13, fontWeight: 600, color: T.ink3, marginBottom: 6 }}>{plan.label}</div>
+                  <div style={{ fontSize: 30, fontWeight: 700, color: T.ink, marginBottom: plan.sub ? 4 : 18 }}>{plan.price || "Free"}</div>
+                  {plan.sub && <div style={{ fontSize: 12, color: T.ink3, marginBottom: 18 }}>{plan.sub}</div>}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 9, marginBottom: 22, flex: 1 }}>
+                    {plan.features.map(f => (
+                      <div key={f} style={{ display: "flex", gap: 8, fontSize: 13, color: T.ink2 }}>
+                        <Check size={14} color={T.accent} strokeWidth={2.5} style={{ flexShrink: 0, marginTop: 2 }} /> {f}
+                      </div>
+                    ))}
+                  </div>
+                  {plan.recommended
+                    ? <PrimaryButton onClick={() => openPath(pricingFlow, `pricing-${plan.label}`)}>{plan.cta}</PrimaryButton>
+                    : <GhostButton onClick={() => openPath(pricingFlow, `pricing-${plan.label}`)}>{plan.cta}</GhostButton>}
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </section>
 
-      {/* ── PRICING ─────────────────────────────────────────────────── */}
-      <section ref={pricingRevealRef} className={`lp-reveal${pricingVisible?" visible":""}`} style={{ padding:"0 0 88px", background:`radial-gradient(55% 340px at 50% 0%, ${({student:D.orange,professional:D.violet,executive:D.gold,institution:D.amber})[pricingFlow]}0C, transparent 70%)` }}>
-        <div className="lp-container">
-          <div style={{ textAlign:"center", marginBottom:44 }}>
-            <SectionLabel>Pricing</SectionLabel>
-            <h2 style={{ fontSize:"clamp(32px,5vw,52px)", lineHeight:1.05, color:D.text1, marginBottom:14, letterSpacing:"-0.04em", fontWeight:800 }}>Simple pricing.<br /><span style={{ color:D.orange, fontStyle:"italic" }}>Serious value.</span></h2>
-            <p style={{ fontSize:15, color:D.text2, maxWidth:560, margin:"0 auto", lineHeight:1.85 }}>Pick your path below. Every plan is designed so the value you get far exceeds what you pay.</p>
-          </div>
-
-          {/* Path tiles */}
-          <div className="pricing-tiles-row">
-            {[
-              { key:"student",      icon:"🎓", label:"Student",      tagline:"Prove skill, get first job",      from:"Free – ₹599/mo",      color:D.orange, glow:"rgba(255,87,1,0.22)"  },
-              { key:"professional", icon:"💼", label:"Professional",  tagline:"Maintain relevance, grow salary",  from:"Free – ₹999/mo",      color:D.violet, glow:"rgba(139,92,246,0.22)" },
-              { key:"executive",    icon:"✦",  label:"Executive",     tagline:"Monetize authority & time",        from:"₹1,499 – ₹7,999/mo", color:D.gold,   glow:"rgba(201,168,76,0.28)"  },
-              { key:"institution",  icon:"🏛️", label:"Organisation",  tagline:"College & company intelligence",   from:"Custom pricing",       color:D.amber,  glow:"rgba(217,119,6,0.22)"  },
-            ].map(tile => {
-              const isActive = pricingFlow===tile.key
-              return (
-                <div key={tile.key}
-                  className={`pricing-path-tile${isActive?" active":""}`}
-                  style={{ background: isActive ? `${tile.color}12` : D.glass, borderColor: isActive ? `${tile.color}50` : D.border, boxShadow: isActive ? `0 16px 40px ${tile.glow}, 0 0 0 1px ${tile.color}30` : `0 4px 20px rgba(0,0,0,0.3)` }}
-                  onClick={() => switchPricingFlow(tile.key)}
-                >
-                  {isActive && <div style={{ position:"absolute", top:0, left:0, right:0, height:2, background:tile.color, borderRadius:"20px 20px 0 0", boxShadow:`0 0 12px ${tile.color}` }} />}
-                  <div style={{ fontSize:24, marginBottom:8 }}>{tile.icon}</div>
-                  <div style={{ fontSize:15, fontWeight:800, color:isActive?tile.color:D.text1, marginBottom:4 }}>{tile.label}</div>
-                  <div style={{ fontSize:10, color:D.text3, lineHeight:1.5, marginBottom:10 }}>{tile.tagline}</div>
-                  <div style={{ fontFamily:"'DM Mono',monospace", fontSize:10, fontWeight:800, color:tile.color, letterSpacing:"0.06em" }}>{tile.from}</div>
-                  {isActive && (
-                    <div style={{ position:"absolute", top:12, right:12, width:18, height:18, borderRadius:"50%", background:tile.color, display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 0 10px ${tile.color}` }}>
-                      <span style={{ color:"#fff", fontSize:10, fontWeight:800 }}>✓</span>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Plan cards */}
-          {(() => {
-            const p = PRICING[pricingFlow]
-            return (
-              <div key={pricingKey}>
-                <div style={{ textAlign:"center", marginBottom:32 }}>
-                  <h3 style={{ fontSize:"clamp(20px,3.5vw,34px)", lineHeight:1.1, color:D.text1, marginBottom:10, letterSpacing:"-0.03em", fontWeight:800 }}>{p.headline}</h3>
-                  <p style={{ fontSize:14, color:D.text2, maxWidth:560, margin:"0 auto", lineHeight:1.8 }}>{p.sub}</p>
-                </div>
-                {pricingFlow==="institution" ? (
-                  <div style={{
-                    maxWidth:560, margin:"0 auto 24px", textAlign:"center",
-                    background:D.glass, backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)",
-                    border:`1px solid ${D.amber}40`, borderRadius:22, padding:"40px 32px",
-                  }}>
-                    <div style={{ fontSize:11, fontWeight:800, color:D.amber, letterSpacing:2, textTransform:"uppercase", marginBottom:10, fontFamily:"'DM Mono',monospace" }}>Organisation</div>
-                    <div style={{ fontSize:28, fontWeight:900, color:D.text1, marginBottom:12 }}>Custom pricing</div>
-                    <div style={{ fontSize:13.5, color:D.text2, lineHeight:1.7, marginBottom:26 }}>Scoped to your institution's size and needs. We'll walk your placement cell through a live demo on your own data before talking numbers.</div>
-                    <button
-                      onClick={() => openPath("institution","pricing-talk-to-us-cta")}
-                      style={{ padding:"14px 32px", border:"none", borderRadius:12, fontSize:13, fontWeight:800, cursor:"pointer", letterSpacing:"0.04em", fontFamily:"'DM Mono',monospace", background:`linear-gradient(135deg,${D.amber},#92580A)`, color:"#fff", boxShadow:"0 8px 28px rgba(217,119,6,0.4)" }}
-                    >TALK TO US →</button>
-                  </div>
-                ) : (
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))", gap:22, marginBottom:24 }}>
-                  {p.plans.map((plan,i) => (
-                    <div key={i} className="plan-card-anim" style={{
-                      background: plan.featured ? `linear-gradient(135deg, ${plan.accent}0D, rgba(3,3,8,0.8))` : D.glass,
-                      borderRadius:22, border:`${plan.featured?2:1}px solid ${plan.featured?plan.accent+"50":D.border}`,
-                      padding:"28px 24px",
-                      backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)",
-                      boxShadow: plan.featured ? `0 20px 60px rgba(0,0,0,0.5), 0 0 40px ${plan.accent}20, inset 0 1px 0 rgba(255,255,255,0.08)` : `0 4px 24px rgba(0,0,0,0.3)`,
-                      position:"relative", display:"flex", flexDirection:"column",
-                      transform: plan.featured?"scale(1.03)":"scale(1)"
-                    }}>
-                      {plan.featured && (
-                        <>
-                          <div style={{ position:"absolute", top:0, left:0, right:0, height:3, background:`linear-gradient(90deg,${plan.accent},${plan.accent}88)`, borderRadius:"22px 22px 0 0", boxShadow:`0 0 16px ${plan.accent}` }} />
-                          <div style={{ position:"absolute", top:0, right:20, background:plan.accent, color:"#fff", fontSize:10, fontWeight:800, padding:"6px 10px", borderRadius:"0 0 10px 10px", letterSpacing:"0.12em", fontFamily:"'DM Mono',monospace", textTransform:"uppercase", boxShadow:`0 4px 14px ${plan.accent}50` }}>Recommended</div>
-                        </>
-                      )}
-                      <div style={{ marginBottom:20 }}>
-                        <div style={{ fontSize:11, fontWeight:800, color:plan.accent, letterSpacing:2, textTransform:"uppercase", marginBottom:8, fontFamily:"'DM Mono',monospace" }}>{plan.label}</div>
-                        <div style={{ fontSize:plan.price==="Custom"?26:38, fontWeight:900, color:D.text1, letterSpacing:-1, lineHeight:1 }}>{plan.price||"Free"}</div>
-                        {plan.sub && <div style={{ fontSize:11, color:D.text3, marginTop:5, fontFamily:"'DM Mono',monospace" }}>{plan.sub}</div>}
-                      </div>
-                      <div style={{ flex:1, marginBottom:24, display:"grid", gap:9 }}>
-                        {plan.features.map((f,fi) => (
-                          <div key={fi} style={{ display:"flex", gap:8, alignItems:"flex-start" }}>
-                            <span style={{ color:plan.featured?plan.accent:D.green, fontWeight:800, flexShrink:0, marginTop:1 }}>✓</span>
-                            <span style={{ fontSize:13, color:D.text2, lineHeight:1.5 }}>{f}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <button
-                        onClick={() => openPath(pricingFlow,`pricing-${i}-cta`)}
-                        style={{ width:"100%", padding:"14px", border:"none", borderRadius:12, fontSize:13, fontWeight:800, cursor:"pointer", letterSpacing:"0.04em", fontFamily:"'DM Mono',monospace", transition:"all 180ms cubic-bezier(0.16,1,0.3,1)", ...plan.ctaStyle }}
-                        onMouseEnter={e => { e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.opacity="0.9" }}
-                        onMouseLeave={e => { e.currentTarget.style.transform="translateY(0)"; e.currentTarget.style.opacity="1" }}
-                      >{plan.cta}</button>
-                    </div>
-                  ))}
-                </div>
-                )}
-                <div style={{ textAlign:"center", fontSize:11, color:D.text3, fontFamily:"'DM Mono',monospace", lineHeight:1.8 }}>{p.note}</div>
-              </div>
-            )
-          })()}
-        </div>
-      </section>
-
       {/* ── NETWORK ─────────────────────────────────────────────────── */}
-      <section ref={networkRevealRef} className={`lp-reveal${networkVisible?" visible":""}`} style={{ padding:"0 0 88px", background:"radial-gradient(55% 340px at 15% 20%, rgba(201,168,76,0.05), transparent 70%)" }}>
+      <section style={{ padding: "0 0 96px" }}>
         <div className="lp-container">
-          <div style={{ textAlign:"center", marginBottom:36 }}>
-            <SectionLabel>Executive network</SectionLabel>
-            <h2 style={{ fontSize:"clamp(32px,5vw,52px)", lineHeight:1.05, color:D.text1, marginBottom:14, letterSpacing:"-0.04em", fontWeight:800 }}>Learn from people who<br /><span style={{ color:D.orange, fontStyle:"italic" }}>proved it.</span></h2>
-            <p style={{ fontSize:15, color:D.text2, maxWidth:760, margin:"0 auto", lineHeight:1.85 }}>Founders, professors, experts, and institutions share knowledge and mentor learners through verified authority profiles.</p>
+          <div style={{ textAlign: "center", marginBottom: 32 }}>
+            <Eyebrow>Verified network</Eyebrow>
+            <h2 style={{ fontSize: "clamp(28px,3.6vw,40px)", fontWeight: 700, letterSpacing: "-0.015em", color: T.ink, margin: 0 }}>Learn from people who proved it.</h2>
           </div>
-          <div className="lp-grid-4">{networkRows.map((a,i) => <NetworkCard key={i} item={a}/>)}</div>
-          <div style={{ textAlign:"center", marginTop:28 }}><GhostButton onClick={() => openPath("executive","exec-cta")}>CREATE AUTHORITY PROFILE →</GhostButton></div>
-        </div>
-      </section>
-
-      {/* ── FINAL CTA ───────────────────────────────────────────────── */}
-      <section ref={ctaRevealRef} className={`lp-reveal${ctaVisible?" visible":""}`} style={{ padding:"0 0 88px" }}>
-        <div className="lp-container">
-          <div style={{
-            background:"linear-gradient(135deg, rgba(255,87,1,0.12), rgba(3,3,8,0.95) 50%, rgba(139,92,246,0.08))",
-            border:`1px solid rgba(255,87,1,0.22)`,
-            borderRadius:30, padding:"56px 32px", textAlign:"center",
-            backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)",
-            boxShadow:"0 30px 80px rgba(0,0,0,0.6), 0 0 80px rgba(255,87,1,0.08), inset 0 1px 0 rgba(255,255,255,0.06)",
-            position:"relative", overflow:"hidden"
-          }}>
-            {/* Glow blob */}
-            <div aria-hidden style={{ position:"absolute", top:"-30%", left:"50%", transform:"translateX(-50%)", width:"60%", height:"200px", borderRadius:"50%", background:"radial-gradient(circle, rgba(255,87,1,0.18) 0%, transparent 70%)", filter:"blur(40px)", pointerEvents:"none" }} />
-            <div style={{ fontSize:11, color:D.orange, fontWeight:800, letterSpacing:"0.18em", textTransform:"uppercase", fontFamily:"'DM Mono',monospace", marginBottom:18 }}>One trust-and-ELO backbone</div>
-            <h2 style={{ color:D.text1, marginBottom:20, fontSize:"clamp(26px,4vw,44px)", lineHeight:1.12, letterSpacing:"-0.03em", fontWeight:800 }}>
-              Students prove readiness.<br />Professionals maintain relevance.<br />
-              <span style={{ color:D.orange, fontStyle:"italic" }}>Organisations measure talent health.<br />Executives monetize authority.</span>
-            </h2>
-            <p style={{ fontSize:15, color:D.text2, marginBottom:34, lineHeight:1.85, maxWidth:640, marginLeft:"auto", marginRight:"auto" }}>One verified intelligence network. No resumes exchanged at any point.</p>
-            <PrimaryButton onClick={() => openPath(activeFlow,"final-cta")}>CHOOSE YOUR PATH →</PrimaryButton>
-            <div style={{ display:"flex", gap:24, justifyContent:"center", marginTop:24, flexWrap:"wrap" }}>
-              {["Free for candidates","18+ domains","UAN verified","Built in India"].map((f,i) => (
-                <span key={i} style={{ fontSize:12, color:D.text3, fontWeight:700, fontFamily:"'DM Mono',monospace", letterSpacing:"0.02em" }}>✓ {f}</span>
-              ))}
-            </div>
+          <div className="lp-grid-4">
+            {[
+              { name: "Rohan Mehta", role: "Founder & CEO", co: "PayStack India" },
+              { name: "Dr. Priya Singh", role: "Professor", co: "IIT Hyderabad" },
+              { name: "Arjun Kapoor", role: "CTO", co: "Razorpay" },
+              { name: "BITS Pilani", role: "Premier Institution", co: "Est. 1964" },
+            ].map(n => <NetworkCard key={n.name} item={n} />)}
+          </div>
+          <div style={{ textAlign: "center", marginTop: 20 }}>
+            <a href="https://recruiter.capabilio.online" target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: T.ink3, textDecoration: "none" }}>
+              Hiring? Search verified talent at <span style={{ color: T.accent, fontWeight: 600 }}>recruiter.capabilio.online &rarr;</span>
+            </a>
           </div>
         </div>
       </section>
 
       {/* ── FAQ ─────────────────────────────────────────────────────── */}
-      <section ref={faqRevealRef} className={`lp-reveal${faqVisible?" visible":""}`} style={{ padding:"0 0 88px", background:"radial-gradient(50% 300px at 50% 0%, rgba(255,87,1,0.05), transparent 70%)" }}>
-        <div className="lp-container" style={{ maxWidth:820 }}>
-          <div style={{ textAlign:"center", marginBottom:36 }}>
-            <SectionLabel>Frequently asked</SectionLabel>
-            <h2 style={{ fontSize:"clamp(28px,4.5vw,44px)", lineHeight:1.08, color:D.text1, marginBottom:12, letterSpacing:"-0.04em", fontWeight:800 }}>Questions people<br /><span style={{ color:D.orange, fontStyle:"italic" }}>actually ask.</span></h2>
+      <section style={{ padding: "0 0 96px" }}>
+        <div className="lp-container" style={{ maxWidth: 720 }}>
+          <div style={{ textAlign: "center", marginBottom: 32 }}>
+            <Eyebrow>Frequently asked</Eyebrow>
+            <h2 style={{ fontSize: "clamp(26px,3.4vw,36px)", fontWeight: 700, letterSpacing: "-0.015em", color: T.ink, margin: 0 }}>Questions people actually ask.</h2>
           </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-            {FAQ_ITEMS.map((item,i) => <FAQItem key={i} q={item.q} a={item.a} />)}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {FAQ_ITEMS.map(item => <FAQItem key={item.q} q={item.q} a={item.a} />)}
           </div>
         </div>
       </section>
 
-      {/* ── TRUST / COMPLIANCE BADGES ─────────────────────────────────
-          Capabilio Ventures Private Limited — real, held registrations
-          (confirmed by the founder). Deliberately shown as plain labels
-          with no certificate/registration numbers and no copied government
-          emblem artwork, since we can't verify those specific numbers or
-          image-usage rights from here. */}
-      <section style={{ padding:"0 0 44px" }}>
-        <div className="lp-container" style={{ display:"flex", flexWrap:"wrap", gap:12, justifyContent:"center" }}>
-          <TrustBadge icon="🚀" label="DPIIT Recognised" sub="Startup India" />
-          <TrustBadge icon="🏭" label="Udyam Registered" sub="MSME, Govt. of India" />
-          <TrustBadge icon="🏛️" label="MCA Incorporated" sub="Ministry of Corporate Affairs" />
+      {/* ── TRUST BADGES + FOOTER ───────────────────────────────────── */}
+      <section style={{ padding: "0 0 32px" }}>
+        <div className="lp-container" style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "center" }}>
+          <TrustBadge icon={Rocket} label="DPIIT Recognised" sub="Startup India" />
+          <TrustBadge icon={Factory} label="Udyam Registered" sub="MSME, Govt. of India" />
+          <TrustBadge icon={ShieldCheck} label="MCA Incorporated" sub="Ministry of Corporate Affairs" />
         </div>
       </section>
 
-      {/* ── FOOTER ──────────────────────────────────────────────────── */}
-      <footer style={{ borderTop:`1px solid ${D.border}`, padding:"28px 0 44px" }}>
-        <div className="lp-container" style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
-          <img src="/capabilio-logo-light.png" alt="Capabilio AI" style={{ height:22, width:"auto", display:"block" }} />
-          <div style={{ fontSize:12, color:D.text3, fontFamily:"'DM Mono',monospace", textAlign:"center" }}>
+      <footer style={{ borderTop: `1px solid ${T.border}`, padding: "28px 0 44px" }}>
+        <div className="lp-container" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <img src="/capabilio-logo-dark.png" alt="Capabilio AI" style={{ height: 20, width: "auto" }} />
+          <div style={{ fontSize: 12.5, color: T.ink3 }}>
             Hiring team?{" "}
-            <a href="https://recruiter.capabilio.online" target="_blank" rel="noopener noreferrer" style={{ color:D.orange, textDecoration:"none", fontWeight:700 }}>
-              Search verified talent by ELO at recruiter.capabilio.online
+            <a href="https://recruiter.capabilio.online" target="_blank" rel="noopener noreferrer" style={{ color: T.accent, textDecoration: "none", fontWeight: 600 }}>
+              Search verified talent at recruiter.capabilio.online
             </a>
           </div>
-          <div style={{ fontSize:12, color:D.text3, fontFamily:"'DM Mono',monospace" }}>Amaravati, Andhra Pradesh ❤️ from India</div>
+          <div style={{ fontSize: 12.5, color: T.ink3 }}>Amaravati, Andhra Pradesh</div>
         </div>
       </footer>
     </div>

@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
+import {
+  Eye, EyeOff, Check, Circle, X, AlertCircle, Lock, Sparkles,
+} from "lucide-react"
 import { PAGE_TO_PATH, PATH_TO_PAGE, isReservedPath } from "./lib/pageRoutes"
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/react"
@@ -8,6 +12,8 @@ import { userDoc } from "./lib/db"
 import { Analytics as PH, identifyUser, resetAnalytics } from "./lib/analytics"
 import { FLAGS } from "./config/featureFlags"
 import { nexusApi } from "./lib/api"
+import { T, EASE } from "./lib/osDesignTokens"
+import { PRIMARY_PATHS, withAlpha } from "./lib/pathIdentity"
 
 import PathNav     from "./components/PathNav"
 import { PageLoader } from "./components/CapUI"
@@ -28,25 +34,10 @@ import CareerPicker from "./pages/CareerPicker"
 // ── Feature pages — lazy-loaded per navigation ───────────────────────────────
 // Each import() creates a separate chunk loaded only when the user visits that page.
 const Aura               = lazy(() => import("./pages/Aura"))
-const Arena              = lazy(() => import("./pages/Arena"))
-const ArenaV2MLPilot     = lazy(() => import("./pages/ArenaV2MLPilot"))
-const ArenaV2SoftwarePilot = lazy(() => import("./pages/ArenaV2SoftwarePilot"))
-const ArenaV2CyberPilot  = lazy(() => import("./pages/ArenaV2CyberPilot"))
-const ArenaV2DevOpsPilot = lazy(() => import("./pages/ArenaV2DevOpsPilot"))
-const ArenaV2DbaPilot    = lazy(() => import("./pages/ArenaV2DbaPilot"))
-const ArenaV2DataAnalystPilot = lazy(() => import("./pages/ArenaV2DataAnalystPilot"))
-const ArenaV2FrontendPilot = lazy(() => import("./pages/ArenaV2FrontendPilot"))
-const ArenaV2EcePilot    = lazy(() => import("./pages/ArenaV2EcePilot"))
-const ArenaV2EeePilot    = lazy(() => import("./pages/ArenaV2EeePilot"))
-const ArenaV2CivilPilot  = lazy(() => import("./pages/ArenaV2CivilPilot"))
-const ArenaV2MechanicalPilot = lazy(() => import("./pages/ArenaV2MechanicalPilot"))
-const ArenaV2BiotechPilot = lazy(() => import("./pages/ArenaV2BiotechPilot"))
-const ArenaV2MedicalBiotechPilot = lazy(() => import("./pages/ArenaV2MedicalBiotechPilot"))
-const ArenaV2ClinicalLabPilot = lazy(() => import("./pages/ArenaV2ClinicalLabPilot"))
-const ArenaV2SapFicoPilot = lazy(() => import("./pages/ArenaV2SapFicoPilot"))
-const ArenaV2SapMmSdPilot = lazy(() => import("./pages/ArenaV2SapMmSdPilot"))
-const ArenaV2SapAbapPilot = lazy(() => import("./pages/ArenaV2SapAbapPilot"))
-const ArenaV2RecruiterView = lazy(() => import("./pages/ArenaV2RecruiterView"))
+// Arena rebuild — College Stream branch (Phase 1) live below. Domain Role
+// branch (config-driven, AI-generated missions) gets its own lazy import
+// here in a later phase — never sharing a component with College Stream.
+const ArenaCollegeStream = lazy(() => import("./pages/arenaCollegeStream/ArenaCollegeStream"))
 const Pulse              = lazy(() => import("./pages/Pulse"))
 const HardwareChallenges = lazy(() => import("./pages/HardwareChallenges"))
 const SkillStudio        = lazy(() => import("./pages/SkillStudio"))
@@ -92,12 +83,13 @@ const AdminSkillStudioContent = lazy(() => import("./pages/AdminSkillStudioConte
 const API = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
 
 // ── Auth Modal ────────────────────────────────────────────────────────────────
-const PATH_META = {
-  student:      { icon: "🎓", label: "Student",      color: "#FF5701", bg: "#FFF1E8", desc: "Prove your skills through real challenges. ELO starts at 400." },
-  professional: { icon: "💼", label: "Professional", color: "#7C3AED", bg: "#F4F0FF", desc: "Build your verified career intelligence. UAN-backed, AI-powered." },
-  executive:    { icon: "✦",  label: "Executive",    color: "#C9A84C", bg: "#FFFDF5", desc: "Authority profile. Sell your time. Invite-only." },
-  institution:  { icon: "🏛️", label: "Organisation", color: "#D97706", bg: "#FFF7E8", desc: "Track cohort ELO. Hire verified talent. Automate placements." },
-}
+// Derived from pathIdentity.js's PRIMARY_PATHS — the same list LandingPage.jsx's
+// journey cards and this modal's own step-1 chooser both render from, keyed by
+// "path" (institution, not "college") so it lines up with `selectedPath` below.
+// Per-path color is back (2026-08-18, amends DESIGN.md rule 9's "single
+// accent always" — see that file) for these four signup-path entry points
+// specifically; not used anywhere else in the app.
+const PATH_META = Object.fromEntries(PRIMARY_PATHS.map(p => [p.path, { icon: p.icon, label: p.title, desc: p.desc, color: p.color }]))
 
 // College / University typeahead for the signup modal's Student path field.
 // Hits the same public GET /api/college-directory/search used by the
@@ -153,17 +145,17 @@ function CollegeAutocomplete({ value, setValue, accent, inputStyle, setError, on
         disabled={disabled}
         onChange={e => { setValue(e.target.value); setError?.("") }}
         onFocus={e => { if (disabled) return; e.target.style.borderColor = accent; if (results.length > 0) setOpen(true) }}
-        onBlur={e => { e.target.style.borderColor = "#E8E3DA" }}
+        onBlur={e => { e.target.style.borderColor = T.border }}
         type="text" placeholder="College / University name" autoComplete="off"
-        style={disabled ? { ...inputStyle, background: "#F0EEE9", color: "#6B6560", cursor: "not-allowed" } : inputStyle}
+        style={disabled ? { ...inputStyle, background: T.hairline, color: T.ink3, cursor: "not-allowed" } : inputStyle}
       />
       {!disabled && open && results.length > 0 && (
         <div
           ref={dropRef}
           style={{
             position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0,
-            background: "#FFFFFF", border: "1px solid #E8E3DA", borderRadius: 8,
-            boxShadow: "0 8px 32px rgba(0,0,0,0.13)", zIndex: 1000,
+            background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10,
+            boxShadow: "0 4px 16px rgba(20,22,26,0.08)", zIndex: 1000,
             overflow: "hidden", maxHeight: 260, overflowY: "auto",
           }}
         >
@@ -171,11 +163,11 @@ function CollegeAutocomplete({ value, setValue, accent, inputStyle, setError, on
             <div
               key={c.id}
               onMouseDown={e => { e.preventDefault(); setValue(c.name); onSelect?.(c); setOpen(false); setResults([]) }}
-              style={{ padding: "10px 14px", cursor: "pointer", borderBottom: "1px solid #F5F5F5", fontSize: 13 }}
+              style={{ padding: "10px 14px", cursor: "pointer", borderBottom: `1px solid ${T.hairline}`, fontSize: 13 }}
             >
-              <div style={{ fontWeight: 700, color: "#1A1714" }}>{c.name}</div>
+              <div style={{ fontWeight: 600, color: T.ink }}>{c.name}</div>
               {(c.district || c.state) && (
-                <div style={{ fontSize: 11, color: "#8A8580", marginTop: 1 }}>
+                <div style={{ fontSize: 11, color: T.ink3, marginTop: 1 }}>
                   {[c.district, c.state].filter(Boolean).join(", ")}
                 </div>
               )}
@@ -217,7 +209,7 @@ function pwStrength(pw) {
   }
   const passed = Object.values(checks).filter(Boolean).length
   const level  = passed <= 2 ? "weak" : passed <= 3 ? "fair" : passed === 4 ? "good" : "strong"
-  const color  = { weak:"#DC2626", fair:"#D97706", good:"#2563EB", strong:"#16A34A" }[level]
+  const color  = { weak: T.error, fair: T.warning, good: T.info, strong: T.success }[level]
   const pct    = (passed / 5) * 100
   return { checks, passed, level, color, pct }
 }
@@ -248,6 +240,44 @@ function normalizeAuthBranchCode(deptText) {
   if (!t) return ""
   for (const [re, code] of AUTH_DEPARTMENT_TO_BRANCH_CODE) if (re.test(t)) return code
   return ""
+}
+
+// AuthModal's step-1 path chooser — same PRIMARY_PATHS list and colors as
+// LandingPage.jsx's "Choose Your Journey" cards (pathIdentity.js), only
+// shown when the modal opens with no path already known (generic nav/hero
+// "Get started"). Picking a card writes localStorage exactly the way
+// LandingPage.jsx's openPath() does, then hands the chosen path back up.
+function AuthPathChooser({ onPick }) {
+  return (
+    <div>
+      <h3 style={{ fontFamily:"'DM Sans',sans-serif", fontSize:20, fontWeight:700, color:T.ink, marginBottom:3, letterSpacing:"-0.01em" }}>
+        Let&apos;s get started
+      </h3>
+      <p style={{ fontSize:12.5, color:T.ink3, marginBottom:18 }}>Choose the path that fits you.</p>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+        {PRIMARY_PATHS.map(p => {
+          const Icon = p.icon
+          return (
+            <button key={p.key} onClick={() => onPick(p)}
+              style={{
+                textAlign:"left", padding:14, borderRadius:12, border:`1px solid ${T.border}`,
+                background:T.surface, cursor:"pointer", fontFamily:"inherit",
+                transition:"border-color 150ms ease, transform 150ms ease",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = withAlpha(p.color, 0.5); e.currentTarget.style.transform = "translateY(-2px)" }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.transform = "translateY(0)" }}
+            >
+              <div style={{ width:32, height:32, borderRadius:9, background:withAlpha(p.color, 0.12), display:"flex", alignItems:"center", justifyContent:"center", marginBottom:10 }}>
+                <Icon size={15} color={p.color} strokeWidth={1.75} />
+              </div>
+              <div style={{ fontSize:14, fontWeight:600, color:T.ink, marginBottom:3 }}>{p.title}</div>
+              <div style={{ fontSize:11, color:T.ink3, lineHeight:1.4 }}>{p.points[0]}</div>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 function AuthModal({ show, onClose, mode, setMode }) {
@@ -296,14 +326,23 @@ function AuthModal({ show, onClose, mode, setMode }) {
   // shared
   const [error,    setError]    = useState("")
   const [loading,  setLoading]  = useState(false)
+  // "choose" (step-1 path picker) or "form" (existing create-account/sign-in) —
+  // see the reset effect below for how this is set when the modal opens.
+  const [step, setStep] = useState("choose")
 
   const selectedPath = (() => { try { return localStorage.getItem("capabilio_selected_path") } catch { return null } })()
   // 2026-08-03: Student/Job Seeker split — set by AccountType.jsx only when
   // selectedPath==="student". Job seekers skip the college/branch
   // requirement below (they may not currently be enrolled anywhere).
   const studentStage = (() => { try { return localStorage.getItem("capabilio_student_stage") } catch { return null } })()
+  // 2026-08-18: landing page's institution-path entry points (the College
+  // journey card, the "company profile instead" link) set this alongside
+  // capabilio_selected_path so AuthModal opens with the right instType
+  // toggle pre-selected instead of always defaulting to "College".
+  const preselectedInstType = (() => { try { return localStorage.getItem("capabilio_selected_inst_type") } catch { return null } })()
   const isJobSeeker = (!selectedPath || selectedPath === "student") && studentStage === "job_seeker"
   const pw = pwStrength(password)
+  const reduceMotion = useReducedMotion()
 
   useEffect(() => {
     if (show) {
@@ -314,9 +353,16 @@ function AuthModal({ show, onClose, mode, setMode }) {
       setRefCode(""); setRefValid(null); setRefData(null)
       setCompany(""); setJobTitle(""); setLinkedinUrl(""); setExperience("")
       setOrgName(""); setExecTitle("")
-      setInstName(""); setInstType("College"); setInstCity(""); setInstWebsite("")
+      setInstName(""); setInstType(preselectedInstType === "Company" ? "Company" : "College"); setInstCity(""); setInstWebsite("")
       setError(""); setLoading(false)
+      // A path is already known (journey card / pricing CTA / invite link
+      // already wrote capabilio_selected_path before opening this modal) —
+      // skip straight to the form, pre-colored. Otherwise (generic nav/hero
+      // "Get started") start at the step-1 chooser. Signing in never needs
+      // a path at all, so it always skips straight to the form too.
+      setStep(mode === "signup" && !selectedPath ? "choose" : "form")
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [show])
 
   if (!show) return null
@@ -383,7 +429,7 @@ function AuthModal({ show, onClose, mode, setMode }) {
                 method:"POST", headers:{"Content-Type":"application/json"},
                 body: JSON.stringify({ refereeUid:data.user.id, refereeName:fullName, referrerCode:refCode.trim().toUpperCase() }),
               })
-            } catch {}
+            } catch (_) { /* voucher apply failure is non-fatal — account was already created */ }
           }
         }
       } else {
@@ -406,14 +452,26 @@ function AuthModal({ show, onClose, mode, setMode }) {
   }
 
   const inputStyle = {
-    width: "100%", padding: "12px 14px", background: "#FAF7F2",
-    border: "1.5px solid #E8E3DA", borderRadius: 8, color: "#1A1714",
-    fontSize: 14, fontFamily: "DM Sans,sans-serif", outline: "none",
+    width: "100%", padding: "12px 14px", background: T.surfaceRaised,
+    border: `1.5px solid ${T.border}`, borderRadius: 10, color: T.ink,
+    fontSize: 14, fontFamily: "'DM Sans',sans-serif", outline: "none",
     boxSizing: "border-box", transition: "border-color 0.15s",
   }
 
   const pm     = PATH_META[selectedPath] || null
-  const accent = pm?.color || "#FF5701"
+  const accent = pm?.color || T.accent
+
+  // Step-1 chooser selection — mirrors LandingPage.jsx's openPath() so
+  // reopening the modal later (or Onboarding.jsx reading the same key)
+  // sees the same shape regardless of which entry point set it.
+  const handlePickPath = (p) => {
+    try {
+      localStorage.setItem("capabilio_selected_path", p.path)
+      if (p.instType) localStorage.setItem("capabilio_selected_inst_type", p.instType)
+      else localStorage.removeItem("capabilio_selected_inst_type")
+    } catch (_) { /* localStorage unavailable */ }
+    setStep("form")
+  }
 
   const inp = (val, setter, type="text", placeholder="", extra={}) => (
     <input value={val} onChange={e=>{setter(e.target.value);setError("")}}
@@ -421,7 +479,7 @@ function AuthModal({ show, onClose, mode, setMode }) {
       type={type} placeholder={placeholder}
       style={{...inputStyle,...extra}}
       onFocus={e=>e.target.style.borderColor=accent}
-      onBlur={e=>e.target.style.borderColor="#E8E3DA"}/>
+      onBlur={e=>e.target.style.borderColor=T.border}/>
   )
 
   // canSubmit logic per path
@@ -434,30 +492,6 @@ function AuthModal({ show, onClose, mode, setMode }) {
     return !!(base && college && branch)
   })() : !!(email && password)
 
-  // Left panel stats per path
-  const leftStats = (() => {
-    if (selectedPath === "professional") return [
-      { val:"UAN-Backed",  label:"Verified career identity",   c:"#7C3AED" },
-      { val:"1,200+",      label:"Verified professionals",     c:"#1A1714" },
-      { val:"AI-Powered",  label:"Career intelligence OS",     c:"#2563EB" },
-    ]
-    if (selectedPath === "executive") return [
-      { val:"Invite-Only", label:"Exclusive executive network", c:"#C9A84C" },
-      { val:"Authority",   label:"Signal-grade profiles",       c:"#1A1714" },
-      { val:"Tier-1",      label:"Deal flow & peer access",     c:"#D97706" },
-    ]
-    if (selectedPath === "institution") return [
-      { val:"Cohort ELO",  label:"Track team performance",     c:"#D97706" },
-      { val:"500+ Orgs",   label:"Already onboard",            c:"#1A1714" },
-      { val:"Verified",    label:"Hire from ranked talent",     c:"#16A34A" },
-    ]
-    return [
-      { val:"ELO 1,847",  label:"Top performer benchmark",    c:"#FF5701" },
-      { val:"94 Tasks",   label:"Real company challenges",    c:"#1A1714" },
-      { val:"Top 3%",     label:"Verified by performance",    c:"#16A34A" },
-    ]
-  })()
-
   // Path-specific form fields (signup only)
   const renderPathFields = () => {
     if (selectedPath === "professional") return (
@@ -469,9 +503,9 @@ function AuthModal({ show, onClose, mode, setMode }) {
         {inp(company,  setCompany,  "text", "Current company / employer")}
         {inp(jobTitle, setJobTitle, "text", "Job title / designation")}
         <select value={experience} onChange={e=>{setExperience(e.target.value);setError("")}}
-          style={{ ...inputStyle, color: experience ? "#1A1714" : "#A8A29E" }}
+          style={{ ...inputStyle, color: experience ? T.ink : T.ink3 }}
           onFocus={e=>e.target.style.borderColor=accent}
-          onBlur={e=>e.target.style.borderColor="#E8E3DA"}>
+          onBlur={e=>e.target.style.borderColor=T.border}>
           <option value="">Years of experience (optional)</option>
           <option value="0-1">0–1 years (Fresher / Entry level)</option>
           <option value="1-3">1–3 years</option>
@@ -485,8 +519,9 @@ function AuthModal({ show, onClose, mode, setMode }) {
 
     if (selectedPath === "executive") return (
       <>
-        <div style={{ padding:"10px 12px", background:"rgba(201,168,76,0.08)", border:"1px solid rgba(201,168,76,0.3)", borderRadius:10, fontSize:12, color:"#92400E", marginBottom:2 }}>
-          ✦ Executive path is invite-only. Apply and our team will verify your profile within 48 hours.
+        <div style={{ display:"flex", alignItems:"flex-start", gap:8, padding:"10px 12px", background: T.accentDim, border: `1px solid ${T.accent}30`, borderRadius:10, fontSize:12, color: T.ink2, marginBottom:2 }}>
+          <Sparkles size={14} color={T.accent} strokeWidth={1.75} style={{ flexShrink:0, marginTop:1 }} />
+          Executive path is invite-only. Apply and our team will verify your profile within 48 hours.
         </div>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
           {inp(first, setFirst, "text", "First name")}
@@ -494,9 +529,9 @@ function AuthModal({ show, onClose, mode, setMode }) {
         </div>
         {inp(orgName, setOrgName, "text", "Organisation / Company name")}
         <select value={execTitle} onChange={e=>{setExecTitle(e.target.value);setError("")}}
-          style={{ ...inputStyle, color: execTitle ? "#1A1714" : "#A8A29E" }}
+          style={{ ...inputStyle, color: execTitle ? T.ink : T.ink3 }}
           onFocus={e=>e.target.style.borderColor=accent}
-          onBlur={e=>e.target.style.borderColor="#E8E3DA"}>
+          onBlur={e=>e.target.style.borderColor=T.border}>
           <option value="">Select executive title</option>
           <option value="CEO">CEO – Chief Executive Officer</option>
           <option value="Founder">Founder / Co-Founder</option>
@@ -527,13 +562,13 @@ function AuthModal({ show, onClose, mode, setMode }) {
               onSelect={c => setInstCity([c.district, c.state].filter(Boolean).join(", "))}
             />
           : inp(instName, setInstName, "text", "Institution / Organisation name")}
-        <div style={{ display:"flex", background:"#FAF7F2", borderRadius:9, padding:3, border:"1px solid #E8E3DA" }}>
+        <div style={{ display:"flex", background: T.surfaceRaised, borderRadius:10, padding:3, border:`1px solid ${T.border}` }}>
           {["College","Company","Government","NGO"].map(t=>(
             <button key={t} onClick={()=>{setInstType(t);setError("")}}
-              style={{ flex:1, padding:"8px 4px", borderRadius:7, border:"none", cursor:"pointer",
+              style={{ flex:1, padding:"8px 4px", borderRadius:8, border:"none", cursor:"pointer",
                 background: instType===t ? accent : "transparent",
-                color: instType===t ? "#fff" : "#6B6560",
-                fontSize:12, fontWeight: instType===t ? 700 : 400,
+                color: instType===t ? "#fff" : T.ink2,
+                fontSize:12, fontWeight: instType===t ? 600 : 500,
                 fontFamily:"inherit", transition:"all 0.15s" }}>
               {t}
             </button>
@@ -553,14 +588,14 @@ function AuthModal({ show, onClose, mode, setMode }) {
         </div>
         {isJobSeeker && (
           <div style={{ fontSize:11.5, color:"#4B5563", marginTop:-4, marginBottom:2 }}>
-            Optional for job seekers — add your most recent college if you'd like it on your profile.
+            Optional for job seekers — add your most recent college if you&apos;d like it on your profile.
           </div>
         )}
         <CollegeAutocomplete value={college} setValue={setCollege} accent={accent} inputStyle={inputStyle} setError={setError} disabled={collegeLocked} />
         <select value={branch} onChange={e=>{setBranch(e.target.value);setError("")}} disabled={branchLocked}
-          style={{ ...inputStyle, color: branch ? "#1A1714" : "#A8A29E", ...(branchLocked ? { background: "#F0EEE9", cursor: "not-allowed" } : {}) }}
+          style={{ ...inputStyle, color: branch ? T.ink : T.ink3, ...(branchLocked ? { background: T.hairline, cursor: "not-allowed" } : {}) }}
           onFocus={e=>{ if (!branchLocked) e.target.style.borderColor=accent }}
-          onBlur={e=>e.target.style.borderColor="#E8E3DA"}>
+          onBlur={e=>e.target.style.borderColor=T.border}>
           <option value="">{isJobSeeker ? "Select your branch / stream (optional)" : "Select your branch / stream"}</option>
           <optgroup label="IT / CS Streams">
             <option value="CSE">Computer Science Engineering (CSE)</option>
@@ -590,196 +625,235 @@ function AuthModal({ show, onClose, mode, setMode }) {
           </optgroup>
         </select>
         {collegeLocked && (
-          <div style={{ fontSize:11.5, color:"#92400E", background:"rgba(201,168,76,0.08)", border:"1px solid rgba(201,168,76,0.3)", borderRadius:8, padding:"7px 10px", marginTop:-4 }}>
-            🔒 Set by your college's invite link{branchLocked ? "" : " — branch wasn't recognized from the link, please pick yours"}. Contact your placement cell if this is wrong.
+          <div style={{ display:"flex", alignItems:"flex-start", gap:8, fontSize:11.5, color: T.ink2, background: T.accentDim, border: `1px solid ${T.accent}30`, borderRadius:10, padding:"7px 10px", marginTop:-4 }}>
+            <Lock size={13} color={T.accent} strokeWidth={1.75} style={{ flexShrink:0, marginTop:1 }} />
+            Set by your college&apos;s invite link{branchLocked ? "" : " — branch wasn't recognized from the link, please pick yours"}. Contact your placement cell if this is wrong.
           </div>
         )}
       </>
     )
   }
 
+  const trustPills = selectedPath === "institution"
+    ? ["Free to get started","No setup fee","Built in India"]
+    : selectedPath === "executive"
+    ? ["Invite-only","Verified profiles","Built in India"]
+    : selectedPath === "professional"
+    ? ["Free to join","UAN-backed","No resume","Built in India"]
+    : ["Free forever","No credit card","No resume","Built in India"]
+
   return (
-    <div style={{ position:"fixed", inset:0, zIndex:9999, fontFamily:"DM Sans,sans-serif" }}>
+    <div style={{ position:"fixed", inset:0, zIndex:9999, fontFamily:"'DM Sans',sans-serif" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Mono:wght@400;500;600&display=swap');
-        @keyframes modalIn  { from{opacity:0;transform:scale(0.97)} to{opacity:1;transform:scale(1)} }
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@500;600&display=swap');
         @keyframes authSpin { to{transform:rotate(360deg)} }
       `}</style>
 
-      <div style={{ position:"absolute", inset:0, background:"rgba(17,24,39,0.5)", backdropFilter:"blur(8px)" }} onClick={onClose}/>
+      <motion.div
+        initial={reduceMotion ? false : { opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, ease: EASE }}
+        style={{ position:"absolute", inset:0, background:"rgba(17,24,39,0.5)", backdropFilter:"blur(8px)", WebkitBackdropFilter:"blur(8px)" }}
+        onClick={onClose}
+      />
 
       <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
-        <div style={{ width:"100%", maxWidth:880, background:"#fff", borderRadius:20, overflow:"hidden", border:"1px solid #E8E3DA", boxShadow:"0 24px 60px rgba(0,0,0,0.15)", animation:"modalIn 0.3s cubic-bezier(0.16,1,0.3,1) both", display:"flex", maxHeight:"96vh" }}>
+        <motion.div
+          initial={reduceMotion ? false : { opacity: 0, scale: 0.97, y: 8 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: EASE }}
+          style={{ width:"100%", maxWidth:880, background:T.surface, borderRadius:20, overflow:"hidden", border:`1px solid ${T.border}`, boxShadow:"0 4px 12px rgba(20,22,26,0.04), 0 16px 40px rgba(20,22,26,0.08)", display:"flex", maxHeight:"96vh" }}
+        >
 
           {/* Left panel */}
-          <div style={{ flex:"0 0 36%", background: pm ? pm.bg : "#F6F6F1", display:"flex", flexDirection:"column", justifyContent:"space-between", padding:"36px 28px", borderRight:"1px solid #E8E3DA" }}>
+          <div style={{ flex:"0 0 36%", background: T.surfaceRaised, display:"flex", flexDirection:"column", justifyContent:"space-between", padding:"36px 28px", borderRight:`1px solid ${T.border}` }}>
             <div>
               <img src="/capabilio-logo-dark.png" alt="Capabilio AI" style={{ height:24, width:"auto", display:"block", marginBottom:16 }} />
               {pm && (
-                <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:"#fff", border:`1px solid ${accent}30`, borderRadius:999, padding:"6px 14px", marginBottom:16 }}>
-                  <span style={{ fontSize:14 }}>{pm.icon}</span>
-                  <span style={{ fontSize:10, fontWeight:800, color:accent, letterSpacing:"0.12em", textTransform:"uppercase", fontFamily:"'DM Mono',monospace" }}>{pm.label} Path</span>
+                <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:T.surface, border:`1px solid ${accent}30`, borderRadius:999, padding:"6px 14px", marginBottom:16 }}>
+                  <pm.icon size={14} color={accent} strokeWidth={1.75} />
+                  <span style={{ fontSize:10.5, fontWeight:600, color:accent, letterSpacing:"0.08em", textTransform:"uppercase" }}>{pm.label} path</span>
                 </div>
               )}
-              <h2 style={{ fontFamily:"'DM Sans',serif", fontSize:22, fontWeight:800, color:"#1A1714", lineHeight:1.25, marginBottom:10 }}>
+              <h2 style={{ fontFamily:"'DM Sans',sans-serif", fontSize:22, fontWeight:700, color:T.ink, lineHeight:1.25, marginBottom:10, letterSpacing:"-0.01em" }}>
                 {pm ? pm.desc.split(".")[0]+"." : "Prove your skills."}<br/>
-                <span style={{ fontStyle:"italic", color:accent }}>{pm ? pm.desc.split(".").slice(1).join(".").trim() : "Not just claim them."}</span>
+                <span style={{ color:accent }}>{pm ? pm.desc.split(".").slice(1).join(".").trim() : "Not just claim them."}</span>
               </h2>
-              <p style={{ fontSize:12, color:"#6B6560", lineHeight:1.7, marginBottom:20 }}>
+              <p style={{ fontSize:12.5, color:T.ink2, lineHeight:1.7 }}>
                 {pm ? `Your account will be set for the ${pm.label} path. Change during onboarding.` : "ELO earned through real challenges — not a Word doc."}
               </p>
-              <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
-                {leftStats.map((s,i)=>(
-                  <div key={i} style={{ display:"flex", gap:10, alignItems:"center", padding:"8px 12px", background:"#fff", border:"1px solid #E8E3DA", borderRadius:10 }}>
-                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:12, fontWeight:700, color:s.c, minWidth:80 }}>{s.val}</div>
-                    <div style={{ fontSize:11, color:"#A8A29E" }}>{s.label}</div>
-                  </div>
-                ))}
-              </div>
             </div>
-            <div style={{ padding:"9px 12px", background:"#fff", border:"1px solid #E8E3DA", borderRadius:10, fontSize:11, color:"#6B6560" }}>
-              <span style={{ color:accent, fontWeight:700 }}>2,400+</span> joined this month · Free forever for candidates
+            <div style={{ padding:"9px 12px", background:T.surface, border:`1px solid ${T.border}`, borderRadius:10, fontSize:11.5, color:T.ink2 }}>
+              Free forever for candidates
             </div>
           </div>
 
           {/* Right form */}
           <div style={{ flex:1, padding:"28px 32px", overflowY:"auto", display:"flex", flexDirection:"column", justifyContent:"center", position:"relative" }}>
-            <button onClick={onClose} style={{ position:"absolute", top:14, right:14, width:28, height:28, borderRadius:7, background:"#FAF7F2", border:"1px solid #E8E3DA", color:"#6B6560", fontSize:16, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>×</button>
+            <button onClick={onClose} style={{ position:"absolute", top:14, right:14, width:28, height:28, borderRadius:8, background:T.surfaceRaised, border:`1px solid ${T.border}`, color:T.ink3, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <X size={14} strokeWidth={2} />
+            </button>
 
-            {/* Create / Sign in toggle */}
-            <div style={{ display:"flex", background:"#FAF7F2", borderRadius:10, padding:3, marginBottom:20, border:"1px solid #E8E3DA" }}>
+            {/* Create / Sign in toggle — always visible, even on the step-1
+                chooser: picking "Sign in" never needs a path, so it jumps
+                straight to the form regardless of what step we're on. */}
+            <div style={{ display:"flex", background:T.surfaceRaised, borderRadius:10, padding:3, marginBottom:20, border:`1px solid ${T.border}` }}>
               {[["signup","Create account"],["login","Sign in"]].map(([m,lbl])=>(
-                <button key={m} onClick={()=>{setMode(m);setError("")}}
-                  style={{ flex:1, padding:"9px", borderRadius:8, border:"none", cursor:"pointer", background:mode===m?accent:"transparent", color:mode===m?"#fff":"#6B6560", fontSize:13, fontWeight:mode===m?700:400, fontFamily:"inherit", transition:"all 0.15s" }}>
+                <button key={m} onClick={()=>{setMode(m);setError(""); if (m==="login") setStep("form")}}
+                  style={{ flex:1, padding:"9px", borderRadius:8, border:"none", cursor:"pointer", background:mode===m?accent:"transparent", color:mode===m?"#fff":T.ink2, fontSize:13, fontWeight:mode===m?600:500, fontFamily:"inherit", transition:"all 0.15s" }}>
                   {lbl}
                 </button>
               ))}
             </div>
 
-            <h3 style={{ fontFamily:"'DM Sans',serif", fontSize:20, fontWeight:800, color:"#1A1714", marginBottom:3 }}>
-              {mode==="signup" ? "Create your account" : "Welcome back"}
-            </h3>
-            <p style={{ fontSize:12, color:"#A8A29E", marginBottom:16 }}>
-              {mode==="signup"
-                ? selectedPath === "executive"  ? "Apply for executive access — reviewed within 48 hours."
-                : selectedPath === "institution" ? "Set up your organisation account in minutes."
-                : "Free forever. No credit card required."
-                : "Sign in to your Capabilio profile."}
-            </p>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={step === "choose" ? "choose" : mode}
+                initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2, ease: EASE }}
+              >
+              {step === "choose" ? (
+                <AuthPathChooser onPick={handlePickPath} />
+              ) : (
+                <>
+                <h3 style={{ fontFamily:"'DM Sans',sans-serif", fontSize:20, fontWeight:700, color:T.ink, marginBottom:3, letterSpacing:"-0.01em" }}>
+                  {mode==="signup" ? "Create your account" : "Welcome back"}
+                </h3>
+                <p style={{ fontSize:12.5, color:T.ink3, marginBottom:16 }}>
+                  {mode==="signup"
+                    ? selectedPath === "executive"  ? "Apply for executive access — reviewed within 48 hours."
+                    : selectedPath === "institution" ? "Set up your organisation account in minutes."
+                    : "Free forever. No credit card required."
+                    : "Sign in to your Capabilio profile."}
+                </p>
 
-            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-              {mode === "signup" && renderPathFields()}
+                <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                  {mode === "signup" && renderPathFields()}
 
-              {inp(email, setEmail, "email", selectedPath === "institution" ? (instType === "College" ? "College email ID" : "Official email ID") : "Email address")}
+                  {inp(email, setEmail, "email", selectedPath === "institution" ? (instType === "College" ? "College email ID" : "Official email ID") : "Email address")}
 
-              {/* Password */}
-              <div>
-                <div style={{ position:"relative" }}>
-                  <input value={password} onChange={e=>{setPassword(e.target.value);setError("")}}
-                    onKeyDown={e=>e.key==="Enter"&&handleEmailSubmit()}
-                    type={showPw?"text":"password"}
-                    placeholder={mode==="signup"?"Create password":"Password"}
-                    style={{...inputStyle, paddingRight:44}}
-                    onFocus={e=>e.target.style.borderColor=accent}
-                    onBlur={e=>e.target.style.borderColor="#E8E3DA"}/>
-                  <button onClick={()=>setShowPw(p=>!p)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:"#A8A29E", fontSize:14, padding:2 }}>
-                    {showPw ? "🙈" : "👁"}
+                  {/* Password */}
+                  <div>
+                    <div style={{ position:"relative" }}>
+                      <input value={password} onChange={e=>{setPassword(e.target.value);setError("")}}
+                        onKeyDown={e=>e.key==="Enter"&&handleEmailSubmit()}
+                        type={showPw?"text":"password"}
+                        placeholder={mode==="signup"?"Create password":"Password"}
+                        style={{...inputStyle, paddingRight:44}}
+                        onFocus={e=>e.target.style.borderColor=accent}
+                        onBlur={e=>e.target.style.borderColor=T.border}/>
+                      <button onClick={()=>setShowPw(p=>!p)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:T.ink3, padding:2, display:"flex" }}>
+                        {showPw ? <EyeOff size={16} strokeWidth={1.75} /> : <Eye size={16} strokeWidth={1.75} />}
+                      </button>
+                    </div>
+                    {mode === "signup" && password.length > 0 && (
+                      <div style={{ marginTop:6 }}>
+                        <div style={{ height:3, background:T.border, borderRadius:99, overflow:"hidden", marginBottom:5 }}>
+                          <div style={{ height:"100%", width:`${pw.pct}%`, background:pw.color, borderRadius:99, transition:"all 0.3s" }}/>
+                        </div>
+                        <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
+                          {[{key:"length",label:"8+ chars"},{key:"uppercase",label:"A–Z"},{key:"lowercase",label:"a–z"},{key:"number",label:"0–9"},{key:"special",label:"!@#..."}].map(c=>(
+                            <span key={c.key} style={{ fontSize:10, fontWeight:500, color:pw.checks[c.key]?T.success:T.ink3, display:"flex", alignItems:"center", gap:3 }}>
+                              {pw.checks[c.key] ? <Check size={10} strokeWidth={2.5} /> : <Circle size={10} strokeWidth={2} />}{c.label}
+                            </span>
+                          ))}
+                          <span style={{ marginLeft:"auto", fontSize:10, fontWeight:600, color:pw.color, textTransform:"capitalize" }}>{pw.level}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {mode === "signup" && (
+                    <>
+                      <div style={{ position:"relative" }}>
+                        <input value={confirm} onChange={e=>{setConfirm(e.target.value);setError("")}}
+                          onKeyDown={e=>e.key==="Enter"&&handleEmailSubmit()}
+                          type={showCfm?"text":"password"} placeholder="Confirm password"
+                          style={{ ...inputStyle, paddingRight:44, borderColor: confirm&&password ? (confirm===password?T.success:T.error) : T.border }}
+                          onFocus={e=>e.target.style.borderColor=accent}
+                          onBlur={e=>e.target.style.borderColor=confirm&&password?(confirm===password?T.success:T.error):T.border}/>
+                        <button onClick={()=>setShowCfm(p=>!p)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:T.ink3, padding:2, display:"flex" }}>
+                          {showCfm ? <EyeOff size={16} strokeWidth={1.75} /> : <Eye size={16} strokeWidth={1.75} />}
+                        </button>
+                      </div>
+                      {confirm && password && confirm !== password && (
+                        <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:T.error, marginTop:-4 }}>
+                          <X size={11} strokeWidth={2.5} /> Passwords do not match
+                        </div>
+                      )}
+
+                      {/* Voucher — student only */}
+                      {(!selectedPath || selectedPath === "student") && (
+                        <div>
+                          <div style={{ fontSize:11, fontWeight:500, color:T.ink2, marginBottom:5 }}>Skill voucher code <span style={{ fontWeight:400, color:T.ink3 }}>(optional)</span></div>
+                          <input value={refCode}
+                            onChange={async e=>{
+                              const val=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,8)
+                              setRefCode(val); setRefData(null); setRefValid(null)
+                              if(val.length===8){try{const r=await fetch(`${API}/api/referral/validate/${val}`);const d=await r.json();setRefValid(d.valid);setRefData(d)}catch(_){setRefValid(false)}}
+                            }}
+                            placeholder="Enter 8-char voucher code" maxLength={8}
+                            style={{ width:"100%", padding:"11px 14px", background:T.surfaceRaised, border:`1.5px solid ${refCode.length===8?(refValid?T.success:T.error):T.border}`, borderRadius:10, color:T.ink, fontSize:13, fontFamily:"'DM Mono',monospace", letterSpacing:3, outline:"none", boxSizing:"border-box" }}/>
+                          {refCode.length===8&&refValid===true&&(
+                            <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:5, padding:"6px 10px", background:T.successDim, border:`1px solid ${T.success}30`, borderRadius:8, fontSize:11, color:T.success }}>
+                              <Check size={12} strokeWidth={2.5} /> {refData?.message} · +50 ELO + 14-day Pro
+                            </div>
+                          )}
+                          {refCode.length===8&&refValid===false&&(
+                            <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:4, fontSize:11, color:T.error }}>
+                              <X size={11} strokeWidth={2.5} /> Invalid voucher code
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {error && (
+                    <div style={{ display:"flex", alignItems:"flex-start", gap:8, padding:"9px 12px", background:T.errorDim, border:`1px solid ${T.error}30`, borderRadius:10, fontSize:12, color:T.error }}>
+                      <AlertCircle size={14} strokeWidth={2} style={{ flexShrink:0, marginTop:1 }} /> {error}
+                    </div>
+                  )}
+
+                  <button onClick={handleEmailSubmit} disabled={loading || !canSubmitEmail}
+                    style={{ width:"100%", padding:"13px", background:canSubmitEmail?accent:T.hairline, border:"none", borderRadius:10, color:canSubmitEmail?"#fff":T.ink3, fontSize:15, fontWeight:600, fontFamily:"'DM Sans',sans-serif", cursor:canSubmitEmail?"pointer":"not-allowed", transition:"background 0.15s" }}
+                    onMouseEnter={e=>{if(canSubmitEmail)e.currentTarget.style.background=T.accentDark}}
+                    onMouseLeave={e=>{if(canSubmitEmail)e.currentTarget.style.background=accent}}
+                  >
+                    {loading
+                      ? <span style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}><span style={{ width:14, height:14, border:"2px solid rgba(255,255,255,0.3)", borderTopColor:"#fff", borderRadius:"50%", display:"inline-block", animation:"authSpin 0.7s linear infinite" }}/>Please wait…</span>
+                      : mode==="signup"
+                        ? selectedPath === "executive"  ? "Apply for executive access"
+                        : selectedPath === "institution" ? "Create organisation account"
+                        : "Create account"
+                      : "Sign in"}
                   </button>
                 </div>
-                {mode === "signup" && password.length > 0 && (
-                  <div style={{ marginTop:6 }}>
-                    <div style={{ height:3, background:"#E8E3DA", borderRadius:99, overflow:"hidden", marginBottom:5 }}>
-                      <div style={{ height:"100%", width:`${pw.pct}%`, background:pw.color, borderRadius:99, transition:"all 0.3s" }}/>
-                    </div>
-                    <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-                      {[{key:"length",label:"8+ chars"},{key:"uppercase",label:"A–Z"},{key:"lowercase",label:"a–z"},{key:"number",label:"0–9"},{key:"special",label:"!@#..."}].map(c=>(
-                        <span key={c.key} style={{ fontSize:10, fontWeight:600, color:pw.checks[c.key]?"#16A34A":"#A8A29E", display:"flex", alignItems:"center", gap:3 }}>
-                          <span style={{ fontSize:9 }}>{pw.checks[c.key]?"✓":"○"}</span>{c.label}
-                        </span>
-                      ))}
-                      <span style={{ marginLeft:"auto", fontSize:10, fontWeight:700, color:pw.color, textTransform:"capitalize" }}>{pw.level}</span>
-                    </div>
+
+                <div style={{ textAlign:"center", marginTop:14, fontSize:13, color:T.ink3 }}>
+                  {mode==="signup" ? "Already have an account? " : "New to Capabilio? "}
+                  <button onClick={()=>{setMode(m=>m==="signup"?"login":"signup");setError("")}}
+                    style={{ background:"none", border:"none", color:accent, fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                    {mode==="signup" ? "Sign in" : "Create free account"}
+                  </button>
+                </div>
+
+                {mode==="signup"&&(
+                  <div style={{ display:"flex", gap:6, justifyContent:"center", flexWrap:"wrap", marginTop:12 }}>
+                    {trustPills.map((b,i)=>(
+                      <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:10.5, color:T.ink3, background:T.surfaceRaised, border:`1px solid ${T.border}`, borderRadius:100, padding:"3px 9px" }}>
+                        <Check size={10} color={accent} strokeWidth={2.5} />{b}
+                      </span>
+                    ))}
                   </div>
                 )}
-              </div>
-
-              {mode === "signup" && (
-                <>
-                  <div style={{ position:"relative" }}>
-                    <input value={confirm} onChange={e=>{setConfirm(e.target.value);setError("")}}
-                      onKeyDown={e=>e.key==="Enter"&&handleEmailSubmit()}
-                      type={showCfm?"text":"password"} placeholder="Confirm password"
-                      style={{ ...inputStyle, paddingRight:44, borderColor: confirm&&password ? (confirm===password?"rgba(22,163,74,0.5)":"#FECACA") : "#E8E3DA" }}
-                      onFocus={e=>e.target.style.borderColor=accent}
-                      onBlur={e=>e.target.style.borderColor=confirm&&password?(confirm===password?"rgba(22,163,74,0.5)":"#FECACA"):"#E8E3DA"}/>
-                    <button onClick={()=>setShowCfm(p=>!p)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:"#A8A29E", fontSize:14, padding:2 }}>
-                      {showCfm ? "🙈" : "👁"}
-                    </button>
-                  </div>
-                  {confirm && password && confirm !== password && (
-                    <div style={{ fontSize:11, color:"#DC2626", marginTop:-4 }}>✗ Passwords do not match</div>
-                  )}
-
-                  {/* Voucher — student only */}
-                  {(!selectedPath || selectedPath === "student") && (
-                    <div>
-                      <div style={{ fontSize:11, fontWeight:500, color:"#6B6560", marginBottom:5 }}>Skill voucher code <span style={{ fontWeight:400 }}>(optional)</span></div>
-                      <input value={refCode}
-                        onChange={async e=>{
-                          const val=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,8)
-                          setRefCode(val); setRefData(null); setRefValid(null)
-                          if(val.length===8){try{const r=await fetch(`${API}/api/referral/validate/${val}`);const d=await r.json();setRefValid(d.valid);setRefData(d)}catch{setRefValid(false)}}
-                        }}
-                        placeholder="Enter 8-char voucher code" maxLength={8}
-                        style={{ width:"100%", padding:"11px 14px", background:"#FAF7F2", border:`1.5px solid ${refCode.length===8?refValid?"#BBF7D0":"#FECACA":"#E8E3DA"}`, borderRadius:8, color:"#1A1714", fontSize:13, fontFamily:"'DM Mono',monospace", letterSpacing:3, outline:"none", boxSizing:"border-box" }}/>
-                      {refCode.length===8&&refValid===true&&<div style={{ marginTop:5, padding:"6px 10px", background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:7, fontSize:11, color:"#15803D" }}>✓ {refData?.message} · +50 ELO + 14-day Pro</div>}
-                      {refCode.length===8&&refValid===false&&<div style={{ marginTop:4, fontSize:11, color:"#DC2626" }}>✗ Invalid voucher code</div>}
-                    </div>
-                  )}
                 </>
               )}
-
-              {error && <div style={{ padding:"9px 12px", background:"#FEF2F2", border:"1px solid #FECACA", borderRadius:9, fontSize:12, color:"#DC2626" }}>⚠️ {error}</div>}
-
-              <button onClick={handleEmailSubmit} disabled={loading || !canSubmitEmail}
-                style={{ width:"100%", padding:"13px", background:canSubmitEmail?accent:"#F3F4F6", border:"none", borderRadius:10, color:canSubmitEmail?"#fff":"#A8A29E", fontSize:15, fontWeight:700, fontFamily:"'DM Sans',serif", cursor:canSubmitEmail?"pointer":"not-allowed", transition:"all 0.15s" }}
-                onMouseEnter={e=>{if(canSubmitEmail)e.currentTarget.style.filter="brightness(0.9)"}}
-                onMouseLeave={e=>{if(canSubmitEmail)e.currentTarget.style.filter="none"}}
-              >
-                {loading
-                  ? <span style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}><span style={{ width:14, height:14, border:"2px solid rgba(255,255,255,0.3)", borderTopColor:"#fff", borderRadius:"50%", display:"inline-block", animation:"authSpin 0.7s linear infinite" }}/>Please wait…</span>
-                  : mode==="signup"
-                    ? selectedPath === "executive"  ? "Apply for Executive Access →"
-                    : selectedPath === "institution" ? "Create Organisation Account →"
-                    : "Create account →"
-                  : "Sign in →"}
-              </button>
-            </div>
-
-            <div style={{ textAlign:"center", marginTop:14, fontSize:13, color:"#A8A29E" }}>
-              {mode==="signup" ? "Already have an account? " : "New to Capabilio? "}
-              <button onClick={()=>{setMode(m=>m==="signup"?"login":"signup");setError("")}}
-                style={{ background:"none", border:"none", color:accent, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-                {mode==="signup" ? "Sign in" : "Create free account"}
-              </button>
-            </div>
-
-            {mode==="signup"&&(
-              <div style={{ display:"flex", gap:5, justifyContent:"center", flexWrap:"wrap", marginTop:12 }}>
-                {(selectedPath === "institution"
-                  ? ["✓ Free to get started","✓ No setup fee","✓ Built in India 🇮🇳"]
-                  : selectedPath === "executive"
-                  ? ["✓ Invite-only","✓ Verified profiles","✓ Built in India 🇮🇳"]
-                  : selectedPath === "professional"
-                  ? ["✓ Free to join","✓ UAN-backed","✓ No resume","✓ Built in India 🇮🇳"]
-                  : ["✓ Free forever","✓ No credit card","✓ No resume","✓ Built in India 🇮🇳"]
-                ).map((b,i)=>(
-                  <span key={i} style={{ fontSize:10, color:"#A8A29E", background:"#FAF7F2", border:"1px solid #E8E3DA", borderRadius:100, padding:"2px 8px" }}>{b}</span>
-                ))}
-              </div>
-            )}
+              </motion.div>
+            </AnimatePresence>
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   )
@@ -803,11 +877,6 @@ function App() {
   const [currentPage,    setCurrentPage]    = useState(
     () => PATH_TO_PAGE[window.location.pathname] || "studentHome"
   )
-  // Arena V2 pilot phase — which candidate's recruiter-facing evidence is
-  // currently being viewed (set by ArenaV2MLPilot's "View how recruiters
-  // see this proof" link, read by the arenaV2RecruiterView page below).
-  const [recruiterEvidenceUserId, setRecruiterEvidenceUserId] = useState(null)
-  const [recruiterEvidenceReturnPage, setRecruiterEvidenceReturnPage] = useState("arenaV2MLPilot")
   const [activeTab,      setActiveTab]      = useState("dashboard")
   const [activeNavItem,  setActiveNavItem]  = useState("home")
   const [userData,       setUserData]       = useState(null)
@@ -1326,14 +1395,14 @@ function App() {
           />
         ) : (
           <LandingPage
-            onGetStarted={({ path } = {}) => {
-              if (path) {
-                try { localStorage.setItem("capabilio_selected_path", path) } catch {}
-                setAuthMode("signup"); setShowAuth(true)
-              } else {
-                setAppStage("accountType")
-              }
-            }}
+            // 2026-08-18: landing page no longer routes through the separate
+            // AccountType.jsx page — AuthModal now has its own in-modal
+            // step-1 path chooser (used when LandingPage's openPath(null,...)
+            // clears capabilio_selected_path, e.g. the generic nav/hero
+            // "Get started"). AccountType.jsx itself is untouched and still
+            // used by the unrelated /join-org/ and /company-invite/ deep-link
+            // flows above, which set appStage directly.
+            onGetStarted={() => { setAuthMode("signup"); setShowAuth(true) }}
             onLogin={() => { setAuthMode("login"); setShowAuth(true) }}
           />
         )}
@@ -1406,23 +1475,20 @@ function App() {
   const displayName = userData?.displayName || userData?.name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User"
 
   // Nav decluttered 2026-07-28 (second, final pass): header stays at exactly
-  // five items. The Arena V2 pilots built this session stay reachable by
-  // direct page id (deep link / future entry point), not from this global
-  // header — and per explicit product direction, "Arena" itself keeps
-  // rendering the legacy <Arena> page below unchanged (role-based "Your
-  // Role" + "Common Challenges" cards, ARENA_DOMAINS/resolveArenaDomain) —
-  // no auto-routing to Arena V2 pilots. That role resolution already re-runs
-  // on every Arena render off current userData, so a role changed during
-  // onboarding is picked up automatically the next time Arena renders — no
-  // separate wiring needed for that part.
+  // five items.
+  // Arena nav item removed 2026-08-16 — Arena feature deleted for redesign.
+  // Arena re-added 2026-08-16 — College Stream branch (arenaCollegeStream)
+  // rebuilt Phase 1; this is the actual header rendered on /aura, distinct
+  // from Header.jsx/CapUI.jsx/PathNav.jsx/BottomNav.jsx which were updated
+  // earlier but do not control this bar. Intentionally now 6 items (was
+  // capped at 5) since Arena is a real, functioning destination again.
   const STUDENT_HEADER_NAV = [
     { id: "aura",        label: "Aura",         page: "aura",        prefix: "+" },
-    { id: "arena",       label: "Arena",        page: "arena",       prefix: "×" },
     { id: "pulse",       label: "Pulse",        page: "pulse",       prefix: "⚡" },
     { id: "skillstudio", label: "Skill Studio", page: "skillstudio",   prefix: "🎓" },
+    { id: "arenaCollegeStream", label: "Arena", page: "arenaCollegeStream", prefix: "🏟️" },
     { id: "launchpad",   label: "Launchpad",    page: "launchpad",     prefix: "🚀" },
     { id: "myTasks",     label: "Tasks",        page: "myTasks",       prefix: "📋" },
-    // "Challenges" nav removed — engineering domain challenges now live inside Arena → Common Challenges (stream-filtered)
     // 2026-08-02: only shown once GET /college/me/tasks confirms this student
     // is actually org-linked — collegeLinked starts null (unresolved) so this
     // never flashes in and then disappears; it simply appears once known true.
@@ -1779,149 +1845,11 @@ function App() {
           )}
           {currentPage === "nexus"     && <Nexus user={user} userData={userData} setUserData={setUserData} />}
           {currentPage === "myTasks"   && <MyTasks />}
-          {currentPage === "arena"     && <Arena user={user} userData={userData} setUserData={setUserData} onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }} onNavigatePricing={() => setCurrentPage("pricing")} onNavigateArenaV2={(pageKey) => { setCurrentPage(pageKey); setActiveNavItem("arena") }} />}
-          {currentPage === "arenaV2MLPilot" && (
-            <ArenaV2MLPilot
-              user={user}
-              userData={userData}
-              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
-              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2MLPilot"); setCurrentPage("arenaV2RecruiterView") }}
-            />
-          )}
-          {currentPage === "arenaV2SoftwarePilot" && (
-            <ArenaV2SoftwarePilot
-              user={user}
-              userData={userData}
-              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
-              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2SoftwarePilot"); setCurrentPage("arenaV2RecruiterView") }}
-            />
-          )}
-          {currentPage === "arenaV2CyberPilot" && (
-            <ArenaV2CyberPilot
-              user={user}
-              userData={userData}
-              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
-              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2CyberPilot"); setCurrentPage("arenaV2RecruiterView") }}
-            />
-          )}
-          {currentPage === "arenaV2DevOpsPilot" && (
-            <ArenaV2DevOpsPilot
-              user={user}
-              userData={userData}
-              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
-              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2DevOpsPilot"); setCurrentPage("arenaV2RecruiterView") }}
-            />
-          )}
-          {currentPage === "arenaV2DbaPilot" && (
-            <ArenaV2DbaPilot
-              user={user}
-              userData={userData}
-              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
-              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2DbaPilot"); setCurrentPage("arenaV2RecruiterView") }}
-            />
-          )}
-          {currentPage === "arenaV2DataAnalystPilot" && (
-            <ArenaV2DataAnalystPilot
-              user={user}
-              userData={userData}
-              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
-              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2DataAnalystPilot"); setCurrentPage("arenaV2RecruiterView") }}
-            />
-          )}
-          {currentPage === "arenaV2FrontendPilot" && (
-            <ArenaV2FrontendPilot
-              user={user}
-              userData={userData}
-              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
-              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2FrontendPilot"); setCurrentPage("arenaV2RecruiterView") }}
-            />
-          )}
-          {currentPage === "arenaV2EcePilot" && (
-            <ArenaV2EcePilot
-              user={user}
-              userData={userData}
-              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
-              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2EcePilot"); setCurrentPage("arenaV2RecruiterView") }}
-            />
-          )}
-          {currentPage === "arenaV2EeePilot" && (
-            <ArenaV2EeePilot
-              user={user}
-              userData={userData}
-              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
-              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2EeePilot"); setCurrentPage("arenaV2RecruiterView") }}
-            />
-          )}
-          {currentPage === "arenaV2CivilPilot" && (
-            <ArenaV2CivilPilot
-              user={user}
-              userData={userData}
-              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
-              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2CivilPilot"); setCurrentPage("arenaV2RecruiterView") }}
-            />
-          )}
-          {currentPage === "arenaV2MechanicalPilot" && (
-            <ArenaV2MechanicalPilot
-              user={user}
-              userData={userData}
-              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
-              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2MechanicalPilot"); setCurrentPage("arenaV2RecruiterView") }}
-            />
-          )}
-          {currentPage === "arenaV2BiotechPilot" && (
-            <ArenaV2BiotechPilot
-              user={user}
-              userData={userData}
-              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
-              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2BiotechPilot"); setCurrentPage("arenaV2RecruiterView") }}
-            />
-          )}
-          {currentPage === "arenaV2MedicalBiotechPilot" && (
-            <ArenaV2MedicalBiotechPilot
-              user={user}
-              userData={userData}
-              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
-              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2MedicalBiotechPilot"); setCurrentPage("arenaV2RecruiterView") }}
-            />
-          )}
-          {currentPage === "arenaV2ClinicalLabPilot" && (
-            <ArenaV2ClinicalLabPilot
-              user={user}
-              userData={userData}
-              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
-              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2ClinicalLabPilot"); setCurrentPage("arenaV2RecruiterView") }}
-            />
-          )}
-          {currentPage === "arenaV2SapFicoPilot" && (
-            <ArenaV2SapFicoPilot
-              user={user}
-              userData={userData}
-              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
-              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2SapFicoPilot"); setCurrentPage("arenaV2RecruiterView") }}
-            />
-          )}
-          {currentPage === "arenaV2SapMmSdPilot" && (
-            <ArenaV2SapMmSdPilot
-              user={user}
-              userData={userData}
-              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
-              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2SapMmSdPilot"); setCurrentPage("arenaV2RecruiterView") }}
-            />
-          )}
-          {currentPage === "arenaV2SapAbapPilot" && (
-            <ArenaV2SapAbapPilot
-              user={user}
-              userData={userData}
-              onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }}
-              onViewRecruiterEvidence={(uid) => { setRecruiterEvidenceUserId(uid); setRecruiterEvidenceReturnPage("arenaV2SapAbapPilot"); setCurrentPage("arenaV2RecruiterView") }}
-            />
-          )}
-          {currentPage === "arenaV2RecruiterView" && (
-            <ArenaV2RecruiterView
-              candidateUserId={recruiterEvidenceUserId}
-              onBack={() => setCurrentPage(recruiterEvidenceReturnPage || "arenaV2MLPilot")}
-            />
-          )}
+          {/* Old Arena (V1 + V2) removed 2026-08-16 for redesign. Rebuild —
+              College Stream branch (Phase 1) below; Domain Role branch's
+              render block lands here in a later phase, its own component,
+              never sharing state with College Stream. */}
+          {currentPage === "arenaCollegeStream" && <ArenaCollegeStream userData={userData} onNavigate={setCurrentPage} user={user} setUserData={setUserData} />}
           {currentPage === "pulse"     && <Pulse user={user} userData={userData} />}
           {currentPage === "authority" && <AuthorityProfile user={user} userData={{ ...userData, uid: user?.id }} setUserData={setUserData} onNavigate={setCurrentPage} />}
           {currentPage === "startupworkspace" && <StartupWorkspace user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
@@ -1940,8 +1868,7 @@ function App() {
           {currentPage === "pricing"     && <Pricing     user={user} userData={userData} setUserData={setUserData} onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }} />}
 
           {currentPage === "forge"       && <Forge          user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
-          {/* "challenges" page removed — redirects to Arena which shows stream-filtered challenges */}
-          {currentPage === "challenges"  && <Arena user={user} userData={userData} setUserData={setUserData} onBack={() => { const home = HOME_PAGE[navPath] || "studentHome"; setCurrentPage(home); setActiveNavItem("home") }} onNavigatePricing={() => setCurrentPage("pricing")} />}
+          {/* "challenges" page and its Arena-backed render removed 2026-08-16 along with Arena. */}
 
           {currentPage === "timemarket"  && <Launchpad      user={user} userData={userData} />}
           {currentPage === "signalrooms" && <SignalRooms     user={user} userData={userData} />}
