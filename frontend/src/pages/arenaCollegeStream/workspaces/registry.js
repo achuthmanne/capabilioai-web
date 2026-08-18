@@ -13,3 +13,18 @@ import SqlWorkspace from "./sql/SqlWorkspace"
 export const PANEL_REGISTRY = {
   sql_runner: SqlWorkspace,
 }
+
+// Role -> workspace resolution is intentionally mission-level
+// (mission.panel_type, looked up above), not role-level. Considered
+// adding a `workspace` field to frontend/src/config/roleConfig.js's
+// ROLE_REGISTRY (Phase 2.6, Task 2) and declined: panel_type is already
+// the live, authoritative source — read fresh from the API on every
+// mission fetch — so a second copy on 44 role config entries would be an
+// unenforced, driftable duplicate of the same fact, with no current
+// consumer. roleConfig.js's own header already calls itself "the single
+// source of truth for all role-related data"; this preserves that for
+// panel_type specifically by not introducing a second one. If a role
+// ever needs to show workspace info BEFORE any mission is fetched (e.g.
+// an icon on the role-selection screen), resolve it by reading a mission
+// for that role first — don't add a parallel, unsynced field here.
+
