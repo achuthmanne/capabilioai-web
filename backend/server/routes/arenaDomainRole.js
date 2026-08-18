@@ -13,7 +13,8 @@
 import { Router } from "express"
 import { requireAuth, optionalAuth } from "../lib/auth.js"
 import { supabaseAdmin } from "../lib/supabase.js"
-import { runAgainstDataset, compareResults, computeInsight, buildChecklist, SqlSandboxError } from "../lib/domainRole/sqlSandbox.js"
+import { compareResults, computeInsight, buildChecklist, SqlSandboxError } from "../lib/domainRole/sqlSandbox.js"
+import { executeMission } from "../lib/domainRole/executeMission.js"
 import { groq, GROQ_FAST } from "../lib/groq.js"
 import { logger } from "../lib/logger.js"
 import { decodeCursor, encodeCursor } from "../lib/pagination.js"
@@ -544,18 +545,16 @@ router.post("/missions/:id/validate", optionalAuth, sqlValidateLimiter, async (r
       .maybeSingle()
     if (missionErr) throw missionErr
     if (!mission) return res.status(404).json({ error: "Mission not found" })
-    if (mission.panel_type !== "sql_runner") {
-      return res.status(400).json({ error: `Panel type "${mission.panel_type}" is not yet supported.` })
-    }
 
     let actual
     try {
-      actual = await runAgainstDataset(mission.dataset, sql)
-    } catch (sandboxErr) {
-      if (sandboxErr instanceof SqlSandboxError) {
-        return res.status(400).json({ error: sandboxErr.message })
+      actual = await executeMission(mission, sql)
+    } catch (err) {
+      if (err.notImplemented) return res.status(400).json({ error: err.message })
+      if (err instanceof SqlSandboxError) {
+        return res.status(400).json({ error: err.message })
       }
-      throw sandboxErr
+      throw err
     }
 
     // Only real, mechanically-derived warnings — never a fabricated
@@ -600,9 +599,6 @@ router.post("/missions/:id/submit", requireAuth, async (req, res) => {
       .maybeSingle()
     if (missionErr) throw missionErr
     if (!mission) return res.status(404).json({ error: "Mission not found" })
-    if (mission.panel_type !== "sql_runner") {
-      return res.status(400).json({ error: `Panel type "${mission.panel_type}" is not yet supported.` })
-    }
 
     // Locked once passed — a completed task cannot be resubmitted. Checked
     // server-side (not just hidden client-side) since the client can't be
@@ -641,9 +637,11 @@ router.post("/missions/:id/submit", requireAuth, async (req, res) => {
 
     let actual
     try {
-      actual = await runAgainstDataset(mission.dataset, sql)
-    } catch (sandboxErr) {
-      if (sandboxErr instanceof SqlSandboxError) {
+      actual = await executeMission(mission, sql)
+    } catch (err) {
+      if (err.notImplemented) return res.status(400).json({ error: err.message })
+      if (err instanceof SqlSandboxError) {
+        const sandboxErr = err
         // Write the failed attempt too — a submission record should exist
         // for every attempt, not just passing ones, for the same
         // idempotent-audit-trail reason as the College Stream branch.
@@ -665,7 +663,7 @@ router.post("/missions/:id/submit", requireAuth, async (req, res) => {
         })
         return res.json({ submission: { ...submission, feedback: sandboxErr.message } })
       }
-      throw sandboxErr
+      throw err
     }
 
     const comparison = compareResults(actual, mission.expected_result, mission.match_mode)
