@@ -13,8 +13,9 @@
 import { Router } from "express"
 import { requireAuth, optionalAuth } from "../lib/auth.js"
 import { supabaseAdmin } from "../lib/supabase.js"
-import { compareResults, computeInsight, buildChecklist, SqlSandboxError } from "../lib/domainRole/sqlSandbox.js"
+import { SqlSandboxError } from "../lib/domainRole/sqlSandbox.js"
 import { executeMission } from "../lib/domainRole/executeMission.js"
+import { evaluateMission } from "../lib/domainRole/evaluateMission.js"
 import { groq, GROQ_FAST } from "../lib/groq.js"
 import { logger } from "../lib/logger.js"
 import { decodeCursor, encodeCursor } from "../lib/pagination.js"
@@ -666,10 +667,9 @@ router.post("/missions/:id/submit", requireAuth, async (req, res) => {
       throw err
     }
 
-    const comparison = compareResults(actual, mission.expected_result, mission.match_mode)
+    const comparison = evaluateMission(mission.panel_type, actual, mission)
+    const { checklist, insight } = comparison
     const eloDelta = comparison.passed ? mission.elo_reward : -(ELO_FAIL_PENALTY[mission.difficulty] ?? 2)
-    const checklist = buildChecklist(actual, mission.expected_result, comparison.passed)
-    const insight = computeInsight(actual)
     // Best-effort — never blocks the response, never changes score/passed/elo.
     const aiFeedback = await generateAiFeedback({
       prompt: mission.prompt, sql, passed: comparison.passed, score: comparison.score, reason: comparison.reason,
