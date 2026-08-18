@@ -42,7 +42,7 @@
  */
 import { supabaseAdmin } from "../supabase.js"
 import { getRoleConfig } from "../../../../frontend/src/config/roleConfig.js"
-import { eloValueToRadarScore } from "../../routes/arena.js"
+import { eloValueToRadarScore } from "../eloRadar.js"
 import { createOrGetJourney, hasAnyJourneyEver, listJourneysForUser } from "./journeyPlanner.js"
 
 export const defaultDeps = { supabaseAdmin, getRoleConfig, eloValueToRadarScore, createOrGetJourney, hasAnyJourneyEver, listJourneysForUser }

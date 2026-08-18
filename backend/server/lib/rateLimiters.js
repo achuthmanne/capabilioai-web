@@ -110,3 +110,17 @@ export const strictLimiter  = createRateLimiter(60_000,  10, "Too many attempts.
 // aiLimiter so Skill Studio's read traffic can no longer exhaust the same
 // budget Arena/chat/voice/TTS/Groq share.
 export const skillStudioLimiter = createRateLimiter(60_000, 60, "Skill Studio is receiving a lot of requests right now. Please wait a moment.")
+
+// College Stream experiment submissions (2026-08-16) — applied at the
+// specific POST /experiments/:id/submit route only, not the whole
+// /api/arena/college-stream prefix (that prefix also serves read-only
+// curriculum browsing — all-experiments, streams list, history — which a
+// student's normal navigation hits far more often than submit, and which
+// shouldn't share this stricter budget; same reasoning as the
+// skillStudioLimiter split above). Sized well above legitimate use (a
+// student submitting an answer every few seconds) but well below what
+// would let a burst of requests spawn unbounded python3 subprocesses —
+// the sandbox's own MAX_CONCURRENT_EXECUTIONS cap
+// (pythonSandbox.js) is the hard backstop; this is the first line of
+// defense that keeps requests from piling up against that cap at all.
+export const codeExecutionLimiter = createRateLimiter(60_000, 20, "Too many submissions right now. Please wait a moment before trying again.")

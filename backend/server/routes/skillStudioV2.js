@@ -38,7 +38,7 @@ import { getDueReviews, submitRevisionReview, readDecayedState, reinforce } from
 import { checkReadiness, handoff } from "../lib/skillStudio/arenaBridge.js"
 import { writeModuleEvidence, writeInterviewEvidence, publishEvidence } from "../lib/skillStudio/evidenceBridge.js"
 import { getRecommendations, buildRecommendations } from "../lib/skillStudio/recommendationEngine.js"
-import { listForUser as listProofObjectsForUser } from "../lib/arena-v2/proofObjects/repository.js"
+import { listForUser as listProofObjectsForUser } from "../lib/proofObjects/repository.js"
 import { logEvent } from "../lib/skillStudio/eventLogger.js"
 import { groq, GROQ_FAST } from "../lib/groq.js"
 

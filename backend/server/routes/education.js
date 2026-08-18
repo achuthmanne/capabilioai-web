@@ -20,8 +20,8 @@
 import { Router } from "express"
 import { requireAuth } from "../lib/auth.js"
 import * as eduRepo from "../lib/education/repository.js"
-import * as proofRepo from "../lib/arena-v2/proofObjects/repository.js"
-import { buildAcademicAchievementProofObject } from "../lib/arena-v2/proofObjects/academicBuilder.js"
+import * as proofRepo from "../lib/proofObjects/repository.js"
+import { buildAcademicAchievementProofObject } from "../lib/proofObjects/academicBuilder.js"
 
 const router = Router()
 

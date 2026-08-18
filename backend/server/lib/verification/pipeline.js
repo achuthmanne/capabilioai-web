@@ -15,7 +15,7 @@
  */
 import { getProvider } from "./providers/registry.js"
 import * as auditLog from "./auditLog.js"
-import * as proofRepo from "../arena-v2/proofObjects/repository.js"
+import * as proofRepo from "../proofObjects/repository.js"
 
 export class VerificationPipelineError extends Error {
   constructor(message, code) { super(message); this.code = code }

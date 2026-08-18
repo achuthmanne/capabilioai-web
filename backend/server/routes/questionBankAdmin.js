@@ -53,7 +53,7 @@
 import { Router } from "express"
 import { supabaseAdmin } from "../lib/supabase.js"
 import { requireAuth } from "../lib/auth.js"
-import { requireAdmin } from "../lib/arena-v2/requireAdmin.js"
+import { requireAdmin } from "../lib/requireAdmin.js"
 import { validateQuestionForApproval, TOP_10_DOMAINS } from "../lib/skillPulseV2/questionBankGate.js"
 
 const router = Router()

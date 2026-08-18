@@ -59,3 +59,33 @@ export async function requireAuth(req, res, next) {
     res.status(401).json({ error: "Auth service unavailable" })
   }
 }
+
+// Same JWT verification as requireAuth, but never 401s — sets req.user to
+// null (rather than blocking the request) when no/invalid token is present.
+// For catalog-style GET endpoints that personalize when possible (e.g.
+// "skip missions I've already passed") but must stay browsable when logged
+// out, matching the existing public-catalog-read discipline in
+// routes/arenaCollegeStream.js and routes/arenaDomainRole.js.
+export async function optionalAuth(req, _res, next) {
+  const token = (req.headers.authorization || "").replace("Bearer ", "").trim()
+  if (!token) { req.user = null; return next() }
+
+  const secret = process.env.SUPABASE_JWT_SECRET
+  if (secret) {
+    try {
+      const payload = jwt.verify(token, secret, { algorithms: ["HS256"] })
+      req.user = { id: payload.sub, email: payload.email, role: payload.role, ...payload }
+      return next()
+    } catch {
+      // fall through to network-verified path below
+    }
+  }
+
+  try {
+    const { data: { user } } = await supabaseAdmin.auth.getUser(token)
+    req.user = user || null
+  } catch {
+    req.user = null
+  }
+  next()
+}

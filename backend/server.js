@@ -85,6 +85,42 @@ if (IS_CLUSTER_PRIMARY) {
 // Workers (and dev mode) continue past this point
 import express from "express"
 import cors    from "cors"
+import { logger } from "./server/lib/logger.js"
+// Common Challenge Framework's Notebook workspace needs a real python3 on
+// PATH — checked once at boot and logged alongside the other provider
+// checks below, since there's no render.yaml/Dockerfile in this repo for
+// me to confirm the production host actually has it installed.
+import { checkPythonAvailable } from "./server/lib/collegeStream/pythonSandbox.js"
+
+// ─── Process-level crash safety (2026-08-16) ───────────────────────────────────
+// Previously this process had NO uncaughtException/unhandledRejection
+// handlers at all — an uncaught error anywhere (including in a fire-and-
+// forget promise, e.g. a background insert whose .catch() was forgotten)
+// would either crash with an unstructured stack dump straight to stderr
+// (uncaughtException — Node's own default) or, worse, on unhandledRejection
+// specifically, be swallowed entirely by whichever library/framework code
+// happened to install its own listener first, leaving the process running
+// in a state Node's own docs explicitly say is no longer safe to trust.
+//
+// Both handlers here do the same thing on purpose: log full structured
+// context (via logger.js, so this is actually greppable in Render's log
+// viewer instead of a bare stack trace mixed into free-text console spam),
+// then exit(1) deliberately. This is the standard Node guidance — after
+// either event the process's internal state is unknown, so the safe move
+// is a controlled, logged exit and let the platform (Render's own process
+// supervisor in the default non-cluster deployment, or the cluster
+// primary's crash-loop-aware respawn logic above when ENABLE_CLUSTER=true)
+// restart a fresh process, not to keep serving requests from a process that
+// might be silently corrupted.
+process.on("uncaughtException", (err) => {
+  logger.error("uncaughtException — exiting (Node's own guidance: process state is untrusted after this)", { err })
+  process.exit(1)
+})
+process.on("unhandledRejection", (reason) => {
+  const err = reason instanceof Error ? reason : new Error(String(reason))
+  logger.error("unhandledRejection — exiting (registering this listener opts back into Node's own default-exit behavior, applied consistently with uncaughtException above)", { err })
+  process.exit(1)
+})
 
 // ─── Rate limiter ─────────────────────────────────────────────────────────────
 // Moved to server/lib/rateLimiters.js on 2026-07-30 — see that file's header
@@ -97,12 +133,14 @@ import { generalLimiter, aiLimiter, strictLimiter, skillStudioLimiter } from "./
 // ─── Route modules ────────────────────────────────────────────────────────────
 import resumeRoutes           from "./server/routes/resume.js"
 import assessmentRoutes       from "./server/routes/assessment.js"
-import arenaRoutes            from "./server/routes/arena.js"
-import arenaV2Routes          from "./server/routes/arenaV2.js"
-import arenaV2LibraryRoutes   from "./server/routes/arenaV2Library.js"  // Arena V2 (real rebuild) Milestone 2 — Challenge Library CRUD, separate from legacy arena/v2 above
-import arenaV2DeliveryRoutes  from "./server/routes/arenaV2Delivery.js" // Arena V2 rebuild, Milestone 6 — Challenge Delivery API (next/active/expire-sweep)
-import arenaV2SubmissionRoutes from "./server/routes/arenaV2Submission.js" // Arena V2 rebuild, Milestone 8 — Submission API (the return path: Submission -> Submission Engine -> Validator -> Assessment -> Feedback DTO)
-import arenaV2PortfolioRoutes  from "./server/routes/arenaV2Portfolio.js"  // Arena V2 rebuild, Milestone 10 — Portfolio & Recruiter Evidence API: GET /mine, POST /:id/publish, GET /candidates/:userId/evidence
+// Arena rebuild 2026-08-16 — old Arena (V1/V2) deleted for a from-scratch
+// redesign, split into two structurally-separate branches. College Stream
+// (Phase 1, this import) is live: static/rule-based/zero-AI. Domain Role
+// (config-driven, AI-generated missions) lands in a later phase as its own
+// route file, mounted at its own prefix — never sharing code with this one.
+import arenaCollegeStreamRoutes from "./server/routes/arenaCollegeStream.js"
+import arenaDomainRoleRoutes from "./server/routes/arenaDomainRole.js"
+import arenaActivityRoutes from "./server/routes/arenaActivity.js"
 import proofsRoutes           from "./server/routes/proofs.js"            // Portfolio redesign — public Engineering Proofs API: GET /:userId (grouped+filtered), GET /:userId/:proofId
 import educationRoutes        from "./server/routes/education.js"        // Education redesign Phase 1 — GET /profile/:userId (public), POST /profile (auth, own profile only)
 import verificationRoutes     from "./server/routes/verification.js"     // Trust & Verification Center Phase 1 — provider registry, hash-chained audit log, POST /verify
@@ -168,7 +206,10 @@ import { opsMetricsMiddleware }  from "./server/lib/opsMetrics.js"         // Ca
 import professionalEloRoutes     from "./server/routes/professionalElo.js" // Professional ELO (2026-07-25 product decision) — pro/elo/professional status+history
 import professionalCertificationsRoutes from "./server/routes/professionalCertifications.js" // Skill Rating v2 (2026-07-26) — pro/certifications claim+verify, gates cert_bonus_elo
 import subscriptionWebhookRoutes from "./server/routes/subscriptionWebhook.js" // Tranche C (2026-07-25) — /api/webhooks/razorpay/subscription, needs raw body (mounted separately below)
-import { startGradingWorker }    from "./server/lib/grading-worker.js"
+// startGradingWorker import removed 2026-08-16 — grading-worker.js was
+// Arena-exclusive (polled arena_grading_jobs, wrote arena_history), both
+// dropped along with the rest of Arena. Left running it would crash-loop
+// querying tables that no longer exist.
 
 // ─── App setup ────────────────────────────────────────────────────────────────
 const app  = express()
@@ -213,8 +254,6 @@ app.use(cors({
 // route level inside skillStudioV2.js/skillStudio.js — same double-layering
 // generalLimiter+aiLimiter already used elsewhere.
 app.use("/api", generalLimiter)
-app.use("/api/arena",        aiLimiter)
-app.use("/api/arena/v2",     aiLimiter)
 app.use("/api/skill-studio", skillStudioLimiter)
 app.use("/api/chat",         aiLimiter)
 app.use("/api/voice",        aiLimiter)
@@ -299,7 +338,7 @@ app.use((req, res, next) => {
 app.use(opsMetricsMiddleware)
 
 // ─── Health ───────────────────────────────────────────────────────────────────
-app.get("/",       (_, res) => res.json({ status: "ok", service: "Capabilio Server", version: "3.0.0", arena: "15 roles · 14 workspaces · full proof pipeline" }))
+app.get("/",       (_, res) => res.json({ status: "ok", service: "Capabilio Server", version: "3.0.0" }))
 app.get("/health", (_, res) => res.json({ status: "ok", ts: Date.now() }))
 
 // Diagnostic-only — reports whether the email provider env vars are visible to
@@ -318,12 +357,20 @@ app.get("/api/_debug/email-config", (_, res) => res.json({
 // ─── Mount routes ─────────────────────────────────────────────────────────────
 app.use("/api",              resumeRoutes)       // extract-pdf, extract-linkedin
 app.use("/api",              assessmentRoutes)   // generate-mcq, analyse-assessment, analyse-professional-profile
-app.use("/api/arena",        arenaRoutes)        // daily, challenge, review, hint, run-tests
-app.use("/api/arena/v2",    arenaV2Routes)      // catalog, submit, streaks, leaderboard, recruiter, roles, daily-assignment, proof-artifacts, weak-topics, sub-elo, stats
-app.use("/api/av2/library",  arenaV2LibraryRoutes) // Arena V2 rebuild, Milestone 2 — role-capabilities, skill-graphs, scenario-packs, datasets, challenge-templates CRUD
-app.use("/api/av2/challenges", arenaV2DeliveryRoutes) // Arena V2 rebuild, Milestone 6 — Challenge Delivery API: POST /next, GET /active, POST /expire-sweep
-app.use("/api/av2/submissions", arenaV2SubmissionRoutes) // Arena V2 rebuild, Milestone 8 — Submission API: POST / (submit an attempt, get back a graded Feedback DTO)
-app.use("/api/av2/portfolio",   arenaV2PortfolioRoutes)  // Arena V2 rebuild, Milestone 10 — Portfolio & Recruiter Evidence API
+// Arena rebuild — College Stream branch: static curriculum reads (public,
+// covered by generalLimiter above) + rule-based submit (auth). UPDATE
+// (2026-08-16): submit is no longer zero-cost — the Common Challenge
+// Framework's Notebook workspace can spawn real python3 subprocesses
+// (lib/collegeStream/pythonSandbox.js) for code-execution challenges.
+// POST /experiments/:id/submit now carries its own dedicated
+// codeExecutionLimiter, applied at the route level inside
+// arenaCollegeStream.js (not here as a prefix) — same reasoning as
+// skillStudioLimiter/aiLimiter's per-route split (see rateLimiters.js):
+// this prefix's read-only browsing traffic (all-experiments, streams,
+// history) shouldn't share the stricter submit-only budget.
+app.use("/api/arena/college-stream", arenaCollegeStreamRoutes)
+app.use("/api/arena/domain-role", arenaDomainRoleRoutes)
+app.use("/api/arena/activity", arenaActivityRoutes)
 app.use("/api/proofs",          proofsRoutes)            // Portfolio redesign — public Engineering Proofs API (no auth: portfolios are public pages)
 app.use("/api",                 portfolioPublicRoutes)    // Career OS Tranche 6 Priority 6A — portfolio/lookup/:identifier (no auth required; optional bearer for owner/session-fallback matching)
 app.use("/api/admin/ops",       opsDashboardRoutes)       // Career OS Tranche 11 — admin/ops/dashboard, requireAdmin-gated (dedicated namespace — see opsDashboard.js header for why NOT bare "/api/admin", same routing-shadow lesson as questionBankAdmin.js)
@@ -398,6 +445,23 @@ app.use("/api/org",           orgCompanyLinksRoutes)    // company-links (invite
 app.use("/api/partner",       partnerBridgeRoutes)      // candidates, institutions -- service-to-service bridge for capabilio-recruiter (shared-secret auth)
 app.use("/api/pro/v1/company", companyRoutes)           // Career OS Workstream 5 — Company module user-facing API (flag-gated, 404s while off)
 
+// ─── Global error handler (2026-08-16) ─────────────────────────────────────────
+// Previously missing entirely — every route file relies on its own try/catch
+// (correctly, per this codebase's convention), but Express itself has no
+// backstop: a synchronous throw in middleware, or an async route handler
+// that forgets a try/catch, would otherwise either crash the process (for a
+// sync throw outside a promise) or hang the request until the 35s timeout
+// middleware above fires its own generic 503 with zero diagnostic detail.
+// This must be registered LAST, after every app.use(route) call — Express
+// only routes to a 4-arg middleware function when something upstream calls
+// next(err) or throws, and only middleware registered after the failing
+// handler is eligible to catch it.
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err) // let Express's own default handler close out a response already in progress
+  logger.error("unhandled route error", { err, method: req.method, path: req.originalUrl })
+  res.status(500).json({ error: "Internal server error" })
+})
+
 // ─── Start ────────────────────────────────────────────────────────────────────
 // BUG FIX (critical, see cluster block above): the primary process in a
 // production cluster must never reach this call — only workers (and the
@@ -408,14 +472,11 @@ app.use("/api/pro/v1/company", companyRoutes)           // Career OS Workstream 
 // port were racing against a bind the primary had no business making.
 if (!IS_CLUSTER_PRIMARY) {
 app.listen(PORT, () => {
-  // Start background grading worker — polls pgmq queue every 2s
-  // In cluster mode each worker runs its own poller; pgmq visibility timeout
-  // ensures only one worker processes each message.
-  startGradingWorker()
+  // Background grading worker (startGradingWorker) removed 2026-08-16 —
+  // was Arena-exclusive, see import-site comment above.
   const workerInfo = cluster.isWorker ? ` [worker ${process.pid}]` : ""
   console.log(`\n╔══════════════════════════════════════════════════╗`)
   console.log(`║   Capabilio Server v3.0  ·  port ${PORT}${workerInfo}`)
-  console.log(`║   Arena: 15 roles · 14 workspaces · proof system  ║`)
   console.log(`╚══════════════════════════════════════════════════╝`)
   const ok   = (s) => `✅ ${s}`
   const warn = (s) => `⚠️  ${s}`
@@ -431,6 +492,7 @@ app.listen(PORT, () => {
   console.log(`  ProxyCurl   ${process.env.PROXYCURL_API_KEY  ? ok("LinkedIn extraction")          : warn("LinkedIn limited")}`)
   console.log(`  GitHub      ${process.env.GITHUB_TOKEN       ? ok("5000 req/hr")                  : warn("60 req/hr rate limit")}`)
   console.log(`  YouTube     ${process.env.YOUTUBE_API_KEY    ? ok("real videos")                  : warn("AI fallback")}`)
+  console.log(`  Python3     ${checkPythonAvailable()          ? ok("Notebook code-execution challenges enabled") : err("MISSING — code-execution submissions will 500, see pythonSandbox.js")}`)
   console.log()
 })
 }

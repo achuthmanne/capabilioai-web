@@ -12,7 +12,7 @@
  * Arena, so the Recruiter Evidence read path (§10) needs zero special-casing
  * per source.
  */
-import { insert as insertProofObject, updatePublishState } from "../arena-v2/proofObjects/repository.js"
+import { insert as insertProofObject, updatePublishState } from "../proofObjects/repository.js"
 
 export async function writeModuleEvidence({ userId, moduleId, moduleTitle, skillLabel, domainKey, level, quizScore, passed }) {
   if (!passed) return null // Principle #2: only PASSED assessments produce evidence

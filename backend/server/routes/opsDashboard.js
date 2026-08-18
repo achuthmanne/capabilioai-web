@@ -44,7 +44,7 @@
 import { Router } from "express"
 import { supabaseAdmin } from "../lib/supabase.js"
 import { requireAuth } from "../lib/auth.js"
-import { requireAdmin } from "../lib/arena-v2/requireAdmin.js"
+import { requireAdmin } from "../lib/requireAdmin.js"
 import { getMetricsSnapshot, checkAndLogAlerts } from "../lib/opsMetrics.js"
 
 const router = Router()

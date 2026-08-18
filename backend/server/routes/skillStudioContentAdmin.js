@@ -24,7 +24,7 @@
  */
 import { Router } from "express"
 import { requireAuth } from "../lib/auth.js"
-import { requireAdmin } from "../lib/arena-v2/requireAdmin.js"
+import { requireAdmin } from "../lib/requireAdmin.js"
 import {
   createContentSource, requestModuleGeneration, listJobs, getJob,
   approveJob, rejectJob, editJob, regenerateJob,

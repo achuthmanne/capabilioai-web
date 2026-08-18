@@ -24,7 +24,7 @@
 import { Router } from "express"
 import { supabaseAdmin } from "../lib/supabase.js"
 import { requireAuth } from "../lib/auth.js"
-import { requireAdmin } from "../lib/arena-v2/requireAdmin.js"
+import { requireAdmin } from "../lib/requireAdmin.js"
 import { MENTOR_MARKETPLACE_V1_ENABLED } from "./mentorMarketplace.js"
 import { createPayoutBatch, finalizePayoutBatch, markPayoutPaid } from "../lib/mentorMarketplace/payouts.js"
 import { runReconciliation, makeRazorpayOrderStatusChecker } from "../lib/mentorMarketplace/reconciliation.js"

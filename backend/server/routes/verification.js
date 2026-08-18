@@ -32,7 +32,7 @@ import { runVerification, VerificationPipelineError } from "../lib/verification/
 import { listProviders } from "../lib/verification/providers/registry.js"
 import { getAuditLog, verifyChainIntegrity } from "../lib/verification/auditLog.js"
 import { supabaseAdmin } from "../lib/supabase.js"
-import * as proofRepo from "../lib/arena-v2/proofObjects/repository.js"
+import * as proofRepo from "../lib/proofObjects/repository.js"
 
 const router = Router()
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } })
