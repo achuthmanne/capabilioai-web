@@ -29,26 +29,9 @@ import { arenaCollegeStreamApi, arenaDomainRoleApi, arenaActivityApi, arenaPayme
 import { getRoleConfig } from "../../config/roleConfig"
 import { useRazorpay } from "../../hooks/useRazorpay"
 import SqlEditor from "./SqlEditor"
-
-// Ticks once a second, returns { text, expired } counting down to `targetIso`.
-// Used for both the daily-quota unlock countdown and the per-mission time
-// limit — same primitive, two displays.
-function useCountdown(targetIso) {
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    if (!targetIso) return
-    const id = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(id)
-  }, [targetIso])
-  if (!targetIso) return { text: null, expired: false }
-  const remainingMs = new Date(targetIso).getTime() - now
-  const expired = remainingMs <= 0
-  const totalSec = Math.max(0, Math.floor(remainingMs / 1000))
-  const h = String(Math.floor(totalSec / 3600)).padStart(2, "0")
-  const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, "0")
-  const s = String(totalSec % 60).padStart(2, "0")
-  return { text: `${h}:${m}:${s}`, expired }
-}
+import { T, MONO, BODY, DIFFICULTY_COLOR } from "./shared/tokens"
+import { Eyebrow, LoadingRow, StatChip, ResultTable, ChecklistPanel } from "./shared/primitives"
+import { useCountdown } from "./shared/useCountdown"
 
 // Maps userData.branch (set at Onboarding, e.g. "AI_DS", "ECE") to the
 // `streams.slug` seeded in Supabase (see college_stream_seed_cse migration —
@@ -72,37 +55,12 @@ const BRANCH_TO_STREAM_SLUG = {
   // generic streams list rather than guessing a match.
 }
 
-// Design tokens — mirrors Aura.jsx's `T` object (frontend/src/pages/Aura.jsx:27-54)
-// so this page reads as the same product, not a bolted-on mobile view.
-const T = {
-  ink: "#1A1714", ink2: "#475569", ink3: "#A8A29E", ink4: "#6B6560",
-  indigo: "#6366F1", indigo3: "rgba(99,102,241,0.12)",
-  cream: "#FAF7F2", cream2: "#FFFFFF", border: "rgba(0,0,0,0.05)",
-  shadow: "0 4px 12px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.3)",
-  green: "#16A34A", green2: "rgba(22,163,74,0.12)",
-  amber: "#D97706", amber2: "rgba(217,119,6,0.12)",
-  red: "#DC2626", red2: "rgba(220,38,38,0.12)",
-  brand: "#FF5701",
-}
-const MONO = "'DM Mono', 'Fira Mono', monospace"
-const BODY = "'DM Sans', system-ui, sans-serif"
-
-const DIFFICULTY_COLOR = { easy: T.green, medium: T.amber, hard: T.red }
-
 // Common Challenge Framework progression tiers — display label only, the
 // gating math itself lives server-side (computeTierLocks in
 // arenaCollegeStream.js) so the client never has to be trusted for lock
 // state, only for showing it.
 const TIER_LABEL = { foundation: "Foundation", core: "Core", applied: "Applied", industry: "Industry", master: "Master" }
 const PREV_TIER = { core: "foundation", applied: "core", industry: "applied", master: "industry" }
-
-function Eyebrow({ children, color }) {
-  return (
-    <div style={{ fontSize: 10, fontWeight: 700, color: color || T.indigo, letterSpacing: 2, textTransform: "uppercase", marginBottom: 10 }}>
-      {children}
-    </div>
-  )
-}
 
 function GridCard({ onClick, children, disabled, accent }) {
   return (
@@ -239,10 +197,6 @@ function BackButton({ onClick, label = "Back" }) {
   )
 }
 
-function LoadingRow() {
-  return <div style={{ padding: 20, color: T.ink3, fontSize: 14 }}>Loading…</div>
-}
-
 function ErrorRow({ message, onRetry }) {
   return (
     <div style={{ padding: 20, color: T.red, fontSize: 14 }}>
@@ -252,61 +206,6 @@ function ErrorRow({ message, onRetry }) {
           Retry
         </button>
       )}
-    </div>
-  )
-}
-
-function StatChip({ label, value }) {
-  return (
-    <div style={{ padding: "10px 14px", background: T.cream, borderRadius: 10, minWidth: 90 }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>{label}</div>
-      <div style={{ fontSize: 15, fontWeight: 800, color: T.ink }}>{value}</div>
-    </div>
-  )
-}
-
-function ResultTable({ columns, rows }) {
-  if (!rows || rows.length === 0) {
-    return <div style={{ padding: 12, color: T.ink3, fontSize: 13, fontFamily: MONO }}>(no rows)</div>
-  }
-  // Numeric columns right-align (spreadsheet convention, easier to scan
-  // sums/counts) — determined per-column from the actual data, not guessed
-  // from the column name.
-  const isNumericCol = columns.map((_, j) => rows.every(r => r[j] === null || typeof r[j] === "number"))
-  return (
-    <div style={{ overflowX: "auto", border: `1px solid ${T.border}`, borderRadius: 10, maxHeight: 360 }}>
-      <table style={{ borderCollapse: "collapse", fontFamily: MONO, fontSize: 12, width: "100%" }}>
-        <thead>
-          <tr style={{ background: T.cream, position: "sticky", top: 0 }}>
-            {columns.map((c, j) => (
-              <th key={c} style={{ textAlign: isNumericCol[j] ? "right" : "left", padding: "6px 12px", borderBottom: `1px solid ${T.border}`, color: T.ink3, whiteSpace: "nowrap" }}>{c}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => (
-            <tr key={i} style={{ background: i % 2 === 1 ? T.cream : "transparent" }}>
-              {row.map((cell, j) => (
-                <td key={j} style={{ padding: "6px 12px", borderBottom: `1px solid ${T.border}`, color: T.ink2, textAlign: isNumericCol[j] ? "right" : "left", fontVariantNumeric: "tabular-nums" }}>{String(cell)}</td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-function ChecklistPanel({ checklist }) {
-  if (!checklist) return null
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      {checklist.map(c => (
-        <div key={c.key} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-          <span style={{ color: c.passed ? T.green : T.red, fontWeight: 800 }}>{c.passed ? "✓" : "✗"}</span>
-          <span style={{ color: T.ink2 }}>{c.label}</span>
-        </div>
-      ))}
     </div>
   )
 }
