@@ -1,30 +1,37 @@
 /**
- * SqlWorkspace.jsx — Phase 2.5.
+ * SqlWorkspace.jsx — Phase 2.5, standardized onto the single `workspace`
+ * prop contract in Phase 2.6 (Task 1: Standardize Workspace API).
  *
- * The panel-registry architecture's first real workspace implementation —
- * moved and renamed from ArenaCollegeStream.jsx's inline
- * DomainMissionWorkspace, content unchanged. Registered under
- * panel_type "sql_runner" in ../registry.js.
+ * The panel-registry architecture's first real workspace implementation.
+ * Registered under panel_type "sql_runner" in ../registry.js.
  *
- * Owns zero state of its own — every piece of mission/submission state
- * (sql, submitting, result, validating, validateResult, deadline, ...) is
- * still owned by ArenaCollegeStream.jsx and passed down as props, exactly
- * as before this move. A future workspace (Python, Cyber, SAP, ...)
- * follows the same contract: import shared primitives from
- * ../../shared/*, own no state, receive everything as props.
+ * Receives exactly one prop — `workspace` — shaped:
+ *   { mission, submission: {result, submitting, error},
+ *     preview: {validateResult, validateError, validating},
+ *     state: {sql, setSql}, actions: {onSubmit, onPreview, onOpenMission, onBackToMissions},
+ *     permissions: {canSubmit, canPreview}, navigation: {missions}, timer: {deadline} }
+ * This top-level shape is meant to stay stable across every future
+ * workspace type — `state`'s own contents are workspace-specific (a
+ * Python workspace's `state` would hold different fields entirely).
+ *
+ * Owns zero state of its own — everything above is still owned by
+ * ArenaCollegeStream.jsx and passed down. A future workspace (Python,
+ * Cyber, SAP, ...) follows the same contract: import shared primitives
+ * from ../../shared/*, own no state, receive `{ workspace }`.
  */
 import SqlEditor from "./SqlEditor"
 import { T, MONO, BODY, DIFFICULTY_COLOR } from "../../shared/tokens"
 import { Eyebrow, StatChip, ResultTable, ChecklistPanel } from "../../shared/primitives"
 import { useCountdown } from "../../shared/useCountdown"
 
-export default function SqlWorkspace({
-  mission, missions, sql, setSql, submitting, submitError, result, deadline, onRun, onOpenMission, onBackToMissions,
-  onValidate, validating, validateResult, validateError,
-}) {
+export default function SqlWorkspace({ workspace }) {
+  const { mission, submission, preview, state, actions, permissions, navigation, timer } = workspace
+  const { sql, setSql } = state
+  const { missions } = navigation
+
   const currentIndex = missions.findIndex(m => m.id === mission.id)
   const nextMission = currentIndex >= 0 ? missions[currentIndex + 1] : null
-  const timer = useCountdown(result ? null : deadline)
+  const countdown = useCountdown(submission.result ? null : timer.deadline)
   const listEntry = missions.find(m => m.id === mission.id)
   const alreadyCompleted = !!listEntry?.passed
 
@@ -47,11 +54,11 @@ export default function SqlWorkspace({
           <div style={{ fontSize: 12, color: T.ink2, fontFamily: MONO }}>{mission.dataset_preview.columns.length} columns</div>
         </div>
       )}
-      {timer.text && (
+      {countdown.text && (
         <div style={{ marginBottom: 10 }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: 1 }}>Time Target</div>
-          <div style={{ fontFamily: MONO, fontSize: 20, fontWeight: 800, color: timer.expired ? T.red : T.ink }}>
-            {timer.expired ? "Time's up" : timer.text}
+          <div style={{ fontFamily: MONO, fontSize: 20, fontWeight: 800, color: countdown.expired ? T.red : T.ink }}>
+            {countdown.expired ? "Time's up" : countdown.text}
           </div>
         </div>
       )}
@@ -103,34 +110,34 @@ export default function SqlWorkspace({
         <div style={{ background: T.cream2, border: `1px solid ${T.border}`, borderRadius: 16, padding: 22, boxShadow: T.shadow }}>
           <Eyebrow color={T.ink3}>SQL Editor</Eyebrow>
           <div style={{ marginBottom: 12 }}>
-            <SqlEditor value={sql} onChange={setSql} disabled={submitting || validating} T={T} MONO={MONO} />
+            <SqlEditor value={sql} onChange={setSql} disabled={submission.submitting || preview.validating} T={T} MONO={MONO} />
           </div>
-          {submitError && <div style={{ color: T.red, fontSize: 13, marginBottom: 10 }}>{submitError}</div>}
+          {submission.error && <div style={{ color: T.red, fontSize: 13, marginBottom: 10 }}>{submission.error}</div>}
           <div style={{ display: "flex", gap: 10 }}>
             <button
-              onClick={onValidate}
-              disabled={!sql.trim() || submitting || validating}
+              onClick={actions.onPreview}
+              disabled={!permissions.canPreview}
               title="Run against the sandbox without scoring — iterate freely, this never counts as an attempt."
               style={{
                 padding: "10px 20px", borderRadius: 10, border: `1px solid ${T.border}`,
-                background: !sql.trim() || submitting || validating ? T.border : T.cream,
-                color: !sql.trim() || submitting || validating ? T.ink3 : T.ink,
-                fontWeight: 700, fontFamily: BODY, cursor: !sql.trim() || submitting || validating ? "default" : "pointer",
+                background: !permissions.canPreview ? T.border : T.cream,
+                color: !permissions.canPreview ? T.ink3 : T.ink,
+                fontWeight: 700, fontFamily: BODY, cursor: !permissions.canPreview ? "default" : "pointer",
               }}
             >
-              {validating ? "Running…" : "▶ Run (Preview)"}
+              {preview.validating ? "Running…" : "▶ Run (Preview)"}
             </button>
             <button
-              onClick={onRun}
-              disabled={!sql.trim() || submitting}
+              onClick={actions.onSubmit}
+              disabled={!permissions.canSubmit}
               style={{
                 padding: "10px 20px", borderRadius: 10, border: "none",
-                background: !sql.trim() || submitting ? T.border : T.indigo,
-                color: !sql.trim() || submitting ? T.ink3 : "#fff",
-                fontWeight: 700, fontFamily: BODY, cursor: !sql.trim() || submitting ? "default" : "pointer",
+                background: !permissions.canSubmit ? T.border : T.indigo,
+                color: !permissions.canSubmit ? T.ink3 : "#fff",
+                fontWeight: 700, fontFamily: BODY, cursor: !permissions.canSubmit ? "default" : "pointer",
               }}
             >
-              {submitting ? "Submitting…" : "Submit"}
+              {submission.submitting ? "Submitting…" : "Submit"}
             </button>
           </div>
         </div>
@@ -138,24 +145,24 @@ export default function SqlWorkspace({
         {/* Preview panel — non-scoring "Run" output, visually distinct
             (dashed border, explicit "not scored" label) from the real
             submission result below, so it can never be mistaken for one. */}
-        {(validateResult || validateError) && !result && (
+        {(preview.validateResult || preview.validateError) && !submission.result && (
           <div style={{ background: T.cream, border: `1px dashed ${T.ink3}`, borderRadius: 16, padding: 22 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <Eyebrow color={T.ink3}>Preview — Not Scored</Eyebrow>
-              {validateResult && (
+              {preview.validateResult && (
                 <div style={{ display: "flex", gap: 8 }}>
-                  <StatChip label="Executed" value={`${validateResult.executionTimeMs} ms`} />
-                  <StatChip label="Rows" value={validateResult.rowCount} />
+                  <StatChip label="Executed" value={`${preview.validateResult.executionTimeMs} ms`} />
+                  <StatChip label="Rows" value={preview.validateResult.rowCount} />
                 </div>
               )}
             </div>
-            {validateError && <div style={{ fontSize: 13, color: T.red }}>{validateError}</div>}
-            {validateResult && (
+            {preview.validateError && <div style={{ fontSize: 13, color: T.red }}>{preview.validateError}</div>}
+            {preview.validateResult && (
               <>
-                <ResultTable columns={validateResult.columns} rows={validateResult.rows} />
-                {validateResult.warnings?.length > 0 && (
+                <ResultTable columns={preview.validateResult.columns} rows={preview.validateResult.rows} />
+                {preview.validateResult.warnings?.length > 0 && (
                   <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
-                    {validateResult.warnings.map((w, i) => (
+                    {preview.validateResult.warnings.map((w, i) => (
                       <div key={i} style={{ fontSize: 12, color: T.amber }}>⚠ {w}</div>
                     ))}
                   </div>
@@ -166,66 +173,66 @@ export default function SqlWorkspace({
         )}
 
         {/* Output workspace — only appears after a run */}
-        {result && (
+        {submission.result && (
           <div style={{ background: T.cream2, border: `1px solid ${T.border}`, borderRadius: 16, padding: 22, boxShadow: T.shadow, display: "flex", flexDirection: "column", gap: 18 }}>
             <div>
-              <Eyebrow color={result.passed ? T.green : T.red}>
-                {result.passed ? "Query Executed Successfully" : "Query Executed — Output Didn't Match"}
+              <Eyebrow color={submission.result.passed ? T.green : T.red}>
+                {submission.result.passed ? "Query Executed Successfully" : "Query Executed — Output Didn't Match"}
               </Eyebrow>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <StatChip label="Status" value={result.passed ? "Success" : "Mismatch"} />
-                {result.execution_time_ms != null && <StatChip label="Executed" value={`${result.execution_time_ms} ms`} />}
-                {result.result && <StatChip label="Rows" value={result.result.rows.length} />}
-                <StatChip label="Score" value={`${result.score}/100`} />
+                <StatChip label="Status" value={submission.result.passed ? "Success" : "Mismatch"} />
+                {submission.result.execution_time_ms != null && <StatChip label="Executed" value={`${submission.result.execution_time_ms} ms`} />}
+                {submission.result.result && <StatChip label="Rows" value={submission.result.result.rows.length} />}
+                <StatChip label="Score" value={`${submission.result.score}/100`} />
               </div>
             </div>
 
-            {result.result && (
+            {submission.result.result && (
               <div>
                 <Eyebrow color={T.ink3}>Result Table</Eyebrow>
-                <ResultTable columns={result.result.columns} rows={result.result.rows} />
+                <ResultTable columns={submission.result.result.columns} rows={submission.result.result.rows} />
               </div>
             )}
 
-            {result.insight && (
+            {submission.result.insight && (
               <div>
                 <Eyebrow color={T.ink3}>Business Insight</Eyebrow>
-                <div style={{ fontSize: 13, color: T.ink2, lineHeight: 1.6 }}>{result.insight}</div>
+                <div style={{ fontSize: 13, color: T.ink2, lineHeight: 1.6 }}>{submission.result.insight}</div>
               </div>
             )}
 
-            {result.ai_feedback && (
+            {submission.result.ai_feedback && (
               <div style={{ background: T.indigo3, borderRadius: 10, padding: 14 }}>
                 <Eyebrow color={T.indigo}>🤖 AI Coach</Eyebrow>
-                <div style={{ fontSize: 13, color: T.ink2, lineHeight: 1.6 }}>{result.ai_feedback}</div>
+                <div style={{ fontSize: 13, color: T.ink2, lineHeight: 1.6 }}>{submission.result.ai_feedback}</div>
               </div>
             )}
 
-            {result.checklist && (
+            {submission.result.checklist && (
               <div>
                 <Eyebrow color={T.ink3}>Validation</Eyebrow>
-                <ChecklistPanel checklist={result.checklist} />
+                <ChecklistPanel checklist={submission.result.checklist} />
               </div>
             )}
 
-            {!result.result && result.feedback && (
-              <div style={{ fontSize: 13, color: T.red }}>{result.feedback}</div>
+            {!submission.result.result && submission.result.feedback && (
+              <div style={{ fontSize: 13, color: T.red }}>{submission.result.feedback}</div>
             )}
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 8, borderTop: `1px solid ${T.border}` }}>
               <div style={{ fontSize: 13, color: T.ink4 }}>
-                ELO {result.elo_delta > 0 ? `+${result.elo_delta}` : result.elo_delta}
+                ELO {submission.result.elo_delta > 0 ? `+${submission.result.elo_delta}` : submission.result.elo_delta}
               </div>
               <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
                 <button
-                  onClick={onBackToMissions}
+                  onClick={actions.onBackToMissions}
                   style={{ background: "none", border: "none", color: T.ink4, fontWeight: 700, cursor: "pointer", fontFamily: BODY, fontSize: 13, padding: 0 }}
                 >
                   ← All missions
                 </button>
-                {result.passed && nextMission && (
+                {submission.result.passed && nextMission && (
                   <button
-                    onClick={() => onOpenMission(nextMission)}
+                    onClick={() => actions.onOpenMission(nextMission)}
                     style={{ padding: "8px 16px", borderRadius: 10, border: "none", background: T.indigo, color: "#fff", fontWeight: 700, fontFamily: BODY, cursor: "pointer", fontSize: 13 }}
                   >
                     Continue: {nextMission.title} →

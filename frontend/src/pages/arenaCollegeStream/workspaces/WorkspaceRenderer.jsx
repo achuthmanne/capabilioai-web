@@ -1,10 +1,15 @@
 /**
- * WorkspaceRenderer.jsx — Phase 2.5.
+ * WorkspaceRenderer.jsx — Phase 2.5, standardized onto the single
+ * `workspace` prop contract in Phase 2.6 (Task 1).
  *
  * Looks up the right workspace component for a mission's panel_type and
  * renders it. Owns zero state — pure lookup + pass-through render, so
  * ArenaCollegeStream.jsx keeps owning every piece of mission/submission
  * state exactly as before; this component never touches it.
+ *
+ * Receives exactly one prop — `workspace` — and passes it straight
+ * through to whichever component PANEL_REGISTRY resolves. See
+ * workspaces/sql/SqlWorkspace.jsx for the full shape documentation.
  *
  * Currently unreachable in production (every seeded mission is
  * "sql_runner"), but the fallback below must never crash — a mission
@@ -30,8 +35,8 @@ function UnsupportedPanel({ panelType }) {
   )
 }
 
-export default function WorkspaceRenderer({ mission, ...workspaceProps }) {
-  const Workspace = PANEL_REGISTRY[mission.panel_type]
-  if (!Workspace) return <UnsupportedPanel panelType={mission.panel_type} />
-  return <Workspace mission={mission} {...workspaceProps} />
+export default function WorkspaceRenderer({ workspace }) {
+  const Workspace = PANEL_REGISTRY[workspace.mission.panel_type]
+  if (!Workspace) return <UnsupportedPanel panelType={workspace.mission.panel_type} />
+  return <Workspace workspace={workspace} />
 }

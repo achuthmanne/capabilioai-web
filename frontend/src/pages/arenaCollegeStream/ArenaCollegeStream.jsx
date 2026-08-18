@@ -1509,6 +1509,26 @@ export default function ArenaCollegeStream({ userData, onNavigate, user, setUser
       .finally(() => setDomainSubmitting(false))
   }
 
+  // The standard workspace prop contract (Phase 2.6, Task 1) — every
+  // current/future Domain Role workspace receives exactly this shape via
+  // <WorkspaceRenderer workspace={...}/>. Built once here since this is
+  // where all the underlying state already lives; only accessed when
+  // domainMission is set (see the render guard below), so it's safe to
+  // construct unconditionally from current state.
+  const workspace = {
+    mission: domainMission,
+    submission: { result: domainResult, submitting: domainSubmitting, error: domainSubmitError },
+    preview: { validateResult, validateError, validating },
+    state: { sql, setSql },
+    actions: { onSubmit: submitSql, onPreview: validateSql, onOpenMission: openDomainMission, onBackToMissions: openDomainMissions },
+    permissions: {
+      canSubmit: !!sql.trim() && !domainSubmitting,
+      canPreview: !!sql.trim() && !domainSubmitting && !validating,
+    },
+    navigation: { missions: domainMissions },
+    timer: { deadline: missionDeadline },
+  }
+
   // Landing isn't part of either branch's drill-down, so it gets a
   // one-crumb trail; the full trail only builds once the user is inside
   // a branch.
@@ -1706,23 +1726,7 @@ export default function ArenaCollegeStream({ userData, onNavigate, user, setUser
             )}
 
             {domainMainTab === "workspace" && level === "domainMission" && domainMission && (
-              <WorkspaceRenderer
-                mission={domainMission}
-                missions={domainMissions}
-                sql={sql}
-                setSql={setSql}
-                submitting={domainSubmitting}
-                submitError={domainSubmitError}
-                result={domainResult}
-                deadline={missionDeadline}
-                onRun={submitSql}
-                onOpenMission={openDomainMission}
-                onBackToMissions={openDomainMissions}
-                onValidate={validateSql}
-                validating={validating}
-                validateResult={validateResult}
-                validateError={validateError}
-              />
+              <WorkspaceRenderer workspace={workspace} />
             )}
           </>
         )}
