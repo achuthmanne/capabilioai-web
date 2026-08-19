@@ -29,6 +29,8 @@ import { arenaCollegeStreamApi, arenaDomainRoleApi, arenaActivityApi, arenaPayme
 import { getRoleConfig } from "../../config/roleConfig"
 import { useRazorpay } from "../../hooks/useRazorpay"
 import WorkspaceRenderer from "./workspaces/WorkspaceRenderer"
+import { getPanelMetadata } from "./workspaces/panelMetadata"
+import WorkspaceShell from "./shell/WorkspaceShell"
 import { T, MONO, BODY, DIFFICULTY_COLOR } from "./shared/tokens"
 import { Eyebrow, LoadingRow, StatChip, ResultTable, ChecklistPanel } from "./shared/primitives"
 import { useCountdown } from "./shared/useCountdown"
@@ -1527,6 +1529,15 @@ export default function ArenaCollegeStream({ userData, onNavigate, user, setUser
     },
     navigation: { missions: domainMissions },
     timer: { deadline: missionDeadline },
+    // Optional shell-only extension point (Phase 3.0) — WorkspaceHeader
+    // reads workspace.meta for its "Workspace Type" chip without shell/*
+    // importing workspaces/panelMetadata.js itself; translated here at the
+    // one integration point that's allowed to know about both worlds. See
+    // shell/WorkspaceShell.jsx's header comment.
+    meta: domainMission ? (() => {
+      const panelMeta = getPanelMetadata(domainMission.panel_type)
+      return { workspaceTypeLabel: panelMeta.workspace_title, workspaceTypeIcon: panelMeta.workspace_icon }
+    })() : undefined,
   }
 
   // Landing isn't part of either branch's drill-down, so it gets a
@@ -1726,7 +1737,11 @@ export default function ArenaCollegeStream({ userData, onNavigate, user, setUser
             )}
 
             {domainMainTab === "workspace" && level === "domainMission" && domainMission && (
-              <WorkspaceRenderer workspace={workspace} />
+              <div style={{ height: "calc(100vh - 220px)", minHeight: 560, borderRadius: 16, overflow: "hidden", border: `1px solid ${T.border}`, boxShadow: T.shadow }}>
+                <WorkspaceShell workspace={workspace} userId={user?.id}>
+                  <WorkspaceRenderer workspace={workspace} />
+                </WorkspaceShell>
+              </div>
             )}
           </>
         )}

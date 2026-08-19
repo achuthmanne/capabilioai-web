@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, lazy, Suspense } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import {
-  Eye, EyeOff, Check, Circle, X, AlertCircle, Lock, Sparkles,
+  Eye, EyeOff, Check, Circle, X, AlertCircle, Lock, Sparkles, Mail,
 } from "lucide-react"
 import { PAGE_TO_PATH, PATH_TO_PAGE, isReservedPath } from "./lib/pageRoutes"
 import { Analytics } from "@vercel/analytics/react"
@@ -326,6 +326,12 @@ function AuthModal({ show, onClose, mode, setMode }) {
   // shared
   const [error,    setError]    = useState("")
   const [loading,  setLoading]  = useState(false)
+  // Set to the just-registered email right after a successful signup —
+  // renders the "verify your email" notice below in place of the form
+  // instead of immediately closing the modal (see handleEmailSubmit).
+  // null the rest of the time, including for sign-in (which still closes
+  // immediately on success, unchanged).
+  const [verifyEmailFor, setVerifyEmailFor] = useState(null)
   // "choose" (step-1 path picker) or "form" (existing create-account/sign-in) —
   // see the reset effect below for how this is set when the modal opens.
   const [step, setStep] = useState("choose")
@@ -354,7 +360,7 @@ function AuthModal({ show, onClose, mode, setMode }) {
       setCompany(""); setJobTitle(""); setLinkedinUrl(""); setExperience("")
       setOrgName(""); setExecTitle("")
       setInstName(""); setInstType(preselectedInstType === "Company" ? "Company" : "College"); setInstCity(""); setInstWebsite("")
-      setError(""); setLoading(false)
+      setError(""); setLoading(false); setVerifyEmailFor(null)
       // A path is already known (journey card / pricing CTA / invite link
       // already wrote capabilio_selected_path before opening this modal) —
       // skip straight to the form, pre-colored. Otherwise (generic nav/hero
@@ -366,6 +372,54 @@ function AuthModal({ show, onClose, mode, setMode }) {
   }, [show])
 
   if (!show) return null
+
+  // "Verify your email" notice — shown in place of the form right after a
+  // successful signup (see handleEmailSubmit). Same overlay/card visual
+  // language as the main form below (White/Graphite tokens, T.accent),
+  // just a single centered card instead of the two-panel form layout.
+  // No resend button, no countdown, no new route, no toast/alert — a
+  // plain modal the user dismisses with "Got it".
+  if (verifyEmailFor) {
+    const closeVerifyModal = () => { setVerifyEmailFor(null); onClose() }
+    return (
+      <div style={{ position:"fixed", inset:0, zIndex:9999, fontFamily:"'DM Sans',sans-serif" }}>
+        <motion.div
+          initial={reduceMotion ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2, ease: EASE }}
+          style={{ position:"absolute", inset:0, background:"rgba(17,24,39,0.5)", backdropFilter:"blur(8px)", WebkitBackdropFilter:"blur(8px)" }}
+          onClick={closeVerifyModal}
+        />
+        <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
+          <motion.div
+            initial={reduceMotion ? false : { opacity: 0, scale: 0.97, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.3, ease: EASE }}
+            style={{ width:"100%", maxWidth:420, background:T.surface, borderRadius:20, border:`1px solid ${T.border}`, boxShadow:"0 4px 12px rgba(20,22,26,0.04), 0 16px 40px rgba(20,22,26,0.08)", padding:"32px 28px" }}
+          >
+            <div style={{ width:44, height:44, borderRadius:12, background:T.accentDim, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:18 }}>
+              <Mail size={20} color={T.accent} strokeWidth={1.75} />
+            </div>
+            <h2 style={{ fontFamily:"'DM Sans',sans-serif", fontSize:19, fontWeight:700, color:T.ink, marginBottom:10, letterSpacing:"-0.01em" }}>
+              Verify your email
+            </h2>
+            <p style={{ fontSize:13.5, color:T.ink2, lineHeight:1.7, marginBottom:22 }}>
+              We've sent a verification link to <strong style={{ color:T.ink }}>{verifyEmailFor}</strong>.
+              Please check your inbox.<br /><br />
+              If you don't see it, check your Spam, Junk or Promotions folder.<br /><br />
+              After verifying your email you can log in to Capabilio.
+            </p>
+            <button
+              onClick={closeVerifyModal}
+              style={{ width:"100%", padding:"13px", background:T.accent, border:"none", borderRadius:10, color:"#fff", fontSize:15, fontWeight:600, fontFamily:"'DM Sans',sans-serif", cursor:"pointer" }}
+            >
+              Got it
+            </button>
+          </motion.div>
+        </div>
+      </div>
+    )
+  }
 
   const validatePassword = (pw) => {
     if (pw.length < 8)            return "Password must be at least 8 characters."
@@ -432,6 +486,12 @@ function AuthModal({ show, onClose, mode, setMode }) {
             } catch (_) { /* voucher apply failure is non-fatal — account was already created */ }
           }
         }
+        // Signup success shows the "verify your email" notice below (in
+        // place of the form) instead of closing the modal immediately —
+        // the account exists but can't sign in until the link is clicked.
+        setLoading(false)
+        setVerifyEmailFor(email)
+        return
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
         if (signInError) throw signInError

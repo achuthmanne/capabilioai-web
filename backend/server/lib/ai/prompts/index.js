@@ -11,3 +11,5 @@
  */
 import "./arena.js" // Batch 1
 import "./skillStudio.js" // Batch 2
+import "./domainRole.js" // Content-expansion pass
+import "./collegeStream.js" // Content-expansion pass
