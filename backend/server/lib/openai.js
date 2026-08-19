@@ -5,11 +5,7 @@
 
 const key = () => process.env.OPENAI_API_KEY
 
-export async function openai(messages, {
-  model      = "gpt-4o-mini",   // default: cheap + fast
-  maxTokens  = 1024,
-  json       = false,
-} = {}) {
+async function callOpenAI(messages, { model, maxTokens, json }) {
   const k = key()
   if (!k) throw new Error("OPENAI_API_KEY not set")
 
@@ -25,7 +21,28 @@ export async function openai(messages, {
   })
   if (!res.ok) throw new Error(`OpenAI ${res.status}: ${(await res.text()).slice(0,200)}`)
   const data = await res.json()
-  return data.choices?.[0]?.message?.content || ""
+  return { text: data.choices?.[0]?.message?.content || "", usage: data.usage || null }
+}
+
+export async function openai(messages, {
+  model      = "gpt-4o-mini",   // default: cheap + fast
+  maxTokens  = 1024,
+  json       = false,
+} = {}) {
+  const { text } = await callOpenAI(messages, { model, maxTokens, json })
+  return text
+}
+
+// Same call as openai() but also returns token usage — added for
+// lib/ai/adapters/openaiAdapter.js (Phase 2.7). openai() itself is
+// unchanged; this is a purely additive sibling sharing the same call path.
+export async function openaiWithUsage(messages, {
+  model      = "gpt-4o-mini",
+  maxTokens  = 1024,
+  json       = false,
+} = {}) {
+  const { text, usage } = await callOpenAI(messages, { model, maxTokens, json })
+  return { text, usage, model }
 }
 
 export const GPT4O      = "gpt-4o"
