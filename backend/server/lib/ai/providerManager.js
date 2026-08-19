@@ -1,5 +1,8 @@
 /**
- * providerManager.js — Phase 2.7 (Enterprise AI Engine).
+ * providerManager.js — Phase 2.7 (Enterprise AI Engine). Narrowed to pure
+ * transport dispatch in the architecture refinement pass (Requirement 2:
+ * ProviderManager is one of 7 separated components, not a place that also
+ * retries or logs).
  *
  * Single dispatch point for "which provider handles this AI call."
  * Provider selection is entirely config-driven: the AI_PROVIDER env var
@@ -18,17 +21,18 @@
  * this today). An adapter that doesn't support a capability throws a
  * clear "not supported" error rather than silently no-op'ing.
  *
- * Every call — success or failure — is logged exactly once here (see
- * usageLogger.js), regardless of whether the caller is aiService.js
- * directly or retryManager.js retrying/falling back. This is the one
- * place that needs to log, not 30 scattered call sites.
+ * Does NOT retry (retryManager.js's job, wrapping calls to this file) and
+ * does NOT log (usageLogger.js's job, called once per logical request
+ * from aiService.js — not once per raw transport attempt here, which is
+ * what this file used to do before this pass. A retried request used to
+ * produce multiple ai_usage_log rows for one logical call; now it
+ * produces exactly one, with a real retryCount).
  */
 import { groqAdapter } from "./adapters/groqAdapter.js"
 import { geminiAdapter } from "./adapters/geminiAdapter.js"
 import { openaiAdapter } from "./adapters/openaiAdapter.js"
 import { anthropicAdapter } from "./adapters/anthropicAdapter.js"
 import { bedrockAdapter } from "./adapters/bedrockAdapter.js"
-import { logUsage } from "./usageLogger.js"
 
 const ADAPTERS = {
   groq: groqAdapter,
@@ -48,27 +52,11 @@ export function getAdapter(providerName) {
   return adapter
 }
 
-async function callCapability(capability, args, { provider, feature, requestId } = {}) {
+async function callCapability(capability, args, { provider } = {}) {
   const providerName = provider || getActiveProviderName()
   const adapter = getAdapter(providerName)
-  const start = Date.now()
-  try {
-    const result = await adapter[capability](...args)
-    await logUsage({
-      requestId, feature, provider: providerName, model: result.model || null,
-      inputTokens: result.inputTokens ?? null, outputTokens: result.outputTokens ?? null,
-      latencyMs: Date.now() - start, status: "success",
-    })
-    return { ...result, provider: providerName }
-  } catch (err) {
-    const status = err?.status === 429 || /rate.?limit/i.test(err?.message || "") ? "rate_limited" : "error"
-    await logUsage({
-      requestId, feature, provider: providerName, model: null,
-      inputTokens: null, outputTokens: null,
-      latencyMs: Date.now() - start, status, errorMessage: err.message,
-    })
-    throw err
-  }
+  const result = await adapter[capability](...args)
+  return { ...result, provider: providerName }
 }
 
 export const providerManager = {

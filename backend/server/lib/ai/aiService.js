@@ -19,8 +19,16 @@ import "./prompts/index.js" // registers every feature prompt file's entries bef
 import { getPrompt } from "./prompts/registry.js"
 import { providerManager, getActiveProviderName } from "./providerManager.js"
 import { executeWithRetry } from "./retryManager.js"
-import { validateJSON, validateShape } from "./responseValidator.js"
+import { validateJSON, validateShape, ValidationError } from "./responseValidator.js"
 import { resolveModel } from "./modelRegistry.js"
+import { logUsage } from "./usageLogger.js"
+
+function classifyFailureStatus(err) {
+  if (err instanceof ValidationError) return "validation_failed"
+  if (/timed out/i.test(err?.message || "")) return "timeout"
+  if (err?.status === 429 || /rate.?limit/i.test(err?.message || "")) return "rate_limited"
+  return "error"
+}
 
 /**
  * @param {string} promptId — a registered prompts/registry.js entry id
@@ -61,37 +69,60 @@ async function executePrompt(promptId, variables, opts = {}) {
     return opts.model || callOpts.model || resolveModel(providerName || getActiveProviderName(), callOpts.modelTier)
   }
 
+  const start = Date.now()
   let outcome // { result, retryCount, providerUsed, fallbackUsed } — see retryManager.js
-  if (capability === "extractFromImage") {
-    const { base64Image, mimeType, prompt } = entry.buildExtraction(variables)
-    outcome = await executeWithRetry(
-      (providerOverride) => {
-        const p = providerOverride || resolvedProvider
-        return providerManager.extractFromImage(base64Image, mimeType, prompt, { ...callOpts, provider: p, model: resolveModelFor(p) })
-      },
-      { fallbackProvider: resolvedFallback, timeoutMs: opts.timeoutMs, maxRetries: opts.maxRetries }
-    )
-  } else {
-    const messages = entry.buildMessages(variables)
-    outcome = await executeWithRetry(
-      (providerOverride) => {
-        const p = providerOverride || resolvedProvider
-        return providerManager[capability](messages, { ...callOpts, provider: p, model: resolveModelFor(p) })
-      },
-      { fallbackProvider: resolvedFallback, timeoutMs: opts.timeoutMs, maxRetries: opts.maxRetries }
-    )
+  try {
+    if (capability === "extractFromImage") {
+      const { base64Image, mimeType, prompt } = entry.buildExtraction(variables)
+      outcome = await executeWithRetry(
+        (providerOverride) => {
+          const p = providerOverride || resolvedProvider
+          return providerManager.extractFromImage(base64Image, mimeType, prompt, { ...callOpts, provider: p, model: resolveModelFor(p) })
+        },
+        { fallbackProvider: resolvedFallback, timeoutMs: opts.timeoutMs, maxRetries: opts.maxRetries }
+      )
+    } else {
+      const messages = entry.buildMessages(variables)
+      outcome = await executeWithRetry(
+        (providerOverride) => {
+          const p = providerOverride || resolvedProvider
+          return providerManager[capability](messages, { ...callOpts, provider: p, model: resolveModelFor(p) })
+        },
+        { fallbackProvider: resolvedFallback, timeoutMs: opts.timeoutMs, maxRetries: opts.maxRetries }
+      )
+    }
+  } catch (err) {
+    // Transport/retry failure — every attempt across every provider was
+    // exhausted. Logged ONCE here (not per attempt — see providerManager.js
+    // and retryManager.js's headers for why that changed in this pass).
+    await logUsage({
+      requestId, feature: promptId, provider: resolvedProvider || getActiveProviderName(), model: null,
+      inputTokens: null, outputTokens: null, latencyMs: Date.now() - start,
+      retryCount: err.retryCount ?? 0, status: classifyFailureStatus(err), errorMessage: err.message,
+    })
+    throw err
   }
 
   const result = outcome.result
   const provider = outcome.providerUsed || resolvedProvider || null
   const model = result.model ?? null
+  const usageFields = { requestId, feature: promptId, provider, model, inputTokens: result.inputTokens ?? null, outputTokens: result.outputTokens ?? null, latencyMs: Date.now() - start, retryCount: outcome.retryCount }
 
-  if (!entry.responseSchema) return { data: result.text ?? result.parsed ?? result, provider, model }
+  if (!entry.responseSchema) {
+    await logUsage({ ...usageFields, status: "success" })
+    return { data: result.text ?? result.parsed ?? result, provider, model }
+  }
 
-  const data = result.parsed !== undefined
-    ? validateShape(result.parsed, entry.responseSchema)
-    : validateJSON(result.text, entry.responseSchema)
-  return { data, provider, model }
+  try {
+    const data = result.parsed !== undefined
+      ? validateShape(result.parsed, entry.responseSchema)
+      : validateJSON(result.text, entry.responseSchema)
+    await logUsage({ ...usageFields, status: "success" })
+    return { data, provider, model }
+  } catch (validationErr) {
+    await logUsage({ ...usageFields, status: classifyFailureStatus(validationErr), errorMessage: validationErr.message })
+    throw validationErr
+  }
 }
 
 export const AIService = {

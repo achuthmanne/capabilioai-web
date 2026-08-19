@@ -77,5 +77,10 @@ export async function executeWithRetry(attemptFn, { maxRetries = 2, timeoutMs = 
     }
   }
 
+  // Total failure — attach how many attempts it took so a caller logging
+  // this failure (aiService.js's UsageLogger call) can report an accurate
+  // retryCount instead of guessing or omitting it.
+  lastErr.retryCount = maxRetries
+  lastErr.fallbackAttempted = !!fallbackProvider
   throw lastErr
 }
