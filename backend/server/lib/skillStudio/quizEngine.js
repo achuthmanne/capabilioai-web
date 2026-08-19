@@ -9,7 +9,7 @@
  */
 import crypto from "crypto"
 import { supabaseAdmin } from "../supabase.js"
-import { groq, GROQ_FAST } from "../groq.js"
+import { AIService } from "../ai/aiService.js"
 import { reinforce } from "./memoryEngine.js"
 import { recordMistake } from "./mistakePatterns.js"
 
@@ -35,15 +35,12 @@ export async function getOrGenerateQuestion({ skillGraphNodeId, skillLabel, modu
     return cached[Math.floor(Math.random() * cached.length)]
   }
 
-  const raw = await groq([
-    { role: "user", content: `Generate one ${questionType} question about "${skillLabel}" at ${difficulty} difficulty for a technical assessment.\nReturn JSON only: {"prompt":"...","options":["a","b","c","d"] (omit for non-mcq),"answer":"<correct option text or short answer key>","explanation":"...","rubric":"<what a correct free-text answer must cover, for non-deterministic types>"}` },
-  ], { model: GROQ_FAST, max_tokens: 500, json: true })
-
   let payload
   try {
-    payload = JSON.parse(raw)
-  } catch {
-    const err = new Error(`Question generation returned invalid JSON for ${skillLabel}`)
+    const generated = await AIService.executePrompt("skillStudio.quizQuestion", { skillLabel, difficulty, questionType })
+    payload = generated.data
+  } catch (genErr) {
+    const err = new Error(`Question generation failed for ${skillLabel}: ${genErr.message}`)
     err.code = "generation_failed"
     throw err
   }
@@ -75,11 +72,10 @@ function checkDeterministic(question, answer) {
  *  flip an otherwise-wrong answer to "passed" at full weight. */
 async function aiRubricScore(question, answer) {
   try {
-    const raw = await groq([
-      { role: "user", content: `Question: ${question.payload?.prompt}\nRubric (what a correct answer must cover): ${question.payload?.rubric || "reasonable, technically correct explanation"}\nLearner answer: ${answer}\n\nScore 0.0-1.0 how well the answer meets the rubric. Return JSON only: {"score": 0.0}` },
-    ], { model: GROQ_FAST, max_tokens: 100, json: true })
-    const parsed = JSON.parse(raw)
-    const score = Math.max(0, Math.min(1, Number(parsed.score) || 0))
+    const { data } = await AIService.executePrompt("skillStudio.rubricScore", {
+      questionPrompt: question.payload?.prompt, rubric: question.payload?.rubric, answer,
+    })
+    const score = Math.max(0, Math.min(1, Number(data.score) || 0))
     return score * AI_REVIEW_WEIGHT_CAP + (1 - AI_REVIEW_WEIGHT_CAP) * 0.5 // blended toward neutral, never fully AI-authoritative
   } catch {
     return 0.5 // neutral fallback on AI failure — never silently fails the learner

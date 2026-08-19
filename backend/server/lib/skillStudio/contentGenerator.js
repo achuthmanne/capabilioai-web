@@ -14,8 +14,7 @@
  */
 import crypto from "crypto"
 import { supabaseAdmin } from "../supabase.js"
-import { geminiGenerateLesson, geminiGenerateRemedialSupplement, geminiGenerateRevisionContent } from "../gemini.js"
-import { groq } from "../groq.js"
+import { AIService } from "../ai/aiService.js"
 
 const MODULES = "modules"
 const BLOCKS = "module_content_blocks"
@@ -38,36 +37,19 @@ export function contentCacheKey(skillSlug, level, teachingMode) {
  * same gemini->groq logic.
  */
 export async function generateLesson({ topic, jobTitle, level = "intermediate", duration = 15, remedial = false, missedTopics = [] }) {
+  // Phase 2.7 Batch 2: gemini->groq fallback is now handled by
+  // AIService/retryManager (prompt "skillStudio.generateLesson" declares
+  // provider:"gemini", fallbackProvider:"groq") instead of this function's
+  // own try/catch. generatedBy is inferred from which model actually
+  // served the request — same information callers/DB rows had before,
+  // just sourced from the real response instead of which catch block ran.
   try {
-    const lesson = await geminiGenerateLesson({ topic, jobTitle: jobTitle || "Professional", skillLevel: level, duration, remedial, missedTopics })
-    return { lesson, generatedBy: "gemini" }
-  } catch (geminiErr) {
-    try {
-      const remedialNote = remedial
-        ? ` This is a REMEDIAL re-teach after the learner failed a quiz on: ${missedTopics.join(", ") || topic}. Don't repeat the same explanation — go deeper on exactly those points with one more worked example.`
-        : ""
-      // 2026-07-30 Phase 1: Groq fallback now asks for the same richer schema
-      // Gemini's primary path does (hook/worked_example/common_mistake/
-      // checkpoint_question/diagram_spec) so a Gemini outage doesn't silently
-      // degrade every lesson back to the old bare-bones shape.
-      const raw = await groq([
-        { role: "system", content: "Generate structured micro-lessons for Indian tech professionals. Return ONLY valid JSON." },
-        { role: "user", content: `${duration}-min lesson on "${topic}" for ${level} ${jobTitle || "Professional"}.${remedialNote}
-Return JSON: {"title":"...","objective":"...","hook":"1-2 sentences, why this matters","sections":[{"heading":"...","content":"...","codeExample":"..."}],"worked_example":{"company":"a real Indian company","scenario":"...","walkthrough":"step-by-step, ending in a concrete result"},"common_mistake":{"wrong":"...","correct":"...","why":"..."},"checkpoint_question":{"prompt":"...","answer":"..."},"diagram_spec":{"type":"flow|merge|comparison|hierarchy","nodes":[{"id":"n1","label":"..."}],"edges":[{"from":"n1","to":"n2","label":"optional"}],"steps":["...", "..."]},"keyPoints":["..."],"quiz":[{"question":"...","options":["a","b","c","d"],"correct":0,"explanation":"..."}],"practiceTask":"...","nextTopics":["..."]}` },
-      // BUG FIX (2026-07-29): 2000 tokens was too tight for this schema (title +
-      // objective + 3 sections w/ code examples + 5 quiz questions w/ options/
-      // explanations + keyPoints + practiceTask + nextTopics) — Groq was cutting
-      // the response off mid-object, producing invalid JSON (json_validate_failed)
-      // on a real, reproducible fraction of lessons rather than a rare edge case.
-      // 2026-07-30: bumped again (3200→4200) for the Phase 1 richer schema —
-      // the same truncation failure mode would otherwise reappear immediately.
-      ], { max_tokens: 4200, json: true })
-      return { lesson: JSON.parse(raw), generatedBy: "groq" }
-    } catch (groqErr) {
-      const err = new Error(`Lesson generation failed for ${topic}/${level}: ${groqErr.message} (gemini: ${geminiErr.message})`)
-      err.code = "generation_failed"
-      throw err
-    }
+    const { data: lesson, provider } = await AIService.executePrompt("skillStudio.generateLesson", { topic, jobTitle: jobTitle || "Professional", skillLevel: level, duration, remedial, missedTopics })
+    return { lesson, generatedBy: provider }
+  } catch (genErr) {
+    const err = new Error(`Lesson generation failed for ${topic}/${level}: ${genErr.message}`)
+    err.code = "generation_failed"
+    throw err
   }
 }
 
@@ -83,19 +65,12 @@ Return JSON: {"title":"...","objective":"...","hook":"1-2 sentences, why this ma
  */
 export async function generateRemedialSupplement({ topic, jobTitle, level = "intermediate", missedTopics = [] }, deps = defaultDeps) {
   try {
-    return await deps.geminiGenerateRemedialSupplement({ topic, jobTitle: jobTitle || "Professional", skillLevel: level, missedTopics })
-  } catch (geminiErr) {
-    try {
-      const raw = await deps.groq([
-        { role: "user", content: `A ${level} ${jobTitle || "Professional"} just failed a quiz on "${topic}", missing: ${missedTopics.join(", ") || topic}. Give ONE more targeted worked example plus a short explanation addressing those gaps.
-Return JSON: {"extra_explanation":"2-4 sentences","extra_example":{"scenario":"...","walkthrough":"step-by-step, ending in a concrete result"}}` },
-      ], { max_tokens: 600, json: true })
-      return JSON.parse(raw)
-    } catch (groqErr) {
-      const err = new Error(`Remedial generation failed for ${topic}: ${groqErr.message} (gemini: ${geminiErr.message})`)
-      err.code = "generation_failed"
-      throw err
-    }
+    const { data } = await deps.aiService.executePrompt("skillStudio.remedialSupplement", { topic, jobTitle: jobTitle || "Professional", skillLevel: level, missedTopics })
+    return data
+  } catch (genErr) {
+    const err = new Error(`Remedial generation failed for ${topic}: ${genErr.message}`)
+    err.code = "generation_failed"
+    throw err
   }
 }
 
@@ -112,18 +87,7 @@ export async function getOrCreateRevisionContent({ moduleId, topic, jobTitle, le
   if (findErr) throw findErr
   if (existing) return { revision: existing, cached: true }
 
-  let content
-  let generatedBy = "gemini"
-  try {
-    content = await deps.geminiGenerateRevisionContent({ topic, jobTitle: jobTitle || "Professional", skillLevel: level })
-  } catch (geminiErr) {
-    generatedBy = "groq"
-    const raw = await deps.groq([
-      { role: "user", content: `Create revision material for "${topic}" for a ${level} ${jobTitle || "Professional"}.
-Return JSON: {"flashcards":[{"front":"...","back":"..."}],"cheat_sheet":["..."],"interview_qs":[{"question":"...","answer_outline":"..."}]}` },
-    ], { max_tokens: 1400, json: true })
-    content = JSON.parse(raw)
-  }
+  const { data: content, provider: generatedBy } = await deps.aiService.executePrompt("skillStudio.revisionContent", { topic, jobTitle: jobTitle || "Professional", skillLevel: level })
 
   const { data: inserted, error: insErr } = await deps.supabaseAdmin
     .from(REVISION)
@@ -162,7 +126,13 @@ export function blocksFromLesson(lesson) {
 // 2026-07-30: geminiGenerateRemedialSupplement/geminiGenerateRevisionContent/
 // groq added so generateRemedialSupplement/getOrCreateRevisionContent are
 // equally testable without hitting a real AI provider.
-export const defaultDeps = { supabaseAdmin, generateLesson, blocksFromLesson, geminiGenerateRemedialSupplement, geminiGenerateRevisionContent, groq }
+// 2026-08-19 (Phase 2.7 Batch 2): those three raw-provider deps replaced by
+// one `aiService` dep (defaults to the real AIService) — the functions now
+// call deps.aiService.executePrompt(...) instead of a raw provider
+// function directly, matching every other migrated call site in this
+// batch. Tests inject a fake aiService with a matching executePrompt
+// shape instead of mocking individual provider functions.
+export const defaultDeps = { supabaseAdmin, generateLesson, blocksFromLesson, aiService: AIService }
 
 /**
  * getOrCreateModule — the real cache-or-generate check. Returns

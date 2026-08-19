@@ -27,8 +27,7 @@
  * every other Phase 1/2 AI-generated surface in Skill Studio).
  */
 import { supabaseAdmin } from "../supabase.js"
-import { geminiGenerateNarrationScript } from "../gemini.js"
-import { groq } from "../groq.js"
+import { AIService } from "../ai/aiService.js"
 import { synthesizeSpeech } from "../deepgram.js"
 
 const NARRATION = "module_narration"
@@ -80,33 +79,20 @@ function sanitizeScript(raw) {
 }
 
 /**
- * buildScript — gemini→groq fallback, same shape as contentGenerator.js's
- * generateLesson/generateRemedialSupplement. Never invents new lesson facts
- * — the prompt explicitly constrains the model to the lessonSummary already
- * generated in Phase 1.
+ * buildScript — gemini→groq fallback now handled by AIService/retryManager
+ * (prompt "skillStudio.narrationScript"), same shape as
+ * contentGenerator.js's generateLesson/generateRemedialSupplement. Never
+ * invents new lesson facts — the prompt explicitly constrains the model to
+ * the lessonSummary already generated in Phase 1.
  */
 export async function buildScript({ topic, jobTitle, level, lessonSummary, diagramSteps }, deps = defaultDeps) {
   try {
-    const raw = await deps.geminiGenerateNarrationScript({ topic, jobTitle: jobTitle || "Professional", skillLevel: level, lessonSummary, diagramSteps })
-    return sanitizeScript(raw)
-  } catch (geminiErr) {
-    try {
-      const stepsLine = diagramSteps.length > 0
-        ? `The lesson has an animated diagram with these steps in order: ${diagramSteps.map((s, i) => `(${i}) ${s}`).join(" | ")}. Include exactly one segment per step, tiedToStep matching its index.`
-        : "This lesson has no animated diagram — set tiedToStep to null for every segment."
-      const raw = await deps.groq([
-        { role: "user", content: `Narrate this existing lesson on "${topic}" for a ${level} ${jobTitle || "Professional"} as a short spoken walkthrough (natural spoken phrasing, second person "you", do not invent new facts beyond what's given).
-Lesson content:
-${lessonSummary}
-${stepsLine}
-Return JSON: {"segments":[{"text":"1-2 short spoken sentences, under 350 characters","tiedToStep":<index or null>}]}. First segment is a spoken hook (tiedToStep null), last is a spoken wrap-up (tiedToStep null). 6-8 segments total.` },
-      ], { max_tokens: 900, json: true })
-      return sanitizeScript(JSON.parse(raw))
-    } catch (groqErr) {
-      const err = new Error(`Narration script generation failed for ${topic}: ${groqErr.message} (gemini: ${geminiErr.message})`)
-      err.code = "generation_failed"
-      throw err
-    }
+    const { data, provider } = await deps.aiService.executePrompt("skillStudio.narrationScript", { topic, jobTitle: jobTitle || "Professional", skillLevel: level, lessonSummary, diagramSteps })
+    return { segments: sanitizeScript(data), provider }
+  } catch (genErr) {
+    const err = new Error(`Narration script generation failed for ${topic}: ${genErr.message}`)
+    err.code = "generation_failed"
+    throw err
   }
 }
 
@@ -127,7 +113,7 @@ export async function getOrCreateNarration({ moduleId, topic, jobTitle, level = 
     throw err
   }
 
-  const segments = await buildScript({ topic, jobTitle, level, lessonSummary, diagramSteps }, deps)
+  const { segments, provider } = await buildScript({ topic, jobTitle, level, lessonSummary, diagramSteps }, deps)
   if (segments.length === 0) {
     const err = new Error(`Narration script came back empty for ${topic}`)
     err.code = "generation_failed"
@@ -162,10 +148,10 @@ export async function getOrCreateNarration({ moduleId, topic, jobTitle, level = 
 
   const { data: inserted, error: insErr } = await deps.supabaseAdmin
     .from(NARRATION)
-    .insert({ module_id: moduleId, script: withAudio, generated_by: "gemini+deepgram" })
+    .insert({ module_id: moduleId, script: withAudio, generated_by: `${provider || "unknown"}+deepgram` })
     .select().single()
   if (insErr) throw insErr
   return { narration: inserted, cached: false }
 }
 
-export const defaultDeps = { supabaseAdmin, geminiGenerateNarrationScript, groq, synthesizeSpeech }
+export const defaultDeps = { supabaseAdmin, aiService: AIService, synthesizeSpeech }

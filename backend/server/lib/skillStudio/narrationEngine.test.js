@@ -27,6 +27,13 @@ test("summarizeContentBlocks returns an empty summary and no steps for a module 
   assert.deepEqual(diagramSteps, [])
 })
 
+// 2026-08-19 (Phase 2.7 Batch 2): buildScript no longer calls Gemini/Groq
+// directly — it calls deps.aiService.executePrompt(...), and the
+// gemini-then-groq fallback mechanics moved into aiService/retryManager
+// (see lib/ai/retryManager.test.js for that coverage). buildScript now
+// returns {segments, provider} instead of a bare array, so generated_by
+// can reflect the real serving provider instead of a hardcoded guess.
+
 test("buildScript sanitizes the AI response: caps segment count, trims overlong text, drops empty segments", async () => {
   const longText = "x".repeat(1000)
   const raw = {
@@ -36,25 +43,22 @@ test("buildScript sanitizes the AI response: caps segment count, trims overlong 
       { text: longText, tiedToStep: null }, // overlong — must be trimmed
     ],
   }
-  const deps = { geminiGenerateNarrationScript: async () => raw }
-  const segments = await buildScript({ topic: "React Hooks", level: "intermediate", lessonSummary: "s", diagramSteps: [] }, deps)
+  const deps = { aiService: { executePrompt: async () => ({ data: raw, provider: "gemini", model: "gemini-2.5-flash" }) } }
+  const { segments } = await buildScript({ topic: "React Hooks", level: "intermediate", lessonSummary: "s", diagramSteps: [] }, deps)
   assert.ok(segments.length <= 8, "must cap at MAX_SEGMENTS(8)")
   assert.ok(segments.every((s) => s.text.length <= 400), "must cap segment text length")
   assert.ok(segments.every((s) => s.text.length > 0), "must drop empty-text segments")
 })
 
-test("buildScript falls back to Groq when Gemini fails, and throws generation_failed if both fail", async () => {
+test("buildScript returns the real serving provider, and wraps any executePrompt failure as generation_failed", async () => {
   const okDeps = {
-    geminiGenerateNarrationScript: async () => { throw new Error("gemini down") },
-    groq: async () => JSON.stringify({ segments: [{ text: "hi", tiedToStep: null }] }),
+    aiService: { executePrompt: async () => ({ data: { segments: [{ text: "hi", tiedToStep: null }] }, provider: "groq", model: "openai/gpt-oss-20b" }) },
   }
-  const segments = await buildScript({ topic: "T", level: "intermediate", lessonSummary: "s", diagramSteps: [] }, okDeps)
+  const { segments, provider } = await buildScript({ topic: "T", level: "intermediate", lessonSummary: "s", diagramSteps: [] }, okDeps)
   assert.equal(segments.length, 1)
+  assert.equal(provider, "groq")
 
-  const failDeps = {
-    geminiGenerateNarrationScript: async () => { throw new Error("gemini down") },
-    groq: async () => { throw new Error("groq down") },
-  }
+  const failDeps = { aiService: { executePrompt: async () => { throw new Error("all providers exhausted") } } }
   await assert.rejects(
     () => buildScript({ topic: "T", level: "intermediate", lessonSummary: "s", diagramSteps: [] }, failDeps),
     (err) => err.code === "generation_failed"
@@ -67,8 +71,7 @@ test("getOrCreateNarration returns the cached row on a hit without generating or
     supabaseAdmin: {
       from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { id: "n1", module_id: "mod-1", script: [] }, error: null }) }) }) }),
     },
-    geminiGenerateNarrationScript: async () => { calls.push("gemini"); return {} },
-    groq: async () => { calls.push("groq"); return "{}" },
+    aiService: { executePrompt: async () => { calls.push("aiService"); return { data: {}, provider: "gemini", model: "gemini-2.5-flash" } } },
     synthesizeSpeech: async () => { calls.push("tts"); return { audioBuffer: Buffer.from(""), contentType: "audio/mpeg" } },
   }
   const { narration, cached } = await getOrCreateNarration({ moduleId: "mod-1", topic: "React Hooks", contentBlocks: [{ block_type: "hook", content: { hook: "h" } }] }, deps)
@@ -80,8 +83,7 @@ test("getOrCreateNarration returns the cached row on a hit without generating or
 test("getOrCreateNarration throws no_content (not generation_failed) when the module has no lesson content yet", async () => {
   const deps = {
     supabaseAdmin: { from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) }) },
-    geminiGenerateNarrationScript: async () => ({}),
-    groq: async () => "{}",
+    aiService: { executePrompt: async () => ({ data: {}, provider: "gemini", model: "gemini-2.5-flash" }) },
     synthesizeSpeech: async () => ({ audioBuffer: Buffer.from(""), contentType: "audio/mpeg" }),
   }
   await assert.rejects(
@@ -109,8 +111,7 @@ test("getOrCreateNarration drops a single failing segment but still succeeds if 
         }),
       },
     },
-    geminiGenerateNarrationScript: async () => ({ segments: [{ text: "seg A", tiedToStep: 0 }, { text: "seg B", tiedToStep: 1 }] }),
-    groq: async () => "{}",
+    aiService: { executePrompt: async () => ({ data: { segments: [{ text: "seg A", tiedToStep: 0 }, { text: "seg B", tiedToStep: 1 }] }, provider: "gemini", model: "gemini-2.5-flash" }) },
     synthesizeSpeech: async (text) => {
       if (text === "seg B") throw new Error("deepgram flaked on this one segment")
       return { audioBuffer: Buffer.from("fake-mp3-bytes"), contentType: "audio/mpeg" }
@@ -133,8 +134,7 @@ test("getOrCreateNarration throws generation_failed when every segment fails TTS
     supabaseAdmin: {
       from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) }),
     },
-    geminiGenerateNarrationScript: async () => ({ segments: [{ text: "seg A", tiedToStep: 0 }] }),
-    groq: async () => "{}",
+    aiService: { executePrompt: async () => ({ data: { segments: [{ text: "seg A", tiedToStep: 0 }] }, provider: "gemini", model: "gemini-2.5-flash" }) },
     synthesizeSpeech: async () => { throw new Error("DEEPGRAM_API_KEY not set") },
   }
   await assert.rejects(

@@ -97,7 +97,7 @@ function summarizeRowsForFeedback(result, label) {
 async function generateAiFeedback({ prompt, sql, passed, score, reason, actual, expected }) {
   if (!process.env.GROQ_API_KEY) return null
   try {
-    const text = await AIService.generateArenaFeedback({
+    const { data: text } = await AIService.generateArenaFeedback({
       prompt, sql, passed, score, reason,
       actualSummary: summarizeRowsForFeedback(actual, "Actual output"),
       expectedSummary: summarizeRowsForFeedback(expected, "Expected output"),

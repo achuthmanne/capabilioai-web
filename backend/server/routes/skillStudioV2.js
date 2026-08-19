@@ -40,7 +40,7 @@ import { writeModuleEvidence, writeInterviewEvidence, publishEvidence } from "..
 import { getRecommendations, buildRecommendations } from "../lib/skillStudio/recommendationEngine.js"
 import { listForUser as listProofObjectsForUser } from "../lib/proofObjects/repository.js"
 import { logEvent } from "../lib/skillStudio/eventLogger.js"
-import { groq, GROQ_FAST } from "../lib/groq.js"
+import { AIService } from "../lib/ai/aiService.js"
 
 const router = Router()
 
@@ -461,10 +461,7 @@ router.post("/interview/generate", aiLimiter, requireAuth, async (req, res) => {
     const { moduleId, skillLabel, mode = "technical" } = req.body
     if (!skillLabel) return res.status(400).json({ error: "skillLabel required" })
 
-    const raw = await groq([
-      { role: "user", content: `Generate a ${mode} mock-interview question set (4 questions) for a candidate who just studied "${skillLabel}".\nReturn JSON only: {"questions":[{"type":"technical|debugging|architecture|behavioral","prompt":"..."}]}` },
-    ], { model: GROQ_FAST, max_tokens: 800, json: true })
-    const parsed = JSON.parse(raw)
+    const { data: parsed } = await AIService.executePrompt("skillStudio.interviewQuestions", { mode, skillLabel })
 
     const { data: session, error } = await supabaseAdmin
       .from("interview_sessions")

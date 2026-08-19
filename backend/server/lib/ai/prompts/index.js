@@ -10,3 +10,4 @@
  * can run.
  */
 import "./arena.js" // Batch 1
+import "./skillStudio.js" // Batch 2

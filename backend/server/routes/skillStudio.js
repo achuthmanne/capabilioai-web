@@ -7,9 +7,13 @@
 //   /resources     → Groq Fast (quick link suggestions, not sticky)
 //
 // The AI Tutor chat (multi-turn) is served by /api/chat → Claude Haiku → Groq Fast
+//
+// Phase 2.7 Batch 2: gemini->groq fallback for /lesson and /learning-path
+// now handled by AIService/retryManager instead of this file's own
+// try/catch (see prompts/skillStudio.js's skillStudio.legacyLesson and
+// skillStudio.learningPath entries for the exact preserved prompt text).
 import { Router } from "express"
-import { groq, GROQ_FAST }                                    from "../lib/groq.js"
-import { geminiGenerateLesson, geminiGenerateLearningPath }   from "../lib/gemini.js"
+import { AIService } from "../lib/ai/aiService.js"
 // 2026-07-30 rate-limit incident fix: /api/skill-studio moved to the more
 // generous skillStudioLimiter at the prefix level (server.js); these two
 // routes actually spend AI-provider tokens, so they keep the stricter
@@ -20,49 +24,31 @@ const router = Router()
 
 // ─── Lesson ──────────────────────────────────────────────────────────────────
 // STICKY — generated once per topic/module, persists until user completes it.
-// Gemini Flash: native JSON mode, free tier more than sufficient.
 router.post("/lesson", aiLimiter, async (req, res) => {
   const { topic="Python", jobTitle="Professional", skillLevel="Intermediate", duration=15 } = req.body
   try {
-    const lesson = await geminiGenerateLesson({ topic, jobTitle, skillLevel, duration })
-    console.log(`[skill-studio/lesson] Gemini: "${topic}" for ${skillLevel} ${jobTitle}`)
+    const { data: lesson, provider } = await AIService.executePrompt("skillStudio.legacyLesson", { topic, jobTitle, skillLevel, duration })
+    console.log(`[skill-studio/lesson] ${provider}: "${topic}" for ${skillLevel} ${jobTitle}`)
     return res.json(lesson)
-  } catch (geminiErr) {
-    console.warn(`[skill-studio/lesson] Gemini failed (${geminiErr.message}), falling back to Groq…`)
-    try {
-      const raw = await groq([
-        { role: "system", content: "Generate structured micro-lessons for Indian tech professionals. Return ONLY valid JSON." },
-        { role: "user",   content: `${duration}-min lesson on "${topic}" for ${skillLevel} ${jobTitle}.\nReturn JSON: {"title":"...","objective":"...","sections":[{"heading":"...","content":"...","codeExample":"..."}],"keyPoints":["..."],"quiz":[{"question":"...","options":["a","b","c","d"],"correct":0,"explanation":"..."}],"practiceTask":"...","nextTopics":["..."]}` },
-      ], { max_tokens: 2000, json: true })
-      return res.json(JSON.parse(raw))
-    } catch (groqErr) {
-      console.error("[skill-studio/lesson]", groqErr.message)
-      res.status(500).json({ error: groqErr.message })
-    }
+  } catch (err) {
+    console.error("[skill-studio/lesson]", err.message)
+    res.status(500).json({ error: err.message })
   }
 })
 
 // ─── Learning Path ────────────────────────────────────────────────────────────
 // STICKY — generated once per user profile snapshot, cached until skills change.
-// Gemini Flash: handles the structured multi-phase output cleanly.
 router.post("/learning-path", aiLimiter, async (req, res) => {
   const { jobTitle="Developer", skillGraph=[], weakAreas=[], eloRating=800 } = req.body
+  const skillsSummary = skillGraph.slice(0, 8).map(s => `${s.label || s.skill}:${s.value || s.score}%`).join(", ")
+  const weakAreasSummary = weakAreas.slice(0, 5).join(", ")
   try {
-    const path = await geminiGenerateLearningPath({ jobTitle, skillGraph, weakAreas, eloRating })
-    console.log(`[skill-studio/learning-path] Gemini: ${jobTitle} ELO:${eloRating}`)
+    const { data: path, provider } = await AIService.executePrompt("skillStudio.learningPath", { jobTitle, skillsSummary, weakAreasSummary, eloRating })
+    console.log(`[skill-studio/learning-path] ${provider}: ${jobTitle} ELO:${eloRating}`)
     return res.json(path)
-  } catch (geminiErr) {
-    console.warn(`[skill-studio/learning-path] Gemini failed (${geminiErr.message}), falling back to Groq…`)
-    try {
-      const raw = await groq([
-        { role: "system", content: "Build personalised learning paths for Indian tech professionals. Return ONLY valid JSON." },
-        { role: "user",   content: `Learning path for ${jobTitle} ELO ${eloRating}.\nWeak: ${weakAreas.slice(0,5).join(", ")}\nSkills: ${skillGraph.slice(0,8).map(s=>`${s.label||s.skill}:${s.value||s.score}%`).join(", ")}\n\nReturn JSON: {"phases":[{"phase":1,"title":"...","duration":"...","focus":"...","skills":["..."],"actions":[{"type":"learn|practice|prove","skill":"...","title":"...","level":"Beginner|Intermediate|Advanced","xp":50}]}],"totalDuration":"...","expectedEloGain":150,"milestones":["..."]}` },
-      ], { max_tokens: 2000, json: true })
-      return res.json(JSON.parse(raw))
-    } catch (groqErr) {
-      console.error("[skill-studio/learning-path]", groqErr.message)
-      res.status(500).json({ error: groqErr.message })
-    }
+  } catch (err) {
+    console.error("[skill-studio/learning-path]", err.message)
+    res.status(500).json({ error: err.message })
   }
 })
 
@@ -80,8 +66,8 @@ router.get("/youtube", async (req, res) => {
       }
     }
     // Groq Fast fallback — generates plausible video suggestions
-    const raw = await groq([{ role: "user", content: `Suggest ${maxResults} real YouTube videos for "${topic}" ${level} for a ${jobTitle}. Use real channels: freeCodeCamp, Traversy Media, Corey Schafer, Tech With Tim, Kunal Kushwaha, Apna College.\nReturn JSON: {"videos":[{"id":"<yt-id>","title":"...","channel":"...","description":"...","url":"https://youtube.com/watch?v=<id>"}]}` }], { model: GROQ_FAST, max_tokens: 600, json: true })
-    return res.json(JSON.parse(raw))
+    const { data } = await AIService.executePrompt("skillStudio.youtubeSuggestions", { topic, level, jobTitle, maxResults })
+    return res.json(data)
   } catch (e) { console.error("[skill-studio/youtube]", e.message); res.status(500).json({ error: e.message }) }
 })
 
@@ -90,8 +76,8 @@ router.get("/youtube", async (req, res) => {
 router.get("/resources", async (req, res) => {
   const { topic="Python", jobTitle="Developer", level="intermediate" } = req.query
   try {
-    const raw = await groq([{ role: "user", content: `Best learning resources for "${topic}" ${level} for a ${jobTitle}. Use real sites: MDN, official docs, freeCodeCamp, GeeksForGeeks, LeetCode, HackerRank, Coursera.\nReturn JSON: {"resources":[{"title":"...","url":"<actual url>","type":"Documentation|Article|Practice|Course","description":"...","free":true}]}` }], { model: GROQ_FAST, max_tokens: 700, json: true })
-    return res.json(JSON.parse(raw))
+    const { data } = await AIService.executePrompt("skillStudio.resourceSuggestions", { topic, level, jobTitle })
+    return res.json(data)
   } catch (e) { console.error("[skill-studio/resources]", e.message); res.status(500).json({ error: e.message }) }
 })
 

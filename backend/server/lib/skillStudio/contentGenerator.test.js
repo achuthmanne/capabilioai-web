@@ -116,11 +116,19 @@ test("blocksFromLesson degrades gracefully when Phase 1 optional fields are abse
 
 // ─── PHASE 1: remedial regeneration is ephemeral (never persisted) ────────
 
+// 2026-08-19 (Phase 2.7 Batch 2): generateRemedialSupplement no longer
+// calls Gemini/Groq directly — it calls deps.aiService.executePrompt(...),
+// and the gemini-then-groq fallback mechanics moved into
+// aiService/retryManager (see retryManager.test.js for that coverage).
+// These tests now cover generateRemedialSupplement's own, narrower
+// responsibility: pass through executePrompt's data on success, wrap any
+// failure as a generation_failed error. They no longer need or reference
+// two separate provider mocks.
+
 test("generateRemedialSupplement never writes to the DB — no supabaseAdmin insert call", async () => {
   const calls = []
   const deps = {
-    geminiGenerateRemedialSupplement: async () => ({ extra_explanation: "e", extra_example: { scenario: "s", walkthrough: "w" } }),
-    groq: async () => { calls.push("groq"); return "{}" },
+    aiService: { executePrompt: async () => ({ data: { extra_explanation: "e", extra_example: { scenario: "s", walkthrough: "w" } }, provider: "gemini", model: "gemini-2.5-flash" }) },
     supabaseAdmin: { from: () => { calls.push("supabaseAdmin.from"); throw new Error("must not touch the DB") } },
   }
   const result = await generateRemedialSupplement({ topic: "React Hooks", jobTitle: "Frontend Engineer", level: "intermediate", missedTopics: ["useEffect cleanup"] }, deps)
@@ -128,18 +136,9 @@ test("generateRemedialSupplement never writes to the DB — no supabaseAdmin ins
   assert.equal(calls.includes("supabaseAdmin.from"), false, "remedial content must never be persisted")
 })
 
-test("generateRemedialSupplement falls back to Groq when Gemini fails, and still throws generation_failed if both fail", async () => {
-  const okDeps = {
-    geminiGenerateRemedialSupplement: async () => { throw new Error("gemini down") },
-    groq: async () => JSON.stringify({ extra_explanation: "groq-e", extra_example: { scenario: "s", walkthrough: "w" } }),
-    supabaseAdmin: {},
-  }
-  const result = await generateRemedialSupplement({ topic: "React Hooks", level: "intermediate", missedTopics: [] }, okDeps)
-  assert.equal(result.extra_explanation, "groq-e")
-
+test("generateRemedialSupplement wraps any executePrompt failure as generation_failed", async () => {
   const failDeps = {
-    geminiGenerateRemedialSupplement: async () => { throw new Error("gemini down") },
-    groq: async () => { throw new Error("groq down") },
+    aiService: { executePrompt: async () => { throw new Error("all providers exhausted") } },
     supabaseAdmin: {},
   }
   await assert.rejects(
@@ -158,8 +157,7 @@ test("getOrCreateRevisionContent returns the cached row on a hit without generat
         select: () => ({ eq: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { id: "rev-1", module_id: "mod-1", content: { flashcards: [] } }, error: null }) }) }) }),
       }),
     },
-    geminiGenerateRevisionContent: async () => { calls.push("gemini"); return {} },
-    groq: async () => { calls.push("groq"); return "{}" },
+    aiService: { executePrompt: async () => { calls.push("aiService"); return { data: {}, provider: "gemini", model: "gemini-2.5-flash" } } },
   }
   const { revision, cached } = await getOrCreateRevisionContent({ moduleId: "mod-1", topic: "React Hooks", level: "intermediate" }, deps)
   assert.equal(cached, true)
@@ -167,7 +165,7 @@ test("getOrCreateRevisionContent returns the cached row on a hit without generat
   assert.equal(calls.length, 0, "a cache hit must not call any AI provider")
 })
 
-test("getOrCreateRevisionContent generates and persists on a cache miss, keyed to content_type=revision_bundle", async () => {
+test("getOrCreateRevisionContent generates and persists on a cache miss, keyed to content_type=revision_bundle and tagged with the real serving provider", async () => {
   const inserted = []
   const deps = {
     supabaseAdmin: {
@@ -179,8 +177,12 @@ test("getOrCreateRevisionContent generates and persists on a cache miss, keyed t
         },
       }),
     },
-    geminiGenerateRevisionContent: async () => ({ flashcards: [{ front: "f", back: "b" }], cheat_sheet: ["pt"], interview_qs: [] }),
-    groq: async () => { throw new Error("should not be called when Gemini succeeds") },
+    aiService: {
+      executePrompt: async () => ({
+        data: { flashcards: [{ front: "f", back: "b" }], cheat_sheet: ["pt"], interview_qs: [] },
+        provider: "gemini", model: "gemini-2.5-flash",
+      }),
+    },
   }
   const { revision, cached } = await getOrCreateRevisionContent({ moduleId: "mod-2", topic: "React Hooks", level: "intermediate" }, deps)
   assert.equal(cached, false)
@@ -188,4 +190,5 @@ test("getOrCreateRevisionContent generates and persists on a cache miss, keyed t
   assert.equal(inserted.length, 1)
   assert.equal(inserted[0][1].content_type, "revision_bundle")
   assert.equal(inserted[0][1].module_id, "mod-2")
+  assert.equal(inserted[0][1].generated_by, "gemini", "generated_by must reflect the real provider that served the request, not a hardcoded guess")
 })

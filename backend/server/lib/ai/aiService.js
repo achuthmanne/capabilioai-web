@@ -25,44 +25,66 @@ import { validateJSON, validateShape } from "./responseValidator.js"
  * @param {string} promptId — a registered prompts/registry.js entry id
  * @param {object} variables — values for the prompt's declared `variables`
  * @param {{provider?: string, fallbackProvider?: string, timeoutMs?: number, maxRetries?: number}} opts
+ * @returns {Promise<{data: any, provider: string, model: string|null}>} —
+ *   `data` is the validated/parsed object (if the prompt has a
+ *   responseSchema) or the raw text (if not). `provider`/`model` expose
+ *   which one actually served the request — real information some
+ *   callers need (e.g. Skill Studio persists generated_by per lesson) and
+ *   that pre-migration code always had access to via its own try/catch
+ *   branching; collapsing it to a constant would be a real information
+ *   loss, not a harmless simplification.
  */
 async function executePrompt(promptId, variables, opts = {}) {
   const entry = getPrompt(promptId)
   const requestId = crypto.randomUUID()
   const capability = entry.defaultOpts.capability || "generateText"
   const callOpts = { ...entry.defaultOpts, requestId, feature: promptId }
+  // Precedence: an explicit per-call override (opts.provider) beats a
+  // prompt's own declared preference (entry.defaultOpts.provider), which
+  // beats the global AI_PROVIDER default (providerManager's own fallback
+  // when `provider` is left undefined here). A prompt CAN declare its own
+  // provider/fallbackProvider — e.g. Skill Studio's lesson generation has
+  // always preferred Gemini first, Groq second, independent of whatever
+  // the platform-wide default is — without every caller needing to repeat
+  // that preference on every executePrompt() call.
+  const resolvedProvider = opts.provider || entry.defaultOpts.provider
+  const resolvedFallback = opts.fallbackProvider || entry.defaultOpts.fallbackProvider
 
   let result
   if (capability === "extractFromImage") {
     const { base64Image, mimeType, prompt } = entry.buildExtraction(variables)
     result = await executeWithRetry(
-      (providerOverride) => providerManager.extractFromImage(base64Image, mimeType, prompt, { ...callOpts, provider: providerOverride || opts.provider }),
-      { fallbackProvider: opts.fallbackProvider, timeoutMs: opts.timeoutMs, maxRetries: opts.maxRetries }
+      (providerOverride) => providerManager.extractFromImage(base64Image, mimeType, prompt, { ...callOpts, provider: providerOverride || resolvedProvider }),
+      { fallbackProvider: resolvedFallback, timeoutMs: opts.timeoutMs, maxRetries: opts.maxRetries }
     )
   } else {
     const messages = entry.buildMessages(variables)
     result = await executeWithRetry(
-      (providerOverride) => providerManager[capability](messages, { ...callOpts, provider: providerOverride || opts.provider }),
-      { fallbackProvider: opts.fallbackProvider, timeoutMs: opts.timeoutMs, maxRetries: opts.maxRetries }
+      (providerOverride) => providerManager[capability](messages, { ...callOpts, provider: providerOverride || resolvedProvider }),
+      { fallbackProvider: resolvedFallback, timeoutMs: opts.timeoutMs, maxRetries: opts.maxRetries }
     )
   }
 
-  if (!entry.responseSchema) return result.text ?? result.parsed ?? result
+  const provider = result.provider || resolvedProvider || null
+  const model = result.model ?? null
 
-  return result.parsed !== undefined
+  if (!entry.responseSchema) return { data: result.text ?? result.parsed ?? result, provider, model }
+
+  const data = result.parsed !== undefined
     ? validateShape(result.parsed, entry.responseSchema)
     : validateJSON(result.text, entry.responseSchema)
+  return { data, provider, model }
 }
 
 export const AIService = {
   executePrompt,
 
   // Batch 1 (Phase 2.7) — retires lib/domainRole/aiProvider.js's local
-  // seam onto the platform-wide service. Returns null (never throws) on
-  // any failure, matching generateAiFeedback's existing "never blocks a
-  // submission" contract in routes/arenaDomainRole.js — that behavior
-  // stays in the route's own try/catch, unchanged; this method just
-  // returns whatever executePrompt gives back or lets the caller catch.
+  // seam onto the platform-wide service. Returns { data: string|null, ... }
+  // on any failure inside executePrompt this still throws — the route's
+  // own try/catch (generateAiFeedback in routes/arenaDomainRole.js) is
+  // what preserves the existing "never blocks a submission, null on
+  // failure" contract, unchanged.
   async generateArenaFeedback(vars) {
     return executePrompt("arena.sqlFeedback", vars)
   },

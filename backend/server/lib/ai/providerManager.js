@@ -59,7 +59,7 @@ async function callCapability(capability, args, { provider, feature, requestId }
       inputTokens: result.inputTokens ?? null, outputTokens: result.outputTokens ?? null,
       latencyMs: Date.now() - start, status: "success",
     })
-    return result
+    return { ...result, provider: providerName }
   } catch (err) {
     const status = err?.status === 429 || /rate.?limit/i.test(err?.message || "") ? "rate_limited" : "error"
     await logUsage({
