@@ -44,6 +44,12 @@ build.log
 # Vite temp files
 vite.config.js.timestamp-*
 
+# Python sandbox venv — recreated on install via scripts/setupSandboxVenv.sh
+# (postinstall hook), never committed (binary-heavy, environment-specific).
+# See backend/server/lib/collegeStream/pythonSandbox.js's header.
+.sandbox-venv/
+backend/server/lib/collegeStream/.sandbox-venv/
+
 # Misc
 *.bak
 _verify_pure.mjs

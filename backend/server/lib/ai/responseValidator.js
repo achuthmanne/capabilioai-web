@@ -26,9 +26,17 @@ export class ValidationError extends Error {
   }
 }
 
-/** Strips an optional ```json ... ``` fence — the one defensive step every existing wrapper already does. */
+/** Strips an optional ``` ... ``` fence — the one defensive step every
+ * existing wrapper already does. Was `` ```(?:json)? ``, which only
+ * matched the literal word "json" or no tag at all — a model that fences
+ * its JSON response as ```js/```javascript/```python (observed live,
+ * scripts/generateNodeDomainMissions.mjs's Node mission generation) fell
+ * straight through to JSON.parse() on a string starting with "```js",
+ * guaranteed to fail. `\w*` accepts any (or no) language tag — a strictly
+ * wider match than before, never narrower, so every prompt that already
+ * worked keeps working. */
 function stripFence(text) {
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/)
+  const fenced = text.match(/```\w*\s*([\s\S]*?)```/)
   return fenced ? fenced[1] : text
 }
 

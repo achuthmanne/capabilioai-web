@@ -1134,6 +1134,12 @@ export default function ArenaCollegeStream({ userData, onNavigate, user, setUser
   const [domainLoading, setDomainLoading] = useState(false)
   const [domainError, setDomainError] = useState(null)
   const [sql, setSql] = useState("")
+  // python_runner's own editor state (Career Workspace refactor) — kept
+  // separate from `sql` per SqlWorkspace.jsx's own documented contract
+  // ("state's own contents are workspace-specific"), not a shared/renamed
+  // field. domainSubmitting/domainResult/domainSubmitError below are
+  // shared across both panel types (submission outcome, not editor input).
+  const [code, setCode] = useState("")
   const [domainSubmitting, setDomainSubmitting] = useState(false)
   const [domainResult, setDomainResult] = useState(null)
   const [domainSubmitError, setDomainSubmitError] = useState(null)
@@ -1455,7 +1461,7 @@ export default function ArenaCollegeStream({ userData, onNavigate, user, setUser
   }
 
   function openDomainMission(mission) {
-    setSql(""); setDomainResult(null); setDomainSubmitError(null); setMissionDeadline(null); setDomainMainTab("workspace")
+    setSql(""); setCode(""); setDomainResult(null); setDomainSubmitError(null); setMissionDeadline(null); setDomainMainTab("workspace")
     setValidateResult(null); setValidateError(null)
     setDomainLoading(true); setDomainError(null)
     arenaDomainRoleApi.getMission(mission.id)
@@ -1511,22 +1517,56 @@ export default function ArenaCollegeStream({ userData, onNavigate, user, setUser
       .finally(() => setDomainSubmitting(false))
   }
 
+  // Shared submit for every code-execution panel type (python_runner,
+  // node_runner — identical state shape and behavior, just different
+  // sandboxes server-side) — same shape/error handling as submitSql,
+  // posts `code` under arenaDomainRoleApi.submitMission's existing `sql`
+  // request field (the backend reads req.body.sql ?? req.body.code; the
+  // API wrapper's own param name is just local naming, not a wire
+  // format). Renamed from submitPython now that node_runner is the
+  // second real caller — the body never actually branched on language.
+  function submitCode() {
+    if (!code.trim() || domainSubmitting) return
+    setDomainSubmitting(true); setDomainSubmitError(null)
+    arenaDomainRoleApi.submitMission(domainMission.id, code.trim())
+      .then(res => {
+        setDomainResult(res.submission)
+        if (res.submission?.passed) {
+          loadNextMission()
+          arenaDomainRoleApi.listMissions(roleConfig.id).then(r => setDomainMissions(r.missions || [])).catch(() => {})
+        }
+      })
+      .catch(e => setDomainSubmitError(e.message))
+      .finally(() => setDomainSubmitting(false))
+  }
+
   // The standard workspace prop contract (Phase 2.6, Task 1) — every
   // current/future Domain Role workspace receives exactly this shape via
   // <WorkspaceRenderer workspace={...}/>. Built once here since this is
   // where all the underlying state already lives; only accessed when
   // domainMission is set (see the render guard below), so it's safe to
   // construct unconditionally from current state.
+  // state/actions/permissions branch by panel_type — each workspace type
+  // owns its own field names/shape here (documented as intentional in
+  // SqlWorkspace.jsx's own header: "state's own contents are
+  // workspace-specific"). Not a switch statement in the registry-dispatch
+  // sense (PANEL_REGISTRY/EXECUTION_REGISTRY/EVALUATION_REGISTRY are all
+  // still plain lookups) — this is the one integration point translating
+  // this page's own state into whichever shape the resolved workspace
+  // component expects, same role getPanelMetadata() plays for `meta` above.
+  const CODE_EXECUTION_PANEL_TYPES = new Set(["python_runner", "node_runner"])
+  const isCodeExecution = CODE_EXECUTION_PANEL_TYPES.has(domainMission?.panel_type)
   const workspace = {
     mission: domainMission,
     submission: { result: domainResult, submitting: domainSubmitting, error: domainSubmitError },
     preview: { validateResult, validateError, validating },
-    state: { sql, setSql },
-    actions: { onSubmit: submitSql, onPreview: validateSql, onOpenMission: openDomainMission, onBackToMissions: openDomainMissions },
-    permissions: {
-      canSubmit: !!sql.trim() && !domainSubmitting,
-      canPreview: !!sql.trim() && !domainSubmitting && !validating,
-    },
+    state: isCodeExecution ? { code, setCode } : { sql, setSql },
+    actions: isCodeExecution
+      ? { onSubmit: submitCode, onOpenMission: openDomainMission, onBackToMissions: openDomainMissions }
+      : { onSubmit: submitSql, onPreview: validateSql, onOpenMission: openDomainMission, onBackToMissions: openDomainMissions },
+    permissions: isCodeExecution
+      ? { canSubmit: !!code.trim() && !domainSubmitting }
+      : { canSubmit: !!sql.trim() && !domainSubmitting, canPreview: !!sql.trim() && !domainSubmitting && !validating },
     navigation: { missions: domainMissions },
     timer: { deadline: missionDeadline },
     // Optional shell-only extension point (Phase 3.0) — WorkspaceHeader
@@ -1583,13 +1623,22 @@ export default function ArenaCollegeStream({ userData, onNavigate, user, setUser
     setLevel(target)
   }
 
+  // Career Workspace refactor, Phase 4 — the workspace is no longer a
+  // floating card inside the page's 1160px-max reading column. When it's
+  // active, this component drops that constraint entirely (full browser
+  // width, minimal chrome) — same "professional IDE, not a popup" goal
+  // driving the Professional Workspace Shell itself. Every OTHER level
+  // (landing, mission list, stream browsing) keeps the original centered
+  // page layout unchanged.
+  const isWorkspaceActive = domainMainTab === "workspace" && level === "domainMission" && !!domainMission
+
   return (
     <div style={{
       flex: 1, minHeight: "100vh", overflowY: "auto", fontFamily: BODY,
-      background: `radial-gradient(ellipse at 30% 40%, rgba(139,92,246,0.10) 0%, transparent 55%), radial-gradient(ellipse at 75% 15%, rgba(99,102,241,0.07) 0%, transparent 50%), ${T.cream}`,
+      background: isWorkspaceActive ? T.cream : `radial-gradient(ellipse at 30% 40%, rgba(139,92,246,0.10) 0%, transparent 55%), radial-gradient(ellipse at 75% 15%, rgba(99,102,241,0.07) 0%, transparent 50%), ${T.cream}`,
     }}>
-      <div style={{ maxWidth: 1160, margin: "0 auto", padding: "32px 28px 60px" }}>
-        {level !== "landing" && (
+      <div style={isWorkspaceActive ? { padding: "12px 20px 20px" } : { maxWidth: 1160, margin: "0 auto", padding: "32px 28px 60px" }}>
+        {!isWorkspaceActive && level !== "landing" && (
           <>
             <div style={{ fontSize: 30, fontWeight: 800, color: T.ink, marginBottom: 4, letterSpacing: -0.5 }}>
               Arena
@@ -1603,7 +1652,7 @@ export default function ArenaCollegeStream({ userData, onNavigate, user, setUser
         )}
 
         <Breadcrumb crumbs={crumbs} onJump={jumpTo} />
-        {level !== "landing" && crumbs.length > 1 && (
+        {!isWorkspaceActive && level !== "landing" && crumbs.length > 1 && (
           <BackButton onClick={() => jumpTo(crumbs.length - 2)} label={crumbs[crumbs.length - 2].label} />
         )}
 
@@ -1736,8 +1785,8 @@ export default function ArenaCollegeStream({ userData, onNavigate, user, setUser
               </>
             )}
 
-            {domainMainTab === "workspace" && level === "domainMission" && domainMission && (
-              <div style={{ height: "calc(100vh - 220px)", minHeight: 560, borderRadius: 16, overflow: "hidden", border: `1px solid ${T.border}`, boxShadow: T.shadow }}>
+            {isWorkspaceActive && (
+              <div style={{ height: "calc(100vh - 90px)", minHeight: 560 }}>
                 <WorkspaceShell workspace={workspace} userId={user?.id}>
                   <WorkspaceRenderer workspace={workspace} />
                 </WorkspaceShell>

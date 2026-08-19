@@ -1,18 +1,20 @@
 import SqlWorkspace from "./sql/SqlWorkspace"
+import PythonWorkspace from "./python/PythonWorkspace"
+import NodeWorkspace from "./node/NodeWorkspace"
 
 // panel_type -> the component that renders that panel's mission workspace.
-// Only "sql_runner" is real today (every one of the 44 seeded domain_roles
-// uses it). To add a future panel type: build its component under
-// workspaces/<name>/, following SqlWorkspace's contract (import shared
-// primitives from ../shared/*, own no state, receive the single
-// `{ workspace }` prop — see SqlWorkspace.jsx for the full shape), then
-// add exactly one line here, e.g.:
-//   notebook_python: NotebookPythonWorkspace,
-// Do not add a key for a panel type that has no component yet — an
-// unresolved import breaks the build, and a key mapped to nothing isn't
+// python_runner (Career Workspace refactor, 2026-08-19) is the second real
+// entry — built for ML/AI Engineer, generic to any role. To add a future
+// panel type: build its component under workspaces/<name>/, following
+// SqlWorkspace's contract (import shared primitives from ../shared/*, own
+// no state, receive the single `{ workspace }` prop), then add exactly one
+// line here. Do not add a key for a panel type that has no component yet —
+// an unresolved import breaks the build, and a key mapped to nothing isn't
 // "prepared architecture," it's dead code with a false promise.
 export const PANEL_REGISTRY = {
   sql_runner: SqlWorkspace,
+  python_runner: PythonWorkspace,
+  node_runner: NodeWorkspace,
 }
 
 // Role -> workspace resolution is intentionally mission-level

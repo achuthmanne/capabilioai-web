@@ -13,11 +13,25 @@
  * architecture," it's dead code with a false promise (same reasoning as
  * PANEL_REGISTRY and EXECUTION_REGISTRY).
  *
- * Scope boundary: this only covers the case where the candidate SQL
- * actually ran (executeMission succeeded). A SqlSandboxError — the query
- * itself failing to execute — is a distinct failure surface, handled
- * separately in routes/arenaDomainRole.js exactly as before; it is not a
- * grading outcome and does not go through this file.
+ * Scope boundary: this only covers the case where the candidate
+ * successfully ran (executeMission succeeded). A SqlSandboxError/blocked
+ * Python submission — execution itself failing — is a distinct failure
+ * surface, handled separately in routes/arenaDomainRole.js exactly as
+ * before; it is not a grading outcome and does not go through this file.
+ *
+ * Second real entry (Career Workspace refactor): python_runner. Same
+ * "stdout must exactly match, trimmed" comparison
+ * pythonSandbox.js's evaluatePythonStdout already uses for College
+ * Stream — reused here as plain string comparison since `actual` (the
+ * already-executed result from executeMission.js's executePythonMission)
+ * carries the real stdout, never a claimed one.
+ *
+ * Third real entry (Phase 6, Software Engineering roles): node_runner.
+ * evaluateStdoutMatch's body was already 100% language-agnostic (it never
+ * referenced Python specifically) — this is the second real case that
+ * justifies generalizing its name instead of pasting a near-identical
+ * evaluateNodeStdoutMatch copy (same "abstract after the second/third
+ * implementation" rule this whole file's header already invokes).
  *
  * ELO math is NOT here. ELO is a business-rule reward keyed off .passed +
  * mission.difficulty, not part of "how do we grade this attempt" — it
@@ -33,8 +47,35 @@ function evaluateSqlExactMatch(actual, mission) {
   return { ...comparison, checklist, insight }
 }
 
+function normalizeStdout(s) { return String(s ?? "").trim().replace(/\r\n/g, "\n") }
+
+function evaluateStdoutMatch(actual, mission) {
+  if (actual.blocked) {
+    return { passed: false, score: 0, reason: actual.blocked, checklist: null, insight: null }
+  }
+  if (actual.timedOut) {
+    return { passed: false, score: 0, reason: "Execution timed out or exceeded resource limits.", checklist: null, insight: null }
+  }
+  if (actual.exitCode !== 0) {
+    return { passed: false, score: 0, reason: actual.stderr?.trim() || `Process exited with code ${actual.exitCode}.`, checklist: null, insight: null }
+  }
+  const expected = mission.rubric?.expected_stdout
+  const isMatch = normalizeStdout(actual.stdout) === normalizeStdout(expected)
+  return {
+    passed: isMatch,
+    score: isMatch ? 100 : 0,
+    reason: isMatch ? null : "Output didn't match the expected result.",
+    checklist: null,
+    // insight is a `text` column (domain_submissions.insight) — plain
+    // string, same type computeInsight() already returns for SQL.
+    insight: actual.stdout?.trim() ? `Printed: ${actual.stdout.trim()}` : "No output printed.",
+  }
+}
+
 const EVALUATION_REGISTRY = {
   sql_runner: evaluateSqlExactMatch,
+  python_runner: evaluateStdoutMatch,
+  node_runner: evaluateStdoutMatch,
 }
 
 // Returns {passed, score, reason, checklist, insight}. Caller (the submit

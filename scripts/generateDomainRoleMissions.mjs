@@ -96,6 +96,13 @@ const ROLE_DOMAIN_HINTS = {
   ml_engineer: "a model's prediction/inference log, a training-run metrics history (loss, accuracy, epoch), a feature store, or an A/B test results table — never generic sales/inventory data, which has no ML content in it at all",
   cyber: "an authentication/access log, a vulnerability scan result set, a firewall/network event log, or an incident report table — grounded in security monitoring, not unrelated business data",
   soc: "an authentication/access log, a SIEM alert queue, a network device/asset inventory used for security monitoring, or an incident timeline — grounded in security operations, not unrelated business data",
+  // Career Workspace refactor (Phase 6) — DBA's own real skills are
+  // indexing/normalization/transactions/execution plans/replication/
+  // backups, not "query a sales table" (the generic content this hint
+  // replaces). SQL is still the right workstation — DBA is a role SQL
+  // genuinely IS the job — this only fixes the CONTENT, framing every
+  // dataset as something a real DBA would actually administer.
+  dba: "a query execution/slow-query log, an index usage/statistics table, a replication lag or backup job history, a table-partition/storage-usage report, or a lock/deadlock event log — grounded in database administration work itself, not a generic business table a DBA merely happens to host",
 }
 
 // Rate-limit handling — see generateForRole's comment for why this exists

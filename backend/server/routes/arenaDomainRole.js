@@ -109,6 +109,27 @@ async function generateAiFeedback({ prompt, sql, passed, score, reason, actual, 
   }
 }
 
+// Career Workspace refactor — code-execution panel types' (python_runner,
+// node_runner) own feedback call, kept separate from generateAiFeedback
+// (SQL-specific vars/wording) rather than overloading one function with
+// two incompatible shapes. Same non-fatal contract: never blocks or
+// changes a submission's already-final verdict. Renamed from
+// generatePythonAiFeedback now that node_runner is the second real
+// caller — the body never actually branched on language.
+async function generateCodeAiFeedback({ prompt, code, passed, score, reason, actual }) {
+  if (!process.env.GROQ_API_KEY) return null
+  try {
+    const { data: text } = await AIService.generateCodeMissionFeedback({
+      prompt, code, passed, score, reason,
+      stdout: actual?.stdout, stderr: actual?.stderr,
+    })
+    return text?.trim() || null
+  } catch (err) {
+    logger.error("[arenaDomainRole] Code AI feedback generation failed (non-blocking)", { err })
+    return null
+  }
+}
+
 // GET /api/arena/domain-role/:roleId/next-mission
 // Generic across ALL 44 seeded domain_roles, not just Data Analyst — this
 // is what makes "design for every role at once" possible without a new
@@ -583,14 +604,20 @@ router.post("/missions/:id/validate", optionalAuth, sqlValidateLimiter, async (r
 // write — nothing here can drift out of sync.
 router.post("/missions/:id/submit", requireAuth, async (req, res) => {
   try {
-    const { sql } = req.body || {}
-    if (!sql || typeof sql !== "string" || !sql.trim()) {
+    // `sql` stays the field name every existing sql_runner caller
+    // (SqlWorkspace.jsx) already posts — `code` is the generic name a new
+    // python_runner (or future) workstation posts instead. Both resolve
+    // to the same "candidate submission text" the execute/evaluate
+    // registries receive; they don't care which field name it came from.
+    const submittedText = req.body?.sql ?? req.body?.code
+    if (!submittedText || typeof submittedText !== "string" || !submittedText.trim()) {
       return res.status(400).json({ error: "sql is required" })
     }
+    const sql = submittedText
 
     const { data: mission, error: missionErr } = await supabaseAdmin
       .from("domain_missions")
-      .select("id, title, prompt, dataset, expected_result, match_mode, elo_reward, difficulty, panel_type, domain_role_id, domain_roles(label)")
+      .select("id, title, prompt, dataset, expected_result, match_mode, rubric, reference_solution, elo_reward, difficulty, panel_type, domain_role_id, domain_roles(label)")
       .eq("id", req.params.id)
       .maybeSingle()
     if (missionErr) throw missionErr
@@ -666,10 +693,29 @@ router.post("/missions/:id/submit", requireAuth, async (req, res) => {
     const { checklist, insight } = comparison
     const eloDelta = comparison.passed ? mission.elo_reward : -(ELO_FAIL_PENALTY[mission.difficulty] ?? 2)
     // Best-effort — never blocks the response, never changes score/passed/elo.
-    const aiFeedback = await generateAiFeedback({
-      prompt: mission.prompt, sql, passed: comparison.passed, score: comparison.score, reason: comparison.reason,
-      actual, expected: mission.expected_result,
-    })
+    // Branches on panel_type family: sql_runner's actual has
+    // {columns,rows}; the code-execution panel types (python_runner,
+    // node_runner) share {stdout,stderr} — genuinely different shapes,
+    // not something one prompt/vars set can honestly cover (see
+    // generateCodeAiFeedback's header comment).
+    const CODE_EXECUTION_PANEL_TYPES = new Set(["python_runner", "node_runner"])
+    const isCodeExecution = CODE_EXECUTION_PANEL_TYPES.has(mission.panel_type)
+    const aiFeedback = isCodeExecution
+      ? await generateCodeAiFeedback({
+          prompt: mission.prompt, code: sql, passed: comparison.passed, score: comparison.score, reason: comparison.reason, actual,
+        })
+      : await generateAiFeedback({
+          prompt: mission.prompt, sql, passed: comparison.passed, score: comparison.score, reason: comparison.reason,
+          actual, expected: mission.expected_result,
+        })
+
+    // result_json shape also branches per panel_type family for the same
+    // reason — stored as-attempted so History can render it later without
+    // re-running the sandbox (which could drift if seed data/rubric is
+    // ever edited — a record of what was true at submission time).
+    const resultJson = isCodeExecution
+      ? { stdout: actual.stdout, stderr: actual.stderr }
+      : { columns: actual.columns, rows: actual.rows }
 
     const { data: submission, error: subErr } = await supabaseAdmin
       .from("domain_submissions")
@@ -681,12 +727,7 @@ router.post("/missions/:id/submit", requireAuth, async (req, res) => {
         score: comparison.score,
         elo_delta: eloDelta,
         error: comparison.reason,
-        // Persisted (not just returned in the response) so the History tab
-        // can show exactly what happened on this attempt later, without
-        // re-running the sandbox against the mission's dataset — which
-        // could drift if the mission's seed data is ever edited. History is
-        // a record of what was true at submission time.
-        result_json: { columns: actual.columns, rows: actual.rows },
+        result_json: resultJson,
         checklist_json: checklist,
         insight,
         execution_time_ms: actual.executionTimeMs,
@@ -718,7 +759,7 @@ router.post("/missions/:id/submit", requireAuth, async (req, res) => {
         ...submission,
         feedback: comparison.reason,
         ai_feedback: aiFeedback,
-        result: { columns: actual.columns, rows: actual.rows },
+        result: resultJson,
         execution_time_ms: actual.executionTimeMs,
         checklist,
         insight,

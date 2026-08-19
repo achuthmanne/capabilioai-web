@@ -44,7 +44,38 @@ export const PANEL_METADATA = {
     supportsBrowser: false,
     supportsConsole: false,
   },
-  // Future: notebook_python: { workspace_title: "Python Notebook", ... }
+  python_runner: {
+    workspace_title: "Python Workstation",
+    workspace_icon: "🐍",
+    workspace_description: "Write and run real Python — your code actually executes, output is compared exactly.",
+    supportsPreview: false, // see PythonWorkspace.jsx's header — Submit-only this pass
+    supportsSubmit: true,
+    supportsAIFeedback: true,
+    supportsTimer: true,
+    supportsHints: false,
+    supportsFiles: false,
+    supportsNotebook: false,
+    supportsCharts: false,
+    supportsTerminal: false,
+    supportsBrowser: false,
+    supportsConsole: false,
+  },
+  node_runner: {
+    workspace_title: "Node.js Workstation",
+    workspace_icon: "🟩",
+    workspace_description: "Write and run real JavaScript/Node.js — your code actually executes, output is compared exactly.",
+    supportsPreview: false,
+    supportsSubmit: true,
+    supportsAIFeedback: true,
+    supportsTimer: true,
+    supportsHints: false,
+    supportsFiles: false,
+    supportsNotebook: false,
+    supportsCharts: false,
+    supportsTerminal: false,
+    supportsBrowser: false,
+    supportsConsole: false,
+  },
 }
 
 const FALLBACK_METADATA = {

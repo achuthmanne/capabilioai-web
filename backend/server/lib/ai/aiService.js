@@ -137,4 +137,13 @@ export const AIService = {
   async generateArenaFeedback(vars) {
     return executePrompt("arena.sqlFeedback", vars)
   },
+
+  // Career Workspace refactor — Domain Role's code-execution panel types
+  // (python_runner, node_runner) share this one feedback wording, not
+  // sqlFeedback's SQL-specific framing. Same thin-wrapper shape as
+  // generateArenaFeedback. Renamed from generatePythonMissionFeedback —
+  // see prompts/domainRole.js's domainRole.codeMissionFeedback comment.
+  async generateCodeMissionFeedback(vars) {
+    return executePrompt("domainRole.codeMissionFeedback", vars)
+  },
 }

@@ -96,13 +96,53 @@ export function checkPythonAvailable() {
   return availabilityCache
 }
 
+// ── Package-aware execution (Career Workspace, ML/AI Engineer et al.) ──────
+// A dedicated venv (scripts/setupSandboxVenv.sh, run via `npm install`'s
+// postinstall hook — see package.json) with numpy/pandas/scikit-learn/
+// Pillow — deliberately NOT torch/tensorflow, which don't fit this
+// sandbox's real resource profile (MAX_CONCURRENT_EXECUTIONS below,
+// 256MB address space, 5s CPU). `-I` isolated mode does not block a
+// venv's own site-packages (confirmed: it only isolates PYTHONPATH, user
+// site-packages, and env vars) — same invocation shape as the stdlib-only
+// path below, just a different interpreter binary.
+//
+// Existing callers (runPython/evaluatePythonStdout with no `usePackages`)
+// are completely unaffected — this is purely additive, resolved once and
+// cached the same way checkPythonAvailable() is.
+const SANDBOX_VENV_PYTHON = path.join(path.dirname(new URL(import.meta.url).pathname), ".sandbox-venv", "bin", "python3")
+let packagesAvailabilityCache = null
+
+/**
+ * Checks once (cached) whether the package-aware venv is actually set up
+ * and importable in this environment. Same "honest unavailable, never a
+ * fake pass" discipline as checkPythonAvailable().
+ */
+export function checkPackagesAvailable() {
+  if (packagesAvailabilityCache !== null) return packagesAvailabilityCache
+  try {
+    const result = spawnSync(SANDBOX_VENV_PYTHON, ["-I", "-B", "-c", "import numpy, pandas, sklearn, PIL"], { timeout: 5000 })
+    packagesAvailabilityCache = result.status === 0
+  } catch {
+    packagesAvailabilityCache = false
+  }
+  return packagesAvailabilityCache
+}
+
+function resolvePythonBinary(usePackages) {
+  return usePackages && checkPackagesAvailable() ? SANDBOX_VENV_PYTHON : "python3"
+}
+
 /**
  * @param {string} code - student-submitted Python source
- * @param {{ timeoutMs?: number }} [opts]
+ * @param {{ timeoutMs?: number, usePackages?: boolean }} [opts] - usePackages
+ *   runs under the venv (numpy/pandas/scikit-learn/Pillow) instead of bare
+ *   stdlib-only python3; defaults to false, so every existing caller is
+ *   unaffected.
  * @returns {Promise<{ stdout: string, stderr: string, timedOut: boolean, exitCode: number|null }>}
  */
 export function runPython(code, opts = {}) {
   const timeoutMs = opts.timeoutMs || DEFAULT_TIMEOUT_MS
+  const pythonBinary = resolvePythonBinary(opts.usePackages)
 
   if (typeof code !== "string" || !code.trim()) {
     throw new PythonSandboxError("Code is empty.")
@@ -151,7 +191,7 @@ export function runPython(code, opts = {}) {
       `ulimit -v ${MEMORY_LIMIT_KB} 2>/dev/null`,
       `ulimit -t ${CPU_LIMIT_SECONDS} 2>/dev/null`,
       `ulimit -u ${MAX_PROCESSES} 2>/dev/null`,
-      `exec python3 -I -B "${scriptPath}"`,
+      `exec "${pythonBinary}" -I -B "${scriptPath}"`,
     ].join("; ")
 
     const child = spawn("bash", ["-c", shellCmd], {
@@ -214,7 +254,11 @@ export function scanForDangerousPatterns(code) {
 }
 
 /**
- * @param {object} rubric - { type: "python_stdout_match", expected_stdout, timeout_ms? }
+ * @param {object} rubric - { type: "python_stdout_match", expected_stdout,
+ *   timeout_ms?, usePackages? } — usePackages runs the submission under
+ *   the numpy/pandas/scikit-learn/Pillow venv instead of bare stdlib-only
+ *   python3. Defaults to false — every experiment seeded before this
+ *   option existed has no such field and is completely unaffected.
  * @param {string} code - student-submitted Python source
  * @returns {Promise<{ score: number, passed: boolean, stdout: string, stderr: string, error: string|null }>}
  */
@@ -224,6 +268,9 @@ export async function evaluatePythonStdout(rubric, code) {
   }
   if (!checkPythonAvailable()) {
     throw new PythonSandboxError("Python execution isn't available in this environment.")
+  }
+  if (rubric.usePackages && !checkPackagesAvailable()) {
+    throw new PythonSandboxError("Package-backed Python execution (numpy/pandas/scikit-learn) isn't available in this environment.")
   }
   if (scanForDangerousPatterns(code)) {
     return { score: 0, passed: false, stdout: "", stderr: "", error: "Submission uses a disallowed operation (file/network/system access). Solve it with plain computation and print()." }
@@ -236,7 +283,7 @@ export async function evaluatePythonStdout(rubric, code) {
   activeExecutions++
   let stdout, stderr, timedOut, exitCode
   try {
-    ;({ stdout, stderr, timedOut, exitCode } = await runPython(code, { timeoutMs: rubric.timeout_ms }))
+    ;({ stdout, stderr, timedOut, exitCode } = await runPython(code, { timeoutMs: rubric.timeout_ms, usePackages: rubric.usePackages }))
   } finally {
     activeExecutions--
   }
