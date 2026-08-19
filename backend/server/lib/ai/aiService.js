@@ -61,10 +61,10 @@ async function executePrompt(promptId, variables, opts = {}) {
     return opts.model || callOpts.model || resolveModel(providerName || getActiveProviderName(), callOpts.modelTier)
   }
 
-  let result
+  let outcome // { result, retryCount, providerUsed, fallbackUsed } — see retryManager.js
   if (capability === "extractFromImage") {
     const { base64Image, mimeType, prompt } = entry.buildExtraction(variables)
-    result = await executeWithRetry(
+    outcome = await executeWithRetry(
       (providerOverride) => {
         const p = providerOverride || resolvedProvider
         return providerManager.extractFromImage(base64Image, mimeType, prompt, { ...callOpts, provider: p, model: resolveModelFor(p) })
@@ -73,7 +73,7 @@ async function executePrompt(promptId, variables, opts = {}) {
     )
   } else {
     const messages = entry.buildMessages(variables)
-    result = await executeWithRetry(
+    outcome = await executeWithRetry(
       (providerOverride) => {
         const p = providerOverride || resolvedProvider
         return providerManager[capability](messages, { ...callOpts, provider: p, model: resolveModelFor(p) })
@@ -82,7 +82,8 @@ async function executePrompt(promptId, variables, opts = {}) {
     )
   }
 
-  const provider = result.provider || resolvedProvider || null
+  const result = outcome.result
+  const provider = outcome.providerUsed || resolvedProvider || null
   const model = result.model ?? null
 
   if (!entry.responseSchema) return { data: result.text ?? result.parsed ?? result, provider, model }

@@ -1,5 +1,7 @@
 /**
- * retryManager.js — Phase 2.7 (Enterprise AI Engine), Task 8.
+ * retryManager.js — Phase 2.7 (Enterprise AI Engine), Task 8. Return
+ * contract extended in the architecture refinement pass (Requirement 5:
+ * every AI request needs a retryCount).
  *
  * Wraps a provider call with timeout, exponential-backoff retry, and
  * optional cross-provider fallback. This is a NEW, outer layer — not a
@@ -14,6 +16,21 @@
  * codebase during Phase 2.7 research: hardwareChallenges.js's 15s and
  * pulseNexus.js's 12s Promise.race — 20s default sits above both as a
  * safe, real-precedent-backed number, not an arbitrary guess.
+ *
+ * Return shape: { result, retryCount, providerUsed, fallbackUsed }.
+ * `result` is whatever attemptFn resolved to (a providerManager adapter
+ * result, carrying its own `.provider`/`.model`). `retryCount` is EXTRA
+ * attempts beyond the first — 0 on a clean first-try success, matching
+ * the natural "how many times did we have to retry" reading for an ops
+ * dashboard, not a raw 1-indexed attempt counter. `providerUsed` is read
+ * straight off the successful result's own `.provider` field (set by
+ * providerManager.js) rather than tracked independently here — this file
+ * doesn't need to know provider names itself, just whether it fell back.
+ *
+ * Zero business-code callers — confirmed via a full-repo grep before this
+ * change landed. Only aiService.js and this file's own test call
+ * executeWithRetry, so this contract change is fully contained inside
+ * lib/ai/.
  */
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)) }
 
@@ -36,12 +53,14 @@ function withTimeout(promise, timeoutMs) {
  *   with no args for the primary provider, or with a provider name string
  *   when falling back to a secondary provider.
  * @param {{maxRetries?: number, timeoutMs?: number, fallbackProvider?: string|null}} opts
+ * @returns {Promise<{result: any, retryCount: number, providerUsed: string|null, fallbackUsed: boolean}>}
  */
 export async function executeWithRetry(attemptFn, { maxRetries = 2, timeoutMs = 20000, fallbackProvider = null } = {}) {
   let lastErr
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      return await withTimeout(attemptFn(), timeoutMs)
+      const result = await withTimeout(attemptFn(), timeoutMs)
+      return { result, retryCount: attempt, providerUsed: result?.provider ?? null, fallbackUsed: false }
     } catch (err) {
       lastErr = err
       if (!isRetryable(err) || attempt === maxRetries) break
@@ -51,7 +70,8 @@ export async function executeWithRetry(attemptFn, { maxRetries = 2, timeoutMs = 
 
   if (fallbackProvider) {
     try {
-      return await withTimeout(attemptFn(fallbackProvider), timeoutMs)
+      const result = await withTimeout(attemptFn(fallbackProvider), timeoutMs)
+      return { result, retryCount: maxRetries, providerUsed: result?.provider ?? fallbackProvider, fallbackUsed: true }
     } catch (fallbackErr) {
       lastErr = fallbackErr
     }
