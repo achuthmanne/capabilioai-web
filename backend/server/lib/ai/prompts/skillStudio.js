@@ -11,7 +11,7 @@
  * wording (only on behavior: which path fired, response shape), so
  * unifying to one prompt text is safe and avoids doubling every entry.
  */
-import { registerPrompt } from "./registry.js"
+import { registerPrompt } from "./promptManager.js"
 import { z } from "../responseValidator.js"
 
 const DIAGRAM_SPEC_SCHEMA = z.object({

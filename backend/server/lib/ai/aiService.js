@@ -16,7 +16,7 @@
  */
 import crypto from "crypto"
 import "./prompts/index.js" // registers every feature prompt file's entries before any getPrompt() lookup below
-import { getPrompt } from "./prompts/registry.js"
+import { getPrompt } from "./prompts/promptManager.js"
 import { providerManager, getActiveProviderName } from "./providerManager.js"
 import { executeWithRetry } from "./retryManager.js"
 import { validateJSON, validateShape, ValidationError } from "./responseValidator.js"
@@ -31,7 +31,7 @@ function classifyFailureStatus(err) {
 }
 
 /**
- * @param {string} promptId — a registered prompts/registry.js entry id
+ * @param {string} promptId — a registered prompts/promptManager.js entry id
  * @param {object} variables — values for the prompt's declared `variables`
  * @param {{provider?: string, fallbackProvider?: string, timeoutMs?: number, maxRetries?: number}} opts
  * @returns {Promise<{data: any, provider: string, model: string|null}>} —

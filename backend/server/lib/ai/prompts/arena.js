@@ -7,7 +7,7 @@
  * platform-wide AIService, the first real migration proving the new
  * system end-to-end.
  */
-import { registerPrompt } from "./registry.js"
+import { registerPrompt } from "./promptManager.js"
 
 registerPrompt({
   id: "arena.sqlFeedback",
