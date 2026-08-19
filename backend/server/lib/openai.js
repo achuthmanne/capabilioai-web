@@ -2,6 +2,16 @@
 // USE: Executive content generation (GPT-4o writes better long-form than Groq)
 //      Fallback when Claude quota hits
 // NOT for grading — Claude Haiku is cheaper and equally good
+//
+// Extension point (Phase 2.7 architecture refinement, Requirement 10):
+// the base URL below is hardcoded. Azure OpenAI, DeepSeek, and Ollama are
+// all OpenAI-chat-completions-API-compatible (same request/response JSON
+// shape this file already speaks — different base URL/auth only), so
+// adding any of them later means parameterizing a `baseUrl` here (default
+// to today's URL, zero behavior change) and letting
+// lib/ai/adapters/openaiAdapter.js (or a thin sibling adapter reusing this
+// same client) pass a different URL/key per provider. Not built now — no
+// real credentials/endpoints exist yet to build or verify against.
 
 const key = () => process.env.OPENAI_API_KEY
 
