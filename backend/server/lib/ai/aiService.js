@@ -15,6 +15,7 @@
  * implementations."
  */
 import crypto from "crypto"
+import "./prompts/index.js" // registers every feature prompt file's entries before any getPrompt() lookup below
 import { getPrompt } from "./prompts/registry.js"
 import { providerManager } from "./providerManager.js"
 import { executeWithRetry } from "./retryManager.js"
@@ -55,4 +56,14 @@ async function executePrompt(promptId, variables, opts = {}) {
 
 export const AIService = {
   executePrompt,
+
+  // Batch 1 (Phase 2.7) — retires lib/domainRole/aiProvider.js's local
+  // seam onto the platform-wide service. Returns null (never throws) on
+  // any failure, matching generateAiFeedback's existing "never blocks a
+  // submission" contract in routes/arenaDomainRole.js — that behavior
+  // stays in the route's own try/catch, unchanged; this method just
+  // returns whatever executePrompt gives back or lets the caller catch.
+  async generateArenaFeedback(vars) {
+    return executePrompt("arena.sqlFeedback", vars)
+  },
 }

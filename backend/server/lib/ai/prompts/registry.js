@@ -48,6 +48,9 @@ export function listPrompts() {
   return [...PROMPT_REGISTRY.values()].map(({ id, version, owner, description }) => ({ id, version, owner, description }))
 }
 
-// Feature prompt files import registerPrompt and call it at module load —
-// this aggregator imports each one so those registrations actually run.
-// Empty in Batch 0; each migration batch adds its import here.
+// Feature prompt files (arena.js, ...) import registerPrompt/getPrompt
+// FROM this file — they must never be imported back INTO this file (a
+// registry.js -> arena.js -> registry.js cycle breaks the module's own
+// PROMPT_REGISTRY const, which isn't hoisted the way the exported
+// functions above are). See index.js for where feature files are
+// actually aggregated — that file depends on this one, never the reverse.

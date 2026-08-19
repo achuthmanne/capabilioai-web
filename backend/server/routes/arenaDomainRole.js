@@ -19,7 +19,7 @@ import { evaluateMission } from "../lib/domainRole/evaluateMission.js"
 import { logger } from "../lib/logger.js"
 import { decodeCursor, encodeCursor } from "../lib/pagination.js"
 import { sqlValidateLimiter } from "../lib/rateLimiters.js"
-import { domainRoleAIProvider } from "../lib/domainRole/aiProvider.js"
+import { AIService } from "../lib/ai/aiService.js"
 
 // Best-effort, non-fatal — feeds the same global profiles.elo_rating the
 // header badge and Portfolio tier read (see arenaCollegeStream.js's fuller
@@ -97,16 +97,11 @@ function summarizeRowsForFeedback(result, label) {
 async function generateAiFeedback({ prompt, sql, passed, score, reason, actual, expected }) {
   if (!process.env.GROQ_API_KEY) return null
   try {
-    const text = await domainRoleAIProvider.generateText([
-      {
-        role: "system",
-        content: "You coach students on SQL mission attempts. In 2-3 short sentences, explain the result plainly — what their query did, and what values it actually returned vs. what was expected — using ONLY the facts given. Never invent a pass/fail verdict or a score; those are already decided and given to you as fact. If the result FAILED, your tone must be direct and unambiguous that it failed — never encouraging, never softened to sound like a near-success, never vague about whether it worked. If it PASSED, be genuinely positive and specific about what was done right.",
-      },
-      {
-        role: "user",
-        content: `Mission: ${prompt}\nSubmitted SQL: ${sql}\nResult: ${passed ? "PASSED" : "FAILED"} (score ${score}/100)\nDeterministic reason: ${reason || "n/a"}\n${summarizeRowsForFeedback(actual, "Actual output")}\n${summarizeRowsForFeedback(expected, "Expected output")}`,
-      },
-    ], { max_tokens: 150, temperature: 0.4 })
+    const text = await AIService.generateArenaFeedback({
+      prompt, sql, passed, score, reason,
+      actualSummary: summarizeRowsForFeedback(actual, "Actual output"),
+      expectedSummary: summarizeRowsForFeedback(expected, "Expected output"),
+    })
     return text?.trim() || null
   } catch (err) {
     logger.error("[arenaDomainRole] AI feedback generation failed (non-blocking)", { err })
