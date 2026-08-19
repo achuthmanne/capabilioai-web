@@ -8,7 +8,6 @@
  * system end-to-end.
  */
 import { registerPrompt } from "./registry.js"
-import { GROQ_FAST } from "../../groq.js"
 
 registerPrompt({
   id: "arena.sqlFeedback",
@@ -28,5 +27,10 @@ registerPrompt({
     },
   ],
   responseSchema: null, // plain text, not JSON — nothing to validate against a schema
-  defaultOpts: { capability: "generateText", model: GROQ_FAST, maxTokens: 150, temperature: 0.4, json: false },
+  // modelTier (not a raw model string) — see modelRegistry.js. This is
+  // the exact bug the Phase 2.7 architecture refinement pass fixed: this
+  // entry used to hardcode `model: GROQ_FAST` ("openai/gpt-oss-20b", a
+  // Groq-specific ID) directly, which would have broken on any provider
+  // other than Groq.
+  defaultOpts: { capability: "generateText", modelTier: "fast", maxTokens: 150, temperature: 0.4, json: false },
 })

@@ -17,9 +17,10 @@
 import crypto from "crypto"
 import "./prompts/index.js" // registers every feature prompt file's entries before any getPrompt() lookup below
 import { getPrompt } from "./prompts/registry.js"
-import { providerManager } from "./providerManager.js"
+import { providerManager, getActiveProviderName } from "./providerManager.js"
 import { executeWithRetry } from "./retryManager.js"
 import { validateJSON, validateShape } from "./responseValidator.js"
+import { resolveModel } from "./modelRegistry.js"
 
 /**
  * @param {string} promptId — a registered prompts/registry.js entry id
@@ -49,18 +50,34 @@ async function executePrompt(promptId, variables, opts = {}) {
   // that preference on every executePrompt() call.
   const resolvedProvider = opts.provider || entry.defaultOpts.provider
   const resolvedFallback = opts.fallbackProvider || entry.defaultOpts.fallbackProvider
+  // Model selection is independent of provider selection (Phase 2.7
+  // architecture refinement, Requirement 4): a prompt declares an
+  // abstract modelTier ("fast"|"quality"), resolved here against
+  // whichever provider ends up serving the request — never a raw,
+  // provider-specific model string baked into the prompt entry. An
+  // explicit opts.model/entry.defaultOpts.model always wins if present
+  // (escape hatch for a caller that genuinely needs one exact model).
+  function resolveModelFor(providerName) {
+    return opts.model || callOpts.model || resolveModel(providerName || getActiveProviderName(), callOpts.modelTier)
+  }
 
   let result
   if (capability === "extractFromImage") {
     const { base64Image, mimeType, prompt } = entry.buildExtraction(variables)
     result = await executeWithRetry(
-      (providerOverride) => providerManager.extractFromImage(base64Image, mimeType, prompt, { ...callOpts, provider: providerOverride || resolvedProvider }),
+      (providerOverride) => {
+        const p = providerOverride || resolvedProvider
+        return providerManager.extractFromImage(base64Image, mimeType, prompt, { ...callOpts, provider: p, model: resolveModelFor(p) })
+      },
       { fallbackProvider: resolvedFallback, timeoutMs: opts.timeoutMs, maxRetries: opts.maxRetries }
     )
   } else {
     const messages = entry.buildMessages(variables)
     result = await executeWithRetry(
-      (providerOverride) => providerManager[capability](messages, { ...callOpts, provider: providerOverride || resolvedProvider }),
+      (providerOverride) => {
+        const p = providerOverride || resolvedProvider
+        return providerManager[capability](messages, { ...callOpts, provider: p, model: resolveModelFor(p) })
+      },
       { fallbackProvider: resolvedFallback, timeoutMs: opts.timeoutMs, maxRetries: opts.maxRetries }
     )
   }

@@ -27,14 +27,20 @@ import { gemini, geminiExtractImage } from "../../gemini.js"
 export const geminiAdapter = {
   name: "gemini",
 
-  async generateText(messages, { maxTokens = 2048, json = false } = {}) {
+  async generateText(messages, { model, maxTokens = 2048, json = false } = {}) {
     // gemini() takes a single prompt string, not a messages array (a real
     // shape difference from groq/claude/openai) — flatten the standard
     // {role, content} array into one prompt, preserving role labels so
     // multi-turn context isn't silently dropped.
     const prompt = messages.map(m => (m.role === "user" ? m.content : `[${m.role}] ${m.content}`)).join("\n\n")
-    const text = await gemini(prompt, { json, maxTokens })
-    return { text, model: "gemini-2.5-flash", inputTokens: null, outputTokens: null }
+    // `model` param added in the Phase 2.7 architecture refinement pass —
+    // previously silently dropped, which broke modelRegistry.js's
+    // resolution specifically for this adapter (today it still resolves
+    // to the same single gemini-2.5-flash model either way, but the
+    // plumbing needs to exist for the abstraction to be real).
+    const resolvedModel = model || "gemini-2.5-flash"
+    const text = await gemini(prompt, { model: resolvedModel, json, maxTokens })
+    return { text, model: resolvedModel, inputTokens: null, outputTokens: null }
   },
 
   async extractFromImage(base64Image, mimeType, prompt) {
