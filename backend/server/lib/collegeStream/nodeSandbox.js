@@ -36,7 +36,22 @@ export class NodeSandboxBusyError extends Error {}
 const MAX_CODE_LENGTH = 20_000
 const MAX_STDOUT_BYTES = 64 * 1024
 const DEFAULT_TIMEOUT_MS = 5_000
-const MEMORY_LIMIT_KB = 256 * 1024
+// 4GB, not pythonSandbox.js's 256MB (Vision Reset, 2026-08-20 — real
+// production bug, found via live submission verification on Render, not
+// hypothetical): `ulimit -v` bounds VIRTUAL address space, and V8 reserves
+// several GB of it at platform-init time (pointer-compression cage +
+// per-thread stacks for its own libuv threadpool) before a script's first
+// line even runs — completely independent of the script's actual memory
+// use. 256MB was copy-pasted from Python's limit (CPython has no
+// comparable up-front reservation, so it never hit this), and on Render's
+// Linux container it deterministically crashed `node` itself with
+// "Assertion failed: (0) == (uv_thread_create(...))" before the sandboxed
+// script could run — every node_runner submission failed. 4GB clears V8's
+// own startup reservation with headroom while still being a real ceiling
+// against a genuinely pathological allocation; wall-clock timeout+SIGKILL,
+// `ulimit -t` CPU time, and `ulimit -u` process count remain the primary,
+// unweakened defenses against runaway resource use.
+const MEMORY_LIMIT_KB = 4 * 1024 * 1024
 const CPU_LIMIT_SECONDS = 5
 const MAX_PROCESSES = 16
 // Separate concurrency budget from Python's — the two sandboxes share the
