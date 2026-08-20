@@ -130,6 +130,26 @@ async function generateCodeAiFeedback({ prompt, code, passed, score, reason, act
   }
 }
 
+// Vision Reset (2026-08-20) — frontend_runner's own feedback call.
+// `actual` is checkCssRules()'s raw result ({parsed, parseError, results});
+// checklistSummary is a plain-text render of it so the prompt doesn't need
+// to reason about JSON structure itself.
+async function generateFrontendAiFeedback({ prompt, css, passed, score, reason, actual }) {
+  if (!process.env.GROQ_API_KEY) return null
+  try {
+    const checklistSummary = actual?.parsed
+      ? actual.results.map(r => `${r.passed ? "✓" : "✗"} ${r.description}`).join("; ")
+      : `CSS failed to parse: ${actual?.parseError}`
+    const { data: text } = await AIService.generateFrontendMissionFeedback({
+      prompt, css, passed, score, reason, checklistSummary,
+    })
+    return text?.trim() || null
+  } catch (err) {
+    logger.error("[arenaDomainRole] Frontend AI feedback generation failed (non-blocking)", { err })
+    return null
+  }
+}
+
 // GET /api/arena/domain-role/:roleId/next-mission
 // Generic across ALL 44 seeded domain_roles, not just Data Analyst — this
 // is what makes "design for every role at once" possible without a new
@@ -504,7 +524,7 @@ router.get("/missions/:id", async (req, res) => {
   try {
     const { data: mission, error } = await supabaseAdmin
       .from("domain_missions")
-      .select("id, title, prompt, difficulty, elo_reward, time_limit_minutes, panel_type, domain_role_id, dataset, company, manager, sprint, estimated_minutes")
+      .select("id, title, prompt, difficulty, elo_reward, time_limit_minutes, panel_type, domain_role_id, dataset, company, manager, sprint, estimated_minutes, rubric")
       .eq("id", req.params.id)
       .maybeSingle()
     if (error) throw error
@@ -529,6 +549,18 @@ router.get("/missions/:id", async (req, res) => {
         manager: mission.manager,
         sprint: mission.sprint,
         estimated_minutes: mission.estimated_minutes,
+        // Ticket context only — never expected_stdout/expected_result/
+        // timeout_ms, which would leak the grading answer to the client
+        // (see this route's own header comment on dataset_preview above,
+        // same discipline extended to rubric).
+        starter_code: mission.rubric?.starter_code ?? null,
+        starter_query: mission.rubric?.starter_query ?? null,
+        requirements: mission.rubric?.requirements ?? null,
+        acceptance_criteria: mission.rubric?.acceptance_criteria ?? null,
+        // frontend_runner only — the FIXED HTML markup the student's CSS
+        // renders against (never editable, never graded — only starter_code,
+        // the CSS, is submitted/scored). See cssRuleChecker.js.
+        html: mission.rubric?.html ?? null,
       },
     })
   } catch (err) {
@@ -695,12 +727,18 @@ router.post("/missions/:id/submit", requireAuth, async (req, res) => {
     // Best-effort — never blocks the response, never changes score/passed/elo.
     // Branches on panel_type family: sql_runner's actual has
     // {columns,rows}; the code-execution panel types (python_runner,
-    // node_runner) share {stdout,stderr} — genuinely different shapes,
-    // not something one prompt/vars set can honestly cover (see
+    // node_runner) share {stdout,stderr}; frontend_runner has
+    // {parsed,parseError,results} — three genuinely different shapes, not
+    // something one prompt/vars set can honestly cover (see
     // generateCodeAiFeedback's header comment).
     const CODE_EXECUTION_PANEL_TYPES = new Set(["python_runner", "node_runner"])
     const isCodeExecution = CODE_EXECUTION_PANEL_TYPES.has(mission.panel_type)
-    const aiFeedback = isCodeExecution
+    const isFrontendExecution = mission.panel_type === "frontend_runner"
+    const aiFeedback = isFrontendExecution
+      ? await generateFrontendAiFeedback({
+          prompt: mission.prompt, css: sql, passed: comparison.passed, score: comparison.score, reason: comparison.reason, actual,
+        })
+      : isCodeExecution
       ? await generateCodeAiFeedback({
           prompt: mission.prompt, code: sql, passed: comparison.passed, score: comparison.score, reason: comparison.reason, actual,
         })
@@ -713,7 +751,9 @@ router.post("/missions/:id/submit", requireAuth, async (req, res) => {
     // reason — stored as-attempted so History can render it later without
     // re-running the sandbox (which could drift if seed data/rubric is
     // ever edited — a record of what was true at submission time).
-    const resultJson = isCodeExecution
+    const resultJson = isFrontendExecution
+      ? { parsed: actual.parsed, parseError: actual.parseError, checks: actual.results }
+      : isCodeExecution
       ? { stdout: actual.stdout, stderr: actual.stderr }
       : { columns: actual.columns, rows: actual.rows }
 

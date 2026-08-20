@@ -120,30 +120,38 @@ function extractRetryDelayMs(err, fallbackMs = 20000) {
   return match ? Math.ceil(parseFloat(match[1]) * 1000) + 1000 : fallbackMs
 }
 
+// Vision Reset (2026-08-20): the live Data Analyst missions predate the
+// "starterQuery is broken, fix it" ticket schema (schema v1 had no
+// starterQuery field), so they can't demonstrate the new shape — hand-
+// authored here instead, same bootstrap move as the Node/Python
+// generators' HARDCODED_TICKET_FEWSHOT. Never inserted.
+const HARDCODED_TICKET_FEWSHOT = [{
+  difficulty: "medium",
+  title: "Weekly report double-counts repeat customers",
+  prompt: "Finance flagged that the weekly active-customer report is overcounting — the number never matches their manual tally. The query below is what's currently running. Fix it so each customer is counted once per city, per the table below (orders: id, customer_name, city, amount, order_date).",
+  dataset: { tableName: "orders", columns: ["id", "customer_name", "city", "amount", "order_date"], rows: [[1, "Aarav Shah", "Pune", 1200, "2026-07-01"], [2, "Aarav Shah", "Pune", 800, "2026-07-03"], [3, "Isha Rao", "Mumbai", 500, "2026-07-02"], [4, "Kabir Nair", "Pune", 300, "2026-07-05"], [5, "Isha Rao", "Mumbai", 700, "2026-07-06"]] },
+  starterQuery: "SELECT city, COUNT(*) AS customer_count FROM orders GROUP BY city",
+  referenceQuery: "SELECT city, COUNT(DISTINCT customer_name) AS customer_count FROM orders GROUP BY city",
+  expected_result: { columns: ["city", "customer_count"], rows: [["Pune", 2], ["Mumbai", 1]] },
+  match_mode: "unordered_rows",
+  company: "Northbridge Retail Pvt Ltd", manager: "Priya Shah, Analytics Manager", sprint: "Sprint 9",
+}]
+
 async function fetchFewShotExamples() {
-  const { data, error } = await supabaseAdmin
-    .from("domain_missions")
-    .select("title,difficulty,prompt,dataset,expected_result,match_mode,company,manager,sprint")
-    .eq("domain_role_id", "data")
-    .order("created_at")
-  if (error) throw error
-  if (!data || data.length === 0) throw new Error("No Data Analyst missions found to use as few-shot examples — aborting.")
-  return data
+  return HARDCODED_TICKET_FEWSHOT
 }
 
 function buildFewShotBlock(examples) {
-  // All three real examples share one dataset — show it once, then each
-  // mission's prompt/query/expected_result, to keep the few-shot block
-  // compact rather than repeating an identical dataset three times.
-  const shared = examples[0].dataset
-  const datasetBlock = JSON.stringify(shared, null, 0)
   const missionBlocks = examples.map((e, i) => `Example ${i + 1} (${e.difficulty}):
   title: ${e.title}
   prompt: ${e.prompt}
+  dataset: ${JSON.stringify(e.dataset)}
+  starterQuery (BROKEN — this is what ships in the editor): ${e.starterQuery}
+  referenceQuery (the fix): ${e.referenceQuery}
   expected_result: ${JSON.stringify(e.expected_result)}
   match_mode: ${e.match_mode}
   company/manager/sprint: ${e.company} / ${e.manager} / ${e.sprint}`).join("\n\n")
-  return `These three real, live missions all use this ONE shared dataset:\n${datasetBlock}\n\n${missionBlocks}`
+  return missionBlocks
 }
 
 // Single optional-injection point (evolutionary architecture, not a new
@@ -277,6 +285,21 @@ async function attemptGeneration(role, difficulty, fewShotBlock, existingMission
     return { rejected: `self-inconsistent: claimed expected_result doesn't match what referenceQuery actually produces (${comparison.reason})` }
   }
 
+  // Vision Reset integrity check (same discipline as the Node/Python
+  // generators' starterCode check): starterQuery is claimed to be WRONG —
+  // verify that by really running it against the same dataset, never trust
+  // the AI's claim that it's broken.
+  let starterActual
+  try {
+    starterActual = await runAgainstDataset(parsed.dataset, parsed.starterQuery)
+  } catch {
+    starterActual = null // a starterQuery that doesn't even run is still a legitimate bug for a junior to diagnose
+  }
+  const starterMatchesExpected = starterActual && compareResults(starterActual, parsed.expected_result, parsed.match_mode).passed
+  if (starterMatchesExpected) {
+    return { rejected: "starter query already produces the correct result — no real bug for the student to fix" }
+  }
+
   const dupReason = isDuplicateOfExisting(parsed, existingMissions)
   if (dupReason) return { rejected: dupReason }
 
@@ -302,6 +325,19 @@ async function attemptGeneration(role, difficulty, fewShotBlock, existingMission
       company: String(parsed.company || "").slice(0, 100) || "Capabilio Partner Co.",
       manager: String(parsed.manager || "").slice(0, 100) || "Team Lead",
       sprint: String(parsed.sprint || "").slice(0, 100) || "Week 1",
+      rubric: {
+        starter_query: parsed.starterQuery,
+        requirements: parsed.requirements,
+        acceptance_criteria: parsed.acceptanceCriteria,
+      },
+      // Vision Reset (2026-08-20): previously never persisted anywhere —
+      // harmless before (sql_runner grades off expected_result/match_mode
+      // alone, never reference_solution), but a real gap once SQL missions
+      // also ship a starter_query "bug" — nothing recorded what the actual
+      // fix was. Stored for the same reason python_runner/node_runner
+      // already store theirs: consistency, and a real future "show the
+      // reference fix" affordance. Still never consulted for grading.
+      reference_solution: parsed.referenceQuery,
       source: "ai_generated",
     },
   }

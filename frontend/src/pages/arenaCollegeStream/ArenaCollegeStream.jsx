@@ -1467,6 +1467,13 @@ export default function ArenaCollegeStream({ userData, onNavigate, user, setUser
     arenaDomainRoleApi.getMission(mission.id)
       .then(res => {
         setDomainMission(res.mission)
+        // Vision Reset: real Week-1 work means inheriting someone else's
+        // (broken) code, not typing into a blank file — seed the editor
+        // with the ticket's starter artifact when the mission has one.
+        // Older missions generated before this schema have neither field,
+        // and correctly fall back to an empty editor.
+        if (res.mission?.starter_code) setCode(res.mission.starter_code)
+        if (res.mission?.starter_query) setSql(res.mission.starter_query)
         setLevel("domainMission")
         // Deadline is a countdown display only (informational pressure) —
         // reaching zero does NOT block submission. "task remains until
@@ -1554,7 +1561,7 @@ export default function ArenaCollegeStream({ userData, onNavigate, user, setUser
   // still plain lookups) — this is the one integration point translating
   // this page's own state into whichever shape the resolved workspace
   // component expects, same role getPanelMetadata() plays for `meta` above.
-  const CODE_EXECUTION_PANEL_TYPES = new Set(["python_runner", "node_runner"])
+  const CODE_EXECUTION_PANEL_TYPES = new Set(["python_runner", "node_runner", "frontend_runner"])
   const isCodeExecution = CODE_EXECUTION_PANEL_TYPES.has(domainMission?.panel_type)
   const workspace = {
     mission: domainMission,

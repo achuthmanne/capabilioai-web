@@ -72,10 +72,35 @@ function evaluateStdoutMatch(actual, mission) {
   }
 }
 
+// Fourth real entry (Vision Reset, 2026-08-20): frontend_runner. `actual`
+// is executeFrontendMission's raw checkCssRules() result — a parse status
+// plus one pass/fail per rubric.checks entry, never a claimed verdict.
+// checklist reuses the exact ChecklistPanel shape evaluateSqlExactMatch's
+// buildChecklist() already produces ({label, passed}[]) so the frontend
+// can render it with the SAME component, not a new one.
+function evaluateCssRuleMatch(actual, mission) {
+  if (!actual.parsed) {
+    return { passed: false, score: 0, reason: `CSS failed to parse: ${actual.parseError}`, checklist: null, insight: null }
+  }
+  const total = actual.results.length
+  const passedCount = actual.results.filter(r => r.passed).length
+  const passed = total > 0 && passedCount === total
+  const checklist = actual.results.map((r, i) => ({ key: `check_${i}`, label: r.description, passed: r.passed }))
+  const failedDescriptions = actual.results.filter(r => !r.passed).map(r => r.description)
+  return {
+    passed,
+    score: total > 0 ? Math.round((passedCount / total) * 100) : 0,
+    reason: passed ? null : `Not yet meeting: ${failedDescriptions.join("; ")}`,
+    checklist,
+    insight: passed ? "All required styles are in place." : `${passedCount}/${total} requirements met.`,
+  }
+}
+
 const EVALUATION_REGISTRY = {
   sql_runner: evaluateSqlExactMatch,
   python_runner: evaluateStdoutMatch,
   node_runner: evaluateStdoutMatch,
+  frontend_runner: evaluateCssRuleMatch,
 }
 
 // Returns {passed, score, reason, checklist, insight}. Caller (the submit

@@ -3,19 +3,23 @@
  *
  * Tab container: Brief / Attachments / Requirements / Acceptance Criteria /
  * Hints / Reference Docs / Submission Checklist. Real, upstream data exists
- * for exactly two of these today — everything else renders an honest
- * "not available for this mission" placeholder (matching
- * WorkspaceRenderer.jsx's UnsupportedPanel precedent), never fabricated
- * content:
+ * for four of these today — everything else renders an honest "not
+ * available for this mission" placeholder (matching WorkspaceRenderer.jsx's
+ * UnsupportedPanel precedent), never fabricated content:
  *   - Brief: `mission.prompt` — real, always present.
+ *   - Requirements / Acceptance Criteria: `mission.requirements` /
+ *     `mission.acceptance_criteria` — real, AI-authored alongside the
+ *     mission's starter code as part of the ticket (Vision Reset,
+ *     2026-08-20 — see prompts/domainRole.js), null for missions generated
+ *     before that schema existed, which correctly falls back to the
+ *     placeholder.
  *   - Submission Checklist: `submission.result.checklist` — real, but only
  *     populated after a submission (see workspaces/sql/SqlWorkspace.jsx's
  *     own `<ChecklistPanel checklist={submission.result.checklist} />`
  *     usage — same field, same shared component, reused here rather than
  *     re-implemented).
- * Attachments/Requirements/Acceptance Criteria/Hints/Reference Docs have no
- * matching column on domain_missions or experiments today — confirmed, not
- * assumed.
+ * Attachments/Hints/Reference Docs have no matching column on
+ * domain_missions today — confirmed, not assumed.
  *
  * `activeTab`/`onActiveTabChange` are optional controlled props (same
  * uncontrolled-fallback pattern as WorkspaceToolbar's fontScale) — local
@@ -40,6 +44,15 @@ function Placeholder({ label }) {
   return <div style={{ fontSize: 12, color: ws.ink4, lineHeight: 1.6 }}>{label} isn't available for this mission yet.</div>
 }
 
+function BulletList({ items }) {
+  const ws = useShellTokens()
+  return (
+    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: ws.ink2, lineHeight: 1.7 }}>
+      {items.map((item, i) => <li key={i}>{item}</li>)}
+    </ul>
+  )
+}
+
 function TabContent({ id, workspace }) {
   const ws = useShellTokens()
   const { mission, submission } = workspace
@@ -47,12 +60,20 @@ function TabContent({ id, workspace }) {
   if (id === "brief") {
     return <div style={{ fontSize: 13, color: ws.ink2, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{mission?.prompt || "No brief available."}</div>
   }
+  if (id === "requirements") {
+    if (!mission?.requirements?.length) return <Placeholder label="Requirements" />
+    return <BulletList items={mission.requirements} />
+  }
+  if (id === "acceptance") {
+    if (!mission?.acceptance_criteria?.length) return <Placeholder label="Acceptance criteria" />
+    return <BulletList items={mission.acceptance_criteria} />
+  }
   if (id === "checklist") {
     const checklist = submission?.result?.checklist
     if (!checklist) return <div style={{ fontSize: 12, color: ws.ink4 }}>Submit your work to see the checklist.</div>
     return <ChecklistPanel checklist={checklist} />
   }
-  const labels = { attachments: "Attachments", requirements: "Requirements", acceptance: "Acceptance criteria", hints: "Hints", docs: "Reference docs" }
+  const labels = { attachments: "Attachments", hints: "Hints", docs: "Reference docs" }
   return <Placeholder label={labels[id] || id} />
 }
 

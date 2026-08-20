@@ -146,4 +146,12 @@ export const AIService = {
   async generateCodeMissionFeedback(vars) {
     return executePrompt("domainRole.codeMissionFeedback", vars)
   },
+
+  // Vision Reset (2026-08-20) — frontend_runner's own feedback wording.
+  // Checklist-shaped (which structural CSS checks passed/failed), not
+  // stdout-shaped like generateCodeMissionFeedback — genuinely different
+  // grading output, same non-fatal thin-wrapper contract.
+  async generateFrontendMissionFeedback(vars) {
+    return executePrompt("domainRole.frontendMissionFeedback", vars)
+  },
 }

@@ -76,6 +76,22 @@ export const PANEL_METADATA = {
     supportsBrowser: false,
     supportsConsole: false,
   },
+  frontend_runner: {
+    workspace_title: "Frontend Workstation",
+    workspace_icon: "🖥️",
+    workspace_description: "Fix real CSS bugs against fixed markup — see it live in a sandboxed browser preview, graded by real structural checks.",
+    supportsPreview: true, // real, live client-side iframe preview (see FrontendWorkspace.jsx) — not the server-side SQL /validate route
+    supportsSubmit: true,
+    supportsAIFeedback: true,
+    supportsTimer: true,
+    supportsHints: false,
+    supportsFiles: false,
+    supportsNotebook: false,
+    supportsCharts: false,
+    supportsTerminal: false,
+    supportsBrowser: true,
+    supportsConsole: false,
+  },
 }
 
 const FALLBACK_METADATA = {

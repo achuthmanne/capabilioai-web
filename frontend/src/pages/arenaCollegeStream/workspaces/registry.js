@@ -1,6 +1,7 @@
 import SqlWorkspace from "./sql/SqlWorkspace"
 import PythonWorkspace from "./python/PythonWorkspace"
 import NodeWorkspace from "./node/NodeWorkspace"
+import FrontendWorkspace from "./frontend/FrontendWorkspace"
 
 // panel_type -> the component that renders that panel's mission workspace.
 // python_runner (Career Workspace refactor, 2026-08-19) is the second real
@@ -15,6 +16,7 @@ export const PANEL_REGISTRY = {
   sql_runner: SqlWorkspace,
   python_runner: PythonWorkspace,
   node_runner: NodeWorkspace,
+  frontend_runner: FrontendWorkspace,
 }
 
 // Role -> workspace resolution is intentionally mission-level

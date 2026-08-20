@@ -37,6 +37,7 @@
 import { runAgainstDataset } from "./sqlSandbox.js"
 import { runPython, scanForDangerousPatterns, checkPythonAvailable, checkPackagesAvailable, PythonSandboxError } from "../collegeStream/pythonSandbox.js"
 import { runNode, scanForDangerousPatterns as scanNodeDangerousPatterns, checkNodeAvailable, NodeSandboxError } from "../collegeStream/nodeSandbox.js"
+import { checkCssRules } from "./cssRuleChecker.js"
 
 async function executeSqlMission(mission, sql) {
   return runAgainstDataset(mission.dataset, sql) // may throw SqlSandboxError — propagates unchanged
@@ -70,10 +71,24 @@ async function executeNodeMission(mission, code) {
   return runNode(code, { timeoutMs: mission.rubric?.timeout_ms })
 }
 
+// Fourth real case (Vision Reset, 2026-08-20): frontend_runner. Not a
+// subprocess sandbox at all — see cssRuleChecker.js's header for why a
+// real headless browser is deliberately out of scope this phase. The
+// submitted `sql` param here is CSS text; `mission.rubric.checks` is the
+// list of structural declarations the ticket requires. Grading still
+// splits execute-then-evaluate the same way every other panel type does —
+// this only ever produces the raw check results, never a pass/fail
+// verdict (evaluateMission.js's evaluateCssRuleMatch decides that).
+async function executeFrontendMission(mission, cssText) {
+  const checks = mission.rubric?.checks || []
+  return checkCssRules(cssText, checks)
+}
+
 const EXECUTION_REGISTRY = {
   sql_runner: executeSqlMission,
   python_runner: executePythonMission,
   node_runner: executeNodeMission,
+  frontend_runner: executeFrontendMission,
 }
 
 export async function executeMission(mission, sql) {

@@ -63,25 +63,37 @@ function extractRetryDelayMs(err, fallbackMs = 20000) {
   return match ? Math.ceil(parseFloat(match[1]) * 1000) + 1000 : fallbackMs
 }
 
+// Vision Reset (2026-08-20): same "no live example of the new shape exists
+// yet" situation as generateNodeDomainMissions.mjs — hand-authored ticket
+// examples with a deliberately buggy starterCode, never inserted.
+const HARDCODED_TICKET_FEWSHOT = [
+  {
+    difficulty: "easy",
+    title: "Fix off-by-one in train/test split ratio",
+    prompt: "A teammate wrote `split_dataset(rows, train_ratio)` for the churn-prediction pipeline, but the last data-quality review found the training set is one row short of the intended 80/20 split on a 10-row sample. Fix the function so it returns exactly `train_ratio * len(rows)` rows (rounded down) in the training set, with the rest in the test set. Run it against the fixed sample list defined in the file and print `len(train), len(test)` as a comma-separated line.",
+    starterCode: "def split_dataset(rows, train_ratio):\n    cut = int(len(rows) * train_ratio) - 1\n    return rows[:cut], rows[cut:]\n\nrows = list(range(10))\ntrain, test = split_dataset(rows, 0.8)\nprint(f\"{len(train)},{len(test)}\")",
+    expected_stdout: "8,2",
+  },
+  {
+    difficulty: "medium",
+    title: "Confusion-matrix helper miscounts false positives",
+    prompt: "QA on the fraud-detection model reported the dashboard's false-positive count doesn't match their manual audit. The bug is in `confusion_counts(y_true, y_pred)` in the shared metrics module. Fix it so it correctly counts true positives, false positives, true negatives, and false negatives for the fixed sample arrays defined in the file, then print them as a comma-separated line in that exact order.",
+    starterCode: "def confusion_counts(y_true, y_pred):\n    tp = fp = tn = fn = 0\n    for t, p in zip(y_true, y_pred):\n        if t == 1 and p == 1:\n            tp += 1\n        elif t == 1 and p == 0:\n            fp += 1\n        elif t == 0 and p == 0:\n            tn += 1\n        else:\n            fn += 1\n    return tp, fp, tn, fn\n\ny_true = [1, 0, 1, 0, 1, 0]\ny_pred = [1, 0, 0, 0, 1, 1]\ntp, fp, tn, fn = confusion_counts(y_true, y_pred)\nprint(f\"{tp},{fp},{tn},{fn}\")",
+    expected_stdout: "2,1,2,1",
+  },
+]
+
 async function fetchFewShotExamples() {
-  const { data, error } = await supabaseAdmin
-    .from("experiments")
-    .select("title,difficulty,prompt,reference_solution,rubric")
-    .eq("rubric->>type", "python_stdout_match")
-    .order("created_at")
-    .limit(3)
-  if (error) throw error
-  if (!data || data.length === 0) throw new Error("No live python_stdout_match experiments found to use as few-shot examples — aborting.")
-  return data
+  return HARDCODED_TICKET_FEWSHOT
 }
 
 function buildFewShotBlock(examples) {
   return examples.map((e, i) => `Example ${i + 1} (${e.difficulty}):
   title: ${e.title}
   prompt: ${e.prompt}
-  reference_solution:
-${e.reference_solution}
-  expected_stdout: ${e.rubric?.expected_stdout}`).join("\n\n")
+  starterCode (BUGGY — this is what ships in the editor):
+${e.starterCode}
+  expected_stdout after the fix: ${e.expected_stdout}`).join("\n\n")
 }
 
 function normalizeForDedup(text) {
@@ -146,6 +158,9 @@ async function attemptGeneration(role, difficulty, fewShotBlock, existingMission
   if (scanForDangerousPatterns(parsed.referenceSolution)) {
     return { rejected: "reference solution uses a disallowed operation (file/network/system access)" }
   }
+  if (scanForDangerousPatterns(parsed.starterCode)) {
+    return { rejected: "starter code uses a disallowed operation (file/network/system access)" }
+  }
   if (parsed.usePackages && !checkPackagesAvailable()) {
     return { rejected: "mission requires numpy/pandas/scikit-learn but the sandbox venv isn't available in this environment" }
   }
@@ -160,6 +175,20 @@ async function attemptGeneration(role, difficulty, fewShotBlock, existingMission
   if (run.exitCode !== 0) return { rejected: `reference solution exited with code ${run.exitCode}: ${run.stderr.trim().slice(0, 200)}` }
   const expectedStdout = run.stdout.trim()
   if (!expectedStdout) return { rejected: "reference solution produced empty stdout — degenerate mission" }
+
+  // Vision Reset integrity check (see generateNodeDomainMissions.mjs's
+  // identical check for the full rationale): verify starterCode is really
+  // broken by really running it, never trust the AI's claim that it's buggy.
+  let starterRun
+  try {
+    starterRun = await runPython(parsed.starterCode, { timeoutMs: PYTHON_TIMEOUT_MS, usePackages: parsed.usePackages })
+  } catch (err) {
+    return { rejected: `starter code sandbox error: ${err.message}` }
+  }
+  const starterProducesCorrectOutput = !starterRun.timedOut && starterRun.exitCode === 0 && starterRun.stdout.trim() === expectedStdout
+  if (starterProducesCorrectOutput) {
+    return { rejected: "starter code already produces the correct output — no real bug for the student to fix" }
+  }
 
   const dupReason = isDuplicateOfExisting(parsed, existingMissions)
   if (dupReason) return { rejected: dupReason }
@@ -177,7 +206,18 @@ async function attemptGeneration(role, difficulty, fewShotBlock, existingMission
       elo_reward: ELO_REWARD_BY_DIFFICULTY[difficulty],
       time_limit_minutes: TIME_LIMIT_BY_DIFFICULTY[difficulty],
       estimated_minutes: TIME_LIMIT_BY_DIFFICULTY[difficulty],
-      rubric: { type: "python_stdout_match", timeout_ms: PYTHON_TIMEOUT_MS, usePackages: parsed.usePackages, expected_stdout: expectedStdout },
+      company: parsed.company.trim(),
+      manager: parsed.manager.trim(),
+      sprint: parsed.sprint.trim(),
+      rubric: {
+        type: "python_stdout_match",
+        timeout_ms: PYTHON_TIMEOUT_MS,
+        usePackages: parsed.usePackages,
+        expected_stdout: expectedStdout,
+        starter_code: parsed.starterCode,
+        requirements: parsed.requirements,
+        acceptance_criteria: parsed.acceptanceCriteria,
+      },
       reference_solution: parsed.referenceSolution,
       source: "ai_generated",
     },

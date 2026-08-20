@@ -1,18 +1,24 @@
 #!/usr/bin/env node
 /**
- * generateNodeDomainMissions.mjs — Phase 6 (Software Engineering roles).
+ * generateFrontendDomainMissions.mjs — Vision Reset (2026-08-20).
  *
- * Same integrity discipline and structure as generatePythonDomainMissions.mjs
- * (that file's own header documents the "never trust the AI's claimed
- * output, only its code" rule in full) — this is the node_runner sibling,
- * for roles whose real auraSkills are JS/Node-shaped: Software Engineer,
- * Backend Developer, Full Stack Developer, Frontend Developer (framed as
- * pure-function JS logic — see prompts/domainRole.js's
- * nodeMissionGeneration prompt for why).
+ * Generates real, checker-verified frontend_runner Domain Role missions —
+ * "Marketing reported the pricing cards break on mobile. Fix the
+ * responsive layout without changing desktop behaviour." style CSS bug
+ * tickets, per the product spec's own literal Frontend Developer example.
+ *
+ * Same non-negotiable integrity discipline as the sibling generators
+ * (generateNodeDomainMissions.mjs / generatePythonDomainMissions.mjs /
+ * generateDomainRoleMissions.mjs): the AI never gets to claim its own
+ * correctness. referenceCss is re-checked with the SAME checkCssRules()
+ * function real submissions are graded with (lib/domainRole/
+ * cssRuleChecker.js), and every check must pass. starterCss is also
+ * re-checked, and at least one check must FAIL — confirming the "bug" is
+ * real, not a cosmetic no-op.
  *
  * Usage:
- *   TARGET_ROLES=swe,backend,fullstack,frontend node scripts/generateNodeDomainMissions.mjs
- *   DELETE_MISSION_IDS=<uuid>,<uuid> TARGET_ROLES=swe node ... (replace stale content first)
+ *   TARGET_ROLES=frontend node scripts/generateFrontendDomainMissions.mjs
+ *   DELETE_MISSION_IDS=<uuid>,<uuid> TARGET_ROLES=frontend node ...
  */
 import dotenv from "dotenv"
 import { fileURLToPath } from "node:url"
@@ -24,7 +30,7 @@ dotenv.config({ path: join(__dirname, "..", ".env") })
 const { supabaseAdmin } = await import("../backend/server/lib/supabase.js")
 const { AIService } = await import("../backend/server/lib/ai/aiService.js")
 const { ValidationError } = await import("../backend/server/lib/ai/responseValidator.js")
-const { runNode, scanForDangerousPatterns, checkNodeAvailable } = await import("../backend/server/lib/collegeStream/nodeSandbox.js")
+const { checkCssRules } = await import("../backend/server/lib/domainRole/cssRuleChecker.js")
 const { getRoleConfig } = await import("../frontend/src/config/roleConfig.js")
 
 const DIFFICULTY_PLAN = ["easy", "easy", "medium", "hard"]
@@ -33,9 +39,8 @@ const TIME_LIMIT_BY_DIFFICULTY = { easy: 8, medium: 12, hard: 15 }
 const MAX_ATTEMPTS_PER_SLOT = 3
 const MAX_RATE_LIMIT_RETRIES = 5
 const GENERATION_PACING_MS = 12000
-const NODE_TIMEOUT_MS = 5000
 
-function log(msg) { console.log(`[generateNodeDomainMissions] ${msg}`) }
+function log(msg) { console.log(`[generateFrontendDomainMissions] ${msg}`) }
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)) }
 function isRateLimitError(err) { return err?.status === 429 || /rate_limit_exceeded|\b429\b/i.test(err?.message || "") }
 function extractRetryDelayMs(err, fallbackMs = 20000) {
@@ -43,41 +48,30 @@ function extractRetryDelayMs(err, fallbackMs = 20000) {
   return match ? Math.ceil(parseFloat(match[1]) * 1000) + 1000 : fallbackMs
 }
 
-// Vision Reset (2026-08-20): every existing node_runner mission predates
-// the "starter code + ticket" schema (schema v1 had no starterCode field
-// at all), so there is no live example to bootstrap the new shape from —
-// hand-authored here instead, same "hardcode the bootstrap example" move
-// generateCollegeStreamContent.mjs made borrowing CSE's real examples when
-// nothing else existed yet. These two are never inserted; they exist only
-// to show the model the STARTER-CODE-HAS-A-BUG shape.
-const HARDCODED_TICKET_FEWSHOT = [
-  {
-    difficulty: "easy",
-    title: "Fix expired-token bypass in JWT verification",
-    prompt: "QA flagged that /api/orders is returning data for users whose session should have expired hours ago. The auth team traced it to `verifyJwt` in the shared auth utils — the expiry check looks wrong. Fix `verifyJwt(payload, nowUnix)` so it correctly rejects an expired token. It should return `{valid:true}` for a payload whose `exp` is still in the future relative to `nowUnix`, and `{valid:false, reason:\"expired\"}` otherwise. Run it against the two sample payloads defined in the file and print each result on its own line via console.log.",
-    starterCode: "function verifyJwt(payload, nowUnix) {\n  if (payload.exp < nowUnix) {\n    return { valid: true };\n  }\n  return { valid: false, reason: \"expired\" };\n}\n\nconst active = { exp: 2000000000 };\nconst expired = { exp: 1000000000 };\nconst now = 1700000000;\nconsole.log(JSON.stringify(verifyJwt(active, now)));\nconsole.log(JSON.stringify(verifyJwt(expired, now)));",
-    expected_stdout: '{"valid":true}\n{"valid":false,"reason":"expired"}',
-  },
-  {
-    difficulty: "medium",
-    title: "Rate limiter lets through one extra request per window",
-    prompt: "Support escalated a ticket: the sliding-window rate limiter used on the checkout API is allowing 6 requests through when the limit is configured at 5. Fix `RateLimiter.allow(timestamp)` in the file below so it enforces the limit exactly. Run the provided fixed sequence of calls and print how many of the 7 calls were allowed, as a single number via console.log.",
-    starterCode: "class RateLimiter {\n  constructor(limit, windowMs) {\n    this.limit = limit;\n    this.windowMs = windowMs;\n    this.hits = [];\n  }\n  allow(ts) {\n    this.hits = this.hits.filter(h => ts - h < this.windowMs);\n    if (this.hits.length <= this.limit) {\n      this.hits.push(ts);\n      return true;\n    }\n    return false;\n  }\n}\n\nconst rl = new RateLimiter(5, 1000);\nconst calls = [0, 100, 200, 300, 400, 500, 600];\nlet allowed = 0;\nfor (const ts of calls) if (rl.allow(ts)) allowed++;\nconsole.log(allowed);",
-    expected_stdout: "5",
-  },
-]
-
-async function fetchFewShotExamples() {
-  return HARDCODED_TICKET_FEWSHOT
+const HARDCODED_TICKET_FEWSHOT = {
+  difficulty: "easy",
+  title: "Pricing cards don't stack on mobile",
+  prompt: "Marketing reported the pricing cards break on mobile — all three cards squeeze into one unreadable row below 500px instead of stacking. Fix the responsive layout without changing desktop behaviour.",
+  html: '<section class="pricing">\n  <div class="pricing-cards">\n    <div class="card">Basic</div>\n    <div class="card">Pro</div>\n    <div class="card">Enterprise</div>\n  </div>\n</section>',
+  starterCss: ".pricing-cards {\n  display: flex;\n  flex-direction: row;\n  gap: 16px;\n}\n.card {\n  flex: 1;\n  padding: 24px;\n  border: 1px solid #ddd;\n}",
+  referenceCss: ".pricing-cards {\n  display: flex;\n  flex-direction: row;\n  gap: 16px;\n}\n.card {\n  flex: 1;\n  padding: 24px;\n  border: 1px solid #ddd;\n}\n@media (max-width: 500px) {\n  .pricing-cards {\n    flex-direction: column;\n  }\n}",
+  checks: [
+    { description: "Pricing cards stack vertically below 500px", selector: ".pricing-cards", property: "flex-direction", expectedValue: "column", mediaMaxWidth: 500 },
+    { description: "Desktop layout keeps cards in a row", selector: ".pricing-cards", property: "flex-direction", expectedValue: "row", mediaMaxWidth: null },
+  ],
 }
 
-function buildFewShotBlock(examples) {
-  return examples.map((e, i) => `Example ${i + 1} (${e.difficulty}):
+function buildFewShotBlock() {
+  const e = HARDCODED_TICKET_FEWSHOT
+  return `Example (${e.difficulty}):
   title: ${e.title}
   prompt: ${e.prompt}
-  starterCode (BUGGY — this is what ships in the editor):
-${e.starterCode}
-  expected_stdout after the fix: ${e.expected_stdout}`).join("\n\n")
+  html: ${e.html}
+  starterCss (BUGGY — this is what ships in the editor):
+${e.starterCss}
+  referenceCss (the fix):
+${e.referenceCss}
+  checks: ${JSON.stringify(e.checks)}`
 }
 
 function normalizeForDedup(text) {
@@ -111,18 +105,18 @@ function remainingSlots(existingMissions) {
   return remaining
 }
 
-async function reviewMissionQuality(role, difficulty, mission) {
+async function reviewMissionQuality(difficulty, mission) {
   let review
   try {
-    const { data } = await AIService.executePrompt("domainRole.nodeMissionReview", {
-      roleLabel: role.label, roleSkillsList: role.auraSkills.join(", "), difficulty, title: mission.title, prompt: mission.prompt,
+    const { data } = await AIService.executePrompt("domainRole.frontendMissionReview", {
+      difficulty, title: mission.title, prompt: mission.prompt,
     })
     review = data
   } catch (err) {
     if (err instanceof ValidationError) return "quality review returned invalid JSON — treating as a failed review, not a pass"
     throw err
   }
-  const failed = !review.matches_real_skill || !review.is_realistic_production_task || !review.junior_appropriate || !review.teaches_measurable_skill || !review.not_toy_problem
+  const failed = !review.is_realistic_production_task || !review.junior_appropriate || !review.teaches_measurable_skill || !review.feels_like_a_ticket
   if (failed) return `quality review rejected: ${review.reason || "no reason given"}`
   return null
 }
@@ -130,61 +124,41 @@ async function reviewMissionQuality(role, difficulty, mission) {
 async function attemptGeneration(role, difficulty, fewShotBlock, existingMissions) {
   let parsed
   try {
-    const { data } = await AIService.executePrompt("domainRole.nodeMissionGeneration", {
-      roleLabel: role.label, roleSkillsList: role.auraSkills.join(", "), difficulty, fewShotBlock,
-    })
+    const { data } = await AIService.executePrompt("domainRole.frontendMissionGeneration", { difficulty, fewShotBlock })
     parsed = data
   } catch (err) {
     if (err instanceof ValidationError) return { rejected: `AI response failed validation: ${err.message}` }
     throw err
   }
 
-  if (scanForDangerousPatterns(parsed.referenceSolution)) {
-    return { rejected: "reference solution uses a disallowed operation (fs/network/process access)" }
-  }
-  if (scanForDangerousPatterns(parsed.starterCode)) {
-    return { rejected: "starter code uses a disallowed operation (fs/network/process access)" }
+  // Integrity gate 1: referenceCss must make EVERY check pass, verified by
+  // really running the same checker real submissions are graded with.
+  const refResult = checkCssRules(parsed.referenceCss, parsed.checks)
+  if (!refResult.parsed) return { rejected: `referenceCss failed to parse: ${refResult.parseError}` }
+  const refAllPass = refResult.results.every(r => r.passed)
+  if (!refAllPass) {
+    const failing = refResult.results.filter(r => !r.passed).map(r => r.description)
+    return { rejected: `self-inconsistent: referenceCss doesn't satisfy its own checks (${failing.join("; ")})` }
   }
 
-  let run
-  try {
-    run = await runNode(parsed.referenceSolution, { timeoutMs: NODE_TIMEOUT_MS })
-  } catch (err) {
-    return { rejected: `sandbox error: ${err.message}` }
-  }
-  if (run.timedOut) return { rejected: "reference solution timed out or exceeded resource limits" }
-  if (run.exitCode !== 0) return { rejected: `reference solution exited with code ${run.exitCode}: ${run.stderr.trim().slice(0, 200)}` }
-  const expectedStdout = run.stdout.trim()
-  if (!expectedStdout) return { rejected: "reference solution produced empty stdout — degenerate mission" }
-
-  // Vision Reset integrity check: starterCode is claimed to be BROKEN — verify
-  // that by really running it too. If it happens to already produce the
-  // correct output, there is no bug for the student to find, and the
-  // "ticket" framing would be a lie (see prompts/domainRole.js's header on
-  // this mission shape). Timeouts/non-zero exit are acceptable "brokenness"
-  // here (unlike for referenceSolution above) since a crash is still a
-  // legitimate — if slightly cruder — bug for a junior to diagnose.
-  let starterRun
-  try {
-    starterRun = await runNode(parsed.starterCode, { timeoutMs: NODE_TIMEOUT_MS })
-  } catch (err) {
-    return { rejected: `starter code sandbox error: ${err.message}` }
-  }
-  const starterProducesCorrectOutput = !starterRun.timedOut && starterRun.exitCode === 0 && starterRun.stdout.trim() === expectedStdout
-  if (starterProducesCorrectOutput) {
-    return { rejected: "starter code already produces the correct output — no real bug for the student to fix" }
+  // Integrity gate 2: starterCss must be REALLY broken — at least one
+  // check must fail, or the "bug" is fictional.
+  const starterResult = checkCssRules(parsed.starterCss, parsed.checks)
+  const starterAllPass = starterResult.parsed && starterResult.results.every(r => r.passed)
+  if (starterAllPass) {
+    return { rejected: "starter CSS already satisfies every check — no real bug for the student to fix" }
   }
 
   const dupReason = isDuplicateOfExisting(parsed, existingMissions)
   if (dupReason) return { rejected: dupReason }
 
-  const reviewReason = await reviewMissionQuality(role, difficulty, parsed)
+  const reviewReason = await reviewMissionQuality(difficulty, parsed)
   if (reviewReason) return { rejected: reviewReason }
 
   return {
     mission: {
       domain_role_id: role.id,
-      panel_type: "node_runner",
+      panel_type: "frontend_runner",
       title: parsed.title.trim(),
       prompt: parsed.prompt.trim(),
       difficulty,
@@ -195,14 +169,14 @@ async function attemptGeneration(role, difficulty, fewShotBlock, existingMission
       manager: parsed.manager.trim(),
       sprint: parsed.sprint.trim(),
       rubric: {
-        type: "node_stdout_match",
-        timeout_ms: NODE_TIMEOUT_MS,
-        expected_stdout: expectedStdout,
-        starter_code: parsed.starterCode,
+        type: "css_rule_match",
+        html: parsed.html,
+        checks: parsed.checks,
+        starter_code: parsed.starterCss,
         requirements: parsed.requirements,
         acceptance_criteria: parsed.acceptanceCriteria,
       },
-      reference_solution: parsed.referenceSolution,
+      reference_solution: parsed.referenceCss,
       source: "ai_generated",
     },
   }
@@ -251,19 +225,14 @@ async function generateForRole(role, fewShotBlock, existingMissions = []) {
       result.rejections.push({ difficulty: "(insert)", attempt: 0, reason: `DB insert failed: ${error.message}` })
     } else {
       result.inserted = missionsToInsert.length
-      await supabaseAdmin.from("domain_roles").update({ primary_panel_type: "node_runner" }).eq("id", role.id)
+      await supabaseAdmin.from("domain_roles").update({ primary_panel_type: "frontend_runner" }).eq("id", role.id)
     }
   }
   return result
 }
 
 async function main() {
-  if (!checkNodeAvailable()) throw new Error("node isn't available — cannot verify any mission by real execution. Aborting rather than generating unverifiable content.")
-
-  log("Fetching few-shot style examples…")
-  const examples = await fetchFewShotExamples()
-  const fewShotBlock = buildFewShotBlock(examples)
-  log(`Loaded ${examples.length} few-shot examples.`)
+  const fewShotBlock = buildFewShotBlock()
 
   const deleteIds = String(process.env.DELETE_MISSION_IDS || "").split(",").map(s => s.trim()).filter(Boolean)
   if (deleteIds.length > 0) {
@@ -276,7 +245,7 @@ async function main() {
   if (targetRoleIds.length === 0) throw new Error("TARGET_ROLES is required for this script.")
 
   const { data: existingMissionRows, error: missionsErr } = await supabaseAdmin
-    .from("domain_missions").select("id,domain_role_id,title,prompt,difficulty,panel_type").in("domain_role_id", targetRoleIds).eq("panel_type", "node_runner")
+    .from("domain_missions").select("id,domain_role_id,title,prompt,difficulty,panel_type").in("domain_role_id", targetRoleIds).eq("panel_type", "frontend_runner")
   if (missionsErr) throw missionsErr
   const missionsByRole = new Map()
   for (const m of existingMissionRows || []) {
@@ -289,7 +258,7 @@ async function main() {
     const role = getRoleConfig(roleId)
     if (role.id !== roleId) { log(`⚠ "${roleId}" didn't resolve to itself in roleConfig.js (got "${role.id}") — skipping`); continue }
     const existingMissions = missionsByRole.get(roleId) || []
-    log(`Generating node_runner missions for "${role.label}" (${existingMissions.length} existing node_runner mission(s))…`)
+    log(`Generating frontend_runner missions for "${role.label}" (${existingMissions.length} existing frontend_runner mission(s))…`)
     const result = await generateForRole(role, fewShotBlock, existingMissions)
     results.push(result)
     if (result.alreadyComplete) log(`  -> already has all ${DIFFICULTY_PLAN.length} slots filled`)
@@ -313,6 +282,6 @@ async function main() {
 }
 
 main().catch(err => {
-  console.error("[generateNodeDomainMissions] FATAL:", err)
+  console.error("[generateFrontendDomainMissions] FATAL:", err)
   process.exit(1)
 })
