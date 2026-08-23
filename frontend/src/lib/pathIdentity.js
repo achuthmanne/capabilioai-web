@@ -21,13 +21,13 @@
  * entry intentionally maps to path:"institution", instType:"College", not
  * a literal "college" string.
  */
-import { GraduationCap, Briefcase, Sparkles, Landmark } from "lucide-react"
+import { GraduationCap, Briefcase, Crown, Landmark } from "lucide-react"
 
 export const PATH_COLORS = {
   student: "#FF5701",
-  professional: "#8B5CF6",
-  executive: "#C9A84C",
-  institution: "#D97706",
+  professional: "#2563EB",
+  executive: "#059669",
+  institution: "#7C3AED",
 }
 
 export function withAlpha(hex, alpha) {
@@ -50,15 +50,16 @@ export const PRIMARY_PATHS = [
     points: ["Auto-verified timeline", "Market intelligence", "Passive job matching"],
   },
   {
-    key: "executive", path: "executive", icon: Sparkles, title: "Executive",
+    key: "executive", path: "executive", icon: Crown, title: "Executive",
     color: PATH_COLORS.executive,
     desc: "Invite-only authority profile. Sell your time, verified by Capabilio.",
     points: ["Invite-only", "Verified authority profile", "Time marketplace"],
+    comingSoon: true,
   },
   {
-    key: "institution", path: "institution", instType: "College", icon: Landmark, title: "College",
+    key: "institution", path: "institution", instType: "Organization", icon: Landmark, title: "Organization",
     color: PATH_COLORS.institution,
     desc: "Track cohort ELO. Hire verified talent, automate placements.",
-    points: ["Live cohort leaderboard", "Professor-assigned tasks", "Alumni intelligence"],
+    points: ["Live cohort leaderboard", "Team-assigned tasks", "Alumni intelligence"],
   },
 ]

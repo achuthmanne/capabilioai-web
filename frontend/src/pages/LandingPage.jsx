@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from "react"
-import { motion, useReducedMotion, useInView, animate } from "framer-motion"
+import { motion, useReducedMotion, useInView, animate, AnimatePresence } from "framer-motion"
 import {
   ClipboardCheck, Network, BookOpen, Swords, FolderCheck, Search,
-  ArrowRight, Check, ChevronDown,
-  ShieldCheck, XCircle, Play, Loader2, Rocket, Factory, TrendingUp,
+  ArrowRight, Check, ChevronDown, Plus,
+  ShieldCheck, XCircle, Play, Loader2, Rocket, Building2, Factory, TrendingUp, Menu, X,
 } from "lucide-react"
 import { T, EASE } from "../lib/osDesignTokens"
 import { PRIMARY_PATHS, withAlpha } from "../lib/pathIdentity"
@@ -38,43 +38,29 @@ function useReveal() {
 }
 
 // ─── Primitives ─────────────────────────────────────────────────────────
-function PrimaryButton({ children, onClick, href, target }) {
+function PrimaryButton({ children, onClick, href, target, className = "" }) {
   const Tag = href ? "a" : "button"
   return (
     <Tag
       href={href} target={target} rel={target ? "noopener noreferrer" : undefined}
       onClick={onClick}
-      style={{
-        display: "inline-flex", alignItems: "center", gap: 8,
-        padding: "12px 20px", borderRadius: 10, border: "none",
-        background: T.accent, color: "#fff", fontSize: 14, fontWeight: 600,
-        cursor: "pointer", fontFamily: "'DM Sans',sans-serif", textDecoration: "none",
-        transition: "background 150ms ease, transform 150ms ease",
-      }}
-      onMouseEnter={e => { e.currentTarget.style.background = T.accentDark }}
-      onMouseLeave={e => { e.currentTarget.style.background = T.accent }}
-      onMouseDown={e => { e.currentTarget.style.transform = "scale(0.98)" }}
-      onMouseUp={e => { e.currentTarget.style.transform = "scale(1)" }}
-    >{children}</Tag>
+      className={`inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg bg-[#FF5701] hover:bg-[#E64A00] text-white text-[15px] font-bold cursor-pointer transition-colors active:scale-95 no-underline ${className}`}
+    >
+      {children}
+    </Tag>
   )
 }
 
-function GhostButton({ children, onClick, href, target }) {
+function GhostButton({ children, onClick, href, target, className = "" }) {
   const Tag = href ? "a" : "button"
   return (
     <Tag
       href={href} target={target} rel={target ? "noopener noreferrer" : undefined}
       onClick={onClick}
-      style={{
-        display: "inline-flex", alignItems: "center", gap: 8,
-        padding: "12px 20px", borderRadius: 10, border: `1px solid ${T.border}`,
-        background: "transparent", color: T.ink, fontSize: 14, fontWeight: 600,
-        cursor: "pointer", fontFamily: "'DM Sans',sans-serif", textDecoration: "none",
-        transition: "border-color 150ms ease",
-      }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = T.borderHover }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = T.border }}
-    >{children}</Tag>
+      className={`inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg bg-transparent border border-[#E4E6E9] hover:border-[#A4AAB5] text-[#14161A] text-[15px] font-bold cursor-pointer transition-colors active:scale-95 no-underline ${className}`}
+    >
+      {children}
+    </Tag>
   )
 }
 
@@ -82,7 +68,7 @@ function Eyebrow({ children }) {
   return (
     <div style={{
       fontSize: 12, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase",
-      color: T.accent, marginBottom: 12, fontFamily: "'DM Sans',sans-serif",
+      color: T.accent, marginBottom: 12, fontFamily: "'Inter', sans-serif",
     }}>{children}</div>
   )
 }
@@ -91,11 +77,7 @@ function Eyebrow({ children }) {
 // carries this, consistently, so nothing reads as real user or platform
 // data. Quiet by design (DESIGN.md's "quiet, not loud" rule) — plain text,
 // no border/background ceremony.
-function IllustrativeTag({ style }) {
-  return (
-    <span style={{ fontSize: 10.5, color: T.ink3, fontWeight: 500, ...style }}>Illustrative example</span>
-  )
-}
+
 
 // ─── Hover-lift card wrapper — the entire hover vocabulary for this page ──
 // hoverColor: optional per-path accent (pathIdentity.js) for the four
@@ -121,39 +103,63 @@ function LiftCard({ children, style, onClick, as = "div", hoverColor }) {
 }
 
 // ─── EloSparkline — kept, restyled flat (no glow, no drop-shadow) ─────────
-function EloSparkline({ points, width = 340, height = 64 }) {
+function EloSparkline({ points, width = 340, height = 64, animDelay = 0, showAxes = false }) {
   const reduce = useReducedMotion()
   if (!points || points.length < 2) return null
   const min = Math.min(...points), max = Math.max(...points), range = max - min || 1
-  const xs = points.map((_, i) => (i / (points.length - 1)) * width)
-  const ys = points.map(v => height - ((v - min) / range) * (height * 0.8) - height * 0.1)
+  
+  // Leave padding for axes if showAxes is true
+  const padLeft = showAxes ? 24 : 0;
+  const padRight = showAxes ? 24 : 0;
+  const padBottom = showAxes ? 24 : 0;
+  const padTop = showAxes ? 10 : 0;
+  
+  const drawWidth = width - padLeft - padRight;
+  const drawHeight = height - padBottom - padTop;
+  
+  const xs = points.map((_, i) => padLeft + (i / (points.length - 1)) * drawWidth)
+  const ys = points.map(v => padTop + drawHeight - ((v - min) / range) * (drawHeight * 0.8) - drawHeight * 0.1)
+  
   const path = xs.map((x, i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${ys[i].toFixed(1)}`).join(" ")
-  const fill = `${path} L${width},${height} L0,${height} Z`
+  const fill = `${path} L${xs[xs.length-1]},${padTop + drawHeight} L${xs[0]},${padTop + drawHeight} Z`
+  
+  const animDuration = showAxes ? 2.5 : 1.2;
+
   return (
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display: "block", width: "100%" }}>
       <defs>
         <linearGradient id="eloFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={T.accent} stopOpacity="0.14" />
+          <stop offset="0%" stopColor={T.accent} stopOpacity={showAxes ? "0.2" : "0.14"} />
           <stop offset="100%" stopColor={T.accent} stopOpacity="0" />
         </linearGradient>
       </defs>
+      
+      {showAxes && (
+        <g stroke="#E4E6E9" strokeWidth="1" strokeDasharray="4 4">
+          <line x1={padLeft - 5} y1={padTop + drawHeight} x2={width - padRight + 15} y2={padTop + drawHeight} strokeDasharray="none" stroke="#D1D5DB" strokeWidth="2" />
+          <line x1={padLeft} y1={padTop - 5} x2={padLeft} y2={padTop + drawHeight + 5} strokeDasharray="none" stroke="#D1D5DB" strokeWidth="2" />
+          <line x1={padLeft} y1={padTop + drawHeight * 0.5} x2={width - padRight + 10} y2={padTop + drawHeight * 0.5} />
+          <line x1={padLeft} y1={padTop + drawHeight * 0.1} x2={width - padRight + 10} y2={padTop + drawHeight * 0.1} />
+        </g>
+      )}
+
       <motion.path d={fill} fill="url(#eloFill)"
         initial={reduce ? false : { opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: true }}
-        transition={{ duration: 0.4, delay: 0.7, ease: EASE }}
+        transition={{ duration: 0.6, delay: animDelay + animDuration * 0.5, ease: EASE }}
       />
-      <motion.path d={path} fill="none" stroke={T.accent} strokeWidth="2" strokeLinecap="round"
+      <motion.path d={path} fill="none" stroke={T.accent} strokeWidth={showAxes ? "3" : "2"} strokeLinecap="round" strokeLinejoin="round"
         initial={reduce ? false : { pathLength: 0 }}
         whileInView={{ pathLength: 1 }}
         viewport={{ once: true }}
-        transition={{ duration: 0.9, ease: EASE }}
+        transition={{ duration: animDuration, delay: animDelay, ease: EASE }}
       />
       <motion.circle cx={xs[xs.length - 1]} cy={ys[ys.length - 1]} fill={T.accent}
-        initial={reduce ? false : { r: 0, opacity: 0 }}
-        whileInView={{ r: 3.5, opacity: 1 }}
+        initial={reduce ? false : { r: 0, opacity: 0, scale: 0 }}
+        whileInView={{ r: showAxes ? 5 : 3.5, opacity: 1, scale: 1 }}
         viewport={{ once: true }}
-        transition={{ duration: 0.25, delay: 0.9, ease: EASE }}
+        transition={{ duration: 0.4, delay: animDelay + animDuration, type: "spring" }}
       />
     </svg>
   )
@@ -177,51 +183,78 @@ const FLOW_NODES = [
 function WorkflowDiagram() {
   const reduce = useReducedMotion()
   return (
-    <div style={{
-      background: T.surfaceRaised, border: `1px solid ${T.border}`, borderRadius: 20,
-      padding: "40px 28px", display: "flex", flexDirection: "column", gap: 4,
-    }}>
-      {FLOW_NODES.map((node, i) => {
-        const Icon = node.icon
-        return (
-          <div key={node.label} style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 40 }}>
-              <motion.div
-                initial={reduce ? false : { opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.4, delay: reduce ? 0 : i * 0.35, ease: EASE }}
-                style={{
-                  width: 40, height: 40, borderRadius: 10, background: T.surface,
-                  border: `1px solid ${T.border}`, display: "flex", alignItems: "center",
-                  justifyContent: "center", flexShrink: 0,
-                }}
-              >
-                <Icon size={18} color={T.accent} strokeWidth={1.75} />
-              </motion.div>
-              {i < FLOW_NODES.length - 1 && (
+    <div className="bg-white border border-[#A4AAB5] rounded-3xl p-10 shadow-sm flex flex-col lg:flex-row gap-10 items-center justify-between overflow-hidden relative">
+      
+      {/* Left Side: Timeline (Journey) */}
+      <div className="flex flex-col gap-1 w-full lg:w-1/2 z-10">
+        {FLOW_NODES.map((node, i) => {
+          const Icon = node.icon
+          return (
+            <motion.div 
+              key={node.label} 
+              className="flex items-center gap-5 cursor-default group"
+              whileHover={{ x: 8 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            >
+              <div className="flex flex-col items-center w-10">
                 <motion.div
-                  initial={reduce ? false : { scaleY: 0 }}
-                  animate={{ scaleY: 1 }}
-                  transition={{ duration: 0.3, delay: reduce ? 0 : i * 0.35 + 0.25, ease: EASE }}
-                  style={{ width: 1, height: 28, background: T.border, transformOrigin: "top" }}
-                />
-              )}
-            </div>
-            <motion.span
-              initial={reduce ? false : { opacity: 0, x: -6 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.4, delay: reduce ? 0 : i * 0.35 + 0.1, ease: EASE }}
-              style={{ fontSize: 15, fontWeight: 600, color: T.ink, paddingBottom: i < FLOW_NODES.length - 1 ? 28 : 0 }}
-            >{node.label}</motion.span>
-          </div>
-        )
-      })}
-      <motion.p
-        initial={reduce ? false : { opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: reduce ? 0 : (FLOW_NODES.length - 1) * 0.35 + 0.5, ease: EASE }}
-        style={{ fontSize: 12.5, color: T.ink3, margin: "12px 0 0", paddingTop: 16, borderTop: `1px solid ${T.hairline}` }}
-      >Every step is logged. Nothing is self-reported.</motion.p>
+                  initial={reduce ? false : { opacity: 0, scale: 0.5, rotate: -15 }}
+                  animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                  transition={{ 
+                    type: "spring", stiffness: 200, damping: 15, 
+                    delay: reduce ? 0 : i * 0.5 
+                  }}
+                  className="w-10 h-10 rounded-xl bg-white border border-[#A4AAB5] group-hover:border-[#FF5701] flex items-center justify-center shrink-0 shadow-sm transition-colors duration-300 relative"
+                >
+                  <Icon size={18} className="text-[#FF5701] transition-transform duration-300 group-hover:scale-110" strokeWidth={2} />
+                  
+                  {/* Subtle infinite pulse ring */}
+                  <motion.div 
+                    className="absolute inset-0 rounded-xl border-2 border-[#FF5701] opacity-0"
+                    animate={{ scale: [1, 1.5], opacity: [0, 0.2, 0] }}
+                    transition={{ duration: 2, repeat: Infinity, delay: i * 0.5 + 0.5 }}
+                  />
+                </motion.div>
+                
+                {i < FLOW_NODES.length - 1 && (
+                  <motion.div
+                    initial={reduce ? false : { scaleY: 0 }}
+                    animate={{ scaleY: 1 }}
+                    transition={{ duration: 0.25, delay: reduce ? 0 : i * 0.5 + 0.25, ease: "linear" }}
+                    className="w-px h-8 bg-[#A4AAB5] group-hover:bg-[#FF5701] transition-colors duration-300 origin-top"
+                  />
+                )}
+              </div>
+              <motion.span
+                initial={reduce ? false : { opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ type: "spring", stiffness: 200, damping: 20, delay: reduce ? 0 : i * 0.5 }}
+                className={`text-[16px] font-bold text-[#14161A] group-hover:text-[#FF5701] transition-colors duration-300 ${i < FLOW_NODES.length - 1 ? 'pb-8' : ''}`}
+              >
+                {node.label}
+              </motion.span>
+            </motion.div>
+          )
+        })}
+        <motion.p
+          initial={reduce ? false : { opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: reduce ? 0 : FLOW_NODES.length * 0.15 + 0.2, ease: "easeOut" }}
+          className="text-[13px] font-semibold text-[#8A8F98] mt-3 pt-5 border-t border-[#A4AAB5]"
+        >
+          Every step is logged. Nothing is self-reported.
+        </motion.p>
+      </div>
+
+      {/* Right Side: 3D Illustration Area */}
+      <div className="w-full lg:w-1/2 h-[350px] lg:h-full lg:absolute lg:right-0 lg:top-0 flex items-center justify-end pointer-events-none pr-4 lg:pr-8">
+         <img 
+            src="/workflow-illustration.png" 
+            alt="Verified Career Journey" 
+            className="w-full h-full object-contain object-right transform -translate-y-4 lg:-translate-y-6"
+         />
+      </div>
+
     </div>
   )
 }
@@ -236,48 +269,55 @@ const HOW_IT_WORKS = [
 ]
 
 function HowItWorksLine() {
-  const [openIdx, setOpenIdx] = useState(null)
+  const reduce = useReducedMotion()
+  
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 0, alignItems: "flex-start" }}>
-      {HOW_IT_WORKS.map((step, i) => {
-        const Icon = step.icon
-        const open = openIdx === i
-        return (
-          <div key={step.label} style={{ display: "flex", alignItems: "flex-start", flex: "1 1 180px", minWidth: 160 }}>
-            <button
-              onClick={() => setOpenIdx(open ? null : i)}
-              style={{
-                background: "none", border: "none", cursor: "pointer", textAlign: "left",
-                padding: 0, fontFamily: "inherit", width: "100%",
-              }}
+    <div className="relative mt-16 w-full">
+      {/* Background track line */}
+      <div className="hidden md:block absolute top-[28px] left-[10%] right-[10%] h-[1px] bg-[#E4E6E9]" />
+      
+      {/* Animated progress line */}
+      <motion.div 
+        initial={reduce ? false : { scaleX: 0 }}
+        whileInView={{ scaleX: 1 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 1.5, ease: "easeInOut" }}
+        className="hidden md:block absolute top-[28px] left-[10%] right-[10%] h-[1px] bg-[#FF5701] origin-left z-0"
+      />
+
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-12 md:gap-6 relative z-10">
+        {HOW_IT_WORKS.map((step, i) => {
+          const Icon = step.icon
+          return (
+            <motion.div 
+              key={step.label}
+              initial={reduce ? false : { opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.7, delay: i * 0.2, ease: "easeOut" }}
+              className="flex flex-col items-center text-center group cursor-default"
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                <div style={{
-                  width: 36, height: 36, borderRadius: 9, flexShrink: 0,
-                  background: open ? T.accentDim : T.surfaceRaised,
-                  border: `1px solid ${open ? T.accent : T.border}`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  transition: "background 150ms ease, border-color 150ms ease",
-                }}>
-                  <Icon size={16} color={open ? T.accent : T.ink2} strokeWidth={1.75} />
-                </div>
-                <span style={{ fontSize: 14, fontWeight: 600, color: T.ink }}>{step.label}</span>
-              </div>
-              <motion.div
-                initial={false}
-                animate={{ height: open ? "auto" : 0, opacity: open ? 1 : 0 }}
-                transition={{ duration: 0.25, ease: EASE }}
-                style={{ overflow: "hidden" }}
+              {/* Animated Icon Node */}
+              <motion.div 
+                whileHover={{ scale: 1.1, y: -4 }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                className="w-14 h-14 rounded-full bg-white border border-[#E4E6E9] flex items-center justify-center mb-6 shadow-sm group-hover:border-[#FF5701] group-hover:shadow-md transition-all duration-300 relative z-10"
               >
-                <p style={{ fontSize: 13, color: T.ink2, lineHeight: 1.6, margin: "0 24px 4px 0" }}>{step.detail}</p>
+                <Icon size={22} className="text-[#4B5058] group-hover:text-[#FF5701] transition-colors duration-300" strokeWidth={2} />
               </motion.div>
-            </button>
-            {i < HOW_IT_WORKS.length - 1 && (
-              <div style={{ height: 1, background: T.border, flex: 1, marginTop: 18, minWidth: 16 }} />
-            )}
-          </div>
-        )
-      })}
+              
+              {/* Step number */}
+              <div className="text-[11px] font-extrabold text-[#FF5701] uppercase tracking-[0.15em] mb-2.5">
+                Step 0{i + 1}
+              </div>
+              
+              {/* Text */}
+              <h4 className="text-[16px] font-bold text-[#14161A] mb-2.5">{step.label}</h4>
+              <p className="text-[13.5px] text-[#4B5058] leading-relaxed max-w-[220px]">{step.detail}</p>
+            </motion.div>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -319,37 +359,56 @@ const ARENA_SCRIPTS = {
 }
 const ARENA_ELO_BASE = 1324
 
-// Three-state Run/Submit beat (idle → running → executed) — a small,
-// self-contained timer distinct from the ELO tween above; skipped entirely
-// under reduced motion (renders straight to "executed").
-function ArenaRunBeat({ reduce }) {
-  const [phase, setPhase] = useState(reduce ? "done" : "idle")
-  useEffect(() => {
-    if (reduce) return
-    const t1 = setTimeout(() => setPhase("running"), 700)
-    const t2 = setTimeout(() => setPhase("done"), 1100)
-    return () => { clearTimeout(t1); clearTimeout(t2) }
-  }, [reduce])
-  const Icon = phase === "running" ? Loader2 : phase === "done" ? Check : Play
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: phase === "done" ? T.success : T.ink2, margin: "2px 0 14px" }}>
-      <Icon size={13} strokeWidth={2.5} style={phase === "running" ? { animation: "arenaSpin 0.6s linear infinite" } : undefined} />
-      {phase === "idle" ? "Run notebook" : phase === "running" ? "Running…" : "Executed"}
-    </div>
-  )
-}
-
 function ArenaPreview() {
   const [outcome, setOutcome] = useState("pass")
+  const [phase, setPhase] = useState("typing") // typing -> running -> executed -> output -> eval
   const reduce = useReducedMotion()
   const ref = useRef(null)
   const inView = useInView(ref, { once: true, margin: "-60px" })
   const script = ARENA_SCRIPTS[outcome]
   const eloTarget = ARENA_ELO_BASE + script.eloDelta
-  const eloValue = useCountUp(eloTarget, { start: ARENA_ELO_BASE, duration: 0.7, delay: 2.7, active: inView, reduce })
+  
+  // Only start counting ELO when eval phase is reached
+  const eloValue = useCountUp(eloTarget, { 
+    start: ARENA_ELO_BASE, 
+    duration: 2.5, // Slowed down from 0.7s to 2.5s for a suspenseful roll
+    delay: 0.5, 
+    active: phase === "eval", 
+    reduce 
+  })
+  
   const VerdictIcon = script.passed ? ShieldCheck : XCircle
   const verdictColor = script.passed ? T.success : T.error
   const verdictDim = script.passed ? T.successDim : T.errorDim
+
+  // Reset timeline when user switches tabs (pass/fail)
+  useEffect(() => {
+    setPhase("typing")
+  }, [outcome])
+
+  // Master Timeline execution
+  useEffect(() => {
+    if (!inView) return;
+    if (reduce) { setPhase("eval"); return; }
+    
+    if (phase === "typing") {
+      // 3 lines * 0.8s + small buffer = ~2.6s
+      const t = setTimeout(() => setPhase("running"), 2600);
+      return () => clearTimeout(t);
+    } else if (phase === "running") {
+      // Pretend to execute code for 1.2s
+      const t = setTimeout(() => setPhase("executed"), 1200);
+      return () => clearTimeout(t);
+    } else if (phase === "executed") {
+      // Show checkmark/X briefly before sliding in output
+      const t = setTimeout(() => setPhase("output"), 800);
+      return () => clearTimeout(t);
+    } else if (phase === "output") {
+      // Wait for output to render, then show AI evaluation
+      const t = setTimeout(() => setPhase("eval"), 1200);
+      return () => clearTimeout(t);
+    }
+  }, [phase, inView, reduce])
 
   return (
     <div>
@@ -357,111 +416,119 @@ function ArenaPreview() {
         {[["pass", "Passing attempt"], ["fail", "Failing attempt"]].map(([key, label]) => (
           <button key={key} onClick={() => setOutcome(key)} style={{
             padding: "5px 11px", borderRadius: 999, border: `1px solid ${outcome === key ? T.accent : T.border}`,
-            background: outcome === key ? T.accentDim : "transparent",
+            background: "transparent",
             color: outcome === key ? T.accent : T.ink3, fontSize: 11.5, fontWeight: 600,
             cursor: "pointer", fontFamily: "inherit",
           }}>{label}</button>
         ))}
       </div>
-      <div ref={ref} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, overflow: "hidden" }}>
-        <div style={{ padding: "16px 20px", borderBottom: `1px solid ${T.hairline}`, display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 28, height: 28, borderRadius: 7, background: T.surfaceRaised, border: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: T.ink2 }}>S</div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>Swiggy — Data Analyst mission</div>
-            <IllustrativeTag />
+      <div ref={ref} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, overflow: "hidden", boxShadow: "0 10px 40px rgba(0,0,0,0.04)" }}>
+        <div style={{ padding: "20px 24px", borderBottom: `1px solid ${T.hairline}`, display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: "#FC8019", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="white">
+              <path d="M12.034 24c-.376-.411-2.075-2.584-3.95-5.513-.547-.916-.901-1.63-.833-1.814.178-.48 3.355-.743 4.333-.308.298.132.29.307.29.409 0 .44-.022 1.619-.022 1.619a.441.441 0 1 0 .883-.002l-.005-2.939c0-.255-.278-.319-.331-.329-.511-.002-1.548-.006-2.661-.006-2.457 0-3.006.101-3.423-.172-.904-.591-2.383-4.577-2.417-6.819C3.849 4.964 5.723 2.225 8.362.868A8.13 8.13 0 0 1 12.026 0c4.177 0 7.617 3.153 8.075 7.209l.001.011c.084.981-5.321 1.189-6.39.904-.164-.044-.206-.212-.206-.284L13.5 4.996a.442.442 0 0 0-.884.002l.009 3.866a.33.33 0 0 0 .268.32l3.354-.001c1.79 0 2.542.207 3.042.588.333.254.461.739.349 1.37C18.633 16.755 12.273 23.71 12.034 24z"/>
+            </svg>
+          </div>
+          <div style={{ minWidth: 0, display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#14161A" }}>Swiggy (Example) — Data Analyst mission</div>
           </div>
         </div>
-        <div key={outcome + String(inView)} style={{ padding: 20 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: T.ink3, marginBottom: 6 }}>Mission</div>
-          <p style={{ fontSize: 13.5, color: T.ink2, lineHeight: 1.6, margin: "0 0 16px" }}>
+        <div key={outcome + String(inView)} style={{ padding: 24 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: T.ink3, marginBottom: 8 }}>Mission</div>
+          <p style={{ fontSize: 14.5, color: T.ink2, lineHeight: 1.6, margin: "0 0 20px" }}>
             Weekend order cancellations spike after 9 PM. Find the dominant cause in the last 30 days of order data.
           </p>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: T.ink3, marginBottom: 6 }}>Notebook</div>
+          
+          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: T.ink3, marginBottom: 8 }}>Notebook</div>
           <div style={{
-            background: T.surfaceRaised, border: `1px solid ${T.hairline}`, borderRadius: 10,
-            padding: "12px 14px", fontFamily: "'DM Mono',monospace", fontSize: 12, color: T.ink,
-            lineHeight: 1.7, marginBottom: 4, overflowX: "auto",
+            background: T.surfaceRaised, border: `1px solid ${T.hairline}`, borderRadius: 12,
+            padding: "16px 20px", fontFamily: "'DM Mono',monospace", fontSize: 13, color: T.ink,
+            lineHeight: 1.7, marginBottom: 6, overflowX: "auto",
           }}>
+            {/* TYPEWRITER EFFECT */}
             {script.code.map((line, i) => (
               <motion.div key={i}
-                initial={reduce || !inView ? false : { opacity: 0, x: -6 }}
-                animate={inView ? { opacity: 1, x: 0 } : {}}
-                transition={{ duration: 0.25, delay: reduce ? 0 : i * 0.15 }}
-                style={{ whiteSpace: "pre" }}
+                initial={reduce || !inView ? false : { width: 0, opacity: 0 }}
+                animate={inView ? { width: "100%", opacity: 1 } : {}}
+                transition={{ duration: 0.7, delay: i * 0.8, ease: "linear" }}
+                style={{ whiteSpace: "pre", overflow: "hidden" }}
               >{line}</motion.div>
             ))}
           </div>
 
-          <ArenaRunBeat reduce={reduce || !inView} />
-
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: T.ink3, marginBottom: 6 }}>Output</div>
-          <div style={{
-            background: T.ink, borderRadius: 10, padding: "12px 14px",
-            fontFamily: "'DM Mono',monospace", fontSize: 12, color: "#D4F5DE", lineHeight: 1.7, marginBottom: 16,
-          }}>
-            {script.output.map(([label, count], i) => (
-              <motion.div key={label}
-                initial={reduce || !inView ? false : { opacity: 0 }}
-                animate={inView ? { opacity: 1 } : {}}
-                transition={{ duration: 0.2, delay: reduce ? 0 : 1.15 + i * 0.12 }}
-                style={{ display: "flex", justifyContent: "space-between", gap: 12 }}
-              >
-                <span>{label}</span><span>{count}</span>
-              </motion.div>
-            ))}
-          </div>
-
-          <motion.div
-            initial={reduce || !inView ? false : { opacity: 0, scale: 0.96 }}
-            animate={inView ? { opacity: 1, scale: 1 } : {}}
-            transition={{ duration: 0.25, delay: reduce ? 0 : 1.9 }}
-            style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: verdictDim, border: `1px solid ${verdictColor}30`, borderRadius: 10, marginBottom: 10 }}
-          >
-            <VerdictIcon size={16} color={verdictColor} strokeWidth={2} />
-            <span style={{ fontSize: 13, fontWeight: 700, color: verdictColor }}>{script.passed ? "Verified" : "Not verified"}</span>
-            <span style={{ fontSize: 12, color: T.ink3, marginLeft: "auto" }}>Score {script.score}</span>
-          </motion.div>
-
-          <motion.div
-            initial={reduce || !inView ? false : { opacity: 0 }}
-            animate={inView ? { opacity: 1 } : {}}
-            transition={{ duration: 0.25, delay: reduce ? 0 : 2.35 }}
-            style={{ padding: "12px 14px", background: T.surfaceRaised, border: `1px solid ${T.hairline}`, borderRadius: 10, marginBottom: 14 }}
-          >
-            <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: T.ink3, marginBottom: 4 }}>Feedback</div>
-            <p style={{ fontSize: 12.5, color: T.ink2, lineHeight: 1.55, margin: 0 }}>{script.feedback}</p>
-          </motion.div>
-
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 600, color: T.ink, fontVariantNumeric: "tabular-nums" }}>{eloValue.toLocaleString()}</div>
-              <span style={{ fontSize: 10, color: T.ink3, letterSpacing: "0.05em", textTransform: "uppercase" }}>ELO</span>
-              <motion.span
-                initial={reduce || !inView ? false : { opacity: 0 }}
-                animate={inView ? { opacity: 1 } : {}}
-                transition={{ duration: 0.2, delay: reduce ? 0 : 3.1 }}
-                style={{ fontSize: 12, fontWeight: 600, color: script.passed ? T.success : T.error }}
-              >{script.passed ? `+${script.eloDelta}` : script.eloDelta}</motion.span>
-            </div>
-            <motion.div
-              initial={reduce || !inView ? false : { opacity: 0 }}
-              animate={inView ? { opacity: 1 } : {}}
-              transition={{ duration: 0.2, delay: reduce ? 0 : 3.5 }}
-              style={{ display: "flex", alignItems: "center", gap: 6 }}
+          {/* DYNAMIC RUN BEAT */}
+          {phase !== "typing" && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              className="flex items-center gap-2 mb-4 mt-2"
+              style={{ fontSize: 11, fontWeight: 700, color: phase === "executed" || phase === "output" || phase === "eval" ? (script.passed ? T.success : T.error) : T.ink3 }}
             >
-              <motion.div
-                initial={reduce || !inView ? false : { scale: 0.85 }}
-                animate={inView && script.passed ? { scale: [0.85, 1.15, 1] } : {}}
-                transition={{ duration: 0.4, delay: reduce ? 0 : 3.6 }}
-                style={{
-                  width: 18, height: 18, borderRadius: "50%",
-                  background: script.passed ? T.accent : "transparent",
-                  border: `1.5px solid ${script.passed ? T.accent : T.border}`,
-                }}
-              />
-              <span style={{ fontSize: 11, color: T.ink3 }}>SQL skill</span>
+              {phase === "running" && <Loader2 size={13} className="animate-spin text-[#8A8F98]" />}
+              {(phase === "executed" || phase === "output" || phase === "eval") && (
+                script.passed ? <Check size={13} color={T.success} strokeWidth={3} /> : <XCircle size={13} color={T.error} strokeWidth={3} />
+              )}
+              {phase === "running" && "Executing notebook..."}
+              {(phase === "executed" || phase === "output" || phase === "eval") && (script.passed ? "Executed successfully" : "Execution failed")}
             </motion.div>
-          </div>
+          )}
+
+          {/* OUTPUT GRID */}
+          {(phase === "output" || phase === "eval") && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: T.ink3, marginBottom: 6 }}>Output</div>
+              <div style={{
+                background: T.ink, borderRadius: 10, padding: "12px 14px",
+                fontFamily: "'DM Mono',monospace", fontSize: 12, color: "#D4F5DE", lineHeight: 1.7, marginBottom: 16,
+              }}>
+                {script.output.map(([label, count], i) => (
+                  <motion.div key={label}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.2, delay: i * 0.15 }}
+                    style={{ display: "flex", justifyContent: "space-between", gap: 12 }}
+                  >
+                    <span>{label}</span><span>{count}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* AI EVALUATION */}
+          {phase === "eval" && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: verdictDim, border: `1px solid ${verdictColor}30`, borderRadius: 10, marginBottom: 10 }}
+              >
+                <VerdictIcon size={16} color={verdictColor} strokeWidth={2} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: verdictColor }}>{script.passed ? "Verified" : "Not verified"}</span>
+                <span style={{ fontSize: 12, color: T.ink3, marginLeft: "auto" }}>Score {script.score}</span>
+              </div>
+
+              <div
+                style={{ padding: "12px 14px", background: T.surfaceRaised, border: `1px solid ${T.hairline}`, borderRadius: 10, marginBottom: 14 }}
+              >
+                <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: T.ink3, marginBottom: 4 }}>Feedback</div>
+                <p style={{ fontSize: 12.5, color: T.ink2, lineHeight: 1.55, margin: 0 }}>{script.feedback}</p>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 600, color: T.ink, fontVariantNumeric: "tabular-nums" }}>{eloValue.toLocaleString()}</div>
+                  <span style={{ fontSize: 10, color: T.ink3, letterSpacing: "0.05em", textTransform: "uppercase" }}>ELO</span>
+                  <motion.span
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, delay: 3.0 }}
+                    style={{ fontSize: 12, fontWeight: 700, color: script.passed ? T.success : T.error }}
+                  >
+                    {script.passed ? "+" : ""}{script.eloDelta}
+                  </motion.span>
+                </div>
+              </div>
+            </motion.div>
+          )}
         </div>
       </div>
     </div>
@@ -472,86 +539,187 @@ function ArenaPreview() {
 function SkillStudioPreview() {
   const reveal = useReveal()
   const reduce = useReducedMotion()
-  const nodes = [
-    { id: "py",  label: "Python",         x: 40,  y: 40,  mastered: true },
-    { id: "sql", label: "SQL",            x: 200, y: 24,  mastered: true },
-    { id: "api", label: "APIs",           x: 320, y: 70,  mastered: false },
-    { id: "sd",  label: "System Design",  x: 150, y: 120, mastered: false },
-  ]
-  const edges = [["py", "sql"], ["sql", "api"], ["py", "sd"], ["sd", "api"]]
-  const byId = Object.fromEntries(nodes.map(n => [n.id, n]))
+  
   return (
     <motion.div ref={reveal.ref} {...reveal}
-      style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: 24 }}
+      style={{ 
+        background: "#FAF7F2", // Actual SkillStudio D.base
+        border: `1px solid ${T.border}`, 
+        borderRadius: 20, 
+        padding: 24,
+        boxShadow: "0 4px 30px rgba(0,0,0,0.03)"
+      }}
     >
-      <div style={{ fontSize: 13, fontWeight: 600, color: T.ink, marginBottom: 4 }}>Your skill graph</div>
-      <p style={{ fontSize: 12.5, color: T.ink3, margin: "0 0 4px" }}>Grows with every SkillStudio lesson and Arena mission.</p>
-      <IllustrativeTag style={{ display: "block", marginBottom: 12 }} />
-      <svg width="100%" height="160" viewBox="0 0 360 160" style={{ display: "block" }}>
-        {edges.map(([a, b], i) => {
-          const n1 = byId[a], n2 = byId[b]
-          return (
-            <motion.line
-              key={i} x1={n1.x} y1={n1.y} x2={n2.x} y2={n2.y}
-              stroke={T.border} strokeWidth="1.5"
-              initial={reduce ? false : { pathLength: 0 }}
-              whileInView={{ pathLength: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: i * 0.15, ease: EASE }}
-            />
-          )
-        })}
-        {nodes.map((n, i) => (
-          <g key={n.id}>
-            <motion.circle
-              cx={n.x} cy={n.y} r={n.mastered ? 7 : 6}
-              fill={n.mastered ? T.accent : T.surface}
-              stroke={n.mastered ? T.accent : T.ink3} strokeWidth="1.5"
-              initial={reduce ? false : { scale: 0 }}
-              whileInView={{ scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.35, delay: 0.5 + i * 0.12, ease: EASE }}
-            />
-            <text x={n.x} y={n.y - 14} textAnchor="middle" fontSize="11" fontWeight="600" fill={T.ink2} fontFamily="'DM Sans',sans-serif">{n.label}</text>
-          </g>
-        ))}
-      </svg>
+      {/* Header Matter */}
+      <div style={{ marginBottom: 28 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#14161A", marginBottom: 4 }}>Skill Studio Workspace (Example)</div>
+        <p style={{ fontSize: 12.5, color: "#8A8F98", margin: 0 }}>Grows with every SkillStudio lesson and Arena mission.</p>
+      </div>
+
+      {/* Mini Dashboard Grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 20 }}>
+      {/* Left Sidebar (The Brain) */}
+      <div style={{ background: "#FFFFFF", borderRadius: 14, border: `1px solid ${T.border}`, padding: 16, display: "flex", flexDirection: "column", gap: 24 }}>
+        {/* Learning Path */}
+        <div>
+          <div style={{ fontSize: 9, fontWeight: 800, color: "#6366F1", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 12, fontFamily: "'DM Mono',monospace" }}>Learning Path</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {["Phase 1", "Phase 2", "Phase 3"].map((phase, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ width: 18, height: 18, borderRadius: "50%", background: i === 0 ? "#10B981" : i === 1 ? "#6366F1" : "#F5F5F5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: i < 2 ? "#fff" : "#999", boxShadow: i < 2 ? `0 0 8px ${i === 0 ? '#10B98160' : '#6366F160'}` : 'none' }}>
+                  {i === 0 ? "✓" : i + 1}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 9.5, fontWeight: 700, color: i < 2 ? "#14161A" : "#8A8F98" }}>{phase}</div>
+                  <div style={{ height: 3, background: "#F5F5F5", borderRadius: 99, marginTop: 4, overflow: "hidden" }}>
+                    <motion.div 
+                      initial={{ width: 0 }} 
+                      whileInView={{ width: i === 0 ? "100%" : i === 1 ? "50%" : "0%" }} 
+                      transition={{ duration: 1, delay: 0.5 + i * 0.2 }}
+                      style={{ height: "100%", background: i === 0 ? "#10B981" : "#6366F1" }} 
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Role DNA Map */}
+        <div>
+           <div style={{ fontSize: 9, fontWeight: 800, color: "#8A8F98", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 12, fontFamily: "'DM Mono',monospace" }}>Role DNA</div>
+           <svg width="100%" height="60" viewBox="0 0 100 60">
+             <path d="M10,30 L40,12 L70,30 L40,48 Z" stroke="#E4E6E9" strokeWidth="1" fill="none" />
+             <path d="M40,12 L40,48 M10,30 L70,30" stroke="#E4E6E9" strokeWidth="1" />
+             <circle cx="10" cy="30" r="3.5" fill="#3B82F6" />
+             <circle cx="40" cy="12" r="3.5" fill="#8B5CF6" />
+             <circle cx="70" cy="30" r="3.5" fill="#10B981" />
+             <circle cx="40" cy="48" r="3.5" fill="#F59E0B" />
+             <circle cx="40" cy="30" r="5" fill="#6366F1" />
+           </svg>
+        </div>
+      </div>
+
+      {/* Main Workspace */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        
+        {/* Dark Glass Tab Bar */}
+        <div style={{ background: "rgba(17,24,39,0.8)", backdropFilter: "blur(12px)", borderRadius: 12, padding: 5, display: "flex", gap: 4 }}>
+          {["Diagnose", "Roadmap", "Modules"].map((tab, i) => (
+            <div key={i} style={{ flex: 1, textAlign: "center", padding: "6px 0", fontSize: 9.5, fontWeight: 700, color: i === 1 ? "#6366F1" : "#8A8F98", background: i === 1 ? "rgba(99,102,241,0.15)" : "transparent", borderRadius: 8, borderBottom: i === 1 ? "1.5px solid #6366F1" : "1.5px solid transparent", transition: "all 0.2s" }}>
+              {tab}
+            </div>
+          ))}
+        </div>
+
+        {/* Header Stats */}
+        <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ padding: "6px 12px", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 99, fontSize: 9, fontWeight: 700, color: "#F59E0B", display: "flex", alignItems: "center", gap: 5 }}>
+             <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#F59E0B" }}></span> 2 decaying
+          </div>
+          <div style={{ padding: "6px 12px", background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.2)", borderRadius: 99, fontSize: 9, fontWeight: 700, color: "#8B5CF6", display: "flex", alignItems: "center", gap: 5 }}>
+             <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#8B5CF6" }}></span> 1,240 XP
+          </div>
+        </div>
+
+        {/* Content Card (Next Best Action) */}
+        <motion.div 
+          initial={reduce ? false : { opacity: 0, y: 10 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.8 }}
+          style={{ background: "#FFFFFF", borderRadius: 14, border: `1px solid ${T.border}`, padding: 16, flex: 1, display: "flex", flexDirection: "column" }}
+        >
+          <div style={{ fontSize: 9, fontWeight: 800, color: "#8A8F98", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 12, fontFamily: "'DM Mono',monospace" }}>Next Best Action</div>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flex: 1 }}>
+             <div style={{ width: 28, height: 28, borderRadius: 8, background: "#F5F3FF", border: "1px solid #EDE9FE", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+               <div style={{ width: 12, height: 12, borderRadius: 3, border: "2px solid #8B5CF6" }}></div>
+             </div>
+             <div>
+               <div style={{ fontSize: 11.5, fontWeight: 700, color: "#14161A", marginBottom: 3 }}>Advanced SQL Joins</div>
+               <div style={{ fontSize: 9.5, color: "#8A8F98", lineHeight: 1.5 }}>Fill gap identified in your last Arena task.</div>
+             </div>
+          </div>
+          <div style={{ marginTop: "auto", paddingTop: 12 }}>
+            <div style={{ padding: "8px 0", background: "#6366F1", color: "#FFF", fontSize: 10.5, fontWeight: 700, textAlign: "center", borderRadius: 8, cursor: "pointer" }}>
+              Start Action
+            </div>
+          </div>
+        </motion.div>
+
+      </div>
+      </div>
     </motion.div>
   )
 }
 
 // ─── Recruiter preview — what a recruiter actually receives ───────────────
 function RecruiterPreview() {
-  const reveal = useReveal()
+  const reduce = useReducedMotion()
+  const ref = useRef(null)
+  const inView = useInView(ref, { once: true, margin: "-60px" })
+  
+  const s2 = useCountUp(92, { start: 0, duration: 1.5, delay: 0.5, active: inView, reduce })
+
   return (
-    <motion.div ref={reveal.ref} {...reveal}
-      style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: 24 }}
+    <motion.div ref={ref}
+      initial={reduce ? false : { opacity: 0, y: 15 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      style={{ 
+        background: "#0F172A", // Actual ArenaV2RecruiterView background
+        border: "1px solid #1E293B", 
+        borderRadius: 24, 
+        padding: 24,
+        boxShadow: "0 10px 40px rgba(0,0,0,0.15)"
+      }}
     >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: T.ink }}>Ananya Rao</div>
-          <div style={{ fontSize: 12.5, color: T.ink3, marginBottom: 3 }}>Data Analyst · Verified</div>
-          <IllustrativeTag />
+          <div style={{ fontSize: 16, fontWeight: 700, color: "#E2E8F0", marginBottom: 4 }}>Ananya Rao (Example)</div>
+          <div style={{ fontSize: 13, color: "#94A3B8" }}>Data Analyst · Verified Profile</div>
         </div>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 22, fontWeight: 600, color: T.accent, lineHeight: 1 }}>1,340</div>
-          <div style={{ fontSize: 10, color: T.ink3, letterSpacing: "0.05em", textTransform: "uppercase", marginTop: 3 }}>ELO</div>
+        <div style={{ fontSize: 11, fontWeight: 700, padding: "6px 10px", borderRadius: 8, background: "#1E293B", color: "#94A3B8", textTransform: "uppercase", letterSpacing: 0.5 }}>
+          Recruiter View
         </div>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {[
-          { t: "Swiggy — cancellation root-cause", s: 88 },
-          { t: "Razorpay — payment failure analysis", s: 92 },
-          { t: "BigBasket — inventory SQL audit", s: 79 },
-        ].map(row => (
-          <div key={row.t} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", background: T.surfaceRaised, border: `1px solid ${T.hairline}`, borderRadius: 8 }}>
-            <span style={{ fontSize: 12.5, color: T.ink2 }}>{row.t}</span>
-            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12.5, fontWeight: 600, color: T.ink }}>{row.s}</span>
+
+      {/* Mini Evidence Card Replica */}
+      <div style={{ background: "#0F172A", borderRadius: 14, border: "1px solid #1E293B", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#E2E8F0", marginBottom: 4 }}>Swiggy — cancellation root-cause</div>
+            <div style={{ fontSize: 12, color: "#94A3B8" }}>
+              Data Analyst · Hard · Food Tech
+            </div>
           </div>
-        ))}
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 20, fontWeight: 800, color: "#4ADE80", marginBottom: 2 }}>{s2}/100</div>
+            <div style={{ fontSize: 10, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 }}>Verified</div>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 20, fontSize: 12, color: "#CBD5E1" }}>
+          <div>Time taken: <strong style={{ color: "#E2E8F0" }}>42m 15s</strong></div>
+          <div>ELO delta: <strong style={{ color: "#4ADE80" }}>+24</strong></div>
+        </div>
+
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {["Advanced SQL", "Root Cause Analysis", "Data Visualization"].map((s) => (
+            <span key={s} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 999, background: "#1E293B", color: "#93C5FD", fontWeight: 600 }}>{s}</span>
+          ))}
+        </div>
+
+        <div>
+          <div style={{ color: "#94A3B8", marginBottom: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, fontSize: 10 }}>Strengths</div>
+          <ul style={{ margin: 0, paddingLeft: 18, color: "#4ADE80", lineHeight: 1.6, fontSize: 12 }}>
+            <li>Perfect use of window functions to isolate 9 PM cohort.</li>
+            <li>Identified rider-allocation delay as the primary bottleneck.</li>
+          </ul>
+        </div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 14, color: T.success, fontSize: 12, fontWeight: 600 }}>
-        <ShieldCheck size={14} strokeWidth={2} /> Every score links back to the real submission — nothing self-reported.
+
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 20, color: "#4ADE80", fontSize: 12, fontWeight: 600 }}>
+        <ShieldCheck size={16} strokeWidth={2} /> Links directly to real code submission.
       </div>
     </motion.div>
   )
@@ -563,42 +731,73 @@ function RecruiterPreview() {
 function ClaimVsProofSection({ problemRows, eloHistory }) {
   const reduce = useReducedMotion()
   const ref = useRef(null)
-  const inView = useInView(ref, { once: true, margin: "-80px" })
+  const inView = useInView(ref, { once: true, amount: 0.4 })
   const eloTarget = eloHistory[eloHistory.length - 1]
-  const eloValue = useCountUp(eloTarget, { start: eloHistory[0], duration: 0.9, active: inView, reduce })
+  const eloValue = useCountUp(eloTarget, { start: eloHistory[0], duration: 1.5, active: inView, reduce })
 
   return (
-    <section ref={ref} style={{ padding: "96px 0" }}>
-      <div className="lp-container lp-grid-2" style={{ alignItems: "center", gap: 64 }}>
-        <div>
-          <Eyebrow>Claim vs. proof</Eyebrow>
-          <h2 style={{ fontSize: "clamp(28px,3.6vw,40px)", fontWeight: 700, letterSpacing: "-0.015em", color: T.ink, margin: "0 0 16px" }}>A number that can&apos;t be faked.</h2>
-          <p style={{ fontSize: 15, color: T.ink2, lineHeight: 1.65, marginBottom: 24 }}>
-            Like chess.com — ELO is earned through real performance. It rises when you solve hard problems, and it cannot be self-reported or inflated.
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {problemRows.map((r, i) => (
-              <motion.div key={r.claim}
-                initial={reduce ? false : { opacity: 0, y: 6 }}
-                animate={inView ? { opacity: 1, y: 0 } : {}}
-                transition={{ duration: 0.3, delay: reduce ? 0 : 0.9 + i * 0.12, ease: EASE }}
-                style={{ display: "grid", gridTemplateColumns: "1fr 1fr", border: `1px solid ${T.border}`, borderRadius: 10, overflow: "hidden" }}
-              >
-                <div style={{ padding: "12px 14px", fontSize: 13, color: T.ink3, fontStyle: "italic", borderRight: `1px solid ${T.hairline}` }}>{r.claim}</div>
-                <div style={{ padding: "12px 14px", fontSize: 13, color: T.error }}>{r.reality}</div>
-              </motion.div>
-            ))}
+    <section ref={ref} className="w-full bg-[#FAF7F2] border-t border-b border-[#E4E6E9]">
+      <div className="w-full flex flex-col lg:flex-row">
+        
+        {/* Left Part: Text & Claims (Pure Typography, No Boxes) */}
+        <div className="w-full lg:w-1/2 p-10 lg:p-24 flex flex-col justify-center lg:border-r border-[#E4E6E9]">
+          <div className="max-w-[500px] lg:ml-auto lg:mr-16 mx-auto w-full">
+            <div className="text-[#FF5701] font-extrabold tracking-[0.2em] uppercase text-[13px] md:text-[15px] mb-4">
+              Claim vs. Proof
+            </div>
+            <h2 className="text-[32px] lg:text-[54px] font-extrabold text-[#14161A] leading-[1.1] tracking-[-0.02em] mb-6">
+              A number that can't be faked.
+            </h2>
+            <p className="text-[16px] md:text-[18px] lg:text-[20px] text-[#4A4E54] leading-[1.6] mb-12">
+              Like chess.com — ELO is earned through real performance. It rises when you solve hard problems, and it cannot be self-reported or inflated on a resume.
+            </p>
+            
+            <div className="flex flex-col gap-8">
+              {problemRows.map((r, i) => (
+                <motion.div key={r.claim}
+                  initial={reduce ? false : { opacity: 0, y: 10 }}
+                  animate={inView ? { opacity: 1, y: 0 } : {}}
+                  transition={{ duration: 0.4, delay: reduce ? 0 : 0.4 + i * 0.15, ease: "easeOut" }}
+                  className="flex flex-col gap-2"
+                >
+                  <div className="text-[15px] text-[#8A8F98] italic flex items-center gap-3">
+                    <span className="w-6 h-px bg-[#D1D5DB]"></span>
+                    {r.claim}
+                  </div>
+                  <div className="text-[17px] font-semibold text-[#14161A] flex items-center gap-2.5 pl-9">
+                    <X size={18} className="text-[#E02424]" strokeWidth={3} />
+                    {r.reality}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </div>
         </div>
-        <div style={{ background: T.surfaceRaised, border: `1px solid ${T.border}`, borderRadius: 16, padding: 28 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-            <TrendingUp size={16} color={T.accent} strokeWidth={2} />
-            <span style={{ fontSize: 12, fontWeight: 600, color: T.ink3, letterSpacing: "0.04em", textTransform: "uppercase" }}>ELO growth</span>
+
+        {/* Right Part: Graph (Pure minimal layout, No Boxes, No Grid) */}
+        <div className="w-full lg:w-1/2 p-10 lg:p-24 flex flex-col justify-center bg-white relative">
+          <div className="max-w-[500px] lg:mr-auto lg:ml-16 mx-auto w-full">
+            <motion.div 
+              initial={reduce ? false : { opacity: 0, scale: 0.95 }}
+              animate={inView ? { opacity: 1, scale: 1 } : {}}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+            >
+              <div className="flex items-center gap-3 mb-6">
+                <TrendingUp size={22} color="#FF5701" strokeWidth={2.5} />
+                <span className="text-[14px] font-bold text-[#8A8F98] tracking-[0.15em] uppercase">ELO growth</span>
+              </div>
+              <div className="font-['DM_Mono',monospace] text-[72px] lg:text-[88px] font-bold text-[#14161A] leading-none mb-4 tracking-tighter">
+                {eloValue.toLocaleString()}
+              </div>
+              <p className="text-[17px] text-[#4A4E54] mb-16">Every point on this line is a real verified submission.</p>
+              
+              <div className="w-full -ml-[24px]">
+                <EloSparkline points={eloHistory} width={450} height={280} showAxes={true} />
+              </div>
+            </motion.div>
           </div>
-          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 42, fontWeight: 600, color: T.ink, margin: "8px 0 6px", fontVariantNumeric: "tabular-nums" }}>{eloValue.toLocaleString()}</div>
-          <p style={{ fontSize: 12.5, color: T.ink3, margin: "0 0 16px" }}>Every point on this line is a real submission.</p>
-          <EloSparkline points={eloHistory} />
         </div>
+
       </div>
     </section>
   )
@@ -619,7 +818,7 @@ const JOURNEY_PERSONAS = {
   student: { name: "Meera Iyer", role: "Student · Computer Science" },
   professional: { name: "Vikram Nair", role: "Professional · Full Stack Developer" },
   executive: { name: "Devika Shah", role: "Executive · Founder" },
-  institution: { name: "VIT Vellore", role: "College" },
+  institution: { name: "VIT Vellore", role: "Organization" },
 }
 
 // One reused animated mechanism per path — same patterns already built for
@@ -627,53 +826,60 @@ const JOURNEY_PERSONAS = {
 // verified-badge pop), miniaturized. No fabricated stat grids, no numbers
 // presented as real — student's sparkline reuses the exact same
 // illustrative ELO_HISTORY the Claim vs. Proof section already uses.
-function JourneyProof({ pathKey, color }) {
+function JourneyProof({ pathKey, color, isReplay = false }) {
   const reduce = useReducedMotion()
+  const baseDelay = isReplay ? 0 : 0.8 // Wait 0.8s only on initial load, replay instantly on hover
 
   if (pathKey === "student") {
     return (
-      <div>
-        <EloSparkline points={ELO_HISTORY} width={200} height={36} />
-        <p style={{ fontSize: 11.5, color: T.ink3, margin: "6px 0 0" }}>ELO grows with every submission.</p>
+      <div className="h-[76px] flex flex-col justify-end overflow-visible relative">
+        <div className="mb-0 -mt-3 relative z-0 pointer-events-none">
+          <EloSparkline points={ELO_HISTORY} width={220} height={70} animDelay={baseDelay} />
+        </div>
+        <p className="text-[11px] text-[#8A8F98] font-medium mt-0.5 relative z-10">ELO grows with every submission.</p>
       </div>
     )
   }
 
   if (pathKey === "professional") {
-    const nodes = [{ x: 20, y: 26 }, { x: 100, y: 12 }, { x: 180, y: 30 }]
+    // Symmetrical peak: 1st and 3rd dot at the same height (55). Middle dot shoots up (5).
+    const nodes = [{ x: 10, y: 55 }, { x: 110, y: 5 }, { x: 210, y: 55 }]
     return (
-      <div>
-        <svg width="200" height="40" viewBox="0 0 200 40" style={{ display: "block" }}>
-          {[[0, 1], [1, 2]].map(([a, b], i) => (
-            <motion.line key={i} x1={nodes[a].x} y1={nodes[a].y} x2={nodes[b].x} y2={nodes[b].y}
-              stroke={T.border} strokeWidth="1.5"
-              initial={reduce ? false : { pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: i * 0.15, ease: EASE }}
-            />
-          ))}
-          {nodes.map((n, i) => (
-            <motion.circle key={i} cx={n.x} cy={n.y} fill={color} stroke={color} strokeWidth="1.5"
-              initial={reduce ? false : { r: 0 }} whileInView={{ r: 4.5 }} viewport={{ once: true }}
-              transition={{ duration: 0.3, delay: 0.4 + i * 0.12, ease: EASE }}
-            />
-          ))}
-        </svg>
-        <p style={{ fontSize: 11.5, color: T.ink3, margin: "2px 0 0" }}>Skills stay verified automatically.</p>
+      <div className="h-[76px] flex flex-col justify-end overflow-visible relative">
+        <div className="mb-0 -mt-3 relative z-0 pointer-events-none">
+          <svg width="100%" height="70" viewBox="0 0 220 70" className="block w-full">
+            {[[0, 1], [1, 2]].map(([a, b], i) => (
+              <motion.line key={i} x1={nodes[a].x} y1={nodes[a].y} x2={nodes[b].x} y2={nodes[b].y}
+                stroke="#E4E6E9" strokeWidth="2"
+                initial={reduce ? false : { pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ once: true }}
+                transition={{ duration: 0.8, delay: baseDelay + i * 0.2, ease: "easeOut" }}
+              />
+            ))}
+            {nodes.map((n, i) => (
+              <motion.circle key={i} cx={n.x} cy={n.y} fill={color} stroke={color} strokeWidth="1.5"
+                initial={reduce ? false : { r: 0 }} whileInView={{ r: 4.5 }} viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: baseDelay + 0.6 + i * 0.15, ease: "backOut" }}
+              />
+            ))}
+          </svg>
+        </div>
+        <p className="text-[11px] text-[#8A8F98] font-medium mt-0.5 relative z-10">Skills stay verified automatically.</p>
       </div>
     )
   }
 
   if (pathKey === "executive") {
     return (
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div className="h-[76px] flex items-center gap-3">
         <motion.div
           initial={reduce ? false : { scale: 0, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }} viewport={{ once: true }}
-          transition={{ duration: 0.35, ease: EASE }}
-          style={{ width: 30, height: 30, borderRadius: 9, background: withAlpha(color, 0.12), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+          transition={{ type: "spring", stiffness: 200, damping: 15, delay: baseDelay }}
+          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
+          style={{ backgroundColor: withAlpha(color, 0.15) }}
         >
-          <ShieldCheck size={15} color={color} strokeWidth={2} />
+          <ShieldCheck size={18} color={color} strokeWidth={2} />
         </motion.div>
-        <p style={{ fontSize: 11.5, color: T.ink3, margin: 0 }}>Every profile identity-verified before it goes live.</p>
+        <p className="text-[11px] text-[#4B5058] leading-tight font-medium">Every profile identity-verified before it goes live.</p>
       </div>
     )
   }
@@ -681,22 +887,25 @@ function JourneyProof({ pathKey, color }) {
   // institution
   const bars = [{ label: "Cohort avg", pct: 55 }, { label: "Top scorer", pct: 90 }]
   return (
-    <div>
-      {bars.map((b, i) => (
-        <div key={b.label} style={{ marginBottom: i === 0 ? 6 : 0 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5, color: T.ink3, marginBottom: 3 }}>
-            <span>{b.label}</span>
+    <div className="h-[76px] flex flex-col justify-end">
+      <div className="flex flex-col gap-1.5 mb-1.5">
+        {bars.map((b, i) => (
+          <div key={b.label} className="w-full">
+            <div className="flex justify-between text-[10px] font-bold text-[#8A8F98] mb-0.5">
+              <span>{b.label}</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-[#E4E6E9] overflow-hidden w-full">
+              <motion.div
+                initial={reduce ? false : { width: 0 }} whileInView={{ width: `${b.pct}%` }} viewport={{ once: true }}
+                transition={{ duration: 0.8, delay: baseDelay + i * 0.25, ease: "easeOut" }}
+                className="h-full rounded-full"
+                style={{ backgroundColor: color }}
+              />
+            </div>
           </div>
-          <div style={{ height: 5, borderRadius: 99, background: T.hairline, overflow: "hidden" }}>
-            <motion.div
-              initial={reduce ? false : { width: 0 }} whileInView={{ width: `${b.pct}%` }} viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: i * 0.15, ease: EASE }}
-              style={{ height: "100%", borderRadius: 99, background: color }}
-            />
-          </div>
-        </div>
-      ))}
-      <p style={{ fontSize: 11.5, color: T.ink3, margin: "6px 0 0" }}>Every bar reflects real submitted work.</p>
+        ))}
+      </div>
+      <p className="text-[11px] text-[#8A8F98] font-medium mt-1">Every bar reflects real submitted work.</p>
     </div>
   )
 }
@@ -704,38 +913,87 @@ function JourneyProof({ pathKey, color }) {
 function JourneyCard({ item, onOpen }) {
   const Icon = item.icon
   const persona = JOURNEY_PERSONAS[item.key]
+  const [hoverCount, setHoverCount] = useState(0)
+  
   return (
-    <LiftCard
-      onClick={() => onOpen(item.path, "journey-card", item.instType ? { instType: item.instType } : {})}
-      style={{ padding: 28 }}
-      hoverColor={withAlpha(item.color, 0.5)}
+    <div
+      onMouseEnter={() => !item.comingSoon && setHoverCount(c => c + 1)}
+      onClick={() => {
+        if (!item.comingSoon) {
+          onOpen(item.path, "journey-card", item.instType ? { instType: item.instType } : {})
+        }
+      }}
+      className={`group bg-white rounded-2xl border border-[#E4E6E9] p-8 transition-all duration-300 relative overflow-hidden flex flex-col h-full ${item.comingSoon ? '' : 'cursor-pointer hover:shadow-xl hover:shadow-[#14161A]/5 hover:-translate-y-2'}`}
     >
-      <div style={{ width: 44, height: 44, borderRadius: 11, background: withAlpha(item.color, 0.12), display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 18 }}>
-        <Icon size={20} color={item.color} strokeWidth={1.75} />
-      </div>
-      <div style={{ fontSize: 19, fontWeight: 700, color: T.ink, marginBottom: 8 }}>{item.title}</div>
-      <p style={{ fontSize: 13.5, color: T.ink2, lineHeight: 1.6, margin: "0 0 16px" }}>{item.desc}</p>
-
-      {persona && (
-        <div style={{ padding: "14px 14px", background: T.surfaceRaised, border: `1px solid ${T.hairline}`, borderRadius: 12, marginBottom: 16 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>{persona.name}</div>
-          <div style={{ fontSize: 11, color: T.ink3, marginBottom: 3 }}>{persona.role}</div>
-          <IllustrativeTag style={{ display: "block", marginBottom: 10 }} />
-          <JourneyProof pathKey={item.key} color={item.color} />
+      {/* Coming Soon absolute corner badge */}
+      {item.comingSoon && (
+        <div 
+          className="absolute top-0 right-0 px-4 py-1.5 rounded-bl-2xl text-[9px] font-extrabold uppercase tracking-[0.15em] text-white z-20 shadow-sm"
+          style={{ backgroundColor: item.color }}
+        >
+          Coming Soon
         </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 18 }}>
+      {/* Dynamic top accent line on hover */}
+      {!item.comingSoon && (
+        <div 
+          className="absolute top-0 left-0 right-0 h-[3px] opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+          style={{ backgroundColor: item.color }} 
+        />
+      )}
+
+      <div className="flex justify-between items-start mb-6">
+        <div 
+          className={`w-12 h-12 rounded-xl flex items-center justify-center transition-transform duration-300 shadow-sm ${!item.comingSoon && 'group-hover:scale-110'}`}
+          style={{ backgroundColor: withAlpha(item.color, 0.1) }}
+        >
+          <Icon size={22} color={item.color} strokeWidth={2} />
+        </div>
+      </div>
+
+      <h3 className="text-[20px] font-extrabold mb-2 text-[#14161A]">{item.title}</h3>
+      <p className="text-[14px] text-[#4B5058] leading-relaxed mb-6 font-medium flex-grow">{item.desc}</p>
+
+      {persona && (
+        <div className={`border-t border-b border-[#E4E6E9]/60 py-5 mb-6 transition-colors duration-300 ${!item.comingSoon && 'group-hover:border-[#D1D5DB]'}`}>
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <div className="min-w-0">
+              <div className="text-[13px] font-bold text-[#14161A] truncate">{persona.name}</div>
+              <div className="text-[11.5px] text-[#8A8F98] font-medium mt-0.5 truncate">{persona.role}</div>
+            </div>
+            <div className="shrink-0 text-[9px] font-bold uppercase tracking-wider text-[#8A8F98] bg-[#F4F5F7] px-2 py-0.5 rounded-full border border-[#E4E6E9]">
+              Example
+            </div>
+          </div>
+          <div className="pt-1">
+            <JourneyProof key={hoverCount} pathKey={item.key} color={item.color} isReplay={hoverCount > 0} />
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-3.5 mb-8">
         {item.points.map(p => (
-          <div key={p} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12.5, color: T.ink3 }}>
-            <Check size={13} color={item.color} strokeWidth={2.5} /> {p}
+          <div key={p} className="flex items-start gap-3">
+            <Check size={16} color={item.color} strokeWidth={2.5} className="mt-[1px] shrink-0" />
+            <span className="text-[13.5px] text-[#4B5058] font-medium leading-tight">{p}</span>
           </div>
         ))}
       </div>
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: item.color }}>
-        Get started <ArrowRight size={13} />
-      </span>
-    </LiftCard>
+      
+      {!item.comingSoon ? (
+        <div 
+          className="mt-auto flex items-center gap-2 text-[14px] font-bold transition-all duration-300 group-hover:gap-3"
+          style={{ color: item.color }}
+        >
+          Get started <ArrowRight size={16} strokeWidth={2.5} />
+        </div>
+      ) : (
+        <div className="mt-auto flex items-center gap-2 text-[14px] font-bold text-[#A4AAB5]">
+          Waitlist opening soon
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -758,41 +1016,96 @@ function NetworkCard({ item }) {
 }
 
 // ─── FAQ ─────────────────────────────────────────────────────────────────
-function FAQItem({ q, a }) {
+function FAQItem({ q, a, isLast }) {
   const [open, setOpen] = useState(false)
   return (
-    <div style={{ border: `1px solid ${T.border}`, borderRadius: 12, overflow: "hidden" }}>
-      <button onClick={() => setOpen(o => !o)} style={{
-        width: "100%", textAlign: "left", padding: "16px 18px", background: "none", border: "none",
-        cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, fontFamily: "inherit",
-      }}>
-        <span style={{ fontSize: 14.5, fontWeight: 600, color: T.ink, lineHeight: 1.4 }}>{q}</span>
-        <ChevronDown size={16} color={T.ink3} strokeWidth={2} style={{ flexShrink: 0, transition: "transform 200ms ease", transform: open ? "rotate(180deg)" : "rotate(0)" }} />
+    <div className={`overflow-hidden ${isLast ? '' : 'border-b border-[#E4E6E9]'}`}>
+      <button 
+        onClick={() => setOpen(o => !o)} 
+        className="w-full text-left py-6 flex items-center justify-between gap-4 group cursor-pointer bg-transparent border-none outline-none"
+      >
+        <span className="text-[17px] font-semibold text-[#14161A] tracking-tight group-hover:text-[#FF5701] transition-colors duration-200">
+          {q}
+        </span>
+        <motion.div 
+          animate={{ rotate: open ? 45 : 0 }} 
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          className="flex-shrink-0 text-[#8A8F98] group-hover:text-[#FF5701] transition-colors duration-200"
+        >
+          <Plus size={20} strokeWidth={2} />
+        </motion.div>
       </button>
-      {open && <div style={{ padding: "0 18px 18px" }}><p style={{ fontSize: 13.5, color: T.ink2, lineHeight: 1.7, margin: 0 }}>{a}</p></div>}
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+          >
+            <div className="pb-6 pr-8">
+              <p className="text-[15px] leading-relaxed text-[#5E636E] m-0">{a}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
 
-function TrustBadge({ icon: Icon, label, sub }) {
+function TrustBadge({ imgSrc, label, sub }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 16px" }}>
-      <Icon size={16} color={T.ink3} strokeWidth={1.75} />
+    <div className="group flex items-center gap-4 bg-white border border-[#E4E6E9] hover:border-[#D1D5DB] rounded-2xl px-5 py-4 transition-all duration-200 cursor-default">
+      <div className="flex-shrink-0 w-16 h-12 flex items-center justify-center">
+        <img 
+          src={imgSrc} 
+          alt={label} 
+          className="w-full h-full object-contain mix-blend-multiply transition-transform duration-300 group-hover:scale-105" 
+        />
+      </div>
       <div>
-        <div style={{ fontSize: 12, fontWeight: 600, color: T.ink }}>{label}</div>
-        {sub && <div style={{ fontSize: 10.5, color: T.ink3, marginTop: 1 }}>{sub}</div>}
+        <div className="text-[14px] font-bold text-[#14161A] tracking-tight">{label}</div>
+        {sub && <div className="text-[12px] font-medium text-[#8A8F98] mt-0.5">{sub}</div>}
       </div>
     </div>
+  )
+}
+
+// ─── Typewriter Effect ──────────────────────────────────────────────────
+function TypewriterText({ words }) {
+  const [index, setIndex] = useState(0)
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIndex((prev) => (prev + 1) % words.length)
+    }, 2500)
+    return () => clearInterval(interval)
+  }, [words])
+
+  return (
+    <motion.span
+      key={index}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{ duration: 0.4, ease: EASE }}
+      style={{ display: "inline-block" }}
+    >
+      {words[index]}
+    </motion.span>
   )
 }
 
 // ═══════════════════════════════════════════════════════════════════════
 export default function LandingPage({ onGetStarted, onLogin }) {
   const [pricingFlow, setPricingFlow] = useState("student")
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [activePreview, setActivePreview] = useState("arena")
+  const reduce = useReducedMotion()
 
-  // extra.instType seeds AuthModal's institution sub-type toggle (College/
+  // extra.instType seeds AuthModal's institution sub-type toggle (Organization/
   // Company/...). Always writes or clears the key on every call — never
-  // leaves a stale value from a previous click (e.g. clicking the College
+  // leaves a stale value from a previous click (e.g. clicking the Organization
   // card after the "company profile instead" link) to leak into the next.
   // path=null (the generic nav/hero "Get started" buttons) clears any
   // stale path instead — AuthModal opens fresh at its step-1 chooser
@@ -815,28 +1128,37 @@ export default function LandingPage({ onGetStarted, onLogin }) {
 
   const FAQ_ITEMS = [
     { q: "What actually is ELO here, and how is it different from a resume claim?", a: "The same rating-system idea as chess.com — a number that only moves when you complete real, scored Arena tasks. Students start at 400. It rises when you solve harder problems well, and can drop if you're inactive. Nobody can type in a higher number." },
-    { q: "Is Capabilio free to start?", a: "Yes. Student, Professional, and College all have a free tier with no card required. Paid plans unlock more daily Arena tasks and AI interview sessions — they're not required to build a verified profile." },
+    { q: "Is Capabilio free to start?", a: "Yes. Student, Professional, and Organization all have a free tier with no card required. Paid plans unlock more daily Arena tasks and AI interview sessions — they're not required to build a verified profile." },
     { q: "How does verification work for professionals?", a: "You upload a resume or LinkedIn URL and AI extracts your career timeline. Employment history is then cross-matched against UAN/EPFO records. Anything that can't be verified this way is shown as “self-claimed,” not presented as fact." },
     { q: "What happens if I stop doing Arena tasks for a while?", a: "Your ELO can decay after 7+ days of inactivity, the same way a chess rating drifts without play — it reflects current skill, not a score you can bank and coast on." },
   ]
 
   const PRICING = {
     student: { plans: [
-      { label: "Free", price: null, features: ["1 Arena task every 15 days", "Portfolio generation", "Locked premium previews", "Market reports at ₹49/report"], cta: "Get started free" },
-      { label: "Pro", price: "₹299/mo", sub: "Billed monthly", features: ["3 Arena tasks per day", "3 AI Interview sessions/month", "1 market report/month", "Full Arena access", "Portfolio generation"], cta: "Start Pro" },
-      { label: "Elite", price: "₹599/mo", sub: "Best value", recommended: true, features: ["6 Arena tasks per day", "5 AI Interview sessions/month", "2 market reports/month", "Personal branding video", "Full advanced Arena", "Portfolio generation"], cta: "Go Elite" },
+      { label: "Free", price: null, features: ["1 Arena task every 24 hrs", "Portfolio generation", "Locked premium previews", "Market reports at ₹49/report"], cta: "Get started free" },
+      { label: "Pro", price: "₹299/mo", sub: "Billed monthly", features: ["3 Arena tasks per day", "3 AI Interview sessions/month", "1 market report/month", "Portfolio generation"], cta: "Start Pro" },
+      { label: "Elite", price: "₹599/mo", sub: "Best value", recommended: true, features: ["6 Arena tasks per day", "5 AI Interview sessions/month", "2 market reports/month", "Personal branding video", "Portfolio generation"], cta: "Go Elite" },
     ]},
     professional: { plans: [
       { label: "Free", price: null, features: ["Basic Orbit dashboard", "1 Forge challenge/week", "Public verified profile", "UAN verification"], cta: "Start free" },
       { label: "Capabilio Pro", price: "₹499/mo", sub: "₹3,999/yr — save 33%", recommended: true, features: ["Full Orbit — all 4 career signals", "Unlimited Forge challenges", "Signal — 3 market reports/mo", "Compensation Intelligence", "Gap Mode + Gap Narrative Engine", "Vault full verification", "Nexus verified network"], cta: "Go Capabilio Pro" },
       { label: "Capabilio Elite", price: "₹999/mo", sub: "₹7,999/yr — save 33%", features: ["Everything in Capabilio Pro", "AI Interview — 5 sessions/mo", "Mentor Hub listing (15% commission)", "Transition Tracks access", "Return-Ready Sprint", "Signal — unlimited reports", "Priority Launchpad matching"], cta: "Go Capabilio Elite" },
     ]},
-    college: {
+    organization: {
       custom: true,
       sub: "A bad hire costs ₹80,000+. One better placement decision pays for the year. Pricing is scoped to your student/employee count.",
       cta: "Talk to us",
     },
   }
+
+  const handleNavClick = (e, targetId) => {
+    e.preventDefault();
+    const el = document.getElementById(targetId);
+    if (el) {
+      const y = el.getBoundingClientRect().top + window.scrollY - 80;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  };
 
   return (
     <div style={{ minHeight: "100vh", background: T.surface, color: T.ink, fontFamily: "'DM Sans',sans-serif" }}>
@@ -854,33 +1176,99 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       `}</style>
 
       {/* ── NAV ─────────────────────────────────────────────────────── */}
-      <nav style={{ borderBottom: `1px solid ${T.border}`, position: "sticky", top: 0, background: T.surface, zIndex: 50 }}>
-        <div className="lp-container" style={{ height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <img src="/capabilio-logo-dark.png" alt="Capabilio AI" style={{ height: 24, width: "auto" }} />
-          <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-            <a href="#how-it-works" style={{ fontSize: 14, color: T.ink2, textDecoration: "none", fontWeight: 500 }}>How it works</a>
-            <a href="#pricing" style={{ fontSize: 14, color: T.ink2, textDecoration: "none", fontWeight: 500 }}>Pricing</a>
-            <GhostButton onClick={onLogin}>Sign in</GhostButton>
+      <nav className="sticky top-0 z-50 bg-white border-b border-[#E4E6E9] w-full font-sans">
+        <div className="w-full px-6 md:px-12 h-20 flex items-center justify-between">
+          
+          {/* Left: LOGO */}
+          <div className="flex items-center cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+             <img src="/capabilio-logo-dark.png" alt="Capabilio AI" className="h-9 md:h-[38px] w-auto object-contain" />
+          </div>
+          
+          {/* Center: Desktop Links */}
+          <div className="hidden md:flex items-center gap-10 absolute left-1/2 -translate-x-1/2">
+            <a href="#how-it-works" onClick={(e) => handleNavClick(e, "how-it-works")} className="text-[15px] font-semibold text-[#4B5058] hover:text-[#FF5701] transition-colors">How it works</a>
+            <a href="#pricing" onClick={(e) => handleNavClick(e, "pricing")} className="text-[15px] font-semibold text-[#4B5058] hover:text-[#FF5701] transition-colors">Pricing</a>
+          </div>
+
+          {/* Right: Desktop Buttons */}
+          <div className="hidden md:flex items-center gap-4">
+            <GhostButton onClick={onLogin} className="border-transparent hover:border-[#E4E6E9]">Sign in</GhostButton>
             <PrimaryButton onClick={() => openPath(null, "nav")}>Get started</PrimaryButton>
           </div>
+
+          {/* Mobile Menu Button */}
+          <div className="md:hidden flex items-center">
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="text-[#14161A] hover:text-[#FF5701] p-2 transition-colors"
+            >
+              {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
+            </button>
+          </div>
         </div>
+
+        {/* Mobile Menu Dropdown */}
+        <motion.div
+          initial={false}
+          animate={{ height: isMobileMenuOpen ? "auto" : 0, opacity: isMobileMenuOpen ? 1 : 0 }}
+          className="md:hidden overflow-hidden bg-white border-b border-[#E4E6E9]"
+        >
+          <div className="px-6 py-8 flex flex-col gap-6">
+            <a href="#how-it-works" onClick={(e) => { setIsMobileMenuOpen(false); handleNavClick(e, "how-it-works"); }} className="text-lg font-bold text-[#14161A]">How it works</a>
+            <a href="#pricing" onClick={(e) => { setIsMobileMenuOpen(false); handleNavClick(e, "pricing"); }} className="text-lg font-bold text-[#14161A]">Pricing</a>
+            <div className="flex flex-col gap-4 pt-6 border-t border-[#E4E6E9]">
+              <GhostButton onClick={() => { setIsMobileMenuOpen(false); onLogin(); }} className="w-full justify-center">Sign in</GhostButton>
+              <PrimaryButton onClick={() => { setIsMobileMenuOpen(false); openPath(null, "nav"); }} className="w-full justify-center">Get started</PrimaryButton>
+            </div>
+          </div>
+        </motion.div>
       </nav>
 
       {/* ── HERO ────────────────────────────────────────────────────── */}
-      <section style={{ padding: "88px 0 96px" }}>
-        <div className="lp-container lp-hero-grid">
+      <section className="w-full px-6 md:px-12 pt-4 pb-16 md:pt-8 md:pb-24 bg-white overflow-hidden">
+        <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+          
+          {/* Left Side: Typography & Buttons */}
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}>
-            <h1 style={{ fontSize: "clamp(34px,4.6vw,54px)", lineHeight: 1.08, fontWeight: 700, letterSpacing: "-0.02em", color: T.ink, margin: "0 0 20px" }}>
-              Your Career Needs More Than A Resume.<br />Build. Practice. Prove. Get Hired.
+            
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1, ease: EASE }}
+              className="text-[#FF5701] font-extrabold text-[13px] md:text-[15px] tracking-[0.2em] uppercase mb-4"
+            >
+              Verified Career OS
+            </motion.div>
+
+            <h1 className="text-4xl md:text-5xl lg:text-[56px] font-extrabold text-[#14161A] leading-[1.1] tracking-tight mb-6">
+              Your Career Needs <br className="hidden lg:block" />
+              More Than A <br className="hidden lg:block" />
+              <span className="text-[#FF5701] inline-flex min-w-[300px]">
+                <TypewriterText words={["Resume.", "Static PDF.", "LinkedIn Bio.", "Fake Claim."]} />
+              </span>
             </h1>
-            <p style={{ fontSize: 17, color: T.ink2, lineHeight: 1.6, maxWidth: 480, margin: "0 0 32px" }}>
-              Capabilio is an AI Career Operating System that continuously builds, verifies, and showcases your professional skills.
+            
+            <p className="text-[17px] text-[#4B5058] leading-relaxed max-w-[480px] mb-10 font-medium">
+              Capabilio is the AI ecosystem that continuously builds, verifies, and showcases your professional skills through live ELO ratings.
             </p>
-            <div style={{ display: "flex", gap: 12 }}>
-              <PrimaryButton onClick={() => openPath(null, "hero")}>Get started <ArrowRight size={15} /></PrimaryButton>
-              <GhostButton href="#how-it-works">See how it works</GhostButton>
+            
+            <div className="flex flex-wrap items-center gap-4">
+              <PrimaryButton onClick={() => openPath(null, "hero")} className="px-8 py-3.5 rounded-xl text-[16px]">
+                Get started <ArrowRight size={18} strokeWidth={2.5} />
+              </PrimaryButton>
+              <GhostButton onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: 'smooth' })} className="px-8 py-3.5 rounded-xl text-[16px]">
+                See how it works
+              </GhostButton>
+            </div>
+
+            <div className="mt-10 flex items-center gap-6 text-[13px] font-semibold text-[#8A8F98]">
+              <div className="flex items-center gap-1.5"><Check size={16} className="text-[#16A34A]" strokeWidth={3}/> Live Skill ELO</div>
+              <div className="flex items-center gap-1.5"><Check size={16} className="text-[#16A34A]" strokeWidth={3}/> AI Verified</div>
+              <div className="flex items-center gap-1.5"><Check size={16} className="text-[#16A34A]" strokeWidth={3}/> Resume-Free</div>
             </div>
           </motion.div>
+
+          {/* Right Side: Workflow Diagram (untouched internally) */}
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1, ease: EASE }}>
             <WorkflowDiagram />
           </motion.div>
@@ -888,54 +1276,178 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       </section>
 
       {/* ── CHOOSE YOUR JOURNEY ─────────────────────────────────────── */}
-      <section style={{ padding: "0 0 96px" }}>
-        <div className="lp-container">
-          <div style={{ textAlign: "center", marginBottom: 40 }}>
-            <Eyebrow>Choose your journey</Eyebrow>
-            <h2 style={{ fontSize: "clamp(28px,3.6vw,40px)", fontWeight: 700, letterSpacing: "-0.015em", color: T.ink, margin: "0 0 12px" }}>One platform. Four journeys.</h2>
-            <p style={{ fontSize: 15, color: T.ink2, maxWidth: 560, margin: "0 auto" }}>Students prove readiness. Professionals stay verified. Executives monetize authority. Colleges measure cohort health.</p>
+      <section className="w-full px-6 md:px-12 py-24 bg-[#FAF7F2] relative overflow-hidden">
+        
+        <div className="max-w-[1200px] mx-auto relative z-10">
+          
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }} 
+            whileInView={{ opacity: 1, y: 0 }} 
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="text-center max-w-3xl mx-auto mb-20"
+          >
+            <motion.h3 
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="text-[#FF5701] font-extrabold tracking-[0.2em] uppercase text-[13px] md:text-[15px] mb-4"
+            >
+              Choose your journey
+            </motion.h3>
+            <h2 className="text-4xl md:text-5xl lg:text-[54px] font-extrabold text-[#14161A] tracking-tight leading-[1.1] mb-8">
+              One platform. Four journeys.
+            </h2>
+            <p className="text-[18px] md:text-[20px] text-[#4B5058] leading-relaxed font-medium">
+              Students prove readiness. Professionals stay verified. Executives monetize authority. Organizations measure cohort health.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 pb-16">
+            {PRIMARY_PATHS.map((item, i) => (
+              <motion.div
+                key={item.key}
+                initial={{ opacity: 0, y: 50 }}
+                whileInView={{ opacity: 1, y: i % 2 !== 0 ? 48 : 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.6, delay: i * 0.15, ease: "easeOut" }}
+                className={`h-full ${i % 2 !== 0 ? 'lg:translate-y-12' : ''}`}
+              >
+                <JourneyCard item={item} onOpen={openPath} />
+              </motion.div>
+            ))}
           </div>
-          <div className="lp-grid-4">
-            {PRIMARY_PATHS.map(item => <JourneyCard key={item.key} item={item} onOpen={openPath} />)}
-          </div>
-          <div style={{ textAlign: "center", marginTop: 16 }}>
-            <a onClick={() => openPath("institution", "journey-company-link", { instType: "Company" })} style={{ fontSize: 13, color: T.ink3, cursor: "pointer", textDecoration: "none" }}>
-              Building a company profile instead? <span style={{ color: T.accent, fontWeight: 600 }}>&rarr;</span>
-            </a>
+          <div className="text-center mt-16 lg:mt-24 flex justify-center">
+            <motion.div
+              whileHover="hover"
+              onClick={() => openPath("institution", "journey-company-link", { instType: "Company" })} 
+              className="inline-flex items-center gap-2.5 px-6 py-2.5 bg-white border border-[#E4E6E9] hover:border-[#D1D5DB] hover:shadow-sm rounded-full text-[14px] text-[#4B5058] cursor-pointer transition-all duration-300 font-bold group"
+            >
+              Building a company profile instead? 
+              <motion.span 
+                variants={{ hover: { x: 4 } }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                className="flex items-center justify-center w-6 h-6 rounded-full bg-[#F4F5F7] group-hover:bg-[#FF5701] transition-colors duration-300"
+              >
+                <ArrowRight size={12} className="text-[#14161A] group-hover:text-white transition-colors duration-300" strokeWidth={3} />
+              </motion.span>
+            </motion.div>
           </div>
         </div>
       </section>
 
       {/* ── HOW IT WORKS ────────────────────────────────────────────── */}
-      <section id="how-it-works" style={{ padding: "0 0 96px" }}>
-        <div className="lp-container">
-          <div style={{ textAlign: "center", marginBottom: 40 }}>
-            <Eyebrow>How it works</Eyebrow>
-            <h2 style={{ fontSize: "clamp(28px,3.6vw,40px)", fontWeight: 700, letterSpacing: "-0.015em", color: T.ink, margin: 0 }}>Five steps. One verified career.</h2>
+      <section id="how-it-works" className="py-24 lg:py-32 relative overflow-hidden bg-white">
+        {/* Background Paper Rocket Illustration */}
+        <div className="absolute inset-x-0 top-0 z-0 pointer-events-none opacity-30 md:opacity-40 flex items-start justify-center overflow-hidden">
+          <img 
+            src="/paper-plane-bg.png" 
+            alt="Journey blueprint" 
+            className="w-full max-w-[1200px] h-auto object-contain object-top mt-10 md:mt-0"
+            style={{ mixBlendMode: 'multiply' }}
+          />
+        </div>
+
+        <div className="max-w-[1200px] mx-auto px-6 relative z-10">
+          <div className="text-center mb-16 lg:mb-20">
+            <div className="text-[#FF5701] font-extrabold tracking-[0.2em] uppercase text-[13px] md:text-[15px] mb-4">
+              How it works
+            </div>
+            <h2 className="text-[32px] lg:text-[54px] font-extrabold text-[#14161A] tracking-tight leading-[1.1] max-w-2xl mx-auto">
+              Five steps. One verified career.
+            </h2>
           </div>
           <HowItWorksLine />
         </div>
       </section>
 
       {/* ── SHOW, DON'T EXPLAIN ─────────────────────────────────────── */}
-      <section style={{ padding: "0 0 96px", background: T.surfaceRaised, borderTop: `1px solid ${T.hairline}`, borderBottom: `1px solid ${T.hairline}` }}>
-        <div className="lp-container" style={{ paddingTop: 80, paddingBottom: 16 }}>
-          <div style={{ textAlign: "center", marginBottom: 44 }}>
-            <Eyebrow>See it, don&apos;t read about it</Eyebrow>
-            <h2 style={{ fontSize: "clamp(28px,3.6vw,40px)", fontWeight: 700, letterSpacing: "-0.015em", color: T.ink, margin: 0 }}>What actually happens on Capabilio.</h2>
+      <section className="relative pb-24 lg:pb-32 bg-[#F8F9FA] border-y border-[#E4E6E9] overflow-hidden">
+        {/* Abstract Background Curves & Floating Elements (Zomato Style) */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+          {/* Left Looping String */}
+          <svg className="absolute left-0 top-0 h-full w-[400px] lg:w-[500px]" viewBox="0 0 400 800" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMin slice">
+            <path d="M 100,-50 C -50,150 350,200 150,300 C -50,400 -100,550 150,550 C 400,550 200,800 0,900" stroke="#FF5701" strokeWidth="0.4" strokeOpacity="0.2" vectorEffect="non-scaling-stroke" />
+            <path d="M 250,-50 C 400,250 -50,350 200,500 C 450,650 350,850 150,900" stroke="#FF5701" strokeWidth="0.3" strokeOpacity="0.15" vectorEffect="non-scaling-stroke" />
+          </svg>
+
+          {/* Right Looping String */}
+          <svg className="absolute right-0 top-0 h-full w-[400px] lg:w-[500px]" viewBox="0 0 400 800" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMaxYMin slice">
+            <path d="M 200,-50 C 450,150 50,300 250,450 C 450,600 500,750 200,750 C -100,750 300,900 400,950" stroke="#FF5701" strokeWidth="0.4" strokeOpacity="0.2" vectorEffect="non-scaling-stroke" />
+            <path d="M 50,-50 C -100,250 450,350 150,550 C -150,750 100,900 300,950" stroke="#FF5701" strokeWidth="0.3" strokeOpacity="0.15" vectorEffect="non-scaling-stroke" />
+          </svg>
+
+          {/* Floating 2D Icons (Minimal Line-art) */}
+          <motion.img src="/bug.png" alt="Bug" className="absolute top-[5%] left-[10%] lg:left-[12%] w-24 md:w-32 lg:w-40 mix-blend-multiply opacity-80" animate={{ y: [0, -15, 0], rotate: [-2, 2, -2] }} transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }} />
+          <motion.img src="/coffee.png" alt="Coffee" className="absolute top-[45%] left-[2%] lg:left-[5%] w-20 md:w-28 lg:w-36 mix-blend-multiply opacity-80" animate={{ y: [0, 10, 0], rotate: [0, -3, 0] }} transition={{ repeat: Infinity, duration: 5.5, ease: "easeInOut", delay: 1 }} />
+          <motion.img src="/keycap.png" alt="Keycap" className="absolute bottom-[10%] left-[12%] lg:left-[16%] w-28 md:w-36 lg:w-44 mix-blend-multiply opacity-80" animate={{ y: [0, -20, 0], rotate: [2, -2, 2] }} transition={{ repeat: Infinity, duration: 7, ease: "easeInOut", delay: 2 }} />
+          
+          <motion.img src="/git-flat.png" alt="Git" className="absolute top-[15%] right-[12%] lg:right-[15%] w-32 md:w-40 lg:w-48 mix-blend-multiply opacity-80" animate={{ y: [0, 20, 0], rotate: [-3, 3, -3] }} transition={{ repeat: Infinity, duration: 8, ease: "easeInOut", delay: 0.5 }} />
+          <motion.img src="/terminal.png" alt="Terminal" className="absolute top-[48%] right-[4%] lg:right-[6%] w-24 md:w-32 lg:w-44 mix-blend-multiply opacity-80" animate={{ y: [0, -12, 0], rotate: [2, -2, 2] }} transition={{ repeat: Infinity, duration: 6.2, ease: "easeInOut", delay: 1.2 }} />
+          <motion.img src="/rocket-flat.png" alt="Rocket" className="absolute bottom-[15%] right-[8%] lg:right-[12%] w-28 md:w-36 lg:w-44 mix-blend-multiply opacity-80" animate={{ y: [0, -15, 0], rotate: [3, -3, 3] }} transition={{ repeat: Infinity, duration: 6.5, ease: "easeInOut", delay: 1.5 }} />
+        </div>
+
+        <div className="max-w-[1200px] mx-auto px-6 pt-20 lg:pt-32 pb-4 relative z-10">
+          <div className="text-center mb-12 lg:mb-16">
+            <div className="text-[#FF5701] font-extrabold tracking-[0.2em] uppercase text-[13px] md:text-[15px] mb-4">
+              See it, don't read about it
+            </div>
+            <h2 className="text-[32px] lg:text-[54px] font-extrabold text-[#14161A] tracking-tight leading-[1.1] max-w-2xl mx-auto mb-10">
+              What actually happens on Capabilio.
+            </h2>
+            
+            {/* Interactive Tabs */}
+            <div className="inline-flex items-center bg-[#E4E6E9]/40 p-1.5 rounded-full mx-auto relative z-20">
+              {[
+                { id: "arena", label: "The Arena" },
+                { id: "skill", label: "SkillStudio" },
+                { id: "recruiter", label: "Recruiter View" }
+              ].map(tab => {
+                const isActive = activePreview === tab.id
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActivePreview(tab.id)}
+                    className={`relative px-6 py-2.5 rounded-full text-[14px] font-bold transition-all duration-300 z-10 ${isActive ? 'text-[#14161A] shadow-sm' : 'text-[#8A8F98] hover:text-[#14161A]'}`}
+                  >
+                    {isActive && (
+                      <motion.div 
+                        layoutId="activeTabPreview"
+                        className="absolute inset-0 bg-white rounded-full border border-[#D1D5DB]"
+                        style={{ zIndex: -1 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      />
+                    )}
+                    <span className="relative z-10">{tab.label}</span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
-          <div className="lp-grid-3">
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: T.ink3, marginBottom: 12 }}>Arena</div>
-              <ArenaPreview />
-            </div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: T.ink3, marginBottom: 12 }}>SkillStudio</div>
-              <SkillStudioPreview />
-            </div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: T.ink3, marginBottom: 12 }}>Recruiter view</div>
-              <RecruiterPreview />
+
+          {/* Active Window */}
+          <div className="max-w-[650px] mx-auto relative">
+            {/* Window Mac-like styling wrapper for extra premium feel */}
+            <div className="w-full bg-white rounded-2xl border border-[#E4E6E9] overflow-hidden">
+              <div className="h-10 bg-[#F4F5F7] border-b border-[#E4E6E9] flex items-center px-4 gap-2.5">
+                <div className={`w-2.5 h-2.5 rounded-full transition-colors duration-500 ${activePreview === 'arena' ? 'bg-[#FF5701]' : 'bg-[#D1D5DB]'}`} />
+                <div className={`w-2.5 h-2.5 rounded-full transition-colors duration-500 ${activePreview === 'skill' ? 'bg-[#FF5701]' : 'bg-[#D1D5DB]'}`} />
+                <div className={`w-2.5 h-2.5 rounded-full transition-colors duration-500 ${activePreview === 'recruiter' ? 'bg-[#FF5701]' : 'bg-[#D1D5DB]'}`} />
+              </div>
+              <div className="p-6 md:p-10 bg-white">
+                <motion.div 
+                  key={activePreview}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                  className="w-full"
+                >
+                  {activePreview === "arena" && <ArenaPreview />}
+                  {activePreview === "skill" && <SkillStudioPreview />}
+                  {activePreview === "recruiter" && <RecruiterPreview />}
+                </motion.div>
+              </div>
             </div>
           </div>
         </div>
@@ -945,113 +1457,315 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       <ClaimVsProofSection problemRows={PROBLEM_ROWS} eloHistory={ELO_HISTORY} />
 
       {/* ── PRICING ─────────────────────────────────────────────────── */}
-      <section id="pricing" style={{ padding: "0 0 96px" }}>
-        <div className="lp-container">
-          <div style={{ textAlign: "center", marginBottom: 32 }}>
-            <Eyebrow>Pricing</Eyebrow>
-            <h2 style={{ fontSize: "clamp(28px,3.6vw,40px)", fontWeight: 700, letterSpacing: "-0.015em", color: T.ink, margin: "0 0 12px" }}>Simple pricing.</h2>
-          </div>
-          <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 32 }}>
-            {["student", "professional", "college"].map(key => (
-              <button key={key} onClick={() => setPricingFlow(key)} style={{
-                padding: "8px 16px", borderRadius: 999, border: `1px solid ${pricingFlow === key ? T.accent : T.border}`,
-                background: pricingFlow === key ? T.accentDim : "transparent",
-                color: pricingFlow === key ? T.accent : T.ink2, fontSize: 13, fontWeight: 600,
-                cursor: "pointer", fontFamily: "inherit", textTransform: "capitalize",
-              }}>{key}</button>
-            ))}
-          </div>
-          {PRICING[pricingFlow].custom ? (
-            <div style={{ maxWidth: 480, margin: "0 auto", textAlign: "center", border: `1px solid ${T.border}`, borderRadius: 16, padding: "36px 28px" }}>
-              <div style={{ fontSize: 22, fontWeight: 700, color: T.ink, marginBottom: 8 }}>Custom pricing</div>
-              <p style={{ fontSize: 13.5, color: T.ink2, lineHeight: 1.6, margin: "0 0 20px" }}>{PRICING.college.sub}</p>
-              <PrimaryButton onClick={() => openPath("institution", "pricing-college-cta")}>{PRICING.college.cta}</PrimaryButton>
+      <section id="pricing" className="pb-24 lg:pb-32 pt-16 lg:pt-24 bg-white">
+        <div className="max-w-[1200px] mx-auto px-6">
+          <div className="text-center mb-12">
+            <div className="text-[#FF5701] font-extrabold tracking-[0.2em] uppercase text-[13px] md:text-[15px] mb-4">
+              Pricing
             </div>
-          ) : (
-            <div className="lp-grid-3">
-              {PRICING[pricingFlow].plans.map(plan => (
-                <div key={plan.label} style={{
-                  border: `1px solid ${T.border}`, borderTop: plan.recommended ? `3px solid ${T.accent}` : `1px solid ${T.border}`,
-                  borderRadius: 16, padding: "24px 22px", display: "flex", flexDirection: "column",
-                }}>
-                  {plan.recommended && <div style={{ fontSize: 10.5, fontWeight: 700, color: T.accent, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 10 }}>Recommended</div>}
-                  <div style={{ fontSize: 13, fontWeight: 600, color: T.ink3, marginBottom: 6 }}>{plan.label}</div>
-                  <div style={{ fontSize: 30, fontWeight: 700, color: T.ink, marginBottom: plan.sub ? 4 : 18 }}>{plan.price || "Free"}</div>
-                  {plan.sub && <div style={{ fontSize: 12, color: T.ink3, marginBottom: 18 }}>{plan.sub}</div>}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 9, marginBottom: 22, flex: 1 }}>
-                    {plan.features.map(f => (
-                      <div key={f} style={{ display: "flex", gap: 8, fontSize: 13, color: T.ink2 }}>
-                        <Check size={14} color={T.accent} strokeWidth={2.5} style={{ flexShrink: 0, marginTop: 2 }} /> {f}
-                      </div>
-                    ))}
+            <h2 className="text-[32px] lg:text-[54px] font-extrabold text-[#14161A] tracking-tight leading-[1.1] max-w-2xl mx-auto mb-10">
+              Simple pricing.
+            </h2>
+
+            {/* Premium Toggle */}
+            <div className="inline-flex items-center bg-[#F4F5F7] p-1.5 rounded-full mx-auto relative border border-[#E4E6E9]">
+              {["student", "professional", "organization"].map((key) => {
+                const isActive = pricingFlow === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setPricingFlow(key)}
+                    className={`relative px-8 py-2.5 rounded-full text-[14px] font-bold transition-all duration-300 capitalize z-10 ${isActive ? 'text-[#14161A]' : 'text-[#8A8F98] hover:text-[#14161A]'}`}
+                  >
+                    {isActive && (
+                      <motion.div
+                        layoutId="pricingTab"
+                        className="absolute inset-0 bg-white rounded-full shadow-sm border border-[#D1D5DB]"
+                        style={{ zIndex: -1 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      />
+                    )}
+                    <span className="relative z-10">{key}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="max-w-[1000px] mx-auto">
+            <motion.div 
+              key={pricingFlow}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+            >
+              {PRICING[pricingFlow].custom ? (
+                <div className="w-full bg-white border border-[#E4E6E9] rounded-3xl p-10 lg:p-16 text-center max-w-3xl mx-auto">
+                  <div className="w-16 h-16 bg-[#FDF2F2] rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Building2 size={28} className="text-[#FF5701]" strokeWidth={2.5} />
                   </div>
-                  {plan.recommended
-                    ? <PrimaryButton onClick={() => openPath(pricingFlow, `pricing-${plan.label}`)}>{plan.cta}</PrimaryButton>
-                    : <GhostButton onClick={() => openPath(pricingFlow, `pricing-${plan.label}`)}>{plan.cta}</GhostButton>}
+                  <h3 className="text-[28px] lg:text-[36px] font-bold text-[#14161A] tracking-tight mb-4">Custom pricing</h3>
+                  <p className="text-[17px] text-[#4A4E54] leading-[1.6] max-w-lg mx-auto mb-10">
+                    {PRICING.organization.sub}
+                  </p>
+                  <button 
+                    onClick={() => openPath("institution", "pricing-organization-cta")}
+                    className="bg-[#14161A] text-white px-8 py-4 rounded-full text-[15px] font-bold hover:bg-[#2A2E35] transition-colors"
+                  >
+                    {PRICING.organization.cta}
+                  </button>
                 </div>
-              ))}
-            </div>
-          )}
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+                  {PRICING[pricingFlow].plans.map((plan, idx) => (
+                    <div 
+                      key={plan.label} 
+                      className={`relative flex flex-col bg-white rounded-3xl p-8 lg:p-10 transition-colors duration-300 ${plan.recommended ? 'border-2 border-[#14161A] z-10' : 'border border-[#E4E6E9] hover:border-[#D1D5DB] z-0'}`}
+                    >
+                      {plan.recommended && (
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#14161A] text-white text-[11px] font-bold uppercase tracking-[0.15em] py-1.5 px-4 rounded-full">
+                          Recommended
+                        </div>
+                      )}
+                      <div className="text-[18px] font-bold text-[#14161A] mb-4">{plan.label}</div>
+                      <div className="flex items-baseline gap-1 mb-2">
+                        <div className="text-[36px] lg:text-[44px] font-bold text-[#14161A] tracking-tighter leading-none">
+                          {plan.price ? plan.price.split('/')[0] : "₹0"}
+                        </div>
+                        <div className="text-[15px] font-medium text-[#8A8F98]">/mo</div>
+                      </div>
+                      
+                      <div className="text-[14px] font-medium text-[#8A8F98] h-[20px] mb-8">
+                        {plan.sub || ""}
+                      </div>
+
+                      <button 
+                        onClick={() => openPath(pricingFlow, `pricing-${plan.label}`)}
+                        className={`w-full py-3.5 rounded-xl text-[14px] font-bold mb-10 transition-colors ${plan.recommended ? 'bg-[#FF5701] text-white hover:bg-[#E04B01]' : 'bg-[#F4F5F7] text-[#14161A] hover:bg-[#E4E6E9]'}`}
+                      >
+                        {plan.cta}
+                      </button>
+
+                      <div className="flex flex-col gap-4 mt-auto">
+                        {plan.features.map(f => (
+                          <div key={f} className="flex items-start gap-3">
+                            <Check size={18} className="text-[#FF5701] shrink-0 mt-0.5" strokeWidth={3} />
+                            <span className="text-[14px] text-[#4A4E54] font-medium leading-snug">{f}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </div>
         </div>
       </section>
 
       {/* ── NETWORK ─────────────────────────────────────────────────── */}
-      <section style={{ padding: "0 0 96px" }}>
-        <div className="lp-container">
-          <div style={{ textAlign: "center", marginBottom: 32 }}>
-            <Eyebrow>Verified network</Eyebrow>
-            <h2 style={{ fontSize: "clamp(28px,3.6vw,40px)", fontWeight: 700, letterSpacing: "-0.015em", color: T.ink, margin: 0 }}>Learn from people who proved it.</h2>
+      <section className="relative py-32 overflow-hidden bg-[#14161A]">
+        {/* Cinematic Background Image with Gradient Overlay */}
+        <div className="absolute inset-0 z-0">
+          <img 
+            src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1920&q=80" 
+            alt="Corporate Office" 
+            className="w-full h-full object-cover object-center opacity-40 grayscale"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#14161A] via-[#14161A]/90 to-[#14161A]/60"></div>
+        </div>
+
+        <div className="max-w-[1200px] mx-auto px-6 relative z-10">
+          <div className="text-center mb-16">
+            <div className="text-[#FF5701] font-extrabold tracking-[0.2em] uppercase text-[13px] md:text-[15px] mb-4">
+              Verified network
+            </div>
+            <h2 className="text-[32px] lg:text-[54px] font-extrabold text-white tracking-tight leading-[1.1] max-w-2xl mx-auto">
+              Learn from people who proved it.
+            </h2>
           </div>
-          <div className="lp-grid-4">
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { name: "Rohan Mehta", role: "Founder & CEO", co: "PayStack India" },
-              { name: "Dr. Priya Singh", role: "Professor", co: "IIT Hyderabad" },
-              { name: "Arjun Kapoor", role: "CTO", co: "Razorpay" },
-              { name: "BITS Pilani", role: "Premier Institution", co: "Est. 1964" },
-            ].map(n => <NetworkCard key={n.name} item={n} />)}
+              { name: "Rohan Mehta", role: "Founder & CEO", co: "PayStack India", color: "#0DBB96" },
+              { name: "Dr. Priya Singh", role: "Professor", co: "IIT Hyderabad", color: "#F37021" },
+              { name: "Arjun Kapoor", role: "CTO", co: "Razorpay", color: "#004CE6" },
+              { name: "BITS Pilani", role: "Premier Institution", co: "Est. 1964", color: "#F5A623" },
+            ].map((n, i) => (
+              <motion.div 
+                key={n.name}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                whileHover={{ y: -4, transition: { duration: 0.2, delay: 0, ease: "easeOut" } }}
+                viewport={{ once: true, amount: 0.3 }}
+                transition={{ duration: 1.2, delay: i * 0.2, ease: "easeOut" }}
+                className="group relative bg-[#1C1F26]/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6 hover:bg-[#1C1F26]/80 transition-colors duration-300 cursor-pointer overflow-hidden"
+              >
+                {/* Brand Theme Glow */}
+                <div 
+                  className="absolute top-0 right-0 w-32 h-32 opacity-20 blur-2xl group-hover:opacity-40 transition-opacity duration-300"
+                  style={{ backgroundColor: n.color }}
+                ></div>
+
+                <div className="flex flex-col h-full relative z-10">
+                  <div className="flex items-center gap-4 mb-8">
+                    <div 
+                      className="w-12 h-12 rounded-xl flex items-center justify-center text-[18px] font-bold text-white shadow-lg"
+                      style={{ backgroundColor: n.color }}
+                    >
+                      {n.name[0]}
+                    </div>
+                    <div>
+                      <div className="text-[17px] font-bold text-white leading-snug">{n.name}</div>
+                      <div className="text-[13px] font-medium text-[#8A8F98]">{n.role}</div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-auto pt-6 border-t border-white/10 flex items-center justify-between">
+                    <span className="text-[14px] font-bold text-white/90">{n.co}</span>
+                    <ArrowRight size={16} className="text-white/40 group-hover:text-white transition-colors" />
+                  </div>
+                </div>
+              </motion.div>
+            ))}
           </div>
-          <div style={{ textAlign: "center", marginTop: 20 }}>
-            <a href="https://recruiter.capabilio.online" target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: T.ink3, textDecoration: "none" }}>
-              Hiring? Search verified talent at <span style={{ color: T.accent, fontWeight: 600 }}>recruiter.capabilio.online &rarr;</span>
+
+          <div className="text-center mt-16">
+            <a href="https://recruiter.capabilio.online" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-[15px] font-semibold text-[#8A8F98] hover:text-white transition-colors bg-white/5 hover:bg-white/10 px-6 py-3 rounded-full border border-white/10">
+              Hiring? Search verified talent at <span className="text-[#FF5701]">recruiter.capabilio.online</span> <ArrowRight size={16} />
             </a>
           </div>
         </div>
       </section>
 
       {/* ── FAQ ─────────────────────────────────────────────────────── */}
-      <section style={{ padding: "0 0 96px" }}>
-        <div className="lp-container" style={{ maxWidth: 720 }}>
-          <div style={{ textAlign: "center", marginBottom: 32 }}>
-            <Eyebrow>Frequently asked</Eyebrow>
-            <h2 style={{ fontSize: "clamp(26px,3.4vw,36px)", fontWeight: 700, letterSpacing: "-0.015em", color: T.ink, margin: 0 }}>Questions people actually ask.</h2>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {FAQ_ITEMS.map(item => <FAQItem key={item.q} q={item.q} a={item.a} />)}
+      <section className="py-24 lg:py-32 bg-white">
+        <div className="max-w-[720px] mx-auto px-6">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.8 }}
+            className="text-center mb-16"
+          >
+            <div className="text-[#FF5701] font-extrabold tracking-[0.2em] uppercase text-[13px] md:text-[15px] mb-4">
+              Frequently asked
+            </div>
+            <h2 className="text-[32px] lg:text-[54px] font-extrabold text-[#14161A] tracking-tight leading-[1.1]">
+              Questions people actually ask.
+            </h2>
+          </motion.div>
+          <div className="flex flex-col border-t border-[#E4E6E9]">
+            {FAQ_ITEMS.map((item, i) => (
+              <motion.div
+                key={item.q}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.2 }}
+                transition={{ duration: 0.6, delay: i * 0.1 }}
+              >
+                <FAQItem q={item.q} a={item.a} isLast={i === FAQ_ITEMS.length - 1} />
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ── TRUST BADGES + FOOTER ───────────────────────────────────── */}
-      <section style={{ padding: "0 0 32px" }}>
-        <div className="lp-container" style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "center" }}>
-          <TrustBadge icon={Rocket} label="DPIIT Recognised" sub="Startup India" />
-          <TrustBadge icon={Factory} label="Udyam Registered" sub="MSME, Govt. of India" />
-          <TrustBadge icon={ShieldCheck} label="MCA Incorporated" sub="Ministry of Corporate Affairs" />
-        </div>
-      </section>
+      {/* ── BOTTOM DOCK (Badges + Footer) ───────────────────── */}
+      <div className="bg-white w-full">
+        <section className="pt-8 pb-8 overflow-hidden">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.8 }}
+            className="max-w-[1200px] mx-auto px-6 text-center"
+          >
+            <div className="mb-8 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#F8F9FA] border border-[#E4E6E9]">
+              <span className="text-[12px] font-bold text-[#14161A] tracking-[0.15em] uppercase">
+                Recognised & Registered By
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6">
+              <TrustBadge imgSrc="/dpiit-logo.png" label="DPIIT Recognised" sub="Startup India" />
+              <TrustBadge imgSrc="/msme-logo.png" label="Udyam Registered" sub="MSME, Govt. of India" />
+              <TrustBadge imgSrc="/mca-logo.png" label="MCA Incorporated" sub="Ministry of Corporate Affairs" />
+            </div>
+          </motion.div>
+        </section>
 
-      <footer style={{ borderTop: `1px solid ${T.border}`, padding: "28px 0 44px" }}>
-        <div className="lp-container" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-          <img src="/capabilio-logo-dark.png" alt="Capabilio AI" style={{ height: 20, width: "auto" }} />
-          <div style={{ fontSize: 12.5, color: T.ink3 }}>
-            Hiring team?{" "}
-            <a href="https://recruiter.capabilio.online" target="_blank" rel="noopener noreferrer" style={{ color: T.accent, textDecoration: "none", fontWeight: 600 }}>
-              Search verified talent at recruiter.capabilio.online
-            </a>
-          </div>
-          <div style={{ fontSize: 12.5, color: T.ink3 }}>Amaravati, Andhra Pradesh</div>
-        </div>
-      </footer>
+        <footer className="relative bg-[#14161A] pt-20 pb-8 mt-10 overflow-hidden">
+          {/* Top Glowing Edge */}
+          <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#FF5701]/40 to-transparent"></div>
+          
+          {/* Scattered Tiny Glowing Nodes */}
+          <div className="absolute top-[20%] left-[10%] w-[4px] h-[4px] bg-[#FF5701] shadow-[0_0_12px_4px_#FF5701] opacity-50 rounded-full pointer-events-none"></div>
+          <div className="absolute top-[40%] right-[15%] w-[6px] h-[6px] bg-[#004CE6] shadow-[0_0_15px_5px_#004CE6] opacity-40 rounded-full pointer-events-none"></div>
+          <div className="absolute bottom-[30%] left-[35%] w-[3px] h-[3px] bg-[#0DBB96] shadow-[0_0_10px_3px_#0DBB96] opacity-60 rounded-full pointer-events-none"></div>
+          <div className="absolute top-[70%] right-[30%] w-[5px] h-[5px] bg-[#FF5701] shadow-[0_0_12px_4px_#FF5701] opacity-40 rounded-full pointer-events-none"></div>
+          <div className="absolute top-[15%] left-[60%] w-[3px] h-[3px] bg-white shadow-[0_0_8px_2px_white] opacity-30 rounded-full pointer-events-none"></div>
+
+          <motion.div 
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 1.2 }}
+            className="relative z-10 max-w-[1200px] mx-auto px-6"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-16">
+              {/* Brand Column */}
+              <div>
+                <img src="/capabilio-logo-light.png" alt="Capabilio AI" className="h-6 w-auto mb-5" />
+                <p className="text-[14.5px] text-[#8A8F98] leading-relaxed max-w-[280px]">
+                  Building India’s AI Career Operating System | Transforming Skills into Verified Careers
+                </p>
+              </div>
+
+              {/* Product Column */}
+              <div>
+                <h3 className="text-[12px] font-bold text-white tracking-[0.15em] uppercase mb-6">Product</h3>
+                <ul className="flex flex-col gap-4 text-[14.5px] font-medium text-[#8A8F98]">
+                  <li><a href="#" className="hover:text-[#FF5701] transition-colors">The Arena</a></li>
+                  <li><a href="#" className="hover:text-[#FF5701] transition-colors">Skill Studio</a></li>
+                  <li><a href="#" className="hover:text-[#FF5701] transition-colors">Professional Vault</a></li>
+                  <li>
+                    <a href="https://recruiter.capabilio.online" target="_blank" rel="noopener noreferrer" className="hover:text-[#FF5701] transition-colors flex items-center gap-1.5">
+                      Recruiter Search <ArrowRight size={14} />
+                    </a>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Contact Column */}
+              <div>
+                <h3 className="text-[12px] font-bold text-white tracking-[0.15em] uppercase mb-6">Contact Founder</h3>
+                <ul className="flex flex-col gap-4 text-[14.5px] font-medium text-[#8A8F98]">
+                  <li>
+                    <a href="https://mail.google.com/mail/?view=cm&fs=1&to=founder@capabilio.in" target="_blank" rel="noopener noreferrer" className="hover:text-[#FF5701] transition-colors">founder@capabilio.in</a>
+                  </li>
+                  <li>
+                    <a href="https://www.linkedin.com/in/venkata-kopuri-725184376/" target="_blank" rel="noopener noreferrer" className="hover:text-[#FF5701] transition-colors">LinkedIn Profile</a>
+                  </li>
+                  <li>
+                    <a href="#" className="hover:text-[#FF5701] transition-colors">Twitter / X</a>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Bottom Bar */}
+            <div className="pt-8 border-t border-[#2A2E37] flex flex-wrap items-center justify-between gap-4">
+              <div className="text-[13px] font-medium text-[#5E636E]">
+                © {new Date().getFullYear()} Capabilio AI. All rights reserved.
+              </div>
+              <div className="text-[13px] font-medium text-[#5E636E]">
+                Amaravati, Andhra Pradesh
+              </div>
+            </div>
+          </motion.div>
+        </footer>
+      </div>
     </div>
   )
 }
+
