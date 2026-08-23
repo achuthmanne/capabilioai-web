@@ -48,6 +48,7 @@ export const PRIMARY_PATHS = [
     color: PATH_COLORS.professional,
     desc: "Build your verified career intelligence. UAN-backed, AI-powered.",
     points: ["Auto-verified timeline", "Market intelligence", "Passive job matching"],
+    comingSoon: true,
   },
   {
     key: "executive", path: "executive", icon: Crown, title: "Executive",

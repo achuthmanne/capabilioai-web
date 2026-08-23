@@ -9,6 +9,7 @@ export default defineConfig({
   envDir: '..',         // Load .env from the project root (one level up from frontend/)
   server: {
     port: 3000,
+    allowedHosts: true,
     proxy: {
       '/api': {
         target: 'http://localhost:4000',

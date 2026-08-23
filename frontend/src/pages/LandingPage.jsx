@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from "react"
 import { motion, useReducedMotion, useInView, animate, AnimatePresence } from "framer-motion"
 import {
-  ClipboardCheck, Network, BookOpen, Swords, FolderCheck, Search,
-  ArrowRight, Check, ChevronDown, Plus,
+  ClipboardCheck, Network, BookOpen, Swords, FolderCheck, Search, FileText,
+  ArrowRight, Check, ChevronDown, Plus, User, AlertTriangle, CheckCircle2,
   ShieldCheck, XCircle, Play, Loader2, Rocket, Building2, Factory, TrendingUp, Menu, X,
+  GraduationCap, Briefcase, Landmark
 } from "lucide-react"
 import { T, EASE } from "../lib/osDesignTokens"
 import { PRIMARY_PATHS, withAlpha } from "../lib/pathIdentity"
@@ -359,8 +360,7 @@ const ARENA_SCRIPTS = {
 }
 const ARENA_ELO_BASE = 1324
 
-function ArenaPreview() {
-  const [outcome, setOutcome] = useState("pass")
+function ArenaPreview({ outcome = "pass", setOutcome = () => {} }) {
   const [phase, setPhase] = useState("typing") // typing -> running -> executed -> output -> eval
   const reduce = useReducedMotion()
   const ref = useRef(null)
@@ -653,12 +653,16 @@ function SkillStudioPreview() {
 }
 
 // ─── Recruiter preview — what a recruiter actually receives ───────────────
-function RecruiterPreview() {
+function RecruiterPreview({ outcome = "pass" }) {
   const reduce = useReducedMotion()
   const ref = useRef(null)
   const inView = useInView(ref, { once: true, margin: "-60px" })
   
-  const s2 = useCountUp(92, { start: 0, duration: 1.5, delay: 0.5, active: inView, reduce })
+  const isPass = outcome === "pass"
+  const s2 = useCountUp(isPass ? 92 : 24, { start: 0, duration: 1.5, delay: 0.5, active: inView, reduce })
+
+  const scoreColor = isPass ? "#4ADE80" : "#EF4444"
+  const badgeColor = isPass ? "#4ADE80" : "#EF4444"
 
   return (
     <motion.div ref={ref}
@@ -666,7 +670,7 @@ function RecruiterPreview() {
       animate={inView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.4, ease: "easeOut" }}
       style={{ 
-        background: "#0F172A", // Actual ArenaV2RecruiterView background
+        background: "#0F172A", 
         border: "1px solid #1E293B", 
         borderRadius: 24, 
         padding: 24,
@@ -687,20 +691,20 @@ function RecruiterPreview() {
       <div style={{ background: "#0F172A", borderRadius: 14, border: "1px solid #1E293B", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#E2E8F0", marginBottom: 4 }}>Swiggy — cancellation root-cause</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#E2E8F0", marginBottom: 4 }}>Swiggy - cancellation root-cause</div>
             <div style={{ fontSize: 12, color: "#94A3B8" }}>
               Data Analyst · Hard · Food Tech
             </div>
           </div>
           <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 20, fontWeight: 800, color: "#4ADE80", marginBottom: 2 }}>{s2}/100</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: scoreColor, marginBottom: 2 }}>{s2}/100</div>
             <div style={{ fontSize: 10, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 }}>Verified</div>
           </div>
         </div>
 
         <div style={{ display: "flex", gap: 20, fontSize: 12, color: "#CBD5E1" }}>
-          <div>Time taken: <strong style={{ color: "#E2E8F0" }}>42m 15s</strong></div>
-          <div>ELO delta: <strong style={{ color: "#4ADE80" }}>+24</strong></div>
+          <div>Time taken: <strong style={{ color: "#E2E8F0" }}>{isPass ? "42m 15s" : "2h 10m"}</strong></div>
+          <div>ELO delta: <strong style={{ color: scoreColor }}>{isPass ? "+24" : "-14"}</strong></div>
         </div>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -710,10 +714,19 @@ function RecruiterPreview() {
         </div>
 
         <div>
-          <div style={{ color: "#94A3B8", marginBottom: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, fontSize: 10 }}>Strengths</div>
-          <ul style={{ margin: 0, paddingLeft: 18, color: "#4ADE80", lineHeight: 1.6, fontSize: 12 }}>
-            <li>Perfect use of window functions to isolate 9 PM cohort.</li>
-            <li>Identified rider-allocation delay as the primary bottleneck.</li>
+          <div style={{ color: "#94A3B8", marginBottom: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, fontSize: 10 }}>{isPass ? "Strengths" : "Weaknesses"}</div>
+          <ul style={{ margin: 0, paddingLeft: 18, color: badgeColor, lineHeight: 1.6, fontSize: 12 }}>
+            {isPass ? (
+              <>
+                <li>Perfect use of window functions to isolate 9 PM cohort.</li>
+                <li>Identified rider-allocation delay as the primary bottleneck.</li>
+              </>
+            ) : (
+              <>
+                <li>Missed critical edge cases in window functions.</li>
+                <li>Failed to isolate the 9 PM cohort accurately.</li>
+              </>
+            )}
           </ul>
         </div>
       </div>
@@ -728,76 +741,116 @@ function RecruiterPreview() {
 // ─── Claim vs. proof section — ELO number ticks up, sparkline draws itself,
 // claim/reality rows stagger in after, all keyed off one scroll-into-view
 // trigger so the eye lands on the number first, then the supporting rows.
-function ClaimVsProofSection({ problemRows, eloHistory }) {
+function ParadigmShiftSection() {
   const reduce = useReducedMotion()
   const ref = useRef(null)
-  const inView = useInView(ref, { once: true, amount: 0.4 })
-  const eloTarget = eloHistory[eloHistory.length - 1]
-  const eloValue = useCountUp(eloTarget, { start: eloHistory[0], duration: 1.5, active: inView, reduce })
+  const inView = useInView(ref, { once: true, margin: "-100px" })
+
+  const badClaims = [
+    { title: "Python & REST APIs — 2 Years Experience", desc: "Self-reported duration with zero code quality proof or testing metrics." },
+    { title: "Machine Learning & AI Expert", desc: "Generic keyword stuffing without precision, recall, or dataset evaluation proof." },
+    { title: "AWS & Database Certified", desc: "Multiple-choice memorization certificate with no live incident triage evidence." },
+    { title: "Proactive Problem Solver & Fast Learner", desc: "Subjective buzzword that 98% of candidates copy-paste onto PDF resumes." },
+  ];
+
+  const goodProofs = [
+    { title: "Python & Backend APIs", desc: "Debugged 4 live microservice outages • 100% unit assertions passed", metric: "82 ELO" },
+    { title: "Machine Learning Pipelines", desc: "Tuned churn model F1-score from 0.82 to 0.89 on real customer dataset", metric: "74 ELO" },
+    { title: "PostgreSQL & Cloud Tuning", desc: "Eliminated table scan with B-Tree functional index (latency dropped 94%)", metric: "68 ELO" },
+    { title: "Complete Verified Track Record", desc: "12 tasks • 4 simulations • 2 projects • 1 AI technical interview", metric: "Verified" },
+  ];
 
   return (
-    <section ref={ref} className="w-full bg-[#FAF7F2] border-t border-b border-[#E4E6E9]">
-      <div className="w-full flex flex-col lg:flex-row">
-        
-        {/* Left Part: Text & Claims (Pure Typography, No Boxes) */}
-        <div className="w-full lg:w-1/2 p-10 lg:p-24 flex flex-col justify-center lg:border-r border-[#E4E6E9]">
-          <div className="max-w-[500px] lg:ml-auto lg:mr-16 mx-auto w-full">
-            <div className="text-[#FF5701] font-extrabold tracking-[0.2em] uppercase text-[13px] md:text-[15px] mb-4">
-              Claim vs. Proof
+    <section ref={ref} className="w-full py-16 md:py-20 bg-white relative">
+      <div className="max-w-[1100px] mx-auto px-6 md:px-12">
+        <div className="text-center mb-12 md:mb-16">
+          <div className="text-[#FF5701] font-extrabold text-[12px] md:text-[14px] tracking-[0.2em] uppercase mb-4">
+            The Paradigm Shift
+          </div>
+          <h2 className="text-[28px] md:text-[36px] lg:text-[42px] font-extrabold text-[#14161A] leading-[1.2] tracking-[-0.02em] mb-6 max-w-4xl mx-auto text-balance">
+            Your resume tells people what you claim. Capabilio shows what you can prove.
+          </h2>
+          <p className="text-[17px] text-[#4B5058] leading-[1.6] max-w-3xl mx-auto font-medium">
+            Hiring managers spend 6 seconds scanning unverified bullet points. Capabilio gives them cryptographic work samples, deterministic test results, and calibrated skill ELO.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-start">
+          
+          {/* TRADITIONAL RESUME - NEGATIVE */}
+          <motion.div
+            initial={reduce ? false : { opacity: 0, y: 20 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="rounded-[24px] border border-[#E4E6E9] bg-white flex flex-col h-full overflow-hidden"
+          >
+            <div className="p-8 border-b border-[#E4E6E9] bg-white">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#EF4444]"></div>
+                  <h3 className="text-[16px] font-bold text-[#14161A] tracking-tight uppercase">Traditional Resume</h3>
+                </div>
+              </div>
             </div>
-            <h2 className="text-[32px] lg:text-[54px] font-extrabold text-[#14161A] leading-[1.1] tracking-[-0.02em] mb-6">
-              A number that can't be faked.
-            </h2>
-            <p className="text-[16px] md:text-[18px] lg:text-[20px] text-[#4A4E54] leading-[1.6] mb-12">
-              Like chess.com — ELO is earned through real performance. It rises when you solve hard problems, and it cannot be self-reported or inflated on a resume.
-            </p>
-            
-            <div className="flex flex-col gap-8">
-              {problemRows.map((r, i) => (
-                <motion.div key={r.claim}
-                  initial={reduce ? false : { opacity: 0, y: 10 }}
-                  animate={inView ? { opacity: 1, y: 0 } : {}}
-                  transition={{ duration: 0.4, delay: reduce ? 0 : 0.4 + i * 0.15, ease: "easeOut" }}
-                  className="flex flex-col gap-2"
-                >
-                  <div className="text-[15px] text-[#8A8F98] italic flex items-center gap-3">
-                    <span className="w-6 h-px bg-[#D1D5DB]"></span>
-                    {r.claim}
+
+            <div className="flex flex-col flex-grow divide-y divide-[#E4E6E9]/60 px-8">
+              {badClaims.map((item, i) => (
+                <div key={i} className="py-6 flex gap-4 h-auto md:h-[120px] lg:h-[110px] items-start">
+                  <X size={18} className="text-[#EF4444] shrink-0 mt-0.5" strokeWidth={2.5} />
+                  <div>
+                    <h4 className="text-[14.5px] font-bold text-[#14161A] mb-1.5">{item.title}</h4>
+                    <p className="text-[13.5px] text-[#8A8F98] font-medium leading-relaxed">{item.desc}</p>
                   </div>
-                  <div className="text-[17px] font-semibold text-[#14161A] flex items-center gap-2.5 pl-9">
-                    <X size={18} className="text-[#E02424]" strokeWidth={3} />
-                    {r.reality}
-                  </div>
-                </motion.div>
+                </div>
               ))}
             </div>
-          </div>
-        </div>
+            
+            <div className="mt-auto px-8 py-5 border-t border-[#E4E6E9] bg-[#F9FAFB]">
+              <p className="text-[13px] font-semibold text-[#8A8F98]">
+                Recruiter trust level: <span className="text-[#EF4444]">12%</span> (Requires extensive screening)
+              </p>
+            </div>
+          </motion.div>
 
-        {/* Right Part: Graph (Pure minimal layout, No Boxes, No Grid) */}
-        <div className="w-full lg:w-1/2 p-10 lg:p-24 flex flex-col justify-center bg-white relative">
-          <div className="max-w-[500px] lg:mr-auto lg:ml-16 mx-auto w-full">
-            <motion.div 
-              initial={reduce ? false : { opacity: 0, scale: 0.95 }}
-              animate={inView ? { opacity: 1, scale: 1 } : {}}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-            >
-              <div className="flex items-center gap-3 mb-6">
-                <TrendingUp size={22} color="#FF5701" strokeWidth={2.5} />
-                <span className="text-[14px] font-bold text-[#8A8F98] tracking-[0.15em] uppercase">ELO growth</span>
+          {/* CAPABILIO PROOF - POSITIVE */}
+          <motion.div
+            initial={reduce ? false : { opacity: 0, y: 20 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.6, delay: 0.15, ease: "easeOut" }}
+            className="rounded-[24px] border border-[#E4E6E9] bg-white flex flex-col h-full overflow-hidden"
+          >
+            <div className="p-8 border-b border-[#E4E6E9] bg-white relative overflow-hidden">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#10B981]"></div>
+                  <h3 className="text-[16px] font-bold text-[#14161A] tracking-tight uppercase">Capabilio Proof</h3>
+                </div>
               </div>
-              <div className="font-['DM_Mono',monospace] text-[72px] lg:text-[88px] font-bold text-[#14161A] leading-none mb-4 tracking-tighter">
-                {eloValue.toLocaleString()}
-              </div>
-              <p className="text-[17px] text-[#4A4E54] mb-16">Every point on this line is a real verified submission.</p>
-              
-              <div className="w-full -ml-[24px]">
-                <EloSparkline points={eloHistory} width={450} height={280} showAxes={true} />
-              </div>
-            </motion.div>
-          </div>
-        </div>
+            </div>
 
+            <div className="flex flex-col flex-grow divide-y divide-[#E4E6E9]/60 px-8">
+              {goodProofs.map((item, i) => (
+                <div key={i} className="py-6 flex gap-4 h-auto md:h-[120px] lg:h-[110px] items-start">
+                  <Check size={18} className="text-[#10B981] shrink-0 mt-0.5" strokeWidth={2.5} />
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-[14.5px] font-bold text-[#14161A] mb-1.5 ">{item.title}</h4>
+                    <p className="text-[13.5px] text-[#4B5058] font-medium leading-relaxed ">{item.desc}</p>
+                  </div>
+                  <div className="text-[13.5px] font-extrabold shrink-0 text-[#FF5701] bg-[#FFF0E8] px-2.5 py-1 rounded-md">
+                    {item.metric}
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div className="mt-auto px-8 py-5 border-t border-[#E4E6E9] bg-[#F0FDF4]/30">
+              <p className="text-[13px] font-semibold text-[#14161A]">
+                Recruiter trust level: <span className="text-[#10B981]">98%</span> (Instant interview bypass)
+              </p>
+            </div>
+          </motion.div>
+
+        </div>
       </div>
     </section>
   )
@@ -910,20 +963,16 @@ function JourneyProof({ pathKey, color, isReplay = false }) {
   )
 }
 
-function JourneyCard({ item, onOpen }) {
+function JourneyCard({ item, onViewDetails }) {
   const Icon = item.icon
   const persona = JOURNEY_PERSONAS[item.key]
   const [hoverCount, setHoverCount] = useState(0)
   
   return (
     <div
-      onMouseEnter={() => !item.comingSoon && setHoverCount(c => c + 1)}
-      onClick={() => {
-        if (!item.comingSoon) {
-          onOpen(item.path, "journey-card", item.instType ? { instType: item.instType } : {})
-        }
-      }}
-      className={`group bg-white rounded-2xl border border-[#E4E6E9] p-8 transition-all duration-300 relative overflow-hidden flex flex-col h-full ${item.comingSoon ? '' : 'cursor-pointer hover:shadow-xl hover:shadow-[#14161A]/5 hover:-translate-y-2'}`}
+      onMouseEnter={() => setHoverCount(c => c + 1)}
+      onClick={() => onViewDetails(item)}
+      className="group bg-white rounded-2xl border border-[#E4E6E9] p-8 transition-all duration-300 relative overflow-hidden flex flex-col h-full cursor-pointer"
     >
       {/* Coming Soon absolute corner badge */}
       {item.comingSoon && (
@@ -936,16 +985,14 @@ function JourneyCard({ item, onOpen }) {
       )}
 
       {/* Dynamic top accent line on hover */}
-      {!item.comingSoon && (
-        <div 
-          className="absolute top-0 left-0 right-0 h-[3px] opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-          style={{ backgroundColor: item.color }} 
-        />
-      )}
+      <div 
+        className="absolute top-0 left-0 right-0 h-[3px] opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        style={{ backgroundColor: item.color }} 
+      />
 
       <div className="flex justify-between items-start mb-6">
         <div 
-          className={`w-12 h-12 rounded-xl flex items-center justify-center transition-transform duration-300 shadow-sm ${!item.comingSoon && 'group-hover:scale-110'}`}
+          className="w-12 h-12 rounded-xl flex items-center justify-center transition-transform duration-300 shadow-sm group-hover:scale-110"
           style={{ backgroundColor: withAlpha(item.color, 0.1) }}
         >
           <Icon size={22} color={item.color} strokeWidth={2} />
@@ -956,7 +1003,7 @@ function JourneyCard({ item, onOpen }) {
       <p className="text-[14px] text-[#4B5058] leading-relaxed mb-6 font-medium flex-grow">{item.desc}</p>
 
       {persona && (
-        <div className={`border-t border-b border-[#E4E6E9]/60 py-5 mb-6 transition-colors duration-300 ${!item.comingSoon && 'group-hover:border-[#D1D5DB]'}`}>
+        <div className="border-t border-b border-[#E4E6E9]/60 py-5 mb-6 transition-colors duration-300 group-hover:border-[#D1D5DB]">
           <div className="flex items-center justify-between gap-2 mb-4">
             <div className="min-w-0">
               <div className="text-[13px] font-bold text-[#14161A] truncate">{persona.name}</div>
@@ -981,18 +1028,23 @@ function JourneyCard({ item, onOpen }) {
         ))}
       </div>
       
-      {!item.comingSoon ? (
-        <div 
-          className="mt-auto flex items-center gap-2 text-[14px] font-bold transition-all duration-300 group-hover:gap-3"
-          style={{ color: item.color }}
+      <motion.div 
+        whileHover="hover"
+        className="mt-auto w-full flex items-center justify-center gap-2.5 py-3 bg-white border border-[#E4E6E9] hover:border-[#D1D5DB] rounded-xl text-[14px] text-[#14161A] transition-all duration-300 font-bold"
+      >
+        Learn more
+        <motion.span 
+          variants={{ 
+            hover: { x: 4, backgroundColor: item.color } 
+          }}
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          className="flex items-center justify-center w-6 h-6 rounded-full bg-[#F4F5F7]"
         >
-          Get started <ArrowRight size={16} strokeWidth={2.5} />
-        </div>
-      ) : (
-        <div className="mt-auto flex items-center gap-2 text-[14px] font-bold text-[#A4AAB5]">
-          Waitlist opening soon
-        </div>
-      )}
+          <motion.div variants={{ hover: { color: "#FFFFFF" } }} className="text-[#14161A] flex items-center justify-center">
+             <ArrowRight size={12} strokeWidth={3} />
+          </motion.div>
+        </motion.span>
+      </motion.div>
     </div>
   )
 }
@@ -1097,10 +1149,105 @@ function TypewriterText({ words }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+function JourneyExplanationModal({ item, onClose, onSignUp }) {
+  if (!item) return null;
+
+  const getStory = (key) => {
+    if (key === 'student') return {
+      who: "Undergraduates & Early-Career Talent",
+      why: "Academic degrees no longer guarantee employment. Modern hiring teams filter out unverified resumes, demanding tangible proof of capability over traditional certificates.",
+      what: "Complete real-world engineering tasks in The Arena to build a mathematically verified ELO rating. Bypass the resume stack and get discovered by top organizations purely on merit."
+    }
+    if (key === 'professional') return {
+      who: "Working Professionals & Specialists",
+      why: "Your true career impact is buried in easily-falsified PDFs and keyword-driven ATS systems, making it difficult for top recruiters to validate your actual worth.",
+      what: "Securely link your UAN/EPFO to generate an immutable, auto-verified career timeline. Allow elite recruiters to approach you directly with precision job matches."
+    }
+    if (key === 'executive') return {
+      who: "Industry Leaders & Domain Experts",
+      why: "Coordinating mentorship, consulting, or advisory roles is fragmented. There is no centralized, verified ecosystem to formally monetize your acquired industry authority.",
+      what: "Maintain an exclusive, invite-only authority profile. Seamlessly monetize your time and expertise through Capabilio's premium verification and networking layer."
+    }
+    if (key === 'institution') return {
+      who: "Universities & Organizations",
+      why: "Placement cells lack data-driven visibility into real-time student capabilities, making it difficult to accurately map cohort talent to the specific demands of hiring companies.",
+      what: "Monitor live cohort ELO, track continuous skill growth, and automate placement drives by matching verified student profiles directly with top-tier hiring partners."
+    }
+    return {}
+  }
+
+  const story = getStory(item.key)
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+         <motion.div 
+           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+           className="absolute inset-0 bg-[#14161A]/80 backdrop-blur-sm"
+           onClick={onClose}
+         />
+         <motion.div
+           initial={{ opacity: 0, scale: 0.95, y: 20 }}
+           animate={{ opacity: 1, scale: 1, y: 0 }}
+           exit={{ opacity: 0, scale: 0.95, y: 20 }}
+           className="bg-white rounded-3xl w-full max-w-2xl relative z-10 overflow-hidden shadow-2xl flex flex-col"
+         >
+            <div className="p-8 border-b border-[#E4E6E9] flex items-center gap-5 relative">
+               <button onClick={onClose} className="absolute top-6 right-6 text-[#8A8F98] hover:text-[#14161A] transition-colors"><X size={24} /></button>
+               <div className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0" style={{ backgroundColor: withAlpha(item.color, 0.1) }}>
+                 <item.icon size={28} color={item.color} strokeWidth={2.5} />
+               </div>
+               <div>
+                  <h2 className="text-2xl font-extrabold text-[#14161A] mb-1">{item.title} Journey</h2>
+                  <p className="text-[15px] font-medium text-[#4B5058]">{item.desc}</p>
+               </div>
+            </div>
+            
+            <div className="p-8 md:p-10 flex flex-col gap-8 bg-white flex-grow">
+               
+               {/* WHO */}
+               <div className="pl-5 border-l-[3px]" style={{ borderColor: item.color }}>
+                 <h4 className="text-[11px] font-extrabold uppercase tracking-widest mb-2" style={{ color: item.color }}>Target Profile</h4>
+                 <p className="text-[17px] font-bold text-[#14161A] leading-relaxed">
+                   {story.who}
+                 </p>
+               </div>
+
+               {/* WHY */}
+               <div className="pl-5 border-l-[3px] border-[#EF4444]">
+                 <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-[#EF4444] mb-2">The Problem</h4>
+                 <p className="text-[15px] font-medium text-[#4B5058] leading-relaxed">
+                   {story.why}
+                 </p>
+               </div>
+
+               {/* WHAT */}
+               <div className="pl-5 border-l-[3px] border-[#10B981]">
+                 <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-[#10B981] mb-2">The Solution</h4>
+                 <p className="text-[15.5px] font-semibold text-[#14161A] leading-relaxed">
+                   {story.what}
+                 </p>
+               </div>
+               
+            </div>
+
+            <div className="p-6 bg-white border-t border-[#E4E6E9] flex justify-end gap-3">
+              <button onClick={onClose} className="px-6 py-3 rounded-xl text-[14.5px] font-bold text-[#4B5058] hover:bg-[#F4F5F7] transition-colors">Cancel</button>
+              <button onClick={() => onSignUp(item)} className="px-8 py-3 rounded-xl text-[14.5px] font-bold text-white transition-colors hover:opacity-90" style={{ backgroundColor: item.color }}>
+                {item.comingSoon ? 'Join Waitlist' : 'Join Now'}
+              </button>
+            </div>
+         </motion.div>
+      </div>
+    </AnimatePresence>
+  )
+}
+
 export default function LandingPage({ onGetStarted, onLogin }) {
   const [pricingFlow, setPricingFlow] = useState("student")
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [activePreview, setActivePreview] = useState("arena")
+  const [previewOutcome, setPreviewOutcome] = useState("pass")
   const reduce = useReducedMotion()
 
   // extra.instType seeds AuthModal's institution sub-type toggle (Organization/
@@ -1120,11 +1267,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
     if (typeof onGetStarted === "function") onGetStarted({ path, source })
   }
 
-  const PROBLEM_ROWS = [
-    { claim: "“5 years Python experience”", reality: "Can't explain list comprehensions" },
-    { claim: "“Machine Learning Expert”", reality: "Never trained an end-to-end model" },
-    { claim: "“AWS Certified”", reality: "Watched 3 YouTube videos" },
-  ]
+
 
   const FAQ_ITEMS = [
     { q: "What actually is ELO here, and how is it different from a resume claim?", a: "The same rating-system idea as chess.com — a number that only moves when you complete real, scored Arena tasks. Students start at 400. It rises when you solve harder problems well, and can drop if you're inactive. Nobody can type in a higher number." },
@@ -1160,8 +1303,18 @@ export default function LandingPage({ onGetStarted, onLogin }) {
     }
   };
 
+  const [explanationModal, setExplanationModal] = useState(null)
+
   return (
     <div style={{ minHeight: "100vh", background: T.surface, color: T.ink, fontFamily: "'DM Sans',sans-serif" }}>
+      <JourneyExplanationModal 
+        item={explanationModal} 
+        onClose={() => setExplanationModal(null)} 
+        onSignUp={(item) => {
+          setExplanationModal(null)
+          openPath(item.path, "journey-modal", item.instType ? { instType: item.instType } : {})
+        }} 
+      />
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap');
         * { box-sizing: border-box; }
@@ -1186,6 +1339,8 @@ export default function LandingPage({ onGetStarted, onLogin }) {
           
           {/* Center: Desktop Links */}
           <div className="hidden md:flex items-center gap-10 absolute left-1/2 -translate-x-1/2">
+            <a href="#about-us" onClick={(e) => handleNavClick(e, "about-us")} className="text-[15px] font-semibold text-[#4B5058] hover:text-[#FF5701] transition-colors">About Us</a>
+            <a href="#workflow" onClick={(e) => handleNavClick(e, "workflow")} className="text-[15px] font-semibold text-[#4B5058] hover:text-[#FF5701] transition-colors">Workflow</a>
             <a href="#how-it-works" onClick={(e) => handleNavClick(e, "how-it-works")} className="text-[15px] font-semibold text-[#4B5058] hover:text-[#FF5701] transition-colors">How it works</a>
             <a href="#pricing" onClick={(e) => handleNavClick(e, "pricing")} className="text-[15px] font-semibold text-[#4B5058] hover:text-[#FF5701] transition-colors">Pricing</a>
           </div>
@@ -1214,6 +1369,8 @@ export default function LandingPage({ onGetStarted, onLogin }) {
           className="md:hidden overflow-hidden bg-white border-b border-[#E4E6E9]"
         >
           <div className="px-6 py-8 flex flex-col gap-6">
+            <a href="#about-us" onClick={(e) => { setIsMobileMenuOpen(false); handleNavClick(e, "about-us"); }} className="text-lg font-bold text-[#14161A]">About Us</a>
+            <a href="#workflow" onClick={(e) => { setIsMobileMenuOpen(false); handleNavClick(e, "workflow"); }} className="text-lg font-bold text-[#14161A]">Workflow</a>
             <a href="#how-it-works" onClick={(e) => { setIsMobileMenuOpen(false); handleNavClick(e, "how-it-works"); }} className="text-lg font-bold text-[#14161A]">How it works</a>
             <a href="#pricing" onClick={(e) => { setIsMobileMenuOpen(false); handleNavClick(e, "pricing"); }} className="text-lg font-bold text-[#14161A]">Pricing</a>
             <div className="flex flex-col gap-4 pt-6 border-t border-[#E4E6E9]">
@@ -1225,7 +1382,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       </nav>
 
       {/* ── HERO ────────────────────────────────────────────────────── */}
-      <section className="w-full px-6 md:px-12 pt-4 pb-16 md:pt-8 md:pb-24 bg-white overflow-hidden">
+      <section className="w-full px-6 md:px-12 pt-4 pb-12 md:pb-16 bg-white overflow-hidden">
         <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
           
           {/* Left Side: Typography & Buttons */}
@@ -1275,8 +1432,36 @@ export default function LandingPage({ onGetStarted, onLogin }) {
         </div>
       </section>
 
+      {/* ── ABOUT US ─────────────────────────────────────────────────── */}
+      <section id="about-us" className="w-full px-6 md:px-12 py-12 md:py-16 bg-white relative overflow-hidden">
+        <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-20 items-center">
+          <div>
+            <div className="text-[#FF5701] font-extrabold text-[13px] md:text-[15px] tracking-[0.2em] uppercase mb-4">
+              About Us
+            </div>
+            <h2 className="text-3xl md:text-5xl font-extrabold text-[#14161A] tracking-tight leading-[1.1] mb-6">
+              Transforming skills into verified careers.
+            </h2>
+            <p className="text-[17px] text-[#4B5058] leading-relaxed font-medium">
+              We are building a future where your career isn't defined by a static piece of paper or a college name, but by the actual skills you possess. Capabilio AI is India's first Career Operating System designed to replace traditional resumes with living, AI-verified ELO ratings. 
+              <br /><br />
+              Through rigorous Arena missions and continuous skill tracking, we bridge the gap between dedicated learning and premier hiring opportunities.
+            </p>
+          </div>
+          <div className="bg-[#FAF7F2] p-8 md:p-12 rounded-[24px] border border-[#E4E6E9] relative">
+             <p className="text-xl md:text-2xl font-serif font-bold text-[#14161A] leading-relaxed relative z-10 italic">
+               "Skills should be proven, not claimed. We are building the ecosystem where true talent gets discovered without bias."
+             </p>
+             <div className="mt-8 text-right">
+                <div className="font-bold text-[#14161A]">— Venkata Kopuri</div>
+                <div className="text-sm font-medium text-[#8A8F98]">Founder, Capabilio AI</div>
+             </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── CHOOSE YOUR JOURNEY ─────────────────────────────────────── */}
-      <section className="w-full px-6 md:px-12 py-24 bg-[#FAF7F2] relative overflow-hidden">
+      <section className="w-full px-6 md:px-12 py-16 md:py-20 bg-white relative overflow-hidden">
         
         <div className="max-w-[1200px] mx-auto relative z-10">
           
@@ -1285,7 +1470,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
             whileInView={{ opacity: 1, y: 0 }} 
             viewport={{ once: true, margin: "-50px" }}
             transition={{ duration: 0.6, ease: "easeOut" }}
-            className="text-center max-w-3xl mx-auto mb-20"
+            className="text-center max-w-3xl mx-auto mb-12 md:mb-16"
           >
             <motion.h3 
               initial={{ opacity: 0, scale: 0.9 }}
@@ -1314,7 +1499,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
                 transition={{ duration: 0.6, delay: i * 0.15, ease: "easeOut" }}
                 className={`h-full ${i % 2 !== 0 ? 'lg:translate-y-12' : ''}`}
               >
-                <JourneyCard item={item} onOpen={openPath} />
+                <JourneyCard item={item} onViewDetails={setExplanationModal} />
               </motion.div>
             ))}
           </div>
@@ -1338,19 +1523,140 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       </section>
 
       {/* ── HOW IT WORKS ────────────────────────────────────────────── */}
-      <section id="how-it-works" className="py-24 lg:py-32 relative overflow-hidden bg-white">
+      {/* ── WORKFLOW / WHO IT'S FOR ─────────────────────────────────── */}
+      <section id="workflow" className="w-full px-6 md:px-12 py-16 md:py-20 relative">
+        <div className="max-w-[1200px] mx-auto text-center mb-16">
+           <div className="text-[#FF5701] font-extrabold text-[13px] md:text-[15px] tracking-[0.2em] uppercase mb-4">
+              Workflow
+            </div>
+            <h2 className="text-3xl md:text-5xl font-extrabold text-[#14161A] tracking-tight leading-[1.1] mb-6">
+              How it fits for you.
+            </h2>
+            <p className="text-[17px] text-[#8A8F98] max-w-2xl mx-auto font-medium">
+              Three simple steps to unlock your potential, no matter where you are in your career journey.
+            </p>
+        </div>
+
+        <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Students */}
+          <div className="bg-white rounded-[24px] p-8 text-center border border-[#E4E6E9]">
+            <div className="w-14 h-14 bg-[#F8F9FA] rounded-full flex items-center justify-center mx-auto mb-6 text-[#FF5701]">
+              <GraduationCap size={24} strokeWidth={2.5} />
+            </div>
+            <h3 className="text-[20px] font-extrabold text-[#14161A] mb-6">For Students</h3>
+            <div className="flex flex-col items-start w-max mx-auto gap-3.5 text-[14.5px] font-bold text-[#4B5058] mb-8">
+              <div className="flex items-center gap-2.5"><Check size={18} className="text-[#FF5701]" strokeWidth={3} /> Take Arena tasks</div>
+              <div className="flex items-center gap-2.5"><Check size={18} className="text-[#FF5701]" strokeWidth={3} /> Build verified ELO</div>
+              <div className="flex items-center gap-2.5"><Check size={18} className="text-[#FF5701]" strokeWidth={3} /> Land top jobs</div>
+            </div>
+            <motion.div 
+              whileHover="hover"
+              onClick={() => openPath("student", "workflow")} 
+              className="w-full flex items-center justify-center gap-2.5 py-3 bg-white border border-[#E4E6E9] hover:border-[#D1D5DB] hover:shadow-sm rounded-xl text-[14px] text-[#14161A] cursor-pointer transition-all duration-300 font-bold group"
+            >
+              Sign up now
+              <motion.span 
+                variants={{ hover: { x: 4 } }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                className="flex items-center justify-center w-6 h-6 rounded-full bg-[#F4F5F7] group-hover:bg-[#FF5701] transition-colors duration-300"
+              >
+                <ArrowRight size={12} className="text-[#14161A] group-hover:text-white transition-colors duration-300" strokeWidth={3} />
+              </motion.span>
+            </motion.div>
+          </div>
+
+          {/* Professionals */}
+          <div className="bg-white rounded-[24px] p-8 text-center border border-[#E4E6E9] relative overflow-hidden">
+            <div 
+              className="absolute top-0 right-0 px-4 py-1.5 rounded-bl-2xl text-[9px] font-extrabold uppercase tracking-[0.15em] text-white z-20 shadow-sm"
+              style={{ backgroundColor: '#2563EB' }}
+            >
+              Coming Soon
+            </div>
+            <div className="w-14 h-14 bg-[#F8F9FA] rounded-full flex items-center justify-center mx-auto mb-6 text-[#2563EB]">
+              <Briefcase size={24} strokeWidth={2.5} />
+            </div>
+            <h3 className="text-[20px] font-extrabold text-[#14161A] mb-6">For Professionals</h3>
+            <div className="flex flex-col items-start w-max mx-auto gap-3.5 text-[14.5px] font-bold text-[#4B5058] mb-8">
+              <div className="flex items-center gap-2.5"><Check size={18} className="text-[#2563EB]" strokeWidth={3} /> Connect UAN</div>
+              <div className="flex items-center gap-2.5"><Check size={18} className="text-[#2563EB]" strokeWidth={3} /> Verify timeline</div>
+              <div className="flex items-center gap-2.5"><Check size={18} className="text-[#2563EB]" strokeWidth={3} /> Attract recruiters</div>
+            </div>
+            <div className="w-full flex items-center justify-center gap-2.5 py-3 bg-[#F4F5F7] rounded-xl text-[14px] text-[#A4AAB5] font-bold">
+              Waitlist opening soon
+            </div>
+          </div>
+
+          {/* Organizations */}
+          <div className="bg-white rounded-[24px] p-8 text-center border border-[#E4E6E9]">
+            <div className="w-14 h-14 bg-[#F8F9FA] rounded-full flex items-center justify-center mx-auto mb-6 text-[#7C3AED]">
+              <Landmark size={24} strokeWidth={2.5} />
+            </div>
+            <h3 className="text-[20px] font-extrabold text-[#14161A] mb-6">For Organizations</h3>
+            <div className="flex flex-col items-start w-max mx-auto gap-3.5 text-[14.5px] font-bold text-[#4B5058] mb-8">
+              <div className="flex items-center gap-2.5"><Check size={18} className="text-[#7C3AED]" strokeWidth={3} /> Assess team health</div>
+              <div className="flex items-center gap-2.5"><Check size={18} className="text-[#7C3AED]" strokeWidth={3} /> Track skill growth</div>
+              <div className="flex items-center gap-2.5"><Check size={18} className="text-[#7C3AED]" strokeWidth={3} /> Automate hiring</div>
+            </div>
+            <motion.div 
+              whileHover="hover"
+              onClick={() => openPath("institution", "workflow")} 
+              className="w-full flex items-center justify-center gap-2.5 py-3 bg-white border border-[#E4E6E9] hover:border-[#D1D5DB] hover:shadow-sm rounded-xl text-[14px] text-[#14161A] cursor-pointer transition-all duration-300 font-bold group"
+            >
+              Sign up now
+              <motion.span 
+                variants={{ hover: { x: 4 } }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                className="flex items-center justify-center w-6 h-6 rounded-full bg-[#F4F5F7] group-hover:bg-[#7C3AED] transition-colors duration-300"
+              >
+                <ArrowRight size={12} className="text-[#14161A] group-hover:text-white transition-colors duration-300" strokeWidth={3} />
+              </motion.span>
+            </motion.div>
+          </div>
+
+          {/* Recruiters */}
+          <div className="bg-white rounded-[24px] p-8 text-center border border-[#E4E6E9]">
+            <div className="w-14 h-14 bg-[#F8F9FA] rounded-full flex items-center justify-center mx-auto mb-6 text-[#059669]">
+              <Search size={24} strokeWidth={2.5} />
+            </div>
+            <h3 className="text-[20px] font-extrabold text-[#14161A] mb-6">For Recruiters</h3>
+            <div className="flex flex-col items-start w-max mx-auto gap-3.5 text-[14.5px] font-bold text-[#4B5058] mb-8">
+              <div className="flex items-center gap-2.5"><Check size={18} className="text-[#059669]" strokeWidth={3} /> Search exact ELO</div>
+              <div className="flex items-center gap-2.5"><Check size={18} className="text-[#059669]" strokeWidth={3} /> Trust verification</div>
+              <div className="flex items-center gap-2.5"><Check size={18} className="text-[#059669]" strokeWidth={3} /> Hire instantly</div>
+            </div>
+            <motion.div 
+              whileHover="hover"
+              onClick={() => window.open('https://recruiter.capabilio.online', '_blank')} 
+              className="w-full flex items-center justify-center gap-2.5 py-3 bg-white border border-[#E4E6E9] hover:border-[#D1D5DB] hover:shadow-sm rounded-xl text-[14px] text-[#14161A] cursor-pointer transition-all duration-300 font-bold group"
+            >
+              Start searching
+              <motion.span 
+                variants={{ hover: { x: 4 } }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                className="flex items-center justify-center w-6 h-6 rounded-full bg-[#F4F5F7] group-hover:bg-[#059669] transition-colors duration-300"
+              >
+                <ArrowRight size={12} className="text-[#14161A] group-hover:text-white transition-colors duration-300" strokeWidth={3} />
+              </motion.span>
+            </motion.div>
+          </div>
+
+        </div>
+      </section>
+
+      <section id="how-it-works" className="py-16 md:py-20 relative bg-white">
         {/* Background Paper Rocket Illustration */}
-        <div className="absolute inset-x-0 top-0 z-0 pointer-events-none opacity-30 md:opacity-40 flex items-start justify-center overflow-hidden">
+        <div className="absolute inset-x-0 top-0 z-0 pointer-events-none opacity-30 md:opacity-40 flex items-start justify-center">
           <img 
             src="/paper-plane-bg.png" 
             alt="Journey blueprint" 
-            className="w-full max-w-[1200px] h-auto object-contain object-top mt-10 md:mt-0"
+            className="w-full max-w-[1200px] h-auto object-contain object-top -mt-10 md:-mt-24"
             style={{ mixBlendMode: 'multiply' }}
           />
         </div>
 
         <div className="max-w-[1200px] mx-auto px-6 relative z-10">
-          <div className="text-center mb-16 lg:mb-20">
+          <div className="text-center mb-12 md:mb-16">
             <div className="text-[#FF5701] font-extrabold tracking-[0.2em] uppercase text-[13px] md:text-[15px] mb-4">
               How it works
             </div>
@@ -1363,7 +1669,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       </section>
 
       {/* ── SHOW, DON'T EXPLAIN ─────────────────────────────────────── */}
-      <section className="relative pb-24 lg:pb-32 bg-[#F8F9FA] border-y border-[#E4E6E9] overflow-hidden">
+      <section className="relative pb-16 md:pb-20">
         {/* Abstract Background Curves & Floating Elements (Zomato Style) */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
           {/* Left Looping String */}
@@ -1379,11 +1685,11 @@ export default function LandingPage({ onGetStarted, onLogin }) {
           </svg>
 
           {/* Floating 2D Icons (Minimal Line-art) */}
-          <motion.img src="/bug.png" alt="Bug" className="absolute top-[5%] left-[10%] lg:left-[12%] w-24 md:w-32 lg:w-40 mix-blend-multiply opacity-80" animate={{ y: [0, -15, 0], rotate: [-2, 2, -2] }} transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }} />
-          <motion.img src="/coffee.png" alt="Coffee" className="absolute top-[45%] left-[2%] lg:left-[5%] w-20 md:w-28 lg:w-36 mix-blend-multiply opacity-80" animate={{ y: [0, 10, 0], rotate: [0, -3, 0] }} transition={{ repeat: Infinity, duration: 5.5, ease: "easeInOut", delay: 1 }} />
-          <motion.img src="/keycap.png" alt="Keycap" className="absolute bottom-[10%] left-[12%] lg:left-[16%] w-28 md:w-36 lg:w-44 mix-blend-multiply opacity-80" animate={{ y: [0, -20, 0], rotate: [2, -2, 2] }} transition={{ repeat: Infinity, duration: 7, ease: "easeInOut", delay: 2 }} />
+          <motion.img src="/bug.png" alt="Bug" className="absolute top-[15%] left-[10%] lg:left-[12%] w-24 md:w-32 lg:w-40 mix-blend-multiply opacity-80" animate={{ y: [0, -15, 0], rotate: [-2, 2, -2] }} transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }} />
+          <motion.img src="/coffee.png" alt="Coffee" className="absolute top-[55%] left-[2%] lg:left-[5%] w-20 md:w-28 lg:w-36 mix-blend-multiply opacity-80" animate={{ y: [0, 10, 0], rotate: [0, -3, 0] }} transition={{ repeat: Infinity, duration: 5.5, ease: "easeInOut", delay: 1 }} />
+          <motion.img src="/keycap.png" alt="Keycap" className="absolute bottom-[2%] left-[12%] lg:left-[16%] w-28 md:w-36 lg:w-44 mix-blend-multiply opacity-80" animate={{ y: [0, -20, 0], rotate: [2, -2, 2] }} transition={{ repeat: Infinity, duration: 7, ease: "easeInOut", delay: 2 }} />
           
-          <motion.img src="/git-flat.png" alt="Git" className="absolute top-[15%] right-[12%] lg:right-[15%] w-32 md:w-40 lg:w-48 mix-blend-multiply opacity-80" animate={{ y: [0, 20, 0], rotate: [-3, 3, -3] }} transition={{ repeat: Infinity, duration: 8, ease: "easeInOut", delay: 0.5 }} />
+          <motion.img src="/git-flat.png" alt="Git" className="absolute top-[8%] right-[12%] lg:right-[15%] w-32 md:w-40 lg:w-48 mix-blend-multiply opacity-80" animate={{ y: [0, 20, 0], rotate: [-3, 3, -3] }} transition={{ repeat: Infinity, duration: 8, ease: "easeInOut", delay: 0.5 }} />
           <motion.img src="/terminal.png" alt="Terminal" className="absolute top-[48%] right-[4%] lg:right-[6%] w-24 md:w-32 lg:w-44 mix-blend-multiply opacity-80" animate={{ y: [0, -12, 0], rotate: [2, -2, 2] }} transition={{ repeat: Infinity, duration: 6.2, ease: "easeInOut", delay: 1.2 }} />
           <motion.img src="/rocket-flat.png" alt="Rocket" className="absolute bottom-[15%] right-[8%] lg:right-[12%] w-28 md:w-36 lg:w-44 mix-blend-multiply opacity-80" animate={{ y: [0, -15, 0], rotate: [3, -3, 3] }} transition={{ repeat: Infinity, duration: 6.5, ease: "easeInOut", delay: 1.5 }} />
         </div>
@@ -1443,9 +1749,9 @@ export default function LandingPage({ onGetStarted, onLogin }) {
                   transition={{ duration: 0.4, ease: "easeOut" }}
                   className="w-full"
                 >
-                  {activePreview === "arena" && <ArenaPreview />}
+                  {activePreview === "arena" && <ArenaPreview outcome={previewOutcome} setOutcome={setPreviewOutcome} />}
                   {activePreview === "skill" && <SkillStudioPreview />}
-                  {activePreview === "recruiter" && <RecruiterPreview />}
+                  {activePreview === "recruiter" && <RecruiterPreview outcome={previewOutcome} />}
                 </motion.div>
               </div>
             </div>
@@ -1454,10 +1760,10 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       </section>
 
       {/* ── TRUST / PROOF ───────────────────────────────────────────── */}
-      <ClaimVsProofSection problemRows={PROBLEM_ROWS} eloHistory={ELO_HISTORY} />
+      <ParadigmShiftSection />
 
       {/* ── PRICING ─────────────────────────────────────────────────── */}
-      <section id="pricing" className="pb-24 lg:pb-32 pt-16 lg:pt-24 bg-white">
+      <section id="pricing" className="py-16 md:py-20 bg-white">
         <div className="max-w-[1200px] mx-auto px-6">
           <div className="text-center mb-12">
             <div className="text-[#FF5701] font-extrabold tracking-[0.2em] uppercase text-[13px] md:text-[15px] mb-4">
@@ -1639,7 +1945,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       </section>
 
       {/* ── FAQ ─────────────────────────────────────────────────────── */}
-      <section className="py-24 lg:py-32 bg-white">
+      <section className="py-16 md:py-20 bg-white">
         <div className="max-w-[720px] mx-auto px-6">
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
