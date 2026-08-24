@@ -211,12 +211,21 @@ const FieldInput = ({ value, onChange, placeholder, type = "text", style }) => (
 const FieldSelect = ({ value, onChange, children, disabled = false }) => (
   <select
     value={value} onChange={onChange} disabled={disabled}
+    onFocus={e => { e.target.style.borderColor = "#FF5701"; e.target.style.boxShadow = "0 0 0 3px rgba(255,87,1,0.15)" }}
+    onBlur={e => { e.target.style.borderColor = "#D1D5DB"; e.target.style.boxShadow = "none" }}
     style={{
-      width: "100%", padding: "14px 16px", borderRadius: T.radius,
-      background: disabled ? "#F9FAFB" : "#FFFFFF", border: "1px solid #E5E7EB", 
-      color: value ? T.text : T.muted, fontSize: 14,
+      width: "100%", padding: "10px 40px 10px 14px", borderRadius: 8,
+      backgroundColor: disabled ? "#F9FAFB" : "#FFFFFF", 
+      backgroundImage: `url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%239CA3AF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")`,
+      backgroundRepeat: "no-repeat",
+      backgroundPosition: "right 14px top 50%",
+      backgroundSize: "10px auto",
+      border: "1px solid #D1D5DB", 
+      color: value ? "#111827" : "#9CA3AF", fontSize: 14,
       fontFamily: T.body, outline: "none", boxSizing: "border-box",
       cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.8 : 1,
+      appearance: "none", WebkitAppearance: "none", MozAppearance: "none",
+      transition: "all 0.15s ease",
     }}
   >
     {children}
@@ -237,24 +246,42 @@ const FieldTextarea = ({ value, onChange, placeholder, rows = 4 }) => (
   />
 )
 
-const UploadBox = ({ file, status, onUpload, label, hint, accept = ".pdf", color = T.primary }) => {
+const UploadBox = ({ file, status, onUpload, onRemove, label, hint, accept = ".pdf", color = T.primary }) => {
   const statusColor = status === "done" ? T.green : status === "reading" ? T.primary : status === "error" ? T.amber : T.muted
-  const statusText = status === "done" ? "✓ Parsed successfully" : status === "reading" ? "Reading…" : status === "error" ? "Parse issue — you can still proceed" : hint
+  const statusText = status === "done" ? "✓ Parsed successfully" : status === "reading" ? "Reading..." : status === "error" ? "Parse issue — you can still proceed" : hint
   return (
-    <label style={{
-      display: "block", border: `1px dashed ${color}40`, borderRadius: T.radiusLg,
-      padding: "18px 20px", background: `${color}06`, cursor: "pointer",
-      transition: "border-color 0.15s",
-    }}
-      onMouseEnter={e => e.currentTarget.style.borderColor = `${color}80`}
-      onMouseLeave={e => e.currentTarget.style.borderColor = `${color}40`}
-    >
-      <input type="file" accept={accept} onChange={onUpload} style={{ display: "none" }} />
-      <div style={{ fontSize: 14, fontWeight: 600, color: T.text, marginBottom: 4 }}>
-        {file ? file.name : label}
-      </div>
-      <div style={{ fontSize: 11, color: statusColor, marginTop: 4 }}>{statusText}</div>
-    </label>
+    <div style={{ position: "relative" }}>
+      <label style={{
+        display: "block", border: "1px dashed #D1D5DB", borderRadius: 8,
+        padding: "14px 16px", background: "#FFFFFF", cursor: "pointer",
+        transition: "all 0.15s ease",
+      }}
+        onMouseEnter={e => e.currentTarget.style.borderColor = "#9CA3AF"}
+        onMouseLeave={e => e.currentTarget.style.borderColor = "#D1D5DB"}
+      >
+        <input type="file" accept={accept} onChange={onUpload} style={{ display: "none" }} />
+        <div style={{ fontSize: 14, fontWeight: 500, color: "#111827", marginBottom: 4 }}>
+          {file ? file.name : label}
+        </div>
+        <div style={{ fontSize: 12, color: statusColor, marginTop: 4 }}>{statusText}</div>
+      </label>
+      {file && onRemove && (
+        <button 
+          onClick={e => { e.preventDefault(); e.stopPropagation(); onRemove(); }}
+          style={{
+            position: "absolute", top: "50%", right: 14, transform: "translateY(-50%)",
+            background: "#F3F4F6", border: "none", borderRadius: 6, width: 26, height: 26,
+            display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#6B7280",
+            transition: "all 0.15s ease"
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = "#E5E7EB"}
+          onMouseLeave={e => e.currentTarget.style.background = "#F3F4F6"}
+          title="Remove file"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      )}
+    </div>
   )
 }
 
@@ -1247,13 +1274,13 @@ const STREAM_BADGES = {
 }
 
 const ROLE_SEARCH_EXAMPLES = [
+  "e.g. Software Engineer",
+  "e.g. Frontend Developer",
+  "e.g. Data Scientist",
+  "e.g. Mechanical Engineer",
   "e.g. VLSI Design Engineer",
-  "e.g. Data Analyst",
+  "e.g. AI/ML Engineer",
   "e.g. Embedded Systems",
-  "e.g. Structural Engineer",
-  "e.g. Power Electronics",
-  "e.g. ML Engineer",
-  "e.g. IoT Developer",
   "e.g. Business Analyst",
 ]
 
@@ -1321,7 +1348,7 @@ function CollegeSearchPicker({ value, onChange, placeholder, disabled = false })
     if (disabled) return // locked via invite link — no need to search/suggest
     const q = (value || "").trim()
     clearTimeout(debounceRef.current)
-    if (q.length < 2) { setResults([]); setLoading(false); return }
+    if (q.length < 3) { setResults([]); setLoading(false); return }
     setLoading(true)
     debounceRef.current = setTimeout(async () => {
       const myReqId = ++reqIdRef.current
@@ -1367,15 +1394,15 @@ function CollegeSearchPicker({ value, onChange, placeholder, disabled = false })
         disabled={disabled}
         onChange={e => { if (!disabled) { onChange(e.target.value); setHighlighted(-1) } }}
         onKeyDown={handleKeyDown}
-        onFocus={e => { if (!disabled) { e.target.style.borderColor = `${T.primary}60`; if (results.length > 0) setOpen(true) } }}
-        onBlur={e => { e.target.style.borderColor = "#E8E3DA" }}
+        onFocus={e => { if (!disabled) { e.target.style.borderColor = "#FF5701"; e.target.style.boxShadow = "0 0 0 3px rgba(255,87,1,0.15)"; if (results.length > 0) setOpen(true) } }}
+        onBlur={e => { e.target.style.borderColor = "#D1D5DB"; e.target.style.boxShadow = "none" }}
         placeholder={placeholder}
         autoComplete="off"
         style={{
-          width: "100%", padding: "14px 16px", borderRadius: T.radius,
-          background: disabled ? "#F9FAFB" : "#FFFFFF", border: "1px solid #E5E7EB", 
-          color: T.text, fontSize: 14, fontFamily: T.body, outline: "none",
-          boxSizing: "border-box", transition: "border-color 0.15s",
+          width: "100%", padding: "10px 14px", borderRadius: 8,
+          background: disabled ? "#F9FAFB" : "#FFFFFF", border: "1px solid #D1D5DB", 
+          color: "#111827", fontSize: 14, fontFamily: T.body, outline: "none",
+          boxSizing: "border-box", transition: "all 0.15s ease",
           cursor: disabled ? "not-allowed" : "text", opacity: disabled ? 0.8 : 1,
         }}
       />
@@ -1542,23 +1569,24 @@ function RoleSearchPicker({ value, onChange, onRoleSelect, selectedRole }) {
           }}
           onKeyDown={handleKeyDown}
           onFocus={e => {
-            e.target.style.borderColor = "#FF570160"
+            e.target.style.borderColor = "#FF5701";
+            e.target.style.boxShadow = "0 0 0 3px rgba(255,87,1,0.15)";
             if (suggestions.length > 0 || q.length >= 3) setOpen(true)
           }}
           onBlur={e => {
-            e.target.style.borderColor = selectedRole ? "#FF5701" : "#E5E7EB"
+            e.target.style.borderColor = selectedRole ? "#FF5701" : "#D1D5DB";
+            e.target.style.boxShadow = selectedRole ? "0 0 0 3px rgba(255,87,1,0.15)" : "none";
           }}
           placeholder={selectedRole ? "" : ROLE_SEARCH_EXAMPLES[phIdx]}
           style={{
-            width: "100%", padding: "14px 42px 14px 16px",
-            borderRadius: 12,
+            width: "100%", padding: "10px 42px 10px 14px",
+            borderRadius: 8,
             background: "#FFFFFF",
-            
-            border: `1px solid ${selectedRole ? "#FF5701" : "#E5E7EB"}`,
-            color: T.text, fontSize: 14, fontFamily: T.body,
+            border: `1px solid ${selectedRole ? "#FF5701" : "#D1D5DB"}`,
+            color: "#111827", fontSize: 14, fontFamily: T.body, fontWeight: 400,
             outline: "none", boxSizing: "border-box",
-            transition: "border-color 0.15s, box-shadow 0.15s",
-            boxShadow: selectedRole ? "0 0 0 1px rgba(255,87,1,0.5)" : "none",
+            transition: "all 0.15s ease",
+            boxShadow: selectedRole ? "0 0 0 3px rgba(255,87,1,0.15)" : "none",
           }}
         />
         <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", zIndex: 1 }}>
@@ -1572,43 +1600,57 @@ function RoleSearchPicker({ value, onChange, onRoleSelect, selectedRole }) {
         </span>
       </div>
 
-      {/* Role preview card — shown after a canonical role is selected */}
+            {/* Role preview card — shown after a canonical role is selected */}
       {selectedRole && (() => {
         const b = badge
         const workbench = ARENA_WORKBENCH[selectedRole.arenaKey] || "Arena Workbench"
         const skillCount = (selectedRole.auraSkills || []).length
         const topics = (selectedRole.interviewFocus || []).slice(0, 3).join(", ")
         const companies = ROLE_COMPANIES[selectedRole.id] || []
+        
+        const icons = {
+          arena: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>,
+          skills: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>,
+          interview: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>,
+          company: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M12 14h.01"></path><path d="M16 10h.01"></path><path d="M16 14h.01"></path><path d="M8 10h.01"></path><path d="M8 14h.01"></path></svg>
+        }
+
         return (
           <div style={{
-            marginTop: 10,
-            background: "rgba(99,102,241,0.05)",
-            border: "1px solid rgba(99,102,241,0.20)",
-            borderRadius: T.radiusLg, padding: "14px 16px",
+            marginTop: 12,
+            background: "#F9FAFB",
+            border: "1px solid #E5E7EB",
+            borderRadius: 12, padding: "16px",
           }}>
             {/* Header row */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-              <span style={{ fontSize: 14 }}>✅</span>
-              <span style={{ fontWeight: 800, fontSize: 14, color: T.text }}>{selectedRole.label}</span>
-              <span style={{ fontSize: 10, fontWeight: 800, background: b.bg, color: b.color, padding: "2px 7px", borderRadius: 100, marginLeft: 2 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: 6, background: "#F3F4F6", color: "#4B5563" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+              </div>
+              <span style={{ fontWeight: 600, fontSize: 15, color: "#111827" }}>{selectedRole.label}</span>
+              <span style={{ fontSize: 11, fontWeight: 600, background: b.bg, color: b.color, padding: "2px 8px", borderRadius: 100, marginLeft: 4 }}>
                 {b.label}
               </span>
-              <span style={{ marginLeft: "auto", fontSize: 11, color: "#6366F1", fontWeight: 600 }}>Your platform will be fully personalised</span>
+              <span style={{ marginLeft: "auto", fontSize: 12, color: "#6B7280", fontWeight: 500 }}>Platform will be personalised</span>
             </div>
+            
             {/* 4-column preview grid */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
               {[
-                { icon: "⚔️", label: "Arena", value: workbench },
-                { icon: "📊", label: "Skills tracked", value: `${skillCount} skills` },
-                { icon: "🎤", label: "AI Interview", value: topics || "Role-specific questions" },
-                { icon: "🏢", label: "Top hirers", value: companies.join(", ") || "Industry leaders" },
+                { icon: icons.arena, label: "Arena", value: workbench },
+                { icon: icons.skills, label: "Skills tracked", value: `${skillCount} skills` },
+                { icon: icons.interview, label: "AI Interview", value: topics || "Role-specific questions" },
+                { icon: icons.company, label: "Top hirers", value: companies.join(", ") || "Industry leaders" },
               ].map((item, i) => (
                 <div key={i} style={{
-                  background: "#FFFFFF", borderRadius: T.radius,
-                  border: "1px solid rgba(0,0,0,0.05)", padding: "10px 12px",
+                  background: "#FFFFFF", borderRadius: 8,
+                  border: "1px solid #E5E7EB", padding: "12px",
                 }}>
-                  <div style={{ fontSize: 11, marginBottom: 3 }}>{item.icon} <span style={{ fontSize: 10, fontWeight: 700, color: T.muted, letterSpacing: "0.06em", textTransform: "uppercase" }}>{item.label}</span></div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: T.text, lineHeight: 1.4 }}>{item.value}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, color: "#6B7280" }}>
+                    {item.icon} 
+                    <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.02em", textTransform: "uppercase" }}>{item.label}</span>
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "#111827", lineHeight: 1.4 }}>{item.value}</div>
                 </div>
               ))}
             </div>
@@ -1665,22 +1707,21 @@ function RoleSearchPicker({ value, onChange, onRoleSelect, selectedRole }) {
             </div>
           )}
 
-          {/* "Continue with typed text" fallback */}
+                              {/* "Continue with typed text" fallback */}
           {showContinue && !aiLoading && (
             <div
               onMouseDown={e => { e.preventDefault(); handleContinueWithTyped() }}
+              onMouseEnter={e => e.currentTarget.style.background = "#F9FAFB"}
+              onMouseLeave={e => e.currentTarget.style.background = "#FFFFFF"}
               style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "12px 14px", cursor: "pointer",
-                background: "#FAFAFA",
-                borderTop: suggestions.length > 0 ? "1px solid #F5F5F5" : "none",
+                padding: "12px 16px", cursor: "pointer",
+                background: "#FFFFFF",
+                borderTop: suggestions.length > 0 ? "1px solid #F3F4F6" : "none",
+                transition: "background 0.15s ease",
               }}
             >
-              <span style={{ fontSize: 14 }}>🔍</span>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Continue with "{q}"</div>
-                <div style={{ fontSize: 11, color: T.muted }}>Not in our registry — we'll map to the closest available track</div>
-              </div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: "#111827" }}>Use "{q}"</div>
+              <div style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}>Not in our registry — we'll map to the closest track</div>
             </div>
           )}
         </div>
@@ -1706,6 +1747,79 @@ const RotatingHeadline = ({ accent }) => {
       <span key={idx} className="ob-fade-up" style={{ display: "inline-block", color: "#FFFFFF" }}>{phrases[idx]}</span>
     </h1>
   );
+}
+
+const BRANCH_OPTIONS = [
+  { label: "IT / CS", options: ["CSE", "IT", "MCA", "AI & Data Science", "AI & ML"] },
+  { label: "Core Engineering", options: ["ECE", "EEE", "Mechanical", "Civil", "IoT"] },
+  { label: "Other", options: ["Pharmacy", "MBA", "Other"] }
+];
+
+function CustomBranchPicker({ value, onChange, disabled }) {
+  const [open, setOpen] = useState(false);
+  const dropRef = useRef(null);
+
+  useEffect(() => {
+    const handle = e => { if (!dropRef.current?.contains(e.target)) setOpen(false) }
+    document.addEventListener("mousedown", handle)
+    return () => document.removeEventListener("mousedown", handle)
+  }, [])
+
+  return (
+    <div style={{ position: "relative" }} ref={dropRef}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => !disabled && setOpen(!open)}
+        style={{
+          width: "100%", padding: "10px 40px 10px 14px", borderRadius: 8,
+          backgroundColor: disabled ? "#F9FAFB" : "#FFFFFF", 
+          backgroundImage: `url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%239CA3AF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")`,
+          backgroundRepeat: "no-repeat", backgroundPosition: "right 14px top 50%", backgroundSize: "10px auto",
+          border: `1px solid ${open ? "#FF5701" : "#D1D5DB"}`, 
+          color: value ? "#111827" : "#9CA3AF", fontSize: 14,
+          fontFamily: T.body, outline: "none", boxSizing: "border-box", textAlign: "left",
+          cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.8 : 1,
+          boxShadow: open ? "0 0 0 3px rgba(255,87,1,0.15)" : "none",
+          transition: "all 0.15s ease",
+        }}
+      >
+        {value || "Select branch"}
+      </button>
+
+      {!disabled && open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0,
+          background: "#FFFFFF", border: "1px solid #E5E7EB",
+          borderRadius: 12, boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+          maxHeight: 280, overflowY: "auto", zIndex: 50,
+          padding: "6px 0",
+        }}>
+          {BRANCH_OPTIONS.map((group, i) => (
+            <div key={i}>
+              <div style={{ padding: "8px 16px", fontSize: 11, fontWeight: 700, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.05em", background: "#F9FAFB" }}>
+                {group.label}
+              </div>
+              {group.options.map(opt => (
+                <div
+                  key={opt}
+                  onClick={() => { onChange(opt); setOpen(false); }}
+                  onMouseEnter={e => e.currentTarget.style.background = "#F3F4F6"}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                  style={{
+                    padding: "10px 16px", fontSize: 14, color: "#111827", cursor: "pointer",
+                    background: "transparent", transition: "background 0.15s"
+                  }}
+                >
+                  {opt}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function Onboarding({ user, onComplete, onBack }) {
@@ -2838,7 +2952,9 @@ export default function Onboarding({ user, onComplete, onBack }) {
           backgroundImage: "url(/onboarding-student.png)",
           backgroundSize: "cover",
           backgroundPosition: "center",
-          position: "relative",
+          position: "sticky",
+          top: 0,
+          height: "100vh",
         }} className="md-flex-panel">
           <style>{`@media (min-width: 900px) { .md-flex-panel { display: flex !important; } }`}</style>
           
@@ -2858,14 +2974,15 @@ export default function Onboarding({ user, onComplete, onBack }) {
         <div style={{
           flex: "1 1 50%",
           display: "flex",
-          alignItems: "center",
+          alignItems: "flex-start",
           justifyContent: "center",
-          padding: "40px 24px",
+          padding: "120px 24px 80px 24px",
           background: "#FFFFFF",
-          position: "relative"
+          position: "relative",
+          minHeight: "100vh",
         }}>
           {/* Step Indicator */}
-          <div style={{ position: "absolute", top: 32, right: 32 }}>
+          <div style={{ position: "fixed", top: 32, right: 32, zIndex: 50 }}>
             <div style={{ 
                 display: "inline-block",
                 padding: "6px 16px", 
@@ -2889,14 +3006,29 @@ export default function Onboarding({ user, onComplete, onBack }) {
           </div>
 
           <div style={{ width: "100%", maxWidth: 580 }}>
-            <h2 style={{ fontSize: 32, fontWeight: 800, color: "#14161A", letterSpacing: "-0.04em", marginBottom: 8, lineHeight: 1.15 }}>
-              What role are you <span style={{ color: pt.accent }}>{studentStage === "job_seeker" ? "targeting" : "preparing for"}?</span>
-            </h2>
-            <p style={{ fontSize: 16, color: "#4B5563", lineHeight: 1.6, marginBottom: 36, fontWeight: 500 }}>
-              {studentStage === "job_seeker"
-                ? "We'll calibrate 25 beginner-level questions to your exact target role and get you job-ready fast."
-                : "We'll calibrate 25 beginner-level questions to your exact target role."}
-            </p>
+            <div style={{ 
+              position: "sticky", 
+              top: 0, 
+              background: "#FFFFFF", 
+              zIndex: 40, 
+              paddingTop: 40,
+              paddingBottom: 24,
+              marginBottom: 24,
+              borderBottom: "1px solid #F3F4F6",
+              marginLeft: -24,
+              marginRight: -24,
+              paddingLeft: 24,
+              paddingRight: 24
+            }}>
+              <h2 style={{ fontSize: 32, fontWeight: 800, color: "#14161A", letterSpacing: "-0.04em", marginBottom: 8, lineHeight: 1.15 }}>
+                What role are you <span style={{ color: pt.accent }}>{studentStage === "job_seeker" ? "targeting" : "preparing for"}?</span>
+              </h2>
+              <p style={{ fontSize: 16, color: "#4B5563", lineHeight: 1.6, margin: 0, fontWeight: 500 }}>
+                {studentStage === "job_seeker"
+                  ? "We'll calibrate 25 beginner-level questions to your exact target role and get you job-ready fast."
+                  : "We'll calibrate 25 beginner-level questions to your exact target role."}
+              </p>
+            </div>
 
             {apiError && <div style={{ background: `${T.red}10`, border: `1px solid ${T.red}30`, borderRadius: 12, padding: "12px 14px", color: "#F87171", fontSize: 13, marginBottom: 24 }}>{apiError}</div>}
             
@@ -2947,7 +3079,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
               )}
 
               <FieldRow label="Resume upload (optional)" hint={resumeStatus==="done"?"Resume parsed successfully.":resumeStatus==="reading"?"Reading...":resumeStatus==="error"?"Uploaded but parsing was partial.":"Used to personalise your beginner questions."}>
-                <UploadBox file={resumeFile} status={resumeStatus} onUpload={handleFileUpload} label="Upload PDF" hint="" color={pt.accent} />
+                <UploadBox file={resumeFile} status={resumeStatus} onUpload={handleFileUpload} onRemove={() => { setResumeFile(null); setResumeStatus("idle"); setResumeData(null); }} label="Upload PDF" hint="" color={pt.accent} />
               </FieldRow>
             </div>
 
@@ -3116,7 +3248,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
 
             {/* Resume upload */}
             <FieldRow label="Resume (PDF) — recommended">
-              <UploadBox file={proResumeFile} status={proResumeStatus} onUpload={handleProResumeUpload} label="Upload your resume (PDF)" hint="We extract skills, experience, and your professional summary." color={pt.accent} />
+              <UploadBox file={proResumeFile} status={proResumeStatus} onUpload={handleProResumeUpload} onRemove={() => { setProResumeFile(null); setProResumeStatus("idle"); setProResumeData(null); }} label="Upload your resume (PDF)" hint="We extract skills, experience, and your professional summary." color={pt.accent} />
             </FieldRow>
 
             {/* LinkedIn URL — NEW */}
