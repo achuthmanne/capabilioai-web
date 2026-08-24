@@ -1278,9 +1278,9 @@ export default function LandingPage({ onGetStarted, onLogin }) {
 
   const PRICING = {
     student: { plans: [
-      { label: "Free", price: null, features: ["1 Arena task every 24 hrs", "Portfolio generation", "Locked premium previews", "Market reports at ₹49/report"], cta: "Get started free" },
-      { label: "Pro", price: "₹299/mo", sub: "Billed monthly", features: ["3 Arena tasks per day", "3 AI Interview sessions/month", "1 market report/month", "Portfolio generation"], cta: "Start Pro" },
-      { label: "Elite", price: "₹599/mo", sub: "Best value", recommended: true, features: ["6 Arena tasks per day", "5 AI Interview sessions/month", "2 market reports/month", "Personal branding video", "Portfolio generation"], cta: "Go Elite" },
+      { label: "Free", price: null, sub: "100% Free Forever", features: ["1 Arena task per day (IST reset)", "Basic profile & sharing", "Limited skill tracking & graph", "Basic portfolio & evidence", "Basic job & internship discovery", "Basic opportunity browsing"], cta: "START FREE" },
+      { label: "Pro", price: "₹299/mo", sub: "Billed monthly • Cancel anytime", recommended: true, features: ["3 Arena tasks per day (IST reset)", "1 monthly skill report & diagnostics", "3 AI interview sessions / month", "Internship readiness score & tracking", "1 monthly market analysis report", "Interview feedback & improvement areas"], cta: "GO PRO" },
+      { label: "Elite", price: "₹499/mo", sub: "BEST FOR SERIOUS CAREER BUILDING", features: ["6 Arena tasks per day (IST reset)", "2 monthly skill reports", "5 AI interview sessions / month", "Personal branding video (Included)", "2 monthly market analysis reports", "Priority access & Elite profile badge"], cta: "GO ELITE" },
     ]},
     professional: { plans: [
       { label: "Free", price: null, features: ["Basic Orbit dashboard", "1 Forge challenge/week", "Public verified profile", "UAN verification"], cta: "Start free" },
@@ -1775,7 +1775,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
 
             {/* Premium Toggle */}
             <div className="inline-flex items-center bg-[#F4F5F7] p-1.5 rounded-full mx-auto relative border border-[#E4E6E9]">
-              {["student", "professional", "organization"].map((key) => {
+              {["student", "organization"].map((key) => {
                 const isActive = pricingFlow === key;
                 return (
                   <button

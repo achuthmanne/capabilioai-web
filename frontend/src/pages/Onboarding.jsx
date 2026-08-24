@@ -25,16 +25,16 @@ const ONBOARDING_STYLES = `
 // ─── Per-path design themes ─────────────────────────────────────────
 const PATH_THEME = {
   student: {
-    accent:     "#6366F1",
-    accentD:    "#4F46E5",
-    accentBg:   "rgba(99,102,241,0.12)",
-    accentBd:   "rgba(99,102,241,0.30)",
+    accent:     "#FF5701",
+    accentD:    "#E04800",
+    accentBg:   "rgba(255,87,1,0.12)",
+    accentBd:   "rgba(255,87,1,0.30)",
     icon:       "🎓",
     label:      "Student",
     tagline:    "Your ELO starts here.",
     heroTitle:  "Prove your skills.",
     heroSub:    "Not just claim them.",
-    bg:         "radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.18) 0%, transparent 55%), radial-gradient(ellipse at 80% 20%, rgba(59,130,246,0.10) 0%, transparent 50%), #FFFFFF",
+    bg:         "radial-gradient(ellipse at 20% 50%, rgba(255,87,1,0.12) 0%, transparent 55%), radial-gradient(ellipse at 80% 20%, rgba(255,165,0,0.08) 0%, transparent 50%), #FFFFFF",
     stepLabel:  "STUDENT ONBOARDING",
     steps:      ["Domain", "Assessment", "ELO Result", "Plan"],
   },
@@ -198,13 +198,13 @@ const FieldInput = ({ value, onChange, placeholder, type = "text", style }) => (
   <input
     value={value} onChange={onChange} type={type} placeholder={placeholder}
     style={{
-      width: "100%", padding: "13px 16px", borderRadius: T.radius,
-      background: "rgba(0,0,0,0.02)", border: "1px solid #E8E3DA",
+      width: "100%", padding: "14px 16px", borderRadius: T.radius,
+      background: "rgba(0,0,0,0.02)", border: "1px solid #E5E7EB", 
       color: T.text, fontSize: 14, fontFamily: T.body, outline: "none",
       boxSizing: "border-box", transition: "border-color 0.15s", ...style,
     }}
-    onFocus={e => e.target.style.borderColor = `${T.primary}60`}
-    onBlur={e => e.target.style.borderColor = "#E8E3DA"}
+    onFocus={e => { e.target.style.borderColor = "#FF570160"; e.target.style.boxShadow = "0 0 0 3px rgba(255,87,1,0.12)" }}
+    onBlur={e => { e.target.style.borderColor = "#E5E7EB"; e.target.style.boxShadow = "0 1px 2px rgba(0,0,0,0.03)" }}
   />
 )
 
@@ -212,8 +212,8 @@ const FieldSelect = ({ value, onChange, children, disabled = false }) => (
   <select
     value={value} onChange={onChange} disabled={disabled}
     style={{
-      width: "100%", padding: "13px 16px", borderRadius: T.radius,
-      background: disabled ? "rgba(0,0,0,0.04)" : T.raised, border: "1px solid #E8E3DA",
+      width: "100%", padding: "14px 16px", borderRadius: T.radius,
+      background: disabled ? "#F9FAFB" : "#FFFFFF", border: "1px solid #E5E7EB", 
       color: value ? T.text : T.muted, fontSize: 14,
       fontFamily: T.body, outline: "none", boxSizing: "border-box",
       cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.8 : 1,
@@ -227,8 +227,8 @@ const FieldTextarea = ({ value, onChange, placeholder, rows = 4 }) => (
   <textarea
     value={value} onChange={onChange} rows={rows} placeholder={placeholder}
     style={{
-      width: "100%", padding: "13px 16px", borderRadius: T.radius,
-      background: "rgba(0,0,0,0.02)", border: "1px solid #E8E3DA",
+      width: "100%", padding: "14px 16px", borderRadius: T.radius,
+      background: "rgba(0,0,0,0.02)", border: "1px solid #E5E7EB", 
       color: T.text, fontSize: 14, fontFamily: T.body, outline: "none",
       resize: "vertical", boxSizing: "border-box",
     }}
@@ -268,7 +268,7 @@ const Spinner = ({ size = 20, color = T.primary }) => (
 
 const FieldRow = ({ label, children, hint }) => (
   <div style={{ marginBottom: 16 }}>
-    {label && <div style={{ fontSize: 11, fontWeight: 600, color: T.muted, letterSpacing: 1, textTransform: "uppercase", marginBottom: 7 }}>{label}</div>}
+    {label && <div style={{ fontSize: 12, fontWeight: 600, color: "#4B5563", marginBottom: 7 }}>{label}</div>}
     {children}
     {hint && <div style={{ fontSize: 11, color: T.muted, marginTop: 5 }}>{hint}</div>}
   </div>
@@ -1372,8 +1372,8 @@ function CollegeSearchPicker({ value, onChange, placeholder, disabled = false })
         placeholder={placeholder}
         autoComplete="off"
         style={{
-          width: "100%", padding: "13px 16px", borderRadius: T.radius,
-          background: disabled ? "rgba(0,0,0,0.04)" : "rgba(0,0,0,0.02)", border: "1px solid #E8E3DA",
+          width: "100%", padding: "14px 16px", borderRadius: T.radius,
+          background: disabled ? "#F9FAFB" : "#FFFFFF", border: "1px solid #E5E7EB", 
           color: T.text, fontSize: 14, fontFamily: T.body, outline: "none",
           boxSizing: "border-box", transition: "border-color 0.15s",
           cursor: disabled ? "not-allowed" : "text", opacity: disabled ? 0.8 : 1,
@@ -1384,8 +1384,8 @@ function CollegeSearchPicker({ value, onChange, placeholder, disabled = false })
           ref={dropRef}
           style={{
             position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0,
-            background: "#FFFFFF", border: "1px solid #E8E3DA",
-            borderRadius: T.radiusLg, boxShadow: "0 8px 32px rgba(0,0,0,0.13)",
+            background: "#FFFFFF", border: "1px solid #E5E7EB", 
+            borderRadius: T.radiusLg, boxShadow: "none",
             zIndex: 1000, overflow: "hidden", maxHeight: 280, overflowY: "auto",
           }}
         >
@@ -1532,9 +1532,7 @@ function RoleSearchPicker({ value, onChange, onRoleSelect, selectedRole }) {
     <div style={{ position: "relative" }}>
       {/* Input */}
       <div style={{ position: "relative" }}>
-        <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 15, pointerEvents: "none", zIndex: 1 }}>
-          {selectedRole ? "✅" : "🎯"}
-        </span>
+        
         <input
           ref={inputRef}
           value={value}
@@ -1544,22 +1542,23 @@ function RoleSearchPicker({ value, onChange, onRoleSelect, selectedRole }) {
           }}
           onKeyDown={handleKeyDown}
           onFocus={e => {
-            e.target.style.borderColor = "#6366F160"
+            e.target.style.borderColor = "#FF570160"
             if (suggestions.length > 0 || q.length >= 3) setOpen(true)
           }}
           onBlur={e => {
-            e.target.style.borderColor = selectedRole ? "#6366F1" : "#E8E3DA"
+            e.target.style.borderColor = selectedRole ? "#FF5701" : "#E5E7EB"
           }}
           placeholder={selectedRole ? "" : ROLE_SEARCH_EXAMPLES[phIdx]}
           style={{
-            width: "100%", padding: "13px 42px 13px 44px",
-            borderRadius: T.radius,
-            background: T.raised,
-            border: `1px solid ${selectedRole ? "#6366F1" : "#E8E3DA"}`,
+            width: "100%", padding: "14px 42px 14px 16px",
+            borderRadius: 12,
+            background: "#FFFFFF",
+            
+            border: `1px solid ${selectedRole ? "#FF5701" : "#E5E7EB"}`,
             color: T.text, fontSize: 14, fontFamily: T.body,
             outline: "none", boxSizing: "border-box",
             transition: "border-color 0.15s, box-shadow 0.15s",
-            boxShadow: selectedRole ? "0 0 0 3px rgba(99,102,241,0.12)" : "none",
+            boxShadow: selectedRole ? "0 0 0 1px rgba(255,87,1,0.5)" : "none",
           }}
         />
         <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", zIndex: 1 }}>
@@ -1567,9 +1566,7 @@ function RoleSearchPicker({ value, onChange, onRoleSelect, selectedRole }) {
             ? <Spinner size={16} />
             : (value.length > 0
                 ? <button
-                    onClick={() => { onChange(""); onRoleSelect(null); inputRef.current?.focus() }}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: T.muted, fontSize: 15, padding: 0, lineHeight: 1 }}
-                  >✕</button>
+                    onClick={() => { onChange(""); onRoleSelect(null); inputRef.current?.focus() }} style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
                 : null)
           }
         </span>
@@ -1625,8 +1622,8 @@ function RoleSearchPicker({ value, onChange, onRoleSelect, selectedRole }) {
           ref={dropRef}
           style={{
             position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0,
-            background: "#FFFFFF", border: "1px solid #E8E3DA",
-            borderRadius: T.radiusLg, boxShadow: "0 8px 32px rgba(0,0,0,0.13)",
+            background: "#FFFFFF", border: "1px solid #E5E7EB", 
+            borderRadius: T.radiusLg, boxShadow: "none",
             zIndex: 1000, overflow: "hidden",
           }}
         >
@@ -1696,6 +1693,21 @@ function RoleSearchPicker({ value, onChange, onRoleSelect, selectedRole }) {
 // MAIN ONBOARDING COMPONENT
 // KEY FIX: reads "capabilio_selected_path" (matches what LandingPage writes)
 // ══════════════════════════════════════════════════════════════════
+const RotatingHeadline = ({ accent }) => {
+  const [idx, setIdx] = useState(0);
+  const phrases = ["Not just claim them.", "Build your true profile.", "Showcase your potential.", "Land your dream role."];
+  useEffect(() => {
+    const t = setInterval(() => setIdx(i => (i + 1) % phrases.length), 3000);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <h1 style={{ fontSize: 36, fontWeight: 700, letterSpacing: "-0.02em", marginBottom: 16, lineHeight: 1.15, minHeight: 84 }}>
+      Prove your <span style={{ color: accent }}>skills</span>.<br/>
+      <span key={idx} className="ob-fade-up" style={{ display: "inline-block", color: "#FFFFFF" }}>{phrases[idx]}</span>
+    </h1>
+  );
+}
+
 export default function Onboarding({ user, onComplete, onBack }) {
   // Keep a stable ref to onComplete so the init useEffect doesn't re-run every
   // time App.jsx re-renders (which creates a new arrow-function reference).
@@ -2809,84 +2821,164 @@ export default function Onboarding({ user, onComplete, onBack }) {
 
   // ══ SCREEN: STUDENT SEARCH ════════════════════════════════════════
   if (step === "search") {
-    const canGo = selectedRole !== null || keyword.trim().length > 1
-    const pt = getPathTheme("student")
+    const canGo = selectedRole !== null || keyword.trim().length > 1;
+    const pt = getPathTheme("student");
     return (
-      <Screen style={{ background: pt.bg }}>
+      <div style={{ display: "flex", width: "100%", minHeight: "100vh", background: "#FFFFFF", fontFamily: T.body }}>
         <style>{ONBOARDING_STYLES}</style>
-        <div style={{ ...screen, width:"100%", maxWidth:680 }}>
-          <Card accent={pt.accentBd}>
-            <BackBtn onClick={()=>{ setPath(null); transition("path") }} />
-            <PathBanner pathKey="student" stepIndex={0} />
-            <H2>What role are you {studentStage === "job_seeker" ? "targeting" : "preparing for"}?</H2>
-            <Sub>{studentStage === "job_seeker"
-              ? "We'll calibrate 25 beginner-level questions to your exact target role and get you job-ready fast. Your ELO baseline starts at 400."
-              : "We'll calibrate 25 beginner-level questions to your exact target role. Your ELO baseline starts at 400."}</Sub>
-            {apiError && <div style={{ background:`${T.red}10`,border:`1px solid ${T.red}30`,borderRadius:T.radius,padding:"12px 14px",color:"#F87171",fontSize:13,marginBottom:16 }}>{apiError}</div>}
-            {/* Role picker — primary input. Branch auto-derives from selected role. */}
-            <FieldRow label="🎯 Target role">
-              <RoleSearchPicker
-                value={keyword}
-                onChange={setKeyword}
-                onRoleSelect={handleRoleSelect}
-                selectedRole={selectedRole}
-              />
-            </FieldRow>
-            {/* College + Branch — pre-filled from signup, editable unless a
-                college invite link locked them (collegeLocked/branchLocked) */}
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:collegeLocked ? 6 : 16 }}>
-              <FieldRow label={studentStage === "job_seeker" ? "College / University (optional)" : "College / University"}>
-                <CollegeSearchPicker value={college} onChange={setCollege} placeholder="e.g. VIT Vellore" disabled={collegeLocked} />
-              </FieldRow>
-              <FieldRow label="Branch / Stream">
-                <FieldSelect value={branch} onChange={e=>setBranch(e.target.value)} disabled={branchLocked}>
-                  <option value="">Select branch</option>
-                  <optgroup label="IT / CS">
-                    <option value="CSE">CSE</option>
-                    <option value="IT">IT</option>
-                    <option value="MCA">MCA</option>
-                    <option value="AI_DS">AI &amp; Data Science</option>
-                    <option value="AI_ML">AI &amp; ML</option>
-                  </optgroup>
-                  <optgroup label="Core Engineering">
-                    <option value="ECE">ECE</option>
-                    <option value="EEE">EEE</option>
-                    <option value="Mechanical">Mechanical</option>
-                    <option value="Civil">Civil</option>
-                    <option value="IoT">IoT</option>
-                  </optgroup>
-                  <optgroup label="Other">
-                    <option value="Pharmacy">Pharmacy</option>
-                    <option value="MBA">MBA</option>
-                    <option value="Other">Other</option>
-                  </optgroup>
-                </FieldSelect>
-              </FieldRow>
-            </div>
-            {collegeLocked && (
-              <div style={{ fontSize: 11, color: T.muted, marginBottom: 16, marginTop: -6 }}>
-                🔒 Set by your college's invite link{branchLocked ? "" : " — branch wasn't recognized from the link, please pick yours"}. Contact your placement cell if this is wrong.
-              </div>
-            )}
-            <FieldRow label="Resume upload — optional" hint={resumeStatus==="done"?"✓ Resume parsed successfully.":resumeStatus==="reading"?"Reading…":resumeStatus==="error"?"Uploaded but parsing was partial.":"Optional — used to personalise questions."}>
-              <UploadBox file={resumeFile} status={resumeStatus} onUpload={handleFileUpload} label="Upload resume or profile PDF" hint="Personalises beginner-level questions around your foundation areas." color={T.primary} />
-            </FieldRow>
-            <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20 }}>
-              {[{label:"Questions",value:TARGET_Q_COUNT},{label:"Difficulty",value:"Beginner"},{label:"Timer",value:"45s / Q"}].map((s,i)=>(
-                <div key={i} style={{ background:"#FFFFFF",border:"1px solid rgba(0,0,0,0.03)",borderRadius:T.radius,padding:14,textAlign:"center" }}>
-                  <div style={{ fontFamily:T.display,fontSize:20,color:T.primary,marginBottom:4 }}>{s.value}</div>
-                  <div style={{ fontSize:10,color:T.muted,textTransform:"uppercase",letterSpacing:1 }}>{s.label}</div>
-                </div>
-              ))}
-            </div>
-            <PrimaryBtn onClick={generateMCQs} disabled={!canGo}>Start Student Assessment →</PrimaryBtn>
-          </Card>
+        
+        {/* Left Panel - Image Cover */}
+        <div style={{
+          flex: "1 1 50%",
+          display: "none",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          padding: "48px",
+          background: "#14161A",
+          backgroundImage: "url(/onboarding-student.png)",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          position: "relative",
+        }} className="md-flex-panel">
+          <style>{`@media (min-width: 900px) { .md-flex-panel { display: flex !important; } }`}</style>
+          
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(20,22,26,0.2) 0%, rgba(20,22,26,0.1) 40%, rgba(20,22,26,0.8) 100%)" }} />
+          
+          <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center" }}>
+            <span style={{ fontSize: 28, fontFamily: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif', fontWeight: 800, letterSpacing: "-0.02em", color: "#FFFFFF" }}>Capabilio <span style={{ color: pt.accent }}>AI</span></span>
+          </div>
+
+          <div style={{ position: "relative", zIndex: 1, color: "#FFFFFF", maxWidth: 440 }}>
+            <RotatingHeadline accent={pt.accent} />
+            <p style={{ fontSize: 16, opacity: 0.85, lineHeight: 1.6, fontWeight: 400 }}>Thousands of top engineering students use Capabilio AI to calibrate their skills against industry standards and land roles at premier companies.</p>
+          </div>
         </div>
-      </Screen>
+
+        {/* Right Panel - Form */}
+        <div style={{
+          flex: "1 1 50%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "40px 24px",
+          background: "#FFFFFF",
+          position: "relative"
+        }}>
+          {/* Step Indicator */}
+          <div style={{ position: "absolute", top: 32, right: 32 }}>
+            <div style={{ 
+                display: "inline-block",
+                padding: "6px 16px", 
+                borderRadius: 999, 
+                fontSize: 12, 
+                fontWeight: 700, 
+                color: "#14161A",
+                background: "#FFFFFF",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+                border: "1px solid #E5E7EB",
+                letterSpacing: "0.03em"
+              }}>
+                Step 1 of 4
+            </div>
+          </div>
+
+          {/* Mobile Back Button Equivalent / Logo */}
+          <div className="md-hidden-panel" style={{ position: "absolute", top: 24, left: 24, display: "flex", alignItems: "center" }}>
+             <style>{`@media (min-width: 900px) { .md-hidden-panel { display: none !important; } }`}</style>
+             <span style={{ fontSize: 24, fontFamily: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif', fontWeight: 800, letterSpacing: "-0.02em", color: "#14161A" }}>Capabilio <span style={{ color: pt.accent }}>AI</span></span>
+          </div>
+
+          <div style={{ width: "100%", maxWidth: 580 }}>
+            <h2 style={{ fontSize: 32, fontWeight: 800, color: "#14161A", letterSpacing: "-0.04em", marginBottom: 8, lineHeight: 1.15 }}>
+              What role are you <span style={{ color: pt.accent }}>{studentStage === "job_seeker" ? "targeting" : "preparing for"}?</span>
+            </h2>
+            <p style={{ fontSize: 16, color: "#4B5563", lineHeight: 1.6, marginBottom: 36, fontWeight: 500 }}>
+              {studentStage === "job_seeker"
+                ? "We'll calibrate 25 beginner-level questions to your exact target role and get you job-ready fast."
+                : "We'll calibrate 25 beginner-level questions to your exact target role."}
+            </p>
+
+            {apiError && <div style={{ background: `${T.red}10`, border: `1px solid ${T.red}30`, borderRadius: 12, padding: "12px 14px", color: "#F87171", fontSize: 13, marginBottom: 24 }}>{apiError}</div>}
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+              <FieldRow label="Target role">
+                <RoleSearchPicker
+                  value={keyword}
+                  onChange={setKeyword}
+                  onRoleSelect={handleRoleSelect}
+                  selectedRole={selectedRole}
+                />
+              </FieldRow>
+              
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <FieldRow label={studentStage === "job_seeker" ? "College (optional)" : "College"}>
+                  <CollegeSearchPicker value={college} onChange={setCollege} placeholder="e.g. VIT Vellore" disabled={collegeLocked} />
+                </FieldRow>
+                <FieldRow label="Branch / Stream">
+                  <FieldSelect value={branch} onChange={e=>setBranch(e.target.value)} disabled={branchLocked}>
+                    <option value="">Select branch</option>
+                    <optgroup label="IT / CS">
+                      <option value="CSE">CSE</option>
+                      <option value="IT">IT</option>
+                      <option value="MCA">MCA</option>
+                      <option value="AI_DS">AI &amp; Data Science</option>
+                      <option value="AI_ML">AI &amp; ML</option>
+                    </optgroup>
+                    <optgroup label="Core Engineering">
+                      <option value="ECE">ECE</option>
+                      <option value="EEE">EEE</option>
+                      <option value="Mechanical">Mechanical</option>
+                      <option value="Civil">Civil</option>
+                      <option value="IoT">IoT</option>
+                    </optgroup>
+                    <optgroup label="Other">
+                      <option value="Pharmacy">Pharmacy</option>
+                      <option value="MBA">MBA</option>
+                      <option value="Other">Other</option>
+                    </optgroup>
+                  </FieldSelect>
+                </FieldRow>
+              </div>
+              
+              {collegeLocked && (
+                <div style={{ fontSize: 12, color: "#6B7280", marginTop: -12 }}>
+                  Set by your college's invite link{branchLocked ? "" : " - please select your branch"}. Contact your placement cell if incorrect.
+                </div>
+              )}
+
+              <FieldRow label="Resume upload (optional)" hint={resumeStatus==="done"?"Resume parsed successfully.":resumeStatus==="reading"?"Reading...":resumeStatus==="error"?"Uploaded but parsing was partial.":"Used to personalise your beginner questions."}>
+                <UploadBox file={resumeFile} status={resumeStatus} onUpload={handleFileUpload} label="Upload PDF" hint="" color={pt.accent} />
+              </FieldRow>
+            </div>
+
+            <button 
+              onClick={generateMCQs} 
+              disabled={!canGo}
+              style={{
+                width: "100%",
+                marginTop: 32,
+                padding: "14px 24px",
+                background: canGo ? pt.accent : "#F4F5F7",
+                color: canGo ? "#FFFFFF" : "#9CA3AF",
+                border: "none",
+                borderRadius: 12,
+                fontSize: 16,
+                fontWeight: 600,
+                cursor: canGo ? "pointer" : "not-allowed",
+                boxShadow: "none",
+                transition: "all 0.2s ease"
+              }}
+              onMouseEnter={e => { if(canGo) e.currentTarget.style.transform = "translateY(-1px)"; }}
+              onMouseLeave={e => { if(canGo) e.currentTarget.style.transform = "none"; }}
+            >
+              Start Student Assessment
+            </button>
+          </div>
+        </div>
+      </div>
     )
   }
 
-  // ══ SCREEN: LOADING ════════════════════════════════════════════════
   if (step === "loading") {
     const pt = getPathTheme(path || "student")
     return (

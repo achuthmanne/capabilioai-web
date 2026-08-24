@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from "react"
+﻿import { useState, useEffect, useRef, lazy, Suspense } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import {
@@ -99,6 +99,84 @@ const PATH_META = Object.fromEntries(PRIMARY_PATHS.map(p => [p.path, { icon: p.i
 // Never blocks free text: selecting a suggestion just fills the field,
 // exactly like typing does, so a college missing from the AICTE-derived
 // dataset is still saved as entered.
+
+function CustomSelect({ value, setValue, options, placeholder, accent, disabled = false, style, onFocus, onBlur, groups = null }) {
+  const [open, setOpen] = useState(false);
+  const dropRef = useRef(null);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handle = e => {
+      if (!containerRef.current?.contains(e.target)) {
+        setOpen(false);
+        if (open) onBlur?.({ target: containerRef.current });
+      }
+    };
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [open, onBlur]);
+
+  const selectedLabel = groups 
+    ? groups.flatMap(g => g.options).find(o => o.value === value)?.label
+    : options?.find(o => o.value === value)?.label;
+
+  return (
+    <div ref={containerRef} style={{ position: "relative", ...style }}>
+      <button 
+        type="button"
+        disabled={disabled}
+        onClick={(e) => { 
+          if (disabled) return; 
+          setOpen(!open); 
+          if (!open) onFocus?.({ target: containerRef.current }); 
+          else onBlur?.({ target: containerRef.current });
+        }}
+        style={{
+          width: "100%", height: "100%", padding: "11px 40px 11px 14px", background: "transparent",
+          border: "none", color: value ? T.ink : T.ink3,
+          fontSize: 14.5, fontFamily: "'DM Sans',sans-serif", outline: "none", cursor: disabled ? "not-allowed" : "pointer",
+          textAlign: "left", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", borderRadius: "inherit"
+        }}
+      >
+        {selectedLabel || placeholder}
+      </button>
+      <div style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8A8F98" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </div>
+
+      {open && !disabled && (
+        <div ref={dropRef} style={{
+          position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0,
+          background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10,
+          boxShadow: "0 4px 16px rgba(20,22,26,0.08)", zIndex: 1000,
+          maxHeight: 260, overflowY: "auto", padding: "6px 0"
+        }}>
+          {groups ? groups.map((g, i) => (
+            <div key={i}>
+              <div style={{ padding: "8px 14px 4px", fontSize: 11, fontWeight: 700, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.05em" }}>{g.label}</div>
+              {g.options.map(o => (
+                <div key={o.value} onMouseDown={(e) => { e.preventDefault(); setValue(o.value); setOpen(false); onBlur?.({ target: containerRef.current }); }}
+                     style={{ padding: "10px 14px", cursor: "pointer", fontSize: 13.5, color: value === o.value ? accent : T.ink, background: value === o.value ? withAlpha(accent, 0.08) : "transparent", fontWeight: value === o.value ? 600 : 500, transition: "all 0.1s" }}
+                     onMouseEnter={e => { if (value !== o.value) e.currentTarget.style.background = "#F4F5F7" }}
+                     onMouseLeave={e => { if (value !== o.value) e.currentTarget.style.background = "transparent" }}>
+                  {o.label}
+                </div>
+              ))}
+            </div>
+          )) : options?.map(o => (
+            <div key={o.value} onMouseDown={(e) => { e.preventDefault(); setValue(o.value); setOpen(false); onBlur?.({ target: containerRef.current }); }}
+                 style={{ padding: "10px 14px", cursor: "pointer", fontSize: 13.5, color: value === o.value ? accent : T.ink, background: value === o.value ? withAlpha(accent, 0.08) : "transparent", fontWeight: value === o.value ? 600 : 500, transition: "all 0.1s" }}
+                 onMouseEnter={e => { if (value !== o.value) e.currentTarget.style.background = "#F4F5F7" }}
+                 onMouseLeave={e => { if (value !== o.value) e.currentTarget.style.background = "transparent" }}>
+              {o.label}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CollegeAutocomplete({ value, setValue, accent, inputStyle, setError, onSelect, disabled = false }) {
   const [results, setResults]   = useState([])
   const [open, setOpen]         = useState(false)
@@ -144,8 +222,8 @@ function CollegeAutocomplete({ value, setValue, accent, inputStyle, setError, on
         value={value}
         disabled={disabled}
         onChange={e => { setValue(e.target.value); setError?.("") }}
-        onFocus={e => { if (disabled) return; e.target.style.borderColor = accent; if (results.length > 0) setOpen(true) }}
-        onBlur={e => { e.target.style.borderColor = T.border }}
+        onFocus={e => { if (disabled) return; e.target.style.borderColor = accent; e.target.style.boxShadow=`0 0 0 3px ${withAlpha(accent, 0.15)}`; if (results.length > 0) setOpen(true) }}
+        onBlur={e => { e.target.style.borderColor = T.border; e.target.style.boxShadow="0 1px 2px rgba(20,22,26,0.02)" }}
         type="text" placeholder="College / University name" autoComplete="off"
         style={disabled ? { ...inputStyle, background: T.hairline, color: T.ink3, cursor: "not-allowed" } : inputStyle}
       />
@@ -163,7 +241,8 @@ function CollegeAutocomplete({ value, setValue, accent, inputStyle, setError, on
             <div
               key={c.id}
               onMouseDown={e => { e.preventDefault(); setValue(c.name); onSelect?.(c); setOpen(false); setResults([]) }}
-              style={{ padding: "10px 14px", cursor: "pointer", borderBottom: `1px solid ${T.hairline}`, fontSize: 13 }}
+              style={{ padding: "10px 14px", cursor: "pointer", borderBottom: `1px solid ${T.hairline}`, fontSize: 13, transition:"background 0.1s" }}
+              onMouseEnter={e=>e.currentTarget.style.background="#F4F5F7"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}
             >
               <div style={{ fontWeight: 600, color: T.ink }}>{c.name}</div>
               {(c.district || c.state) && (
@@ -254,24 +333,27 @@ function AuthPathChooser({ onPick }) {
         Let&apos;s get started
       </h3>
       <p style={{ fontSize:12.5, color:T.ink3, marginBottom:18 }}>Choose the path that fits you.</p>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
         {PRIMARY_PATHS.map(p => {
           const Icon = p.icon
           return (
-            <button key={p.key} onClick={() => onPick(p)}
+            <button key={p.key} onClick={p.comingSoon ? undefined : () => onPick(p)}
               style={{
-                textAlign:"left", padding:14, borderRadius:12, border:`1px solid ${T.border}`,
-                background:T.surface, cursor:"pointer", fontFamily:"inherit",
-                transition:"border-color 150ms ease, transform 150ms ease",
+                textAlign:"left", padding:"20px", borderRadius:16, border: `1px solid ${T.border}`, background:T.surface, cursor: p.comingSoon ? "default" : "pointer", fontFamily:"inherit", position:"relative", overflow:"hidden", transition:"border-color 150ms ease, transform 150ms ease"
               }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = withAlpha(p.color, 0.5); e.currentTarget.style.transform = "translateY(-2px)" }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.transform = "translateY(0)" }}
+              onMouseEnter={e => { if(!p.comingSoon){ e.currentTarget.style.borderColor = withAlpha(p.color, 0.5); e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.04)" } }}
+              onMouseLeave={e => { if(!p.comingSoon){ e.currentTarget.style.borderColor = T.border; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none" } }}
             >
-              <div style={{ width:32, height:32, borderRadius:9, background:withAlpha(p.color, 0.12), display:"flex", alignItems:"center", justifyContent:"center", marginBottom:10 }}>
-                <Icon size={15} color={p.color} strokeWidth={1.75} />
+              <div style={{ width:40, height:40, borderRadius:10, background:withAlpha(p.color, 0.12), display:"flex", alignItems:"center", justifyContent:"center", marginBottom:10 }}>
+                <Icon size={18} color={p.color} strokeWidth={1.75} />
               </div>
-              <div style={{ fontSize:14, fontWeight:600, color:T.ink, marginBottom:3 }}>{p.title}</div>
-              <div style={{ fontSize:11, color:T.ink3, lineHeight:1.4 }}>{p.points[0]}</div>
+              {p.comingSoon && (
+                <div style={{ position:"absolute", top:0, right:0, background:p.color, color:"#fff", fontSize:9, fontWeight:800, padding:"4px 10px", borderBottomLeftRadius:12, textTransform:"uppercase", letterSpacing:"0.1em" }}>
+                  Coming soon
+                </div>
+              )}
+              <div style={{ fontSize:15, fontWeight:600, color:T.ink, marginBottom:3 }}>{p.title}</div>
+              <div style={{ fontSize:12, color:T.ink3, lineHeight:1.4 }}>{p.points[0]}</div>
             </button>
           )
         })}
@@ -397,24 +479,33 @@ function AuthModal({ show, onClose, mode, setMode }) {
             transition={{ duration: 0.3, ease: EASE }}
             style={{ width:"100%", maxWidth:420, background:T.surface, borderRadius:20, border:`1px solid ${T.border}`, boxShadow:"0 4px 12px rgba(20,22,26,0.04), 0 16px 40px rgba(20,22,26,0.08)", padding:"32px 28px" }}
           >
-            <div style={{ width:44, height:44, borderRadius:12, background:T.accentDim, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:18 }}>
-              <Mail size={20} color={T.accent} strokeWidth={1.75} />
+            <div style={{ display:"flex", flexDirection:"column", alignItems:"center", textAlign:"center" }}>
+              <div style={{ width:56, height:56, borderRadius:16, background:"#F4F5F7", border:`1px solid ${T.border}`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:24, boxShadow:"0 2px 8px rgba(0,0,0,0.02)" }}>
+                <Mail size={24} color={T.ink2} strokeWidth={1.75} />
+              </div>
+              <h2 style={{ fontFamily:"'DM Sans',sans-serif", fontSize:22, fontWeight:700, color:T.ink, marginBottom:12, letterSpacing:"-0.02em" }}>
+                Check your inbox
+              </h2>
+              <p style={{ fontSize:14, color:T.ink3, lineHeight:1.6, marginBottom:32, padding:"0 12px" }}>
+                We've sent a verification link to <strong style={{ color:T.ink, fontWeight:600 }}>{verifyEmailFor}</strong>.
+                Please click the link to verify your account and sign in.
+              </p>
+              <div style={{ width:"100%" }}>
+                <button
+                  onClick={closeVerifyModal}
+                  style={{ width:"100%", padding:"13px", background:T.accent, border:"none", borderRadius:12, color:"#fff", fontSize:15, fontWeight:700, fontFamily:"'DM Sans',sans-serif", cursor:"pointer", transition:"all 0.2s ease", boxShadow:"0 4px 12px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.2)", transform:"translateY(0)" }}
+                  onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 6px 16px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.2)"; e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.filter="brightness(1.05)"}}
+                  onMouseLeave={e=>{e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.2)"; e.currentTarget.style.transform="translateY(0)"; e.currentTarget.style.filter="none"}}
+                  onMouseDown={e=>{e.currentTarget.style.transform="translateY(1px)"}}
+                  onMouseUp={e=>{e.currentTarget.style.transform="translateY(-1px)"}}
+                >
+                  Back to website
+                </button>
+              </div>
+              <div style={{ marginTop:24, fontSize:12.5, color:T.ink3 }}>
+                Can't find it? Check your spam folder.
+              </div>
             </div>
-            <h2 style={{ fontFamily:"'DM Sans',sans-serif", fontSize:19, fontWeight:700, color:T.ink, marginBottom:10, letterSpacing:"-0.01em" }}>
-              Verify your email
-            </h2>
-            <p style={{ fontSize:13.5, color:T.ink2, lineHeight:1.7, marginBottom:22 }}>
-              We've sent a verification link to <strong style={{ color:T.ink }}>{verifyEmailFor}</strong>.
-              Please check your inbox.<br /><br />
-              If you don't see it, check your Spam, Junk or Promotions folder.<br /><br />
-              After verifying your email you can log in to Capabilio.
-            </p>
-            <button
-              onClick={closeVerifyModal}
-              style={{ width:"100%", padding:"13px", background:T.accent, border:"none", borderRadius:10, color:"#fff", fontSize:15, fontWeight:600, fontFamily:"'DM Sans',sans-serif", cursor:"pointer" }}
-            >
-              Got it
-            </button>
           </motion.div>
         </div>
       </div>
@@ -518,6 +609,18 @@ function AuthModal({ show, onClose, mode, setMode }) {
     boxSizing: "border-box", transition: "border-color 0.15s",
   }
 
+  
+  const selectStyle = {
+    ...inputStyle,
+    appearance: "none",
+    WebkitAppearance: "none",
+    backgroundImage: `url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22%238A8F98%22%3E%3Cpath%20d%3D%22M5.293%207.293a1%201%200%20011.414%200L10%2010.586l3.293-3.293a1%201%200%20111.414%201.414l-4%204a1%201%200%2001-1.414%200l-4-4a1%201%200%20010-1.414z%22%2F%3E%3C%2Fsvg%3E")`,
+    backgroundRepeat: "no-repeat",
+    backgroundPosition: "right 12px center",
+    backgroundSize: "20px 20px",
+    paddingRight: "40px"
+  }
+
   const pm     = PATH_META[selectedPath] || null
   const accent = pm?.color || T.accent
 
@@ -538,8 +641,8 @@ function AuthModal({ show, onClose, mode, setMode }) {
       onKeyDown={e=>e.key==="Enter"&&handleEmailSubmit()}
       type={type} placeholder={placeholder}
       style={{...inputStyle,...extra}}
-      onFocus={e=>e.target.style.borderColor=accent}
-      onBlur={e=>e.target.style.borderColor=T.border}/>
+      onFocus={e=>{e.target.style.borderColor=accent; e.target.style.boxShadow=`0 0 0 3px ${withAlpha(accent, 0.15)}`}}
+      onBlur={e=>{e.target.style.borderColor=T.border; e.target.style.boxShadow="0 1px 2px rgba(20,22,26,0.02)"}}/>
   )
 
   // canSubmit logic per path
@@ -556,23 +659,24 @@ function AuthModal({ show, onClose, mode, setMode }) {
   const renderPathFields = () => {
     if (selectedPath === "professional") return (
       <>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
           {inp(first, setFirst, "text", "First name")}
           {inp(last,  setLast,  "text", "Last name")}
         </div>
         {inp(company,  setCompany,  "text", "Current company / employer")}
         {inp(jobTitle, setJobTitle, "text", "Job title / designation")}
-        <select value={experience} onChange={e=>{setExperience(e.target.value);setError("")}}
-          style={{ ...inputStyle, color: experience ? T.ink : T.ink3 }}
-          onFocus={e=>e.target.style.borderColor=accent}
-          onBlur={e=>e.target.style.borderColor=T.border}>
-          <option value="">Years of experience (optional)</option>
-          <option value="0-1">0–1 years (Fresher / Entry level)</option>
-          <option value="1-3">1–3 years</option>
-          <option value="3-5">3–5 years</option>
-          <option value="5-10">5–10 years</option>
-          <option value="10+">10+ years</option>
-        </select>
+        <CustomSelect value={experience} setValue={setExperience} accent={accent} placeholder="Years of experience (optional)"
+          style={{ ...inputStyle, padding: 0 }}
+          onFocus={e=>{e.target.style.borderColor=accent; e.target.style.boxShadow=`0 0 0 3px ${withAlpha(accent, 0.15)}`}}
+          onBlur={e=>{e.target.style.borderColor=T.border; e.target.style.boxShadow="0 1px 2px rgba(20,22,26,0.02)"}}
+          options={[
+            {value: "0-1", label: "0-1 years (Fresher / Entry level)"},
+            {value: "1-3", label: "1-3 years"},
+            {value: "3-5", label: "3-5 years"},
+            {value: "5-10", label: "5-10 years"},
+            {value: "10+", label: "10+ years"}
+          ]}
+        />
         {inp(linkedinUrl, setLinkedinUrl, "url", "LinkedIn profile URL (optional)")}
       </>
     )
@@ -583,36 +687,37 @@ function AuthModal({ show, onClose, mode, setMode }) {
           <Sparkles size={14} color={T.accent} strokeWidth={1.75} style={{ flexShrink:0, marginTop:1 }} />
           Executive path is invite-only. Apply and our team will verify your profile within 48 hours.
         </div>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
           {inp(first, setFirst, "text", "First name")}
           {inp(last,  setLast,  "text", "Last name")}
         </div>
         {inp(orgName, setOrgName, "text", "Organisation / Company name")}
-        <select value={execTitle} onChange={e=>{setExecTitle(e.target.value);setError("")}}
-          style={{ ...inputStyle, color: execTitle ? T.ink : T.ink3 }}
-          onFocus={e=>e.target.style.borderColor=accent}
-          onBlur={e=>e.target.style.borderColor=T.border}>
-          <option value="">Select executive title</option>
-          <option value="CEO">CEO – Chief Executive Officer</option>
-          <option value="Founder">Founder / Co-Founder</option>
-          <option value="CTO">CTO – Chief Technology Officer</option>
-          <option value="CFO">CFO – Chief Financial Officer</option>
-          <option value="COO">COO – Chief Operating Officer</option>
-          <option value="CMO">CMO – Chief Marketing Officer</option>
-          <option value="CPO">CPO – Chief Product Officer</option>
-          <option value="President">President / MD / GM</option>
-          <option value="VP">VP / SVP / EVP</option>
-          <option value="Director">Director / Board Member</option>
-          <option value="Partner">Partner / Investor</option>
-          <option value="Other-C">Other C-Suite / Executive</option>
-        </select>
+        <CustomSelect value={execTitle} setValue={setExecTitle} accent={accent} placeholder="Select executive title"
+          style={{ ...inputStyle, padding: 0 }}
+          onFocus={e=>{e.target.style.borderColor=accent; e.target.style.boxShadow=`0 0 0 3px ${withAlpha(accent, 0.15)}`}}
+          onBlur={e=>{e.target.style.borderColor=T.border; e.target.style.boxShadow="0 1px 2px rgba(20,22,26,0.02)"}}
+          options={[
+            {value: "CEO", label: "CEO - Chief Executive Officer"},
+            {value: "Founder", label: "Founder / Co-Founder"},
+            {value: "CTO", label: "CTO - Chief Technology Officer"},
+            {value: "CFO", label: "CFO - Chief Financial Officer"},
+            {value: "COO", label: "COO - Chief Operating Officer"},
+            {value: "CMO", label: "CMO - Chief Marketing Officer"},
+            {value: "CPO", label: "CPO - Chief Product Officer"},
+            {value: "President", label: "President / MD / GM"},
+            {value: "VP", label: "VP / SVP / EVP"},
+            {value: "Director", label: "Director / Board Member"},
+            {value: "Partner", label: "Partner / Investor"},
+            {value: "Other-C", label: "Other C-Suite / Executive"}
+          ]}
+        />
         {inp(linkedinUrl, setLinkedinUrl, "url", "LinkedIn profile URL (speeds up verification)")}
       </>
     )
 
     if (selectedPath === "institution") return (
       <>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
           {inp(first, setFirst, "text", "Admin first name")}
           {inp(last,  setLast,  "text", "Admin last name")}
         </div>
@@ -642,50 +747,52 @@ function AuthModal({ show, onClose, mode, setMode }) {
     // Default: Student
     return (
       <>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
           {inp(first, setFirst, "text", "First name")}
           {inp(last,  setLast,  "text", "Last name")}
         </div>
         {isJobSeeker && (
-          <div style={{ fontSize:11.5, color:"#4B5563", marginTop:-4, marginBottom:2 }}>
+          <div style={{ fontSize:12.5, color:"#4B5563", marginTop:-4, marginBottom:2 }}>
             Optional for job seekers — add your most recent college if you&apos;d like it on your profile.
           </div>
         )}
         <CollegeAutocomplete value={college} setValue={setCollege} accent={accent} inputStyle={inputStyle} setError={setError} disabled={collegeLocked} />
-        <select value={branch} onChange={e=>{setBranch(e.target.value);setError("")}} disabled={branchLocked}
-          style={{ ...inputStyle, color: branch ? T.ink : T.ink3, ...(branchLocked ? { background: T.hairline, cursor: "not-allowed" } : {}) }}
-          onFocus={e=>{ if (!branchLocked) e.target.style.borderColor=accent }}
-          onBlur={e=>e.target.style.borderColor=T.border}>
-          <option value="">{isJobSeeker ? "Select your branch / stream (optional)" : "Select your branch / stream"}</option>
-          <optgroup label="IT / CS Streams">
-            <option value="CSE">Computer Science Engineering (CSE)</option>
-            <option value="IT">Information Technology (IT)</option>
-            <option value="MCA">MCA / Computer Applications</option>
-            <option value="AI_DS">AI &amp; Data Science (AI/DS)</option>
-            <option value="AI_ML">AI &amp; Machine Learning (AI/ML)</option>
-          </optgroup>
-          <optgroup label="Core Engineering">
-            <option value="ECE">Electronics &amp; Communication (ECE)</option>
-            <option value="EEE">Electrical &amp; Electronics (EEE)</option>
-            <option value="Mechanical">Mechanical Engineering</option>
-            <option value="Civil">Civil Engineering</option>
-            <option value="IoT">Internet of Things (IoT)</option>
-          </optgroup>
-          <optgroup label="Management / Science">
-            <option value="MBA">MBA / Business Administration</option>
-            <option value="BBA">BBA / Business Management</option>
-            <option value="BCom">B.Com / Commerce</option>
-            <option value="BSc">B.Sc / Science</option>
-          </optgroup>
-          <optgroup label="Other">
-            <option value="Pharmacy">Pharmacy / Pharma</option>
-            <option value="Law">Law (LLB / LLM)</option>
-            <option value="Arts">Arts / Humanities</option>
-            <option value="Other">Other</option>
-          </optgroup>
-        </select>
+        <CustomSelect value={branch} setValue={setBranch} accent={accent} placeholder={isJobSeeker ? "Select your branch / stream (optional)" : "Select your branch / stream"}
+          disabled={branchLocked}
+          style={{ ...inputStyle, padding: 0, ...(branchLocked ? { background: T.hairline, cursor: "not-allowed" } : {}) }}
+          onFocus={e=>{ if (!branchLocked) { e.target.style.borderColor=accent; e.target.style.boxShadow=`0 0 0 3px ${withAlpha(accent, 0.15)}` } }}
+          onBlur={e=>{ e.target.style.borderColor=T.border; e.target.style.boxShadow="0 1px 2px rgba(20,22,26,0.02)" }}
+          groups={[
+            {label: "IT / CS Streams", options: [
+              {value: "CSE", label: "Computer Science Engineering (CSE)"},
+              {value: "IT", label: "Information Technology (IT)"},
+              {value: "MCA", label: "MCA / Computer Applications"},
+              {value: "AI_DS", label: "AI & Data Science (AI/DS)"},
+              {value: "AI_ML", label: "AI & Machine Learning (AI/ML)"}
+            ]},
+            {label: "Core Engineering", options: [
+              {value: "ECE", label: "Electronics & Communication (ECE)"},
+              {value: "EEE", label: "Electrical & Electronics (EEE)"},
+              {value: "Mechanical", label: "Mechanical Engineering"},
+              {value: "Civil", label: "Civil Engineering"},
+              {value: "IoT", label: "Internet of Things (IoT)"}
+            ]},
+            {label: "Management / Science", options: [
+              {value: "MBA", label: "MBA / Business Administration"},
+              {value: "BBA", label: "BBA / Business Management"},
+              {value: "BCom", label: "B.Com / Commerce"},
+              {value: "BSc", label: "B.Sc / Science"}
+            ]},
+            {label: "Other", options: [
+              {value: "Pharmacy", label: "Pharmacy / Pharma"},
+              {value: "Law", label: "Law (LLB / LLM)"},
+              {value: "Arts", label: "Arts / Humanities"},
+              {value: "Other", label: "Other"}
+            ]}
+          ]}
+        />
         {collegeLocked && (
-          <div style={{ display:"flex", alignItems:"flex-start", gap:8, fontSize:11.5, color: T.ink2, background: T.accentDim, border: `1px solid ${T.accent}30`, borderRadius:10, padding:"7px 10px", marginTop:-4 }}>
+          <div style={{ display:"flex", alignItems:"flex-start", gap:8, fontSize:12.5, color: T.ink2, background: T.accentDim, border: `1px solid ${T.accent}30`, borderRadius:10, padding:"7px 10px", marginTop:-4 }}>
             <Lock size={13} color={T.accent} strokeWidth={1.75} style={{ flexShrink:0, marginTop:1 }} />
             Set by your college&apos;s invite link{branchLocked ? "" : " — branch wasn't recognized from the link, please pick yours"}. Contact your placement cell if this is wrong.
           </div>
@@ -722,11 +829,14 @@ function AuthModal({ show, onClose, mode, setMode }) {
           initial={reduceMotion ? false : { opacity: 0, scale: 0.97, y: 8 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.3, ease: EASE }}
-          style={{ width:"100%", maxWidth:880, background:T.surface, borderRadius:20, overflow:"hidden", border:`1px solid ${T.border}`, boxShadow:"0 4px 12px rgba(20,22,26,0.04), 0 16px 40px rgba(20,22,26,0.08)", display:"flex", maxHeight:"96vh" }}
+          style={{ width:"100%", maxWidth:960, background:T.surface, borderRadius:20, overflow:"hidden", border:`1px solid ${T.border}`, boxShadow:"0 4px 12px rgba(20,22,26,0.04), 0 16px 40px rgba(20,22,26,0.08)", display:"flex", maxHeight:"96vh" }}
         >
 
           {/* Left panel */}
-          <div style={{ flex:"0 0 36%", background: T.surfaceRaised, display:"flex", flexDirection:"column", justifyContent:"space-between", padding:"36px 28px", borderRight:`1px solid ${T.border}` }}>
+          <div style={{ flex:"0 0 40%", background: "#F8F9FA", display:"flex", flexDirection:"column", justifyContent:"space-between", padding:"48px 40px", borderRight:`1px solid ${T.border}`, position:"relative", overflow:"hidden" }}>
+            <div style={{ position: "absolute", top: "-10%", left: "-10%", width: "70%", height: "50%", background: "radial-gradient(circle, rgba(255,87,1,0.05) 0%, rgba(255,87,1,0) 70%)", borderRadius: "50%", pointerEvents:"none" }}></div>
+            <div style={{ position: "absolute", bottom: "-10%", right: "-10%", width: "60%", height: "60%", background: "radial-gradient(circle, rgba(13,187,150,0.04) 0%, rgba(13,187,150,0) 70%)", borderRadius: "50%", pointerEvents:"none" }}></div>
+            <div style={{ position:"relative", zIndex:10 }}>
             <div>
               <img src="/capabilio-logo-dark.png" alt="Capabilio AI" style={{ height:24, width:"auto", display:"block", marginBottom:16 }} />
               {pm && (
@@ -743,27 +853,42 @@ function AuthModal({ show, onClose, mode, setMode }) {
                 {pm ? `Your account will be set for the ${pm.label} path. Change during onboarding.` : "ELO earned through real challenges — not a Word doc."}
               </p>
             </div>
-            <div style={{ padding:"9px 12px", background:T.surface, border:`1px solid ${T.border}`, borderRadius:10, fontSize:11.5, color:T.ink2 }}>
+            </div>
+            <div style={{ position:"relative", zIndex:10 }}>
+            <div style={{ padding:"12px 16px", background:T.surface, border:`1px solid ${T.border}`, borderRadius:10, fontSize:12.5, color:T.ink2 }}>
               Free forever for candidates
+            </div>
             </div>
           </div>
 
           {/* Right form */}
-          <div style={{ flex:1, padding:"28px 32px", overflowY:"auto", display:"flex", flexDirection:"column", justifyContent:"center", position:"relative" }}>
-            <button onClick={onClose} style={{ position:"absolute", top:14, right:14, width:28, height:28, borderRadius:8, background:T.surfaceRaised, border:`1px solid ${T.border}`, color:T.ink3, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <X size={14} strokeWidth={2} />
-            </button>
+          <div style={{ flex:1, padding:"24px 48px 40px", overflowY:"auto", display:"flex", flexDirection:"column", position:"relative" }}>
+            <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:16 }}>
+              <button onClick={onClose} style={{ width:36, height:36, borderRadius:10, background:"#F4F5F7", border:"none", color:"#8A8F98", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.2s ease", flexShrink:0 }} onMouseEnter={e=>{e.currentTarget.style.background="#E4E6E9"; e.currentTarget.style.color="#14161A"}} onMouseLeave={e=>{e.currentTarget.style.background="#F4F5F7"; e.currentTarget.style.color="#8A8F98"}}>
+                <X size={18} strokeWidth={2.5} />
+              </button>
+            </div>
 
             {/* Create / Sign in toggle — always visible, even on the step-1
                 chooser: picking "Sign in" never needs a path, so it jumps
                 straight to the form regardless of what step we're on. */}
-            <div style={{ display:"flex", background:T.surfaceRaised, borderRadius:10, padding:3, marginBottom:20, border:`1px solid ${T.border}` }}>
-              {[["signup","Create account"],["login","Sign in"]].map(([m,lbl])=>(
-                <button key={m} onClick={()=>{setMode(m);setError(""); if (m==="login") setStep("form")}}
-                  style={{ flex:1, padding:"9px", borderRadius:8, border:"none", cursor:"pointer", background:mode===m?accent:"transparent", color:mode===m?"#fff":T.ink2, fontSize:13, fontWeight:mode===m?600:500, fontFamily:"inherit", transition:"all 0.15s" }}>
-                  {lbl}
-                </button>
-              ))}
+            <div style={{ display:"flex", background:"#F4F5F7", borderRadius:12, padding:4, marginBottom:24, border:`1px solid ${T.border}` }}>
+              {[["signup","Create account"],["login","Sign in"]].map(([m,lbl]) => {
+                const isActive = mode === m;
+                return (
+                  <button key={m} onClick={()=>{setMode(m);setError(""); if (m==="login") setStep("form")}}
+                    style={{ flex:1, padding:"10px", borderRadius:10, border:"none", cursor:"pointer", background:"transparent", color:isActive?"#fff":T.ink3, fontSize:13, fontWeight:700, fontFamily:"inherit", transition:"color 0.15s", position:"relative", zIndex:1 }}>
+                    {isActive && (
+                      <motion.div
+                        layoutId="authModalTab"
+                        style={{ position:"absolute", inset:0, background:accent, borderRadius:10, zIndex:-1 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      />
+                    )}
+                    <span style={{ position:"relative", zIndex:10 }}>{lbl}</span>
+                  </button>
+                );
+              })}
             </div>
 
             <AnimatePresence mode="wait">
@@ -801,24 +926,27 @@ function AuthModal({ show, onClose, mode, setMode }) {
                         type={showPw?"text":"password"}
                         placeholder={mode==="signup"?"Create password":"Password"}
                         style={{...inputStyle, paddingRight:44}}
-                        onFocus={e=>e.target.style.borderColor=accent}
-                        onBlur={e=>e.target.style.borderColor=T.border}/>
+                        onFocus={e=>{e.target.style.borderColor=accent; e.target.style.boxShadow=`0 0 0 3px ${withAlpha(accent, 0.15)}`}}
+                        onBlur={e=>{e.target.style.borderColor=T.border; e.target.style.boxShadow="0 1px 2px rgba(20,22,26,0.02)"}}/>
                       <button onClick={()=>setShowPw(p=>!p)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:T.ink3, padding:2, display:"flex" }}>
                         {showPw ? <EyeOff size={16} strokeWidth={1.75} /> : <Eye size={16} strokeWidth={1.75} />}
                       </button>
                     </div>
                     {mode === "signup" && password.length > 0 && (
                       <div style={{ marginTop:6 }}>
-                        <div style={{ height:3, background:T.border, borderRadius:99, overflow:"hidden", marginBottom:5 }}>
-                          <div style={{ height:"100%", width:`${pw.pct}%`, background:pw.color, borderRadius:99, transition:"all 0.3s" }}/>
+                        <div style={{ height:4, background:"transparent", borderRadius:99, overflow:"hidden", marginBottom:8, display:"flex", gap:3 }}>
+                           <div style={{ flex:1, borderRadius:99, background:pw.pct > 0 ? pw.color : "#E4E6E9", transition:"background 0.3s" }} />
+                           <div style={{ flex:1, borderRadius:99, background:pw.pct > 25 ? pw.color : "#E4E6E9", transition:"background 0.3s" }} />
+                           <div style={{ flex:1, borderRadius:99, background:pw.pct > 50 ? pw.color : "#E4E6E9", transition:"background 0.3s" }} />
+                           <div style={{ flex:1, borderRadius:99, background:pw.pct > 75 ? pw.color : "#E4E6E9", transition:"background 0.3s" }} />
                         </div>
-                        <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
-                          {[{key:"length",label:"8+ chars"},{key:"uppercase",label:"A–Z"},{key:"lowercase",label:"a–z"},{key:"number",label:"0–9"},{key:"special",label:"!@#..."}].map(c=>(
-                            <span key={c.key} style={{ fontSize:10, fontWeight:500, color:pw.checks[c.key]?T.success:T.ink3, display:"flex", alignItems:"center", gap:3 }}>
-                              {pw.checks[c.key] ? <Check size={10} strokeWidth={2.5} /> : <Circle size={10} strokeWidth={2} />}{c.label}
+                        <div style={{ display:"flex", gap:10, flexWrap:"wrap", alignItems:"center" }}>
+                          {[{key:"length",label:"8+ Chars"},{key:"uppercase",label:"A-Z"},{key:"lowercase",label:"a-z"},{key:"number",label:"0-9"},{key:"special",label:"!@#"}].map(c=>(
+                            <span key={c.key} style={{ fontSize:10.5, fontWeight:600, color:pw.checks[c.key] ? pw.color : "#8A8F98", display:"flex", alignItems:"center", gap:4, transition:"color 0.2s" }}>
+                              {pw.checks[c.key] ? <Check size={11} strokeWidth={3} /> : <Circle size={11} strokeWidth={2} />}{c.label}
                             </span>
                           ))}
-                          <span style={{ marginLeft:"auto", fontSize:10, fontWeight:600, color:pw.color, textTransform:"capitalize" }}>{pw.level}</span>
+                          <span style={{ marginLeft:"auto", fontSize:10.5, fontWeight:800, color:pw.color, textTransform:"uppercase", letterSpacing:"0.05em" }}>{pw.level}</span>
                         </div>
                       </div>
                     )}
@@ -831,14 +959,14 @@ function AuthModal({ show, onClose, mode, setMode }) {
                           onKeyDown={e=>e.key==="Enter"&&handleEmailSubmit()}
                           type={showCfm?"text":"password"} placeholder="Confirm password"
                           style={{ ...inputStyle, paddingRight:44, borderColor: confirm&&password ? (confirm===password?T.success:T.error) : T.border }}
-                          onFocus={e=>e.target.style.borderColor=accent}
-                          onBlur={e=>e.target.style.borderColor=confirm&&password?(confirm===password?T.success:T.error):T.border}/>
+                          onFocus={e=>{e.target.style.borderColor=accent; e.target.style.boxShadow=`0 0 0 3px ${withAlpha(accent, 0.15)}`}}
+                          onBlur={e=>{e.target.style.borderColor=confirm&&password?(confirm===password?T.success:T.error):T.border; e.target.style.boxShadow="0 1px 2px rgba(20,22,26,0.02)"}}/>
                         <button onClick={()=>setShowCfm(p=>!p)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:T.ink3, padding:2, display:"flex" }}>
                           {showCfm ? <EyeOff size={16} strokeWidth={1.75} /> : <Eye size={16} strokeWidth={1.75} />}
                         </button>
                       </div>
                       {confirm && password && confirm !== password && (
-                        <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:T.error, marginTop:-4 }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:12, color:T.error, marginTop:-4 }}>
                           <X size={11} strokeWidth={2.5} /> Passwords do not match
                         </div>
                       )}
@@ -846,7 +974,7 @@ function AuthModal({ show, onClose, mode, setMode }) {
                       {/* Voucher — student only */}
                       {(!selectedPath || selectedPath === "student") && (
                         <div>
-                          <div style={{ fontSize:11, fontWeight:500, color:T.ink2, marginBottom:5 }}>Skill voucher code <span style={{ fontWeight:400, color:T.ink3 }}>(optional)</span></div>
+                          <div style={{ fontSize:12, fontWeight:500, color:T.ink2, marginBottom:5 }}>Skill voucher code <span style={{ fontWeight:400, color:T.ink3 }}>(optional)</span></div>
                           <input value={refCode}
                             onChange={async e=>{
                               const val=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,8)
@@ -856,12 +984,12 @@ function AuthModal({ show, onClose, mode, setMode }) {
                             placeholder="Enter 8-char voucher code" maxLength={8}
                             style={{ width:"100%", padding:"11px 14px", background:T.surfaceRaised, border:`1.5px solid ${refCode.length===8?(refValid?T.success:T.error):T.border}`, borderRadius:10, color:T.ink, fontSize:13, fontFamily:"'DM Mono',monospace", letterSpacing:3, outline:"none", boxSizing:"border-box" }}/>
                           {refCode.length===8&&refValid===true&&(
-                            <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:5, padding:"6px 10px", background:T.successDim, border:`1px solid ${T.success}30`, borderRadius:8, fontSize:11, color:T.success }}>
+                            <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:5, padding:"6px 10px", background:T.successDim, border:`1px solid ${T.success}30`, borderRadius:8, fontSize:12, color:T.success }}>
                               <Check size={12} strokeWidth={2.5} /> {refData?.message} · +50 ELO + 14-day Pro
                             </div>
                           )}
                           {refCode.length===8&&refValid===false&&(
-                            <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:4, fontSize:11, color:T.error }}>
+                            <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:4, fontSize:12, color:T.error }}>
                               <X size={11} strokeWidth={2.5} /> Invalid voucher code
                             </div>
                           )}
@@ -877,9 +1005,11 @@ function AuthModal({ show, onClose, mode, setMode }) {
                   )}
 
                   <button onClick={handleEmailSubmit} disabled={loading || !canSubmitEmail}
-                    style={{ width:"100%", padding:"13px", background:canSubmitEmail?accent:T.hairline, border:"none", borderRadius:10, color:canSubmitEmail?"#fff":T.ink3, fontSize:15, fontWeight:600, fontFamily:"'DM Sans',sans-serif", cursor:canSubmitEmail?"pointer":"not-allowed", transition:"background 0.15s" }}
-                    onMouseEnter={e=>{if(canSubmitEmail)e.currentTarget.style.background=T.accentDark}}
-                    onMouseLeave={e=>{if(canSubmitEmail)e.currentTarget.style.background=accent}}
+                    style={{ width:"100%", padding:"13px", background:canSubmitEmail?accent:"#F4F5F7", border:"none", borderRadius:12, color:canSubmitEmail?"#fff":"#8A8F98", fontSize:15, fontWeight:700, fontFamily:"'DM Sans',sans-serif", cursor:canSubmitEmail?"pointer":"not-allowed", transition:"all 0.2s ease", boxShadow:canSubmitEmail?"0 4px 12px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.2)":"none", transform:"translateY(0)" }}
+                    onMouseEnter={e=>{if(canSubmitEmail){e.currentTarget.style.boxShadow="0 6px 16px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.2)"; e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.filter="brightness(1.05)"}}}
+                    onMouseLeave={e=>{if(canSubmitEmail){e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.2)"; e.currentTarget.style.transform="translateY(0)"; e.currentTarget.style.filter="none"}}}
+                    onMouseDown={e=>{if(canSubmitEmail)e.currentTarget.style.transform="translateY(1px)"}}
+                    onMouseUp={e=>{if(canSubmitEmail)e.currentTarget.style.transform="translateY(-1px)"}}
                   >
                     {loading
                       ? <span style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}><span style={{ width:14, height:14, border:"2px solid rgba(255,255,255,0.3)", borderTopColor:"#fff", borderRadius:"50%", display:"inline-block", animation:"authSpin 0.7s linear infinite" }}/>Please wait…</span>
@@ -1955,3 +2085,28 @@ function App() {
 }
 
 export default App
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
