@@ -1859,6 +1859,13 @@ const LoadingCountdown = ({ path }) => {
         {/* Step Indicator */}
         <div style={{ position: "fixed", top: 32, right: 32, zIndex: 50 }}>
           <div style={{ display: "inline-block", padding: "6px 16px", borderRadius: 999, fontSize: 12, fontWeight: 700, color: "#14161A", background: "#FFFFFF", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", border: "1px solid #E5E7EB", letterSpacing: "0.03em" }}>
+              Step 3 of 4
+          </div>
+        </div>
+
+        {/* Step Indicator */}
+        <div style={{ position: "fixed", top: 32, right: 32, zIndex: 50 }}>
+          <div style={{ display: "inline-block", padding: "6px 16px", borderRadius: 999, fontSize: 12, fontWeight: 700, color: "#14161A", background: "#FFFFFF", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", border: "1px solid #E5E7EB", letterSpacing: "0.03em" }}>
               Step 2 of 4
           </div>
         </div>
@@ -1903,6 +1910,13 @@ const EvaluatingScreen = ({ path, message }) => {
         {/* Top Header */}
         <div style={{ padding: "32px 40px" }}>
           <span style={{ fontSize: 24, fontFamily: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif', fontWeight: 800, letterSpacing: "-0.02em", color: "#14161A" }}>Capabilio <span style={{ color: pt.accent }}>AI</span></span>
+        </div>
+
+        {/* Step Indicator */}
+        <div style={{ position: "fixed", top: 32, right: 32, zIndex: 50 }}>
+          <div style={{ display: "inline-block", padding: "6px 16px", borderRadius: 999, fontSize: 12, fontWeight: 700, color: "#14161A", background: "#FFFFFF", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", border: "1px solid #E5E7EB", letterSpacing: "0.03em" }}>
+              Step 3 of 4
+          </div>
         </div>
 
         {/* Center Content */}
