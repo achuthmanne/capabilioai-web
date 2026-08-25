@@ -2278,7 +2278,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
       qs = qs.filter(q => { const k = q.question?.trim().toLowerCase(); if (!k||seen.has(k)) return false; seen.add(k); return true })
       if (!qs.length) throw new Error("No questions returned from AI")
       setQuestions(qs); setQIdx(0); setAnswers([]); setSelected(null); setTimedOut(false)
-      transition("quiz")
+      transition("countdown")
     } catch (err) { setApiError(`${err.message}. Make sure your server is running.`); transition("search") }
   }
 
@@ -3166,6 +3166,10 @@ export default function Onboarding({ user, onComplete, onBack }) {
   }
 
   // ══ SCREEN: QUIZ ═══════════════════════════════════════════════════
+    if (step === "countdown") {
+    return <CountdownScreen onComplete={() => setStep("quiz")} />
+  }
+
   if (step === "quiz") {
     const q = questions[qIdx]
     if (!q) return null
