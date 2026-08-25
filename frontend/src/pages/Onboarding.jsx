@@ -960,7 +960,7 @@ function ResultModal({ result, keyword, questions, onGoToDashboard, savingResult
           {tab==="feedback" && (
             <div style={{ display:"flex", flexDirection:"column", gap:24 }}>
               <div>
-                <h3 style={{ fontSize:12, fontWeight:700, color:"#10B981", textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:12 }}>Identified Strengths</h3>
+                <h3 style={{ fontSize:15, fontWeight:700, color:"#10B981", marginBottom:12 }}>Identified Strengths</h3>
                 <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
                   {analysis.strengths?.map((s,i) => (
                     <div key={i} style={{ display:"flex", gap:12, alignItems:"flex-start", background:"#FAFAFA", padding:"12px 16px", borderRadius:12, border:"1px solid #F3F4F6" }}>
@@ -971,7 +971,7 @@ function ResultModal({ result, keyword, questions, onGoToDashboard, savingResult
                 </div>
               </div>
               <div>
-                <h3 style={{ fontSize:12, fontWeight:700, color:"#EF4444", textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:12 }}>Areas for Improvement</h3>
+                <h3 style={{ fontSize:15, fontWeight:700, color:"#EF4444", marginBottom:12 }}>Areas for Improvement</h3>
                 <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
                   {analysis.weakAreas?.map((s,i) => (
                     <div key={i} style={{ display:"flex", gap:12, alignItems:"flex-start", background:"#FAFAFA", padding:"12px 16px", borderRadius:12, border:"1px solid #F3F4F6" }}>
