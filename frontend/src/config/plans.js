@@ -59,8 +59,8 @@ const STUDENT_PLANS = {
   
 // 🪐🪐🪐 PROFESSIONAL (Orbit) plans — matches landing page exactly 🪐🪐🪐🪐🪐🪐🪐🪐🪐🪐🪐🪐🪐🪐🪐
 const PROFESSIONAL_PLANS = {
-  free: {
-    id: "free", label: "Free", price: 0, color: "#111827", colorBg: "#F9FAFB",
+  orbit_free: {
+    id: "orbit_free", label: "Free", price: 0, color: "#111827", colorBg: "#F9FAFB",
     arenaTasks: 1, arenaFrequency: "per day", arenaIntervalDays: 1,
     interviewSessions: 0, marketReports: 0, reportPrice: 49,
     badge: null, highlight: false,
@@ -198,7 +198,7 @@ export const PLANS = {
 // ─── Path → plan list ─────────────────────────────────────────────────────────
 export const PLANS_BY_PATH = {
   student:      ["free", "pro", "elite"],
-  professional: ["free", "orbit_pro", "orbit_elite"],
+  professional: ["orbit_free", "orbit_pro", "orbit_elite"],
   authority:    ["authority", "luminary", "legacy"],
   institution:  ["org_trial"],
 }
@@ -216,6 +216,7 @@ export const getPlan = (userData) => {
 export const getDefaultPlanForPath = (path) => {
   if (path === "authority")   return "authority"
   if (path === "institution") return "org_trial"
+  if (path === "professional") return "orbit_free"
   return "free"
 }
 
