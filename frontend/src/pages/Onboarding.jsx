@@ -3029,16 +3029,10 @@ export default function Onboarding({ user, onComplete, onBack }) {
                     <div style={{ fontSize:18, fontWeight:800, color:"#14161A", marginBottom:16 }}>{p.label}</div>
   
                     <div style={{ display:"flex", alignItems:"baseline", gap:4, marginBottom:8 }}>
-                      {p.price === 0 ? (
-                         <div style={{ fontSize:44, fontWeight:800, color:"#14161A", letterSpacing:"-0.05em", lineHeight:1 }}>Free</div>
-                      ) : (
-                         <>
-                           <div style={{ fontSize:44, fontWeight:800, color:"#14161A", letterSpacing:"-0.05em", lineHeight:1 }}>
-                             ₹{displayPrice.toLocaleString()}
-                           </div>
-                           <div style={{ fontSize:15, fontWeight:600, color:"#8A8F98" }}>/mo</div>
-                         </>
-                      )}
+                      <div style={{ fontSize:44, fontWeight:800, color:"#14161A", letterSpacing:"-0.05em", lineHeight:1 }}>
+                        ₹{displayPrice.toLocaleString()}
+                      </div>
+                      <div style={{ fontSize:15, fontWeight:600, color:"#8A8F98" }}>/mo</div>
                     </div>
 
 
