@@ -58,7 +58,7 @@ const STUDENT_PLANS = {
     id: "pro", label: "Pro", price: 299, color: "#3D4EAC", colorBg: "#EEF0FB",
     arenaTasks: 3, arenaFrequency: "per day", arenaIntervalDays: 1,
     interviewSessions: 3, marketReports: 1, reportPrice: 49,
-    badge: null, highlight: false,
+    badge: "Best Value", highlight: false,
     tagline: "Serious about getting hired? This is where it starts.",
     description: "3× more daily missions, real AI interviews with feedback, and a market report every month.",
     featureGroups: [

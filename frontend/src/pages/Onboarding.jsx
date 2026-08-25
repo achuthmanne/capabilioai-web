@@ -1870,9 +1870,9 @@ const LoadingCountdown = ({ path }) => {
         `}</style>
         
         {/* Top Header */}
-        <div style={{ padding: "32px 40px" }}>
-          <span style={{ fontSize: 24, fontFamily: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif', fontWeight: 800, letterSpacing: "-0.02em", color: "#14161A" }}>Capabilio <span style={{ color: pt.accent }}>AI</span></span>
-        </div>
+          <div style={{ position: "fixed", top: 0, left: 0, padding: "32px 40px", zIndex: 50 }}>
+            <span style={{ fontSize: 24, fontFamily: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif', fontWeight: 800, letterSpacing: "-0.02em", color: "#14161A" }}>Capabilio <span style={{ color: getPathTheme(path || "student").accent }}>AI</span></span>
+          </div>
 
         {/* Step Indicator */}
         <div style={{ position: "fixed", top: 32, right: 32, zIndex: 50 }}>
@@ -1926,9 +1926,9 @@ const EvaluatingScreen = ({ path, message }) => {
         <style>{ONBOARDING_STYLES}</style>
         
         {/* Top Header */}
-        <div style={{ padding: "32px 40px" }}>
-          <span style={{ fontSize: 24, fontFamily: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif', fontWeight: 800, letterSpacing: "-0.02em", color: "#14161A" }}>Capabilio <span style={{ color: pt.accent }}>AI</span></span>
-        </div>
+          <div style={{ position: "fixed", top: 0, left: 0, padding: "32px 40px", zIndex: 50 }}>
+            <span style={{ fontSize: 24, fontFamily: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif', fontWeight: 800, letterSpacing: "-0.02em", color: "#14161A" }}>Capabilio <span style={{ color: getPathTheme(path || "student").accent }}>AI</span></span>
+          </div>
 
         {/* Step Indicator */}
         <div style={{ position: "fixed", top: 32, right: 32, zIndex: 50 }}>
@@ -2968,7 +2968,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
       <div style={{ minHeight:"100vh", background:T.pageBg, color:T.text, fontFamily:T.body }}>
         <style>{ONBOARDING_STYLES}</style>
         {/* Top Header */}
-          <div style={{ padding: "32px 40px" }}>
+          <div style={{ position: "fixed", top: 0, left: 0, padding: "32px 40px", zIndex: 50 }}>
             <span style={{ fontSize: 24, fontFamily: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif', fontWeight: 800, letterSpacing: "-0.02em", color: "#14161A" }}>Capabilio <span style={{ color: getPathTheme(path || "student").accent }}>AI</span></span>
           </div>
 
@@ -2990,12 +2990,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
 
         <div style={{ maxWidth:1140, margin:"0 auto", padding:"16px 24px 88px" }}>
           <div className="ob-fade-up" style={{ textAlign:"center", marginBottom:24 }}>
-            <div style={{ display:"inline-flex", alignItems:"center", gap:10, background:T.surface, border:`1px solid ${T.border}`, borderRadius:999, padding:"8px 16px", marginBottom:20 }}>
-              <div style={{ width:7, height:7, borderRadius:"50%", background:inviteCtx ? "#16A34A" : T.primary }} />
-              <span style={{ fontSize:11, color:T.hint, fontWeight:700, letterSpacing:"0.14em", fontFamily:T.mono, textTransform:"uppercase" }}>
-                {inviteCtx ? "College Invite · Pick your plan" : "Almost done · Pick your plan"}
-              </span>
-            </div>
+            
             <h1 style={{ fontFamily:T.display, fontSize:"clamp(26px,3vw,36px)", fontWeight:900, color:"#14161A", letterSpacing:"-0.03em", marginBottom:12, lineHeight:1.1 }}>
               {heading.title}
             </h1>
@@ -3050,24 +3045,27 @@ export default function Onboarding({ user, onComplete, onBack }) {
                       )}
                     </div>
 
-                    {hasDiscount && (
-                      <div style={{ display:"inline-flex", alignItems:"center", gap:6, marginBottom: 8 }}>
-                        <span style={{ fontSize:13, color:"#8A8F98", textDecoration:"line-through", fontWeight:500 }}>₹{p.original_price.toLocaleString()}</span>
-                        <span style={{ fontSize:11, color:"#059669", fontWeight:800, background:"#D1FAE5", padding:"3px 8px", borderRadius:99 }}>Save ₹{(p.original_price - displayPrice).toLocaleString()}</span>
-                      </div>
-                    )}
+
   
                     <div style={{ fontSize:14, fontWeight:500, color:"#8A8F98", minHeight:20, marginBottom:32 }}>
                       {p.price !== 0 && !hasDiscount && p.yearlyPrice ? `₹${p.yearlyPrice.toLocaleString()}/yr — Save ${p.yearlySaving}` : p.subtitle || ""}
                     </div>
   
-                    <div style={{
-                      width: "100%", padding: "14px", borderRadius: 12, fontSize: 14, fontWeight: 700,
-                      textAlign: "center", marginBottom: 40, transition: "colors 0.2s",
-                      background: selected ? "#FF5701" : "#F4F5F7",
-                      color: selected ? "#FFFFFF" : "#14161A"
-                    }}>
-                      {selected ? "Selected Plan" : "Select this plan"}
+                    <div 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!selected) setPlanChoice(p.id);
+                        else handlePlanConfirm();
+                      }}
+                      style={{
+                        width: "100%", padding: "14px", borderRadius: 12, fontSize: 14, fontWeight: 700,
+                        textAlign: "center", marginBottom: 40, transition: "all 0.2s",
+                        background: selected ? "#FF5701" : "#F4F5F7",
+                        color: selected ? "#FFFFFF" : "#14161A",
+                        opacity: (savingPlan && selected) ? 0.7 : 1,
+                        cursor: (savingPlan && selected) ? "wait" : "pointer"
+                      }}>
+                      {savingPlan && selected ? "Starting..." : (selected ? `Start ${p.label} →` : "Select this plan")}
                     </div>
   
                     <div style={{ display:"flex", flexDirection:"column", gap:16, marginTop: "auto" }}>
@@ -3085,19 +3083,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
               })}
             </div>
             
-            <div style={{ textAlign:"center" }}>
-            <button onClick={handlePlanConfirm} disabled={savingPlan}
-              style={{ padding:"15px 48px", background:T.primary, border:"none", borderRadius:12, color:"#fff", fontSize:15, fontWeight:800, cursor:savingPlan?"not-allowed":"pointer", fontFamily:T.mono, letterSpacing:"0.04em", display:"inline-flex", alignItems:"center", gap:10, opacity:savingPlan?0.7:1 }}>
-              {savingPlan
-                ? <><div style={{ width:16,height:16,border:"2px solid rgba(255,255,255,0.4)",borderTopColor:"#fff",borderRadius:"50%",animation:"ob-spin .7s linear infinite" }} />Saving...</>
-                : `${PLANS[activePlan]?.ctaLabel || "Continue"} → Enter Dashboard`}
-            </button>
-            <div style={{ marginTop:16, fontSize:12, color:T.hint, fontFamily:T.mono }}>
-              {path === "institution"
-                ? "No credit card required · All features active · Paid plans coming soon"
-                : isFree ? "No credit card required." : "Powered by Razorpay · Cancel anytime."}
-            </div>
-          </div>
+            
         </div>
       </div>
     )
@@ -3160,10 +3146,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
 
         <div style={{ maxWidth:1000, margin:"0 auto", padding:"60px 24px 88px", position:"relative", zIndex:1 }}>
           <div className="ob-fade-up" style={{ textAlign:"center", marginBottom:52 }}>
-            <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:"rgba(99,102,241,.12)", border:"1px solid rgba(99,102,241,.28)", borderRadius:99, padding:"5px 16px", marginBottom:22 }}>
-              <div style={{ width:6, height:6, borderRadius:"50%", background:"#6366F1", boxShadow:"0 0 0 3px rgba(99,102,241,.25)" }}/>
-              <span style={{ fontSize:11, color:"#A5B4FC", fontWeight:700, letterSpacing:".12em", fontFamily:T.mono, textTransform:"uppercase" }}>Step 1 · Choose your path</span>
-            </div>
+            
             <h1 style={{ fontSize:"clamp(30px,4.5vw,52px)", fontWeight:900, color:"#1A1714", letterSpacing:"-.04em", lineHeight:1.05, marginBottom:14 }}>
               One platform.{" "}
               <span style={{ background:"linear-gradient(135deg,#6366F1,#8B5CF6,#06B6D4)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", backgroundClip:"text" }}>
@@ -3210,9 +3193,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
             })}
           </div>
 
-          <div style={{ textAlign:"center", padding:"14px 20px", background:"rgba(255,255,255,.04)", borderRadius:14, border:`1px solid rgba(255,255,255,.08)`, maxWidth:920, margin:"0 auto" }}>
-            <p style={{ fontSize:11, color:"#475569", margin:0, fontFamily:T.mono, lineHeight:1.8 }}>Free forever for candidates · No credit card · Update path anytime from settings</p>
-          </div>
+          
         </div>
       </div>
     )
@@ -4487,10 +4468,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
         <style>{ONBOARDING_STYLES}</style>
         <div style={{ width:"100%", maxWidth:820 }}>
           <Card accent={greenBd} style={{ padding:"28px 28px 32px" }}>
-            <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:greenBg, border:`1px solid ${greenBd}`, borderRadius:999, padding:"6px 14px", marginBottom:22 }}>
-              <span style={{ fontSize:12 }}>✅</span>
-              <span style={{ fontSize:10, fontWeight:800, color:greenAccent, letterSpacing:"0.14em", textTransform:"uppercase", fontFamily:T.mono }}>Workspace setup complete</span>
-            </div>
+            
 
             <div style={{ display:"flex", alignItems:"flex-start", gap:16, marginBottom:24, paddingBottom:22, borderBottom:`1px solid ${greenBd}` }}>
               <div style={{ width:52, height:52, borderRadius:14, background:greenBg, border:`1px solid ${greenBd}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, flexShrink:0 }}>🏢</div>
