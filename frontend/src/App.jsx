@@ -1399,7 +1399,7 @@ function App() {
     if (userData?.path && onboardingDone && !didInitialHomeRedirect.current) {
       didInitialHomeRedirect.current = true
       if (initialPathWasValidPage.current) return
-      const home = navPath === "student" ? "aura" : (HOME_PAGE[navPath] || "studentHome")
+      const home = navPath === "student" ? "studentHome" : (HOME_PAGE[navPath] || "studentHome")
       setCurrentPage(home)
       setActiveNavItem("home")
     }
@@ -1637,7 +1637,7 @@ function App() {
             return
           }
           setOnboardingDone(true)
-          const home = confirmedPath === "student" ? "aura" : (HOME_PAGE[confirmedPath] || "studentHome")
+          const home = confirmedPath === "student" ? "studentHome" : (HOME_PAGE[confirmedPath] || "studentHome")
           setCurrentPage(home)
           setActiveNavItem("home")
         }}
@@ -1673,7 +1673,8 @@ function App() {
   // earlier but do not control this bar. Intentionally now 6 items (was
   // capped at 5) since Arena is a real, functioning destination again.
   const STUDENT_HEADER_NAV = [
-    { id: "aura",        label: "Aura",         page: "aura",        prefix: "+" },
+      { id: "home",        label: "Dashboard",    page: "studentHome", prefix: "▦" },
+      { id: "aura",        label: "Aura",         page: "aura",        prefix: "+" },
     { id: "pulse",       label: "Pulse",        page: "pulse",       prefix: "⚡" },
     { id: "skillstudio", label: "Skill Studio", page: "skillstudio",   prefix: "🎓" },
     { id: "arenaCollegeStream", label: "Arena", page: "arenaCollegeStream", prefix: "🏟️" },
