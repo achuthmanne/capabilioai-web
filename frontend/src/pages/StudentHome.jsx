@@ -115,7 +115,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
           <div style={{ display: "flex", gap: 16 }}>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: "#8A8F98" }}>Current ELO</div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: "#14161A", letterSpacing: "-0.02em" }}>{elo}</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: "#FF5701", letterSpacing: "-0.02em" }}>{elo}</div>
             </div>
             <div style={{ width: 1, background: "#E5E7EB", margin: "0 8px" }} />
             <div style={{ textAlign: "right" }}>

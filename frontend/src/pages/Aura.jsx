@@ -4623,14 +4623,16 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
             const active=activeTab===tab.id
             return(
               <button key={tab.id} onClick={()=>setActiveTab(tab.id)} 
-                style={{
-                  display:"inline-flex", alignItems:"center", gap:6, padding:"8px 16px",
-                  border:"none", borderRadius: 999,
-                  background: active ? "#F4F5F7" : "transparent",
-                  color: active ? "#14161A" : "#8A8F98",
-                  fontFamily: '"Inter", sans-serif', fontSize:14, fontWeight: active ? 700 : 600,
-                  cursor:"pointer", transition:"all 0.15s ease", whiteSpace:"nowrap", flexShrink:0
-                }}
+                  style={{
+                    display:"inline-flex", alignItems:"center", gap:6, padding:"8px 24px",
+                    border: active ? "1px solid #D1D5DB" : "1px solid transparent", 
+                    borderRadius: 999,
+                    background: active ? "#FFFFFF" : "transparent",
+                    boxShadow: active ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
+                    color: active ? "#14161A" : "#8A8F98",
+                    fontFamily: '"Inter", sans-serif', fontSize:14, fontWeight: active ? 700 : 600,
+                    cursor:"pointer", transition:"all 0.2s ease", whiteSpace:"nowrap", flexShrink:0
+                  }}
                 onMouseEnter={e => { if(!active) e.currentTarget.style.color = "#14161A"; }}
                 onMouseLeave={e => { if(!active) e.currentTarget.style.color = "#8A8F98"; }}
               >

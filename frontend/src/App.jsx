@@ -1767,26 +1767,31 @@ function App() {
           </div>
 
           {(navPath === "student" || navPath === "authority" || navPath === "professional") && (
-            <nav style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-start", overflowX: "auto" }}>
-              {({ student: STUDENT_HEADER_NAV, authority: AUTHORITY_HEADER_NAV, professional: PROFESSIONAL_HEADER_NAV }[navPath]).map(item => {
-                const active = activeNavItem === item.id || (currentPage === item.page && (!item.tab || activeTab === item.tab))
-                return (
-                  <button key={item.id} className="cap-nav-item"
-                    onClick={() => handleBottomNavTap(item.id, item.page, item.tab)}
-                    style={{
-                      display: "inline-flex", alignItems: "center",
-                      padding: "8px 14px", borderRadius: 999, border: "none",
-                      background: active ? "#F4F5F7" : "transparent",
-                      color: active ? "#14161A" : "#8A8F98",
-                      fontSize: 14, fontWeight: active ? 700 : 600,
-                      cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
-                      fontFamily: '"Inter", sans-serif',
-                    }}>
-                    {item.label}
-                  </button>
-                )
-              })}
-            </nav>
+            <nav style={{ 
+                display: "inline-flex", alignItems: "center", gap: 4, 
+                overflowX: "auto", flexShrink: 0 
+              }}>
+                {({ student: STUDENT_HEADER_NAV, authority: AUTHORITY_HEADER_NAV, professional: PROFESSIONAL_HEADER_NAV }[navPath]).map(item => {
+                  const active = activeNavItem === item.id || (currentPage === item.page && (!item.tab || activeTab === item.tab))
+                  return (
+                    <button key={item.id} className="cap-nav-item"
+                      onClick={() => handleBottomNavTap(item.id, item.page, item.tab)}
+                      style={{
+                        display: "inline-flex", alignItems: "center",
+                        padding: "8px 24px", borderRadius: 999, 
+                        border: active ? "1px solid #D1D5DB" : "1px solid transparent",
+                        background: active ? "#FFFFFF" : "transparent",
+                        boxShadow: active ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
+                        color: active ? "#14161A" : "#8A8F98",
+                        fontSize: 14, fontWeight: active ? 700 : 600,
+                        cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
+                        fontFamily: '"Inter", sans-serif', transition: "all 0.2s"
+                      }}>
+                      {item.label}
+                    </button>
+                  )
+                })}
+              </nav>
           )}
 
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
@@ -1800,11 +1805,11 @@ function App() {
             )}
           {!isAuthority && navPath === "professional" && proNavElo ? (
               <div style={{ padding: "6px 12px", background: "#FFFFFF", border: `1px solid #E4E6E9`, borderRadius: 999, fontFamily: '"Inter", sans-serif', fontSize: 13, fontWeight: 700, color: "#14161A" }}>
-                ELO {(proNavElo.overall_elo ?? proNavElo.elo).toLocaleString()}
-              </div>
-            ) : !isAuthority && navPath !== "professional" && userData?.eloRating ? (
-              <div style={{ padding: "6px 12px", background: "#FFFFFF", border: `1px solid #E4E6E9`, borderRadius: 999, fontFamily: '"Inter", sans-serif', fontSize: 13, fontWeight: 700, color: "#14161A" }}>
-                ELO {userData.eloRating.toLocaleString()}
+                ELO <span style={{ color: navAccent }}>{(proNavElo.overall_elo ?? proNavElo.elo).toLocaleString()}</span>
+                </div>
+              ) : !isAuthority && navPath !== "professional" && userData?.eloRating ? (
+                <div style={{ padding: "6px 12px", background: "#FFFFFF", border: `1px solid #E4E6E9`, borderRadius: 999, fontFamily: '"Inter", sans-serif', fontSize: 13, fontWeight: 700, color: "#14161A" }}>
+                  ELO <span style={{ color: navAccent }}>{userData.eloRating.toLocaleString()}</span>
               </div>
             ) : null}
 

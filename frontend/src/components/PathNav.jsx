@@ -125,59 +125,37 @@ export default function PathNav({ path = "student", activeItem, onNavigate }) {
   const accent = ACCENT[path] || ACCENT.student
 
   return (
-    <nav style={{
-      position: "sticky",
-      top: 52,               // sits flush below the 52px slim header
-      zIndex: 89,
-      background: "#fff",
-      borderBottom: "1px solid #E8E3DA",
-      display: "flex",
-      alignItems: "stretch",
-      boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+    <div style={{
+      position: "sticky", top: 76, zIndex: 89, background: "#FFFFFF",
+      borderBottom: "1px solid #E4E6E9", display: "flex", alignItems: "center",
+      overflowX: "auto", padding: "12px 28px", scrollbarWidth: "none",
     }}>
-      {items.map(item => {
-        const active = activeItem === item.id
-        const Icon   = item.icon
-        return (
-          <button
-            key={item.id}
-            onClick={() => onNavigate(item.id, item.page, item.tab)}
-            style={{
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 3,
-              padding: "10px 4px 8px",
-              background: "none",
-              border: "none",
-              borderBottom: active ? `2px solid ${accent}` : "2px solid transparent",
-              borderTop: "2px solid transparent",
-              cursor: "pointer",
-              position: "relative",
-              transition: "border-color 0.15s",
-              minWidth: 0,
-            }}
-          >
-            <Icon active={active} color={accent} />
-            <span style={{
-              fontSize: 11,
-              fontWeight: active ? 700 : 500,
-              color: active ? accent : "#A8A29E",
-              letterSpacing: "0.01em",
-              fontFamily: "DM Sans, sans-serif",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              maxWidth: "100%",
-              padding: "0 2px",
-            }}>
-              {item.label}
-            </span>
-          </button>
-        )
-      })}
-    </nav>
+      <nav style={{
+        display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0
+      }}>
+        {items.map(item => {
+          const active = activeItem === item.id
+          const Icon   = item.icon
+          return (
+            <button key={item.id} onClick={() => onNavigate(item.id, item.page, item.tab)}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 24px",
+                  border: active ? "1px solid #D1D5DB" : "1px solid transparent", 
+                  borderRadius: 999,
+                  background: active ? "#FFFFFF" : "transparent",
+                  boxShadow: active ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
+                  color: active ? "#14161A" : "#8A8F98",
+                  fontFamily: '"Inter", sans-serif', fontSize: 14, fontWeight: active ? 700 : 600,
+                  cursor: "pointer", transition: "all 0.2s ease", whiteSpace: "nowrap", flexShrink: 0
+                }}
+                onMouseEnter={e => { if (!active) e.currentTarget.style.color = "#14161A"; }}
+                onMouseLeave={e => { if (!active) e.currentTarget.style.color = "#8A8F98"; }}
+              >
+                {item.label}
+              </button>
+          )
+        })}
+      </nav>
+    </div>
   )
 }
