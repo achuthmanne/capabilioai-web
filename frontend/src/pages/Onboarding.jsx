@@ -2267,9 +2267,9 @@ export default function Onboarding({ user, onComplete, onBack }) {
 
   const generateMCQs = async () => {
     if (!keyword.trim()) return
-    setApiError(""); transition("loading"); setLoadingMsg("🧠 Analysing your input…")
+    setApiError(""); transition("loading"); setLoadingMsg("Analysing your input...")
     try {
-      setLoadingMsg(`⚡ Generating ${TARGET_Q_COUNT} personalised questions…`)
+      setLoadingMsg(`Curating ${TARGET_Q_COUNT} personalised questions...`)
       let qs = await fetchMCQBatch(TARGET_Q_COUNT)
       if (qs.length < TARGET_Q_COUNT) {
         try { const b = await fetchMCQBatch(TARGET_Q_COUNT-qs.length, "different beginner topics, core concepts"); qs = [...qs,...b] } catch {}
@@ -2297,14 +2297,14 @@ export default function Onboarding({ user, onComplete, onBack }) {
   }
 
   const generateResult = async (finalAnswers) => {
-    transition("loading"); setLoadingMsg("📊 Calculating your skill breakdown…")
+    transition("loading"); setLoadingMsg("Calculating your skill breakdown...")
     const ci = (c) => typeof c==="number"?c:({ A:0,B:1,C:2,D:3,a:0,b:1,c:2,d:3 })[c]??0
     const score = finalAnswers.filter((a,i)=>a===ci(questions[i]?.correct)).length
     const total = questions.length
     const catMap = {}
     questions.forEach((q,i)=>{ const cat = q.category&&q.category!=="undefined"?q.category:"General"; if(!catMap[cat]) catMap[cat]={correct:0,total:0}; catMap[cat].total++; if(finalAnswers[i]===ci(q.correct)) catMap[cat].correct++ })
     const radarData = Object.entries(catMap).filter(([l])=>l&&l!=="undefined"&&l.trim()).map(([label,v])=>({ label, value:Math.round((v.correct/v.total)*100) }))
-    setLoadingMsg("🤖 AI is analysing your performance…")
+    setLoadingMsg("AI is analysing your performance...")
     try {
       const aiRes = await fetch(`${SERVER}/api/analyse-assessment`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ keyword, score, total, pct:Math.round((score/total)*100), radarData, path, resumeContext:resumeText.slice(0,500) }) })
       const aiData = await aiRes.json()
