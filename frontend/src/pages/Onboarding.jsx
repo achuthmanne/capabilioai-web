@@ -2358,6 +2358,19 @@ export default function Onboarding({ user, onComplete, onBack }) {
     } else { generateResult(na) }
   }
 
+  const goBackQ = () => {
+    if (qIdx > 0) {
+      clearInterval(timerRef.current)
+      const prevAnswer = answers[qIdx - 1]
+      const na = answers.slice(0, qIdx - 1)
+      setAnswers(na)
+      setSelected(prevAnswer !== undefined ? prevAnswer : null)
+      setTimedOut(true)
+      setAnimIn(false)
+      setTimeout(()=>{ setQIdx(qIdx - 1); setAnimIn(true) }, 250)
+    }
+  }
+
   const handleAnswer = (i) => {
     if (selected!==null||timedOut) return
     clearInterval(timerRef.current); setSelected(i)
@@ -3188,17 +3201,17 @@ export default function Onboarding({ user, onComplete, onBack }) {
     if (!q) return null
     const pt = getPathTheme("student")
     return (
-      <div style={{ display: "flex", flexDirection: "column", width: "100%", minHeight: "100vh", background: "#F9FAFB", fontFamily: '"Inter", "DM Sans", sans-serif', padding: "40px 24px" }}>
+      <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100vh", background: "#F9FAFB", fontFamily: '"Inter", "DM Sans", sans-serif', padding: "40px 24px", overflow: "hidden" }}>
         <style>{ONBOARDING_STYLES}</style>
         
         <div style={{ width: "100%", maxWidth: 840, margin: "0 auto" }}>
           
-          <div style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.03)" }}>
+          <div style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.03)", display: "flex", flexDirection: "column", height: "calc(100vh - 80px)" }}>
             
-            {/* Header & Question */}
-            <div style={{ padding: "32px 36px 24px", borderBottom: "1px solid #F3F4F6", background: "#FFFFFF" }}>
+            {/* Header (Sticky Top) */}
+            <div style={{ padding: "24px 36px 20px", borderBottom: "1px solid #F3F4F6", background: "#FFFFFF", flexShrink: 0 }}>
               
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 {/* Sharp Question Number */}
                 <div>
                   <div style={{ fontSize: 20, fontWeight: 700, color: "#111827", letterSpacing: "-0.01em", display: "flex", alignItems: "center", gap: 8 }}>
@@ -3227,6 +3240,10 @@ export default function Onboarding({ user, onComplete, onBack }) {
               <div style={{ width: "100%", height: 6, background: "#F3F4F6", borderRadius: 999, overflow: "hidden" }}>
                  <div style={{ height: "100%", width: `${((qIdx+1)/questions.length)*100}%`, background: pt.accent, transition: "width 0.4s ease" }} />
               </div>
+            </div>
+
+            {/* SCROLLABLE AREA */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "0 36px 36px", background: "#FFFFFF", position: "relative" }}>
               
               {/* Question Text */}
               <div style={{ fontSize: 19, fontWeight: 500, color: "#1F2937", lineHeight: 1.6, marginTop: 32 }}>
@@ -3236,95 +3253,100 @@ export default function Onboarding({ user, onComplete, onBack }) {
               {q.code && (
                 <pre style={{ marginTop:16,padding:"16px 20px",background:"#111827",borderRadius:12,fontSize:14,color:"#7DD3FC",fontFamily:"'JetBrains Mono', 'Fira Code', monospace",overflowX:"auto",lineHeight:1.6,border:"1px solid #374151",whiteSpace:"pre-wrap",wordBreak:"break-word" }}>{q.code}</pre>
               )}
-            </div>
             
             {/* Options Area */}
-            <div style={{ padding: "24px 36px 36px", background: "#FFFFFF" }}>
-              <div style={{ fontSize:11, fontWeight:700, color:T.muted, letterSpacing:"0.10em", textTransform:"uppercase", fontFamily:T.mono, marginBottom:12 }}>
-                Select the correct answer
-              </div>
-              {(!q.options || q.options.length === 0) && (
-                <div style={{ padding:"16px 18px", background:"#FEF2F2", border:"1px solid #FCA5A5", borderRadius: 8, color:"#DC2626", fontSize:14, fontWeight:500 }}>
-                  Options failed to load for this question.
-                  <button onClick={()=>advanceQ(-1)} style={{ marginLeft:12, background:"none", border:"none", color:"#DC2626", fontWeight:700, cursor:"pointer", textDecoration:"underline", fontSize:14, fontFamily:'"Inter", "DM Sans", sans-serif' }}>Skip →</button>
+              <div style={{ marginTop: 32 }}>
+                <div style={{ fontSize:11, fontWeight:700, color:T.muted, letterSpacing:"0.10em", textTransform:"uppercase", fontFamily:T.mono, marginBottom:12 }}>
+                  Select the correct answer
                 </div>
-              )}
-              <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
-                {q.options?.map((opt,i) => {
-                  const isRevealed = selected !== null || timedOut
-                  const ci = (c) => typeof c==="number" ? c : ({ A:0,B:1,C:2,D:3,a:0,b:1,c:2,d:3 })[c]??0
-                  const isCorrect = isRevealed && i === ci(q.correct)
-                  const isSel = selected === i
-                  const isWrongSel = isRevealed && isSel && !isCorrect
+                {(!q.options || q.options.length === 0) && (
+                  <div style={{ padding:"16px 18px", background:"#FEF2F2", border:"1px solid #FCA5A5", borderRadius: 8, color:"#DC2626", fontSize:14, fontWeight:500 }}>
+                    Options failed to load for this question.
+                    <button onClick={()=>advanceQ(-1)} style={{ marginLeft:12, background:"none", border:"none", color:"#DC2626", fontWeight:700, cursor:"pointer", textDecoration:"underline", fontSize:14, fontFamily:'"Inter", "DM Sans", sans-serif' }}>Skip &rarr;</button>
+                  </div>
+                )}
+                <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
+                  {q.options?.map((opt,i) => {
+                    const isRevealed = selected !== null || timedOut
+                    const ci = (c) => typeof c==="number" ? c : ({ A:0,B:1,C:2,D:3,a:0,b:1,c:2,d:3 })[c]??0
+                    const isCorrect = isRevealed && i === ci(q.correct)
+                    const isSel = selected === i
+                    const isWrongSel = isRevealed && isSel && !isCorrect
 
-                  let bgColor = "#FFFFFF"
-                  let bdColor = "#E5E7EB"
-                  let textColor = "#1F2937"
-                  let labelBg = "#F3F4F6"
-                  let labelColor = "#6B7280"
+                    let bgColor = "#FFFFFF"
+                    let bdColor = "#E5E7EB"
+                    let textColor = "#1F2937"
+                    let labelBg = "#F3F4F6"
+                    let labelColor = "#6B7280"
 
-                  if (isCorrect) {
-                     bgColor = "#ECFDF5" // light green bg
-                     bdColor = "#10B981" // emerald border
-                     textColor = "#064E3B" // dark emerald text
-                     labelBg = "#10B981"
-                     labelColor = "#FFFFFF"
-                  } else if (isWrongSel) {
-                     bgColor = "#FEF2F2" // light red bg
-                     bdColor = "#EF4444" // red border
-                     textColor = "#7F1D1D" // dark red text
-                     labelBg = "#EF4444"
-                     labelColor = "#FFFFFF"
-                  } else if (isRevealed) {
-                     textColor = "#9CA3AF"
-                     bdColor = "#F3F4F6"
-                  } else if (isSel) {
-                     // During hover or if not revealed
-                     bgColor = pt.accentBg
-                     bdColor = pt.accent
-                  }
+                    if (isCorrect) {
+                       bgColor = "#ECFDF5" // light green bg
+                       bdColor = "#10B981" // emerald border
+                       textColor = "#064E3B" // dark emerald text
+                       labelBg = "#10B981"
+                       labelColor = "#FFFFFF"
+                    } else if (isWrongSel) {
+                       bgColor = "#FEF2F2" // light red bg
+                       bdColor = "#EF4444" // red border
+                       textColor = "#7F1D1D" // dark red text
+                       labelBg = "#EF4444"
+                       labelColor = "#FFFFFF"
+                    } else if (isRevealed) {
+                       textColor = "#9CA3AF"
+                       bdColor = "#F3F4F6"
+                    } else if (isSel) {
+                       bgColor = pt.accentBg
+                       bdColor = pt.accent
+                    }
 
-                  const labels = ["A","B","C","D","E"]
-                  
-                  return (
-                    <button key={i} onClick={()=>handleAnswer(i)} disabled={isRevealed}
-                      style={{
-                        textAlign:"left", padding:"16px 20px",
-                        borderRadius: 12,
-                        background: bgColor,
-                        border: `2px solid ${bdColor}`,
-                        color: textColor,
-                        fontSize: 15,
-                        cursor: isRevealed ? "default" : "pointer",
-                        transition: "all 0.2s ease",
-                        fontFamily: '"Inter", "DM Sans", sans-serif',
-                        fontWeight: (isCorrect || isWrongSel) ? 600 : 500,
-                        display: "flex",
-                        alignItems: "center"
-                      }}
-                      onMouseOver={(e)=>{ if(!isRevealed){ e.currentTarget.style.background = "#F9FAFB"; e.currentTarget.style.borderColor = "#D1D5DB" } }}
-                      onMouseOut={(e)=>{ if(!isRevealed){ e.currentTarget.style.background = bgColor; e.currentTarget.style.borderColor = bdColor } }}
-                    >
-                      <div style={{
-                        width: 28, height: 28, borderRadius: 6,
-                        background: labelBg, color: labelColor,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: 13, fontWeight: 700, marginRight: 16, flexShrink: 0,
-                        transition: "all 0.2s ease"
-                      }}>
-                        {labels[i]||"-"}
-                      </div>
-                      <div style={{ flex:1, lineHeight:1.5 }}>{opt}</div>
-                    </button>
-                  )
-                })}
+                    const labels = ["A","B","C","D","E"]
+                    
+                    return (
+                      <button key={i} onClick={()=>handleAnswer(i)} disabled={isRevealed}
+                        style={{
+                          textAlign:"left", padding:"16px 20px",
+                          borderRadius: 12,
+                          background: bgColor,
+                          border: `2px solid ${bdColor}`,
+                          color: textColor,
+                          fontSize: 15,
+                          cursor: isRevealed ? "default" : "pointer",
+                          transition: "all 0.2s ease",
+                          fontFamily: '"Inter", "DM Sans", sans-serif',
+                          fontWeight: (isCorrect || isWrongSel) ? 600 : 500,
+                          display: "flex",
+                          alignItems: "center"
+                        }}
+                        onMouseOver={(e)=>{ if(!isRevealed){ e.currentTarget.style.background = "#F9FAFB"; e.currentTarget.style.borderColor = "#D1D5DB" } }}
+                        onMouseOut={(e)=>{ if(!isRevealed){ e.currentTarget.style.background = bgColor; e.currentTarget.style.borderColor = bdColor } }}
+                      >
+                        <div style={{
+                          width: 28, height: 28, borderRadius: 6,
+                          background: labelBg, color: labelColor,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: 13, fontWeight: 700, marginRight: 16, flexShrink: 0,
+                          transition: "all 0.2s ease"
+                        }}>
+                          {labels[i]||"-"}
+                        </div>
+                        <div style={{ flex:1, lineHeight:1.5 }}>{opt}</div>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-              
-              {(selected !== null || timedOut) && (
-                <button onClick={advanceQ} style={{ marginTop: 24, width: "100%", padding: "16px 20px", background: pt.accent, color: "#FFFFFF", borderRadius: 12, fontWeight: 700, fontSize: 16, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: '"Inter", "DM Sans", sans-serif', animation: "ob-fadeUp 0.3s ease both" }}>
-                  {qIdx + 1 < questions.length ? "Next Question ➔" : "See Results ➔"}
+            </div>
+
+            {/* STICKY FOOTER: Next/Prev Buttons */}
+            <div style={{ padding: "16px 36px", borderTop: "1px solid #F3F4F6", background: "#FFFFFF", flexShrink: 0, height: 80, display: "flex", alignItems: "center" }}>
+              <div style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <button onClick={goBackQ} disabled={qIdx === 0} style={{ padding: "10px 24px", background: "#FFFFFF", color: qIdx === 0 ? "#D1D5DB" : "#4B5563", borderRadius: 8, fontWeight: 600, fontSize: 14, border: `1px solid ${qIdx === 0 ? "#F3F4F6" : "#D1D5DB"}`, cursor: qIdx === 0 ? "not-allowed" : "pointer", fontFamily: '"Inter", "DM Sans", sans-serif', transition: "all 0.2s", opacity: (selected !== null || timedOut) ? 1 : 0, pointerEvents: (selected !== null || timedOut) ? "auto" : "none" }}>
+                  Prev
                 </button>
-              )}
+                <button onClick={advanceQ} style={{ padding: "10px 32px", background: pt.accent, color: "#FFFFFF", borderRadius: 8, fontWeight: 700, fontSize: 14, border: "none", cursor: "pointer", fontFamily: '"Inter", "DM Sans", sans-serif', transition: "all 0.2s", opacity: (selected !== null || timedOut) ? 1 : 0, pointerEvents: (selected !== null || timedOut) ? "auto" : "none", transform: (selected !== null || timedOut) ? "translateY(0)" : "translateY(10px)" }}>
+                  {qIdx + 1 < questions.length ? "Next" : "Submit"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
