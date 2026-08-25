@@ -3340,10 +3340,13 @@ export default function Onboarding({ user, onComplete, onBack }) {
             {/* STICKY FOOTER: Next/Prev Buttons */}
             <div style={{ padding: "16px 36px", borderTop: "1px solid #F3F4F6", background: "#FFFFFF", flexShrink: 0, height: 80, display: "flex", alignItems: "center" }}>
               <div style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <button onClick={goBackQ} disabled={qIdx === 0} style={{ padding: "10px 24px", background: "#FFFFFF", color: qIdx === 0 ? "#D1D5DB" : "#4B5563", borderRadius: 8, fontWeight: 600, fontSize: 14, border: `1px solid ${qIdx === 0 ? "#F3F4F6" : "#D1D5DB"}`, cursor: qIdx === 0 ? "not-allowed" : "pointer", fontFamily: '"Inter", "DM Sans", sans-serif', transition: "all 0.2s", opacity: (selected !== null || timedOut) ? 1 : 0, pointerEvents: (selected !== null || timedOut) ? "auto" : "none" }}>
-                  Prev
-                </button>
-                <button onClick={advanceQ} style={{ padding: "10px 32px", background: pt.accent, color: "#FFFFFF", borderRadius: 8, fontWeight: 700, fontSize: 14, border: "none", cursor: "pointer", fontFamily: '"Inter", "DM Sans", sans-serif', transition: "all 0.2s", opacity: (selected !== null || timedOut) ? 1 : 0, pointerEvents: (selected !== null || timedOut) ? "auto" : "none", transform: (selected !== null || timedOut) ? "translateY(0)" : "translateY(10px)" }}>
+                {qIdx > 0 ? (
+                  <button onClick={goBackQ} disabled={!(selected !== null || timedOut)} style={{ padding: "10px 24px", background: "#FFFFFF", color: "#4B5563", borderRadius: 8, fontWeight: 600, fontSize: 14, border: "1px solid #D1D5DB", cursor: (selected !== null || timedOut) ? "pointer" : "not-allowed", fontFamily: '"Inter", "DM Sans", sans-serif', transition: "all 0.2s", opacity: (selected !== null || timedOut) ? 1 : 0.4 }}>
+                    Prev
+                  </button>
+                ) : <div />}
+                
+                <button onClick={advanceQ} disabled={!(selected !== null || timedOut)} style={{ padding: "10px 32px", background: pt.accent, color: "#FFFFFF", borderRadius: 8, fontWeight: 700, fontSize: 14, border: "none", cursor: (selected !== null || timedOut) ? "pointer" : "not-allowed", fontFamily: '"Inter", "DM Sans", sans-serif', transition: "all 0.2s", opacity: (selected !== null || timedOut) ? 1 : 0.4 }}>
                   {qIdx + 1 < questions.length ? "Next" : "Submit"}
                 </button>
               </div>
