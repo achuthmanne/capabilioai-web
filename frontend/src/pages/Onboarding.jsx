@@ -3254,36 +3254,70 @@ export default function Onboarding({ user, onComplete, onBack }) {
               )}
               <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
                 {q.options?.map((opt,i) => {
-                  const isSel = selected===i
+                  const isRevealed = selected !== null || timedOut
+                  const ci = (c) => typeof c==="number" ? c : ({ A:0,B:1,C:2,D:3,a:0,b:1,c:2,d:3 })[c]??0
+                  const isCorrect = isRevealed && i === ci(q.correct)
+                  const isSel = selected === i
+                  const isWrongSel = isRevealed && isSel && !isCorrect
+
+                  let bgColor = "#FFFFFF"
+                  let bdColor = "#E5E7EB"
+                  let textColor = "#1F2937"
+                  let labelBg = "#F3F4F6"
+                  let labelColor = "#6B7280"
+
+                  if (isCorrect) {
+                     bgColor = "#ECFDF5" // light green bg
+                     bdColor = "#10B981" // emerald border
+                     textColor = "#064E3B" // dark emerald text
+                     labelBg = "#10B981"
+                     labelColor = "#FFFFFF"
+                  } else if (isWrongSel) {
+                     bgColor = "#FEF2F2" // light red bg
+                     bdColor = "#EF4444" // red border
+                     textColor = "#7F1D1D" // dark red text
+                     labelBg = "#EF4444"
+                     labelColor = "#FFFFFF"
+                  } else if (isRevealed) {
+                     textColor = "#9CA3AF"
+                     bdColor = "#F3F4F6"
+                  } else if (isSel) {
+                     // During hover or if not revealed
+                     bgColor = pt.accentBg
+                     bdColor = pt.accent
+                  }
+
                   const labels = ["A","B","C","D","E"]
+                  
                   return (
-                    <button key={i} onClick={()=>handleAnswer(i)} disabled={selected!==null||timedOut}
+                    <button key={i} onClick={()=>handleAnswer(i)} disabled={isRevealed}
                       style={{
                         textAlign:"left", padding:"16px 20px",
                         borderRadius: 12,
-                        background: isSel ? pt.accentBg : "#FFFFFF",
-                        border: `2px solid ${isSel ? pt.accent : "#E5E7EB"}`,
-                        color: "#1F2937",
+                        background: bgColor,
+                        border: `2px solid ${bdColor}`,
+                        color: textColor,
                         fontSize: 15,
-                        cursor:(selected!==null||timedOut)?"default":"pointer",
-                        transition:"all 0.15s ease",
-                        fontFamily:'"Inter", "DM Sans", sans-serif',
-                        fontWeight:isSel ? 600 : 500,
-                        display:"flex", alignItems:"flex-start", gap:16,
-                        boxShadow: isSel ? `0 0 0 4px ${pt.accent}15` : "none"
+                        cursor: isRevealed ? "default" : "pointer",
+                        transition: "all 0.2s ease",
+                        fontFamily: '"Inter", "DM Sans", sans-serif',
+                        fontWeight: (isCorrect || isWrongSel) ? 600 : 500,
+                        display: "flex",
+                        alignItems: "center"
                       }}
-                      onMouseEnter={e=>{ if(selected===null&&!timedOut){ e.currentTarget.style.background="#F9FAFB"; e.currentTarget.style.borderColor="#D1D5DB"; }}}
-                      onMouseLeave={e=>{ if(!isSel){ e.currentTarget.style.background="#FFFFFF"; e.currentTarget.style.borderColor="#E5E7EB"; }}}
+                      onMouseOver={(e)=>{ if(!isRevealed){ e.currentTarget.style.background = "#F9FAFB"; e.currentTarget.style.borderColor = "#D1D5DB" } }}
+                      onMouseOut={(e)=>{ if(!isRevealed){ e.currentTarget.style.background = bgColor; e.currentTarget.style.borderColor = bdColor } }}
                     >
-                      <span style={{
-                        display:"inline-flex", alignItems:"center", justifyContent:"center",
-                        width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-                        background: isSel ? pt.accent : "#F3F4F6",
-                        color: isSel ? "#FFFFFF" : "#6B7280",
-                        fontSize: 13, fontWeight: 700,
-                        transition:"all 0.15s ease"
-                      }}>{labels[i]||i+1}</span>
-                      <span style={{ flex:1, paddingTop:3, lineHeight: 1.5 }}>{opt}</span>
+                      <div style={{
+                        width: 28, height: 28, borderRadius: 6,
+                        background: labelBg, color: labelColor,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 13, fontWeight: 700, marginRight: 16, flexShrink: 0,
+                        transition: "all 0.2s ease"
+                      }}>
+                        {labels[i]||"-"}
+                      </div>
+                      <div style={{ flex:1, lineHeight:1.5 }}>{opt}</div>
                     </button>
                   )
                 })}
