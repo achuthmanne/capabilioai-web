@@ -2967,17 +2967,13 @@ export default function Onboarding({ user, onComplete, onBack }) {
     return (
       <div style={{ minHeight:"100vh", background:T.pageBg, color:T.text, fontFamily:T.body }}>
         <style>{ONBOARDING_STYLES}</style>
-        {/* Top Header */}
-          <div style={{ position: "fixed", top: 0, left: 0, padding: "32px 40px", zIndex: 50 }}>
-            <span style={{ fontSize: 24, fontFamily: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif', fontWeight: 800, letterSpacing: "-0.02em", color: "#14161A" }}>Capabilio <span style={{ color: getPathTheme(path || "student").accent }}>AI</span></span>
+        {/* Top Header & Step Indicator */}
+        <nav style={{ padding: "32px 40px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontSize: 24, fontFamily: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif', fontWeight: 800, letterSpacing: "-0.02em", color: "#14161A" }}>Capabilio <span style={{ color: getPathTheme(path || "student").accent }}>AI</span></span>
+          <div style={{ padding: "6px 16px", borderRadius: 999, fontSize: 12, fontWeight: 700, color: "#14161A", background: "#FFFFFF", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", border: "1px solid #E5E7EB", letterSpacing: "0.03em" }}>
+            Step 4 of 4
           </div>
-
-          {/* Step Indicator */}
-          <div style={{ position: "fixed", top: 32, right: 32, zIndex: 50 }}>
-            <div style={{ display: "inline-block", padding: "6px 16px", borderRadius: 999, fontSize: 12, fontWeight: 700, color: "#14161A", background: "#FFFFFF", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", border: "1px solid #E5E7EB", letterSpacing: "0.03em" }}>
-              Step 4 of 4
-            </div>
-          </div>
+        </nav>
 
         {/* College discount announcement banner */}
         {inviteCtx && path === "student" && (
@@ -2988,7 +2984,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
           </div>
         )}
 
-        <div style={{ maxWidth:1140, margin:"0 auto", padding:"16px 24px 88px" }}>
+        <div style={{ maxWidth:1140, margin:"0 auto", padding:"0px 24px 88px" }}>
           <div className="ob-fade-up" style={{ textAlign:"center", marginBottom:24 }}>
             
             <h1 style={{ fontFamily:T.display, fontSize:"clamp(26px,3vw,36px)", fontWeight:900, color:"#14161A", letterSpacing:"-0.03em", marginBottom:12, lineHeight:1.1 }}>
@@ -3065,7 +3061,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
                         opacity: (savingPlan && selected) ? 0.7 : 1,
                         cursor: (savingPlan && selected) ? "wait" : "pointer"
                       }}>
-                      {savingPlan && selected ? "Starting..." : (selected ? `Start ${p.label} →` : "Select this plan")}
+                      {savingPlan && selected ? "Starting..." : (p.ctaLabel || "Select this plan")}
                     </div>
   
                     <div style={{ display:"flex", flexDirection:"column", gap:16, marginTop: "auto" }}>
