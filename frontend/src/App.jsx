@@ -1661,7 +1661,7 @@ function App() {
 
   const navAccent   = { student:"#FF5701", professional:"#6D28D9", authority:"#1D4ED8", institution:"#0F766E" }[navPath] || "#FF5701"
   const avatarUrl   = userData?.profilePhotoURL || null
-  const initials    = (userData?.name || user?.displayName || "U").charAt(0).toUpperCase()
+  const initials    = (userData?.name || user?.displayName || "Us").substring(0, 2).toUpperCase()
   const displayName = userData?.displayName || userData?.name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User"
 
   // Nav decluttered 2026-07-28 (second, final pass): header stays at exactly
@@ -1761,7 +1761,7 @@ function App() {
           padding: "0 24px",
           gap: 24,
         }}>
-          <img src="/capabilio-logo-dark.png" alt="Capabilio AI" style={{ height: 20, width: "auto", display: "block", flexShrink: 0 }} />
+          <div style={{ fontSize: 24, fontWeight: 900, color: "#14161A", letterSpacing: "-0.04em", fontFamily: '"Inter", sans-serif', flexShrink: 0, paddingRight: 16 }}>Capabilio AI</div>
 
           {(navPath === "student" || navPath === "authority" || navPath === "professional") && (
             <nav style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-start", overflowX: "auto" }}>
@@ -1772,10 +1772,10 @@ function App() {
                     onClick={() => handleBottomNavTap(item.id, item.page, item.tab)}
                     style={{
                       display: "inline-flex", alignItems: "center",
-                      padding: "8px 14px", borderRadius: 999, border: "none",
-                      background: active ? "#F4F5F7" : "transparent",
-                      color: active ? "#14161A" : "#8A8F98",
-                      fontSize: 14, fontWeight: active ? 700 : 600,
+                      padding: "10px 16px", borderRadius: 999, border: "none",
+                      background: active ? "#FFF0E6" : "transparent",
+                      color: active ? "#FF5701" : "#8A8F98",
+                      fontSize: 15, fontWeight: active ? 800 : 600,
                       cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
                       fontFamily: '"Inter", sans-serif',
                     }}>
@@ -1881,11 +1881,11 @@ function App() {
                 onMouseEnter={e => { if (!profileMenuOpen) { e.currentTarget.style.borderColor = "#D1D5DB"; e.currentTarget.style.background = "#F9FAFB" } }}
                 onMouseLeave={e => { if (!profileMenuOpen) { e.currentTarget.style.borderColor = "#E4E6E9"; e.currentTarget.style.background = "#fff" } }}
               >
-                <div style={{ width: 28, height: 28, borderRadius: "50%", overflow: "hidden", border: `1px solid #E4E6E9`, background: "#F4F5F7", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  {avatarUrl
-                    ? <img src={avatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    : <span style={{ fontFamily: '"Inter", sans-serif', fontSize: 12, fontWeight: 700, color: "#14161A" }}>{initials}</span>
-                  }
+                <div style={{ width: 34, height: 34, borderRadius: "50%", overflow: "hidden", border: `2px solid #FF5701`, background: "#FFF0E6", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    {avatarUrl
+                      ? <img src={avatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      : <span style={{ fontFamily: '"Inter", sans-serif', fontSize: 13, fontWeight: 900, color: "#FF5701", letterSpacing: "0.03em" }}>{initials}</span>
+                    }
                 </div>
                 <span style={{ fontSize: 13, fontWeight: 700, color: "#14161A", fontFamily: '"Inter", sans-serif', maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</span>
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0, transition: "transform 0.2s", transform: profileMenuOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
