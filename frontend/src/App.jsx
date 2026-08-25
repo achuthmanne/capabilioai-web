@@ -1661,7 +1661,8 @@ function App() {
 
   const navAccent   = { student:"#FF5701", professional:"#6D28D9", authority:"#1D4ED8", institution:"#0F766E" }[navPath] || "#FF5701"
   const avatarUrl   = userData?.profilePhotoURL || null
-  const initials    = (userData?.name || user?.displayName || "U").charAt(0).toUpperCase()
+  const rawName = userData?.displayName || userData?.name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User"
+    const initials = rawName.split(" ").map(n => n.charAt(0)).slice(0, 2).join("").toUpperCase()
   const displayName = userData?.displayName || userData?.name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User"
 
   // Nav decluttered 2026-07-28 (second, final pass): header stays at exactly
@@ -1874,95 +1875,89 @@ function App() {
 
           <div ref={profileMenuRef} style={{ position: "relative" }}>
             <button
-              onClick={() => setProfileMenuOpen(o => !o)}
-              style={{
-                display: "flex", alignItems: "center", gap: 6,
-                padding: "4px 10px 4px 4px",
-                background: profileMenuOpen ? `${navAccent}10` : "#fff",
-                border: `1px solid ${profileMenuOpen ? navAccent + "50" : "#E8E3DA"}`,
-                borderRadius: 99, cursor: "pointer",
-                transition: "all 0.15s",
-              }}
-              onMouseEnter={e => { if (!profileMenuOpen) { e.currentTarget.style.borderColor = navAccent + "50"; e.currentTarget.style.background = `${navAccent}08` } }}
-              onMouseLeave={e => { if (!profileMenuOpen) { e.currentTarget.style.borderColor = "#E8E3DA"; e.currentTarget.style.background = "#fff" } }}
-            >
-              <div style={{ width: 26, height: 26, borderRadius: "50%", overflow: "hidden", border: `2px solid ${navAccent}44`, background: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                {avatarUrl
-                  ? <img src={avatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  : <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 700, color: navAccent }}>{initials}</span>
-                }
-              </div>
-              <span style={{ fontSize: 13, fontWeight: 600, color: "#3D3935", fontFamily: "'DM Sans', sans-serif", maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</span>
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0, transition: "transform 0.2s", transform: profileMenuOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
-                <path d="M2 4l4 4 4-4" stroke="#A8A29E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-
-            {profileMenuOpen && (
-              <div style={{
-                position: "absolute", top: "calc(100% + 8px)", right: 0,
-                background: "#fff", border: "1px solid #E8E3DA",
-                borderRadius: 12, boxShadow: "0 8px 24px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)",
-                minWidth: 200, overflow: "hidden", zIndex: 200,
-              }}>
-                <div style={{ padding: "12px 14px", borderBottom: "1px solid #F3F4F6" }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#1A1714", fontFamily: "'DM Sans', sans-serif" }}>{displayName}</div>
-                  <div style={{ fontSize: 11, color: "#A8A29E", marginTop: 2 }}>{user?.email || ""}</div>
+                onClick={() => setProfileMenuOpen(o => !o)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "4px 12px 4px 4px",
+                  background: profileMenuOpen ? "#F4F5F7" : "#fff",
+                  border: `1px solid ${profileMenuOpen ? "#D1D5DB" : "#E4E6E9"}`,
+                  borderRadius: 99, cursor: "pointer",
+                  transition: "all 0.15s",
+                }}
+                onMouseEnter={e => { if (!profileMenuOpen) { e.currentTarget.style.borderColor = "#D1D5DB"; e.currentTarget.style.background = "#F9FAFB" } }}
+                onMouseLeave={e => { if (!profileMenuOpen) { e.currentTarget.style.borderColor = "#E4E6E9"; e.currentTarget.style.background = "#fff" } }}
+              >
+                <div style={{ width: 32, height: 32, borderRadius: "50%", overflow: "hidden", border: `1px solid #E4E6E9`, background: "#F4F5F7", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  {avatarUrl
+                    ? <img src={avatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    : <span style={{ fontFamily: '"Inter", sans-serif', fontSize: 13, fontWeight: 700, color: "#14161A", letterSpacing: "0.5px" }}>{initials}</span>
+                  }
                 </div>
+                <span style={{ fontSize: 14, fontWeight: 700, color: "#14161A", fontFamily: '"Inter", sans-serif', maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</span>
+                <svg width="14" height="14" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0, transition: "transform 0.2s", transform: profileMenuOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
+                  <path d="M2 4l4 4 4-4" stroke="#8A8F98" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
 
-                <button
-                  onClick={() => {
-                    // 2026-08-01 bugfix: this always routed to currentPage
-                    // "aura" regardless of the signed-in account's path.
-                    // Aura.jsx treats userData.path==="institution" the same
-                    // as "authority" (its isExecutive flag merges both) and
-                    // hands off to ExecutiveAura — so an institution admin
-                    // clicking this Settings button landed on the Executive
-                    // Path's settings screen instead of their own. Institution
-                    // accounts now route into InstitutionOS's own Settings
-                    // tab (orgSettings + initialPage="settings", wired above
-                    // at the InstitutionOS mount site) instead of "aura".
-                    if (navPath === "institution") {
-                      setCurrentPage("orgSettings")
-                      setActiveNavItem("orgSettings")
-                    } else {
-                      setCurrentPage("aura")
-                      setActiveTab("settings")
-                      setActiveNavItem("aura")
-                    }
-                    setProfileMenuOpen(false)
-                  }}
-                  style={{
-                    width: "100%", display: "flex", alignItems: "center", gap: 10,
-                    padding: "11px 14px", border: "none", background: "transparent",
-                    cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
-                    fontSize: 13, fontWeight: 600, color: "#3D3935",
-                    textAlign: "left", transition: "background 0.1s",
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "#FAF7F2" }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "transparent" }}
-                >
-                  <span style={{ fontSize: 15 }}>⚙️</span>
-                  Settings
-                </button>
+              {profileMenuOpen && (
+                <div style={{
+                  position: "absolute", top: "100%", right: 0, marginTop: 12,
+                  width: 220, background: "#fff",
+                  borderRadius: 12, border: "1px solid #E4E6E9",
+                  boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+                  padding: "6px", zIndex: 100,
+                  display: "flex", flexDirection: "column", gap: 2,
+                }}>
+                  <div style={{ padding: "8px 14px", borderBottom: "1px solid #F3F4F6", marginBottom: 4 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#14161A", fontFamily: '"Inter", sans-serif', textOverflow: "ellipsis", overflow: "hidden" }}>{displayName}</div>
+                    <div style={{ fontSize: 12, color: "#8A8F98", fontFamily: '"Inter", sans-serif', textOverflow: "ellipsis", overflow: "hidden" }}>{user?.email}</div>
+                  </div>
 
-                <div style={{ height: 1, background: "#F3F4F6", margin: "2px 0" }} />
+                  <button
+                    onClick={() => {
+                      if (navPath === "student" && userData?.studentStage === "job_seeker") {
+                        setCurrentPage("aura")
+                        setActiveTab("settings")
+                        setActiveNavItem("aura")
+                      } else if (navPath === "institution") {
+                        setCurrentPage("orgSettings")
+                        setActiveNavItem("orgSettings")
+                      } else {
+                        setCurrentPage("aura")
+                        setActiveTab("settings")
+                        setActiveNavItem("aura")
+                      }
+                      setProfileMenuOpen(false)
+                    }}
+                    style={{
+                      width: "100%", display: "flex", alignItems: "center", gap: 10,
+                      padding: "10px 14px", border: "none", background: "transparent", borderRadius: 8,
+                      cursor: "pointer", fontFamily: '"Inter", sans-serif',
+                      fontSize: 13, fontWeight: 600, color: "#14161A",
+                      textAlign: "left", transition: "background 0.1s",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "#F4F5F7" }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "transparent" }}
+                  >
+                    Settings
+                  </button>
 
-                <button
-                  onClick={() => { setProfileMenuOpen(false); handleSignOut() }}
-                  style={{
-                    width: "100%", display: "flex", alignItems: "center", gap: 10,
-                    padding: "11px 14px", border: "none", background: "transparent",
-                    cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
-                    fontSize: 13, fontWeight: 600, color: "#EF4444",
-                    textAlign: "left", transition: "background 0.1s",
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "#FFF5F5" }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "transparent" }}
-                >
-                  <span style={{ fontSize: 15 }}>🚪</span>
-                  Sign out
-                </button>
+                  <div style={{ height: 1, background: "#E4E6E9", margin: "4px 0" }} />
+
+                  <button
+                    onClick={() => { setProfileMenuOpen(false); handleSignOut() }}
+                    style={{
+                      width: "100%", display: "flex", alignItems: "center", gap: 10,
+                      padding: "10px 14px", border: "none", background: "transparent", borderRadius: 8,
+                      cursor: "pointer", fontFamily: '"Inter", sans-serif',
+                      fontSize: 13, fontWeight: 600, color: "#DC2626",
+                      textAlign: "left", transition: "background 0.1s",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "#FEF2F2" }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "transparent" }}
+                  >
+                    Sign out
+                  </button>
               </div>
             )}
           </div>
