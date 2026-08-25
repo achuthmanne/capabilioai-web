@@ -3256,7 +3256,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
             
             {/* Options Area */}
               <div style={{ marginTop: 32 }}>
-                <div style={{ fontSize:11, fontWeight:700, color:T.muted, letterSpacing:"0.10em", textTransform:"uppercase", fontFamily:T.mono, marginBottom:12 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: "#4B5563", fontFamily: '"Inter", "DM Sans", sans-serif', marginBottom: 16 }}>
                   Select the correct answer
                 </div>
                 {(!q.options || q.options.length === 0) && (
