@@ -983,7 +983,7 @@ function ResultModal({ result, keyword, questions, onGoToDashboard, savingResult
           <button 
             onClick={onGoToDashboard} 
             disabled={savingResult}
-            style={{ width:"100%", padding:"16px", background:pt.accent, color:"#FFFFFF", border:"none", borderRadius:12, fontSize:16, fontWeight:700, cursor:savingResult?"not-allowed":"pointer", opacity:savingResult?0.7:1, transition:"opacity 0.2s", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}
+            style={{ width:"100%", padding:"14px 24px", background:pt.accent, color:"#FFFFFF", border:"none", borderRadius:12, fontSize:16, fontWeight:600, cursor:savingResult?"not-allowed":"pointer", opacity:savingResult?0.7:1, transition:"all 0.2s ease", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }} onMouseEnter={e => { if(!savingResult) e.currentTarget.style.transform = "translateY(-1px)" }} onMouseLeave={e => { if(!savingResult) e.currentTarget.style.transform = "none" }}
           >
             {savingResult ? "Saving..." : saveError ? "Try Again" : "Continue to My Dashboard"}
           </button>
