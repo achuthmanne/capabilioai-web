@@ -769,99 +769,6 @@ function ProgressBar({ current, total }) {
   )
 }
 
-// ─── Recommendation Popup (shown after assessment result, before dashboard) ────
-function RecoPopup({ weakAreas, onContinue }) {
-  // Pick top 4 weak areas that have static module content
-  const cards = (weakAreas || []).slice(0, 6).map(skill => {
-    const mod = getSkillModule(skill)
-    if (!mod) return null
-    return { skill, concept: mod.concept?.slice(0, 100) + "…", resources: mod.resources || [] }
-  }).filter(Boolean).slice(0, 4)
-
-  return (
-    <div style={{
-      position: "fixed", inset: 0,
-      background: "rgba(0,0,0,0.65)", backdropFilter: "blur(8px)",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      zIndex: 10000, padding: 20,
-    }}>
-      <div style={{
-        width: "100%", maxWidth: 560,
-        background: "#FFFFFF", borderRadius: 24,
-        boxShadow: "0 24px 80px rgba(0,0,0,0.4)",
-        overflow: "hidden", animation: "ob-fadeUp 0.35s ease both",
-      }}>
-        {/* Header */}
-        <div style={{
-          background: "linear-gradient(135deg, #6366F1, #8B5CF6)",
-          padding: "22px 24px 18px",
-        }}>
-          <div style={{ fontSize: 9, fontWeight: 800, color: "rgba(255,255,255,0.7)", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 5 }}>Based on your assessment</div>
-          <div style={{ fontSize: 20, fontWeight: 900, color: "#fff", marginBottom: 4 }}>📚 Recommended modules for you</div>
-          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", lineHeight: 1.6 }}>
-            Study these before your first interview — each takes under 20 minutes and gives you basic knowledge on your weak areas.
-          </div>
-        </div>
-
-        {/* Module cards */}
-        <div style={{ padding: "16px 20px", maxHeight: 380, overflowY: "auto" }}>
-          {cards.length > 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {cards.map((c, i) => (
-                <div key={i} style={{
-                  background: "#F8F7FE", border: "1px solid #E0E7FF",
-                  borderRadius: 14, padding: "14px 16px",
-                  display: "flex", gap: 12, alignItems: "flex-start",
-                }}>
-                  <div style={{
-                    width: 34, height: 34, borderRadius: "50%",
-                    background: "#6366F120", border: "1px solid #6366F140",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 13, fontWeight: 900, color: "#6366F1", flexShrink: 0,
-                  }}>{i + 1}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: "#1A1714", marginBottom: 4 }}>{c.skill}</div>
-                    <div style={{ fontSize: 11, color: "#6B6560", lineHeight: 1.55, marginBottom: 8 }}>{c.concept}</div>
-                    <a href="/skill-studio" style={{
-                      display: "inline-flex", alignItems: "center", gap: 5,
-                      padding: "5px 12px",
-                      background: "linear-gradient(135deg, #6366F1, #8B5CF6)",
-                      borderRadius: 99, color: "#fff",
-                      fontSize: 10, fontWeight: 800, textDecoration: "none",
-                    }}>Study in Skill Studio →</a>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ textAlign: "center", padding: "24px 16px" }}>
-              <div style={{ fontSize: 28, marginBottom: 10 }}>📖</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#1A1714", marginBottom: 6 }}>Check Skill Studio for modules</div>
-              <div style={{ fontSize: 12, color: "#6B6560", lineHeight: 1.6 }}>Your personalised modules are waiting in Skill Studio — go explore what to study next.</div>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div style={{
-          padding: "14px 20px 20px",
-          borderTop: "1px solid #F0F0F0",
-          display: "flex", gap: 10, justifyContent: "flex-end", alignItems: "center",
-        }}>
-          <span style={{ fontSize: 11, color: "#6B6560", marginRight: "auto" }}>You can revisit these anytime in Skill Studio</span>
-          <button onClick={onContinue} style={{
-            padding: "10px 22px",
-            background: "linear-gradient(135deg, #6366F1, #4F46E5)",
-            border: "none", borderRadius: 12, color: "#fff",
-            fontSize: 13, fontWeight: 800, cursor: "pointer",
-            boxShadow: "0 4px 14px #6366F140",
-          }}>Continue to Dashboard →</button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ─── Result Modal (Student) ─────────────────────────────────────────
 function ResultModal({ result, keyword, questions, onGoToDashboard, savingResult, saveError }) {
   const [tab, setTab] = useState("overview")
@@ -876,7 +783,7 @@ function ResultModal({ result, keyword, questions, onGoToDashboard, savingResult
   const elo = getStudentDisplayElo({ score, total })
   
   const pt = getPathTheme("student")
-  const TABS = [{ id:"overview",label:"Overview" }, { id:"skills",label:"Skill Graph" }, { id:"feedback",label:"AI Feedback" }, { id:"answers",label:"Answers" }]
+  const TABS = [{ id:"overview",label:"Overview" }, { id:"skills",label:"Skill Graph" }, { id:"action_plan",label:"Action Plan" }, { id:"feedback",label:"AI Feedback" }, { id:"answers",label:"Answers" }]
   
   return (
     <div style={{ position:"fixed",inset:0,zIndex:9999,background: `#F9FAFB url("data:image/svg+xml;utf8,%3Csvg%20width%3D%22400%22%20height%3D%22200%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%0A%20%20%3C%21--%20Row%201%20--%3E%0A%20%20%3Ctext%20x%3D%22100%22%20y%3D%2280%22%20font-family%3D%22ui-serif%2C%20Georgia%2C%20Cambria%2C%20%27Times%20New%20Roman%27%2C%20Times%2C%20serif%22%20font-weight%3D%22800%22%20font-size%3D%2226%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%22-0.02em%22%3E%0A%20%20%20%20%3Ctspan%20fill%3D%22rgba%2817%2C24%2C39%2C0.08%29%22%3ECapabilio%20%3C/tspan%3E%0A%20%20%20%20%3Ctspan%20fill%3D%22rgba%28249%2C115%2C22%2C0.14%29%22%3EAI%3C/tspan%3E%0A%20%20%3C/text%3E%0A%20%20%3C%21--%20Row%202%20%28offset%29%20--%3E%0A%20%20%3Ctext%20x%3D%22300%22%20y%3D%22180%22%20font-family%3D%22ui-serif%2C%20Georgia%2C%20Cambria%2C%20%27Times%20New%20Roman%27%2C%20Times%2C%20serif%22%20font-weight%3D%22800%22%20font-size%3D%2226%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%22-0.02em%22%3E%0A%20%20%20%20%3Ctspan%20fill%3D%22rgba%2817%2C24%2C39%2C0.08%29%22%3ECapabilio%20%3C/tspan%3E%0A%20%20%20%20%3Ctspan%20fill%3D%22rgba%28249%2C115%2C22%2C0.14%29%22%3EAI%3C/tspan%3E%0A%20%20%3C/text%3E%0A%3C/svg%3E") repeat`,display:"flex",alignItems:"center",justifyContent:"center",opacity:vis?1:0,transition:"opacity 0.3s",padding:16, fontFamily: '"Inter", "DM Sans", sans-serif' }}>
@@ -954,6 +861,45 @@ function ResultModal({ result, keyword, questions, onGoToDashboard, savingResult
                   </div>
                 )})}
               </div>
+            </div>
+          )}
+
+          {tab==="action_plan" && (
+            <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+              {(() => {
+                const weakCards = (analysis.weakAreas || []).slice(0, 6).map(skill => {
+                  const mod = getSkillModule(skill)
+                  if (!mod) return null
+                  return { skill, concept: mod.concept?.slice(0, 100) + "…", resources: mod.resources || [] }
+                }).filter(Boolean).slice(0, 4);
+                
+                if (weakCards.length === 0) return (
+                  <div style={{ textAlign: "center", padding: "40px 16px", background:"#FAFAFA", borderRadius:16, border:"1px solid #F3F4F6" }}>
+                    <div style={{ fontSize: 28, marginBottom: 12 }}>🚀</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: "#111827", marginBottom: 6 }}>Ready for Arena</div>
+                    <div style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.6 }}>Your foundation is strong. Enter the Arena to start solving missions.</div>
+                  </div>
+                );
+
+                return (
+                  <>
+                    <div style={{ marginBottom: 8 }}>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: "#111827", marginBottom: 4 }}>Recommended Learning Modules</div>
+                      <div style={{ fontSize: 14, color: "#6B7280" }}>Study these before your first interview — each takes under 20 minutes.</div>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                      {weakCards.map((c, i) => (
+                        <div key={i} style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 16, padding: 20, display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+                          <div style={{ width: 32, height: 32, borderRadius: 999, background: "#6366F120", border: "1px solid #6366F140", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: "#6366F1", marginBottom: 12 }}>{i + 1}</div>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: "#111827", marginBottom: 6 }}>{c.skill}</div>
+                          <div style={{ fontSize: 13, color: "#4B5563", lineHeight: 1.6, marginBottom: 16, flex: 1 }}>{c.concept}</div>
+                          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 14px", background: "#F1F5F9", borderRadius: 999, color: "#111827", fontSize: 12, fontWeight: 700 }}>Available in Skill Studio</div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )
+              })()}
             </div>
           )}
 
@@ -2212,7 +2158,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
   // captures the real outcome so a hard failure blocks progress instead.
   const [saveError, setSaveError] = useState(null)
   const [showResultModal, setShowResultModal] = useState(false)
-  const [showRecoPopup, setShowRecoPopup] = useState(false)
+  
   const [isFocused, setIsFocused] = useState(true)
   const timerRef = useRef(null)
 
@@ -3611,8 +3557,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
           </div>
         </div>
         {showResultModal&&result&&<ResultModal result={result} keyword={keyword} questions={questions} onGoToDashboard={handleGoToDashboard} savingResult={savingResult} saveError={saveError} />}
-        {showRecoPopup&&<RecoPopup weakAreas={result?.analysis?.weakAreas||[]} onContinue={()=>{ setShowRecoPopup(false); setStep("plan") }} />}
-      </div>
+              </div>
     )
   }
 
