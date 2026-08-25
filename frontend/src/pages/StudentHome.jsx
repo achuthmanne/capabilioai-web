@@ -159,20 +159,26 @@ export default function StudentHome({ user, userData, onNavigate }) {
 
             {/* Quick Links */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
-              <div className="sh-card" style={{ padding: 20, cursor: "pointer" }} onClick={() => onNavigate("skills")}>
-                <Activity size={24} color="#14161A" style={{ marginBottom: 16 }} />
-                <div style={{ fontSize: 16, fontWeight: 700, color: "#14161A", marginBottom: 4 }}>Skill Graph</div>
-                <div style={{ fontSize: 13, color: "#8A8F98" }}>View your identified weaknesses</div>
+              <div className="sh-card" style={{ padding: 24, cursor: "pointer", display: "flex", flexDirection: "column" }} onClick={() => onNavigate("skills")}>
+                <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#F4F5F7", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+                  <LineChart size={22} color="#14161A" strokeWidth={2} />
+                </div>
+                <div style={{ fontSize: 17, fontWeight: 800, color: "#14161A", marginBottom: 6, letterSpacing: "-0.01em" }}>Skill Graph</div>
+                <div style={{ fontSize: 14, color: "#4A4E54", lineHeight: 1.5 }}>Diagnose your exact technical weaknesses against market demand.</div>
               </div>
-              <div className="sh-card" style={{ padding: 20, cursor: "pointer" }} onClick={() => onNavigate("studio")}>
-                <ShieldCheck size={24} color="#14161A" style={{ marginBottom: 16 }} />
-                <div style={{ fontSize: 16, fontWeight: 700, color: "#14161A", marginBottom: 4 }}>Skill Studio</div>
-                <div style={{ fontSize: 13, color: "#8A8F98" }}>Fix gaps with targeted learning</div>
+              <div className="sh-card" style={{ padding: 24, cursor: "pointer", display: "flex", flexDirection: "column" }} onClick={() => onNavigate("studio")}>
+                <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#F4F5F7", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+                  <BookOpen size={22} color="#14161A" strokeWidth={2} />
+                </div>
+                <div style={{ fontSize: 17, fontWeight: 800, color: "#14161A", marginBottom: 6, letterSpacing: "-0.01em" }}>Skill Studio</div>
+                <div style={{ fontSize: 14, color: "#4A4E54", lineHeight: 1.5 }}>Access targeted learning paths to directly close your identified gaps.</div>
               </div>
-              <div className="sh-card" style={{ padding: 20, cursor: "pointer" }} onClick={() => onNavigate("portfolio")}>
-                <Map size={24} color="#14161A" style={{ marginBottom: 16 }} />
-                <div style={{ fontSize: 16, fontWeight: 700, color: "#14161A", marginBottom: 4 }}>Portfolio</div>
-                <div style={{ fontSize: 13, color: "#8A8F98" }}>Manage your verified evidence</div>
+              <div className="sh-card" style={{ padding: 24, cursor: "pointer", display: "flex", flexDirection: "column" }} onClick={() => onNavigate("portfolio")}>
+                <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#F4F5F7", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+                  <Briefcase size={22} color="#14161A" strokeWidth={2} />
+                </div>
+                <div style={{ fontSize: 17, fontWeight: 800, color: "#14161A", marginBottom: 6, letterSpacing: "-0.01em" }}>Portfolio Vault</div>
+                <div style={{ fontSize: 14, color: "#4A4E54", lineHeight: 1.5 }}>Curate your verified proofs and signal readiness to recruiters.</div>
               </div>
             </div>
 
