@@ -1668,11 +1668,12 @@ function RoleSearchPicker({ value, onChange, onRoleSelect, selectedRole }) {
                     <span style={{ fontWeight: 800, fontSize: 18, color: "#111827", letterSpacing: "-0.01em" }}>{selectedRole.label}</span>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, paddingLeft: 42 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, background: b.bg, color: b.color, padding: "3px 10px", borderRadius: 999 }}>
-                      {b.label}
-                    </span>
                     <span style={{ fontSize: 13, color: "#6B7280", fontWeight: 500 }}>Personalised Platform Experience</span>
                   </div>
+                </div>
+                {/* Standardized Category Badge */}
+                <div style={{ display: "flex", alignItems: "center", padding: "4px 12px", borderRadius: 999, background: b.bg, border: `1px solid ${b.color}25` }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: b.color, letterSpacing: "0.03em" }}>{b.label}</span>
                 </div>
               </div>
               
