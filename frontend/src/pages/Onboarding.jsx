@@ -2988,79 +2988,104 @@ export default function Onboarding({ user, onComplete, onBack }) {
           </div>
         )}
 
-        <div style={{ maxWidth:1080, margin:"0 auto", padding:"56px 28px 88px" }}>
-          <div className="ob-fade-up" style={{ textAlign:"center", marginBottom:48 }}>
+        <div style={{ maxWidth:1140, margin:"0 auto", padding:"16px 24px 88px" }}>
+          <div className="ob-fade-up" style={{ textAlign:"center", marginBottom:24 }}>
             <div style={{ display:"inline-flex", alignItems:"center", gap:10, background:T.surface, border:`1px solid ${T.border}`, borderRadius:999, padding:"8px 16px", marginBottom:20 }}>
               <div style={{ width:7, height:7, borderRadius:"50%", background:inviteCtx ? "#16A34A" : T.primary }} />
               <span style={{ fontSize:11, color:T.hint, fontWeight:700, letterSpacing:"0.14em", fontFamily:T.mono, textTransform:"uppercase" }}>
                 {inviteCtx ? "College Invite · Pick your plan" : "Almost done · Pick your plan"}
               </span>
             </div>
-            <h1 style={{ fontFamily:T.display, fontSize:"clamp(28px,4vw,46px)", fontWeight:900, color:T.text, letterSpacing:"-0.04em", marginBottom:12, lineHeight:1.15 }}>
+            <h1 style={{ fontFamily:T.display, fontSize:"clamp(26px,3vw,36px)", fontWeight:900, color:"#14161A", letterSpacing:"-0.03em", marginBottom:12, lineHeight:1.1 }}>
               {heading.title}
             </h1>
-            <p style={{ fontSize:15, color:T.muted, maxWidth:500, margin:"0 auto", lineHeight:1.8 }}>{heading.sub}</p>
+            <p style={{ fontSize:14, color:"#4A4E54", maxWidth:480, margin:"0 auto", lineHeight:1.6 }}>{heading.sub}</p>
           </div>
 
-          <div style={{ display:"grid", gridTemplateColumns: pathPlans.length === 1 ? "minmax(280px,480px)" : `repeat(${pathPlans.length}, minmax(260px,1fr))`, gap:20, marginBottom:40, justifyContent:"center" }}>
-            {pathPlans.map(p => {
-              const selected    = activePlan === p.id
-              const ac          = p.color
-              const hasDiscount = p.college_price !== undefined && p.college_price !== p.original_price
-              const displayPrice = hasDiscount ? p.college_price : p.price
-
-              return (
-                <div key={p.id} className="ob-card" onClick={() => setPlanChoice(p.id)}
-                  style={{ borderRadius:20, border:`2px solid ${selected ? ac : T.border}`, background:selected?"rgba(0,0,0,0.05)":"rgba(0,0,0,0.02)", padding:"26px 22px", boxShadow:selected?`0 0 0 4px ${ac}18, 0 8px 32px rgba(17,24,39,0.09)`:"0 2px 8px rgba(17,24,39,0.05)", cursor:"pointer", position:"relative", transition:"all 0.18s" }}>
-
-                  {p.badge && <div style={{ position:"absolute", top:14, right:14, background:ac, color:"#fff", fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:99, letterSpacing:0.5, textTransform:"uppercase" }}>{p.badge}</div>}
-                  {selected && <div style={{ position:"absolute", top:14, left:14, width:18, height:18, borderRadius:"50%", background:ac, display:"flex", alignItems:"center", justifyContent:"center" }}><span style={{ color:"#fff", fontSize:11, fontWeight:900 }}>✓</span></div>}
-
-                  {/* College discount badge — shown per card when invite context active */}
-                  {hasDiscount && (
-                    <div style={{ display:"inline-flex", alignItems:"center", gap:5, background:"#ECFDF5", color:"#065F46", borderRadius:999, padding:"4px 10px", fontSize:11, fontWeight:700, marginBottom:10 }}>
-                      🎓 {p.discount_pct}% college discount
-                    </div>
-                  )}
-
-                  <div style={{ marginBottom:16 }}>
-                    <div style={{ fontSize:11, fontWeight:800, color:ac, letterSpacing:2, textTransform:"uppercase", marginBottom:6, fontFamily:T.mono }}>{p.label}</div>
-
-                    {p.price === 0
-                      ? <div style={{ fontSize:34, fontWeight:900, color:T.text }}>Free</div>
-                      : <>
-                          <div style={{ display:"flex", alignItems:"flex-end", gap:3 }}>
-                            <span style={{ fontSize:13, fontWeight:700, color:T.muted, alignSelf:"flex-start", marginTop:8 }}>₹</span>
-                            <span style={{ fontSize:36, fontWeight:900, color:T.text, letterSpacing:-1 }}>{displayPrice.toLocaleString()}</span>
-                            <span style={{ fontSize:12, color:T.muted, marginBottom:6 }}>/mo</span>
-                          </div>
-                          {/* Strikethrough original price when discounted */}
-                          {hasDiscount && (
-                            <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:2 }}>
-                              <span style={{ fontSize:13, color:T.hint, textDecoration:"line-through" }}>₹{p.original_price.toLocaleString()}</span>
-                              <span style={{ fontSize:11, color:"#16A34A", fontWeight:700, background:"#ECFDF5", padding:"1px 7px", borderRadius:99 }}>Save ₹{(p.original_price - displayPrice).toLocaleString()}</span>
-                            </div>
-                          )}
-                          {!hasDiscount && p.yearlyPrice && (
-                            <div style={{ fontSize:11, color:T.muted, marginTop:2 }}>₹{p.yearlyPrice.toLocaleString()}/yr — <span style={{ color:"#16A34A", fontWeight:600 }}>{p.yearlySaving}</span></div>
-                          )}
-                        </>}
-                  </div>
-
-                  <div style={{ display:"grid", gap:7 }}>
-                    {p.features.map((f,i) => (
-                      <div key={i} style={{ display:"flex", gap:7, alignItems:"flex-start" }}>
-                        <span style={{ color:"#16A34A", fontWeight:800, flexShrink:0, fontSize:12, marginTop:1 }}>✓</span>
-                        <span style={{ fontSize:13, color:T.muted, lineHeight:1.5 }}>{f}</span>
+          <div style={{ display:"grid", gridTemplateColumns: pathPlans.length === 1 ? "minmax(280px,400px)" : `repeat(${pathPlans.length}, minmax(280px,1fr))`, gap:24, marginBottom:40, justifyContent:"center" }}>
+              {pathPlans.map(p => {
+                const selected    = activePlan === p.id
+                const hasDiscount = p.college_price !== undefined && p.college_price !== p.original_price
+                const displayPrice = hasDiscount ? p.college_price : p.price
+  
+                return (
+                  <div key={p.id} className="ob-card" onClick={() => setPlanChoice(p.id)}
+                    style={{ 
+                      borderRadius:24, 
+                      background: "#FFFFFF",
+                      border: selected ? "2px solid #14161A" : "1px solid #E4E6E9",
+                      padding: "32px 40px",
+                      cursor: "pointer", 
+                      position: "relative", 
+                      transition: "all 0.2s ease-out",
+                      display: "flex",
+                      flexDirection: "column",
+                      zIndex: selected ? 10 : 0
+                    }}>
+  
+                    {selected && (
+                      <div style={{ position:"absolute", top:0, left:"50%", transform:"translate(-50%, -50%)", background:"#14161A", color:"#FFFFFF", fontSize:11, fontWeight:800, textTransform:"uppercase", letterSpacing:"0.15em", padding:"6px 16px", borderRadius:99 }}>
+                        Selected
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+                    )}
+  
+                    {p.badge && !selected && (
+                      <div style={{ position:"absolute", top:0, left:"50%", transform:"translate(-50%, -50%)", background:"#E4E6E9", color:"#14161A", fontSize:11, fontWeight:800, textTransform:"uppercase", letterSpacing:"0.15em", padding:"6px 16px", borderRadius:99 }}>
+                        {p.badge}
+                      </div>
+                    )}
+  
+                    <div style={{ fontSize:18, fontWeight:800, color:"#14161A", marginBottom:16 }}>{p.label}</div>
+  
+                    <div style={{ display:"flex", alignItems:"baseline", gap:4, marginBottom:8 }}>
+                      {p.price === 0 ? (
+                         <div style={{ fontSize:44, fontWeight:800, color:"#14161A", letterSpacing:"-0.05em", lineHeight:1 }}>Free</div>
+                      ) : (
+                         <>
+                           <div style={{ fontSize:44, fontWeight:800, color:"#14161A", letterSpacing:"-0.05em", lineHeight:1 }}>
+                             ₹{displayPrice.toLocaleString()}
+                           </div>
+                           <div style={{ fontSize:15, fontWeight:600, color:"#8A8F98" }}>/mo</div>
+                         </>
+                      )}
+                    </div>
 
-          <div style={{ textAlign:"center" }}>
+                    {hasDiscount && (
+                      <div style={{ display:"inline-flex", alignItems:"center", gap:6, marginBottom: 8 }}>
+                        <span style={{ fontSize:13, color:"#8A8F98", textDecoration:"line-through", fontWeight:500 }}>₹{p.original_price.toLocaleString()}</span>
+                        <span style={{ fontSize:11, color:"#059669", fontWeight:800, background:"#D1FAE5", padding:"3px 8px", borderRadius:99 }}>Save ₹{(p.original_price - displayPrice).toLocaleString()}</span>
+                      </div>
+                    )}
+  
+                    <div style={{ fontSize:14, fontWeight:500, color:"#8A8F98", minHeight:20, marginBottom:32 }}>
+                      {p.price !== 0 && !hasDiscount && p.yearlyPrice ? `₹${p.yearlyPrice.toLocaleString()}/yr — Save ${p.yearlySaving}` : p.subtitle || ""}
+                    </div>
+  
+                    <div style={{
+                      width: "100%", padding: "14px", borderRadius: 12, fontSize: 14, fontWeight: 700,
+                      textAlign: "center", marginBottom: 40, transition: "colors 0.2s",
+                      background: selected ? "#FF5701" : "#F4F5F7",
+                      color: selected ? "#FFFFFF" : "#14161A"
+                    }}>
+                      {selected ? "Selected Plan" : "Select this plan"}
+                    </div>
+  
+                    <div style={{ display:"flex", flexDirection:"column", gap:16, marginTop: "auto" }}>
+                      {p.features.map((f,i)=>(
+                        <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:12 }}>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF5701" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0, marginTop: 2 }}>
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                          </svg>
+                          <span style={{ fontSize:14, color:"#4A4E54", fontWeight:500, lineHeight:1.4 }}>{f}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            
+            <div style={{ textAlign:"center" }}>
             <button onClick={handlePlanConfirm} disabled={savingPlan}
               style={{ padding:"15px 48px", background:T.primary, border:"none", borderRadius:12, color:"#fff", fontSize:15, fontWeight:800, cursor:savingPlan?"not-allowed":"pointer", fontFamily:T.mono, letterSpacing:"0.04em", display:"inline-flex", alignItems:"center", gap:10, opacity:savingPlan?0.7:1 }}>
               {savingPlan
