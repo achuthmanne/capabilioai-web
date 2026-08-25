@@ -294,13 +294,12 @@ const Spinner = ({ size = 20, color = T.primary }) => (
 )
 
 const FieldRow = ({ label, children, hint }) => (
-  <div style={{ marginBottom: 16 }}>
-    {label && <div style={{ fontSize: 12, fontWeight: 600, color: "#4B5563", marginBottom: 7 }}>{label}</div>}
+  <div style={{ marginBottom: 24 }}>
+    {label && <div style={{ fontSize: 14, fontWeight: 700, color: "#111827", marginBottom: 10, letterSpacing: "-0.01em" }}>{label}</div>}
     {children}
-    {hint && <div style={{ fontSize: 11, color: T.muted, marginTop: 5 }}>{hint}</div>}
+    {hint && <div style={{ fontSize: 12, color: "#6B7280", marginTop: 8, fontWeight: 500, lineHeight: 1.5 }}>{hint}</div>}
   </div>
 )
-
 // Generic multi-select chip group — used by the company onboarding wizard's
 // Hiring Intelligence (goals, domains) and AI Workspace Setup (modules) steps.
 const ChipMultiSelect = ({ options, selected, onToggle, accent, accentBg }) => (
