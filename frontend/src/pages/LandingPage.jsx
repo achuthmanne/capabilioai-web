@@ -1798,7 +1798,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
             </div>
           </div>
 
-          <div className="max-w-[1000px] mx-auto">
+          <div className="max-w-[1140px] mx-auto">
             <motion.div 
               key={pricingFlow}
               initial={{ opacity: 0, y: 15 }}
