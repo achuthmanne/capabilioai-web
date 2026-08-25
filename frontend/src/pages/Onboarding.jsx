@@ -3114,17 +3114,55 @@ export default function Onboarding({ user, onComplete, onBack }) {
   if (step === "loading") {
     const pt = getPathTheme(path || "student")
     return (
-      <Screen style={{ background: pt.bg }}>
+      <div style={{ minHeight: "100vh", background: "#F9FAFB", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: '"Inter", "DM Sans", sans-serif' }}>
         <style>{ONBOARDING_STYLES}</style>
-        <div style={{ ...screen, width:"100%", maxWidth:480 }}>
-          <Card accent={pt.accentBd} style={{ textAlign:"center" }}>
-            <div style={{ width:60, height:60, borderRadius:"50%", background:pt.accentBg, border:`1px solid ${pt.accentBd}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, margin:"0 auto 20px" }}>{pt.icon}</div>
-            <div style={{ fontFamily:T.display,fontSize:20,color:T.text,marginBottom:10 }}>Working on it…</div>
-            <div style={{ fontSize:14,color:T.muted,lineHeight:1.7,marginBottom:20 }}>{loadingMsg||proAnalyzingMsg||"Please wait…"}</div>
-            <Spinner size={32} color={pt.accent} />
-          </Card>
+        <div style={{ maxWidth: 440, width: "100%", padding: 24, textAlign: "center" }}>
+          
+          {/* Animated Brain/Pulse Icon */}
+          <div style={{
+             width: 72, height: 72, margin: "0 auto 32px",
+             borderRadius: "50%", background: pt.accentBg,
+             display: "flex", alignItems: "center", justifyContent: "center",
+             border: `1px solid ${pt.accentBd}`,
+             position: "relative"
+          }}>
+             <div style={{ position: "absolute", inset: -4, borderRadius: "50%", border: `2px solid ${pt.accent}`, borderTopColor: "transparent", borderBottomColor: "transparent", opacity: 0.5, animation: "ob-spin 1.5s linear infinite" }} />
+             <div style={{ position: "absolute", inset: -12, borderRadius: "50%", border: `1px dashed ${pt.accent}`, opacity: 0.3, animation: "ob-spin 3s linear infinite reverse" }} />
+             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={pt.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+          </div>
+          
+          <h2 style={{ fontSize: 26, fontWeight: 800, color: "#111827", letterSpacing: "-0.03em", marginBottom: 12 }}>
+            Preparing your Assessment
+          </h2>
+          <p style={{ fontSize: 16, color: "#4B5563", lineHeight: 1.6, marginBottom: 40, fontWeight: 500 }}>
+            {loadingMsg || "Calibrating questions tailored to your profile..."}
+          </p>
+          
+          {/* Mock Exam Skeleton */}
+          <div style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: 16, padding: "28px 24px", textAlign: "left", boxShadow: "0 12px 32px rgba(0,0,0,0.04)" }}>
+             {/* Question skeleton */}
+             <div style={{ width: "40%", height: 12, background: "#F3F4F6", borderRadius: 6, marginBottom: 24, animation: "ob-pulse 2s ease-in-out infinite" }} />
+             <div style={{ width: "92%", height: 18, background: "#E5E7EB", borderRadius: 6, marginBottom: 12, animation: "ob-pulse 2s ease-in-out infinite 0.2s" }} />
+             <div style={{ width: "78%", height: 18, background: "#E5E7EB", borderRadius: 6, marginBottom: 32, animation: "ob-pulse 2s ease-in-out infinite 0.4s" }} />
+             
+             {/* Options skeleton */}
+             <div style={{ display: "grid", gap: 12 }}>
+                <div style={{ width: "100%", height: 48, border: "2px solid #F3F4F6", borderRadius: 10, animation: "ob-pulse 2s ease-in-out infinite 0.6s", display: "flex", alignItems: "center", padding: "0 16px" }}>
+                   <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#F3F4F6", marginRight: 12 }} />
+                   <div style={{ width: "40%", height: 12, background: "#F3F4F6", borderRadius: 4 }} />
+                </div>
+                <div style={{ width: "100%", height: 48, border: "2px solid #F3F4F6", borderRadius: 10, animation: "ob-pulse 2s ease-in-out infinite 0.8s", display: "flex", alignItems: "center", padding: "0 16px" }}>
+                   <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#F3F4F6", marginRight: 12 }} />
+                   <div style={{ width: "55%", height: 12, background: "#F3F4F6", borderRadius: 4 }} />
+                </div>
+                <div style={{ width: "100%", height: 48, border: "2px solid #F3F4F6", borderRadius: 10, animation: "ob-pulse 2s ease-in-out infinite 1s", display: "flex", alignItems: "center", padding: "0 16px" }}>
+                   <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#F3F4F6", marginRight: 12 }} />
+                   <div style={{ width: "35%", height: 12, background: "#F3F4F6", borderRadius: 4 }} />
+                </div>
+             </div>
+          </div>
         </div>
-      </Screen>
+      </div>
     )
   }
 
