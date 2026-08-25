@@ -875,7 +875,7 @@ function ResultModal({ result, keyword, questions, onGoToDashboard, savingResult
                 
                 if (weakCards.length === 0) return (
                   <div style={{ textAlign: "center", padding: "40px 16px", background:"#FAFAFA", borderRadius:16, border:"1px solid #F3F4F6" }}>
-                    <div style={{ fontSize: 28, marginBottom: 12 }}>🚀</div>
+                    
                     <div style={{ fontSize: 15, fontWeight: 700, color: "#111827", marginBottom: 6 }}>Ready for Arena</div>
                     <div style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.6 }}>Your foundation is strong. Enter the Arena to start solving missions.</div>
                   </div>
