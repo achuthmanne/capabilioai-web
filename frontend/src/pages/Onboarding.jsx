@@ -1823,22 +1823,33 @@ function CustomBranchPicker({ value, onChange, disabled }) {
 }
 
 
-const LoadingCountdown = ({ loadingMsg, path }) => {
+const LoadingCountdown = ({ path }) => {
   const pt = getPathTheme(path || "student")
-  const [stage, setStage] = useState(0)
-  
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setStage(s => (s < 3 ? s + 1 : 3))
-    }, 2000)
-    return () => clearInterval(timer)
-  }, [])
-
-  const texts = ["3", "2", "1", "Let's Go!"]
 
   return (
       <div style={{ display: "flex", flexDirection: "column", width: "100%", minHeight: "100vh", background: "#FFFFFF", fontFamily: '"Inter", "DM Sans", sans-serif' }}>
         <style>{ONBOARDING_STYLES}</style>
+        <style>{`
+          @keyframes ob-hype-num {
+            0%   { transform: translateX(-160px) scale(0.6); opacity: 0; color: #F3F4F6; }
+            20%  { transform: translateX(0px) scale(1); opacity: 1; color: ${pt.accent}; }
+            70%  { transform: translateX(0px) scale(1); opacity: 1; color: ${pt.accent}; }
+            100% { transform: translateX(160px) scale(0.6); opacity: 0; color: #F3F4F6; }
+          }
+          @keyframes ob-hype-text {
+            0%   { transform: scale(0.8); opacity: 0; filter: blur(8px); }
+            100% { transform: scale(1); opacity: 1; filter: blur(0); }
+          }
+          .hype-abs {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            letter-spacing: -0.04em;
+          }
+        `}</style>
         
         {/* Top Header */}
         <div style={{ padding: "32px 40px" }}>
@@ -1847,18 +1858,7 @@ const LoadingCountdown = ({ loadingMsg, path }) => {
 
         {/* Step Indicator */}
         <div style={{ position: "fixed", top: 32, right: 32, zIndex: 50 }}>
-          <div style={{ 
-              display: "inline-block",
-              padding: "6px 16px", 
-              borderRadius: 999, 
-              fontSize: 12, 
-              fontWeight: 700, 
-              color: "#14161A",
-              background: "#FFFFFF",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
-              border: "1px solid #E5E7EB",
-              letterSpacing: "0.03em"
-            }}>
+          <div style={{ display: "inline-block", padding: "6px 16px", borderRadius: 999, fontSize: 12, fontWeight: 700, color: "#14161A", background: "#FFFFFF", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", border: "1px solid #E5E7EB", letterSpacing: "0.03em" }}>
               Step 2 of 4
           </div>
         </div>
@@ -1867,18 +1867,15 @@ const LoadingCountdown = ({ loadingMsg, path }) => {
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px 120px" }}>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", maxWidth: 640, width: "100%", textAlign: "center" }}>
             
-            {/* The sharp 3 2 1 countdown instead of spinner */}
-            <div key={stage} style={{ fontSize: stage === 3 ? 90 : 120, fontWeight: 900, color: pt.accent, letterSpacing: "-0.04em", marginBottom: 24, animation: "ob-fadeUp 0.4s ease both" }}>
-               {texts[stage]}
+            <div style={{ position: "relative", width: "100%", height: 200 }}>
+               <div className="hype-abs"><div style={{ fontSize: 140, animation: "ob-hype-num 3s cubic-bezier(0.25, 1, 0.5, 1) both", animationDelay: "0s" }}>3</div></div>
+               <div className="hype-abs"><div style={{ fontSize: 140, animation: "ob-hype-num 3s cubic-bezier(0.25, 1, 0.5, 1) both", animationDelay: "2.2s" }}>2</div></div>
+               <div className="hype-abs"><div style={{ fontSize: 140, animation: "ob-hype-num 3s cubic-bezier(0.25, 1, 0.5, 1) both", animationDelay: "4.4s" }}>1</div></div>
+               <div className="hype-abs"><div style={{ fontSize: 96, animation: "ob-hype-text 1s cubic-bezier(0.16, 1, 0.3, 1) both", animationDelay: "6.6s", whiteSpace: "nowrap" }}>
+                  <span style={{ color: pt.accent }}>Let's go</span>
+                  <span style={{ color: "#111827" }}>......</span>
+               </div></div>
             </div>
-
-            <h2 style={{ fontSize: 24, fontWeight: 700, color: "#111827", letterSpacing: "-0.03em", marginBottom: 16 }}>
-               {loadingMsg || "Curating your assessment..."}
-            </h2>
-            
-            <p style={{ fontSize: 16, color: "#6B7280", fontWeight: 500, maxWidth: 400, lineHeight: 1.5 }}>
-               Please wait while we calibrate questions tailored to your profile.
-            </p>
 
           </div>
         </div>
@@ -3176,7 +3173,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
   }
 
   if (step === "loading") {
-    return <LoadingCountdown loadingMsg={loadingMsg} path={path} />
+    return <LoadingCountdown path={path} />
   }
 
   // ══ SCREEN: QUIZ ═══════════════════════════════════════════════════
