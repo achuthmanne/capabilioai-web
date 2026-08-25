@@ -1877,6 +1877,15 @@ const LoadingCountdown = ({ path }) => {
                </div></div>
             </div>
 
+            <div style={{ marginTop: 48, display: "flex", flexDirection: "column", gap: 10, animation: "ob-fadeUp 1.2s ease both", animationDelay: "0.5s" }}>
+               <h2 style={{ fontSize: 22, fontWeight: 700, color: "#111827", letterSpacing: "-0.02em", margin: 0 }}>
+                 Crafting your assessment
+               </h2>
+               <p style={{ fontSize: 16, color: "#6B7280", margin: 0, fontWeight: 500 }}>
+                 Tailoring 25 questions exactly to your target role.
+               </p>
+            </div>
+
           </div>
         </div>
       </div>
