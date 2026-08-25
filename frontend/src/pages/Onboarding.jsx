@@ -2985,7 +2985,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
         )}
 
         <div style={{ maxWidth:1140, margin:"0 auto", padding:"0px 24px 88px" }}>
-          <div className="ob-fade-up" style={{ textAlign:"center", marginBottom:24 }}>
+          <div className="ob-fade-up" style={{ textAlign:"center", marginBottom:48 }}>
             
             <h1 style={{ fontFamily:T.display, fontSize:"clamp(26px,3vw,36px)", fontWeight:900, color:"#14161A", letterSpacing:"-0.03em", marginBottom:12, lineHeight:1.1 }}>
               {heading.title}
@@ -2993,7 +2993,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
             <p style={{ fontSize:14, color:"#4A4E54", maxWidth:480, margin:"0 auto", lineHeight:1.6 }}>{heading.sub}</p>
           </div>
 
-          <div style={{ display:"grid", gridTemplateColumns: pathPlans.length === 1 ? "minmax(280px,400px)" : `repeat(${pathPlans.length}, minmax(280px,1fr))`, gap:24, marginBottom:40, justifyContent:"center" }}>
+          <div style={{ display:"grid", gridTemplateColumns: pathPlans.length === 1 ? "minmax(280px,400px)" : `repeat(${pathPlans.length}, minmax(280px,1fr))`, gap:24, marginTop:16, marginBottom:40, justifyContent:"center" }}>
               {pathPlans.map(p => {
                 const selected    = activePlan === p.id
                 const hasDiscount = p.college_price !== undefined && p.college_price !== p.original_price
