@@ -2646,7 +2646,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
     // Show RecoPopup only AFTER save is complete — prevents it appearing while
     // the spinner is still running (race condition fix).
     // setStep("plan") is called by RecoPopup's "Continue to Dashboard →" button.
-    setShowRecoPopup(true)
+    setStep("plan")
   }
 
   const handleProGoToDashboard = async () => {
