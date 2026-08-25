@@ -4606,53 +4606,39 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
       <input ref={resumeFileInputRef} type="file" style={{display:"none"}} onChange={handleResumeUpload} accept=".pdf,.doc,.docx"/>
 
       {/* ── Internal Aura tab bar ─────────────────────────────── */}
-      <div style={{position:"sticky",top:0,zIndex:80,background:"rgba(255,255,255,0.97)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:"1px solid rgba(0,0,0,0.05)",overflowX:"auto",display:"flex",alignItems:"stretch",boxShadow:"0 4px 16px rgba(0,0,0,0.4)",scrollbarWidth:"none"}}>
+      <div style={{position:"sticky",top:0,zIndex:80,background:"#FFFFFF",borderBottom:"1px solid #E4E6E9",overflowX:"auto",display:"flex",alignItems:"center",padding:"12px 24px",gap:8,scrollbarWidth:"none"}}>
         {(path === "professional" ? [
-          // Professionals: profile management only — Career and Skills
-          // intelligence live in their own standalone modules (Orbit.jsx /
-          // Skills.jsx, both reachable from top-level nav).
-          // REDESIGNED (2026-07-24): this used to be 6 tabs with real duplication —
-          // "Vault" (pro-vault) was a bare VaultManagerPro that Career & Vault
-          // already renders inline (upload, files grid, EPFO, certs, education);
-          // "Skills" (the old skillgraph tab) and "Skill Gaps" (skillgap) were both
-          // Arena-coupled ("Complete Forge & Arena tasks to earn verified scores",
-          // arena-derived gap scoring) and duplicated what "Skill Graph Pro"
-          // already does on the real user_skills table, Arena-free, with its own
-          // built-in gap analysis. Removing all three leaves one clean set with
-          // no dead ends for a user who has never touched Arena.
-          // FOLLOW-UP (2026-07-24): the remaining "Career & Vault" and "Skills"
-          // (pro-skills) tabs were themselves still duplicated — Orbit.jsx now
-          // owns Career Timeline/verification-signal content and Skills.jsx
-          // wraps the exact same SkillGraphView component this tab rendered
-          // (previously imported here as SkillGraphPro). "Skills" is removed outright;
-          // this tab is renamed "Vault" and scoped to documents/verification
-          // only, which has no home in Orbit or Skills yet.
-          // "AI Interview" removed from this bar 2026-07-25 (Tranche 1) —
-          // moved to Launchpad ("Interview Prep" tab), see PROFESSIONAL_TAB_IDS
-          // comment above.
-          {id:"vault",        label:"Vault",             icon:"◫"},
-          // 2026-07-29: AI Video (EchoPitch) — real evidence (proof_objects),
-          // no Arena dependency, was previously student-dashboard-only.
-          {id:"echopitch",    label:"AI Video",          icon:"🎬"},
-        ] : [
-          // Students + others: full tab set
-          {id:"dashboard",  label:"Dashboard",    icon:"▦"},
-          {id:"vault",      label:"Career & Vault",icon:"◫"},
-          {id:"skillgraph", label:"Skills",        icon:"↗"},
-          {id:"interview",  label:"AI Interview",  icon:"□"},
-          {id:"skillgap",   label:"Skill Gaps",    icon:"⚡"},
-          {id:"resilience", label:"Resilience",    icon:"💪"},
-          {id:"fingerprint",label:"Code DNA",      icon:"🧬"},
-          {id:"voucher",    label:"Voucher",        icon:"🎫"},
-        ]).map(tab=>{
-          const active=activeTab===tab.id
-          return(
-            <button key={tab.id} onClick={()=>setActiveTab(tab.id)} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"10px 14px",border:"none",borderBottom:active?"2px solid #6366F1":"2px solid transparent",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:13,fontWeight:active?700:500,color:active?"#6366F1":"#6B6560",background:"transparent",transition:"all 0.15s",whiteSpace:"nowrap",flexShrink:0}}>
-              <span style={{fontSize:12}}>{tab.icon}</span>{tab.label}
-              {tab.id==="vault"&&vaultFiles.length>0&&<span style={{background:"#FF5701",color:"#fff",fontSize:9,fontWeight:700,padding:"1px 5px",borderRadius:100}}>{vaultFiles.length}</span>}
-            </button>
-          )
-        })}
+            {id:"vault",        label:"Vault"},
+            {id:"echopitch",    label:"AI Video"},
+          ] : [
+            {id:"dashboard",  label:"Dashboard"},
+            {id:"vault",      label:"Career & Vault"},
+            {id:"skillgraph", label:"Skills"},
+            {id:"interview",  label:"AI Interview"},
+            {id:"skillgap",   label:"Skill Gaps"},
+            {id:"resilience", label:"Resilience"},
+            {id:"fingerprint",label:"Code DNA"},
+            {id:"voucher",    label:"Voucher"},
+          ]).map(tab=>{
+            const active=activeTab===tab.id
+            return(
+              <button key={tab.id} onClick={()=>setActiveTab(tab.id)} 
+                style={{
+                  display:"inline-flex", alignItems:"center", gap:6, padding:"8px 16px",
+                  border:"none", borderRadius: 999,
+                  background: active ? "#F4F5F7" : "transparent",
+                  color: active ? "#14161A" : "#8A8F98",
+                  fontFamily: '"Inter", sans-serif', fontSize:14, fontWeight: active ? 700 : 600,
+                  cursor:"pointer", transition:"all 0.15s ease", whiteSpace:"nowrap", flexShrink:0
+                }}
+                onMouseEnter={e => { if(!active) e.currentTarget.style.color = "#14161A"; }}
+                onMouseLeave={e => { if(!active) e.currentTarget.style.color = "#8A8F98"; }}
+              >
+                {tab.label}
+                {tab.id==="vault" && vaultFiles.length > 0 && <span style={{background:"#FF5701", color:"#fff", fontSize:10, fontWeight:800, padding:"2px 6px", borderRadius:100, marginLeft: 6}}>{vaultFiles.length}</span>}
+              </button>
+            )
+          })}
       </div>
 
       <div style={{maxWidth:1160,margin:"0 auto",padding:"32px 28px 60px",position:"relative",zIndex:1}}>

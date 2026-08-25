@@ -1661,7 +1661,7 @@ function App() {
 
   const navAccent   = { student:"#FF5701", professional:"#6D28D9", authority:"#1D4ED8", institution:"#0F766E" }[navPath] || "#FF5701"
   const avatarUrl   = userData?.profilePhotoURL || null
-  const initials    = (userData?.name || user?.displayName || "Us").substring(0, 2).toUpperCase()
+  const initials    = (userData?.name || user?.displayName || "U").charAt(0).toUpperCase()
   const displayName = userData?.displayName || userData?.name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User"
 
   // Nav decluttered 2026-07-28 (second, final pass): header stays at exactly
@@ -1744,14 +1744,14 @@ function App() {
   ]
 
   return (
-          <div style={{ background: "#FAFAFA", minHeight: "100vh" }}>
+    <div style={{ background: "#FAFAFA", minHeight: "100vh" }}>
         <style>{`
           @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
           .cap-nav-item { transition: all 0.15s ease; }
           .cap-nav-item:hover { background: #F4F5F7 !important; color: #14161A !important; }
         `}</style>
 
-        <header style={{
+      <header style={{
           position: "sticky", top: 0, zIndex: 90,
           background: "#FFFFFF",
           borderBottom: "1px solid #E4E6E9",
@@ -1761,7 +1761,7 @@ function App() {
           padding: "0 24px",
           gap: 24,
         }}>
-          <div style={{ fontSize: 24, fontWeight: 900, color: "#14161A", letterSpacing: "-0.04em", fontFamily: '"Inter", sans-serif', flexShrink: 0, paddingRight: 16 }}>Capabilio AI</div>
+          <img src="/capabilio-logo-dark.png" alt="Capabilio AI" style={{ height: 20, width: "auto", display: "block", flexShrink: 0 }} />
 
           {(navPath === "student" || navPath === "authority" || navPath === "professional") && (
             <nav style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-start", overflowX: "auto" }}>
@@ -1772,10 +1772,10 @@ function App() {
                     onClick={() => handleBottomNavTap(item.id, item.page, item.tab)}
                     style={{
                       display: "inline-flex", alignItems: "center",
-                      padding: "10px 16px", borderRadius: 999, border: "none",
-                      background: active ? "#FFF0E6" : "transparent",
-                      color: active ? "#FF5701" : "#8A8F98",
-                      fontSize: 15, fontWeight: active ? 800 : 600,
+                      padding: "8px 14px", borderRadius: 999, border: "none",
+                      background: active ? "#F4F5F7" : "transparent",
+                      color: active ? "#14161A" : "#8A8F98",
+                      fontSize: 14, fontWeight: active ? 700 : 600,
                       cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
                       fontFamily: '"Inter", sans-serif',
                     }}>
@@ -1787,12 +1787,15 @@ function App() {
           )}
 
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
-            {navPath === "student" && userData?.studentStage === "job_seeker" && (
+            {/* 2026-08-03: Student/Job Seeker split — light framing chip only,
+              does not gate any page/route (that's handled elsewhere: College
+              tab visibility, self-link, Arena prompt tone). */}
+          {navPath === "student" && userData?.studentStage === "job_seeker" && (
               <div style={{ padding: "6px 12px", background: "#FFFFFF", border: `1px solid #E4E6E9`, borderRadius: 999, fontFamily: '"Inter", sans-serif', fontSize: 13, fontWeight: 700, color: "#14161A" }}>
                 Job Seeker
               </div>
             )}
-            {!isAuthority && navPath === "professional" && proNavElo ? (
+          {!isAuthority && navPath === "professional" && proNavElo ? (
               <div style={{ padding: "6px 12px", background: "#FFFFFF", border: `1px solid #E4E6E9`, borderRadius: 999, fontFamily: '"Inter", sans-serif', fontSize: 13, fontWeight: 700, color: "#14161A" }}>
                 ELO {(proNavElo.overall_elo ?? proNavElo.elo).toLocaleString()}
               </div>
@@ -1869,26 +1872,26 @@ function App() {
 
           <div ref={profileMenuRef} style={{ position: "relative" }}>
             <button
-                onClick={() => setProfileMenuOpen(o => !o)}
-                style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  padding: "4px 12px 4px 4px",
-                  background: profileMenuOpen ? "#F4F5F7" : "#fff",
-                  border: `1px solid ${profileMenuOpen ? "#D1D5DB" : "#E4E6E9"}`,
-                  borderRadius: 99, cursor: "pointer",
-                  transition: "all 0.15s",
-                }}
-                onMouseEnter={e => { if (!profileMenuOpen) { e.currentTarget.style.borderColor = "#D1D5DB"; e.currentTarget.style.background = "#F9FAFB" } }}
-                onMouseLeave={e => { if (!profileMenuOpen) { e.currentTarget.style.borderColor = "#E4E6E9"; e.currentTarget.style.background = "#fff" } }}
-              >
-                <div style={{ width: 34, height: 34, borderRadius: "50%", overflow: "hidden", border: `2px solid #FF5701`, background: "#FFF0E6", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    {avatarUrl
-                      ? <img src={avatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      : <span style={{ fontFamily: '"Inter", sans-serif', fontSize: 13, fontWeight: 900, color: "#FF5701", letterSpacing: "0.03em" }}>{initials}</span>
-                    }
-                </div>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#14161A", fontFamily: '"Inter", sans-serif', maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</span>
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0, transition: "transform 0.2s", transform: profileMenuOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
+              onClick={() => setProfileMenuOpen(o => !o)}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "4px 10px 4px 4px",
+                background: profileMenuOpen ? `${navAccent}10` : "#fff",
+                border: `1px solid ${profileMenuOpen ? navAccent + "50" : "#E8E3DA"}`,
+                borderRadius: 99, cursor: "pointer",
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={e => { if (!profileMenuOpen) { e.currentTarget.style.borderColor = navAccent + "50"; e.currentTarget.style.background = `${navAccent}08` } }}
+              onMouseLeave={e => { if (!profileMenuOpen) { e.currentTarget.style.borderColor = "#E8E3DA"; e.currentTarget.style.background = "#fff" } }}
+            >
+              <div style={{ width: 26, height: 26, borderRadius: "50%", overflow: "hidden", border: `2px solid ${navAccent}44`, background: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                {avatarUrl
+                  ? <img src={avatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  : <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 700, color: navAccent }}>{initials}</span>
+                }
+              </div>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#3D3935", fontFamily: "'DM Sans', sans-serif", maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</span>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0, transition: "transform 0.2s", transform: profileMenuOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
                 <path d="M2 4l4 4 4-4" stroke="#A8A29E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
