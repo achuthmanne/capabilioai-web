@@ -880,7 +880,7 @@ function ResultModal({ result, keyword, questions, onGoToDashboard, savingResult
   
   return (
     <div style={{ position:"fixed",inset:0,zIndex:9999,background: `#F9FAFB url("data:image/svg+xml;utf8,%3Csvg%20width%3D%22400%22%20height%3D%22200%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%0A%20%20%3C%21--%20Row%201%20--%3E%0A%20%20%3Ctext%20x%3D%22100%22%20y%3D%2280%22%20font-family%3D%22ui-serif%2C%20Georgia%2C%20Cambria%2C%20%27Times%20New%20Roman%27%2C%20Times%2C%20serif%22%20font-weight%3D%22800%22%20font-size%3D%2226%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%22-0.02em%22%3E%0A%20%20%20%20%3Ctspan%20fill%3D%22rgba%2817%2C24%2C39%2C0.08%29%22%3ECapabilio%20%3C/tspan%3E%0A%20%20%20%20%3Ctspan%20fill%3D%22rgba%28249%2C115%2C22%2C0.14%29%22%3EAI%3C/tspan%3E%0A%20%20%3C/text%3E%0A%20%20%3C%21--%20Row%202%20%28offset%29%20--%3E%0A%20%20%3Ctext%20x%3D%22300%22%20y%3D%22180%22%20font-family%3D%22ui-serif%2C%20Georgia%2C%20Cambria%2C%20%27Times%20New%20Roman%27%2C%20Times%2C%20serif%22%20font-weight%3D%22800%22%20font-size%3D%2226%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%22-0.02em%22%3E%0A%20%20%20%20%3Ctspan%20fill%3D%22rgba%2817%2C24%2C39%2C0.08%29%22%3ECapabilio%20%3C/tspan%3E%0A%20%20%20%20%3Ctspan%20fill%3D%22rgba%28249%2C115%2C22%2C0.14%29%22%3EAI%3C/tspan%3E%0A%20%20%3C/text%3E%0A%3C/svg%3E") repeat`,display:"flex",alignItems:"center",justifyContent:"center",opacity:vis?1:0,transition:"opacity 0.3s",padding:16, fontFamily: '"Inter", "DM Sans", sans-serif' }}>
-      <div style={{ width:"100%",maxWidth:760,background:"#FFFFFF",border:"1px solid #E5E7EB",borderRadius:24,height:"90vh",maxHeight:800,display:"flex",flexDirection:"column",boxShadow:"0 20px 40px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.03)",transform:vis?"translateY(0) scale(1)":"translateY(20px) scale(0.97)",transition:"all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",overflow:"hidden" }}>
+      <div style={{ width:"100%",maxWidth:760,background:"#FFFFFF",border:"1px solid #E5E7EB",borderRadius:24,height:"90vh",maxHeight:800,display:"flex",flexDirection:"column",boxShadow:"none",transform:vis?"translateY(0) scale(1)":"translateY(20px) scale(0.97)",transition:"all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",overflow:"hidden" }}>
         
         {/* Header - Flat, Minimalist */}
         <div style={{ padding:"32px 32px 24px",flexShrink:0, borderBottom:"1px solid #F3F4F6", display:"flex", flexDirection:"column", alignItems:"center", textAlign:"center" }}>
@@ -904,7 +904,7 @@ function ResultModal({ result, keyword, questions, onGoToDashboard, savingResult
         {/* Flat Tabs */}
           <div style={{ display:"flex",padding:"16px 32px",gap:12,justifyContent:"center",borderBottom:"1px solid #F3F4F6",background:"#F9FAFB",overflowX:"auto" }}>
           {TABS.map(t => (
-            <button key={t.id} onClick={()=>setTab(t.id)} style={{ padding:"8px 16px",borderRadius:999,fontSize:14,fontWeight:600,background:tab===t.id?"#FFFFFF":"transparent",color:tab===t.id?"#111827":"#6B7280",border:tab===t.id?"1px solid #E5E7EB":"1px solid transparent",boxShadow:tab===t.id?"0 1px 2px rgba(0,0,0,0.05)":"none",cursor:"pointer",transition:"all 0.2s",whiteSpace:"nowrap" }}>
+            <button key={t.id} onClick={()=>setTab(t.id)} style={{ padding:"8px 16px",borderRadius:999,fontSize:14,fontWeight:600,background:tab===t.id?"#FFFFFF":"transparent",color:tab===t.id?"#111827":"#6B7280",border:tab===t.id?"1px solid #E5E7EB":"1px solid transparent",boxShadow:"none",cursor:"pointer",transition:"all 0.2s",whiteSpace:"nowrap" }}>
               {t.label}
             </button>
           ))}
@@ -1093,7 +1093,7 @@ function ProfessionalResultModal({ auraResult, onGoToDashboard, savingResult }) 
   )
   return (
     <div style={{ position:"fixed",inset:0,zIndex:9999,background:"rgba(255,255,255,0.97)",backdropFilter:"blur(20px)",display:"flex",alignItems:"center",justifyContent:"center",opacity:vis?1:0,transition:"opacity 0.35s",padding:16 }}>
-      <div style={{ width:"100%",maxWidth:620,background:T.surface,border:`1px solid ${T.green}25`,borderRadius:24,height:"90vh",display:"flex",flexDirection:"column",boxShadow:`0 40px 80px rgba(0,0,0,0.7)`,transform:vis?"scale(1)":"scale(0.94)",transition:"transform 0.45s cubic-bezier(0.34,1.56,0.64,1)",overflow:"hidden" }}>
+      <div style={{ width:"100%",maxWidth:620,background:T.surface,border:`1px solid ${T.green}25`,borderRadius:24,height:"90vh",display:"flex",flexDirection:"column",boxShadow:"none",transform:vis?"scale(1)":"scale(0.94)",transition:"transform 0.45s cubic-bezier(0.34,1.56,0.64,1)",overflow:"hidden" }}>
         <div style={{ padding:"20px 24px 16px",background:T.raised,borderBottom:`1px solid ${T.green}12`,flexShrink:0 }}>
           <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16 }}>
             <span style={{ fontFamily:T.display,fontSize:15,color:T.primary,letterSpacing:1 }}>CAPABILIO</span>
