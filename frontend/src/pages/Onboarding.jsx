@@ -2322,7 +2322,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
 
   // Anti-screenshot / Focus detection
   useEffect(() => {
-    if (step !== "quiz") return;
+    if (step !== "quiz" || showResultModal) return;
     
     const handleFocus = () => setIsFocused(true)
     const handleBlur = () => setIsFocused(false)
@@ -3439,10 +3439,10 @@ export default function Onboarding({ user, onComplete, onBack }) {
       >
         <style>{`
           @media print {
-            body { display: none !important; }
-          }
+              ${!showResultModal ? 'body { display: none !important; }' : ''}
+            }
         `}</style>
-        {!isFocused && (
+        {!isFocused && !showResultModal && (
           <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "#000000", zIndex: 99999, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#FFFFFF", fontFamily: '"Inter", "DM Sans", sans-serif' }}>
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 24 }}>
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
