@@ -2142,9 +2142,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
     return () => clearInterval(timerRef.current)
   }, [qIdx, step, selected, timedOut])
 
-  useEffect(() => {
-    if (timedOut && step === "quiz") setTimeout(() => advanceQ(null), 900)
-  }, [timedOut, step])
+
 
   // ── Transition helper ───────────────────────────────────────────
   const transition = (toStep) => {
@@ -2352,9 +2350,9 @@ export default function Onboarding({ user, onComplete, onBack }) {
     } catch (err) { setApiError(`${err.message}. Make sure your server is running.`); transition("search") }
   }
 
-  const advanceQ = (sel) => {
+  const advanceQ = () => {
     clearInterval(timerRef.current)
-    const na = [...answers, sel]; setAnswers(na); setSelected(null); setTimedOut(false)
+    const na = [...answers, selected]; setAnswers(na); setSelected(null); setTimedOut(false)
     if (qIdx+1 < questions.length) {
       setAnimIn(false); setTimeout(()=>{ setQIdx(qIdx+1); setAnimIn(true) },250)
     } else { generateResult(na) }
@@ -2363,7 +2361,6 @@ export default function Onboarding({ user, onComplete, onBack }) {
   const handleAnswer = (i) => {
     if (selected!==null||timedOut) return
     clearInterval(timerRef.current); setSelected(i)
-    setTimeout(()=>advanceQ(i),1400)
   }
 
   const generateResult = async (finalAnswers) => {
@@ -3322,6 +3319,12 @@ export default function Onboarding({ user, onComplete, onBack }) {
                   )
                 })}
               </div>
+              
+              {(selected !== null || timedOut) && (
+                <button onClick={advanceQ} style={{ marginTop: 24, width: "100%", padding: "16px 20px", background: pt.accent, color: "#FFFFFF", borderRadius: 12, fontWeight: 700, fontSize: 16, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: '"Inter", "DM Sans", sans-serif', animation: "ob-fadeUp 0.3s ease both" }}>
+                  {qIdx + 1 < questions.length ? "Next Question ➔" : "See Results ➔"}
+                </button>
+              )}
             </div>
           </div>
         </div>
