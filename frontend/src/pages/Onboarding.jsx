@@ -937,7 +937,7 @@ function ResultModal({ result, keyword, questions, onGoToDashboard, savingResult
           {tab==="skills" && (
             <div style={{ display:"flex", flexDirection:"column", gap:32 }}>
               <div style={{ display:"flex", justifyContent:"center" }}>
-                <RadarChart data={radarData} size={280} />
+                <RadarChart data={radarData} size={360} />
               </div>
               <div style={{ display:"grid", gridTemplateColumns: "1fr 1fr", gap: "20px 24px" }}>
                 {radarData.map((d,i) => {
