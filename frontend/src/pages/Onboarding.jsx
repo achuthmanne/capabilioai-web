@@ -3201,7 +3201,13 @@ export default function Onboarding({ user, onComplete, onBack }) {
     if (!q) return null
     const pt = getPathTheme("student")
     return (
-      <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100vh", background: "#F9FAFB", fontFamily: '"Inter", "DM Sans", sans-serif', padding: "40px 24px", overflow: "hidden" }}>
+      <div 
+        onCopy={(e) => e.preventDefault()}
+        onCut={(e) => e.preventDefault()}
+        onPaste={(e) => e.preventDefault()}
+        onContextMenu={(e) => e.preventDefault()}
+        style={{ userSelect: "none", display: "flex", flexDirection: "column", width: "100%", height: "100vh", background: "#F9FAFB", fontFamily: '"Inter", "DM Sans", sans-serif', padding: "40px 24px", overflow: "hidden" }}
+      >
         <style>{ONBOARDING_STYLES}</style>
         
         <div style={{ width: "100%", maxWidth: 840, margin: "0 auto" }}>
