@@ -1744,69 +1744,63 @@ function App() {
   ]
 
   return (
-    <div style={{ background: "var(--cap-bg-page)", minHeight: "100vh" }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Mono:wght@400;500;600&display=swap');
-        .cap-nav-item { transition: color 0.12s, background 0.12s; }
-        .cap-nav-item:hover { background: rgba(0,0,0,0.04) !important; }
-      `}</style>
+          <div style={{ background: "#FAFAFA", minHeight: "100vh" }}>
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+          .cap-nav-item { transition: all 0.15s ease; }
+          .cap-nav-item:hover { background: #F4F5F7 !important; color: #14161A !important; }
+        `}</style>
 
-      <header style={{
-        position: "sticky", top: 0, zIndex: 90,
-        background: "#fff",
-        borderBottom: "1px solid #E8E3DA",
-        height: 56,
-        display: "flex", alignItems: "center",
-        justifyContent: "space-between",
-        padding: "0 24px",
-        boxShadow: "0 1px 8px rgba(0,0,0,0.05)",
-        gap: 12,
-      }}>
-        <img src="/capabilio-logo-dark.png" alt="Capabilio AI" style={{ height: 22, width: "auto", display: "block", flexShrink: 0 }} />
+        <header style={{
+          position: "sticky", top: 0, zIndex: 90,
+          background: "#FFFFFF",
+          borderBottom: "1px solid #E4E6E9",
+          height: 64,
+          display: "flex", alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0 24px",
+          gap: 24,
+        }}>
+          <img src="/capabilio-logo-dark.png" alt="Capabilio AI" style={{ height: 20, width: "auto", display: "block", flexShrink: 0 }} />
 
-        {(navPath === "student" || navPath === "authority" || navPath === "professional") && (
-          <nav style={{ display: "flex", alignItems: "center", gap: 2, flex: 1, justifyContent: "flex-start", marginLeft: 8, overflowX: "auto" }}>
-            {({ student: STUDENT_HEADER_NAV, authority: AUTHORITY_HEADER_NAV, professional: PROFESSIONAL_HEADER_NAV }[navPath]).map(item => {
-              const active = activeNavItem === item.id || (currentPage === item.page && (!item.tab || activeTab === item.tab))
-              return (
-                <button key={item.id} className="cap-nav-item"
-                  onClick={() => handleBottomNavTap(item.id, item.page, item.tab)}
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 5,
-                    padding: "6px 12px", borderRadius: 8, border: "none",
-                    background: active ? `${navAccent}12` : "transparent",
-                    color: active ? navAccent : "#6B6560",
-                    fontSize: 13, fontWeight: active ? 700 : 500,
-                    cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
-                    fontFamily: "'DM Sans', sans-serif",
-                    borderBottom: active ? `2px solid ${navAccent}` : "2px solid transparent",
-                  }}>
-                  <span style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 700, opacity: active ? 1 : 0.6 }}>{item.prefix}</span>
-                  {item.label}
-                </button>
-              )
-            })}
-          </nav>
-        )}
-
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-          {/* 2026-08-03: Student/Job Seeker split — light framing chip only,
-              does not gate any page/route (that's handled elsewhere: College
-              tab visibility, self-link, Arena prompt tone). */}
-          {navPath === "student" && userData?.studentStage === "job_seeker" && (
-            <div style={{ padding: "4px 10px", background: "#FFF1E8", border: `1px solid ${navAccent}30`, borderRadius: 100, fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 700, color: navAccent, letterSpacing: "0.02em" }}>
-              🎯 Job Seeker
-            </div>
+          {(navPath === "student" || navPath === "authority" || navPath === "professional") && (
+            <nav style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-start", overflowX: "auto" }}>
+              {({ student: STUDENT_HEADER_NAV, authority: AUTHORITY_HEADER_NAV, professional: PROFESSIONAL_HEADER_NAV }[navPath]).map(item => {
+                const active = activeNavItem === item.id || (currentPage === item.page && (!item.tab || activeTab === item.tab))
+                return (
+                  <button key={item.id} className="cap-nav-item"
+                    onClick={() => handleBottomNavTap(item.id, item.page, item.tab)}
+                    style={{
+                      display: "inline-flex", alignItems: "center",
+                      padding: "8px 14px", borderRadius: 999, border: "none",
+                      background: active ? "#F4F5F7" : "transparent",
+                      color: active ? "#14161A" : "#8A8F98",
+                      fontSize: 14, fontWeight: active ? 700 : 600,
+                      cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
+                      fontFamily: '"Inter", sans-serif',
+                    }}>
+                    {item.label}
+                  </button>
+                )
+              })}
+            </nav>
           )}
-          {!isAuthority && navPath === "professional" && proNavElo ? (
-            <div style={{ padding: "4px 10px", background: `${navAccent}10`, border: `1px solid ${navAccent}30`, borderRadius: 100, fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 700, color: navAccent }}>
-              ELO {(proNavElo.overall_elo ?? proNavElo.elo).toLocaleString()}
-            </div>
-          ) : !isAuthority && navPath !== "professional" && userData?.eloRating ? (
-            <div style={{ padding: "4px 10px", background: navPath === "student" ? "#FFF1E8" : `${navAccent}10`, border: `1px solid ${navAccent}30`, borderRadius: 100, fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 700, color: navAccent }}>
-              ELO {userData.eloRating.toLocaleString()}
-            </div>
-          ) : null}
+
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+            {navPath === "student" && userData?.studentStage === "job_seeker" && (
+              <div style={{ padding: "6px 12px", background: "#FFFFFF", border: `1px solid #E4E6E9`, borderRadius: 999, fontFamily: '"Inter", sans-serif', fontSize: 13, fontWeight: 700, color: "#14161A" }}>
+                Job Seeker
+              </div>
+            )}
+            {!isAuthority && navPath === "professional" && proNavElo ? (
+              <div style={{ padding: "6px 12px", background: "#FFFFFF", border: `1px solid #E4E6E9`, borderRadius: 999, fontFamily: '"Inter", sans-serif', fontSize: 13, fontWeight: 700, color: "#14161A" }}>
+                ELO {(proNavElo.overall_elo ?? proNavElo.elo).toLocaleString()}
+              </div>
+            ) : !isAuthority && navPath !== "professional" && userData?.eloRating ? (
+              <div style={{ padding: "6px 12px", background: "#FFFFFF", border: `1px solid #E4E6E9`, borderRadius: 999, fontFamily: '"Inter", sans-serif', fontSize: 13, fontWeight: 700, color: "#14161A" }}>
+                ELO {userData.eloRating.toLocaleString()}
+              </div>
+            ) : null}
 
           <div ref={notifMenuRef} style={{ position: "relative" }}>
             <button
@@ -1875,26 +1869,26 @@ function App() {
 
           <div ref={profileMenuRef} style={{ position: "relative" }}>
             <button
-              onClick={() => setProfileMenuOpen(o => !o)}
-              style={{
-                display: "flex", alignItems: "center", gap: 6,
-                padding: "4px 10px 4px 4px",
-                background: profileMenuOpen ? `${navAccent}10` : "#fff",
-                border: `1px solid ${profileMenuOpen ? navAccent + "50" : "#E8E3DA"}`,
-                borderRadius: 99, cursor: "pointer",
-                transition: "all 0.15s",
-              }}
-              onMouseEnter={e => { if (!profileMenuOpen) { e.currentTarget.style.borderColor = navAccent + "50"; e.currentTarget.style.background = `${navAccent}08` } }}
-              onMouseLeave={e => { if (!profileMenuOpen) { e.currentTarget.style.borderColor = "#E8E3DA"; e.currentTarget.style.background = "#fff" } }}
-            >
-              <div style={{ width: 26, height: 26, borderRadius: "50%", overflow: "hidden", border: `2px solid ${navAccent}44`, background: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                {avatarUrl
-                  ? <img src={avatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  : <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 700, color: navAccent }}>{initials}</span>
-                }
-              </div>
-              <span style={{ fontSize: 13, fontWeight: 600, color: "#3D3935", fontFamily: "'DM Sans', sans-serif", maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</span>
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0, transition: "transform 0.2s", transform: profileMenuOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
+                onClick={() => setProfileMenuOpen(o => !o)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "4px 12px 4px 4px",
+                  background: profileMenuOpen ? "#F4F5F7" : "#fff",
+                  border: `1px solid ${profileMenuOpen ? "#D1D5DB" : "#E4E6E9"}`,
+                  borderRadius: 99, cursor: "pointer",
+                  transition: "all 0.15s",
+                }}
+                onMouseEnter={e => { if (!profileMenuOpen) { e.currentTarget.style.borderColor = "#D1D5DB"; e.currentTarget.style.background = "#F9FAFB" } }}
+                onMouseLeave={e => { if (!profileMenuOpen) { e.currentTarget.style.borderColor = "#E4E6E9"; e.currentTarget.style.background = "#fff" } }}
+              >
+                <div style={{ width: 28, height: 28, borderRadius: "50%", overflow: "hidden", border: `1px solid #E4E6E9`, background: "#F4F5F7", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  {avatarUrl
+                    ? <img src={avatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    : <span style={{ fontFamily: '"Inter", sans-serif', fontSize: 12, fontWeight: 700, color: "#14161A" }}>{initials}</span>
+                  }
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#14161A", fontFamily: '"Inter", sans-serif', maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</span>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0, transition: "transform 0.2s", transform: profileMenuOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
                 <path d="M2 4l4 4 4-4" stroke="#A8A29E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
