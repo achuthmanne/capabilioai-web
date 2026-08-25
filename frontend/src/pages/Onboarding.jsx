@@ -2967,10 +2967,17 @@ export default function Onboarding({ user, onComplete, onBack }) {
     return (
       <div style={{ minHeight:"100vh", background:T.pageBg, color:T.text, fontFamily:T.body }}>
         <style>{ONBOARDING_STYLES}</style>
-        <nav style={{ position:"sticky", top:0, zIndex:50, background:"rgba(255,255,255,0.88)", backdropFilter:"blur(12px)", borderBottom:`1px solid ${T.border}`, height:72, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 32px" }}>
-          <div style={{ fontFamily:T.display, fontSize:22, fontWeight:800, color:T.text, letterSpacing:"-0.03em" }}>Capabilio</div>
-          <div style={{ fontSize:12, color:T.hint, fontFamily:T.mono }}>Choose your plan</div>
-        </nav>
+        {/* Top Header */}
+          <div style={{ padding: "32px 40px" }}>
+            <span style={{ fontSize: 24, fontFamily: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif', fontWeight: 800, letterSpacing: "-0.02em", color: "#14161A" }}>Capabilio <span style={{ color: getPathTheme(path || "student").accent }}>AI</span></span>
+          </div>
+
+          {/* Step Indicator */}
+          <div style={{ position: "fixed", top: 32, right: 32, zIndex: 50 }}>
+            <div style={{ display: "inline-block", padding: "6px 16px", borderRadius: 999, fontSize: 12, fontWeight: 700, color: "#14161A", background: "#FFFFFF", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", border: "1px solid #E5E7EB", letterSpacing: "0.03em" }}>
+              Step 4 of 4
+            </div>
+          </div>
 
         {/* College discount announcement banner */}
         {inviteCtx && path === "student" && (
