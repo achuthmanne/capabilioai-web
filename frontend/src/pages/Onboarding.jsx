@@ -1892,6 +1892,45 @@ const LoadingCountdown = ({ path }) => {
   )
 }
 
+
+const EvaluatingScreen = ({ path, message }) => {
+  const pt = getPathTheme(path || "student")
+
+  return (
+      <div style={{ display: "flex", flexDirection: "column", width: "100%", minHeight: "100vh", background: "#FFFFFF", fontFamily: '"Inter", "DM Sans", sans-serif' }}>
+        <style>{ONBOARDING_STYLES}</style>
+        
+        {/* Top Header */}
+        <div style={{ padding: "32px 40px" }}>
+          <span style={{ fontSize: 24, fontFamily: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif', fontWeight: 800, letterSpacing: "-0.02em", color: "#14161A" }}>Capabilio <span style={{ color: pt.accent }}>AI</span></span>
+        </div>
+
+        {/* Center Content */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px 120px" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", maxWidth: 640, width: "100%", textAlign: "center" }}>
+            
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 64, height: 64, borderRadius: "50%", background: `${pt.accent}15`, marginBottom: 32 }}>
+               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={pt.accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: "spin 1s linear infinite" }}>
+                 <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+                 <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+               </svg>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, animation: "ob-fadeUp 0.6s ease both" }}>
+               <h2 style={{ fontSize: 28, fontWeight: 800, color: "#111827", letterSpacing: "-0.03em", margin: 0 }}>
+                 Evaluating your answers...
+               </h2>
+               <p style={{ fontSize: 16, color: "#6B7280", margin: 0, fontWeight: 500 }}>
+                 {message || "Capabilio AI is analyzing your performance and calibrating your ELO rating."}
+               </p>
+            </div>
+
+          </div>
+        </div>
+      </div>
+  )
+}
+
 export default function Onboarding({ user, onComplete, onBack }) {
   // Keep a stable ref to onComplete so the init useEffect doesn't re-run every
   // time App.jsx re-renders (which creates a new arrow-function reference).
@@ -2409,7 +2448,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
   }
 
   const generateResult = async (finalAnswers) => {
-    transition("loading"); setLoadingMsg("Calculating your skill breakdown...")
+    transition("evaluating"); setLoadingMsg("Calculating your skill breakdown...")
     const ci = (c) => typeof c==="number"?c:({ A:0,B:1,C:2,D:3,a:0,b:1,c:2,d:3 })[c]??0
     const score = finalAnswers.filter((a,i)=>a===ci(questions[i]?.correct)).length
     const total = questions.length
@@ -3225,6 +3264,10 @@ export default function Onboarding({ user, onComplete, onBack }) {
 
   if (step === "loading") {
     return <LoadingCountdown path={path} />
+  }
+
+  if (step === "evaluating") {
+    return <EvaluatingScreen path={path} message={loadingMsg} />
   }
 
   // ══ SCREEN: QUIZ ═══════════════════════════════════════════════════
