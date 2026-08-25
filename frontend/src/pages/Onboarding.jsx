@@ -883,9 +883,8 @@ function ResultModal({ result, keyword, questions, onGoToDashboard, savingResult
         
         {/* Header - Flat, Minimalist */}
         <div style={{ padding:"32px 32px 24px",flexShrink:0, borderBottom:"1px solid #F3F4F6", display:"flex", flexDirection:"column", alignItems:"center", textAlign:"center" }}>
-          <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:24 }}>
-            <div style={{ width:8,height:8,borderRadius:"50%",background:"#10B981",boxShadow:"0 0 0 4px rgba(16,185,129,0.15)" }} />
-            <span style={{ fontSize:12,color:"#6B7280",fontWeight:700,letterSpacing:"0.05em",textTransform:"uppercase" }}>Assessment Complete</span>
+          <div style={{ display:"inline-flex",alignItems:"center",justifyContent:"center",padding:"4px 12px",background:"#F3F4F6",border:"1px solid #E5E7EB",borderRadius:999,marginBottom:28 }}>
+            <span style={{ fontSize:13,color:"#4B5563",fontWeight:600,letterSpacing:"-0.01em" }}>Assessment Complete</span>
           </div>
           
           <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:64, width:"100%" }}>
