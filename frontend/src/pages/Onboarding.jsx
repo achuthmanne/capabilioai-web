@@ -2018,6 +2018,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
   const [saveError, setSaveError] = useState(null)
   const [showResultModal, setShowResultModal] = useState(false)
   const [showRecoPopup, setShowRecoPopup] = useState(false)
+  const [isFocused, setIsFocused] = useState(true)
   const timerRef = useRef(null)
 
   // Professional
@@ -2125,6 +2126,37 @@ export default function Onboarding({ user, onComplete, onBack }) {
     const t = setInterval(() => setCarouselFlowStep(s => (s + 1) % 5), 2000)
     return () => clearInterval(t)
   }, [])
+
+  // Anti-screenshot / Focus detection
+  useEffect(() => {
+    if (step !== "quiz") return;
+    
+    const handleFocus = () => setIsFocused(true)
+    const handleBlur = () => setIsFocused(false)
+    const handleVis = () => setIsFocused(!document.hidden)
+    const handleKey = (e) => {
+      if (e.key === "PrintScreen" || e.code === "PrintScreen") {
+        try { navigator.clipboard.writeText("") } catch (err) {}
+        alert("Security Alert: Screenshots are not allowed during the assessment.")
+        e.preventDefault()
+      }
+    }
+
+    window.addEventListener("focus", handleFocus)
+    window.addEventListener("blur", handleBlur)
+    document.addEventListener("visibilitychange", handleVis)
+    document.addEventListener("keyup", handleKey)
+    
+    // Check initial state in case they are already blurred
+    setIsFocused(document.hasFocus())
+
+    return () => {
+      window.removeEventListener("focus", handleFocus)
+      window.removeEventListener("blur", handleBlur)
+      document.removeEventListener("visibilitychange", handleVis)
+      document.removeEventListener("keyup", handleKey)
+    }
+  }, [step])
 
   // Quiz timer
   const TIMER = 45
@@ -3208,6 +3240,26 @@ export default function Onboarding({ user, onComplete, onBack }) {
         onContextMenu={(e) => e.preventDefault()}
         style={{ userSelect: "none", display: "flex", flexDirection: "column", width: "100%", height: "100vh", background: "#F9FAFB", fontFamily: '"Inter", "DM Sans", sans-serif', padding: "40px 24px", overflow: "hidden" }}
       >
+        <style>{`
+          @media print {
+            body { display: none !important; }
+          }
+        `}</style>
+        {!isFocused && (
+          <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "#000000", zIndex: 99999, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#FFFFFF", fontFamily: '"Inter", "DM Sans", sans-serif' }}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 24 }}>
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 12, color: "#F9FAFB" }}>Security Alert</h2>
+            <p style={{ fontSize: 16, color: "#9CA3AF", textAlign: "center", maxWidth: 400, lineHeight: 1.6 }}>
+              Window focus lost. The assessment has been hidden to prevent screenshots or unauthorized activity.
+            </p>
+            <p style={{ fontSize: 14, color: "#6B7280", marginTop: 32, fontWeight: 600 }}>
+              Click anywhere to return to the exam.
+            </p>
+          </div>
+        )}
         <style>{ONBOARDING_STYLES}</style>
         
         <div style={{ width: "100%", maxWidth: 840, margin: "0 auto" }}>
