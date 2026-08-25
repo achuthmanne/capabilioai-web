@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { arenaDb } from "../lib/db"
 import { getRoleConfig } from "../config/roleConfig"
-import { Play, ArrowRight, ChevronRight, Activity, Target, ShieldCheck, Map } from "lucide-react"
+import { Play, Flame, Target, LineChart, BookOpen, Briefcase, ChevronRight } from "lucide-react"
 
 export default function StudentHome({ user, userData, onNavigate }) {
   const [submissions, setSubmissions] = useState([])
@@ -100,7 +100,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
         }
       `}</style>
 
-      <div style={{ maxWidth: 1140, margin: "0 auto", padding: "48px 24px" }}>
+      <div style={{ maxWidth: 1440, margin: "0 auto", padding: "48px 40px" }}>
         
         {/* Header Section */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 40 }}>
@@ -120,7 +120,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
             <div style={{ width: 1, background: "#E5E7EB", margin: "0 8px" }} />
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: "#8A8F98" }}>Active Streak</div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: "#14161A", letterSpacing: "-0.02em" }}>{streak} <span style={{ fontSize: 16 }}>🔥</span></div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: "#14161A", letterSpacing: "-0.02em" }}>{streak} <Flame size={20} color="#FF5701" style={{ marginLeft: 4, display: "inline-block", verticalAlign: "middle" }} strokeWidth={2.5} /></div>
             </div>
           </div>
         </div>
