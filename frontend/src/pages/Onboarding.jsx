@@ -1923,11 +1923,79 @@ const EvaluatingScreen = ({ path, message }) => {
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px 120px" }}>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", maxWidth: 640, width: "100%", textAlign: "center" }}>
             
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 64, height: 64, borderRadius: "50%", background: `${pt.accent}15`, marginBottom: 32 }}>
-               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={pt.accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: "spin 1s linear infinite" }}>
-                 <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
-                 <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
-               </svg>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 80, height: 80, borderRadius: "50%", background: `${pt.accent}10`, marginBottom: 32 }}>
+               <style>{`
+                 .hourglass {
+                   width: 32px;
+                   height: 54px;
+                   position: relative;
+                   animation: ob-hourglass-spin 2.5s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+                 }
+                 .glass-top, .glass-bottom {
+                   position: absolute;
+                   width: 32px;
+                   height: 26px;
+                   background: ${pt.accent}20;
+                   border-radius: 4px;
+                   overflow: hidden;
+                 }
+                 .glass-top {
+                   top: 0;
+                   clip-path: polygon(0 0, 100% 0, 55% 100%, 45% 100%);
+                 }
+                 .glass-bottom {
+                   bottom: 0;
+                   clip-path: polygon(45% 0, 55% 0, 100% 100%, 0 100%);
+                 }
+                 .sand-top, .sand-bottom, .sand-stream {
+                   background: ${pt.accent};
+                   position: absolute;
+                 }
+                 .sand-top {
+                   bottom: 0;
+                   left: 0;
+                   width: 100%;
+                   animation: ob-sand-top 2.5s ease-in infinite;
+                 }
+                 .sand-bottom {
+                   bottom: 0;
+                   left: 0;
+                   width: 100%;
+                   animation: ob-sand-bottom 2.5s ease-out infinite;
+                 }
+                 .sand-stream {
+                   width: 2px;
+                   left: 15px;
+                   animation: ob-sand-stream 2.5s infinite;
+                 }
+                 @keyframes ob-hourglass-spin {
+                   0%, 15% { transform: rotate(0); }
+                   85% { transform: rotate(0); }
+                   100% { transform: rotate(180deg); }
+                 }
+                 @keyframes ob-sand-top {
+                   15% { height: 100%; }
+                   85% { height: 0%; }
+                   100% { height: 0%; }
+                 }
+                 @keyframes ob-sand-bottom {
+                   15% { height: 0%; }
+                   85% { height: 100%; }
+                   100% { height: 100%; }
+                 }
+                 @keyframes ob-sand-stream {
+                   0%, 15% { height: 0; opacity: 1; top: 26px; }
+                   25% { height: 28px; opacity: 1; top: 26px; }
+                   80% { height: 28px; opacity: 1; top: 26px; }
+                   85% { height: 0; opacity: 0; top: 54px; }
+                   100% { opacity: 0; }
+                 }
+               `}</style>
+               <div className="hourglass">
+                 <div className="glass-top"><div className="sand-top"></div></div>
+                 <div className="glass-bottom"><div className="sand-bottom"></div></div>
+                 <div className="sand-stream"></div>
+               </div>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 12, animation: "ob-fadeUp 0.6s ease both" }}>
