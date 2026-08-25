@@ -1755,13 +1755,15 @@ function App() {
           position: "sticky", top: 0, zIndex: 90,
           background: "#FFFFFF",
           borderBottom: "1px solid #E4E6E9",
-          height: 64,
+          height: 76,
           display: "flex", alignItems: "center",
           justifyContent: "space-between",
-          padding: "0 24px",
-          gap: 24,
+          padding: "0 28px",
+          gap: 32,
         }}>
-          <img src="/capabilio-logo-dark.png" alt="Capabilio AI" style={{ height: 20, width: "auto", display: "block", flexShrink: 0 }} />
+          <div style={{ display: "flex", alignItems: "center", userSelect: "none", cursor: "pointer" }} onClick={() => { const home = navPath === "student" ? "studentHome" : (HOME_PAGE[navPath] || "studentHome"); setCurrentPage(home); setActiveNavItem("home") }}>
+            <span style={{ fontSize: 26, fontFamily: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif', fontWeight: 800, letterSpacing: "-0.02em", color: "#14161A" }}>Capabilio <span style={{ color: navAccent }}>AI</span></span>
+          </div>
 
           {(navPath === "student" || navPath === "authority" || navPath === "professional") && (
             <nav style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-start", overflowX: "auto" }}>
