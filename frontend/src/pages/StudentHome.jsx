@@ -109,7 +109,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
               Student Dashboard
             </div>
             <h1 style={{ fontSize: 36, fontWeight: 900, color: "#14161A", letterSpacing: "-0.03em", margin: 0 }}>
-              Welcome back, {firstName}
+              Welcome back, <span style={{ background: "linear-gradient(90deg, #FF5701 0%, #8B2C00 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", display: "inline-block" }}>{firstName}</span>
             </h1>
           </div>
           <div style={{ display: "flex", gap: 16 }}>
