@@ -1825,9 +1825,9 @@ function CustomBranchPicker({ value, onChange, disabled }) {
 
 const LoadingCountdown = ({ loadingMsg, path }) => {
   const pt = getPathTheme(path || "student")
-  const [stage, setStage] = React.useState(0)
+  const [stage, setStage] = useState(0)
   
-  React.useEffect(() => {
+  useEffect(() => {
     const timer = setInterval(() => {
       setStage(s => (s < 3 ? s + 1 : 3))
     }, 2000)
