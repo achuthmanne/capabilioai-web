@@ -17,7 +17,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
     return unsub
   }, [user?.id, user?.uid])
 
-  const name = userData?.name || user?.displayName || "Student"
+  const name = userData?.displayName || userData?.name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Student"
   const firstName = name.split(" ")[0]
   const elo = userData?.eloRating || 400
   const streak = userData?.streak || 0
