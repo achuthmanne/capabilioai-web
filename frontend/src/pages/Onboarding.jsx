@@ -2363,7 +2363,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
   const handleAnswer = (i) => {
     if (selected!==null||timedOut) return
     clearInterval(timerRef.current); setSelected(i)
-    setTimeout(()=>advanceQ(i),900)
+    setTimeout(()=>advanceQ(i),1400)
   }
 
   const generateResult = async (finalAnswers) => {
