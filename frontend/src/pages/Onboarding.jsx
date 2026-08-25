@@ -1649,54 +1649,83 @@ function RoleSearchPicker({ value, onChange, onRoleSelect, selectedRole }) {
         const topics = (selectedRole.interviewFocus || []).slice(0, 3).join(", ")
         const companies = ROLE_COMPANIES[selectedRole.id] || []
         
-        const icons = {
-          arena: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>,
-          skills: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>,
-          interview: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>,
-          company: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M12 14h.01"></path><path d="M16 10h.01"></path><path d="M16 14h.01"></path><path d="M8 10h.01"></path><path d="M8 14h.01"></path></svg>
-        }
-
-        return (
-          <div style={{
-            marginTop: 12,
-            background: "#F9FAFB",
-            border: "1px solid #E5E7EB",
-            borderRadius: 12, padding: "16px",
-          }}>
-            {/* Header row */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: 6, background: "#F3F4F6", color: "#4B5563" }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
-              </div>
-              <span style={{ fontWeight: 600, fontSize: 15, color: "#111827" }}>{selectedRole.label}</span>
-              <span style={{ fontSize: 11, fontWeight: 600, background: b.bg, color: b.color, padding: "2px 8px", borderRadius: 100, marginLeft: 4 }}>
-                {b.label}
-              </span>
-              <span style={{ marginLeft: "auto", fontSize: 12, color: "#6B7280", fontWeight: 500 }}>Platform will be personalised</span>
-            </div>
-            
-            {/* 4-column preview grid */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-              {[
-                { icon: icons.arena, label: "Arena", value: workbench },
-                { icon: icons.skills, label: "Skills tracked", value: `${skillCount} skills` },
-                { icon: icons.interview, label: "AI Interview", value: topics || "Role-specific questions" },
-                { icon: icons.company, label: "Top hirers", value: companies.join(", ") || "Industry leaders" },
-              ].map((item, i) => (
-                <div key={i} style={{
-                  background: "#FFFFFF", borderRadius: 8,
-                  border: "1px solid #E5E7EB", padding: "12px",
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, color: "#6B7280" }}>
-                    {item.icon} 
-                    <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.02em", textTransform: "uppercase" }}>{item.label}</span>
+                  return (
+            <div style={{
+              marginTop: 16,
+              background: "#FFFFFF",
+              border: "1px solid #E5E7EB",
+              borderRadius: 16,
+              padding: "24px",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.03)"
+            }}>
+              {/* Header */}
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, borderRadius: 8, background: "#F3F4F6", color: "#111827" }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+                    </div>
+                    <span style={{ fontWeight: 800, fontSize: 18, color: "#111827", letterSpacing: "-0.01em" }}>{selectedRole.label}</span>
                   </div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "#111827", lineHeight: 1.4 }}>{item.value}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, paddingLeft: 42 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, background: b.bg, color: b.color, padding: "3px 10px", borderRadius: 999 }}>
+                      {b.label}
+                    </span>
+                    <span style={{ fontSize: 13, color: "#6B7280", fontWeight: 500 }}>Personalised Platform Experience</span>
+                  </div>
                 </div>
-              ))}
+              </div>
+              
+              {/* 2x2 Grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
+                
+                {/* Arena */}
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "16px", background: "#F9FAFB", borderRadius: 12, border: "1px solid #F3F4F6" }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(249,115,22,0.1)", color: "#F97316", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#111827", marginBottom: 4 }}>Arena Workbench</div>
+                    <div style={{ fontSize: 13, color: "#4B5563", lineHeight: 1.5, fontWeight: 500 }}>{workbench}</div>
+                  </div>
+                </div>
+
+                {/* Skills */}
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "16px", background: "#F9FAFB", borderRadius: 12, border: "1px solid #F3F4F6" }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(16,185,129,0.1)", color: "#10B981", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#111827", marginBottom: 4 }}>Skills Tracked</div>
+                    <div style={{ fontSize: 13, color: "#4B5563", lineHeight: 1.5, fontWeight: 500 }}>{skillCount} industry-standard skills</div>
+                  </div>
+                </div>
+
+                {/* AI Interview */}
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "16px", background: "#F9FAFB", borderRadius: 12, border: "1px solid #F3F4F6" }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(139,92,246,0.1)", color: "#8B5CF6", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#111827", marginBottom: 4 }}>AI Interview Focus</div>
+                    <div style={{ fontSize: 13, color: "#4B5563", lineHeight: 1.5, fontWeight: 500 }}>{topics || "Role-specific scenario questions"}</div>
+                  </div>
+                </div>
+
+                {/* Top Hirers */}
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "16px", background: "#F9FAFB", borderRadius: 12, border: "1px solid #F3F4F6" }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(59,130,246,0.1)", color: "#3B82F6", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#111827", marginBottom: 4 }}>Top Hirers</div>
+                    <div style={{ fontSize: 13, color: "#4B5563", lineHeight: 1.5, fontWeight: 500 }}>{companies.join(", ") || "Industry leaders"}</div>
+                  </div>
+                </div>
+
+              </div>
             </div>
-          </div>
-        )
+          )
       })()}
 
       {/* Dropdown */}
