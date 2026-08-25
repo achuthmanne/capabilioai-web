@@ -1948,10 +1948,10 @@ const EvaluatingScreen = ({ path, message }) => {
                    clip-path: polygon(45% 0, 55% 0, 100% 100%, 0 100%);
                  }
                  .sand-top, .sand-bottom, .sand-stream {
-                   background: ${pt.accent};
                    position: absolute;
                  }
                  .sand-top {
+                   background: #9CA3AF;
                    bottom: 0;
                    left: 0;
                    width: 100%;
@@ -1964,6 +1964,7 @@ const EvaluatingScreen = ({ path, message }) => {
                    animation: ob-sand-bottom 2.5s ease-out infinite;
                  }
                  .sand-stream {
+                   background: linear-gradient(to bottom, #9CA3AF, ${pt.accent});
                    width: 2px;
                    left: 15px;
                    animation: ob-sand-stream 2.5s infinite;
@@ -1974,14 +1975,15 @@ const EvaluatingScreen = ({ path, message }) => {
                    100% { transform: rotate(180deg); }
                  }
                  @keyframes ob-sand-top {
-                   15% { height: 100%; }
+                   0%, 15% { height: 100%; }
                    85% { height: 0%; }
                    100% { height: 0%; }
                  }
                  @keyframes ob-sand-bottom {
-                   15% { height: 0%; }
-                   85% { height: 100%; }
-                   100% { height: 100%; }
+                   0%, 15% { height: 0%; background: ${pt.accent}; }
+                   80% { height: 100%; background: ${pt.accent}; }
+                   85% { height: 100%; background: ${pt.accent}; }
+                   100% { height: 100%; background: #9CA3AF; }
                  }
                  @keyframes ob-sand-stream {
                    0%, 15% { height: 0; opacity: 1; top: 26px; }
