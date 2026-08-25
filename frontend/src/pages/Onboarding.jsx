@@ -3114,52 +3114,51 @@ export default function Onboarding({ user, onComplete, onBack }) {
   if (step === "loading") {
     const pt = getPathTheme(path || "student")
     return (
-      <div style={{ minHeight: "100vh", background: "#F9FAFB", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: '"Inter", "DM Sans", sans-serif' }}>
+      <div style={{ display: "flex", flexDirection: "column", width: "100%", minHeight: "100vh", background: "#FFFFFF", fontFamily: '"Inter", "DM Sans", sans-serif' }}>
         <style>{ONBOARDING_STYLES}</style>
-        <div style={{ maxWidth: 440, width: "100%", padding: 24, textAlign: "center" }}>
-          
-          {/* Animated Brain/Pulse Icon */}
-          <div style={{
-             width: 72, height: 72, margin: "0 auto 32px",
-             borderRadius: "50%", background: pt.accentBg,
-             display: "flex", alignItems: "center", justifyContent: "center",
-             border: `1px solid ${pt.accentBd}`,
-             position: "relative"
-          }}>
-             <div style={{ position: "absolute", inset: -4, borderRadius: "50%", border: `2px solid ${pt.accent}`, borderTopColor: "transparent", borderBottomColor: "transparent", opacity: 0.5, animation: "ob-spin 1.5s linear infinite" }} />
-             <div style={{ position: "absolute", inset: -12, borderRadius: "50%", border: `1px dashed ${pt.accent}`, opacity: 0.3, animation: "ob-spin 3s linear infinite reverse" }} />
-             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={pt.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+        
+        {/* Top Header - Just brand */}
+        <div style={{ padding: "32px 40px" }}>
+          <span style={{ fontSize: 24, fontFamily: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif', fontWeight: 800, letterSpacing: "-0.02em", color: "#14161A" }}>Capabilio <span style={{ color: pt.accent }}>AI</span></span>
+        </div>
+
+        {/* Step Indicator */}
+        <div style={{ position: "fixed", top: 32, right: 32, zIndex: 50 }}>
+          <div style={{ 
+              display: "inline-block",
+              padding: "6px 16px", 
+              borderRadius: 999, 
+              fontSize: 12, 
+              fontWeight: 700, 
+              color: "#14161A",
+              background: "#FFFFFF",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+              border: "1px solid #E5E7EB",
+              letterSpacing: "0.03em"
+            }}>
+              Step 2 of 4
           </div>
+        </div>
+
+        {/* Center Content - Ultra minimal, no cards, no shadows */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px 120px" }}>
           
-          <h2 style={{ fontSize: 26, fontWeight: 800, color: "#111827", letterSpacing: "-0.03em", marginBottom: 12 }}>
-            Preparing your Assessment
-          </h2>
-          <p style={{ fontSize: 16, color: "#4B5563", lineHeight: 1.6, marginBottom: 40, fontWeight: 500 }}>
-            {loadingMsg || "Calibrating questions tailored to your profile..."}
-          </p>
-          
-          {/* Mock Exam Skeleton */}
-          <div style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: 16, padding: "28px 24px", textAlign: "left", boxShadow: "0 12px 32px rgba(0,0,0,0.04)" }}>
-             {/* Question skeleton */}
-             <div style={{ width: "40%", height: 12, background: "#F3F4F6", borderRadius: 6, marginBottom: 24, animation: "ob-pulse 2s ease-in-out infinite" }} />
-             <div style={{ width: "92%", height: 18, background: "#E5E7EB", borderRadius: 6, marginBottom: 12, animation: "ob-pulse 2s ease-in-out infinite 0.2s" }} />
-             <div style={{ width: "78%", height: 18, background: "#E5E7EB", borderRadius: 6, marginBottom: 32, animation: "ob-pulse 2s ease-in-out infinite 0.4s" }} />
-             
-             {/* Options skeleton */}
-             <div style={{ display: "grid", gap: 12 }}>
-                <div style={{ width: "100%", height: 48, border: "2px solid #F3F4F6", borderRadius: 10, animation: "ob-pulse 2s ease-in-out infinite 0.6s", display: "flex", alignItems: "center", padding: "0 16px" }}>
-                   <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#F3F4F6", marginRight: 12 }} />
-                   <div style={{ width: "40%", height: 12, background: "#F3F4F6", borderRadius: 4 }} />
-                </div>
-                <div style={{ width: "100%", height: 48, border: "2px solid #F3F4F6", borderRadius: 10, animation: "ob-pulse 2s ease-in-out infinite 0.8s", display: "flex", alignItems: "center", padding: "0 16px" }}>
-                   <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#F3F4F6", marginRight: 12 }} />
-                   <div style={{ width: "55%", height: 12, background: "#F3F4F6", borderRadius: 4 }} />
-                </div>
-                <div style={{ width: "100%", height: 48, border: "2px solid #F3F4F6", borderRadius: 10, animation: "ob-pulse 2s ease-in-out infinite 1s", display: "flex", alignItems: "center", padding: "0 16px" }}>
-                   <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#F3F4F6", marginRight: 12 }} />
-                   <div style={{ width: "35%", height: 12, background: "#F3F4F6", borderRadius: 4 }} />
-                </div>
-             </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", maxWidth: 640, width: "100%", textAlign: "center" }}>
+            
+            {/* Minimal Zomato/Google style spinner */}
+            <svg width="48" height="48" viewBox="0 0 50 50" style={{ marginBottom: 32 }}>
+               <circle cx="25" cy="25" r="20" fill="none" stroke="#F3F4F6" strokeWidth="4" />
+               <circle cx="25" cy="25" r="20" fill="none" stroke={pt.accent} strokeWidth="4" strokeLinecap="round" strokeDasharray="30 100" style={{ animation: "ob-spin 1s linear infinite" }} />
+            </svg>
+
+            <h2 style={{ fontSize: 28, fontWeight: 700, color: "#111827", letterSpacing: "-0.03em", marginBottom: 16 }}>
+               {loadingMsg || "Curating your assessment..."}
+            </h2>
+            
+            <p style={{ fontSize: 16, color: "#6B7280", fontWeight: 500, maxWidth: 400, lineHeight: 1.5 }}>
+               Please wait while we calibrate questions tailored to your profile.
+            </p>
+
           </div>
         </div>
       </div>
@@ -3172,69 +3171,99 @@ export default function Onboarding({ user, onComplete, onBack }) {
     if (!q) return null
     const pt = getPathTheme("student")
     return (
-      <Screen style={{ background: pt.bg }}>
+      <div style={{ display: "flex", flexDirection: "column", width: "100%", minHeight: "100vh", background: "#F9FAFB", fontFamily: '"Inter", "DM Sans", sans-serif', padding: "40px 24px" }}>
         <style>{ONBOARDING_STYLES}</style>
-        <div style={{ ...screen, width:"100%", maxWidth:800 }}>
-          <div style={{ background:T.surface,border:`1px solid ${pt.accent}20`,borderRadius:T.radiusXl,overflow:"hidden",boxShadow:`0 24px 60px ${pt.accent}18` }}>
-            <div style={{ padding:"22px 28px 18px",background:pt.accentBg,borderBottom:`1px solid ${pt.accent}14` }}>
-              <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
+        
+        <div style={{ width: "100%", maxWidth: 840, margin: "0 auto" }}>
+          
+          <div style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.03)" }}>
+            
+            {/* Header & Question */}
+            <div style={{ padding: "32px 36px 24px", borderBottom: "1px solid #F3F4F6", background: "#FFFFFF" }}>
+              
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+                {/* Sharp Question Number */}
                 <div>
-                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
-                    <span style={{ fontSize:12 }}>{pt.icon}</span>
-                    <span style={{ fontSize:10, fontWeight:800, color:pt.accent, letterSpacing:"0.14em", textTransform:"uppercase", fontFamily:T.mono }}>Student Assessment · Q{qIdx+1}/{questions.length}</span>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: "#111827", letterSpacing: "-0.01em", display: "flex", alignItems: "center", gap: 8 }}>
+                    Question {qIdx+1} <span style={{ color: "#9CA3AF", fontWeight: 500, fontSize: 16 }}>of {questions.length}</span>
                   </div>
-                  <div style={{ fontFamily:T.mono,fontSize:10,color:T.muted,letterSpacing:1 }}>{q.category||"SKILL ASSESSMENT"}</div>
+                  <div style={{ fontSize: 12, color: pt.accent, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", marginTop: 6 }}>
+                    {q.category || "Skill Assessment"}
+                  </div>
                 </div>
-                <TimerRing total={TIMER} remaining={timeLeft} />
+                
+                {/* Minimal Timer Pill */}
+                <div style={{ 
+                  display: "flex", alignItems: "center", gap: 6,
+                  padding: "8px 14px", borderRadius: 999, 
+                  background: timeLeft <= 10 ? "#FEF2F2" : "#F3F4F6",
+                  color: timeLeft <= 10 ? "#EF4444" : "#4B5563",
+                  fontWeight: 600, fontSize: 14,
+                  border: `1px solid ${timeLeft <= 10 ? "#FCA5A5" : "transparent"}`
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                  00:{timeLeft < 10 ? `0${timeLeft}` : timeLeft}
+                </div>
               </div>
-              <ProgressBar current={qIdx+1} total={questions.length} />
-              <div style={{ fontSize:17,fontWeight:600,color:T.text,lineHeight:1.5,marginTop:16 }}>{q.question}</div>
+              
+              {/* Clean Progress Bar */}
+              <div style={{ width: "100%", height: 6, background: "#F3F4F6", borderRadius: 999, overflow: "hidden" }}>
+                 <div style={{ height: "100%", width: `${((qIdx+1)/questions.length)*100}%`, background: pt.accent, transition: "width 0.4s ease" }} />
+              </div>
+              
+              {/* Question Text */}
+              <div style={{ fontSize: 19, fontWeight: 500, color: "#1F2937", lineHeight: 1.6, marginTop: 32 }}>
+                 {q.question}
+              </div>
+              
               {q.code && (
-                <pre style={{ marginTop:12,padding:"12px 14px",background:"rgba(0,0,0,0.35)",borderRadius:8,fontSize:13,color:"#7DD3FC",fontFamily:T.mono,overflowX:"auto",lineHeight:1.6,border:"1px solid rgba(0,0,0,0.05)",whiteSpace:"pre-wrap",wordBreak:"break-word" }}>{q.code}</pre>
+                <pre style={{ marginTop:16,padding:"16px 20px",background:"#111827",borderRadius:12,fontSize:14,color:"#7DD3FC",fontFamily:"'JetBrains Mono', 'Fira Code', monospace",overflowX:"auto",lineHeight:1.6,border:"1px solid #374151",whiteSpace:"pre-wrap",wordBreak:"break-word" }}>{q.code}</pre>
               )}
             </div>
-            <div style={{ padding:"20px 28px 28px", background:"#FAF7F2" }}>
+            
+            {/* Options Area */}
+            <div style={{ padding: "24px 36px 36px", background: "#FFFFFF" }}>
               <div style={{ fontSize:11, fontWeight:700, color:T.muted, letterSpacing:"0.10em", textTransform:"uppercase", fontFamily:T.mono, marginBottom:12 }}>
-                Choose the correct answer
+                Select the correct answer
               </div>
               {(!q.options || q.options.length === 0) && (
-                <div style={{ padding:"16px 18px", background:"#FFF1E8", border:"1px solid rgba(255,87,1,0.18)", borderRadius:T.radius, color:T.primary, fontSize:13, fontWeight:500 }}>
-                  ⚠ Options failed to load for this question.
-                  <button onClick={()=>advanceQ(-1)} style={{ marginLeft:12, background:"none", border:"none", color:T.primary, fontWeight:700, cursor:"pointer", textDecoration:"underline", fontSize:13, fontFamily:T.body }}>Skip →</button>
+                <div style={{ padding:"16px 18px", background:"#FEF2F2", border:"1px solid #FCA5A5", borderRadius: 8, color:"#DC2626", fontSize:14, fontWeight:500 }}>
+                  Options failed to load for this question.
+                  <button onClick={()=>advanceQ(-1)} style={{ marginLeft:12, background:"none", border:"none", color:"#DC2626", fontWeight:700, cursor:"pointer", textDecoration:"underline", fontSize:14, fontFamily:'"Inter", "DM Sans", sans-serif' }}>Skip →</button>
                 </div>
               )}
-              <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+              <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
                 {q.options?.map((opt,i) => {
                   const isSel = selected===i
                   const labels = ["A","B","C","D","E"]
                   return (
                     <button key={i} onClick={()=>handleAnswer(i)} disabled={selected!==null||timedOut}
                       style={{
-                        textAlign:"left", padding:"13px 16px",
-                        borderRadius:T.radius,
-                        background: isSel ? `${T.primary}12` : "#FFFFFF",
-                        border: `1.5px solid ${isSel ? T.primary : "rgba(17,24,39,0.12)"}`,
-                        color: T.text,
-                        fontSize:14,
+                        textAlign:"left", padding:"16px 20px",
+                        borderRadius: 12,
+                        background: isSel ? pt.accentBg : "#FFFFFF",
+                        border: `2px solid ${isSel ? pt.accent : "#E5E7EB"}`,
+                        color: "#1F2937",
+                        fontSize: 15,
                         cursor:(selected!==null||timedOut)?"default":"pointer",
-                        transition:"all 0.15s",
-                        fontFamily:T.body,
-                        fontWeight:isSel?600:400,
-                        display:"flex", alignItems:"flex-start", gap:12,
-                        boxShadow: isSel ? `0 0 0 3px ${T.primary}15` : "0 1px 4px rgba(17,24,39,0.05)"
+                        transition:"all 0.15s ease",
+                        fontFamily:'"Inter", "DM Sans", sans-serif',
+                        fontWeight:isSel ? 600 : 500,
+                        display:"flex", alignItems:"flex-start", gap:16,
+                        boxShadow: isSel ? `0 0 0 4px ${pt.accent}15` : "none"
                       }}
-                      onMouseEnter={e=>{ if(selected===null&&!timedOut){ e.currentTarget.style.background=`${T.primary}08`; e.currentTarget.style.borderColor=`${T.primary}60`; e.currentTarget.style.transform="translateY(-1px)" }}}
-                      onMouseLeave={e=>{ if(!isSel){ e.currentTarget.style.background="#FFFFFF"; e.currentTarget.style.borderColor="rgba(17,24,39,0.12)"; e.currentTarget.style.transform="translateY(0)" }}}
+                      onMouseEnter={e=>{ if(selected===null&&!timedOut){ e.currentTarget.style.background="#F9FAFB"; e.currentTarget.style.borderColor="#D1D5DB"; }}}
+                      onMouseLeave={e=>{ if(!isSel){ e.currentTarget.style.background="#FFFFFF"; e.currentTarget.style.borderColor="#E5E7EB"; }}}
                     >
                       <span style={{
                         display:"inline-flex", alignItems:"center", justifyContent:"center",
-                        width:26, height:26, borderRadius:6, flexShrink:0,
-                        background: isSel ? T.primary : "rgba(17,24,39,0.07)",
-                        color: isSel ? "#fff" : T.muted,
-                        fontSize:11, fontWeight:800, fontFamily:T.mono,
-                        transition:"all 0.15s"
+                        width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                        background: isSel ? pt.accent : "#F3F4F6",
+                        color: isSel ? "#FFFFFF" : "#6B7280",
+                        fontSize: 13, fontWeight: 700,
+                        transition:"all 0.15s ease"
                       }}>{labels[i]||i+1}</span>
-                      <span style={{ flex:1, paddingTop:3 }}>{opt}</span>
+                      <span style={{ flex:1, paddingTop:3, lineHeight: 1.5 }}>{opt}</span>
                     </button>
                   )
                 })}
@@ -3244,7 +3273,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
         </div>
         {showResultModal&&result&&<ResultModal result={result} keyword={keyword} questions={questions} onGoToDashboard={handleGoToDashboard} savingResult={savingResult} saveError={saveError} />}
         {showRecoPopup&&<RecoPopup weakAreas={result?.analysis?.weakAreas||[]} onContinue={()=>{ setShowRecoPopup(false); setStep("plan") }} />}
-      </Screen>
+      </div>
     )
   }
 
