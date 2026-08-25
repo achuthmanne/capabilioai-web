@@ -396,6 +396,7 @@ const StatPill = ({ val, label, color = T.primary }) => (
 )
 
 // ─── ELO helpers ─────────────────────────────────────────────────────
+const DEFAULT_RADAR_COLORS = ["#6366F1", "#10B981", "#8B5CF6", "#F59E0B", "#EC4899", "#06B6D4", "#F43F5E", "#14B8A6"];
 const ELO_ENABLED_PATHS = ["student", "professional"]
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n))
 const getBaseEloByPath = (p) => p === "student" ? 400 : p === "professional" ? 800 : null
@@ -936,20 +937,22 @@ function ResultModal({ result, keyword, questions, onGoToDashboard, savingResult
           {tab==="skills" && (
             <div style={{ display:"flex", flexDirection:"column", gap:32 }}>
               <div style={{ display:"flex", justifyContent:"center" }}>
-                <RadarChart data={radarData} size={240} />
+                <RadarChart data={radarData} size={280} />
               </div>
-              <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
-                {radarData.map((d,i) => (
+              <div style={{ display:"grid", gridTemplateColumns: "1fr 1fr", gap: "20px 24px" }}>
+                {radarData.map((d,i) => {
+                  const c = DEFAULT_RADAR_COLORS[i % DEFAULT_RADAR_COLORS.length];
+                  return (
                   <div key={i}>
                     <div style={{ display:"flex",justifyContent:"space-between",marginBottom:8 }}>
                       <span style={{ fontSize:14,color:"#374151",fontWeight:600 }}>{d.label}</span>
-                      <span style={{ fontSize:14,fontWeight:700,color:"#111827" }}>{d.value}%</span>
+                      <span style={{ fontSize:14,fontWeight:700,color:c }}>{d.value}%</span>
                     </div>
                     <div style={{ height:8,background:"#F3F4F6",borderRadius:999,overflow:"hidden" }}>
-                      <div style={{ height:"100%",width:`${d.value}%`,background:pt.accent,borderRadius:999,transition:"width 1.2s ease" }} />
+                      <div style={{ height:"100%",width:`${d.value}%`,background:c,borderRadius:999,transition:"width 1.2s ease" }} />
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
             </div>
           )}
