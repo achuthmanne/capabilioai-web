@@ -233,10 +233,11 @@ const PORT = process.env.PORT || 4000
 // every response this server ever sends, 429 or not.
 app.use(cors({
   origin: [
-    process.env.FRONTEND_URL || "https://capabilio.online",
-    "https://capabilio.online",
-    "https://www.capabilio.online",
-    "http://localhost:3000",
+      process.env.FRONTEND_URL || "https://capabilio.online",
+      "https://capabilio.online",
+      "https://www.capabilio.online",
+      "https://capabilioai-web.vercel.app",
+      "http://localhost:3000",
     "http://localhost:5173",
     "http://localhost:4173",
   ],
