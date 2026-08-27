@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Flame, Target, BookOpen, Briefcase, ChevronRight, Lock, Code2, Rocket, ArrowRight, Zap, Trophy, X, Lightbulb, LayoutDashboard, CheckCircle } from "lucide-react"
+import { Play, Flame, Target, BookOpen, Briefcase, ChevronRight, Lock, Code2, Rocket, ArrowRight, Zap, Trophy, X, Lightbulb, LayoutDashboard, CheckCircle, ShieldCheck } from "lucide-react"
+import { supabase } from "../lib/supabase";
 
 
 const TypewriterText = ({ text, delay = 0, speed = 30, cursor = true }) => {
@@ -41,19 +42,57 @@ export default function StudentHome({ user, userData, onNavigate }) {
   const streak = userData?.arenaStreak || userData?.streak || 0
   const domain = userData?.domain || userData?.keyword || "Software Engineer"
   
-  const getPortfolioCompletion = () => {
-    let score = 0;
-    if (userData?.displayName || userData?.name) score += 10;
-    if (userData?.resumeUrl || userData?.resume_url) score += 20;
-    if (userData?.experiences?.length > 0) score += 20;
-    if (userData?.education?.length > 0) score += 15;
-    if (userData?.githubUsername || userData?.linkedinUrl || userData?.portfolioUrl || userData?.github_username || userData?.linkedin_url) score += 15;
-    if (userData?.arenaCompleted > 0 || userData?.arena_completed > 0) score += 10;
-    if (userData?.certifications?.length > 0 || userData?.testimonials?.length > 0) score += 10;
-    if (score === 0) score = 10; // Give them at least 10% just for signing up!
-    return score;
-  };
-  const completionPercentage = getPortfolioCompletion();
+  const [completionPercentage, setCompletionPercentage] = useState(10); // Base 10%
+
+  useEffect(() => {
+    async function calculateRealtimeReadiness() {
+      if (!user?.id) return;
+      try {
+        const { data } = await supabase
+          .from('student_tasks')
+          .select('elo_reward, ai_review')
+          .eq('user_id', user.id)
+          .eq('status', 'passed');
+          
+          if (data && data.length > 0) {
+            let totalElo = 0;
+            let uniqueSkills = new Set();
+            
+            data.forEach(t => {
+              totalElo += (t.elo_reward || 0);
+              const match = t.ai_review?.match(/<!--SKILLS_DATA:(.*?)-->/);
+              if (match && match[1]) {
+                try { 
+                  const skillsArr = JSON.parse(match[1]);
+                  skillsArr.forEach(s => uniqueSkills.add(s.skill));
+                } catch(e) {}
+              }
+            });
+            
+            // STRICT SCORING SYSTEM (To delay 80% unlock)
+            // Base points for having a profile
+            let score = 10; 
+            
+            // +2% per passed mission (Max 20% = 10 missions)
+            score += Math.min(20, data.length * 2);
+            
+            // +1% per verified unique skill (Max 20% = 20 unique skills)
+            score += Math.min(20, uniqueSkills.size * 1);
+            
+            // ELO Contribution (Max 50% at 1000 ELO)
+            // 100 ELO = +5%, 500 ELO = +25%, 1000 ELO = +50%
+            score += Math.min(50, Math.floor(totalElo / 20));
+
+            setCompletionPercentage(Math.min(100, score));
+          } else {
+            setCompletionPercentage(10); // Base 10% for new users
+          }
+      } catch (err) {
+        console.error("Failed to calculate readiness", err);
+      }
+    }
+    calculateRealtimeReadiness();
+  }, [user]);
 
   const [isGenerating, setIsGenerating] = useState(true);
   const [showProSheet, setShowProSheet] = useState(false);
@@ -518,7 +557,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
           }}>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#5F6368", fontSize: 15, fontWeight: 500, marginBottom: 8 }}>
-                <Briefcase size={20} strokeWidth={1.5} /> Proof of Work
+                <ShieldCheck size={20} strokeWidth={1.5} /> Proof of Work
               </div>
               <h3 style={{ fontSize: 24, fontWeight: 400, color: "#202124", margin: 0, letterSpacing: "-0.01em" }}>
                 Verified Portfolio
@@ -528,10 +567,10 @@ export default function StudentHome({ user, userData, onNavigate }) {
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 12 }}>
                 <div style={{ fontSize: 15, fontWeight: 500, color: "#5F6368" }}>Completion</div>
-                <div style={{ fontSize: 24, fontWeight: 400, color: "#202124", lineHeight: 1 }}>35%</div>
+                <div style={{ fontSize: 24, fontWeight: 400, color: "#202124", lineHeight: 1 }}>{completionPercentage}%</div>
               </div>
               <div style={{ width: "100%", height: 6, background: "#F1F3F4", borderRadius: 999, overflow: "hidden" }}>
-                <div style={{ height: "100%", width: "35%", background: "#FF5701", borderRadius: 999 }} />
+                <div style={{ height: "100%", width: `${completionPercentage}%`, background: "#FF5701", borderRadius: 999 }} />
               </div>
               <p style={{ fontSize: 15, color: "#5F6368", lineHeight: 1.6, margin: "16px 0 0 0" }}>
                 Reach 80% to unlock priority Mock Interviews with industry experts.
@@ -553,7 +592,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
               gap: 8,
               transition: "all 0.2s ease",
               width: "100%"
-            }} onMouseOver={(e) => { e.currentTarget.style.background = "#F1F3F4" }} onMouseOut={(e) => { e.currentTarget.style.background = "transparent" }} onClick={() => onNavigate("portfolio")}>
+            }} onMouseOver={(e) => { e.currentTarget.style.background = "#F1F3F4" }} onMouseOut={(e) => { e.currentTarget.style.background = "transparent" }} onClick={() => onNavigate("studentResume")}>
               View Profile <ArrowRight size={18} strokeWidth={1.5} />
             </button>
           </div>

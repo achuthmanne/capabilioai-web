@@ -55,7 +55,7 @@ Return the response STRICTLY as a JSON object with this structure:
         "anthropic-version": "2023-06-01",
         "content-type": "application/json"
       },
-      body: JSON.stringify({
+        body: JSON.stringify({
         model: "claude-sonnet-5",
         max_tokens: 2000,
         system: "You are an API that strictly returns only JSON objects. No markdown formatting, no explanation.",
@@ -134,11 +134,11 @@ Make sure to generate 3 to 4 realistic test cases relevant to the specific probl
         "anthropic-version": "2023-06-01",
         "content-type": "application/json"
       },
-      body: JSON.stringify({
-        model: "claude-sonnet-5",
-        max_tokens: 2000,
-        messages: [{ role: "user", content: prompt }]
-      })
+        body: JSON.stringify({
+          model: "claude-sonnet-5",
+          max_tokens: 2000,
+          messages: [{ role: "user", content: prompt }]
+        })
     });
 
     if (!response.ok) {
