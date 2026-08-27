@@ -23,7 +23,7 @@ export default function ArenaWorkspace({ user, userData, setUserData, onNavigate
     }
   }, []);
 
-  const [code, setCode] = useState('// Write your solution here\\n// Await system instructions...');
+  const [code, setCode] = useState('// Write your solution here\n// Await system instructions...');
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [redirectSeconds, setRedirectSeconds] = useState(null);
 
@@ -130,78 +130,140 @@ export default function ArenaWorkspace({ user, userData, setUserData, onNavigate
     setIsEvaluating(true);
     setConsoleOutput("Analyzing code structure...\nRunning unit tests with AI Evaluator...\n");
     
-    try {
-      const res = await fetch('/api/tasks/evaluate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ taskData, code, language })
-      });
-      
-      const result = await res.json();
-      
-      const baseOutput = `Output:\n${result.consoleOutput}\n\nCapabilio Sr. Engineer Feedback:\n${result.feedback}`;
-      setConsoleOutput(baseOutput);
-      
-      if (result.passed) {
-        let earned = taskData.eloReward || 25;
-        let penalty = violations * 10; // -10 ELO per violation
-        if (penalty > earned) penalty = earned; // Cap penalty so ELO doesn't go negative
-        let finalReward = earned - penalty;
+          try {
+        const res = await fetch('/api/tasks/evaluate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ taskData, code, language })
+        });
         
-        let outputMessage = `\n\n✨ MISSION ACCOMPLISHED! ✨`;
-        if (violations > 0) {
-            outputMessage += `\nTask Reward: +${earned} ELO`;
-            outputMessage += `\nIndisciplinary Penalty: -${penalty} ELO (${violations} proctoring violations detected)`;
+        const result = await res.json();
+        
+        let testCasesOutput = "";
+        if (result.testCases && result.testCases.length > 0) {
+            testCasesOutput = "\\n\\n--- TEST CASES ---\\n";
+            result.testCases.forEach((tc, i) => {
+                testCasesOutput += `[${tc.passed ? 'PASS' : 'FAIL'}] ${tc.name}: ${tc.details}\\n`;
+            });
+            testCasesOutput += "------------------";
         }
         
-        if (finalReward >= 0) {
-            outputMessage += `\nTotal ELO Added: +${finalReward} Points!`;
+        let baseOutput = `Output:
+${result.consoleOutput}${testCasesOutput}
+
+Capabilio Sr. Engineer Feedback:
+${result.feedback}`;
+        
+        let finalReward = 0;
+        let finalOutput = baseOutput;
+        
+        if (result.passed) {
+          let earned = taskData.eloReward || 25;
+          let penalty = violations * 10;
+          if (penalty > earned) penalty = earned;
+          finalReward = earned - penalty;
+          
+          let outputMessage = `
+
+🌟 MISSION ACCOMPLISHED! 🌟`;
+          if (violations > 0) {
+              outputMessage += `
+Task Reward: +${earned} ELO`;
+              outputMessage += `
+Indisciplinary Penalty: -${penalty} ELO (${violations} proctoring violations detected)`;
+          }
+          
+          if (finalReward >= 0) {
+              outputMessage += `
+Total ELO Added: +${finalReward} Points!`;
+          } else {
+              outputMessage += `
+Total ELO Deducted: ${finalReward} Points!`;
+          }
+          
+          finalOutput = baseOutput + outputMessage;
+          setConsoleOutput(finalOutput);
+          setRedirectSeconds(10); // auto-redirect on pass
         } else {
-            outputMessage += `\nTotal ELO Deducted: ${finalReward} Points!`;
+          let outputMessage = `
+
+❌ MISSION FAILED ❌
+Review the test cases and feedback, then try again.`;
+          finalOutput = baseOutput + outputMessage;
+          setConsoleOutput(finalOutput);
+          // Wait 10 seconds and redirect even on fail so they don't get stuck forever
+          setRedirectSeconds(10);
+          
+          // Reset violations for their next attempt since this one failed
+          setViolations(0);
+          const cached = localStorage.getItem("capabilio_daily_mission");
+          if (cached) {
+            try {
+              const parsed = JSON.parse(cached);
+              parsed.violations = 0;
+              localStorage.setItem("capabilio_daily_mission", JSON.stringify(parsed));
+            } catch(e) {}
+          }
         }
-        
-        const finalOutput = baseOutput + outputMessage;
-        setConsoleOutput(finalOutput);
-        
-        // Start auto-redirect countdown
-        setRedirectSeconds(10);
-        
-        // Update local storage for current daily mission
+
+        // Append hidden graph skills ONLY if passed AND no proctoring violations
+        let dbFinalOutput = finalOutput;
+        if (result.passed && violations === 0 && result.graphSkills && result.graphSkills.length > 0) {
+            dbFinalOutput += `\n\n<!--SKILLS_DATA:${JSON.stringify(result.graphSkills)}-->`;
+        }
+
+        // Save to cache
         const cached = localStorage.getItem("capabilio_daily_mission");
         if (cached) {
           const parsed = JSON.parse(cached);
           parsed.completed = true;
           parsed.savedCode = code;
-          parsed.savedOutput = finalOutput;
+          parsed.savedOutput = dbFinalOutput;
           parsed.taskData.finalReward = finalReward;
           localStorage.setItem("capabilio_daily_mission", JSON.stringify(parsed));
-          
-          // Save to permanent Code Vault
-          try {
-            const vaultStr = localStorage.getItem("capabilio_task_vault");
-            const vault = vaultStr ? JSON.parse(vaultStr) : [];
-            const isPass = data.status === 'passed';
-            vault.unshift({
-              id: Date.now().toString(),
-              company: parsed.taskData.company,
-              title: parsed.taskData.title,
-              context: parsed.taskData.context,
-              taskDescription: parsed.taskData.taskDescription,
-              status: isPass ? 'passed' : 'failed',
-              savedCode: code,
-              aiReview: finalOutput,
-              reward: isPass ? finalReward : 0,
-              timestamp: new Date().toISOString()
-            });
-            localStorage.setItem("capabilio_task_vault", JSON.stringify(vault));
-          } catch(e) {
-            console.error("Failed to save to vault", e);
-          }
         }
+        
+        // Save to permanent Code Vault (Supabase)
+        const isPass = result.passed;
+        
+        try {
+          const vaultStr = localStorage.getItem("capabilio_task_vault");
+          const vault = vaultStr ? JSON.parse(vaultStr) : [];
+          vault.unshift({
+            id: Date.now().toString(),
+            company: taskData.company,
+            title: taskData.title,
+            context: taskData.context,
+            taskDescription: taskData.taskDescription,
+            status: isPass ? 'passed' : 'failed',
+            savedCode: code,
+            aiReview: dbFinalOutput,
+            reward: isPass ? finalReward : 0,
+            timestamp: new Date().toISOString()
+          });
+          localStorage.setItem("capabilio_task_vault", JSON.stringify(vault));
+        } catch(e) {}
+        
+        if (user?.id) {
+          supabase.from('student_tasks').insert({
+            user_id: user.id,
+            company_name: taskData.company || "Unknown Company",
+            task_title: taskData.title || "Daily Mission",
+            task_context: taskData.context || "",
+            task_description: taskData.taskDescription || "",
+            status: isPass ? 'passed' : 'failed',
+            saved_code: code,
+            ai_review: dbFinalOutput,
+            elo_reward: isPass ? finalReward : 0
+          }).then(({ error }) => {
+            if (error) console.error("Failed to save to Supabase vault:", error);
+          });
+        }
+        
         setTaskData(prev => ({ ...prev, completed: true, finalReward }));
 
-        // Update user state and DB
-        if (setUserData && userData) {
+        // Update ELO only if passed
+        if (result.passed && setUserData && userData) {
           const updatedElo = (userData.eloRating || 400) + finalReward;
           const updatedStreak = (userData.streak || userData.arenaStreak || 0) + 1;
             
@@ -212,7 +274,6 @@ export default function ArenaWorkspace({ user, userData, setUserData, onNavigate
             arenaStreak: updatedStreak
           }));
 
-          // Sync to database
           if (user?.id) {
             userDoc.update(user.id, {
               eloRating: updatedElo,
@@ -220,8 +281,8 @@ export default function ArenaWorkspace({ user, userData, setUserData, onNavigate
             }).catch(err => console.error("Failed to update ELO in DB:", err));
           }
         }
-      }
-    } catch (err) {
+
+      } catch (err) {
       setConsoleOutput("System Error: Failed to contact AI Evaluator. Please try again.");
     } finally {
       setIsEvaluating(false);
@@ -294,8 +355,30 @@ export default function ArenaWorkspace({ user, userData, setUserData, onNavigate
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', transition: 'filter 0.2s ease' }}>
         
         {/* Left Pane - Mission Details */}
-        <div style={{ width: '40%', backgroundColor: '#FFFFFF', borderRight: '1px solid #E0E0E0', display: 'flex', flexDirection: 'column', overflowY: 'auto', userSelect: 'none' }}>
-          <div style={{ padding: '32px' }}>
+        <div style={{ width: '40%', backgroundColor: '#FFFFFF', borderRight: '1px solid #E0E0E0', position: 'relative', display: 'flex', flexDirection: 'column', userSelect: 'none' }}>
+          
+          {/* Capabilio AI Watermark Pattern */}
+          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 0, display: 'flex', flexDirection: 'column', gap: '60px', paddingTop: '40px' }}>
+            {Array.from({ length: 15 }).map((_, rowIndex) => (
+              <div key={rowIndex} style={{ display: 'flex', gap: '80px', transform: rowIndex % 2 === 0 ? 'translateX(-40px)' : 'translateX(20px)' }}>
+                {Array.from({ length: 10 }).map((_, colIndex) => (
+                  <span key={colIndex} style={{ 
+                    fontSize: '24px', 
+                    fontFamily: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif', 
+                    fontWeight: 800, 
+                    letterSpacing: "-0.02em", 
+                    color: "rgba(20, 22, 26, 0.08)", 
+                    transform: 'rotate(-30deg)',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    Capabilio <span style={{ color: "rgba(255, 87, 1, 0.12)" }}>AI</span>
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
+
+          <div style={{ padding: '32px', overflowY: 'auto', flex: 1, position: 'relative', zIndex: 1 }}>
             
             <div style={{ marginBottom: '24px' }}>
               <div style={{ fontSize: '13px', color: '#FF5701', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Today's Mission</div>

@@ -477,8 +477,8 @@ export default function StudentHome({ user, userData, onNavigate }) {
                         <button onClick={(e) => { e.stopPropagation(); setShowProSheet(false); }} style={{ position: "absolute", top: 80, right: 24, background: "none", border: "none", cursor: "pointer", color: "#5F6368" }}>
                           <X size={24} />
                         </button>
-                        <div style={{ background: "#FCE8E6", padding: 12, borderRadius: 999, marginBottom: 16 }}>
-                          <Lock size={20} color="#D93025" strokeWidth={2} />
+                        <div style={{ background: "#FFFFFF", padding: 12, borderRadius: 999, marginBottom: 16, border: "1px solid #E5E7EB" }}>
+                          <Lock size={20} color="#6B7280" strokeWidth={2} />
                         </div>
                         <h4 style={{ fontSize: 20, fontWeight: 600, color: "#202124", margin: "0 0 8px 0" }}>Unlock Pro to access these missions</h4>
                         <p style={{ fontSize: 15, color: "#5F6368", margin: "0 0 24px 0", maxWidth: 300 }}>Free tier users receive one company mission every 24 hours.</p>

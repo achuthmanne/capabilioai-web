@@ -115,8 +115,16 @@ DO NOT use <thinking> tags. DO NOT include any markdown or text outside the JSON
 {
   "passed": true,
   "feedback": "A concise code review from a senior engineer.",
-  "consoleOutput": "Simulated output of running their code."
-}`;
+  "consoleOutput": "Simulated output of running their code.",
+  "testCases": [
+    { "name": "Test Case 1 (e.g. Basic Input)", "passed": true, "details": "Expected output matches actual output." },
+    { "name": "Test Case 2 (e.g. Edge Case)", "passed": false, "details": "Failed when processing null value." }
+  ],
+  "graphSkills": [
+    { "domain": "Category (e.g. Frontend, Data Engineering, Civil, Electronics)", "skill": "Specific Micro-skill Learned (e.g. Rate Limiting)" }
+  ]
+}
+Make sure to generate 3 to 4 realistic test cases relevant to the specific problem they solved. Extract 1 to 3 core concepts/skills they demonstrated into graphSkills.`;
 
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
