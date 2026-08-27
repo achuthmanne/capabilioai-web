@@ -1,0 +1,414 @@
+import React, { useState, useEffect, useRef } from 'react';
+
+import Editor from '@monaco-editor/react';
+import { ArrowLeft, Play, Terminal, CheckCircle, Zap } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { userDoc } from "../lib/db";
+import { supabase } from "../lib/supabase";
+
+export default function ArenaWorkspace({ user, userData, setUserData, onNavigate }) {
+  
+  const [taskData, setTaskData] = useState(null);
+  
+  useEffect(() => {
+    const cached = localStorage.getItem("capabilio_daily_mission");
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed.taskData) setTaskData({ ...parsed.taskData, completed: parsed.completed });
+        if (parsed.violations) setViolations(parsed.violations);
+        if (parsed.savedCode) setCode(parsed.savedCode);
+        if (parsed.savedOutput) setConsoleOutput(parsed.savedOutput);
+      } catch (e) {}
+    }
+  }, []);
+
+  const [code, setCode] = useState('// Write your solution here\\n// Await system instructions...');
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const [redirectSeconds, setRedirectSeconds] = useState(null);
+
+  useEffect(() => {
+    if (redirectSeconds !== null && redirectSeconds > 0) {
+      const timer = setTimeout(() => setRedirectSeconds(prev => prev - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (redirectSeconds === 0) {
+      onNavigate('studentHome');
+    }
+  }, [redirectSeconds, onNavigate]);
+  const [language, setLanguage] = useState('javascript');
+  const [consoleOutput, setConsoleOutput] = useState("System ready. Waiting for submission...");
+  const [proctorWarning, setProctorWarning] = useState(null);
+  const [violations, setViolations] = useState(0);
+  const editorRef = useRef(null);
+  const monacoRef = useRef(null);
+
+  // Proctoring Rules: Block Copy, Paste, Right Click, and Screenshots
+  useEffect(() => {
+    const handleContextMenu = (e) => e.preventDefault();
+    
+    const showWarning = (msg) => {
+      setViolations(prev => {
+        const next = prev + 1;
+        const cached = localStorage.getItem("capabilio_daily_mission");
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            parsed.violations = next;
+            localStorage.setItem("capabilio_daily_mission", JSON.stringify(parsed));
+          } catch(e) {}
+        }
+        return next;
+      });
+      setProctorWarning(msg);
+      setTimeout(() => setProctorWarning(null), 3000);
+    };
+
+    const handleCopyPaste = (e) => {
+      e.preventDefault();
+      showWarning("Copying and pasting is strictly prohibited in the Arena Workspace.");
+    };
+
+    const handleKeyDown = (e) => {
+      if (e.key === "PrintScreen") {
+        e.preventDefault();
+        showWarning("Screenshots are strictly prohibited. Action recorded.");
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === "s" || e.key === "S" || e.key === "3" || e.key === "4")) {
+        e.preventDefault();
+        showWarning("Screenshots are strictly prohibited. Action recorded.");
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "c" || e.key === "C" || e.key === "v" || e.key === "V")) {
+        e.preventDefault();
+        showWarning("Copying and pasting is strictly prohibited in the Arena Workspace.");
+        return;
+      }
+    };
+    
+    const handleWindowBlur = () => {
+      showWarning("You have left the workspace window. This action is discouraged.");
+    };
+
+    const handleMouseLeave = () => {
+      // Optional: blur or warn when mouse leaves document
+      // setProctorWarning("Out of bounds"); 
+    };
+
+    document.addEventListener("contextmenu", handleContextMenu);
+    document.addEventListener("copy", handleCopyPaste);
+    document.addEventListener("paste", handleCopyPaste);
+    document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("blur", handleWindowBlur);
+    document.addEventListener("mouseleave", handleMouseLeave);
+
+    return () => {
+      document.removeEventListener("contextmenu", handleContextMenu);
+      document.removeEventListener("copy", handleCopyPaste);
+      document.removeEventListener("paste", handleCopyPaste);
+      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("blur", handleWindowBlur);
+      document.removeEventListener("mouseleave", handleMouseLeave);
+    };
+  }, []);
+
+  const handleSubmit = async () => {
+    if (!taskData) return;
+
+    // Fast local syntax check using Monaco
+    if (monacoRef.current && editorRef.current && (language === 'javascript' || language === 'typescript')) {
+      const model = editorRef.current.getModel();
+      const markers = monacoRef.current.editor.getModelMarkers({ resource: model.uri });
+      const errors = markers.filter(m => m.severity === 8); // 8 is Error severity in Monaco
+      
+      if (errors.length > 0) {
+        setConsoleOutput("Syntax Error(s) detected. Please fix them before running:\n" + errors.map(e => `Line ${e.startLineNumber}: ${e.message}`).join("\n"));
+        return;
+      }
+    }
+
+    setIsEvaluating(true);
+    setConsoleOutput("Analyzing code structure...\nRunning unit tests with AI Evaluator...\n");
+    
+    try {
+      const res = await fetch('/api/tasks/evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ taskData, code, language })
+      });
+      
+      const result = await res.json();
+      
+      const baseOutput = `Output:\n${result.consoleOutput}\n\nCapabilio Sr. Engineer Feedback:\n${result.feedback}`;
+      setConsoleOutput(baseOutput);
+      
+      if (result.passed) {
+        let earned = taskData.eloReward || 25;
+        let penalty = violations * 10; // -10 ELO per violation
+        if (penalty > earned) penalty = earned; // Cap penalty so ELO doesn't go negative
+        let finalReward = earned - penalty;
+        
+        let outputMessage = `\n\n✨ MISSION ACCOMPLISHED! ✨`;
+        if (violations > 0) {
+            outputMessage += `\nTask Reward: +${earned} ELO`;
+            outputMessage += `\nIndisciplinary Penalty: -${penalty} ELO (${violations} proctoring violations detected)`;
+        }
+        
+        if (finalReward >= 0) {
+            outputMessage += `\nTotal ELO Added: +${finalReward} Points!`;
+        } else {
+            outputMessage += `\nTotal ELO Deducted: ${finalReward} Points!`;
+        }
+        
+        const finalOutput = baseOutput + outputMessage;
+        setConsoleOutput(finalOutput);
+        
+        // Start auto-redirect countdown
+        setRedirectSeconds(10);
+        
+        // Update local storage for current daily mission
+        const cached = localStorage.getItem("capabilio_daily_mission");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          parsed.completed = true;
+          parsed.savedCode = code;
+          parsed.savedOutput = finalOutput;
+          parsed.taskData.finalReward = finalReward;
+          localStorage.setItem("capabilio_daily_mission", JSON.stringify(parsed));
+          
+          // Save to permanent Code Vault
+          try {
+            const vaultStr = localStorage.getItem("capabilio_task_vault");
+            const vault = vaultStr ? JSON.parse(vaultStr) : [];
+            const isPass = data.status === 'passed';
+            vault.unshift({
+              id: Date.now().toString(),
+              company: parsed.taskData.company,
+              title: parsed.taskData.title,
+              context: parsed.taskData.context,
+              taskDescription: parsed.taskData.taskDescription,
+              status: isPass ? 'passed' : 'failed',
+              savedCode: code,
+              aiReview: finalOutput,
+              reward: isPass ? finalReward : 0,
+              timestamp: new Date().toISOString()
+            });
+            localStorage.setItem("capabilio_task_vault", JSON.stringify(vault));
+          } catch(e) {
+            console.error("Failed to save to vault", e);
+          }
+        }
+        setTaskData(prev => ({ ...prev, completed: true, finalReward }));
+
+        // Update user state and DB
+        if (setUserData && userData) {
+          const updatedElo = (userData.eloRating || 400) + finalReward;
+          const updatedStreak = (userData.streak || userData.arenaStreak || 0) + 1;
+            
+          setUserData(prev => ({
+            ...prev,
+            eloRating: updatedElo,
+            streak: updatedStreak,
+            arenaStreak: updatedStreak
+          }));
+
+          // Sync to database
+          if (user?.id) {
+            userDoc.update(user.id, {
+              eloRating: updatedElo,
+              arenaStreak: updatedStreak
+            }).catch(err => console.error("Failed to update ELO in DB:", err));
+          }
+        }
+      }
+    } catch (err) {
+      setConsoleOutput("System Error: Failed to contact AI Evaluator. Please try again.");
+    } finally {
+      setIsEvaluating(false);
+    }
+  };
+
+  return (
+    <div style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#F8F9FA', overflow: 'hidden' }}>
+      
+      {/* Success Redirect Overlay */}
+      {redirectSeconds !== null && (
+        <div style={{
+          position: 'fixed', top: 30, left: '50%', transform: 'translateX(-50%)',
+          backgroundColor: '#E6F4EA', color: '#188038', padding: '12px 24px', borderRadius: 999,
+          fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, zIndex: 9999,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)', border: '1px solid #CEEAD6', fontSize: 15
+        }}>
+          <CheckCircle size={20} />
+          Returning to Dashboard in {redirectSeconds}s...
+        </div>
+      )}
+
+      {/* Proctoring Warning Overlay */}
+      {proctorWarning && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', 
+          backgroundColor: '#D93025', color: 'white', zIndex: 99999, 
+          display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
+          fontSize: '24px', fontWeight: 600, textAlign: 'center', padding: '20px'
+        }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
+          <div>{proctorWarning}</div>
+          <div style={{ fontSize: '16px', fontWeight: 400, marginTop: '16px', opacity: 0.8 }}>
+            Continuing this behavior may result in automatic failure.
+          </div>
+        </div>
+      )}
+
+      {/* Top Navbar */}
+      <div style={{ height: '60px', backgroundColor: '#FFFFFF', borderBottom: '1px solid #E0E0E0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <button onClick={() => onNavigate('studentHome')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#5F6368' }}>
+            <ArrowLeft size={20} />
+          </button>
+          <div style={{ fontSize: '18px', fontWeight: 600, color: '#202124', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            Arena Workspace
+          </div>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", backgroundColor: "#F1F3F4", borderRadius: "16px", color: "#202124", fontWeight: 600, fontSize: "13px" }}>
+            {taskData?.company || "Swiggy"}
+          </div>
+          <button 
+            onClick={handleSubmit}
+            disabled={isEvaluating || taskData?.completed}
+            style={{ 
+              backgroundColor: taskData?.completed ? '#10B981' : '#FF5701', color: 'white', border: 'none', padding: '8px 24px', borderRadius: '999px',
+              fontWeight: 600, cursor: (isEvaluating || taskData?.completed) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
+              opacity: isEvaluating ? 0.7 : 1
+            }}
+          >
+            {taskData?.completed ? <CheckCircle size={16} /> : (isEvaluating ? <Zap size={16} className="animate-pulse" /> : <Play size={16} />)}
+            {taskData?.completed ? 'Mission Passed' : (isEvaluating ? 'Evaluating...' : 'Run Code')}
+          </button>
+        </div>
+      </div>
+
+      {/* Main Split Content */}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', transition: 'filter 0.2s ease' }}>
+        
+        {/* Left Pane - Mission Details */}
+        <div style={{ width: '40%', backgroundColor: '#FFFFFF', borderRight: '1px solid #E0E0E0', display: 'flex', flexDirection: 'column', overflowY: 'auto', userSelect: 'none' }}>
+          <div style={{ padding: '32px' }}>
+            
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{ fontSize: '13px', color: '#FF5701', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Today's Mission</div>
+              <h1 style={{ fontSize: '28px', fontWeight: 600, color: '#202124', marginBottom: '16px' }}>{taskData?.title || "Restaurant Card Price Bug"}</h1>
+              <div style={{ fontSize: '15px', color: '#5F6368', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                {taskData?.context || "On the Swiggy restaurant listing page, discounted prices are not displaying correctly when a restaurant has an active offer. Users see the original price and discounted price overlapping or showing NaN in some cases. This is causing confusion during checkout decisions."}
+              </div>
+            </div>
+
+            <div style={{ height: '1px', backgroundColor: '#E0E0E0', margin: '32px 0' }} />
+
+            <div style={{ marginBottom: '32px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#202124', marginBottom: '16px' }}>Task Requirements</h2>
+              <div style={{ fontSize: '15px', color: '#3C4043', lineHeight: '1.6', backgroundColor: '#F8F9FA', padding: '24px', borderRadius: '12px', border: '1px solid #E0E0E0' }}>
+                {taskData?.taskDescription || "Fix the calculateDiscount function so it correctly calculates and displays the discounted price only when a valid discountPercent is passed as a parameter.\n\nIf discountPercent is missing, undefined, or zero, only the original price should be returned. Ensure the discount calculation rounds to the nearest whole number and handles cases where price is a string instead of a number."}
+              </div>
+            </div>
+
+            <div>
+              <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#202124', marginBottom: '16px' }}>Reward</h2>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', backgroundColor: '#FCE8E6', borderRadius: '999px', color: '#D93025', fontWeight: 600 }}>
+                <CheckCircle size={18} />
+                +{taskData?.eloReward || 25} ELO Points
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        {/* Right Pane - Code & Terminal */}
+        <div style={{ width: '60%', display: 'flex', flexDirection: 'column', backgroundColor: '#1E1E1E' }}>
+          
+          {/* Editor Header */}
+          <div style={{ height: '40px', backgroundColor: '#2D2D2D', borderBottom: '1px solid #1E1E1E', display: 'flex', alignItems: 'center', padding: '0 16px', justifyContent: 'space-between' }}>
+            <div style={{ fontSize: '13px', color: '#E0E0E0', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Terminal size={14} /> 
+              {language === 'javascript' ? 'index.js' : language === 'python' ? 'main.py' : language === 'java' ? 'Main.java' : language === 'cpp' ? 'main.cpp' : 'code'}
+            </div>
+            <select 
+              value={language} 
+              onChange={(e) => setLanguage(e.target.value)}
+              style={{
+                backgroundColor: '#1E1E1E', color: '#E0E0E0', border: '1px solid #333', 
+                borderRadius: '6px', padding: '6px 28px 6px 12px', fontSize: '13px', outline: 'none', cursor: 'pointer',
+                appearance: 'none', backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23E0E0E0%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px top 50%', backgroundSize: '10px auto'
+              }}
+            >
+              <option value="javascript">JavaScript (Node.js)</option>
+              <option value="python">Python 3</option>
+              <option value="java">Java</option>
+              <option value="cpp">C++</option>
+              <option value="typescript">TypeScript</option>
+            </select>
+          </div>
+
+          {/* Monaco Editor */}
+          <div style={{ flex: 1, padding: '16px 0' }}>
+            <Editor
+              height="100%"
+              language={language}
+              path={language === 'typescript' ? 'main.tsx' : language === 'javascript' ? 'main.jsx' : language === 'python' ? 'main.py' : language === 'java' ? 'Main.java' : language === 'cpp' ? 'main.cpp' : undefined}
+              theme="vs-dark"
+              value={code}
+              onChange={(value) => setCode(value)}
+              beforeMount={(monaco) => {
+                const compilerOptions = {
+                  jsx: 2, // monaco.languages.typescript.JsxEmit.React
+                  jsxFactory: 'React.createElement',
+                  reactNamespace: 'React',
+                  allowNonTsExtensions: true,
+                  target: 99, // ScriptTarget.Latest
+                };
+                monaco.languages.typescript.typescriptDefaults.setCompilerOptions(compilerOptions);
+                monaco.languages.typescript.javascriptDefaults.setCompilerOptions(compilerOptions);
+                monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+                  noSemanticValidation: true,
+                  noSyntaxValidation: false,
+                });
+                monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
+                  noSemanticValidation: true,
+                  noSyntaxValidation: false,
+                });
+              }}
+              onMount={(editor, monaco) => {
+                editorRef.current = editor;
+                monacoRef.current = monaco;
+              }}
+              options={{
+                minimap: { enabled: false },
+                  readOnly: taskData?.completed || false,
+                fontSize: 14,
+                fontFamily: 'Consolas, "Courier New", monospace',
+                padding: { top: 16 },
+                scrollBeyondLastLine: false,
+                smoothScrolling: true,
+                contextmenu: false
+              }}
+            />
+          </div>
+
+          {/* Terminal / Code Review Console */}
+          <div style={{ height: '30%', backgroundColor: '#1E1E1E', borderTop: '1px solid #333333', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ height: '36px', backgroundColor: '#2D2D2D', display: 'flex', alignItems: 'center', padding: '0 16px', fontSize: '12px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Output / AI Code Review
+            </div>
+            <div style={{ flex: 1, padding: '16px', overflowY: 'auto', color: '#E0E0E0', fontFamily: 'monospace', fontSize: '13px', whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+              {consoleOutput}
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  );
+}

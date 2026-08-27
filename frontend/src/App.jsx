@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, lazy, Suspense } from "react"
+import { useState, useEffect, useRef, lazy, Suspense } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import {
@@ -33,6 +33,7 @@ import CareerPicker from "./pages/CareerPicker"
 
 // ── Feature pages — lazy-loaded per navigation ───────────────────────────────
 // Each import() creates a separate chunk loaded only when the user visits that page.
+const ArenaWorkspace     = lazy(() => import("./pages/ArenaWorkspace"))
 const Aura               = lazy(() => import("./pages/Aura"))
 // Arena rebuild — College Stream branch (Phase 1) live below. Domain Role
 // branch (config-driven, AI-generated missions) gets its own lazy import
@@ -79,6 +80,13 @@ const JobPostings        = lazy(() => import("./pages/JobPostings"))
 const AdminQuestionBank  = lazy(() => import("./pages/AdminQuestionBank"))
 const AdminOpsDashboard  = lazy(() => import("./pages/AdminOpsDashboard"))
 const AdminSkillStudioContent = lazy(() => import("./pages/AdminSkillStudioContent"))
+
+const CodeVault          = lazy(() => import("./pages/CodeVault"))
+const SkillGraph         = lazy(() => import("./pages/SkillGraph"))
+const StudentResume      = lazy(() => import("./pages/StudentResume"))
+const AiInterview        = lazy(() => import("./pages/AiInterview"))
+const CommunityFeed      = lazy(() => import("./pages/CommunityFeed"))
+const StudentRecruiters  = lazy(() => import("./pages/StudentRecruiters"))
 
 const API = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
 
@@ -1674,16 +1682,13 @@ function App() {
   // earlier but do not control this bar. Intentionally now 6 items (was
   // capped at 5) since Arena is a real, functioning destination again.
   const STUDENT_HEADER_NAV = [
-      { id: "home",        label: "Dashboard",    page: "studentHome", prefix: "▦" },
-      { id: "aura",        label: "Aura",         page: "aura",        prefix: "+" },
-    { id: "pulse",       label: "Pulse",        page: "pulse",       prefix: "⚡" },
-    { id: "skillstudio", label: "Skill Studio", page: "skillstudio",   prefix: "🎓" },
-    { id: "arenaCollegeStream", label: "Arena", page: "arenaCollegeStream", prefix: "🏟️" },
-    { id: "launchpad",   label: "Launchpad",    page: "launchpad",     prefix: "🚀" },
-    { id: "myTasks",     label: "Tasks",        page: "myTasks",       prefix: "📋" },
-    // 2026-08-02: only shown once GET /college/me/tasks confirms this student
-    // is actually org-linked — collegeLinked starts null (unresolved) so this
-    // never flashes in and then disappears; it simply appears once known true.
+    { id: "home",        label: "Dashboard",    page: "studentHome", prefix: "▦" },
+    { id: "codevault",   label: "Code Vault",   page: "codeVault",   prefix: "🗄️" },
+    { id: "skillgraph",  label: "Skill Graph",  page: "skillGraph",  prefix: "🧠" },
+    { id: "portfolio",   label: "Portfolio",    page: "studentResume", prefix: "📄" },
+    { id: "aiinterview", label: "AI Interview", page: "aiInterview", prefix: "🎙️" },
+    { id: "feed",        label: "Feed",         page: "communityFeed", prefix: "🌐" },
+    { id: "recruiters",  label: "Recruiters",   page: "studentRecruiters", prefix: "🤝" },
     ...(collegeLinked ? [{ id: "college", label: "College", page: "studentCollege", prefix: "🏫" }] : []),
   ]
 
@@ -1752,6 +1757,7 @@ function App() {
           .cap-nav-item:hover { background: #F4F5F7 !important; color: #14161A !important; }
         `}</style>
 
+      {currentPage !== "arenaWorkspace" && (
       <header style={{
           position: "sticky", top: 0, zIndex: 90,
           background: "#FFFFFF",
@@ -1970,10 +1976,11 @@ function App() {
           </div>
         </div>
       </header>
+      )}
 
       {/* Professional path's full nav now lives in the scrollable header
           (PROFESSIONAL_HEADER_NAV) — PathNav's icon row would just duplicate it. */}
-      {navPath !== "student" && navPath !== "institution" && navPath !== "professional" && (
+      {navPath !== "student" && navPath !== "institution" && navPath !== "professional" && currentPage !== "arenaWorkspace" && (
         <PathNav
           path={navPath}
           activeItem={activeNavItem}
@@ -1981,7 +1988,7 @@ function App() {
         />
       )}
 
-      <div style={{ height: "calc(100vh - 56px)", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+      <div style={{ height: currentPage === "arenaWorkspace" ? "100vh" : "calc(100vh - 56px)", overflowY: "auto", display: "flex", flexDirection: "column" }}>
         {/* Suspense: lazy page chunks load on first navigation — PageLoader shows briefly.
             Wrapped in ErrorBoundary: if a chunk 404s (stale index.html pointing at a
             hash a newer deploy purged), this used to unmount the ENTIRE app to a blank
@@ -1991,6 +1998,13 @@ function App() {
         <ErrorBoundary>
         <Suspense fallback={<PageLoader />}>
           {currentPage === "studentHome"      && <StudentHome      user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
+          {currentPage === "codeVault" && <CodeVault user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
+          {currentPage === "skillGraph" && <SkillGraph user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
+          {currentPage === "studentResume" && <StudentResume user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
+          {currentPage === "aiInterview" && <AiInterview user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
+          {currentPage === "communityFeed" && <CommunityFeed user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
+          {currentPage === "studentRecruiters" && <StudentRecruiters user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
+          {currentPage === "arenaWorkspace"   && <ArenaWorkspace user={user} userData={userData} setUserData={setUserData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
           {currentPage === "studentCollege"   && <StudentCollegePage onBack={() => { setCurrentPage("studentHome"); setActiveNavItem("home") }} />}
           {currentPage === "professionalHome" && <ProfessionalHome user={user} userData={userData} setUserData={setUserData} activeTab={activeTab} setActiveTab={setActiveTab} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} onNavigatePricing={() => { setCurrentPage("pricing"); setActiveNavItem("") }} />}
           {currentPage === "skills" && <Skills user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}
@@ -2078,7 +2092,7 @@ function App() {
           AI Copilot nav module (ExecutiveComingSoon "aicopilot" today, the
           proactive founder-briefing engine in Sprint 6) rather than the
           generic career-Q&A widget used by student/professional. */}
-      {user && navPath !== "institution" && navPath !== "authority" && <CopilotWidget user={user} userData={userData} />}
+      {/* AI Copilot Widget Removed as requested by user */}
 
       <Analytics />
       <SpeedInsights />
@@ -2087,6 +2101,7 @@ function App() {
 }
 
 export default App
+
 
 
 

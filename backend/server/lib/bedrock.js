@@ -64,7 +64,7 @@ Return the response STRICTLY as a JSON object with this structure:
 
   try {
     const command = new InvokeModelCommand({
-      modelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+      modelId: "anthropic.claude-sonnet-5",
       contentType: "application/json",
       accept: "application/json",
       body: JSON.stringify(payload),

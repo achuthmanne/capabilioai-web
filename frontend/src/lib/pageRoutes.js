@@ -43,6 +43,7 @@ export const PAGE_KEYS = [
   "pipeline", "pricing", "professionalHome", "pulse", "recruiterHome",
   "signalrooms", "skills", "skillstudio", "startupworkspace",
   "studentCollege", "studentHome", "timemarket", "weeklycheck",
+  "codeVault", "skillGraph", "studentResume", "aiInterview", "communityFeed", "studentRecruiters",
 ]
 
 function toPath(key) {

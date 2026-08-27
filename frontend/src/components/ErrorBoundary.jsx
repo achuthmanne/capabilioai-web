@@ -42,7 +42,7 @@ export default class ErrorBoundary extends Component {
   }
 
   static getDerivedStateFromError(error) {
-    return { hasError: true, chunkError: isChunkLoadError(error) }
+    return { hasError: true, chunkError: isChunkLoadError(error), error: error }
   }
 
   componentDidCatch(error, info) {
@@ -87,6 +87,9 @@ export default class ErrorBoundary extends Component {
           <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Something went wrong.</p>
           <p style={{ fontSize: 14, color: "#666", marginBottom: 16 }}>
             This page hit an unexpected error. Refreshing usually fixes it.
+          </p>
+          <p style={{ fontSize: 12, color: "red", marginBottom: 16, maxWidth: "600px", wordBreak: "break-all" }}>
+            {this.state.error?.toString()}
           </p>
           <button
             onClick={() => window.location.reload()}
