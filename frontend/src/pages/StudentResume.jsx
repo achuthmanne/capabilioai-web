@@ -159,46 +159,40 @@ export default function StudentResume({ user, userData }) {
         <div style={{ position: "relative", zIndex: 10 }}>
           
           {/* Digital Portfolio Header */}
-            <div style={{ display: "flex", alignItems: "center", gap: 32, borderBottom: "2px solid #F3F4F6", paddingBottom: 32, marginBottom: 32 }}>
-              <div style={{ width: 120, height: 120, borderRadius: "50%", background: "#F9FAFB", border: "4px solid #FFFFFF", boxShadow: "0 12px 24px -8px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05)", overflow: "hidden", flexShrink: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 24, borderBottom: "1px solid #E5E7EB", paddingBottom: 24, marginBottom: 28 }}>
+              <div style={{ width: 100, height: 100, borderRadius: "50%", background: "#F9FAFB", border: "4px solid #FFFFFF", boxShadow: "0 12px 24px -8px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05)", overflow: "hidden", flexShrink: 0 }}>
                 {userData?.profilePhotoURL ? (
                   <img src={userData.profilePhotoURL} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
-                  <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40, color: "#9CA3AF", fontWeight: 700, fontFamily: '"Inter", sans-serif' }}>
+                  <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, color: "#9CA3AF", fontWeight: 700, fontFamily: '"Inter", sans-serif' }}>
                     {firstName?.[0] || ""}{lastName?.[0] || ""}
                   </div>
                 )}
               </div>
               
-              <div style={{ flex: 1 }}>
-                <h1 style={{ fontSize: 36, fontWeight: 800, margin: "0 0 6px 0", letterSpacing: "-1px", color: "#111827", fontFamily: '"Inter", sans-serif' }}>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", height: 100 }}>
+                <h1 style={{ fontSize: 32, fontWeight: 800, margin: "0 0 4px 0", letterSpacing: "-1px", color: "#111827", fontFamily: '"Inter", sans-serif', lineHeight: 1.1 }}>
                   {name}
                 </h1>
-                <h2 style={{ fontSize: 18, fontWeight: 600, margin: "0 0 16px 0", color: "#FF5701", fontFamily: '"Inter", sans-serif' }}>
+                <h2 style={{ fontSize: 16, fontWeight: 600, margin: "0 0 12px 0", color: "#FF5701", fontFamily: '"Inter", sans-serif', lineHeight: 1.2 }}>
                   {role}
                 </h2>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{ padding: "6px 12px", background: "rgba(37, 99, 235, 0.1)", color: "#2563EB", borderRadius: 99, fontSize: 12, fontWeight: 700, letterSpacing: "0.5px", display: "flex", alignItems: "center", gap: 6 }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                    CAPABILIO VERIFIED
-                  </div>
-                  <div style={{ padding: "6px 12px", background: "#F3F4F6", color: "#4B5563", borderRadius: 99, fontSize: 12, fontWeight: 600 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <div style={{ padding: "4px 10px", background: "#F3F4F6", color: "#4B5563", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
                     {resumeData.totalElo.toLocaleString()} ELO Score
                   </div>
-                  <div style={{ padding: "6px 12px", background: "#F3F4F6", color: "#4B5563", borderRadius: 99, fontSize: 12, fontWeight: 600 }}>
+                  <div style={{ padding: "4px 10px", background: "#F3F4F6", color: "#4B5563", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
                     {resumeData.tier}
                   </div>
-                  <div style={{ padding: "6px 12px", background: "#FFFBEB", color: "#D97706", borderRadius: 99, fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                  <div style={{ padding: "4px 10px", background: "#FFFBEB", color: "#D97706", borderRadius: 6, fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 4 }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                     {resumeData.globalRank}
                   </div>
                 </div>
               </div>
             </div>
 
-          
-
-          {/* Capabilio AI Assessment */}
+            {/* Capabilio AI Assessment */}
           <div style={{ marginBottom: 32 }}>
             <h3 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 12px 0", textTransform: "uppercase", letterSpacing: "1px", borderBottom: "1px solid #E5E7EB", paddingBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
               <Sparkles size={16} color="#FF5701" /> Capabilio AI Assessment
