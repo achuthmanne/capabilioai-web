@@ -160,34 +160,45 @@ export default function StudentResume({ user, userData }) {
         {/* Content (z-index ensures it sits above watermark) */}
         <div style={{ position: "relative", zIndex: 10 }}>
           
-          {/* Header */}
-          <div style={{ textAlign: "center", borderBottom: "2px solid #111827", paddingBottom: 24, marginBottom: 32 }}>
-            <h1 style={{ fontSize: 40, fontWeight: 400, margin: "0 0 8px 0", letterSpacing: "1px", textTransform: "uppercase" }}>
-              {name}
-            </h1>
-            <h2 style={{ fontSize: 16, fontWeight: 600, margin: "0 0 12px 0", color: "#4B5563", letterSpacing: "2px", textTransform: "uppercase" }}>
-              {role}
-            </h2>
-            <div style={{ fontSize: 13, color: "#6B7280", fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}>
-              {email} • {userData?.linkedinUrl || userData?.linkedin_url ? (userData.linkedinUrl || userData.linkedin_url).replace(/^https?:\/\/(www\.)?/, '') : 'linkedin.com/in/profile'} • Verify at: capabilio.com/verify/{user?.id?.substring(0,8).toUpperCase() || 'AC89-2X'}
+          {/* Digital Portfolio Header */}
+            <div style={{ display: "flex", alignItems: "center", gap: 32, borderBottom: "2px solid #F3F4F6", paddingBottom: 32, marginBottom: 32 }}>
+              <div style={{ width: 120, height: 120, borderRadius: "50%", background: "#F9FAFB", border: "4px solid #FFFFFF", boxShadow: "0 12px 24px -8px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05)", overflow: "hidden", flexShrink: 0 }}>
+                {userData?.profilePhotoURL ? (
+                  <img src={userData.profilePhotoURL} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40, color: "#9CA3AF", fontWeight: 700, fontFamily: '"Inter", sans-serif' }}>
+                    {firstName?.[0] || ""}{lastName?.[0] || ""}
+                  </div>
+                )}
+              </div>
+              
+              <div style={{ flex: 1 }}>
+                <h1 style={{ fontSize: 36, fontWeight: 800, margin: "0 0 6px 0", letterSpacing: "-1px", color: "#111827", fontFamily: '"Inter", sans-serif' }}>
+                  {name}
+                </h1>
+                <h2 style={{ fontSize: 18, fontWeight: 600, margin: "0 0 16px 0", color: "#FF5701", fontFamily: '"Inter", sans-serif' }}>
+                  {role}
+                </h2>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ padding: "6px 12px", background: "rgba(37, 99, 235, 0.1)", color: "#2563EB", borderRadius: 99, fontSize: 12, fontWeight: 700, letterSpacing: "0.5px", display: "flex", alignItems: "center", gap: 6 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    CAPABILIO VERIFIED
+                  </div>
+                  <div style={{ padding: "6px 12px", background: "#F3F4F6", color: "#4B5563", borderRadius: 99, fontSize: 12, fontWeight: 600 }}>
+                    {resumeData.totalElo.toLocaleString()} ELO Score
+                  </div>
+                  <div style={{ padding: "6px 12px", background: "#F3F4F6", color: "#4B5563", borderRadius: 99, fontSize: 12, fontWeight: 600 }}>
+                    {resumeData.tier}
+                  </div>
+                  <div style={{ padding: "6px 12px", background: "#FFFBEB", color: "#D97706", borderRadius: 99, fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    Top {resumeData.globalRank}
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
 
-          {/* Core Stats (The AI Verified Stats) */}
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 32, background: "#F9FAFB", padding: "16px 24px", border: "1px solid #E5E7EB", fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.5px" }}>Global Tier</div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: "#3B82F6" }}>{resumeData.tier}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.5px" }}>Verified ELO Score</div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: "#111827" }}>{resumeData.totalElo.toLocaleString()} Points</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.5px" }}>Global Rank</div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: "#111827" }}>{resumeData.globalRank}</div>
-            </div>
-          </div>
+          
 
           {/* Capabilio AI Assessment */}
           <div style={{ marginBottom: 32 }}>
