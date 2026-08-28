@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Share2, Sparkles, ShieldCheck, Lock, X, Check } from 'lucide-react';
+import { Download, Share2, Sparkles, ShieldCheck, Lock, X, Check, Award } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 
@@ -178,7 +178,7 @@ export default function StudentResume({ user, userData }) {
 
             {/* Capabilio AI Assessment */}
           <div style={{ marginBottom: 32 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 12px 0", textTransform: "uppercase", letterSpacing: "1px", borderBottom: "1px solid #E5E7EB", paddingBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 16px 0", textTransform: "uppercase", letterSpacing: "1px", borderBottom: "1px solid #E5E7EB", paddingBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
               <Sparkles size={16} color="#FF5701" /> Capabilio AI Assessment
             </h3>
             <p style={{ fontSize: 15, lineHeight: 1.6, margin: 0, color: "#374151" }}>
@@ -188,7 +188,7 @@ export default function StudentResume({ user, userData }) {
 
           {/* Skills Section */}
           <div style={{ marginBottom: 32 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 12px 0", textTransform: "uppercase", letterSpacing: "1px", borderBottom: "1px solid #E5E7EB", paddingBottom: 4 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 16px 0", textTransform: "uppercase", letterSpacing: "1px", borderBottom: "1px solid #E5E7EB", paddingBottom: 8 }}>
               Verified Capabilities
             </h3>
             {Object.keys(resumeData.topSkills).length > 0 ? (
@@ -207,7 +207,7 @@ export default function StudentResume({ user, userData }) {
 
           {/* Experience / Proof of Work */}
           <div>
-            <h3 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 16px 0", textTransform: "uppercase", letterSpacing: "1px", borderBottom: "1px solid #E5E7EB", paddingBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 16px 0", textTransform: "uppercase", letterSpacing: "1px", borderBottom: "1px solid #E5E7EB", paddingBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
               <ShieldCheck size={16} color="#6B7280" /> Verified Platform Experience
             </h3>
             
