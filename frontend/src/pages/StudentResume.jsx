@@ -111,8 +111,8 @@ export default function StudentResume({ user, userData }) {
   // Generate dynamic AI assessment text
   const topSkillNames = Object.values(resumeData.topSkills).flat().slice(0, 3).join(", ");
   const aiAssessmentText = resumeData.missionCount > 0 
-    ? `Based on ${resumeData.missionCount} successfully evaluated missions in the Arena, this candidate operates at a ${resumeData.tier.split(' ')[0]} level. They have consistently demonstrated practical mastery in ${topSkillNames || 'software engineering'}, producing production-ready solutions that pass strict edge-case testing.`
-    : `This candidate has just joined the Capabilio ecosystem and is currently undergoing Arena evaluations to build their verified proof of work.`;
+    ? `Based on ${resumeData.missionCount} successfully evaluated missions in the Arena, this candidate operates at a ${resumeData.tier.split(' ')[0]} level. They have consistently demonstrated practical mastery in ${topSkillNames || role}, producing production-ready solutions that pass strict edge-case testing.`
+    : `Based on Capabilio's baseline AI evaluation, this candidate operates at a ${resumeData.tier.split(' ')[0]} level with a verified score of ${resumeData.totalElo.toLocaleString()} ELO. They are currently tackling advanced Arena missions to build a comprehensive technical Proof of Work in ${role}.`;
 
   return (
     <div style={{ padding: "40px", width: "100%", background: "#FAFAFA" }}>
