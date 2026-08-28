@@ -99,24 +99,33 @@ export default function MyProfilePanel({ isOpen, onClose, user, userData, onSign
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 32 }}>
               
-              {/* Profile Header */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, paddingBottom: 24, borderBottom: '1px solid #E4E6E9' }}>
-                <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#F3F4F6', border: '1px solid rgba(0,0,0,0.08)', overflow: 'hidden', flexShrink: 0 }}>
+              {/* Top Tier Profile Header */}
+              <div style={{ 
+                display: 'flex', flexDirection: 'column', alignItems: 'center', 
+                padding: '16px 0 32px 0', borderBottom: '1px solid #E4E6E9',
+                textAlign: 'center'
+              }}>
+                <div style={{ 
+                  width: 88, height: 88, borderRadius: '50%', background: '#F9FAFB', 
+                  border: '3px solid #FFFFFF', boxShadow: '0 4px 12px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.05)', 
+                  overflow: 'hidden', flexShrink: 0, marginBottom: 16
+                }}>
                   {userData?.profilePhotoURL ? (
                     <img src={userData.profilePhotoURL} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: '#9CA3AF', fontWeight: 700, fontFamily: '"Inter", sans-serif' }}>
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: '#9CA3AF', fontWeight: 700, fontFamily: '"Inter", sans-serif' }}>
                       {userData?.full_name?.charAt(0) || user?.email?.charAt(0) || "U"}
                     </div>
                   )}
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>
-                    {userData?.full_name || 'Capabilio User'}
-                  </div>
-                  <div style={{ fontSize: 13, color: '#6B7280' }}>
-                    {user?.email || 'No email provided'}
-                  </div>
+                
+                <h3 style={{ fontSize: 20, fontWeight: 800, color: '#111827', margin: '0 0 4px 0', fontFamily: '"Inter", sans-serif', letterSpacing: '-0.5px' }}>
+                  {userData?.full_name || 'Capabilio User'}
+                </h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 500, color: '#6B7280' }}>
+                  <span style={{ color: '#FF5701' }}>@{userData?.username || 'username'}</span>
+                  <span>•</span>
+                  <span>{user?.email || 'No email provided'}</span>
                 </div>
               </div>
 
