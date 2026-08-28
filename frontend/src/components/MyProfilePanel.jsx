@@ -154,7 +154,16 @@ export default function MyProfilePanel({ isOpen, onClose, user, userData, onSign
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Experience Level</label>
-                  <select value={form.yearsExp} onChange={f('yearsExp')} style={inputStyle}>
+                  <select value={form.yearsExp} onChange={f('yearsExp')} style={{
+                    ...inputStyle,
+                    appearance: 'none',
+                    WebkitAppearance: 'none',
+                    paddingRight: 36,
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 14px center',
+                    cursor: 'pointer'
+                  }}>
                     <option value="">Select...</option>
                     <option value="0">Fresher (0 years)</option>
                     <option value="1">1 year</option>
