@@ -1,6 +1,17 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Bell, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+
+const notifRelTime = (iso) => {
+  if (!iso) return "";
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+};
 
 export default function NotificationDetailModal({ isOpen, onClose, notification }) {
   if (!isOpen || !notification) return null;
@@ -44,16 +55,13 @@ export default function NotificationDetailModal({ isOpen, onClose, notification 
           <div style={{ flex: 1, padding: '60px 40px', display: 'flex', justifyContent: 'center', overflowY: 'auto' }}>
             <div style={{ maxWidth: 800, width: '100%' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-                <div style={{ width: 48, height: 48, borderRadius: 12, background: '#FFF7F3', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Bell size={24} color="#FF5701" />
-                </div>
-                <div>
-                  <div style={{ fontSize: 14, color: '#8A8F98', fontWeight: 600 }}>{notification.time}</div>
+                <div style={{ fontSize: 14, color: '#8A8F98', fontWeight: 600 }}>
+                  {notifRelTime(notification.created_at)}
                 </div>
               </div>
               
               <h1 style={{ margin: '0 0 24px 0', fontSize: 32, fontWeight: 800, color: '#14161A', fontFamily: '"Inter", sans-serif', letterSpacing: '-0.5px' }}>
-                {notification.title}
+                {notification.title || "Notification"}
               </h1>
               
               <div style={{ 
@@ -61,9 +69,7 @@ export default function NotificationDetailModal({ isOpen, onClose, notification 
                 fontSize: 16, color: '#475569', lineHeight: 1.6, fontFamily: '"Inter", sans-serif',
                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
               }}>
-                <p style={{ margin: '0 0 16px 0' }}>Hi there,</p>
-                <p style={{ margin: '0 0 24px 0' }}>{notification.body}</p>
-                <p style={{ margin: 0 }}>This is a full-width detailed view of the notification. We will integrate this with real database data in the next step!</p>
+                <p style={{ margin: '0 0 24px 0', whiteSpace: 'pre-wrap' }}>{notification.body}</p>
                 
                 <div style={{ marginTop: 40 }}>
                   <button 
@@ -76,7 +82,7 @@ export default function NotificationDetailModal({ isOpen, onClose, notification 
                     onMouseEnter={e => { e.currentTarget.style.background = '#EA580C' }}
                     onMouseLeave={e => { e.currentTarget.style.background = '#FF5701' }}
                   >
-                    Acknowledge
+                    Close
                   </button>
                 </div>
               </div>

@@ -1,16 +1,21 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Bell, ChevronRight } from 'lucide-react';
+import { X, ChevronRight } from 'lucide-react';
 
-const DUMMY_NOTIFS = [
-  { id: 1, title: "New Interview Opportunity", body: "Google has shortlisted your profile for the Frontend Engineer role.", time: "10m ago", is_read: false },
-  { id: 2, title: "Arena Task Completed", body: "You successfully completed the React UI challenge. +15 ELO.", time: "2h ago", is_read: false },
-  { id: 3, title: "Skill Stale Warning", body: "You haven't practiced Node.js in 14 days. Your ELO is at risk of decay.", time: "1d ago", is_read: true },
-  { id: 4, title: "Connection Request", body: "A recruiter from Microsoft wants to connect with you.", time: "2d ago", is_read: true },
-];
+const notifRelTime = (iso) => {
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+};
 
-export default function NotificationsPanel({ isOpen, onClose, onNotificationClick }) {
+export default function NotificationsPanel({ isOpen, onClose, notifications = [], onNotificationClick }) {
   if (!isOpen) return null;
+  
+  const unreadCount = notifications.filter(n => !n.is_read).length;
 
   return (
     <AnimatePresence>
@@ -43,8 +48,8 @@ export default function NotificationsPanel({ isOpen, onClose, onNotificationClic
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               padding: '24px 28px', borderBottom: '1px solid #E4E6E9', background: '#FAFAFA'
             }}>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#14161A', fontFamily: '"Inter", sans-serif', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Bell size={20} color="#FF5701" /> Notifications
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#14161A', fontFamily: '"Inter", sans-serif' }}>
+                Notifications
               </h2>
               <button 
                 onClick={onClose}
@@ -59,7 +64,12 @@ export default function NotificationsPanel({ isOpen, onClose, onNotificationClic
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-              {DUMMY_NOTIFS.map((n) => (
+              {notifications.length === 0 && (
+                <div style={{ padding: '60px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                  <div style={{ fontSize: 15, color: '#475569', fontWeight: 500, fontFamily: '"Inter", sans-serif' }}>No notifications yet.</div>
+                </div>
+              )}
+              {notifications.map((n) => (
                 <div 
                   key={n.id} 
                   onClick={() => onNotificationClick(n)}
@@ -73,13 +83,15 @@ export default function NotificationsPanel({ isOpen, onClose, onNotificationClic
                 >
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 15, fontWeight: !n.is_read ? 700 : 500, color: '#14161A', fontFamily: '"Inter", sans-serif', marginBottom: 4 }}>
-                      {n.title}
+                      {n.title || "Notification"}
                     </div>
-                    <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.5, fontFamily: '"Inter", sans-serif' }}>
-                      {n.body.length > 50 ? n.body.substring(0, 50) + '...' : n.body}
-                    </div>
+                    {n.body && (
+                      <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.5, fontFamily: '"Inter", sans-serif' }}>
+                        {n.body.length > 70 ? n.body.substring(0, 70) + '...' : n.body}
+                      </div>
+                    )}
                     <div style={{ fontSize: 12, color: '#8A8F98', marginTop: 8, fontWeight: 500 }}>
-                      {n.time}
+                      {notifRelTime(n.created_at)}
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', alignSelf: 'center', color: '#8A8F98' }}>
@@ -90,7 +102,9 @@ export default function NotificationsPanel({ isOpen, onClose, onNotificationClic
             </div>
             
             <div style={{ padding: '20px 28px', borderTop: '1px solid #E4E6E9', background: '#FAFAFA', textAlign: 'center' }}>
-              <span style={{ fontSize: 13, color: '#8A8F98', fontWeight: 500 }}>You have 2 unread notifications</span>
+              <span style={{ fontSize: 13, color: '#8A8F98', fontWeight: 500 }}>
+                {unreadCount > 0 ? `You have ${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'You are all caught up!'}
+              </span>
             </div>
           </motion.div>
         </>

@@ -21,7 +21,7 @@ import EchoPitchHero from "./EchoPitchHero"
 // ── Professional Path: API-connected components ───────────────────────────────
 import CareerTimelinePro from "../components/CareerTimeline"
 import { interviewApi, skillsApi, profileApi, professionalEloApi, weeklyCheckApi }  from "../lib/api"
-import SettingsPanel from "./SettingsPanel"
+
 import { namesLikelyMismatch, mismatchWarning } from "../lib/nameMatch"
 
 // ─── DESIGN TOKENS — Glassmorphic Cosmos dark theme ─────────────────────────
@@ -6681,18 +6681,10 @@ export default function Aura({ user, activeTab: initialTabProp, setActiveTab: se
           </div>
         )}
 
-        {/* ═══════════ SETTINGS TAB ═══════════ */}
-        {activeTab==="settings"&&(
-          <SettingsPanel
-            userData={userData}
-            user={user}
-            save={save}
-            setUserData={setUserData || setLocalUserData}
-            path={path}
-          />
-        )}
+        {/* Settings tab migrated to MyProfilePanel */}
 
       </div>
     </div>
   )
 }
+

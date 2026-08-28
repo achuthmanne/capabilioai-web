@@ -2071,6 +2071,7 @@ function App() {
         <NotificationsPanel 
           isOpen={showNotifications} 
           onClose={() => setShowNotifications(false)} 
+          notifications={notifications}
           onNotificationClick={(n) => { setShowNotifications(false); setSelectedNotification(n); }} 
         />
         <NotificationDetailModal
