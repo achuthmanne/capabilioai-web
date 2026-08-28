@@ -272,8 +272,8 @@ export default function StudentResume({ user, userData }) {
         <div style={{ background: "#FFFFFF", padding: 12, borderRadius: 999, marginBottom: 16, border: "1px solid #E5E7EB" }}>
           <Lock size={20} color="#6B7280" strokeWidth={2} />
         </div>
-        <h4 style={{ fontSize: 20, fontWeight: 600, color: "#202124", margin: "0 0 8px 0" }}>Unlock Pro to Download</h4>
-        <p style={{ fontSize: 15, color: "#5F6368", margin: "0 0 24px 0", maxWidth: 350 }}>Free tier users receive automatic profile syncs every 15 days. Upgrade to Pro for instant profile syncs, PDF exports, and official sharing.</p>
+        <h4 style={{ fontSize: 20, fontWeight: 600, color: "#202124", margin: "0 0 8px 0" }}>Unlock Capabilio Pro</h4>
+        <p style={{ fontSize: 15, color: "#5F6368", margin: "0 0 24px 0", maxWidth: 600, lineHeight: 1.5 }}>Free tier users receive automatic profile syncs every 15 days. Upgrade to Pro for instant profile syncs, PDF exports, and official sharing.</p>
         
         <button style={{
           background: "#202124",
