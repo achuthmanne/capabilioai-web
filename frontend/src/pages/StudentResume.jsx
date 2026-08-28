@@ -224,7 +224,7 @@ export default function StudentResume({ user, userData }) {
           {/* Experience / Proof of Work */}
           <div>
             <h3 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 16px 0", textTransform: "uppercase", letterSpacing: "1px", borderBottom: "1px solid #E5E7EB", paddingBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <ShieldCheck size={16} color="#6B7280" /> Verified Platform Experience (Code Vault)
+              <ShieldCheck size={16} color="#6B7280" /> Verified Platform Experience
             </h3>
             
             {resumeData.topMissions.length > 0 ? (
@@ -307,4 +307,5 @@ export default function StudentResume({ user, userData }) {
     </div>
   );
 }
+
 
