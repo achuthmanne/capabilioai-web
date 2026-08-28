@@ -161,7 +161,7 @@ export default function StudentResume({ user, userData }) {
                 <h2 style={{ fontSize: 16, fontWeight: 600, margin: "0 0 12px 0", color: "#FF5701", fontFamily: '"Inter", sans-serif', lineHeight: 1.2 }}>
                   {role}
                 </h2>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "nowrap", overflow: "hidden", whiteSpace: "nowrap" }}>
                   <div style={{ padding: "4px 10px", background: "#F3F4F6", color: "#4B5563", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
                     {resumeData.totalElo.toLocaleString()} ELO Score
                   </div>
@@ -291,5 +291,6 @@ export default function StudentResume({ user, userData }) {
     </div>
   );
 }
+
 
 
