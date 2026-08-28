@@ -1912,18 +1912,28 @@ function App() {
                 </svg>
               </button>
 
+              {/* Profile Dropdown upgraded with Framer Motion */}
+              <AnimatePresence>
               {profileMenuOpen && (
-                <div style={{
-                  position: "absolute", top: "100%", right: 0, marginTop: 12,
-                  width: 220, background: "#fff",
-                  borderRadius: 12, border: "1px solid #E4E6E9",
-                  boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
-                  padding: "6px", zIndex: 100,
-                  display: "flex", flexDirection: "column", gap: 2,
-                }}>
-                  <div style={{ padding: "8px 14px", borderBottom: "1px solid #F3F4F6", marginBottom: 4 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: "#14161A", fontFamily: '"Inter", sans-serif', textOverflow: "ellipsis", overflow: "hidden" }}>{displayName}</div>
-                    <div style={{ fontSize: 12, color: "#8A8F98", fontFamily: '"Inter", sans-serif', textOverflow: "ellipsis", overflow: "hidden" }}>{user?.email}</div>
+                <motion.div
+                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                  style={{
+                    position: "absolute", top: "100%", right: 0, marginTop: 12,
+                    width: 260, background: "rgba(255, 255, 255, 0.85)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+                    borderRadius: 16, border: "1px solid rgba(228, 230, 233, 0.8)",
+                    boxShadow: "0 20px 40px -8px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0,0,0,0.02)",
+                    padding: "8px", zIndex: 100,
+                    display: "flex", flexDirection: "column", gap: 4,
+                  }}
+                >
+                  <div style={{ padding: "12px 16px", background: "#F9FAFB", borderRadius: 10, display: "flex", flexDirection: "column", gap: 2, marginBottom: 4 }}>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: "#14161A", fontFamily: '"Inter", sans-serif', textOverflow: "ellipsis", overflow: "hidden", display: "flex", alignItems: "center", gap: 6 }}>
+                      {displayName}
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 500, color: "#8A8F98", fontFamily: '"Inter", sans-serif', textOverflow: "ellipsis", overflow: "hidden" }}>{user?.email}</div>
                   </div>
 
                   <button
@@ -1937,38 +1947,39 @@ function App() {
                       setProfileMenuOpen(false)
                     }}
                     style={{
-                      width: "100%", display: "flex", alignItems: "center", gap: 10,
-                      padding: "10px 14px", border: "none", background: "transparent", borderRadius: 8,
+                      width: "100%", display: "flex", alignItems: "center", gap: 12,
+                      padding: "12px 16px", border: "none", background: "transparent", borderRadius: 10,
                       cursor: "pointer", fontFamily: '"Inter", sans-serif',
-                      fontSize: 13, fontWeight: 600, color: "#14161A",
-                      textAlign: "left", transition: "background 0.1s",
+                      fontSize: 14, fontWeight: 600, color: "#14161A",
+                      textAlign: "left", transition: "all 0.15s",
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "#F4F5F7" }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "transparent" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "#F4F5F7"; e.currentTarget.style.color = navAccent }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#14161A" }}
                   >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                      My Profile
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    My Profile
                   </button>
 
-                  <div style={{ height: 1, background: "#E4E6E9", margin: "4px 0" }} />
+                  <div style={{ height: 1, background: "rgba(228, 230, 233, 0.6)", margin: "4px 0" }} />
 
                   <button
                     onClick={() => { setProfileMenuOpen(false); handleSignOut() }}
                     style={{
-                      width: "100%", display: "flex", alignItems: "center", gap: 10,
-                      padding: "10px 14px", border: "none", background: "transparent", borderRadius: 8,
+                      width: "100%", display: "flex", alignItems: "center", gap: 12,
+                      padding: "12px 16px", border: "none", background: "transparent", borderRadius: 10,
                       cursor: "pointer", fontFamily: '"Inter", sans-serif',
-                      fontSize: 13, fontWeight: 600, color: "#DC2626",
-                      textAlign: "left", transition: "background 0.1s",
+                      fontSize: 14, fontWeight: 600, color: "#DC2626",
+                      textAlign: "left", transition: "all 0.15s",
                     }}
                     onMouseEnter={e => { e.currentTarget.style.background = "#FEF2F2" }}
                     onMouseLeave={e => { e.currentTarget.style.background = "transparent" }}
                   >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
                     Sign out
                   </button>
-              </div>
-            )}
+                </motion.div>
+              )}
+              </AnimatePresence>
           </div>
         </div>
       </header>
@@ -2091,6 +2102,14 @@ function App() {
       {/* AI Copilot Widget Removed as requested by user */}
 
       
+        <MyProfilePanel 
+          isOpen={showMyProfile} 
+          onClose={() => setShowMyProfile(false)} 
+          user={user} 
+          userData={userData} 
+          setUserData={setUserData} 
+        />
+        
         <MyProfilePanel 
           isOpen={showMyProfile} 
           onClose={() => setShowMyProfile(false)} 
