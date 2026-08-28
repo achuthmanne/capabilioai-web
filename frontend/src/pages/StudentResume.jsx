@@ -160,7 +160,7 @@ export default function StudentResume({ user, userData }) {
           
           {/* Digital Portfolio Header */}
             <div style={{ display: "flex", alignItems: "center", gap: 24, borderBottom: "1px solid #E5E7EB", paddingBottom: 24, marginBottom: 28 }}>
-              <div style={{ width: 100, height: 100, borderRadius: "50%", background: "#F9FAFB", border: "4px solid #FFFFFF", boxShadow: "0 12px 24px -8px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05)", overflow: "hidden", flexShrink: 0 }}>
+              <div style={{ width: 100, height: 100, borderRadius: "50%", background: "#F9FAFB", border: "1px solid rgba(0,0,0,0.08)", overflow: "hidden", flexShrink: 0 }}>
                 {userData?.profilePhotoURL ? (
                   <img src={userData.profilePhotoURL} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
