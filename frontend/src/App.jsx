@@ -1953,8 +1953,8 @@ function App() {
                       fontSize: 14, fontWeight: 600, color: "#14161A",
                       textAlign: "left", transition: "all 0.15s",
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "#F4F5F7"; e.currentTarget.style.color = navAccent }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#14161A" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "#F4F5F7" }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "transparent" }}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     My Profile
