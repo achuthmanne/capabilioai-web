@@ -15,29 +15,39 @@ export async function generateRealCompanyTask(role, elo = 400, requestedCompany 
   const prompt = `You are a Senior Engineering Manager at ${randomCompany}.
 Generate a highly realistic, technical daily task for a ${levelStr} ${role} working at ${randomCompany}.
 The candidate's current ELO skill rating is ${elo}. Adjust the complexity of the task precisely to this difficulty level.
-The task must be a real-world bug fix, feature implementation, or architecture refactor specific to ${randomCompany}'s domain.
+The task must be a real-world problem specific to ${randomCompany}'s domain and the role of ${role}.
 DO NOT use dummy data like "foo bar". Use realistic context.
 
-Return the response STRICTLY as a JSON object with this structure:
+CRITICAL INSTRUCTION: There MUST be a perfect, logical bond between the Question context, the Starting Code, and the chosen workspaceType. For example, do not provide a SQL problem in a 'code' workspace, or a UI problem in a 'log_viewer' workspace. The tools and the task must match perfectly.
+
+  CRITICAL WORKSPACE INSTRUCTIONS based on role ${role}:
+  - If the role is Frontend or Web: Provide a buggy React Component (export default function App() { ... }) because the user will see a Live React Web Preview! Ensure the component renders a visual UI. The workspaceType MUST be "code".
+  - If the role is Backend, App, or general Software: Provide buggy starting code (Node.js, Python, Java). The workspaceType MUST be "code".
+  - If the role is Cybersecurity, DevOps, or Network: Provide terminal configurations, nmap logs, or bash scripts. The workspaceType MUST be "terminal".
+  - If the role is Data, DBMS, or Analyst: Provide a SQL schema or broken query. The workspaceType MUST be "sql".
+  - If the role is Hardware, Medical, Embedded, Civil, or Mechanical: Provide diagnostic logs, sensor data, or configuration parameters. The workspaceType MUST be "log_viewer".
+
+Return the response STRICTLY as a JSON object with this exact structure:
 {
   "company": "Company Name",
-  "title": "Short punchy task title (e.g., React Cart State Bug)",
+  "workspaceType": "code | terminal | sql | log_viewer",
+  "title": "Short punchy task title",
   "context": "Brief context of the problem in the company's product (max 3 sentences).",
-  "eloReward": "A dynamic integer between 10 and 50 based strictly on how tough this specific question is. (10 for easy, 30 for medium, 50 for hard)", 
-  "targetedSkill": "Primary technical skill tested (e.g., React State Management)",
-  "taskDescription": "Detailed technical description of what needs to be fixed or implemented.",
-  "startingCode": "Boilerplate or buggy code for them to start with as a string.",
-  "expectedOutcome": "What the final working code should achieve.",
+  "eloReward": "A dynamic integer STRICTLY chosen from [5, 8, 10, 12, 15] based on difficulty. DO NOT EXCEED 15.", 
+  "targetedSkill": "Primary technical skill tested",
+  "taskDescription": "Detailed technical description of what needs to be fixed or analyzed.",
+  "startingCode": "Boilerplate, buggy code, broken SQL, or initial raw log data for them to start with as a string.",
+  "expectedOutcome": "What the final working solution should achieve.",
   "learningGuide": {
     "concepts": ["Concept 1", "Concept 2"],
-    "explanation": "A high-quality, concise 2-3 sentence explanation of the core technical concept required to solve this task.",
-    "approach": "A subtle hint on how an expert would approach this problem, without giving away the exact code solution."
+    "explanation": "Why this happens.",
+    "approach": "How to approach the fix."
   },
   "upcomingMissions": [
     {
       "company": "Company Name (e.g. Stripe)",
       "title": "Short punchy task title (e.g. Payment Webhook Fix)",
-      "eloReward": "Integer ELO reward for this upcoming task (e.g. 35)"
+      "eloReward": "Integer ELO reward (e.g. 5, 8, 10)"
     },
     {
       "company": "Company Name 2",
@@ -45,7 +55,8 @@ Return the response STRICTLY as a JSON object with this structure:
       "eloReward": "Integer ELO reward 2"
     }
   ]
-}`;
+}
+DO NOT wrap the JSON in Markdown or backticks. Return RAW JSON only.`;
 
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -94,7 +105,7 @@ Return the response STRICTLY as a JSON object with this structure:
 
 
 export async function evaluateCode(taskData, code, language = 'javascript') {
-  const prompt = `You are a Senior Engineer code reviewer. A junior engineer has submitted a solution for the following task:
+  const prompt = `You are a Senior Engineer/Manager. A candidate has submitted a solution for the following task:
 
 Task:
 Company: ${taskData.company}
@@ -102,29 +113,36 @@ Title: ${taskData.title}
 Context: ${taskData.context}
 Description: ${taskData.taskDescription}
 
-Code Submitted:
+Original Boilerplate Given to Candidate:
+\`\`\`
+${taskData.startingCode || 'N/A'}
+\`\`\`
+
+Solution Submitted:
 \`\`\`
 ${code}
 \`\`\`
 
-Evaluate the code. Did they solve the problem described in the task requirements?
-If there are syntax errors, logic flaws, or they didn't fulfill the requirements, they fail.
+EVALUATION RULES:
+1. STRICT PROCTORING CHECK: Compare the Solution Submitted against the Original Boilerplate. The candidate MUST NOT have deleted, bypassed, or maliciously altered the core boilerplate structure, function signatures, or the intended constraints of the problem. If they cheated by bypassing the task, removing the constraints, or deleting the boilerplate, YOU MUST FAIL THEM IMMEDIATELY. Set "passed": false, and write in feedback: "[PROCTOR VIOLATION]: You are not allowed to bypass or delete the original boilerplate structure."
+2. Did they solve the problem described in the task requirements? If it's code, check for logic flaws. If it's a terminal command, SQL query, or log analysis, verify it achieves the exact requested outcome.
+3. If they didn't fulfill the requirements, they fail.
 
 Return ONLY a valid JSON response in this exact structure. YOU MUST ESCAPE ALL NEWLINES (\\n) AND QUOTES INSIDE THE STRINGS.
 DO NOT use <thinking> tags. DO NOT include any markdown or text outside the JSON:
 {
   "passed": true,
-  "feedback": "A concise code review from a senior engineer.",
-  "consoleOutput": "Simulated output of running their code.",
+  "feedback": "A concise review of their submission.",
+  "consoleOutput": "Simulated output of running their solution (e.g. terminal output, compiler errors, or query results).",
   "testCases": [
-    { "name": "Test Case 1 (e.g. Basic Input)", "passed": true, "details": "Expected output matches actual output." },
-    { "name": "Test Case 2 (e.g. Edge Case)", "passed": false, "details": "Failed when processing null value." }
+    { "name": "Test Case 1", "passed": true, "details": "Expected output matches actual output." },
+    { "name": "Test Case 2", "passed": false, "details": "Failed edge case." }
   ],
   "graphSkills": [
-    { "domain": "Category (e.g. Frontend, Data Engineering, Civil, Electronics)", "skill": "Specific Micro-skill Learned (e.g. Rate Limiting)" }
+    { "domain": "Category", "skill": "Specific Micro-skill Learned" }
   ]
 }
-Make sure to generate 3 to 4 realistic test cases relevant to the specific problem they solved. Extract 1 to 3 core concepts/skills they demonstrated into graphSkills.`;
+DO NOT wrap the JSON in Markdown or backticks. Return RAW JSON only.`;
 
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {

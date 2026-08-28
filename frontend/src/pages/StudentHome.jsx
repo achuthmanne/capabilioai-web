@@ -108,21 +108,43 @@ export default function StudentHome({ user, userData, onNavigate }) {
     let isMounted = true;
     
     const checkAndFetchTask = async () => {
-      const today = new Date().toDateString();
       const cached = localStorage.getItem("capabilio_daily_mission");
+      let shouldGenerateNew = true;
       
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
-          if (parsed.date === today && parsed.taskData) {
-            if (isMounted) {
-              setTaskData({...parsed.taskData, completed: parsed.completed});
-              setIsGenerating(false);
+          if (parsed.taskData) {
+            if (!parsed.completed) {
+              // Task exists but is NOT completed. Keep it forever!
+              shouldGenerateNew = false;
+              if (isMounted) {
+                setTaskData({...parsed.taskData, completed: false});
+                setIsGenerating(false);
+              }
+            } else {
+              // Task IS completed. Enforce 24 hour cooldown before giving a new one.
+              const completedAt = parsed.completedAt || Date.now(); // Fallback for old cache
+              const msPassed = Date.now() - completedAt;
+              const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+              
+              if (msPassed < TWENTY_FOUR_HOURS) {
+                // Still in cooldown. Show the completed task.
+                shouldGenerateNew = false;
+                if (isMounted) {
+                  setTaskData({...parsed.taskData, completed: true, lockedUntil: completedAt + TWENTY_FOUR_HOURS});
+                  setIsGenerating(false);
+                }
+              } else {
+                // Cooldown finished! We can generate a new task.
+                shouldGenerateNew = true;
+              }
             }
-            return;
           }
         } catch(e) {}
       }
+
+      if (!shouldGenerateNew) return;
 
       const t1 = setTimeout(() => { if (isMounted) setLoadingStep(1) }, 2000);
       const t2 = setTimeout(() => { if (isMounted) setLoadingStep(2) }, 4000);
@@ -148,7 +170,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
         if (isMounted) {
           setTaskData(data);
           setIsGenerating(false);
-          localStorage.setItem("capabilio_daily_mission", JSON.stringify({ date: today, taskData: data, completed: false }));
+          localStorage.setItem("capabilio_daily_mission", JSON.stringify({ generatedAt: Date.now(), taskData: data, completed: false }));
         }
       } catch (err) {
         console.error("Failed to fetch task:", err);
@@ -169,7 +191,6 @@ export default function StudentHome({ user, userData, onNavigate }) {
           };
           setTaskData(fallbackData);
           setIsGenerating(false);
-          localStorage.setItem("capabilio_daily_mission", JSON.stringify({ date: today, taskData: fallbackData, completed: false }));
         }
       }
     };
@@ -396,6 +417,12 @@ export default function StudentHome({ user, userData, onNavigate }) {
                 </div>
               )}
             </div>
+            
+            {taskData?.completed && taskData?.lockedUntil && (
+              <div style={{ marginTop: 16, padding: "12px 16px", background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 8, color: "#D97706", fontSize: 13, fontWeight: 600, display: "inline-block" }}>
+                🕒 Next mission unlocks in {Math.max(1, Math.ceil((taskData.lockedUntil - Date.now()) / (1000 * 60 * 60)))} hours
+              </div>
+            )}
 
             <div>
               <h3 style={{ fontSize: 32, fontWeight: 400, color: "#202124", margin: "0 0 12px 0", letterSpacing: "-0.02em" }}>

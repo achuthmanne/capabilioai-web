@@ -1,23 +1,30 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 import Editor from '@monaco-editor/react';
-import { ArrowLeft, Play, Terminal, CheckCircle, Zap } from 'lucide-react';
+import { ArrowLeft, Play, Terminal, CheckCircle, Zap, Layout } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { userDoc } from "../lib/db";
 import { supabase } from "../lib/supabase";
+import { SandpackProvider, SandpackPreview } from "@codesandbox/sandpack-react";
 
 export default function ArenaWorkspace({ user, userData, setUserData, onNavigate }) {
   
   const [taskData, setTaskData] = useState(null);
+  const [activeConsoleTab, setActiveConsoleTab] = useState('output');
   
   useEffect(() => {
     const cached = localStorage.getItem("capabilio_daily_mission");
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
-        if (parsed.taskData) setTaskData({ ...parsed.taskData, completed: parsed.completed });
+        if (parsed.taskData) {
+          setTaskData({ ...parsed.taskData, completed: parsed.completed });
+          if (parsed.taskData.workspaceType === 'sql') setLanguage('sql');
+          else if (parsed.taskData.workspaceType === 'terminal' || parsed.taskData.workspaceType === 'log_viewer') setLanguage('shell');
+        }
         if (parsed.violations) setViolations(parsed.violations);
         if (parsed.savedCode) setCode(parsed.savedCode);
+        else if (parsed.taskData?.startingCode) setCode(parsed.taskData.startingCode);
         if (parsed.savedOutput) setConsoleOutput(parsed.savedOutput);
       } catch (e) {}
     }
@@ -217,6 +224,7 @@ Review the test cases and feedback, then try again.`;
         if (cached) {
           const parsed = JSON.parse(cached);
           parsed.completed = true;
+          parsed.completedAt = Date.now();
           parsed.savedCode = code;
           parsed.savedOutput = dbFinalOutput;
           parsed.taskData.finalReward = finalReward;
@@ -415,23 +423,25 @@ Review the test cases and feedback, then try again.`;
           <div style={{ height: '40px', backgroundColor: '#2D2D2D', borderBottom: '1px solid #1E1E1E', display: 'flex', alignItems: 'center', padding: '0 16px', justifyContent: 'space-between' }}>
             <div style={{ fontSize: '13px', color: '#E0E0E0', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Terminal size={14} /> 
-              {language === 'javascript' ? 'index.js' : language === 'python' ? 'main.py' : language === 'java' ? 'Main.java' : language === 'cpp' ? 'main.cpp' : 'code'}
+              {taskData?.workspaceType === 'terminal' ? 'server_terminal' : taskData?.workspaceType === 'log_viewer' ? 'system_logs.txt' : taskData?.workspaceType === 'sql' ? 'query.sql' : language === 'javascript' ? 'index.js' : language === 'python' ? 'main.py' : language === 'java' ? 'Main.java' : language === 'cpp' ? 'main.cpp' : 'code'}
             </div>
-            <select 
-              value={language} 
-              onChange={(e) => setLanguage(e.target.value)}
-              style={{
-                backgroundColor: '#1E1E1E', color: '#E0E0E0', border: '1px solid #333', 
-                borderRadius: '6px', padding: '6px 28px 6px 12px', fontSize: '13px', outline: 'none', cursor: 'pointer',
-                appearance: 'none', backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23E0E0E0%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px top 50%', backgroundSize: '10px auto'
-              }}
-            >
-              <option value="javascript">JavaScript (Node.js)</option>
-              <option value="python">Python 3</option>
-              <option value="java">Java</option>
-              <option value="cpp">C++</option>
-              <option value="typescript">TypeScript</option>
-            </select>
+            {(!taskData?.workspaceType || taskData?.workspaceType === 'code') && (
+              <select 
+                value={language} 
+                onChange={(e) => setLanguage(e.target.value)}
+                style={{
+                  backgroundColor: '#1E1E1E', color: '#E0E0E0', border: '1px solid #333', 
+                  borderRadius: '6px', padding: '6px 28px 6px 12px', fontSize: '13px', outline: 'none', cursor: 'pointer',
+                  appearance: 'none', backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23E0E0E0%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px top 50%', backgroundSize: '10px auto'
+                }}
+              >
+                <option value="javascript">JavaScript (Node.js)</option>
+                <option value="python">Python 3</option>
+                <option value="java">Java</option>
+                <option value="cpp">C++</option>
+                <option value="typescript">TypeScript</option>
+              </select>
+            )}
           </div>
 
           {/* Monaco Editor */}
@@ -481,11 +491,36 @@ Review the test cases and feedback, then try again.`;
 
           {/* Terminal / Code Review Console */}
           <div style={{ height: '30%', backgroundColor: '#1E1E1E', borderTop: '1px solid #333333', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ height: '36px', backgroundColor: '#2D2D2D', display: 'flex', alignItems: 'center', padding: '0 16px', fontSize: '12px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Output / AI Code Review
+            <div style={{ height: '36px', backgroundColor: '#2D2D2D', display: 'flex', alignItems: 'center', padding: '0 16px', fontSize: '12px', gap: '20px' }}>
+              <div 
+                onClick={() => setActiveConsoleTab('output')}
+                style={{ color: activeConsoleTab === 'output' ? '#FFFFFF' : '#888', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: activeConsoleTab === 'output' ? 600 : 400, display: 'flex', alignItems: 'center', gap: '6px', borderBottom: activeConsoleTab === 'output' ? '2px solid #FF5701' : '2px solid transparent', height: '100%' }}
+              >
+                <Terminal size={14} /> Output / AI Review
+              </div>
+              
+              {taskData?.workspaceType === 'code' && (
+                <div 
+                  onClick={() => setActiveConsoleTab('preview')}
+                  style={{ color: activeConsoleTab === 'preview' ? '#FFFFFF' : '#888', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: activeConsoleTab === 'preview' ? 600 : 400, display: 'flex', alignItems: 'center', gap: '6px', borderBottom: activeConsoleTab === 'preview' ? '2px solid #FF5701' : '2px solid transparent', height: '100%' }}
+                >
+                  <Layout size={14} /> Live Web Preview
+                </div>
+              )}
             </div>
-            <div style={{ flex: 1, padding: '16px', overflowY: 'auto', color: '#E0E0E0', fontFamily: 'monospace', fontSize: '13px', whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
-              {consoleOutput}
+
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+              {activeConsoleTab === 'output' ? (
+                <div style={{ padding: '16px', color: '#E0E0E0', fontFamily: 'monospace', fontSize: '13px', whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                  {consoleOutput}
+                </div>
+              ) : (
+                <div style={{ flex: 1, backgroundColor: '#ffffff' }}>
+                  <SandpackProvider template="react" theme="dark" files={{ "/App.js": code }}>
+                    <SandpackPreview showOpenInCodeSandbox={false} showRefreshButton={true} style={{ height: '100%' }} />
+                  </SandpackProvider>
+                </div>
+              )}
             </div>
           </div>
 
