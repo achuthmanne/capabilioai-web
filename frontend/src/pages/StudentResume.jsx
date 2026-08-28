@@ -110,9 +110,8 @@ export default function StudentResume({ user, userData }) {
 
   // Generate dynamic AI assessment text
   const topSkillNames = Object.values(resumeData.topSkills).flat().slice(0, 3).join(", ");
-  const aiAssessmentText = resumeData.missionCount > 0 
-    ? `Based on ${resumeData.missionCount} successfully evaluated missions in the Arena, this candidate operates at a ${resumeData.tier.split(' ')[0]} level. They have consistently demonstrated practical mastery in ${topSkillNames || role}, producing production-ready solutions that pass strict edge-case testing.`
-    : `Based on Capabilio's baseline AI evaluation, this candidate operates at a ${resumeData.tier.split(' ')[0]} level with a verified score of ${resumeData.totalElo.toLocaleString()} ELO. They are currently tackling advanced Arena missions to build a comprehensive technical Proof of Work in ${role}.`;
+  // The AI Assessment serves as a stable baseline/periodic evaluation.
+  const aiAssessmentText = `Based on Capabilio's AI evaluation, this candidate operates at a ${resumeData.tier.split(' ')[0]} level with a verified score of ${resumeData.totalElo.toLocaleString()} ELO. They are actively building their Capabilio Proof of Work by mastering advanced skills and completing Arena missions in the ${role} track.`;
 
   return (
     <div style={{ padding: "40px", width: "100%", background: "#FAFAFA" }}>
@@ -120,8 +119,12 @@ export default function StudentResume({ user, userData }) {
       {/* Action Bar (Not part of the printed resume) */}
       <div style={{ width: "100%", maxWidth: 850, margin: "0 auto 24px auto", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 12 }}>
         <button onClick={() => setShowProSheet(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: "10px 20px", background: "#FFFFFF", border: "1px solid #D1D5DB", borderRadius: 4, fontSize: 13, fontWeight: 700, color: "#374151", cursor: 'pointer' }}>
-          <Download size={16} /> Download PDF
-        </button>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.59-8.5l5.25 5.25"/></svg>
+            Sync Profile
+          </button>
+          <button onClick={() => setShowProSheet(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: "10px 20px", background: "#FFFFFF", border: "1px solid #D1D5DB", borderRadius: 4, fontSize: 13, fontWeight: 700, color: "#374151", cursor: 'pointer' }}>
+            <Download size={16} /> Download PDF
+          </button>
         <button onClick={handleShare} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: "10px 24px", background: "#FF5701", border: "none", borderRadius: 4, fontSize: 14, fontWeight: 700, color: "#FFFFFF", cursor: 'pointer', transition: "background 0.2s" }} onMouseOver={(e) => { e.currentTarget.style.background = "#E64A00"; }} onMouseOut={(e) => { e.currentTarget.style.background = "#FF5701"; }}>
           {isCopied ? <Check size={16} /> : <Share2 size={16} />}
           {isCopied ? "Link Copied!" : "Share Profile"}
@@ -270,7 +273,7 @@ export default function StudentResume({ user, userData }) {
           <Lock size={20} color="#6B7280" strokeWidth={2} />
         </div>
         <h4 style={{ fontSize: 20, fontWeight: 600, color: "#202124", margin: "0 0 8px 0" }}>Unlock Pro to Download</h4>
-        <p style={{ fontSize: 15, color: "#5F6368", margin: "0 0 24px 0", maxWidth: 350 }}>Free tier users can view their Verified Identity. Upgrade to Pro to export as PDF and share officially.</p>
+        <p style={{ fontSize: 15, color: "#5F6368", margin: "0 0 24px 0", maxWidth: 350 }}>Free tier users receive automatic profile syncs every 15 days. Upgrade to Pro for instant profile syncs, PDF exports, and official sharing.</p>
         
         <button style={{
           background: "#202124",
