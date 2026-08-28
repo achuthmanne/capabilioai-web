@@ -128,35 +128,19 @@ export default function StudentResume({ user, userData }) {
         </button>
       </div>
 
-      {/* The A4 Resume Paper */}
-      <div style={{ 
-        width: "100%", maxWidth: 850, margin: "0 auto", background: "#FFFFFF", padding: "80px",
-        border: "1px solid #E5E7EB", // Flat border instead of shadow
-        position: "relative",
-        overflow: "hidden",
-        fontFamily: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif', // Highly professional serif font
-        color: "#111827"
-      }}>
-        
-        {/* HUGE Diagonal Watermark */}
-        <div style={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%) rotate(-35deg)",
-          fontSize: "120px",
-          fontWeight: 900,
-          color: "rgba(20, 22, 26, 0.03)",
-          whiteSpace: "nowrap",
-          pointerEvents: "none",
-          fontFamily: 'ui-sans-serif, system-ui, sans-serif',
-          letterSpacing: "-0.03em"
+      {/* Digital Portfolio Container */}
+        <div style={{ 
+          width: "100%", maxWidth: 850, margin: "0 auto", background: "#FFFFFF", padding: "48px 64px",
+          border: "1px solid #E4E6E9",
+          borderRadius: 16,
+          position: "relative",
+          overflow: "hidden",
+          fontFamily: '"Inter", system-ui, sans-serif',
+          color: "#14161A"
         }}>
-          CAPABILIO <span style={{ color: "rgba(255, 87, 1, 0.05)" }}>AI</span> VERIFIED
-        </div>
-
-        {/* Content (z-index ensures it sits above watermark) */}
-        <div style={{ position: "relative", zIndex: 10 }}>
+          
+          {/* Content */}
+          <div style={{ position: "relative", zIndex: 10 }}>
           
           {/* Digital Portfolio Header */}
             <div style={{ display: "flex", alignItems: "center", gap: 24, borderBottom: "1px solid #E5E7EB", paddingBottom: 24, marginBottom: 28 }}>
