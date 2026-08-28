@@ -1,55 +1,45 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Briefcase, GraduationCap, Link, CheckCircle2 } from 'lucide-react';
-import { userDoc } from "../lib/db";
+import { X, User, Briefcase, GraduationCap, CheckCircle2, LogOut } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
-export default function MyProfilePanel({ isOpen, onClose, user, userData, setUserData }) {
+export default function MyProfilePanel({ isOpen, onClose, user, userData, onSignOut }) {
   const [form, setForm] = useState({
-    displayName: userData?.displayName || userData?.display_name || "",
-    bio: userData?.bio || "",
-    githubUrl: userData?.personalInfo?.githubUrl || userData?.githubUrl || "",
-    linkedinUrl: userData?.personalInfo?.linkedinUrl || userData?.linkedinUrl || "",
-    targetRole: userData?.targetRole || userData?.target_role || userData?.keyword || "",
-    yearsExp: userData?.yearsExp || userData?.years_of_experience || "",
-    college: userData?.college || "",
-    branch: userData?.branch || "",
-    degree: userData?.degree || "",
-    gradYear: userData?.gradYear || "",
+    displayName: userData?.full_name || '',
+    bio: userData?.bio || '',
+    targetRole: userData?.target_role || '',
+    yearsExp: userData?.years_exp || '',
+    college: userData?.college || '',
+    degree: userData?.degree || '',
+    branch: userData?.branch || '',
+    gradYear: userData?.graduation_year || ''
   });
-
+  
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const f = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }));
+  const f = (field) => (e) => setForm({ ...form, [field]: e.target.value });
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      const patch = {
-        displayName: form.displayName,
-        display_name: form.displayName,
+      const updates = {
+        full_name: form.displayName,
         bio: form.bio,
-        targetRole: form.targetRole,
         target_role: form.targetRole,
-        keyword: form.targetRole, 
-        yearsExp: form.yearsExp,
-        years_of_experience: form.yearsExp,
+        years_exp: form.yearsExp,
         college: form.college,
-        branch: form.branch,
         degree: form.degree,
-        gradYear: form.gradYear,
-        personalInfo: {
-          ...(userData?.personalInfo || {}),
-          githubUrl: form.githubUrl,
-          linkedinUrl: form.linkedinUrl,
-        }
+        branch: form.branch,
+        graduation_year: form.gradYear,
+        updated_at: new Date().toISOString()
       };
       
-      if (user?.id) {
-        await userDoc.update(user.id, patch);
-      }
-      if (setUserData) {
-        setUserData(prev => ({ ...prev, ...patch }));
+      const { error } = await supabase.from('users').update(updates).eq('id', user.id);
+      if (error) throw error;
+      
+      if (typeof window !== 'undefined' && window.updateUserContext) {
+        window.updateUserContext({ ...userData, ...updates });
       }
       
       setSaved(true);
@@ -60,10 +50,6 @@ export default function MyProfilePanel({ isOpen, onClose, user, userData, setUse
       setSaving(false);
     }
   };
-
-  const rawName = userData?.displayName || userData?.name || user?.email?.split("@")[0] || "User";
-  const initials = rawName.split(" ").map(n => n.charAt(0)).slice(0, 2).join("").toUpperCase();
-  const avatarUrl = userData?.profilePhotoURL || null;
 
   if (!isOpen) return null;
 
@@ -113,22 +99,24 @@ export default function MyProfilePanel({ isOpen, onClose, user, userData, setUse
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 32 }}>
               
-              {/* Profile Photo Area */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div style={{ 
-                  width: 64, height: 64, borderRadius: '50%', overflow: 'hidden', 
-                  border: '1px solid #E4E6E9', background: '#F4F5F7', 
-                  display: 'flex', alignItems: 'center', justifyContent: 'center' 
-                }}>
-                  {avatarUrl ? (
-                    <img src={avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              {/* Profile Header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, paddingBottom: 24, borderBottom: '1px solid #E4E6E9' }}>
+                <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#F3F4F6', border: '1px solid rgba(0,0,0,0.08)', overflow: 'hidden', flexShrink: 0 }}>
+                  {userData?.profilePhotoURL ? (
+                    <img src={userData.profilePhotoURL} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
-                    <span style={{ fontFamily: '"Inter", sans-serif', fontSize: 20, fontWeight: 700, color: '#14161A', letterSpacing: '0.5px' }}>{initials}</span>
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: '#9CA3AF', fontWeight: 700, fontFamily: '"Inter", sans-serif' }}>
+                      {userData?.full_name?.charAt(0) || user?.email?.charAt(0) || "U"}
+                    </div>
                   )}
                 </div>
-                <div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#14161A', fontFamily: '"Inter", sans-serif' }}>{form.displayName || rawName}</div>
-                  <div style={{ fontSize: 13, color: '#8A8F98' }}>{user?.email}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>
+                    {userData?.full_name || 'Capabilio User'}
+                  </div>
+                  <div style={{ fontSize: 13, color: '#6B7280' }}>
+                    {user?.email || 'No email provided'}
+                  </div>
                 </div>
               </div>
 
@@ -183,17 +171,6 @@ export default function MyProfilePanel({ isOpen, onClose, user, userData, setUse
                 
                 <div style={{ display: 'flex', gap: 12 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'flex', alignItems: 'center', gap: 4 }}><Link size={12}/> GitHub</label>
-                    <input type="text" value={form.githubUrl} onChange={f('githubUrl')} style={inputStyle} placeholder="Username or URL" />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'flex', alignItems: 'center', gap: 4 }}><Link size={12}/> LinkedIn</label>
-                    <input type="text" value={form.linkedinUrl} onChange={f('linkedinUrl')} style={inputStyle} placeholder="Username or URL" />
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: 12 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
                     <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Degree</label>
                     <input type="text" value={form.degree} onChange={f('degree')} style={inputStyle} />
                   </div>
@@ -213,28 +190,30 @@ export default function MyProfilePanel({ isOpen, onClose, user, userData, setUse
 
             <div style={{
               padding: '20px 28px', borderTop: '1px solid #E4E6E9', background: '#FAFAFA',
-              display: 'flex', justifyContent: 'flex-end', gap: 12
+              display: 'flex', justifyContent: 'flex-end', alignItems: 'center'
             }}>
-              <button 
-                onClick={onClose}
-                style={{ 
-                  padding: '10px 20px', borderRadius: 8, border: '1px solid #E4E6E9', background: '#FFFFFF',
-                  color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer'
-                }}
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleSave}
-                disabled={saving}
-                style={{ 
-                  padding: '10px 24px', borderRadius: 8, border: 'none', background: saved ? '#10B981' : '#FF5701',
-                  color: '#FFFFFF', fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer',
-                  display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s'
-                }}
-              >
-                {saving ? 'Saving...' : saved ? <><CheckCircle2 size={16} /> Saved</> : 'Save Profile'}
-              </button>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button 
+                  onClick={onClose}
+                  style={{ 
+                    padding: '10px 20px', borderRadius: 8, border: '1px solid #E4E6E9', background: '#FFFFFF',
+                    color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleSave}
+                  disabled={saving}
+                  style={{ 
+                    padding: '10px 24px', borderRadius: 8, border: 'none', background: saved ? '#10B981' : '#FF5701',
+                    color: '#FFFFFF', fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s'
+                  }}
+                >
+                  {saving ? 'Saving...' : saved ? <><CheckCircle2 size={16} /> Saved</> : 'Save Profile'}
+                </button>
+              </div>
             </div>
           </motion.div>
         </>
