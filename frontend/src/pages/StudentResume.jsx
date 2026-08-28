@@ -188,8 +188,8 @@ export default function StudentResume({ user, userData }) {
 
           {/* Skills Section */}
           <div style={{ marginBottom: 32 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 16px 0", textTransform: "uppercase", letterSpacing: "1px", borderBottom: "1px solid #E5E7EB", paddingBottom: 8 }}>
-              Verified Capabilities
+            <h3 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 16px 0", textTransform: "uppercase", letterSpacing: "1px", borderBottom: "1px solid #E5E7EB", paddingBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Award size={16} color="#6B7280" /> Verified Capabilities
             </h3>
             {Object.keys(resumeData.topSkills).length > 0 ? (
               Object.entries(resumeData.topSkills).map(([category, skills]) => (
