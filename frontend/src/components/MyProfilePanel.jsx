@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 
 export default function MyProfilePanel({ isOpen, onClose, user, userData, onSignOut }) {
   const [form, setForm] = useState({
-    displayName: userData?.full_name || '',
+      displayName: userData?.full_name || userData?.display_name || userData?.displayName || userData?.name || user?.user_metadata?.full_name || '',
     bio: userData?.bio || '',
     targetRole: userData?.target_role || '',
     yearsExp: userData?.years_exp || '',
@@ -114,18 +114,16 @@ export default function MyProfilePanel({ isOpen, onClose, user, userData, onSign
                     <img src={userData.profilePhotoURL} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
                     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: '#9CA3AF', fontWeight: 700, fontFamily: '"Inter", sans-serif' }}>
-                      {userData?.full_name?.charAt(0) || user?.email?.charAt(0) || "U"}
+                      {(userData?.full_name || userData?.display_name || userData?.displayName || userData?.name || user?.user_metadata?.full_name || user?.email || "U").charAt(0).toUpperCase()}
                     </div>
                   )}
                 </div>
                 
                 <h3 style={{ fontSize: 20, fontWeight: 800, color: '#111827', margin: '0 0 4px 0', fontFamily: '"Inter", sans-serif', letterSpacing: '-0.5px' }}>
-                  {userData?.full_name || 'Capabilio User'}
+                  {userData?.full_name || userData?.display_name || userData?.displayName || userData?.name || user?.user_metadata?.full_name || 'Capabilio User'}
                 </h3>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 500, color: '#6B7280' }}>
-                  <span style={{ color: '#FF5701' }}>@{userData?.username || 'username'}</span>
-                  <span>•</span>
-                  <span>{user?.email || 'No email provided'}</span>
+                <div style={{ fontSize: 14, fontWeight: 500, color: '#6B7280' }}>
+                  {user?.email || 'No email provided'}
                 </div>
               </div>
 
