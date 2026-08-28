@@ -1845,45 +1845,62 @@ function App() {
               )}
             </button>
 
+            <AnimatePresence>
             {showNotifications && (
-              <div style={{
-                position: "absolute", top: "calc(100% + 8px)", right: 0, width: 340,
-                background: "#fff", border: "1px solid #E8E3DA", borderRadius: 12,
-                boxShadow: "0 8px 24px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)",
-                maxHeight: 420, overflowY: "auto", zIndex: 200,
-              }}>
-                <div style={{ padding: "12px 14px", borderBottom: "1px solid #F3F4F6", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: "#fff" }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "#1A1714", fontFamily: "'DM Sans', sans-serif" }}>Notifications</span>
+              <motion.div
+                initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                style={{
+                  position: "absolute", top: "calc(100% + 8px)", right: -50, width: 360,
+                  background: "rgba(255, 255, 255, 0.85)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+                  borderRadius: 16, border: "1px solid rgba(228, 230, 233, 0.8)",
+                  boxShadow: "0 20px 40px -8px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0,0,0,0.02)",
+                  maxHeight: 420, overflowY: "auto", zIndex: 200,
+                  display: "flex", flexDirection: "column"
+                }}
+              >
+                <div style={{ padding: "16px 18px", borderBottom: "1px solid rgba(228, 230, 233, 0.6)", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: "rgba(255,255,255,0.9)", backdropFilter: "blur(10px)", zIndex: 2 }}>
+                  <span style={{ fontSize: 15, fontWeight: 800, color: "#14161A", fontFamily: '"Inter", sans-serif' }}>Notifications</span>
                   <button onClick={markAllNotificationsRead} disabled={unreadNotifCount === 0}
-                    style={{ border: "none", background: "transparent", color: unreadNotifCount === 0 ? "#A8A29E" : navAccent, fontSize: 11, fontWeight: 700, cursor: unreadNotifCount === 0 ? "default" : "pointer" }}>
+                    style={{ border: "none", background: "transparent", color: unreadNotifCount === 0 ? "#8A8F98" : navAccent, fontSize: 12, fontWeight: 700, cursor: unreadNotifCount === 0 ? "default" : "pointer" }}>
                     Mark all read
                   </button>
                 </div>
                 {notifications.length === 0 && (
-                  <div style={{ padding: "22px 14px", textAlign: "center", fontSize: 12, color: "#A8A29E" }}>No notifications yet.</div>
+                  <div style={{ padding: "40px 20px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+                    <div style={{ width: 48, height: 48, borderRadius: 24, background: "#F4F5F7", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8A8F98" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                    </div>
+                    <div style={{ fontSize: 14, color: "#475569", fontWeight: 500, fontFamily: '"Inter", sans-serif' }}>No notifications yet.</div>
+                  </div>
                 )}
                 {notifications.slice(0, 10).map((n) => {
                   const meta = NOTIF_TYPE_META[n.type] || { icon: "🔔", color: navAccent }
                   return (
-                    <div key={n.id} style={{ display: "flex", gap: 10, padding: "10px 14px", borderBottom: "1px solid #F9F7F3", background: !n.is_read ? `${meta.color}08` : "transparent" }}>
-                      <div style={{ width: 30, height: 30, borderRadius: 9, background: `${meta.color}18`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>{meta.icon}</div>
+                    <div key={n.id} style={{ display: "flex", gap: 14, padding: "16px 18px", borderBottom: "1px solid rgba(228, 230, 233, 0.4)", background: !n.is_read ? "rgba(99, 102, 241, 0.04)" : "transparent", transition: "background 0.2s", cursor: "pointer" }}
+                      onMouseEnter={e => { if(n.is_read) e.currentTarget.style.background = "#F9FAFB" }}
+                      onMouseLeave={e => { if(n.is_read) e.currentTarget.style.background = "transparent" }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 12, background: `${meta.color}15`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{meta.icon}</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12, color: "#3D3935", fontWeight: n.is_read ? 400 : 600, lineHeight: 1.4 }}>{n.title || n.body}</div>
-                        {n.title && n.body && <div style={{ fontSize: 11, color: "#6B6560", lineHeight: 1.4, marginTop: 1 }}>{n.body}</div>}
-                        <div style={{ fontSize: 10, color: "#A8A29E", marginTop: 3 }}>{notifRelTime(n.created_at)}</div>
+                        <div style={{ fontSize: 13, color: "#14161A", fontWeight: n.is_read ? 500 : 700, lineHeight: 1.4, fontFamily: '"Inter", sans-serif' }}>{n.title || n.body}</div>
+                        {n.title && n.body && <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.4, marginTop: 4, fontFamily: '"Inter", sans-serif' }}>{n.body}</div>}
+                        <div style={{ fontSize: 11, color: "#8A8F98", marginTop: 6, fontWeight: 500, fontFamily: '"Inter", sans-serif' }}>{notifRelTime(n.created_at)}</div>
                       </div>
-                      {!n.is_read && <div style={{ width: 6, height: 6, borderRadius: 99, background: meta.color, marginTop: 5, flexShrink: 0 }} />}
+                      {!n.is_read && <div style={{ width: 6, height: 6, borderRadius: 99, background: meta.color, marginTop: 6, flexShrink: 0 }} />}
                     </div>
                   )
                 })}
-                <div style={{ padding: "10px 14px", textAlign: "center", borderTop: "1px solid #E8E3DA" }}>
+                <div style={{ padding: "12px 18px", textAlign: "center", borderTop: "1px solid rgba(228, 230, 233, 0.6)", background: "rgba(249, 250, 251, 0.5)", marginTop: "auto" }}>
                   <button onClick={() => { setShowNotifications(false); setCurrentPage("nexus"); setActiveNavItem("nexus") }}
-                    style={{ border: "none", background: "transparent", color: navAccent, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                    View all →
+                    style={{ border: "none", background: "transparent", color: navAccent, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: '"Inter", sans-serif' }}>
+                    View all notifications →
                   </button>
                 </div>
-              </div>
+              </motion.div>
             )}
+            </AnimatePresence>
           </div>
 
           <div ref={profileMenuRef} style={{ position: "relative" }}>
