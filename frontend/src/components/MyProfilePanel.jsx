@@ -228,7 +228,7 @@ export default function MyProfilePanel({ isOpen, onClose, user, userData, setUse
                 onClick={handleSave}
                 disabled={saving}
                 style={{ 
-                  padding: '10px 24px', borderRadius: 8, border: 'none', background: saved ? '#10B981' : '#14161A',
+                  padding: '10px 24px', borderRadius: 8, border: 'none', background: saved ? '#10B981' : '#FF5701',
                   color: '#FFFFFF', fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer',
                   display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s'
                 }}
