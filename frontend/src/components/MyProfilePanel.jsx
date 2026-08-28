@@ -106,8 +106,7 @@ export default function MyProfilePanel({ isOpen, onClose, user, userData, onSign
                 textAlign: 'center'
               }}>
                 <div style={{ 
-                  width: 88, height: 88, borderRadius: '50%', background: '#F9FAFB', 
-                  border: '3px solid #FFFFFF', boxShadow: '0 4px 12px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.05)', 
+                  width: 100, height: 100, borderRadius: '50%', background: '#F3F4F6', 
                   overflow: 'hidden', flexShrink: 0, marginBottom: 16
                 }}>
                   {userData?.profilePhotoURL ? (
@@ -231,5 +230,5 @@ export default function MyProfilePanel({ isOpen, onClose, user, userData, onSign
 
 const inputStyle = {
   width: '100%', padding: '10px 14px', borderRadius: 8, border: '1.5px solid #E4E6E9',
-  background: '#FFFFFF', color: '#14161A', fontSize: 13, fontFamily: '"Inter", sans-serif', outline: 'none'
+  background: '#FFFFFF', color: '#14161A', fontSize: 13, fontFamily: '"Inter", sans-serif', outline: 'none', boxSizing: 'border-box'
 };
