@@ -498,8 +498,8 @@ const server = app.listen(PORT, () => {
   console.log(`  Python3     ${checkPythonAvailable()          ? ok("Notebook code-execution challenges enabled") : err("MISSING — code-execution submissions will 500, see pythonSandbox.js")}`)
   console.log()
 })
-}
 
-// Prevent ECONNRESET errors on long-running AI requests (like /api/tasks/evaluate)
-server.keepAliveTimeout = 120000; // 120 seconds
-server.headersTimeout = 120000; // 120 seconds
+  // Prevent ECONNRESET errors on long-running AI requests (like /api/tasks/evaluate)
+  server.keepAliveTimeout = 120000; // 120 seconds
+  server.headersTimeout = 120000; // 120 seconds
+}
