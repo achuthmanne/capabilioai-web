@@ -20,10 +20,11 @@ export default function ArenaWorkspace({ user, userData, setUserData, onNavigate
         if (parsed.taskData) {
           setTaskData({ ...parsed.taskData, completed: parsed.completed, passed: parsed.passed });
           if (parsed.taskData.workspaceType === 'sql') setLanguage('sql');
-          else if (parsed.taskData.workspaceType === 'autocad') setLanguage('python');
-          else if (parsed.taskData.workspaceType === 'jupyter') setLanguage('python');
-          else if (parsed.taskData.workspaceType === 'hardware_hdl') setLanguage('cpp'); // closest for verilog // use python syntax highlighting for scripts
+          else if (parsed.taskData.workspaceType === 'autocad') { setLanguage('python'); setActiveConsoleTab('cad'); }
+          else if (parsed.taskData.workspaceType === 'jupyter') { setLanguage('python'); setActiveConsoleTab('jupyter'); }
+          else if (parsed.taskData.workspaceType === 'hardware_hdl') { setLanguage('cpp'); setActiveConsoleTab('waveform'); }
           else if (parsed.taskData.workspaceType === 'terminal' || parsed.taskData.workspaceType === 'log_viewer') setLanguage('shell');
+          else if (parsed.taskData.workspaceType === 'code') setActiveConsoleTab('preview');
         }
         if (parsed.violations) setViolations(parsed.violations);
         if (parsed.savedCode) setCode(parsed.savedCode);
