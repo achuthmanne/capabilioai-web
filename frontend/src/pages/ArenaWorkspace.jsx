@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 import Editor from '@monaco-editor/react';
-import { ArrowLeft, Play, Terminal, CheckCircle, Zap, Layout } from 'lucide-react';
+import { ArrowLeft, Play, Terminal, CheckCircle, Zap, Layout, XCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { userDoc } from "../lib/db";
 import { supabase } from "../lib/supabase";
@@ -18,7 +18,7 @@ export default function ArenaWorkspace({ user, userData, setUserData, onNavigate
       try {
         const parsed = JSON.parse(cached);
         if (parsed.taskData) {
-          setTaskData({ ...parsed.taskData, completed: parsed.completed });
+          setTaskData({ ...parsed.taskData, completed: parsed.completed, passed: parsed.passed });
           if (parsed.taskData.workspaceType === 'sql') setLanguage('sql');
           else if (parsed.taskData.workspaceType === 'terminal' || parsed.taskData.workspaceType === 'log_viewer') setLanguage('shell');
         }
@@ -268,7 +268,7 @@ Review the test cases and feedback, then try again.`;
           });
         }
         
-        setTaskData(prev => ({ ...prev, completed: true, finalReward }));
+        setTaskData(prev => ({ ...prev, completed: true, passed: isPass, finalReward }));
 
         // Update ELO only if passed
         if (result.passed && setUserData && userData) {
