@@ -512,12 +512,80 @@ Review the test cases and feedback, then try again.`;
                   <Layout size={14} /> Live Web Preview
                 </div>
               )}
+              {taskData?.workspaceType === 'hardware_hdl' && (
+                <div 
+                  onClick={() => setActiveConsoleTab('waveform')}
+                  style={{ color: activeConsoleTab === 'waveform' ? '#FFFFFF' : '#888', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: activeConsoleTab === 'waveform' ? 600 : 400, display: 'flex', alignItems: 'center', gap: '6px', borderBottom: activeConsoleTab === 'waveform' ? '2px solid #FF5701' : '2px solid transparent', height: '100%' }}
+                >
+                  <Activity size={14} /> Logic Analyzer
+                </div>
+              )}
+              {taskData?.workspaceType === 'autocad' && (
+                <div 
+                  onClick={() => setActiveConsoleTab('cad')}
+                  style={{ color: activeConsoleTab === 'cad' ? '#FFFFFF' : '#888', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: activeConsoleTab === 'cad' ? 600 : 400, display: 'flex', alignItems: 'center', gap: '6px', borderBottom: activeConsoleTab === 'cad' ? '2px solid #FF5701' : '2px solid transparent', height: '100%' }}
+                >
+                  <Box size={14} /> CAD Renderer
+                </div>
+              )}
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
               {activeConsoleTab === 'output' ? (
                 <div style={{ padding: '16px', color: '#E0E0E0', fontFamily: 'monospace', fontSize: '13px', whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
                   {consoleOutput}
+                </div>
+              ) : activeConsoleTab === 'waveform' ? (
+                <div style={{ flex: 1, backgroundColor: '#050505', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(0,255,100,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,100,0.1) 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
+                  <div style={{ zIndex: 1, color: '#00FF66', fontFamily: 'monospace', width: '100%', padding: '40px' }}>
+                    <div style={{ fontSize: '14px', letterSpacing: '2px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Activity size={18} /> RTL LOGIC ANALYZER / OSCILLOSCOPE
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', opacity: 0.8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <div style={{ width: '60px', fontSize: '12px' }}>CLK</div>
+                        <div style={{ flex: 1, height: '30px', position: 'relative' }}>
+                          <svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 100 10">
+                            <polyline points="0,10 5,10 5,0 15,0 15,10 25,10 25,0 35,0 35,10 45,10 45,0 55,0 55,10 65,10 65,0 75,0 75,10 85,10 85,0 95,0 95,10 100,10" fill="none" stroke="#00FF66" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
+                          </svg>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <div style={{ width: '60px', fontSize: '12px' }}>DATA_IN</div>
+                        <div style={{ flex: 1, height: '30px', position: 'relative' }}>
+                          <svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 100 10">
+                            <polyline points="0,0 20,0 20,10 40,10 40,0 70,0 70,10 90,10 90,0 100,0" fill="none" stroke="#00FF66" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
+                          </svg>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <div style={{ width: '60px', fontSize: '12px' }}>TX_OUT</div>
+                        <div style={{ flex: 1, height: '30px', position: 'relative' }}>
+                          <svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 100 10">
+                            <polyline points="0,10 15,10 15,0 30,0 30,10 80,10 80,0 100,0" fill="none" stroke="#00FF66" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : activeConsoleTab === 'cad' ? (
+                <div style={{ flex: 1, backgroundColor: '#0A0A0A', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+                  <div style={{ zIndex: 1, color: '#00FF41', fontFamily: 'monospace', textAlign: 'center' }}>
+                    <Box size={48} style={{ margin: '0 auto 16px', opacity: 0.8 }} />
+                    <div style={{ fontSize: '14px', letterSpacing: '2px', marginBottom: '8px' }}>AUTOCAD ENGINE RUNNING</div>
+                    <div style={{ fontSize: '11px', color: '#888' }}>Rendering preview from macro parameters...</div>
+                    <div style={{ marginTop: '24px', width: '200px', height: '200px', border: '1px solid #00FF41', margin: '24px auto 0', position: 'relative', borderRadius: '50%' }}>
+                      <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '1px', background: 'rgba(0, 255, 65, 0.3)' }} />
+                      <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: '1px', background: 'rgba(0, 255, 65, 0.3)' }} />
+                      <svg width="100%" height="100%" viewBox="0 0 100 100">
+                        <path d="M 20 50 Q 50 10 80 50 T 20 50" fill="none" stroke="#00FF41" strokeWidth="1" opacity="0.8" />
+                        <circle cx="50" cy="50" r="15" fill="none" stroke="#00FF41" strokeWidth="1" strokeDasharray="4 4" />
+                      </svg>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div style={{ flex: 1, backgroundColor: '#ffffff' }}>
