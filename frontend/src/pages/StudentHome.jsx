@@ -70,19 +70,21 @@ export default function StudentHome({ user, userData, onNavigate }) {
               }
             });
             
-            // STRICT SCORING SYSTEM (To delay 80% unlock)
+            // VERY STRICT SCORING SYSTEM (Requires ~1 month of daily grinding to hit 80%)
             // Base points for having a profile
             let score = 10; 
             
-            // +2% per passed mission (Max 20% = 10 missions)
-            score += Math.min(20, data.length * 2);
+            // Missions Passed (Max 20%)
+            // Need 30 missions (1 month for free tier) to get max 20%
+            score += Math.min(20, Math.floor(data.length / 1.5));
             
-            // +1% per verified unique skill (Max 20% = 20 unique skills)
-            score += Math.min(20, uniqueSkills.size * 1);
+            // Verified Unique Skills (Max 20%)
+            // Need ~30 unique skills to get max 20%
+            score += Math.min(20, Math.floor(uniqueSkills.size / 1.5));
             
-            // ELO Contribution (Max 50% at 1000 ELO)
-            // 100 ELO = +5%, 500 ELO = +25%, 1000 ELO = +50%
-            score += Math.min(50, Math.floor(totalElo / 20));
+            // ELO Earned Contribution (Max 30%)
+            // Free tier gets ~10 ELO/day. 30 days = 300 ELO to get max 30%
+            score += Math.min(30, Math.floor(totalElo / 10));
 
             setCompletionPercentage(Math.min(100, score));
           } else {
