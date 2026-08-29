@@ -23,7 +23,8 @@ export default function ArenaWorkspace({ user, userData, setUserData, onNavigate
           else if (parsed.taskData.workspaceType === 'autocad') { setLanguage('python'); setActiveConsoleTab('cad'); }
           else if (parsed.taskData.workspaceType === 'jupyter') { setLanguage('python'); setActiveConsoleTab('jupyter'); }
           else if (parsed.taskData.workspaceType === 'hardware_hdl') { setLanguage('cpp'); setActiveConsoleTab('waveform'); }
-          else if (parsed.taskData.workspaceType === 'terminal' || parsed.taskData.workspaceType === 'log_viewer') setLanguage('shell');
+          else if (parsed.taskData.workspaceType === 'terminal') { setLanguage('shell'); setActiveConsoleTab('ssh'); }
+          else if (parsed.taskData.workspaceType === 'log_viewer') { setLanguage('shell'); setActiveConsoleTab('logs'); }
           else if (parsed.taskData.workspaceType === 'code') setActiveConsoleTab('preview');
         }
         if (parsed.violations) setViolations(parsed.violations);
@@ -537,7 +538,23 @@ Review the test cases and feedback, then try again.`;
                   onClick={() => setActiveConsoleTab('cad')}
                   style={{ color: activeConsoleTab === 'cad' ? '#FFFFFF' : '#888', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: activeConsoleTab === 'cad' ? 600 : 400, display: 'flex', alignItems: 'center', gap: '6px', borderBottom: activeConsoleTab === 'cad' ? '2px solid #FF5701' : '2px solid transparent', height: '100%' }}
                 >
-                  <Box size={14} /> CAD Renderer
+                  <Box size={14} /> <Box size={14} /> CAD Renderer
+                </div>
+              )}
+              {taskData?.workspaceType === 'terminal' && (
+                <div 
+                  onClick={() => setActiveConsoleTab('ssh')}
+                  style={{ color: activeConsoleTab === 'ssh' ? '#FFFFFF' : '#888', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: activeConsoleTab === 'ssh' ? 600 : 400, display: 'flex', alignItems: 'center', gap: '6px', borderBottom: activeConsoleTab === 'ssh' ? '2px solid #FF5701' : '2px solid transparent', height: '100%' }}
+                >
+                  <Terminal size={14} /> Live SSH Terminal
+                </div>
+              )}
+              {taskData?.workspaceType === 'log_viewer' && (
+                <div 
+                  onClick={() => setActiveConsoleTab('logs')}
+                  style={{ color: activeConsoleTab === 'logs' ? '#FFFFFF' : '#888', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: activeConsoleTab === 'logs' ? 600 : 400, display: 'flex', alignItems: 'center', gap: '6px', borderBottom: activeConsoleTab === 'logs' ? '2px solid #FF5701' : '2px solid transparent', height: '100%' }}
+                >
+                  <Activity size={14} /> System Log Stream
                 </div>
               )}
             </div>
@@ -604,6 +621,46 @@ Review the test cases and feedback, then try again.`;
                     </div>
                   </div>
                   
+                </div>
+              ) : activeConsoleTab === 'ssh' ? (
+                <div style={{ flex: 1, backgroundColor: '#000000', padding: '16px', fontFamily: 'monospace', color: '#00FF00', overflowY: 'auto' }}>
+                  <div style={{ opacity: 0.7, marginBottom: '12px' }}>Connecting to production-server-01.capabilio.internal...</div>
+                  <div style={{ opacity: 0.7, marginBottom: '12px' }}>Authentication successful.</div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <span style={{ color: '#00FF00', fontWeight: 'bold' }}>root@prod-01:~#</span>
+                    <span><motion.span animate={{ opacity: [1, 0, 1] }} transition={{ repeat: Infinity, duration: 1 }}>_</motion.span></span>
+                  </div>
+                  <div style={{ marginTop: '24px', opacity: 0.5, fontSize: '12px' }}>// Awaiting script execution...</div>
+                </div>
+              ) : activeConsoleTab === 'logs' ? (
+                <div style={{ flex: 1, backgroundColor: '#111111', padding: '16px', fontFamily: 'monospace', color: '#CCCCCC', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ opacity: 0.7, marginBottom: '12px', color: '#FFD700' }}>$ tail -f /var/log/syslog</div>
+                  <div><span style={{ color: '#888' }}>[12:00:01]</span> <span style={{ color: '#00FF00' }}>INFO</span> System started.</div>
+                  <div><span style={{ color: '#888' }}>[12:00:05]</span> <span style={{ color: '#00FF00' }}>INFO</span> Network interface eth0 up.</div>
+                  <div><span style={{ color: '#888' }}>[12:00:15]</span> <span style={{ color: '#FFD700' }}>WARN</span> Memory usage approaching 80%.</div>
+                  <div><span style={{ color: '#888' }}>[12:01:02]</span> <span style={{ color: '#FF0000' }}>ERROR</span> Connection to database timed out.</div>
+                  <div><span style={{ color: '#888' }}>[12:01:05]</span> <span style={{ color: '#FFD700' }}>WARN</span> Retrying connection (1/3)...</div>
+                  <div><motion.span animate={{ opacity: [1, 0, 1] }} transition={{ repeat: Infinity, duration: 1.5 }} style={{ color: '#888' }}>Waiting for new logs...</motion.span></div>
+                </div>
+              ) : activeConsoleTab === 'ssh' ? (
+                <div style={{ flex: 1, backgroundColor: '#000000', padding: '16px', fontFamily: 'monospace', color: '#00FF00', overflowY: 'auto' }}>
+                  <div style={{ opacity: 0.7, marginBottom: '12px' }}>Connecting to production-server-01.capabilio.internal...</div>
+                  <div style={{ opacity: 0.7, marginBottom: '12px' }}>Authentication successful.</div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <span style={{ color: '#00FF00', fontWeight: 'bold' }}>root@prod-01:~#</span>
+                    <span><motion.span animate={{ opacity: [1, 0, 1] }} transition={{ repeat: Infinity, duration: 1 }}>_</motion.span></span>
+                  </div>
+                  <div style={{ marginTop: '24px', opacity: 0.5, fontSize: '12px' }}>// Awaiting script execution...</div>
+                </div>
+              ) : activeConsoleTab === 'logs' ? (
+                <div style={{ flex: 1, backgroundColor: '#111111', padding: '16px', fontFamily: 'monospace', color: '#CCCCCC', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ opacity: 0.7, marginBottom: '12px', color: '#FFD700' }}>$ tail -f /var/log/syslog</div>
+                  <div><span style={{ color: '#888' }}>[12:00:01]</span> <span style={{ color: '#00FF00' }}>INFO</span> System started.</div>
+                  <div><span style={{ color: '#888' }}>[12:00:05]</span> <span style={{ color: '#00FF00' }}>INFO</span> Network interface eth0 up.</div>
+                  <div><span style={{ color: '#888' }}>[12:00:15]</span> <span style={{ color: '#FFD700' }}>WARN</span> Memory usage approaching 80%.</div>
+                  <div><span style={{ color: '#888' }}>[12:01:02]</span> <span style={{ color: '#FF0000' }}>ERROR</span> Connection to database timed out.</div>
+                  <div><span style={{ color: '#888' }}>[12:01:05]</span> <span style={{ color: '#FFD700' }}>WARN</span> Retrying connection (1/3)...</div>
+                  <div><motion.span animate={{ opacity: [1, 0, 1] }} transition={{ repeat: Infinity, duration: 1.5 }} style={{ color: '#888' }}>Waiting for new logs...</motion.span></div>
                 </div>
               ) : activeConsoleTab === 'waveform' ? (
                 <div style={{ flex: 1, backgroundColor: '#050505', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
