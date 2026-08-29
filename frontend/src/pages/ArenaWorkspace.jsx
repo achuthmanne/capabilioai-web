@@ -133,12 +133,14 @@ export default function ArenaWorkspace({ user, userData, setUserData, onNavigate
       const errors = markers.filter(m => m.severity === 8); // 8 is Error severity in Monaco
       
       if (errors.length > 0) {
+        setActiveConsoleTab('output');
         setConsoleOutput("Syntax Error(s) detected. Please fix them before running:\n" + errors.map(e => `Line ${e.startLineNumber}: ${e.message}`).join("\n"));
         return;
       }
     }
 
     setIsEvaluating(true);
+    setActiveConsoleTab('output');
     setConsoleOutput("Analyzing code structure...\nRunning unit tests with AI Evaluator...\n");
     
           try {
