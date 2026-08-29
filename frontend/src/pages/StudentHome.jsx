@@ -493,15 +493,18 @@ export default function StudentHome({ user, userData, onNavigate }) {
             {taskData?.completed && taskData?.lockedUntil && (
                 <div style={{ 
                   marginTop: 16, 
-                  display: "flex",
+                  padding: "8px 16px", 
+                  background: "linear-gradient(90deg, rgba(255, 87, 1, 0.08) 0%, rgba(255, 87, 1, 0.02) 100%)", 
+                  border: "1px solid rgba(255, 87, 1, 0.15)", 
+                  borderRadius: "8px", 
+                  color: "#D04600", 
+                  fontSize: 13, 
+                  fontWeight: 600, 
+                  display: "inline-flex",
                   alignItems: "center",
-                  gap: "8px",
-                  opacity: 0.8
+                  letterSpacing: "0.3px"
                 }}>
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981', boxShadow: '0 0 10px rgba(16, 185, 129, 0.5)' }} />
-                  <span style={{ fontSize: 14, fontWeight: 500, color: "#3C4043", letterSpacing: "0.2px" }}>
-                    New mission unlocks <span style={{ color: "#111827", fontWeight: 600 }}>{new Date(taskData.lockedUntil).toLocaleDateString('en-US', { month: 'short', day: 'numeric'})} at {new Date(taskData.lockedUntil).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} IST</span>
-                  </span>
+                  Next mission unlocks {new Date(taskData.lockedUntil).toLocaleDateString('en-US', { month: 'short', day: 'numeric'})} at {new Date(taskData.lockedUntil).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} IST
                 </div>
               )}
 
