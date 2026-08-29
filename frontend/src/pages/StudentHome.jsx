@@ -216,76 +216,6 @@ export default function StudentHome({ user, userData, onNavigate }) {
       paddingBottom: 100,
       position: 'relative'
     }}>
-      {/* TOP TIER FLOATING NAV */}
-      <motion.div
-        initial={{ y: -40, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 400, damping: 25, delay: 0.1 }}
-        style={{
-          position: 'absolute',
-          top: 32,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 40,
-          display: 'flex',
-          alignItems: 'center',
-          background: 'rgba(255, 255, 255, 0.75)',
-          backdropFilter: 'blur(24px) saturate(200%)',
-          WebkitBackdropFilter: 'blur(24px) saturate(200%)',
-          border: '1px solid rgba(255, 255, 255, 0.9)',
-          boxShadow: '0 12px 40px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0,0,0,0.03), inset 0 0 0 1px rgba(255,255,255,0.4)',
-          borderRadius: '100px',
-          padding: '6px',
-          gap: '4px'
-        }}
-      >
-        <motion.div
-          whileHover={{ backgroundColor: 'rgba(0, 0, 0, 0.04)' }}
-          whileTap={{ scale: 0.96 }}
-          onClick={() => onNavigate('codeVault')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '8px 24px',
-            borderRadius: '100px',
-            cursor: 'pointer',
-            fontWeight: 600,
-            fontSize: '14px',
-            color: '#111827',
-            transition: 'background-color 0.2s ease',
-            userSelect: 'none'
-          }}
-        >
-          <Code2 size={16} color="#4B5563" />
-          Code Vault
-        </motion.div>
-
-        <div style={{ width: '1px', height: '20px', background: 'rgba(0,0,0,0.08)', margin: '0 4px', borderRadius: '1px' }} />
-
-        <motion.div
-          whileHover={{ backgroundColor: 'rgba(0, 0, 0, 0.04)' }}
-          whileTap={{ scale: 0.96 }}
-          onClick={() => onNavigate('challenges')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '8px 24px',
-            borderRadius: '100px',
-            cursor: 'pointer',
-            fontWeight: 600,
-            fontSize: '14px',
-            color: '#111827',
-            transition: 'background-color 0.2s ease',
-            userSelect: 'none'
-          }}
-        >
-          <Trophy size={16} color="#FF5701" />
-          Challenges
-        </motion.div>
-      </motion.div>
-
       <style>{`
         * { box-sizing: border-box; }
         
@@ -439,6 +369,70 @@ export default function StudentHome({ user, userData, onNavigate }) {
       </div>
 
       {/* MAIN GRID */}
+            {/* QUICK TOOLS GRID */}
+      <div style={{ maxWidth: 1600, margin: "0 auto 40px auto", padding: "0 5%" }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
+          
+          <motion.div 
+            whileHover={{ y: -4, boxShadow: '0 8px 30px rgba(0,0,0,0.08)' }}
+            onClick={() => onNavigate('codeVault')}
+            style={{ 
+              background: '#FFFFFF', padding: '24px', borderRadius: '16px', 
+              boxShadow: '0 2px 10px rgba(0,0,0,0.03)', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '20px',
+              border: '1px solid rgba(0,0,0,0.04)'
+            }}
+          >
+            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(75, 85, 99, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Code2 size={24} color="#4B5563" />
+            </div>
+            <div>
+              <div style={{ fontSize: '16px', fontWeight: 600, color: '#202124', marginBottom: '4px' }}>Code Vault</div>
+              <div style={{ fontSize: '13px', color: '#5F6368' }}>Access your saved code snippets</div>
+            </div>
+          </motion.div>
+
+          <motion.div 
+            whileHover={{ y: -4, boxShadow: '0 8px 30px rgba(0,0,0,0.08)' }}
+            onClick={() => onNavigate('challenges')}
+            style={{ 
+              background: '#FFFFFF', padding: '24px', borderRadius: '16px', 
+              boxShadow: '0 2px 10px rgba(0,0,0,0.03)', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '20px',
+              border: '1px solid rgba(0,0,0,0.04)'
+            }}
+          >
+            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(255, 87, 1, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Trophy size={24} color="#FF5701" />
+            </div>
+            <div>
+              <div style={{ fontSize: '16px', fontWeight: 600, color: '#202124', marginBottom: '4px' }}>Challenges</div>
+              <div style={{ fontSize: '13px', color: '#5F6368' }}>Compete and climb the leaderboard</div>
+            </div>
+          </motion.div>
+
+          <motion.div 
+            whileHover={{ y: -4, boxShadow: '0 8px 30px rgba(0,0,0,0.08)' }}
+            onClick={() => onNavigate('communityFeed')}
+            style={{ 
+              background: '#FFFFFF', padding: '24px', borderRadius: '16px', 
+              boxShadow: '0 2px 10px rgba(0,0,0,0.03)', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '20px',
+              border: '1px solid rgba(0,0,0,0.04)'
+            }}
+          >
+            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(37, 99, 235, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <LayoutDashboard size={24} color="#2563EB" />
+            </div>
+            <div>
+              <div style={{ fontSize: '16px', fontWeight: 600, color: '#202124', marginBottom: '4px' }}>Community Feed</div>
+              <div style={{ fontSize: '13px', color: '#5F6368' }}>See what others are building</div>
+            </div>
+          </motion.div>
+
+        </div>
+      </div>
+      
       <div className="main-grid">
         
         {/* LEFT COLUMN */}
