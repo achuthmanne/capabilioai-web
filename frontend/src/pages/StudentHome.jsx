@@ -213,8 +213,69 @@ export default function StudentHome({ user, userData, onNavigate }) {
       background: "#F8F9FA",
       color: "#000000",
       boxSizing: "border-box",
-      paddingBottom: 100
+      paddingBottom: 100,
+      position: 'relative'
     }}>
+      {/* MINI NAV */}
+      <AnimatePresence>
+        {showMiniNav && (
+          <motion.div
+            initial={{ y: -60, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -60, opacity: 0 }}
+            style={{ overflow: 'hidden', backgroundColor: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'center', zIndex: 10 }}
+            transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
+          >
+            <div style={{ width: '100%', maxWidth: 1600, padding: '12px 5%', display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '1px', marginRight: '8px' }}>Workspace</div>
+              
+              <motion.div 
+                whileHover={{ y: -2 }}
+                onClick={() => onNavigate('codeVault')}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', backgroundColor: '#FFFFFF', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, color: '#202124', fontSize: '14px', border: '1px solid #EAEAEA', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                🗄️ Code Vault
+              </motion.div>
+              
+              <motion.div 
+                whileHover={{ y: -2 }}
+                onClick={() => onNavigate('challenges')}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', backgroundColor: '#FFFFFF', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, color: '#202124', fontSize: '14px', border: '1px solid #EAEAEA', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                ⚔️ Challenges
+              </motion.div>
+              
+              <div style={{ flex: 1 }} />
+              
+              <div 
+                onClick={() => setShowMiniNav(false)}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#888', cursor: 'pointer', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Hide <ChevronUp size={14} />
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* PULL DOWN TAB */}
+      <AnimatePresence>
+        {!showMiniNav && (
+          <motion.div
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -20, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            style={{ position: 'absolute', top: 16, right: '5%', zIndex: 20 }}
+          >
+            <motion.div 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowMiniNav(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', backgroundColor: '#FFFFFF', border: '1px solid #EAEAEA', borderRadius: '999px', fontSize: '13px', color: '#202124', cursor: 'pointer', fontWeight: 600, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+              Tools <ChevronDown size={14} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <style>{`
         * { box-sizing: border-box; }
         
