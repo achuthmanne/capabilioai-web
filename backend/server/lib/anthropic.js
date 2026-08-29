@@ -12,13 +12,23 @@ export async function generateRealCompanyTask(role, elo = 400, requestedCompany 
   const companies = ["Google", "Netflix", "Uber", "Airbnb", "Stripe", "Discord", "Twitch", "Shopify", "Tesla", "Vercel", "OpenAI", "Meta", "Amazon", "Swiggy", "Zomato", "Razorpay", "Cred", "Spotify", "Robinhood", "Coinbase", "Notion", "Figma", "Linear", "Supabase"];
   const randomCompany = requestedCompany || companies[Math.floor(Math.random() * companies.length)];
 
+  const variants = ['find_bug', 'complete_code', 'from_scratch'];
+  const selectedVariant = variants[Math.floor(Math.random() * variants.length)];
+  
   const prompt = `You are a Senior Engineering Manager at ${randomCompany}.
 Generate a highly realistic, technical daily task for a ${levelStr} ${role} working at ${randomCompany}.
 The candidate's current ELO skill rating is ${elo}. Adjust the complexity of the task precisely to this difficulty level.
 The task must be a real-world problem specific to ${randomCompany}'s domain and the role of ${role}.
 DO NOT use dummy data like "foo bar". Use realistic context.
 
-CRITICAL INSTRUCTION: There MUST be a perfect, logical bond between the Question context, the Starting Code, and the chosen workspaceType. For example, do not provide a SQL problem in a 'code' workspace, or a UI problem in a 'log_viewer' workspace. The tools and the task must match perfectly.
+CRITICAL INSTRUCTION - TASK FORMAT:
+You MUST generate the task using the '${selectedVariant}' format:
+- If 'find_bug': Provide a fully written but buggy code/configuration. The candidate must find and fix the subtle bug.
+- If 'complete_code': Provide partial code/boilerplate (e.g. function signatures, basic imports) and leave the core logic blank for the candidate to fill in.
+- If 'from_scratch': The startingCode MUST be completely empty or just contain a single comment instructing them to begin. The candidate must write the entire solution from scratch based on your detailed requirements.
+
+CRITICAL INSTRUCTION - WORKSPACE BINDING:
+There MUST be a perfect, logical bond between the Question context, the Starting Code, and the chosen workspaceType. For example, do not provide a SQL problem in a 'code' workspace, or a UI problem in a 'log_viewer' workspace. The tools and the task must match perfectly.
 
   CRITICAL WORKSPACE INSTRUCTIONS based on role ${role}:
   - If the role is Frontend or Web: Provide a buggy React Component (export default function App() { ... }) because the user will see a Live React Web Preview! Ensure the component renders a visual UI. The workspaceType MUST be "code".
@@ -125,7 +135,7 @@ ${code}
 \`\`\`
 
 EVALUATION RULES:
-1. STRICT PROCTORING CHECK: Compare the Solution Submitted against the Original Boilerplate. The candidate MUST NOT have deleted, bypassed, or maliciously altered the core boilerplate structure, function signatures, or the intended constraints of the problem. If they cheated by bypassing the task, removing the constraints, or deleting the boilerplate, YOU MUST FAIL THEM IMMEDIATELY. Set "passed": false, and write in feedback: "[PROCTOR VIOLATION]: You are not allowed to bypass or delete the original boilerplate structure."
+1. STRICT PROCTORING CHECK: Compare the Solution Submitted against the Original Boilerplate. If the Original Boilerplate is not empty, the candidate MUST NOT have deleted, bypassed, or maliciously altered the core boilerplate structure, function signatures, or the intended constraints of the problem. (If the boilerplate was empty, they wrote from scratch, which is fine). If they cheated by bypassing the task, removing the constraints, or deleting required boilerplate, YOU MUST FAIL THEM IMMEDIATELY. Set "passed": false, and write in feedback: "[PROCTOR VIOLATION]: You are not allowed to bypass or delete the original boilerplate structure."
 2. Did they solve the problem described in the task requirements? If it's code, check for logic flaws. If it's a terminal command, SQL query, or log analysis, verify it achieves the exact requested outcome.
 3. If they didn't fulfill the requirements, they fail.
 
