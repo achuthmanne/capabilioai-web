@@ -5,7 +5,7 @@ import { ArrowLeft, Play, Terminal, CheckCircle, Zap, Layout, XCircle } from 'lu
 import { motion } from 'framer-motion';
 import { userDoc } from "../lib/db";
 import { supabase } from "../lib/supabase";
-import { SandpackProvider, SandpackPreview } from "@codesandbox/sandpack-react";
+import { SandpackProvider, SandpackPreview, SandpackLayout } from "@codesandbox/sandpack-react";
 
 export default function ArenaWorkspace({ user, userData, setUserData, onNavigate }) {
   
@@ -520,7 +520,9 @@ Review the test cases and feedback, then try again.`;
               ) : (
                 <div style={{ flex: 1, backgroundColor: '#ffffff' }}>
                   <SandpackProvider template="react" theme="dark" files={{ "/App.js": code }}>
-                    <SandpackPreview showOpenInCodeSandbox={false} showRefreshButton={true} style={{ height: '100%' }} />
+                    <SandpackLayout style={{ height: '100%', minHeight: '400px' }}>
+                      <SandpackPreview showOpenInCodeSandbox={false} showRefreshButton={true} style={{ height: '100%', minHeight: '400px' }} />
+                    </SandpackLayout>
                   </SandpackProvider>
                 </div>
               )}
