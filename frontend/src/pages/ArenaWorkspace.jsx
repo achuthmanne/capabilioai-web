@@ -37,7 +37,10 @@ export default function ArenaWorkspace({ user, userData, setUserData, onNavigate
   useEffect(() => {
     if (redirectSeconds !== null && redirectSeconds > 0) {
       const timer = setTimeout(() => setRedirectSeconds(prev => prev - 1), 1000);
-      return () => clearTimeout(timer);
+      const hasFailed = taskData?.passed === false || consoleOutput?.includes('MISSION FAILED');
+const isMissionPassed = taskData?.completed && !hasFailed;
+
+  return () => clearTimeout(timer);
     } else if (redirectSeconds === 0) {
       onNavigate('studentHome');
     }
@@ -346,15 +349,15 @@ Review the test cases and feedback, then try again.`;
           </div>
           <button 
             onClick={handleSubmit}
-            disabled={isEvaluating || taskData?.completed}
+            disabled={isEvaluating || isMissionPassed}
             style={{ 
-              backgroundColor: taskData?.completed ? '#10B981' : '#FF5701', color: 'white', border: 'none', padding: '8px 24px', borderRadius: '999px',
-              fontWeight: 600, cursor: (isEvaluating || taskData?.completed) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
+              backgroundColor: isMissionPassed ? '#10B981' : (hasFailed ? '#EF4444' : '#FF5701'), color: 'white', border: 'none', padding: '8px 24px', borderRadius: '999px',
+              fontWeight: 600, cursor: (isEvaluating || isMissionPassed) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
               opacity: isEvaluating ? 0.7 : 1
             }}
           >
-            {taskData?.completed ? <CheckCircle size={16} /> : (isEvaluating ? <Zap size={16} className="animate-pulse" /> : <Play size={16} />)}
-            {taskData?.completed ? 'Mission Passed' : (isEvaluating ? 'Evaluating...' : 'Run Code')}
+            {isMissionPassed ? <CheckCircle size={16} /> : (hasFailed ? <XCircle size={16} /> : (isEvaluating ? <Zap size={16} className="animate-pulse" /> : <Play size={16} />))}
+            {isMissionPassed ? 'Mission Passed' : (hasFailed ? 'Mission Failed' : (isEvaluating ? 'Evaluating...' : 'Run Code'))}
           </button>
         </div>
       </div>
@@ -478,7 +481,7 @@ Review the test cases and feedback, then try again.`;
               }}
               options={{
                 minimap: { enabled: false },
-                  readOnly: taskData?.completed || false,
+                  readOnly: isMissionPassed || false,
                 fontSize: 14,
                 fontFamily: 'Consolas, "Courier New", monospace',
                 padding: { top: 16 },
