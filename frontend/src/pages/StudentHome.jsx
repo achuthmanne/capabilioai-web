@@ -492,20 +492,16 @@ export default function StudentHome({ user, userData, onNavigate }) {
             
             {taskData?.completed && taskData?.lockedUntil && (
                 <div style={{ 
-                  marginTop: 16, padding: "8px 16px", 
-                  background: "#F8F9FA", 
-                  border: "1px solid #EAEAEA", 
-                  borderRadius: "999px", 
-                  color: "#3C4043", 
-                  fontSize: 13, 
-                  fontWeight: 500, 
-                  display: "inline-flex",
+                  marginTop: 16, 
+                  display: "flex",
                   alignItems: "center",
                   gap: "8px",
-                  boxShadow: "0 1px 2px rgba(0,0,0,0.02)"
+                  opacity: 0.8
                 }}>
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#3B82F6' }} />
-                  Next mission unlocks at {new Date(taskData.lockedUntil).toLocaleString('en-US', { timeZone: 'Asia/Kolkata', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })} IST
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981', boxShadow: '0 0 10px rgba(16, 185, 129, 0.5)' }} />
+                  <span style={{ fontSize: 14, fontWeight: 500, color: "#3C4043", letterSpacing: "0.2px" }}>
+                    New mission unlocks <span style={{ color: "#111827", fontWeight: 600 }}>{new Date(taskData.lockedUntil).toLocaleDateString('en-US', { month: 'short', day: 'numeric'})} at {new Date(taskData.lockedUntil).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} IST</span>
+                  </span>
                 </div>
               )}
 
