@@ -374,13 +374,15 @@ export default function StudentHome({ user, userData, onNavigate }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
           
           <motion.div 
-            whileHover={{ y: -4, boxShadow: '0 8px 30px rgba(0,0,0,0.08)' }}
+            whileHover={{ backgroundColor: '#F8F9FA' }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => onNavigate('codeVault')}
             style={{ 
               background: '#FFFFFF', padding: '24px', borderRadius: '16px', 
-              boxShadow: '0 2px 10px rgba(0,0,0,0.03)', cursor: 'pointer',
+              cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: '20px',
-              border: '1px solid rgba(0,0,0,0.04)'
+              border: '1px solid #EAEAEA',
+              transition: 'background-color 0.2s ease'
             }}
           >
             <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(75, 85, 99, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -393,13 +395,15 @@ export default function StudentHome({ user, userData, onNavigate }) {
           </motion.div>
 
           <motion.div 
-            whileHover={{ y: -4, boxShadow: '0 8px 30px rgba(0,0,0,0.08)' }}
+            whileHover={{ backgroundColor: '#F8F9FA' }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => onNavigate('challenges')}
             style={{ 
               background: '#FFFFFF', padding: '24px', borderRadius: '16px', 
-              boxShadow: '0 2px 10px rgba(0,0,0,0.03)', cursor: 'pointer',
+              cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: '20px',
-              border: '1px solid rgba(0,0,0,0.04)'
+              border: '1px solid #EAEAEA',
+              transition: 'background-color 0.2s ease'
             }}
           >
             <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(255, 87, 1, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -412,13 +416,15 @@ export default function StudentHome({ user, userData, onNavigate }) {
           </motion.div>
 
           <motion.div 
-            whileHover={{ y: -4, boxShadow: '0 8px 30px rgba(0,0,0,0.08)' }}
+            whileHover={{ backgroundColor: '#F8F9FA' }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => onNavigate('communityFeed')}
             style={{ 
               background: '#FFFFFF', padding: '24px', borderRadius: '16px', 
-              boxShadow: '0 2px 10px rgba(0,0,0,0.03)', cursor: 'pointer',
+              cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: '20px',
-              border: '1px solid rgba(0,0,0,0.04)'
+              border: '1px solid #EAEAEA',
+              transition: 'background-color 0.2s ease'
             }}
           >
             <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(37, 99, 235, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
