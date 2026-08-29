@@ -148,9 +148,9 @@ export default function ArenaWorkspace({ user, userData, setUserData, onNavigate
         
         let testCasesOutput = "";
         if (result.testCases && result.testCases.length > 0) {
-            testCasesOutput = "\\n\\n--- TEST CASES ---\\n";
+            testCasesOutput = "\n\n--- TEST CASES ---\n";
             result.testCases.forEach((tc, i) => {
-                testCasesOutput += `[${tc.passed ? 'PASS' : 'FAIL'}] ${tc.name}: ${tc.details}\\n`;
+                testCasesOutput += `[${tc.passed ? 'PASS' : 'FAIL'}] ${tc.name}: ${tc.details}\n`;
             });
             testCasesOutput += "------------------";
         }
@@ -189,7 +189,7 @@ Total ELO Deducted: ${finalReward} Points!`;
           }
           
           finalOutput = baseOutput + outputMessage;
-          setConsoleOutput(finalOutput);
+          setConsoleOutput(finalOutput.replace(/\\n/g, '\n'));
           setRedirectSeconds(10); // auto-redirect on pass
         } else {
           let outputMessage = `
@@ -197,7 +197,7 @@ Total ELO Deducted: ${finalReward} Points!`;
 ❌ MISSION FAILED ❌
 Review the test cases and feedback, then try again.`;
           finalOutput = baseOutput + outputMessage;
-          setConsoleOutput(finalOutput);
+          setConsoleOutput(finalOutput.replace(/\\n/g, '\n'));
           // Wait 10 seconds and redirect even on fail so they don't get stuck forever
           setRedirectSeconds(10);
           
@@ -226,7 +226,7 @@ Review the test cases and feedback, then try again.`;
           parsed.completed = true;
           parsed.completedAt = Date.now();
           parsed.savedCode = code;
-          parsed.savedOutput = dbFinalOutput;
+          parsed.savedOutput = dbFinalOutput.replace(/\\n/g, '\n');
           parsed.taskData.finalReward = finalReward;
           localStorage.setItem("capabilio_daily_mission", JSON.stringify(parsed));
         }
@@ -261,7 +261,7 @@ Review the test cases and feedback, then try again.`;
             task_description: taskData.taskDescription || "",
             status: isPass ? 'passed' : 'failed',
             saved_code: code,
-            ai_review: dbFinalOutput,
+            ai_review: dbFinalOutput.replace(/\\n/g, '\n'),
             elo_reward: isPass ? finalReward : 0
           }).then(({ error }) => {
             if (error) console.error("Failed to save to Supabase vault:", error);
