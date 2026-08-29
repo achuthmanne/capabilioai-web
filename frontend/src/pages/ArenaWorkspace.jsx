@@ -37,10 +37,7 @@ export default function ArenaWorkspace({ user, userData, setUserData, onNavigate
   useEffect(() => {
     if (redirectSeconds !== null && redirectSeconds > 0) {
       const timer = setTimeout(() => setRedirectSeconds(prev => prev - 1), 1000);
-      const hasFailed = taskData?.passed === false || consoleOutput?.includes('MISSION FAILED');
-const isMissionPassed = taskData?.completed && !hasFailed;
-
-  return () => clearTimeout(timer);
+      return () => clearTimeout(timer);
     } else if (redirectSeconds === 0) {
       onNavigate('studentHome');
     }
@@ -299,6 +296,9 @@ Review the test cases and feedback, then try again.`;
       setIsEvaluating(false);
     }
   };
+
+    const hasFailed = taskData?.passed === false || consoleOutput?.includes('MISSION FAILED');
+  const isMissionPassed = taskData?.completed && !hasFailed;
 
   return (
     <div style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#F8F9FA', overflow: 'hidden' }}>
