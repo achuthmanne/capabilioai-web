@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Flame, Target, BookOpen, Briefcase, ChevronRight, Lock, Code2, Rocket, ArrowRight, Zap, Trophy, X, Lightbulb, LayoutDashboard, CheckCircle, ShieldCheck } from "lucide-react"
+import { Play, Flame, Target, BookOpen, Briefcase, ChevronRight, Lock, Code2, Rocket, ArrowRight, Zap, Trophy, X, Lightbulb, LayoutDashboard, CheckCircle, ShieldCheck, ChevronUp, ChevronDown } from "lucide-react"
 import { supabase } from "../lib/supabase";
 
 
@@ -42,7 +42,8 @@ export default function StudentHome({ user, userData, onNavigate }) {
   const streak = userData?.arenaStreak || userData?.streak || 0
   const domain = userData?.domain || userData?.keyword || "Software Engineer"
   
-  const [completionPercentage, setCompletionPercentage] = useState(10); // Base 10%
+    const [completionPercentage, setCompletionPercentage] = useState(10); // Base 10%
+  const [showMiniNav, setShowMiniNav] = useState(true);
 
   useEffect(() => {
     async function calculateRealtimeReadiness() {
