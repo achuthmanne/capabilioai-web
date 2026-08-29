@@ -474,7 +474,7 @@ app.use((err, req, res, next) => {
 // crash loop — its own workers' cluster-IPC bind requests for the same
 // port were racing against a bind the primary had no business making.
 if (!IS_CLUSTER_PRIMARY) {
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   // Background grading worker (startGradingWorker) removed 2026-08-16 —
   // was Arena-exclusive, see import-site comment above.
   const workerInfo = cluster.isWorker ? ` [worker ${process.pid}]` : ""
@@ -499,3 +499,7 @@ app.listen(PORT, () => {
   console.log()
 })
 }
+
+// Prevent ECONNRESET errors on long-running AI requests (like /api/tasks/evaluate)
+server.keepAliveTimeout = 120000; // 120 seconds
+server.headersTimeout = 120000; // 120 seconds
