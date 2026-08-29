@@ -1687,14 +1687,12 @@ function App() {
   // earlier but do not control this bar. Intentionally now 6 items (was
   // capped at 5) since Arena is a real, functioning destination again.
   const STUDENT_HEADER_NAV = [
-    { id: "home",        label: "Dashboard",    page: "studentHome", prefix: "▦" },
-    { id: "codevault",   label: "Code Vault",   page: "codeVault",   prefix: "🗄️" },
-    { id: "skillgraph",  label: "Skill Graph",  page: "skillGraph",  prefix: "🧠" },
-    { id: "portfolio",   label: "Portfolio",    page: "studentResume", prefix: "📄" },
-    { id: "aiinterview", label: "AI Interview", page: "aiInterview", prefix: "🎙️" },
-    { id: "feed",        label: "Feed",         page: "communityFeed", prefix: "🌐" },
-    { id: "recruiters",  label: "Recruiters",   page: "studentRecruiters", prefix: "🤝" },
-    ...(collegeLinked ? [{ id: "college", label: "College", page: "studentCollege", prefix: "🏫" }] : []),
+    { id: "home",        label: "Dashboard",    page: "studentHome", prefix: "🏠" },
+    { id: "skillgraph",  label: "Skill Graph",  page: "skillGraph",  prefix: "📈" },
+    { id: "portfolio",   label: "Portfolio",    page: "studentResume", prefix: "💼" },
+    { id: "aiinterview", label: "AI Interview", page: "aiInterview", prefix: "🤖" },
+    { id: "recruiters",  label: "Recruiters",   page: "studentRecruiters", prefix: "👀" },
+    ...(collegeLinked ? [{ id: "college", label: "College", page: "studentCollege", prefix: "🎓" }] : []),
   ]
 
   // Sprint 5 of EXECUTIVE_TECHNICAL_BLUEPRINT.md §14 / EXECUTIVE_PATH_INFORMATION_ARCHITECTURE.md:
