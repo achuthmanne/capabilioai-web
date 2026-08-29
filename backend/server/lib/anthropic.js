@@ -33,6 +33,7 @@ There MUST be a perfect, logical bond between the Question context, the Starting
   CRITICAL WORKSPACE INSTRUCTIONS based on role ${role}:
   - If the role is Frontend or Web: Provide a buggy React Component (export default function App() { ... }) because the user will see a Live React Web Preview! Ensure the component renders a visual UI. The workspaceType MUST be "code".
   - If the role is Backend, App, or general Software: Provide buggy starting code (Node.js, Python, Java). The workspaceType MUST be "code".
+  - If the role is AI, ML, or Data Science: Provide Python code for model training, data analysis, or a Jupyter cell. The workspaceType MUST be "jupyter".
   - If the role is Cybersecurity, DevOps, or Network: Provide terminal configurations, nmap logs, or bash scripts. The workspaceType MUST be "terminal".
   - If the role is Data, DBMS, or Analyst: Provide a SQL schema or broken query. The workspaceType MUST be "sql".
   - If the role is Hardware, Medical, or Embedded: Provide diagnostic logs, sensor data, or configuration parameters. The workspaceType MUST be "log_viewer".
@@ -42,7 +43,7 @@ There MUST be a perfect, logical bond between the Question context, the Starting
 Return the response STRICTLY as a JSON object with this exact structure:
 {
   "company": "Company Name",
-  "workspaceType": "code | terminal | sql | log_viewer",
+  "workspaceType": "code | terminal | sql | log_viewer | hardware_hdl | autocad | jupyter",
   "title": "Short punchy task title",
   "context": "Brief context of the problem in the company's product (max 3 sentences).",
   "eloReward": "A dynamic integer STRICTLY chosen from [5, 8, 10, 12, 15] based on difficulty. DO NOT EXCEED 15.", 

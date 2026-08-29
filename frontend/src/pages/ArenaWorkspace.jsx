@@ -21,6 +21,7 @@ export default function ArenaWorkspace({ user, userData, setUserData, onNavigate
           setTaskData({ ...parsed.taskData, completed: parsed.completed, passed: parsed.passed });
           if (parsed.taskData.workspaceType === 'sql') setLanguage('sql');
           else if (parsed.taskData.workspaceType === 'autocad') setLanguage('python');
+          else if (parsed.taskData.workspaceType === 'jupyter') setLanguage('python');
           else if (parsed.taskData.workspaceType === 'hardware_hdl') setLanguage('cpp'); // closest for verilog // use python syntax highlighting for scripts
           else if (parsed.taskData.workspaceType === 'terminal' || parsed.taskData.workspaceType === 'log_viewer') setLanguage('shell');
         }
@@ -428,7 +429,7 @@ Review the test cases and feedback, then try again.`;
           <div style={{ height: '40px', backgroundColor: '#2D2D2D', borderBottom: '1px solid #1E1E1E', display: 'flex', alignItems: 'center', padding: '0 16px', justifyContent: 'space-between' }}>
             <div style={{ fontSize: '13px', color: '#E0E0E0', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Terminal size={14} /> 
-              {taskData?.workspaceType === 'terminal' ? 'server_terminal' : taskData?.workspaceType === 'log_viewer' ? 'system_logs.txt' : taskData?.workspaceType === 'sql' ? 'query.sql' : taskData?.workspaceType === 'hardware_hdl' ? 'logic_design.v' : taskData?.workspaceType === 'autocad' ? 'design_macro.py' : language === 'javascript' ? 'index.js' : language === 'python' ? 'main.py' : language === 'java' ? 'Main.java' : language === 'cpp' ? 'main.cpp' : 'code'}
+              {taskData?.workspaceType === 'terminal' ? 'server_terminal' : taskData?.workspaceType === 'log_viewer' ? 'system_logs.txt' : taskData?.workspaceType === 'sql' ? 'query.sql' : taskData?.workspaceType === 'hardware_hdl' ? 'logic_design.v' : taskData?.workspaceType === 'autocad' ? 'design_macro.py' : taskData?.workspaceType === 'jupyter' ? 'notebook.ipynb' : language === 'javascript' ? 'index.js' : language === 'python' ? 'main.py' : language === 'java' ? 'Main.java' : language === 'cpp' ? 'main.cpp' : 'code'}
             </div>
             {(!taskData?.workspaceType || taskData?.workspaceType === 'code') && (
               <select 
@@ -512,6 +513,14 @@ Review the test cases and feedback, then try again.`;
                   <Layout size={14} /> Live Web Preview
                 </div>
               )}
+              {taskData?.workspaceType === 'jupyter' && (
+                <div 
+                  onClick={() => setActiveConsoleTab('jupyter')}
+                  style={{ color: activeConsoleTab === 'jupyter' ? '#FFFFFF' : '#888', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: activeConsoleTab === 'jupyter' ? 600 : 400, display: 'flex', alignItems: 'center', gap: '6px', borderBottom: activeConsoleTab === 'jupyter' ? '2px solid #FF5701' : '2px solid transparent', height: '100%' }}
+                >
+                  <Box size={14} /> Notebook Output
+                </div>
+              )}
               {taskData?.workspaceType === 'hardware_hdl' && (
                 <div 
                   onClick={() => setActiveConsoleTab('waveform')}
@@ -534,6 +543,64 @@ Review the test cases and feedback, then try again.`;
               {activeConsoleTab === 'output' ? (
                 <div style={{ padding: '16px', color: '#E0E0E0', fontFamily: 'monospace', fontSize: '13px', whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
                   {consoleOutput}
+                </div>
+              ) : activeConsoleTab === 'jupyter' ? (
+                <div style={{ flex: 1, backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', padding: '20px', overflowY: 'auto' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid #e0e0e0', paddingBottom: '16px', marginBottom: '16px' }}>
+                    <div style={{ color: '#F37626', fontWeight: 600, fontSize: '18px' }}>Jupyter</div>
+                    <div style={{ color: '#777', fontSize: '14px', marginLeft: 'auto' }}>Trusted | Python 3 (ipykernel)</div>
+                  </div>
+                  
+                  {/* Mock Cell Input */}
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                    <div style={{ color: '#2b579a', fontFamily: 'monospace', fontSize: '13px', whiteSpace: 'nowrap', paddingTop: '4px' }}>In [1]:</div>
+                    <div style={{ flex: 1, border: '1px solid #cfcfcf', backgroundColor: '#f7f7f7', borderRadius: '4px', padding: '8px', fontFamily: 'monospace', fontSize: '13px', color: '#333' }}>
+                      <span style={{color: '#008000'}}>import</span> pandas <span style={{color: '#008000'}}>as</span> pd<br/>
+                      <span style={{color: '#008000'}}>import</span> matplotlib.pyplot <span style={{color: '#008000'}}>as</span> plt<br/>
+                      <span style={{color: '#888'}}># Executing analysis...</span>
+                    </div>
+                  </div>
+
+                  {/* Mock Cell Output */}
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+                    <div style={{ color: '#d84a38', fontFamily: 'monospace', fontSize: '13px', whiteSpace: 'nowrap', paddingTop: '4px' }}>Out[1]:</div>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      
+                      {/* DataFrame Mock */}
+                      <table style={{ borderCollapse: 'collapse', fontSize: '12px', width: '100%', maxWidth: '500px', textAlign: 'right' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1px solid #ccc' }}>
+                            <th style={{ padding: '4px 8px' }}></th>
+                            <th style={{ padding: '4px 8px' }}>feature_1</th>
+                            <th style={{ padding: '4px 8px' }}>feature_2</th>
+                            <th style={{ padding: '4px 8px' }}>target</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr style={{ backgroundColor: '#f9f9f9', borderBottom: '1px solid #eee' }}><td style={{ fontWeight: 'bold', padding: '4px 8px' }}>0</td><td style={{ padding: '4px 8px' }}>0.45</td><td style={{ padding: '4px 8px' }}>-1.23</td><td style={{ padding: '4px 8px' }}>1</td></tr>
+                          <tr style={{ borderBottom: '1px solid #eee' }}><td style={{ fontWeight: 'bold', padding: '4px 8px' }}>1</td><td style={{ padding: '4px 8px' }}>0.88</td><td style={{ padding: '4px 8px' }}>2.04</td><td style={{ padding: '4px 8px' }}>0</td></tr>
+                          <tr style={{ backgroundColor: '#f9f9f9', borderBottom: '1px solid #eee' }}><td style={{ fontWeight: 'bold', padding: '4px 8px' }}>2</td><td style={{ padding: '4px 8px' }}>-0.12</td><td style={{ padding: '4px 8px' }}>0.44</td><td style={{ padding: '4px 8px' }}>1</td></tr>
+                        </tbody>
+                      </table>
+
+                      {/* Matplotlib Mock */}
+                      <div style={{ width: '300px', height: '200px', border: '1px solid #e0e0e0', position: 'relative', marginTop: '8px' }}>
+                        <div style={{ position: 'absolute', bottom: '20px', left: '20px', right: '10px', height: '1px', backgroundColor: '#333' }}></div>
+                        <div style={{ position: 'absolute', bottom: '20px', left: '20px', top: '10px', width: '1px', backgroundColor: '#333' }}></div>
+                        
+                        <div style={{ position: 'absolute', bottom: '40px', left: '60px', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#1f77b4' }}></div>
+                        <div style={{ position: 'absolute', bottom: '80px', left: '100px', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#1f77b4' }}></div>
+                        <div style={{ position: 'absolute', bottom: '150px', left: '150px', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#ff7f0e' }}></div>
+                        <div style={{ position: 'absolute', bottom: '120px', left: '200px', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#ff7f0e' }}></div>
+                        
+                        <svg width="100%" height="100%" style={{ position: 'absolute', inset: 0 }}>
+                          <path d="M 20 180 L 290 30" fill="none" stroke="rgba(255,0,0,0.5)" strokeWidth="2" strokeDasharray="5 5" />
+                        </svg>
+                      </div>
+
+                    </div>
+                  </div>
+                  
                 </div>
               ) : activeConsoleTab === 'waveform' ? (
                 <div style={{ flex: 1, backgroundColor: '#050505', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
