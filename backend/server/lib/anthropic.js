@@ -56,7 +56,8 @@ Return the response STRICTLY as a JSON object with this exact structure:
     }
   ]
 }
-DO NOT wrap the JSON in Markdown or backticks. Return RAW JSON only.`;
+YOU MUST ESCAPE ALL NEWLINES (\\n) AND QUOTES INSIDE STRINGS. DO NOT USE LITERAL NEWLINES IN JSON STRINGS.
+  DO NOT wrap the JSON in Markdown or backticks. Return RAW JSON only.`;
 
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
