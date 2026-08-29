@@ -35,7 +35,8 @@ There MUST be a perfect, logical bond between the Question context, the Starting
   - If the role is Backend, App, or general Software: Provide buggy starting code (Node.js, Python, Java). The workspaceType MUST be "code".
   - If the role is Cybersecurity, DevOps, or Network: Provide terminal configurations, nmap logs, or bash scripts. The workspaceType MUST be "terminal".
   - If the role is Data, DBMS, or Analyst: Provide a SQL schema or broken query. The workspaceType MUST be "sql".
-  - If the role is Hardware, Medical, Embedded, Civil, or Mechanical: Provide diagnostic logs, sensor data, or configuration parameters. The workspaceType MUST be "log_viewer".
+  - If the role is Hardware, Medical, or Embedded: Provide diagnostic logs, sensor data, or configuration parameters. The workspaceType MUST be "log_viewer".
+  - If the role is Civil, Architecture, or Mechanical: Provide Python-based AutoLISP macros or CAD configuration scripts. The workspaceType MUST be "autocad".
 
 Return the response STRICTLY as a JSON object with this exact structure:
 {
