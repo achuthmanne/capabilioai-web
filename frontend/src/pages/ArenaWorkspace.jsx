@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 import Editor from '@monaco-editor/react';
-import { ArrowLeft, Play, Terminal, CheckCircle, Zap, Layout, Box, XCircle } from 'lucide-react';
+import { ArrowLeft, Play, Terminal, CheckCircle, Zap, Layout, Box, Activity, XCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { userDoc } from "../lib/db";
 import { supabase } from "../lib/supabase";
@@ -20,7 +20,8 @@ export default function ArenaWorkspace({ user, userData, setUserData, onNavigate
         if (parsed.taskData) {
           setTaskData({ ...parsed.taskData, completed: parsed.completed, passed: parsed.passed });
           if (parsed.taskData.workspaceType === 'sql') setLanguage('sql');
-          else if (parsed.taskData.workspaceType === 'autocad') setLanguage('python'); // use python syntax highlighting for scripts
+          else if (parsed.taskData.workspaceType === 'autocad') setLanguage('python');
+          else if (parsed.taskData.workspaceType === 'hardware_hdl') setLanguage('cpp'); // closest for verilog // use python syntax highlighting for scripts
           else if (parsed.taskData.workspaceType === 'terminal' || parsed.taskData.workspaceType === 'log_viewer') setLanguage('shell');
         }
         if (parsed.violations) setViolations(parsed.violations);
@@ -427,7 +428,7 @@ Review the test cases and feedback, then try again.`;
           <div style={{ height: '40px', backgroundColor: '#2D2D2D', borderBottom: '1px solid #1E1E1E', display: 'flex', alignItems: 'center', padding: '0 16px', justifyContent: 'space-between' }}>
             <div style={{ fontSize: '13px', color: '#E0E0E0', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Terminal size={14} /> 
-              {taskData?.workspaceType === 'terminal' ? 'server_terminal' : taskData?.workspaceType === 'log_viewer' ? 'system_logs.txt' : taskData?.workspaceType === 'sql' ? 'query.sql' : taskData?.workspaceType === 'autocad' ? 'design_macro.py' : language === 'javascript' ? 'index.js' : language === 'python' ? 'main.py' : language === 'java' ? 'Main.java' : language === 'cpp' ? 'main.cpp' : 'code'}
+              {taskData?.workspaceType === 'terminal' ? 'server_terminal' : taskData?.workspaceType === 'log_viewer' ? 'system_logs.txt' : taskData?.workspaceType === 'sql' ? 'query.sql' : taskData?.workspaceType === 'hardware_hdl' ? 'logic_design.v' : taskData?.workspaceType === 'autocad' ? 'design_macro.py' : language === 'javascript' ? 'index.js' : language === 'python' ? 'main.py' : language === 'java' ? 'Main.java' : language === 'cpp' ? 'main.cpp' : 'code'}
             </div>
             {(!taskData?.workspaceType || taskData?.workspaceType === 'code') && (
               <select 
