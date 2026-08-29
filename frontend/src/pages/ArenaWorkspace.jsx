@@ -272,8 +272,8 @@ Review the test cases and feedback, then try again.`;
 
         // Update ELO only if passed
         if (result.passed && setUserData && userData) {
-          const updatedElo = (userData.eloRating || 400) + finalReward;
-          const updatedStreak = (userData.streak || userData.arenaStreak || 0) + 1;
+          const updatedElo = parseInt(userData.eloRating || 400) + parseInt(finalReward || 0);
+          const updatedStreak = parseInt(userData.streak || userData.arenaStreak || 0) + 1;
             
           setUserData(prev => ({
             ...prev,
