@@ -42,6 +42,7 @@ const Aura               = lazy(() => import("./pages/Aura"))
 // branch (config-driven, AI-generated missions) gets its own lazy import
 // here in a later phase — never sharing a component with College Stream.
 const ArenaCollegeStream = lazy(() => import("./pages/arenaCollegeStream/ArenaCollegeStream"))
+const ChallengesLayout = lazy(() => import("./pages/challenges/ChallengesLayout"))
 const Pulse              = lazy(() => import("./pages/Pulse"))
 const HardwareChallenges = lazy(() => import("./pages/HardwareChallenges"))
 const SkillStudio        = lazy(() => import("./pages/SkillStudio"))
@@ -1760,7 +1761,7 @@ function App() {
           .cap-nav-item:hover { background: #F4F5F7 !important; color: #14161A !important; }
         `}</style>
 
-      {currentPage !== "arenaWorkspace" && (
+      {currentPage !== "arenaWorkspace" && currentPage !== "challenges" && (
       <header style={{
           position: "sticky", top: 0, zIndex: 90,
           background: "#FFFFFF",
@@ -1950,7 +1951,7 @@ function App() {
 
       {/* Professional path's full nav now lives in the scrollable header
           (PROFESSIONAL_HEADER_NAV) — PathNav's icon row would just duplicate it. */}
-      {navPath !== "student" && navPath !== "institution" && navPath !== "professional" && currentPage !== "arenaWorkspace" && (
+      {navPath !== "student" && navPath !== "institution" && navPath !== "professional" && currentPage !== "arenaWorkspace" && currentPage !== "challenges" && (
         <PathNav
           path={navPath}
           activeItem={activeNavItem}
@@ -1958,7 +1959,7 @@ function App() {
         />
       )}
 
-      <div style={{ height: currentPage === "arenaWorkspace" ? "100vh" : "calc(100vh - 56px)", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+      <div style={{ height: (currentPage === "arenaWorkspace" || currentPage === "challenges") ? "100vh" : "calc(100vh - 56px)", overflowY: "auto", display: "flex", flexDirection: "column" }}>
         {/* Suspense: lazy page chunks load on first navigation — PageLoader shows briefly.
             Wrapped in ErrorBoundary: if a chunk 404s (stale index.html pointing at a
             hash a newer deploy purged), this used to unmount the ENTIRE app to a blank
@@ -2026,6 +2027,7 @@ function App() {
               render block lands here in a later phase, its own component,
               never sharing state with College Stream. */}
           {currentPage === "arenaCollegeStream" && <ArenaCollegeStream userData={userData} onNavigate={setCurrentPage} user={user} setUserData={setUserData} />}
+          {currentPage === "challenges" && <ChallengesLayout onNavigate={setCurrentPage} />}
           {currentPage === "pulse"     && <Pulse user={user} userData={userData} />}
           {currentPage === "authority" && <AuthorityProfile user={user} userData={{ ...userData, uid: user?.id }} setUserData={setUserData} onNavigate={setCurrentPage} />}
           {currentPage === "startupworkspace" && <StartupWorkspace user={user} userData={userData} onNavigate={p => { setCurrentPage(p); setActiveNavItem(p) }} />}

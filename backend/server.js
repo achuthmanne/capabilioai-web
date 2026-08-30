@@ -165,6 +165,7 @@ import careerTimelineRoutes      from "./server/routes/careerTimeline.js"
 import candidateTasksRoutes      from "./server/routes/candidateTasks.js"
 import skillGraphRoutes          from "./server/routes/skillGraph.js"
 import weeklyPulseRoutes         from "./server/routes/weeklyPulse.js"
+import challengesRoutes          from "./server/routes/challenges.js"
 import homeV1Routes              from "./server/routes/homeV1.js" // Career OS Workstream 1 — pro/v1/home/*
 import careerEventsV1Routes      from "./server/routes/careerEventsV1.js" // Career OS Workstream 2 — pro/v1/career/timeline
 import skillPulseV2Routes        from "./server/routes/skillPulseV2.js"  // Career OS Workstream 3 — pro/weekly/v2 (coverage-gated, falls back to v1)
@@ -399,6 +400,7 @@ app.use("/api",              careerTimelineRoutes)      // pro/timeline, pro/vau
 app.use("/api",              candidateTasksRoutes)      // candidate/tasks — recruiter-assigned tasks via partner bridge (2026-08-06)
 app.use("/api",              skillGraphRoutes)          // pro/skills
 app.use("/api",              weeklyPulseRoutes)         // pro/weekly — Weekly Career Check
+app.use("/api/challenges",   challengesRoutes)          // Branch-specific Weekly Challenges         // pro/weekly — Weekly Career Check
 app.use("/api",              professionalEloRoutes)     // pro/elo/professional — Professional ELO status+history (2026-07-25 product decision)
 app.use("/api",              professionalCertificationsRoutes) // pro/certifications — Skill Rating v2 verification-gated cert bonus (2026-07-26)
 app.use("/api",              homeV1Routes)              // pro/v1/home — Career OS Workstream 1 priority ranking

@@ -917,3 +917,12 @@ export const arenaPaymentsApi = {
   createOrder:   (planId, uid) => request("POST", "/create-order", { planId, uid }),
   verifyPayment: (payload)     => request("POST", "/verify-payment", payload),
 }
+
+// ─── Generic API Helper ────────────────────────────────────────────────────────
+export const api = {
+  get: (path, opts = {}) => request("GET", path, null, opts),
+  post: (path, body, opts = {}) => request("POST", path, body, opts),
+  put: (path, body, opts = {}) => request("PUT", path, body, opts),
+  patch: (path, body, opts = {}) => request("PATCH", path, body, opts),
+  delete: (path, opts = {}) => request("DELETE", path, null, opts)
+};
