@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { api } from '../../lib/api'
-import { Terminal, Box, Activity, Database, Sparkles, CheckCircle, Gift, Trophy } from 'lucide-react'
+import { Terminal, Box, Activity, Database, Sparkles, CheckCircle, Gift, Trophy, Pointer, ArrowRight, Lock } from 'lucide-react'
 
 export default function ChallengesTab({ onOpenWorkspace, onScratchedStateChange, isDarkTheme, onThemeChange }) {
   const [cardState, setCardState] = useState(null)
@@ -10,6 +10,7 @@ export default function ChallengesTab({ onOpenWorkspace, onScratchedStateChange,
   const [scratchProgress, setScratchProgress] = useState(0)
   const [isExploding, setIsExploding] = useState(false)
   const [showCards, setShowCards] = useState(false)
+  const [hasStartedScratching, setHasStartedScratching] = useState(false)
   
   // Wheel, Theme & Miracle Transition State
   const [stage, setStage] = useState('wheel') // 'wheel' -> 'exiting_wheel' -> 'card'
@@ -17,6 +18,33 @@ export default function ChallengesTab({ onOpenWorkspace, onScratchedStateChange,
   const [rotation, setRotation] = useState(0)
   const [isSpinning, setIsSpinning] = useState(false)
   const [winningTheme, setWinningTheme] = useState(null)
+  
+  // Timer State for Sundays
+  const [timeLeft, setTimeLeft] = useState('')
+  const [isSunday, setIsSunday] = useState(false)
+
+  useEffect(() => {
+    const updateTimer = () => {
+      const now = new Date()
+      const day = now.getDay()
+      if (day === 0) { // Sunday
+        setIsSunday(true)
+        const nextMidnight = new Date()
+        nextMidnight.setHours(24, 0, 0, 0)
+        const diff = nextMidnight - now
+        
+        const hours = Math.floor(diff / (1000 * 60 * 60))
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+        setTimeLeft(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`)
+      } else {
+        setIsSunday(false)
+      }
+    }
+    updateTimer()
+    const int = setInterval(updateTimer, 1000)
+    return () => clearInterval(int)
+  }, [])
   
   const canvasRef = useRef(null)
   const isDrawing = useRef(false)
@@ -53,6 +81,9 @@ export default function ChallengesTab({ onOpenWorkspace, onScratchedStateChange,
       }
     } catch (e) {
       console.error(e)
+      setCardState({ id: 'mock-card', is_scratched: false, completed_questions: [] })
+      setStage('wheel')
+      if (onScratchedStateChange) onScratchedStateChange(false)
       setLoading(false)
     }
   }
@@ -182,6 +213,7 @@ export default function ChallengesTab({ onOpenWorkspace, onScratchedStateChange,
     if (isExploding) return
     isDrawing.current = true
     lastPos.current = getCanvasPos(e)
+    if (!hasStartedScratching) setHasStartedScratching(true)
   }
 
   const handlePointerMove = (e) => {
@@ -192,12 +224,10 @@ export default function ChallengesTab({ onOpenWorkspace, onScratchedStateChange,
     ctx.globalCompositeOperation = 'destination-out'
     ctx.beginPath()
     // Very smooth and wide brush
-    ctx.lineWidth = 45 
+    ctx.lineWidth = 60 
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
-    // Adding shadow creates a softer edge to the scratch, feeling more realistic
-    ctx.shadowBlur = 10
-    ctx.shadowColor = 'rgba(0,0,0,1)'
+    // Removed shadowBlur to prevent jagged artifacts during fast scratching
     
     ctx.moveTo(lastPos.current.x, lastPos.current.y)
     ctx.lineTo(pos.x, pos.y)
@@ -233,20 +263,36 @@ export default function ChallengesTab({ onOpenWorkspace, onScratchedStateChange,
 
   const triggerReveal = async () => {
     setIsExploding(true)
+    
+    // Determine number of tasks from the wheel slice (or default 5)
+    const taskCount = winningTheme ? parseInt(winningTheme.label.split(' ')[0]) : 5
+    
     try {
+      if (cardState?.id === 'mock-card' || !cardState) throw new Error('Using mock fallback')
+      
       const res = await api.post('/api/challenges/scratch', { cardId: cardState.id })
       await fetchQuestions(res.card.assigned_questions)
       setCardState(res.card)
-      
-      // Delay showing the cards so the scratch card can fade out gracefully first
-      setTimeout(() => {
-        setShowCards(true)
-        if (onScratchedStateChange) onScratchedStateChange(true)
-      }, 500)
-      
     } catch (e) {
-      console.error(e)
+      console.error("Using mock data for blast transition", e)
+      const mockQuestions = Array.from({ length: taskCount }).map((_, i) => ({
+        id: `mock-q-${i}`,
+        title: i % 2 === 0 ? 'Data Structures & Algorithms' : 'Backend System Design',
+        workspace_type: i % 3 === 0 ? 'database' : 'ide',
+        difficulty: i === 0 ? 'Hard' : (i % 2 === 0 ? 'Medium' : 'Easy'),
+        points: 50 + (i * 10)
+      }))
+      setQuestions(mockQuestions)
+      setCardState({ id: 'mock-card', is_scratched: true, completed_questions: [] })
     }
+    
+    // Delay showing the cards so the scratch card MASSIVE blast animation can finish
+    setTimeout(() => {
+      setStage('cards')
+      setShowCards(true)
+      if (onScratchedStateChange) onScratchedStateChange(true)
+      if (onThemeChange) onThemeChange('plain') // Reset Background to purely white/dark!
+    }, 600)
   }
 
   const getIcon = (type) => {
@@ -264,16 +310,19 @@ export default function ChallengesTab({ onOpenWorkspace, onScratchedStateChange,
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center', textAlign: 'center' }}>
-        <h1 style={{ margin: 0, color: isDarkTheme ? '#FFFFFF' : '#14161A', fontSize: '28px', fontWeight: 900, letterSpacing: '-0.5px' }}>
-          Weekly Challenges
-        </h1>
-      </div>
+        <div style={{ marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center' }}>
+          <h1 style={{ margin: 0, color: isDarkTheme ? '#FFFFFF' : '#14161A', fontSize: '28px', fontWeight: 900, letterSpacing: '-0.5px' }}>
+            Weekly Challenges
+          </h1>
+        </div>
 
       <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         
         {/* Absolute Center Anchor for both elements to overlap perfectly */}
-        <div style={{ position: 'relative', width: '340px', height: '440px', display: 'flex', alignItems: 'center', justifyContent: 'center', transform: 'translateY(-30px)' }}>
+        <motion.div 
+          animate={{ height: stage === 'cards' ? 0 : 440, opacity: stage === 'cards' ? 0 : 1, marginBottom: stage === 'cards' ? -30 : 0 }}
+          style={{ position: 'relative', width: '340px', display: 'flex', alignItems: 'center', justifyContent: 'center', transform: 'translateY(-30px)' }}
+        >
 
           {/* --- 1. THE SPINNING WHEEL --- */}
           <AnimatePresence>
@@ -370,36 +419,44 @@ export default function ChallengesTab({ onOpenWorkspace, onScratchedStateChange,
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, scale: 0 }}
                 transition={{ duration: 0.4, type: "spring", bounce: 0.5, delay: 0.2, exit: { duration: 0.1 } }}
-                onClick={spinWheel}
-                disabled={isSpinning}
+                onClick={isSunday ? undefined : spinWheel}
+                disabled={isSpinning || isSunday}
                 style={{
-                  position: 'absolute', bottom: '-20px', zIndex: 40,
+                  position: 'absolute', bottom: '-40px', zIndex: 40,
                   padding: '16px 48px', fontSize: '18px', fontWeight: 900,
-                  background: 'linear-gradient(180deg, #FF7A00 0%, #FF3D00 100%)', 
-                  color: '#FFF', border: '1px solid #E63500', borderRadius: '999px',
-                  cursor: isSpinning ? 'not-allowed' : 'pointer',
-                  boxShadow: '0 6px 0 #D03000, 0 12px 24px rgba(0,0,0,0.15)',
-                  opacity: isSpinning ? 0.7 : 1, transition: 'all 0.1s ease',
-                  letterSpacing: '1px', textTransform: 'uppercase', whiteSpace: 'nowrap'
+                  background: isSunday ? (isDarkTheme ? 'rgba(255, 87, 1, 0.05)' : '#FFF5F0') : 'linear-gradient(180deg, #FF7A00 0%, #FF3D00 100%)', 
+                  color: isSunday ? '#FF5701' : '#FFF', 
+                  border: isSunday ? (isDarkTheme ? '1px solid rgba(255, 87, 1, 0.2)' : '1px solid rgba(255, 87, 1, 0.2)') : '1px solid #E63500', 
+                  borderRadius: '999px',
+                  cursor: (isSpinning || isSunday) ? 'not-allowed' : 'pointer',
+                  boxShadow: isSunday ? (isDarkTheme ? '0 0 20px rgba(255, 87, 1, 0.05)' : '0 4px 12px rgba(255, 87, 1, 0.08)') : '0 6px 0 #D03000, 0 12px 24px rgba(0,0,0,0.15)',
+                  opacity: (isSpinning && !isSunday) ? 0.7 : 1, transition: 'all 0.1s ease',
+                  letterSpacing: '1px', textTransform: 'uppercase', whiteSpace: 'nowrap',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'
                 }}
-                onMouseEnter={e => !isSpinning && (
+                onMouseEnter={e => !(isSpinning || isSunday) && (
                   e.currentTarget.style.transform = 'translateY(2px)', 
                   e.currentTarget.style.boxShadow = '0 4px 0 #D03000, 0 8px 16px rgba(0,0,0,0.1)'
                 )}
-                onMouseLeave={e => !isSpinning && (
+                onMouseLeave={e => !(isSpinning || isSunday) && (
                   e.currentTarget.style.transform = 'translateY(0)', 
                   e.currentTarget.style.boxShadow = '0 6px 0 #D03000, 0 12px 24px rgba(0,0,0,0.15)'
                 )}
-                onMouseDown={e => !isSpinning && (
+                onMouseDown={e => !(isSpinning || isSunday) && (
                   e.currentTarget.style.transform = 'translateY(6px)', 
                   e.currentTarget.style.boxShadow = '0 0 0 #D03000, 0 0 0 rgba(0,0,0,0.1)'
                 )}
-                onMouseUp={e => !isSpinning && (
+                onMouseUp={e => !(isSpinning || isSunday) && (
                   e.currentTarget.style.transform = 'translateY(2px)', 
                   e.currentTarget.style.boxShadow = '0 4px 0 #D03000, 0 8px 16px rgba(0,0,0,0.1)'
                 )}
               >
-                {isSpinning ? 'SPINNING...' : 'SPIN FOR TASKS'}
+                {isSunday ? (
+                  <>
+                    <Lock size={20} strokeWidth={2.5} />
+                    UNLOCKS IN {timeLeft}
+                  </>
+                ) : (isSpinning ? 'SPINNING...' : 'SPIN FOR TASKS')}
               </motion.button>
             )}
           </AnimatePresence>
@@ -452,6 +509,38 @@ export default function ChallengesTab({ onOpenWorkspace, onScratchedStateChange,
             )}
           </AnimatePresence>
 
+          {/* Card Explosion Pixel Blast */}
+          <AnimatePresence>
+            {isExploding && !showCards && (
+              <div style={{ position: 'absolute', top: '50%', left: '50%', zIndex: 45, pointerEvents: 'none' }}>
+                {Array.from({ length: 60 }).map((_, i) => {
+                  const angle = (i * 6) * (Math.PI / 180);
+                  const distance = 80 + (i % 6) * 30; 
+                  const x = Math.cos(angle) * distance;
+                  const y = Math.sin(angle) * distance;
+                  const size = 6 + (i % 4) * 4;
+                  const colors = winningTheme ? winningTheme.grad : ['#FF7A00', '#FF3D00', '#FFF'];
+                  const color = colors[i % colors.length];
+                  return (
+                    <motion.div
+                      key={`cardblast-${i}`}
+                      initial={{ x: 0, y: 0, scale: 1, opacity: 1 }}
+                      animate={{ x, y, scale: 0, opacity: 0, rotate: (i % 2 === 0 ? 360 : -360) }}
+                      transition={{ duration: 0.6 + (i % 3) * 0.2, ease: "easeOut" }}
+                      style={{
+                        position: 'absolute',
+                        width: size, height: size,
+                        backgroundColor: color,
+                        borderRadius: i % 2 === 0 ? '50%' : '2px',
+                        boxShadow: `0 0 12px ${color}`
+                      }}
+                    />
+                  )
+                })}
+              </div>
+            )}
+          </AnimatePresence>
+
           {/* --- 2. THE SCRATCH CARD (Expands from center) --- */}
           <AnimatePresence>
             {(stage === 'card' && !showCards) && (
@@ -459,8 +548,13 @@ export default function ChallengesTab({ onOpenWorkspace, onScratchedStateChange,
                 key="card"
                 initial={{ scale: 0, opacity: 0, rotateZ: -720, filter: 'blur(20px)' }}
                 animate={{ scale: 1, opacity: 1, rotateZ: 0, filter: 'blur(0px)' }}
-                exit={{ scale: 1.1, opacity: 0, filter: 'blur(10px)' }}
-                transition={{ type: "spring", damping: 15, stiffness: 100, delay: 0.2 }}
+                exit={{ 
+                  scale: [1, 1.2, 0], 
+                  rotateZ: [0, -15, 90], 
+                  opacity: [1, 1, 0],
+                  filter: ['blur(0px)', 'blur(5px)', 'blur(20px)']
+                }}
+                transition={{ type: "spring", damping: 15, stiffness: 100, delay: 0.2, exit: { duration: 0.5, ease: "anticipate", delay: 0 } }}
                 style={{ 
                   position: 'absolute', // Exact same center as wheel
                   width: '340px', height: '440px', 
@@ -495,10 +589,42 @@ export default function ChallengesTab({ onOpenWorkspace, onScratchedStateChange,
                   onPointerUp={handlePointerUp}
                   onPointerLeave={handlePointerUp}
                 />
+                
+                {/* Tutorial Hand Animation */}
+                {!hasStartedScratching && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ 
+                      opacity: [0, 1, 1, 1, 1, 1, 0, 0],
+                      scale: [0.8, 1, 1, 1, 1, 1, 0.8, 0.8],
+                      x: [20, -20, 20, -20, 20, -20, 0, 0],
+                      y: [20, 15, 10, 5, 0, -5, -10, -10],
+                      rotate: [0, -10, 10, -10, 10, -10, 0, 0]
+                    }}
+                    transition={{
+                      duration: 1.5,
+                      times: [0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1],
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                    style={{
+                      position: 'absolute',
+                      top: '55%',
+                      left: '50%',
+                      marginLeft: '-24px', // center the icon horizontally
+                      zIndex: 60,
+                      pointerEvents: 'none',
+                      filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))',
+                      color: '#FFF'
+                    }}
+                  >
+                    <Pointer size={48} fill="#14161A" strokeWidth={1.5} />
+                  </motion.div>
+                )}
             </motion.div>
           )}
         </AnimatePresence>
-        </div>
+        </motion.div>
       </div>
       
       {/* Confetti Explosion Container */}
@@ -515,69 +641,74 @@ export default function ChallengesTab({ onOpenWorkspace, onScratchedStateChange,
             >
               {questions.map((q, i) => {
                 const isCompleted = cardState.completed_questions?.includes(q.id)
+                const pastels = [
+                  { bg: '#FFF0E6', text: '#D94A00', icon: '#FF5701', darkBg: 'rgba(255, 87, 1, 0.08)' }, // Orange
+                  { bg: '#E6F4EA', text: '#137333', icon: '#188038', darkBg: 'rgba(24, 128, 56, 0.08)' }, // Green
+                  { bg: '#E8F0FE', text: '#1967D2', icon: '#1A73E8', darkBg: 'rgba(26, 115, 232, 0.08)' }, // Blue
+                  { bg: '#FCE8E6', text: '#C5221F', icon: '#D93025', darkBg: 'rgba(217, 48, 37, 0.08)' }, // Red
+                  { bg: '#F3E8FD', text: '#681DA8', icon: '#8430CE', darkBg: 'rgba(132, 48, 206, 0.08)' }, // Purple
+                ]
+                const theme = pastels[i % pastels.length]
                 
                 return (
                   <motion.div 
                     key={q.id}
-                    // Start from exact center, small, and invisible
-                    initial={{ opacity: 0, scale: 0.5, y: 100, x: 0 }}
+                    // Start from exact center (relative to where the blast happened), small, and invisible
+                    initial={{ opacity: 0, scale: 0, y: -150, rotate: (i % 2 === 0 ? 15 : -15) }}
                     // Animate to their natural grid positions
-                    animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
+                    animate={{ opacity: 1, scale: 1, y: 0, rotate: 0 }}
                     transition={{ 
-                      type: 'spring', stiffness: 260, damping: 20, 
-                      delay: i * 0.1 // Stagger the fanning out
+                      type: 'spring', stiffness: 200, damping: 20, 
+                      delay: 0.1 + (i * 0.15) // Stagger the magic shoot out
                     }}
                     onClick={() => !isCompleted && onOpenWorkspace(q.id)}
                     style={{
-                      backgroundColor: isDarkTheme ? '#1A1D21' : '#FFFFFF',
-                      border: isDarkTheme ? '1px solid #2A2E33' : '1px solid #E4E6E9',
-                      borderRadius: '16px',
-                      padding: '28px',
+                      backgroundColor: isDarkTheme ? theme.darkBg : theme.bg,
+                      border: isDarkTheme ? `1px solid ${theme.darkBg.replace('0.08', '0.15')}` : 'none',
+                      borderRadius: '24px',
+                      padding: '32px',
                       cursor: isCompleted ? 'default' : 'pointer',
                       position: 'relative',
-                      transition: 'all 0.2s ease',
+                      transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
                       opacity: isCompleted ? 0.6 : 1,
                       display: 'flex',
-                      flexDirection: 'column'
+                      flexDirection: 'column',
+                      boxShadow: 'none', // NO SHADOWS AS REQUESTED
+                      overflow: 'hidden'
                     }}
                     onMouseEnter={(e) => {
                       if(!isCompleted) {
-                        e.currentTarget.style.borderColor = isDarkTheme ? '#4B5563' : '#D1D5DB';
-                        e.currentTarget.style.boxShadow = isDarkTheme ? '0 12px 24px rgba(0, 0, 0, 0.4)' : '0 12px 24px rgba(0, 0, 0, 0.04)';
-                        e.currentTarget.style.transform = 'translateY(-4px)';
+                        e.currentTarget.style.transform = 'scale(1.02)'; // Just a neat scale, no shadow elevation
                       }
                     }}
                     onMouseLeave={(e) => {
                       if(!isCompleted) {
-                        e.currentTarget.style.borderColor = isDarkTheme ? '#2A2E33' : '#E4E6E9';
-                        e.currentTarget.style.boxShadow = 'none';
-                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.transform = 'scale(1)';
                       }
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', color: '#FF5701' }}>
-                      {getIcon(q.workspace_type)}
-                      <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        {q.difficulty}
-                      </span>
-                    </div>
-                    
-                    <h3 style={{ margin: '0 0 12px 0', fontSize: '18px', color: isDarkTheme ? '#FFFFFF' : '#14161A', fontWeight: 700, lineHeight: 1.4 }}>{q.title}</h3>
-                    
-                    <div style={{ marginTop: 'auto', paddingTop: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', backgroundColor: isDarkTheme ? '#2A2E33' : '#F4F5F7', borderRadius: '999px', fontSize: '13px', fontWeight: 700, color: isDarkTheme ? '#E4E6E9' : '#14161A' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: theme.icon }}>
+                        {getIcon(q.workspace_type)}
+                        <span style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          {q.difficulty}
+                        </span>
+                      </div>
+                      <div style={{ padding: '6px 14px', backgroundColor: isDarkTheme ? 'rgba(255,255,255,0.1)' : '#FFFFFF', borderRadius: '999px', fontSize: '13px', fontWeight: 700, color: theme.text }}>
                         +{q.points} Pts
                       </div>
-                      
-                      {isCompleted ? (
-                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#10B981', fontSize: '14px', fontWeight: 700 }}>
-                           <CheckCircle size={16} /> Solved
-                         </div>
-                      ) : (
-                         <span style={{ color: '#8A8F98', fontSize: '14px', fontWeight: 600, transition: 'color 0.2s' }} onMouseEnter={e => e.currentTarget.style.color = '#FF5701'} onMouseLeave={e => e.currentTarget.style.color = '#8A8F98'}>
-                           Solve Task &rarr;
-                         </span>
-                      )}
+                    </div>
+                    
+                    <h3 style={{ margin: '0 0 12px 0', fontSize: '20px', color: isDarkTheme ? '#FFFFFF' : '#14161A', fontWeight: 700, lineHeight: 1.4, letterSpacing: '-0.3px' }}>{q.title}</h3>
+                    
+                    <p style={{ fontSize: '14px', color: isDarkTheme ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)', lineHeight: 1.5, margin: '0 0 24px 0', flex: 1 }}>
+                       {q.workspace_type === 'ide' ? 'Solve the algorithm in our collaborative cloud IDE.' : 'Write optimized queries in the SQL Workspace.'}
+                    </p>
+                    
+                    <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '20px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: isCompleted ? (isDarkTheme ? '#10B981' : '#137333') : theme.text, fontSize: '15px', fontWeight: 700 }}>
+                        {isCompleted ? 'Completed' : 'Solve Task'} <ArrowRight size={18} strokeWidth={2.5} style={{ opacity: isCompleted ? 0 : 1 }} />
+                      </div>
                     </div>
                   </motion.div>
                 )

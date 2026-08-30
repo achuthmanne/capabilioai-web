@@ -21,7 +21,8 @@ export default function ChallengesLayout({ onNavigate }) {
     )
   }
 
-  const isDark = activeTab === 'challenges' && isScratched
+  // Remove the forced dark mode. The application uses a light dashboard theme.
+  const isDark = false
 
   // Convert hex to rgba for the background tinting
   const getHexOpacity = (hex, opacity) => {
@@ -32,8 +33,22 @@ export default function ChallengesLayout({ onNavigate }) {
     return `rgba(${r}, ${g}, ${b}, ${opacity})`
   }
 
-  const bgBase = isDark ? '#14161A' : (winningTheme ? getHexOpacity(winningTheme, 0.08) : '#FFF3E0')
-  const rayColor = isDark ? 'transparent' : (winningTheme ? getHexOpacity(winningTheme, 0.15) : 'rgba(255, 138, 0, 0.04)')
+  const getBgBase = () => {
+    if (winningTheme === 'plain') return isDark ? '#14161A' : '#FFFFFF';
+    if (isDark) return '#14161A';
+    if (winningTheme) return getHexOpacity(winningTheme.color || winningTheme, 0.08);
+    return '#FFF3E0';
+  }
+
+  const getRayColor = () => {
+    if (winningTheme === 'plain') return 'transparent';
+    if (isDark) return 'transparent';
+    if (winningTheme) return getHexOpacity(winningTheme.color || winningTheme, 0.15);
+    return 'rgba(255, 138, 0, 0.04)';
+  }
+
+  const bgBase = getBgBase();
+  const rayColor = getRayColor();
 
   return (
     <div style={{ 

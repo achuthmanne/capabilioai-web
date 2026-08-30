@@ -77,16 +77,18 @@ router.post("/scratch", requireAuth, async (req, res) => {
     // Quick heuristic for branch
     const branch = profile?.branch || profile?.stream || 'CSE'
 
-    // Fetch random 5-10 questions for this branch
+    // Fetch questions for this branch for this specific week
     let { data: questions, error: qError } = await supabase
       .from("challenge_questions")
       .select("id")
       .eq("branch", branch)
+      .eq("week_start_date", card.week_start_date)
       
     if (qError) throw qError
     
-    // Fallback if no questions (Dummy it for now to CSE as requested)
+    // Fallback if no questions for this week (e.g. cron didn't run, or development mode)
     if (!questions || questions.length === 0) {
+       console.log(`No challenges found for ${branch} on ${card.week_start_date}, falling back to any available challenges for CSE...`);
        const { data: fallbackQuestions } = await supabase
          .from("challenge_questions")
          .select("id")
@@ -94,12 +96,13 @@ router.post("/scratch", requireAuth, async (req, res) => {
        questions = fallbackQuestions || []
        
        if (questions.length === 0) {
-         return res.status(400).json({ error: "No challenges available." })
+         return res.status(400).json({ error: "No challenges available for this week." })
        }
     }
 
-    // Shuffle and pick 5 to 10
-    const numQuestions = Math.floor(Math.random() * (10 - 5 + 1)) + 5
+    // Shuffle and pick 5 to 10 (or whatever the wheel decided, currently it's randomized here)
+    // In a full implementation, we'd pass the wheel result in req.body. For now, random 5-10.
+    const numQuestions = req.body.wheelResult || (Math.floor(Math.random() * (10 - 5 + 1)) + 5)
     const shuffled = questions.sort(() => 0.5 - Math.random())
     const selectedIds = shuffled.slice(0, numQuestions).map(q => q.id)
 
