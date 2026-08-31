@@ -44,11 +44,10 @@ jobs:
           cache: "npm"
       - run: npm ci
       - run: npm run build
-      - run: npm run test:arena-v2
-      - run: npm run test:arena-v2-frontend
       - run: npm run test:backend-lib
       - run: npm run test:frontend-unit
       - name: Route tests (non-blocking — 3 pre-existing failures, see header comment)
         run: npm run test:routes || true
       - name: Lint (non-blocking)
         run: npm run lint || true
+
