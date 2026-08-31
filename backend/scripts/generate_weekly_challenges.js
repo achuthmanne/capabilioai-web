@@ -25,7 +25,6 @@ const BRANCH_FOCUS = {
 };
 
 async function getActiveBranches() {
-  // Free database query to find branches that actually have registered users
   const { data, error } = await supabase.from('profiles').select('branch, stream');
   if (error) {
     console.error("Error fetching profiles:", error);
@@ -38,25 +37,24 @@ async function getActiveBranches() {
     if (row.stream) activeBranches.add(row.stream);
   }
   
-  // Ensure we at least have CSE as fallback
   if (activeBranches.size === 0) activeBranches.add('CSE');
   
   return Array.from(activeBranches);
 }
 
 async function generateQuestions(branchName) {
-  console.log(Generating AI questions for active branch:  + branchName);
+  console.log(`Generating AI questions for active branch: ${branchName}`);
   const focus = BRANCH_FOCUS[branchName] || "General problem solving";
   
-  const prompt = You are an expert technical interviewer. Generate 15 distinct, engaging weekly challenge tasks for students in the \ branch. 
-The focus should be on: \.
+  const prompt = `You are an expert technical interviewer. Generate 15 distinct, engaging weekly challenge tasks for students in the ${branchName} branch. 
+The focus should be on: ${focus}.
 
 Distribute them as: 5 Easy (50-80 pts), 5 Medium (80-120 pts), 5 Hard (120-150 pts).
 Workspace type MUST be one of: 'code', 'sql', 'terminal', 'design', 'jupyter'.
 
 Return ONLY a valid JSON array of objects with keys: title, difficulty, points, workspace_type, test_cases.
 The test_cases should be an array of { input, expected_output }. If not a coding task, provide an empty array for test_cases.
-Do not wrap in markdown tags like \\\json.;
+Do not wrap in markdown tags like \`\`\`json.`;
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -77,13 +75,13 @@ Do not wrap in markdown tags like \\\json.;
     if (data.error) throw new Error(data.error.message);
 
     let content = data.content[0].text.trim();
-    if (content.startsWith('\\\json')) {
-      content = content.replace(/^\\\json/, '').replace(/\\\$/, '').trim();
+    if (content.startsWith('```json')) {
+      content = content.replace(/^```json/, '').replace(/```$/, '').trim();
     }
     
     return JSON.parse(content);
   } catch (error) {
-    console.error(Failed to generate for \:, error);
+    console.error(`Failed to generate for ${branchName}:`, error);
     return [];
   }
 }
@@ -91,7 +89,7 @@ Do not wrap in markdown tags like \\\json.;
 async function run() {
   console.log("Starting Capabilio Smart AI Challenge Generation...");
   const activeBranches = await getActiveBranches();
-  console.log(Found \ active branches with users:, activeBranches);
+  console.log(`Found ${activeBranches.length} active branches with users:`, activeBranches);
   
   const today = new Date();
   const day = today.getDay();
@@ -113,9 +111,9 @@ async function run() {
         test_cases: q.test_cases || [],
         week_start_date: weekStartStr
       });
-      if (error) console.error(Error saving \:, error);
+      if (error) console.error(`Error saving ${q.title}:`, error);
     }
-    console.log(Successfully generated and saved \ questions for \);
+    console.log(`Successfully generated and saved ${questions.length} questions for ${branchName}`);
   }
   
   console.log("Weekly generation complete!");
