@@ -40,6 +40,22 @@ router.get("/current", requireAuth, async (req, res) => {
     } else if (error) {
       throw error
     }
+
+    // Check if AI has generated questions for this user's branch this week
+    const { data: profile } = await supabaseAdmin.from("profiles").select("branch, stream").eq("id", userId).single();
+    const userBranch = profile?.branch || profile?.stream || 'CSE';
+    
+    const { data: qCheck } = await supabaseAdmin
+      .from("challenge_questions")
+      .select("id")
+      .eq("branch", userBranch)
+      .eq("week_start_date", weekStartStr)
+      .limit(1);
+
+    if (!qCheck || qCheck.length === 0) {
+      card.locked_mid_week = true;
+      card.user_branch = userBranch;
+    }
     
     res.json({ card })
   } catch (error) {
@@ -79,15 +95,7 @@ router.post("/scratch", requireAuth, async (req, res) => {
       .eq("week_start_date", card.week_start_date)
       
     if (qError || !questions || questions.length === 0) {
-       const { data: fallbackQuestions } = await supabaseAdmin
-         .from("challenge_questions")
-         .select("id")
-         .eq("branch", "CSE")
-       questions = fallbackQuestions || []
-       
-       if (questions.length === 0) {
-         return res.status(400).json({ error: "No challenges available for this week." })
-       }
+       return res.status(400).json({ error: "You joined mid-week! AI has not generated tasks for your branch yet. Please come back on Monday!" })
     }
 
     const numQuestions = req.body.wheelResult || (Math.floor(Math.random() * (10 - 5 + 1)) + 5)
@@ -108,7 +116,7 @@ router.post("/scratch", requireAuth, async (req, res) => {
 
     res.json({ card: updatedCard })
   } catch (error) {
-    console.error("Error scratching card:", error); import("fs").then(fs => fs.writeFileSync("C:/Users/hp/reactprojects/capabilio-web/backend/debug_scratch_error.log", JSON.stringify({ message: error.message, code: error.code, details: error.details, hint: error.hint }, null, 2)))
+    console.error("Error scratching card:", error); 
     res.status(500).json({ error: "Failed to scratch card" })
   }
 })
