@@ -65,7 +65,7 @@ export default function ChallengesTab({ onOpenWorkspace, onScratchedStateChange,
 
   const fetchCurrentCard = async () => {
     try {
-      const res = await api.get('/api/challenges/current')
+      const res = await api.get('/challenges/current')
       setCardState(res.card)
       if (res.card.is_scratched && res.card.assigned_questions) {
          fetchQuestions(res.card.assigned_questions)
@@ -90,7 +90,7 @@ export default function ChallengesTab({ onOpenWorkspace, onScratchedStateChange,
 
   const fetchQuestions = async (ids) => {
     try {
-      const res = await api.post('/api/challenges/questions', { questionIds: ids })
+      const res = await api.post('/challenges/questions', { questionIds: ids })
       setQuestions(res.questions)
       setLoading(false)
     } catch (e) {
@@ -270,7 +270,7 @@ export default function ChallengesTab({ onOpenWorkspace, onScratchedStateChange,
     try {
       if (cardState?.id === 'mock-card' || !cardState) throw new Error('Using mock fallback')
       
-      const res = await api.post('/api/challenges/scratch', { cardId: cardState.id })
+      const res = await api.post('/challenges/scratch', { cardId: cardState.id })
       await fetchQuestions(res.card.assigned_questions)
       setCardState(res.card)
     } catch (e) {
@@ -309,14 +309,14 @@ export default function ChallengesTab({ onOpenWorkspace, onScratchedStateChange,
   if (loading) return <div style={{ textAlign: 'center', marginTop: '100px', color: '#5F6368', fontWeight: 500 }}>Loading Weekly Data...</div>
 
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ width: '100%', flex: 1, position: 'relative', display: 'flex', flexDirection: 'column' }}>
         <div style={{ marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center' }}>
           <h1 style={{ margin: 0, color: isDarkTheme ? '#FFFFFF' : '#14161A', fontSize: '28px', fontWeight: 900, letterSpacing: '-0.5px' }}>
             Weekly Challenges
           </h1>
         </div>
 
-      <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ flex: showCards ? 0 : 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'flex 0.5s ease' }}>
         
         {/* Absolute Center Anchor for both elements to overlap perfectly */}
         <motion.div 
@@ -720,3 +720,4 @@ export default function ChallengesTab({ onOpenWorkspace, onScratchedStateChange,
       </div>
   )
 }
+

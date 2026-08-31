@@ -147,8 +147,8 @@ export default function ChallengesLayout({ onNavigate }) {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <AnimatePresence mode="wait">
           {activeTab === 'challenges' && (
-            <motion.div key="ch" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} style={{ height: '100%', width: '100%' }}>
-              <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', height: '100%', padding: '24px 5%', display: 'flex', flexDirection: 'column' }}>
+            <motion.div key="ch" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} style={{ height: '100%', width: '100%', overflowY: 'auto' }}>
+              <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', minHeight: '100%', padding: '40px 5%', display: 'flex', flexDirection: 'column' }}>
                 <ChallengesTab 
                   onOpenWorkspace={setActiveWorkspaceId} 
                   onScratchedStateChange={setIsScratched} 

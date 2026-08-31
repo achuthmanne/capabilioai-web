@@ -11,7 +11,7 @@ import { supabase } from "./supabase"
 // unset/wrong in production every single API route 404'd at once. Fixing
 // the fallback to the real service so this can't happen again if the env
 // var is ever missing.
-const BASE = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
+const BASE = import.meta.env.VITE_API_URL || "https://capabilioai-web.onrender.com"
 
 async function getToken() {
   const { data: { session } } = await supabase.auth.getSession()
@@ -926,3 +926,4 @@ export const api = {
   patch: (path, body, opts = {}) => request("PATCH", path, body, opts),
   delete: (path, opts = {}) => request("DELETE", path, null, opts)
 };
+
