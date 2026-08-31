@@ -93,8 +93,9 @@ async function run() {
   
   const today = new Date();
   const day = today.getDay();
-  const diff = today.getDate() - day + (day === 0 ? -6 : 1);
-  const weekStart = new Date(today.setDate(diff));
+  const daysUntilMonday = day === 1 ? 0 : (day === 0 ? 1 : 8 - day);
+  const weekStart = new Date(today);
+  weekStart.setDate(today.getDate() + daysUntilMonday);
   weekStart.setHours(0, 0, 0, 0);
   const weekStartStr = weekStart.toISOString().split('T')[0];
 
