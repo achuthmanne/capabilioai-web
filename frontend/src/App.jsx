@@ -1688,12 +1688,25 @@ function App() {
   // earlier but do not control this bar. Intentionally now 6 items (was
   // capped at 5) since Arena is a real, functioning destination again.
   const STUDENT_HEADER_NAV = [
-    { id: "home",        label: "Dashboard",    page: "studentHome", prefix: "🏠" },
-    { id: "skillgraph",  label: "Skill Graph",  page: "skillGraph",  prefix: "📈" },
-    { id: "portfolio",   label: "Portfolio",    page: "studentResume", prefix: "💼" },
-    { id: "aiinterview", label: "AI Interview", page: "aiInterview", prefix: "🤖" },
-    { id: "recruiters",  label: "Recruiters",   page: "studentRecruiters", prefix: "👀" },
-    ...(collegeLinked ? [{ id: "college", label: "College", page: "studentCollege", prefix: "🎓" }] : []),
+      { id: "home",        label: "Dashboard",    page: "studentHome", prefix: "" },
+      { id: "skillgraph",  label: "Skill Graph",  page: "skillGraph",  prefix: "" },
+      { id: "portfolio",   label: "Portfolio",    page: "studentResume", prefix: "" },
+      { id: "aiinterview", label: "AI Interview", page: "aiInterview", prefix: "" },
+      { id: "recruiters",  label: "Recruiters",   page: "studentRecruiters", prefix: "" },
+      { 
+        id: "services", 
+        label: "Tools & Services ▾", 
+        page: "services",
+        isDropdown: true,
+        items: [
+          { id: "codeVault", label: "Code Vault", desc: "Access saved snippets", page: "codeVault" },
+          { id: "challenges", label: "Challenges", desc: "Climb the leaderboard", page: "challenges" },
+          { id: "communityFeed", label: "Community Feed", desc: "See what others build", page: "communityFeed" },
+          { id: "codeVerification", label: "Code Integrity", desc: "GitHub Verification", page: "codeVerification" },
+          { id: "resumeVerification", label: "Verified Resume", desc: "Capabilio Trust Verification", page: "resumeVerification" }
+        ]
+      },
+      ...(collegeLinked ? [{ id: "college", label: "College", page: "studentCollege", prefix: "🎓" }] : []),
   ]
 
   // Sprint 5 of EXECUTIVE_TECHNICAL_BLUEPRINT.md §14 / EXECUTIVE_PATH_INFORMATION_ARCHITECTURE.md:
@@ -1759,6 +1772,25 @@ function App() {
           @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
           .cap-nav-item { transition: all 0.15s ease; }
           .cap-nav-item:hover { background: #F4F5F7 !important; color: #14161A !important; }
+            .cap-nav-dropdown-wrapper { position: relative; display: inline-flex; }
+            .cap-nav-dropdown-menu {
+              position: absolute; top: 100%; left: 50%; transform: translateX(-50%) translateY(10px);
+              background: #FFFFFF; border: 1px solid #EAEAEA; border-radius: 12px;
+              box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1), 0 0 15px rgba(0,0,0,0.03);
+              padding: 8px; min-width: 240px;
+              opacity: 0; visibility: hidden; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+              z-index: 100; margin-top: 4px; pointer-events: none;
+            }
+            .cap-nav-dropdown-wrapper:hover .cap-nav-dropdown-menu {
+              opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); pointer-events: auto;
+            }
+            .cap-nav-dropdown-item {
+              display: block; width: 100%; text-align: left;
+              padding: 12px 16px; border: none; background: transparent;
+              cursor: pointer; transition: all 0.15s; border-radius: 8px;
+              font-family: 'Inter', sans-serif;
+            }
+            .cap-nav-dropdown-item:hover { background: #F3F4F6; }
         `}</style>
 
       {currentPage !== "arenaWorkspace" && currentPage !== "challenges" && (
@@ -1782,9 +1814,38 @@ function App() {
                 overflowX: "auto", flexShrink: 0 
               }}>
                 {({ student: STUDENT_HEADER_NAV, authority: AUTHORITY_HEADER_NAV, professional: PROFESSIONAL_HEADER_NAV }[navPath]).map(item => {
-                  const active = activeNavItem === item.id || (currentPage === item.page && (!item.tab || activeTab === item.tab))
-                  return (
-                    <button key={item.id} className="cap-nav-item"
+                    const active = activeNavItem === item.id || (currentPage === item.page && (!item.tab || activeTab === item.tab))
+                    if (item.isDropdown) {
+                      return (
+                        <div key={item.id} style={{ position: 'relative' }} className="cap-nav-dropdown-wrapper">
+                          <button className="cap-nav-item"
+                            style={{
+                              display: "inline-flex", alignItems: "center",
+                              padding: "8px 24px", borderRadius: 999, 
+                              border: active ? "1px solid #D1D5DB" : "1px solid transparent",
+                              background: active ? "#FFFFFF" : "transparent",
+                              boxShadow: active ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
+                              color: active ? "#14161A" : "#8A8F98",
+                              fontSize: 14, fontWeight: active ? 700 : 600,
+                              cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
+                              fontFamily: '"Inter", sans-serif', transition: "all 0.2s"
+                            }}>
+                            {item.label}
+                          </button>
+                          <div className="cap-nav-dropdown-menu">
+                            {item.items.map(subItem => (
+                              <button key={subItem.id} className="cap-nav-dropdown-item"
+                                onClick={() => handleBottomNavTap(subItem.id, subItem.page, subItem.tab)}>
+                                <div style={{ fontWeight: 600, color: '#111827', marginBottom: 2, fontSize: 14 }}>{subItem.label}</div>
+                                <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 400 }}>{subItem.desc}</div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    }
+                    return (
+                      <button key={item.id} className="cap-nav-item"
                       onClick={() => handleBottomNavTap(item.id, item.page, item.tab)}
                       style={{
                         display: "inline-flex", alignItems: "center",
