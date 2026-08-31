@@ -1,0 +1,32 @@
+name: Generate Weekly AI Challenges
+
+on:
+  schedule:
+    # Runs every Sunday at 00:00 UTC
+    - cron: '0 0 * * 0'
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  generate-challenges:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Run AI Challenge Generator
+        env:
+          VITE_SUPABASE_URL: $\{{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: $\{{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_SERVICE_KEY: $\{{ secrets.SUPABASE_SERVICE_KEY }}
+          ANTHROPIC_API_KEY: $\{{ secrets.ANTHROPIC_API_KEY }}
+        run: node backend/scripts/generate_weekly_challenges.js
