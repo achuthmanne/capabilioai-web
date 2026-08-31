@@ -24,68 +24,44 @@ export default function Header({
   const [eloUpdated,        setEloUpdated]         = useState(false)
   const prevElo                                    = useRef(null)
 
-  // ── scroll shadow ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8)
-    window.addEventListener("scroll", onScroll, { passive: true })
-    return () => window.removeEventListener("scroll", onScroll)
-  }, [])
-
-  // ── derived user data ──────────────────────────────────────────────────────
-  const keyword     = userData?.keyword    || "General"
-  const path        = userData?.path       || "student"
-  const eloRating   = userData?.eloScore   || userData?.eloRating || 800
-  const vaultFiles  = Array.isArray(userData?.vaultFiles) ? userData.vaultFiles : []
-  const arenaStreak = userData?.arenaStreak || 0
-
-  // ── ELO pulse on change ───────────────────────────────────────────────────
-  useEffect(() => {
-    if (prevElo.current !== null && prevElo.current !== eloRating) {
-      setEloUpdated(true)
-      const t = setTimeout(() => setEloUpdated(false), 1200)
-      return () => clearTimeout(t)
-    }
-    prevElo.current = eloRating
-  }, [eloRating])
-
-  // ── getEloTier ─────────────────────────────────────────────────────────────
-  const getEloTier = (elo) => {
-    if (elo >= 750) return { tier: "Expert",   color: "#F59E0B" }
-    if (elo >= 650) return { tier: "Advanced", color: "#8B5CF6" }
-    if (elo >= 550) return { tier: "Rising",   color: "#6366F1" }
-    if (elo >= 450) return { tier: "Building", color: "#10B981" }
-    if (elo >= 400) return { tier: "Learning", color: "#F59E0B" }
-    return                  { tier: "Beginner",color: "#6B6560" }
-  }
-  const eloTier = getEloTier(eloRating)
-
-  // ── nav config ─────────────────────────────────────────────────────────────
+  // "?"? nav config "?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?
   const NAV_BY_PATH = {
-    student: [
-      { id: "aura",        label: "Aura",        icon: "✦" },
-      { id: "arena",       label: "Arena",        icon: "⚔" },
-      { id: "skillstudio", label: "Skill Studio", icon: "🎓" },
-      { id: "launchpad",   label: "Launchpad",    icon: "🚀" },
-    ],
-    professional: [
-      { id: "aura",      label: "Orbit",     icon: "✦"  },
-      { id: "arena",     label: "Forge",     icon: "⚔"  },
-      { id: "nexus",     label: "Nexus",     icon: "🏛️" },
-      { id: "launchpad", label: "Launchpad", icon: "🚀"  },
-      { id: "pulse",     label: "Signal",    icon: "📡"  },
-    ],
-    authority: [
-      { id: "aura",      label: "Authority",   icon: "✦"  },
-      { id: "nexus",     label: "Nexus",       icon: "🏛️" },
-      { id: "pulse",     label: "Signal Room", icon: "📡"  },
-      { id: "launchpad", label: "Launchpad",   icon: "🚀"  },
-    ],
-    institution: [
-      { id: "aura",      label: "Institution", icon: "✦"  },
-      { id: "nexus",     label: "Nexus",       icon: "🏛️" },
-      { id: "launchpad", label: "Placements",  icon: "🚀"  },
-    ],
-  }
+      student: [
+        { id: "aura",        label: "Aura",        icon: "?" },
+        { id: "skillstudio", label: "Skill Studio", icon: "??" },
+        { id: "launchpad",   label: "Launchpad",    icon: "??" },
+        { 
+          id: "services", 
+          label: "Services", 
+          icon: "???", 
+          isDropdown: true,
+          items: [
+            { id: "codeVault", label: "Code Vault", desc: "Saved snippets", icon: "??" },
+            { id: "challenges", label: "Challenges", desc: "Climb the leaderboard", icon: "??" },
+            { id: "communityFeed", label: "Community Feed", desc: "See what others build", icon: "??" },
+            { id: "codeVerification", label: "Code Integrity", desc: "GitHub Verification", icon: "???" },
+            { id: "resumeVerification", label: "Verified Resume", desc: "Capabilio Trust Verification", icon: "??" }
+          ]
+        }
+      ],
+      professional: [
+        { id: "aura",      label: "Orbit",     icon: "?"  },
+        { id: "arena",     label: "Forge",     icon: "??"  },
+        { id: "nexus",     label: "Nexus",     icon: "??" },
+        { id: "launchpad", label: "Launchpad", icon: "??"  },
+        { id: "pulse",     label: "Signal",    icon: "??"  },
+      ],
+      authority: [
+        { id: "aura",      label: "Authority",   icon: "?"  },
+        { id: "nexus",     label: "Nexus",       icon: "??" },
+        { id: "pulse",     label: "Signal Room", icon: "??"  },
+        { id: "launchpad", label: "Launchpad",   icon: "??"  },
+      ],
+      institution: [
+        { id: "monthreport", label: "Reports",       icon: "??" },
+        { id: "settings",    label: "Settings",      icon: "??" },
+      ],
+    }
 
   const AURA_TABS_BY_PATH = {
     student: [
@@ -291,9 +267,35 @@ export default function Header({
         .cg-logo-mark:hover {
           transform:scale(1.1) rotate(-5deg);
           box-shadow:0 8px 28px rgba(255,87,1,0.42);
-        }
+        }          /* Dropdown styles */
+          .cg-nav-item-wrapper { position: relative; display: inline-flex; }
+          .cg-dropdown-menu {
+            position: absolute; top: 100%; left: 50%; transform: translateX(-50%) translateY(10px);
+            background: #FFFFFF; border: 1px solid #EAEAEA; border-radius: 12px;
+            box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1), 0 0 15px rgba(0,0,0,0.03);
+            padding: 8px; min-width: 260px;
+            opacity: 0; visibility: hidden; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 100; margin-top: 4px; pointer-events: none;
+          }
+          .cg-nav-item-wrapper:hover .cg-dropdown-menu {
+            opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); pointer-events: auto;
+          }
+          .cg-dropdown-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 16px; color: #4B5563; font-size: 14px; font-weight: 500;
+            cursor: pointer; text-decoration: none; border: none; background: transparent;
+            width: 100%; text-align: left; transition: all 0.15s; border-radius: 8px;
+            font-family: 'DM Sans', sans-serif;
+          }
+          .cg-dropdown-item:hover { background: #F3F4F6; color: #111827; }
+          .cg-dropdown-icon { 
+            width: 32px; height: 32px; border-radius: 8px; 
+            display: flex; align-items: center; justifyContent: center;
+            background: #F3F4F6; font-size: 16px;
+          }
+          .cg-dropdown-item:hover .cg-dropdown-icon { background: #FFFFFF; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
 
-        /* Nav links */
+          /* Nav links */
         .cg-nav-link {
           display:inline-flex; align-items:center; gap:7px;
           padding:8px 15px; border-radius:10px;
@@ -468,38 +470,41 @@ export default function Header({
         {/* ── Top bar ────────────────────────────────────────────────────────── */}
         <div className={`cg-topbar${scrolled ? " scrolled" : ""}`}>
 
-          {/* ── Brand ────────────────────────────────────────── */}
-          <div style={{ display:"flex", alignItems:"center", gap:12, minWidth:0 }}>
-            <div className="cg-logo-mark" onClick={() => handleNavigate("aura")}>C</div>
-            <div style={{ minWidth:0, display:"flex", flexDirection:"column", gap:3 }}>
-              <div style={{
-                fontFamily:"'DM Sans',sans-serif", fontSize:15, fontWeight:800,
-                letterSpacing:"0.05em", color:"#1A1714", lineHeight:1,
-              }}>
-                CAPABILIO
-              </div>
-              <div style={{
-                fontFamily:"'DM Mono',monospace", fontSize:10,
-                color:"#6B6560", letterSpacing:"0.10em", lineHeight:1,
-                whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:6,
-              }}>
-                <span style={{ color:"#A8A29E" }}>{accountLabel}</span>
-                <span style={{ opacity:0.4 }}>·</span>
-                <span>{keyword}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Nav ──────────────────────────────────────────── */}
+          {/* ? Nav ????????????????????????????????????????????? */}
           <nav style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:2, minWidth:0 }}>
-            {navLinks.map(link => (
-              <button key={link.id}
-                onClick={() => handleNavigate(link.id)}
-                className={`cg-nav-link${currentPage === link.id ? " active" : ""}`}>
-                <span style={{ fontSize:13 }}>{link.icon}</span>
-                {link.label}
-              </button>
-            ))}
+            {navLinks.map(link => {
+              if (link.isDropdown) {
+                return (
+                  <div key={link.id} className="cg-nav-item-wrapper">
+                    <button
+                      className={cg-nav-link}>
+                      <span style={{ fontSize:13 }}>{link.icon}</span>
+                      {link.label}
+                      <span style={{ fontSize:10, marginLeft: 4 }}>?</span>
+                    </button>
+                    <div className="cg-dropdown-menu">
+                      {link.items.map(item => (
+                        <button key={item.id} className="cg-dropdown-item" onClick={() => handleNavigate(item.id)}>
+                          <div className="cg-dropdown-icon">{item.icon}</div>
+                          <div>
+                            <div style={{ fontWeight: 600, color: '#111827', marginBottom: 2 }}>{item.label}</div>
+                            <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 400 }}>{item.desc}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )
+              }
+              return (
+                <button key={link.id}
+                  onClick={() => handleNavigate(link.id)}
+                  className={cg-nav-link}>
+                  <span style={{ fontSize:13 }}>{link.icon}</span>
+                  {link.label}
+                </button>
+              )
+            })}
           </nav>
 
           {/* ── Right cluster ─────────────────────────────────── */}
@@ -759,3 +764,4 @@ export default function Header({
     </>
   )
 }
+

@@ -371,77 +371,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
       </div>
 
       {/* MAIN GRID */}
-            {/* QUICK TOOLS GRID */}
-      <div style={{ maxWidth: 1600, margin: "0 auto 40px auto", padding: "0 5%" }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
-          
-          <motion.div 
-            whileHover={{ backgroundColor: '#F8F9FA' }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => onNavigate('codeVault')}
-            style={{ 
-              background: '#FFFFFF', padding: '24px', borderRadius: '16px', 
-              cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: '20px',
-              border: '1px solid #EAEAEA',
-              transition: 'background-color 0.2s ease'
-            }}
-          >
-            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(75, 85, 99, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Code2 size={24} color="#4B5563" />
-            </div>
-            <div>
-              <div style={{ fontSize: '16px', fontWeight: 600, color: '#202124', marginBottom: '4px' }}>Code Vault</div>
-              <div style={{ fontSize: '13px', color: '#5F6368' }}>Access your saved code snippets</div>
-            </div>
-          </motion.div>
-
-          <motion.div 
-            whileHover={{ backgroundColor: '#F8F9FA' }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => onNavigate('challenges')}
-            style={{ 
-              background: '#FFFFFF', padding: '24px', borderRadius: '16px', 
-              cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: '20px',
-              border: '1px solid #EAEAEA',
-              transition: 'background-color 0.2s ease'
-            }}
-          >
-            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(255, 87, 1, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Trophy size={24} color="#FF5701" />
-            </div>
-            <div>
-              <div style={{ fontSize: '16px', fontWeight: 600, color: '#202124', marginBottom: '4px' }}>Challenges</div>
-              <div style={{ fontSize: '13px', color: '#5F6368' }}>Compete and climb the leaderboard</div>
-            </div>
-          </motion.div>
-
-          <motion.div 
-            whileHover={{ backgroundColor: '#F8F9FA' }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => onNavigate('communityFeed')}
-            style={{ 
-              background: '#FFFFFF', padding: '24px', borderRadius: '16px', 
-              cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: '20px',
-              border: '1px solid #EAEAEA',
-              transition: 'background-color 0.2s ease'
-            }}
-          >
-            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(37, 99, 235, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <LayoutDashboard size={24} color="#2563EB" />
-            </div>
-            <div>
-              <div style={{ fontSize: '16px', fontWeight: 600, color: '#202124', marginBottom: '4px' }}>Community Feed</div>
-              <div style={{ fontSize: '13px', color: '#5F6368' }}>See what others are building</div>
-            </div>
-          </motion.div>
-
-        </div>
-      </div>
-      
-      <div className="main-grid">
+            <div className="main-grid">
         
         {/* LEFT COLUMN */}
         <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
