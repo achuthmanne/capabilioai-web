@@ -1813,6 +1813,15 @@ function App() {
               transform: rotate(45deg);
               border-radius: 2px 0 0 0;
             }
+            .cap-nav-dropdown-menu::after {
+              content: '';
+              position: absolute;
+              top: -20px;
+              left: 0;
+              width: 100%;
+              height: 20px;
+              background: transparent;
+            }
             .cap-nav-dropdown-wrapper:hover .cap-nav-dropdown-menu {
               opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); pointer-events: auto;
             }
