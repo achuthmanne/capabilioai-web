@@ -1833,7 +1833,7 @@ function App() {
                               fontFamily: '"Inter", sans-serif', transition: "all 0.2s"
                             }}>
                             {item.label}
-                            <span style={{ fontSize: "24px", marginLeft: "2px", display: "inline-flex", alignItems: "center", transform: "translateY(-2px)" }}>▾</span>
+                            <span style={{ marginLeft: "6px", display: "inline-flex", alignItems: "center", transform: "scale(1.6) translateY(-1px)", transformOrigin: "center" }}>▾</span>
                           </button>
                           <div className="cap-nav-dropdown-menu">
                             {item.items.map(subItem => (
