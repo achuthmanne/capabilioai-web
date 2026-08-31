@@ -1690,7 +1690,7 @@ function App() {
   const STUDENT_HEADER_NAV = [
       { 
         id: "home",        
-        label: "Dashboard ▾",    
+        label: "Dashboard",    
         page: "studentHome", 
         prefix: "",
         isDropdown: true,
@@ -1832,6 +1832,7 @@ function App() {
                               fontFamily: '"Inter", sans-serif', transition: "all 0.2s"
                             }}>
                             {item.label}
+                            <span style={{ fontSize: "16px", marginLeft: "4px", lineHeight: 1 }}>▾</span>
                           </button>
                           <div className="cap-nav-dropdown-menu">
                             {item.items.map(subItem => (
