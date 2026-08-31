@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import {
   Eye, EyeOff, Check, Circle, X, AlertCircle, Lock, Sparkles, Mail,
-ChevronDown,
+ChevronDown, Code2, Trophy, Globe, ShieldCheck, FileCheck
 } from "lucide-react"
 import { PAGE_TO_PATH, PATH_TO_PAGE, isReservedPath } from "./lib/pageRoutes"
 import { Analytics } from "@vercel/analytics/react"
@@ -1696,11 +1696,11 @@ function App() {
         prefix: "",
         isDropdown: true,
         items: [
-          { id: "codeVault", label: "Code Vault", desc: "Access saved snippets", page: "codeVault" },
-          { id: "challenges", label: "Challenges", desc: "Climb the leaderboard", page: "challenges" },
-          { id: "communityFeed", label: "Community Feed", desc: "See what others build", page: "communityFeed" },
-          { id: "codeVerification", label: "Code Integrity", desc: "GitHub Verification", page: "codeVerification" },
-          { id: "resumeVerification", label: "Verified Resume", desc: "Capabilio Trust Verification", page: "resumeVerification" }
+          { id: "codeVault", label: "Code Vault", desc: "Access saved snippets", page: "codeVault", icon: <Code2 size={18} color="#4B5563" />, bg: "rgba(75, 85, 99, 0.08)" },
+          { id: "challenges", label: "Challenges", desc: "Climb the leaderboard", page: "challenges", icon: <Trophy size={18} color="#FF5701" />, bg: "rgba(255, 87, 1, 0.08)" },
+          { id: "communityFeed", label: "Community Feed", desc: "See what others build", page: "communityFeed", icon: <Globe size={18} color="#2563EB" />, bg: "rgba(37, 99, 235, 0.08)" },
+          { id: "codeVerification", label: "Code Integrity", desc: "GitHub Verification", page: "codeVerification", icon: <ShieldCheck size={18} color="#10B981" />, bg: "rgba(16, 185, 129, 0.08)" },
+          { id: "resumeVerification", label: "Verified Resume", desc: "Capabilio Trust Verification", page: "resumeVerification", icon: <FileCheck size={18} color="#8B5CF6" />, bg: "rgba(139, 92, 246, 0.08)" }
         ]
       },
       { id: "skillgraph",  label: "Skill Graph",  page: "skillGraph",  prefix: "" },
@@ -1775,23 +1775,27 @@ function App() {
           .cap-nav-item:hover { background: #F4F5F7 !important; color: #14161A !important; }
             .cap-nav-dropdown-wrapper { position: relative; display: inline-flex; }
             .cap-nav-dropdown-menu {
-              position: absolute; top: 100%; left: 50%; transform: translateX(-50%) translateY(10px);
-              background: #FFFFFF; border: 1px solid #EAEAEA; border-radius: 12px;
-              box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1), 0 0 15px rgba(0,0,0,0.03);
-              padding: 8px; min-width: 240px;
-              opacity: 0; visibility: hidden; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-              z-index: 100; margin-top: 4px; pointer-events: none;
+              position: absolute; top: calc(100% + 4px); left: 0;
+              background: rgba(255, 255, 255, 0.98);
+              backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+              border: 1px solid rgba(226, 232, 240, 0.8);
+              border-radius: 14px;
+              box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.08), 0 4px 12px -4px rgba(0, 0, 0, 0.04);
+              padding: 8px; min-width: 280px;
+              opacity: 0; visibility: hidden; transform: translateY(6px);
+              transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s;
+              z-index: 100; pointer-events: none;
             }
             .cap-nav-dropdown-wrapper:hover .cap-nav-dropdown-menu {
-              opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); pointer-events: auto;
+              opacity: 1; visibility: visible; transform: translateY(0); pointer-events: auto;
             }
             .cap-nav-dropdown-item {
-              display: block; width: 100%; text-align: left;
-              padding: 12px 16px; border: none; background: transparent;
-              cursor: pointer; transition: all 0.15s; border-radius: 8px;
+              display: flex; align-items: center; gap: 14px; width: 100%; text-align: left;
+              padding: 10px 12px; border: none; background: transparent;
+              cursor: pointer; transition: all 0.15s ease; border-radius: 10px;
               font-family: 'Inter', sans-serif;
             }
-            .cap-nav-dropdown-item:hover { background: #F3F4F6; }
+            .cap-nav-dropdown-item:hover { background: rgba(0,0,0,0.03); }
         `}</style>
 
       {currentPage !== "arenaWorkspace" && currentPage !== "challenges" && (
@@ -1822,7 +1826,7 @@ function App() {
                           <button className="cap-nav-item"
                             onClick={() => handleBottomNavTap(item.id, item.page, item.tab)}
                             style={{
-                              display: "inline-flex", alignItems: "center",
+                              display: "inline-flex", alignItems: "center", gap: "4px",
                               padding: "8px 24px", borderRadius: 999, 
                               border: active ? "1px solid #D1D5DB" : "1px solid transparent",
                               background: active ? "#FFFFFF" : "transparent",
@@ -1833,14 +1837,19 @@ function App() {
                               fontFamily: '"Inter", sans-serif', transition: "all 0.2s"
                             }}>
                             {item.label}
-                            <span style={{ marginLeft: "6px", display: "inline-flex", alignItems: "center", transform: "scale(1.6) translateY(-1px)", transformOrigin: "center" }}>▾</span>
+                            <ChevronDown size={14} strokeWidth={3} style={{ opacity: 0.6, marginTop: 1 }} />
                           </button>
                           <div className="cap-nav-dropdown-menu">
                             {item.items.map(subItem => (
                               <button key={subItem.id} className="cap-nav-dropdown-item"
                                 onClick={() => handleBottomNavTap(subItem.id, subItem.page, subItem.tab)}>
-                                <div style={{ fontWeight: 600, color: '#111827', marginBottom: 2, fontSize: 14 }}>{subItem.label}</div>
-                                <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 400 }}>{subItem.desc}</div>
+                                <div style={{ width: 36, height: 36, borderRadius: 10, background: subItem.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                  {subItem.icon}
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                  <div style={{ fontWeight: 600, color: '#111827', fontSize: 14, letterSpacing: '-0.01em' }}>{subItem.label}</div>
+                                  <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 400, letterSpacing: '-0.01em' }}>{subItem.desc}</div>
+                                </div>
                               </button>
                             ))}
                           </div>
