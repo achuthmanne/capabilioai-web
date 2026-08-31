@@ -1789,7 +1789,7 @@ function App() {
               opacity: 1; visibility: visible;
             }
             .cap-nav-dropdown-menu {
-              position: absolute; top: calc(100% + 12px); left: 50%;
+              position: absolute; top: calc(100% + 24px); left: 50%;
               background: rgba(255, 255, 255, 1);
               border: 1px solid rgba(226, 232, 240, 0.8);
               border-radius: 14px;
@@ -1816,10 +1816,10 @@ function App() {
             .cap-nav-dropdown-menu::after {
               content: '';
               position: absolute;
-              top: -20px;
+              top: -32px;
               left: 0;
               width: 100%;
-              height: 20px;
+              height: 32px;
               background: transparent;
             }
             .cap-nav-dropdown-wrapper:hover .cap-nav-dropdown-menu {
