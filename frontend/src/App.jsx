@@ -1774,6 +1774,19 @@ function App() {
           .cap-nav-item { transition: all 0.15s ease; }
           .cap-nav-item:hover { background: #F4F5F7 !important; color: #14161A !important; }
             .cap-nav-dropdown-wrapper { position: relative; display: inline-flex; }
+            .cap-nav-dropdown-wrapper::before {
+              content: '';
+              position: fixed;
+              top: 0; left: 0; width: 100vw; height: 100vh;
+              background: rgba(0, 0, 0, 0.4);
+              opacity: 0; visibility: hidden;
+              transition: all 0.2s ease;
+              z-index: -1;
+              pointer-events: none;
+            }
+            .cap-nav-dropdown-wrapper:hover::before {
+              opacity: 1; visibility: visible;
+            }
             .cap-nav-dropdown-menu {
               position: absolute; top: calc(100% + 12px); left: 50%;
               background: rgba(255, 255, 255, 1);
