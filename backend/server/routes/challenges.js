@@ -108,7 +108,7 @@ router.post("/scratch", requireAuth, async (req, res) => {
 
     res.json({ card: updatedCard })
   } catch (error) {
-    console.error("Error scratching card:", error)
+    console.error("Error scratching card:", error); import("fs").then(fs => fs.writeFileSync("C:/Users/hp/reactprojects/capabilio-web/backend/debug_scratch_error.log", JSON.stringify({ message: error.message, code: error.code, details: error.details, hint: error.hint }, null, 2)))
     res.status(500).json({ error: "Failed to scratch card" })
   }
 })

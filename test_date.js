@@ -1,0 +1,6 @@
+const today = new Date()
+const day = today.getDay()
+const diff = today.getDate() - day + (day === 0 ? -6 : 1)
+const weekStart = new Date(today.setDate(diff))
+weekStart.setHours(0, 0, 0, 0)
+console.log(weekStart.toISOString().split('T')[0])

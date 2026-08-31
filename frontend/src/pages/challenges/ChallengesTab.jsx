@@ -69,11 +69,10 @@ export default function ChallengesTab({ onOpenWorkspace, onScratchedStateChange,
       setCardState(res.card)
       if (res.card.is_scratched && res.card.assigned_questions) {
          fetchQuestions(res.card.assigned_questions)
-         setStage('card')
+         setStage('cards')
          setShowCards(true) // Immediately show if already scratched
-         setWinningTheme(wheelSlices[0]) // default to rose if already spun previously
          if (onScratchedStateChange) onScratchedStateChange(true)
-         if (onThemeChange) onThemeChange(wheelSlices[0].color)
+         if (onThemeChange) onThemeChange('plain')
       } else {
          setStage('wheel')
          if (onScratchedStateChange) onScratchedStateChange(false)
