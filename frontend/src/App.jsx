@@ -1791,7 +1791,7 @@ function App() {
             }
             .cap-nav-dropdown-item {
               display: flex; align-items: center; gap: 14px; width: 100%; text-align: left;
-              padding: 10px 12px; border: none; background: transparent;
+              padding: 12px 16px; border: none; background: transparent;
               cursor: pointer; transition: all 0.15s ease; border-radius: 10px;
               font-family: 'Inter', sans-serif;
             }
@@ -1843,9 +1843,6 @@ function App() {
                             {item.items.map(subItem => (
                               <button key={subItem.id} className="cap-nav-dropdown-item"
                                 onClick={() => handleBottomNavTap(subItem.id, subItem.page, subItem.tab)}>
-                                <div style={{ width: 36, height: 36, borderRadius: 10, background: subItem.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                  {subItem.icon}
-                                </div>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                   <div style={{ fontWeight: 600, color: '#111827', fontSize: 14, letterSpacing: '-0.01em' }}>{subItem.label}</div>
                                   <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 400, letterSpacing: '-0.01em' }}>{subItem.desc}</div>
