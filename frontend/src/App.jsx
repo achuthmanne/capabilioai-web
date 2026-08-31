@@ -1688,15 +1688,11 @@ function App() {
   // earlier but do not control this bar. Intentionally now 6 items (was
   // capped at 5) since Arena is a real, functioning destination again.
   const STUDENT_HEADER_NAV = [
-      { id: "home",        label: "Dashboard",    page: "studentHome", prefix: "" },
-      { id: "skillgraph",  label: "Skill Graph",  page: "skillGraph",  prefix: "" },
-      { id: "portfolio",   label: "Portfolio",    page: "studentResume", prefix: "" },
-      { id: "aiinterview", label: "AI Interview", page: "aiInterview", prefix: "" },
-      { id: "recruiters",  label: "Recruiters",   page: "studentRecruiters", prefix: "" },
       { 
-        id: "services", 
-        label: "Tools & Services ▾", 
-        page: "services",
+        id: "home",        
+        label: "Dashboard ▾",    
+        page: "studentHome", 
+        prefix: "",
         isDropdown: true,
         items: [
           { id: "codeVault", label: "Code Vault", desc: "Access saved snippets", page: "codeVault" },
@@ -1706,6 +1702,10 @@ function App() {
           { id: "resumeVerification", label: "Verified Resume", desc: "Capabilio Trust Verification", page: "resumeVerification" }
         ]
       },
+      { id: "skillgraph",  label: "Skill Graph",  page: "skillGraph",  prefix: "" },
+      { id: "portfolio",   label: "Portfolio",    page: "studentResume", prefix: "" },
+      { id: "aiinterview", label: "AI Interview", page: "aiInterview", prefix: "" },
+      { id: "recruiters",  label: "Recruiters",   page: "studentRecruiters", prefix: "" },
       ...(collegeLinked ? [{ id: "college", label: "College", page: "studentCollege", prefix: "🎓" }] : []),
   ]
 
@@ -1781,7 +1781,8 @@ function App() {
               opacity: 0; visibility: hidden; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
               z-index: 100; margin-top: 4px; pointer-events: none;
             }
-            .cap-nav-dropdown-wrapper:hover .cap-nav-dropdown-menu {
+            .cap-nav-dropdown-wrapper:hover .cap-nav-dropdown-menu,
+            .cap-nav-dropdown-wrapper:focus-within .cap-nav-dropdown-menu {
               opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); pointer-events: auto;
             }
             .cap-nav-dropdown-item {
@@ -1819,6 +1820,7 @@ function App() {
                       return (
                         <div key={item.id} style={{ position: 'relative' }} className="cap-nav-dropdown-wrapper">
                           <button className="cap-nav-item"
+                            onClick={() => handleBottomNavTap(item.id, item.page, item.tab)}
                             style={{
                               display: "inline-flex", alignItems: "center",
                               padding: "8px 24px", borderRadius: 999, 
