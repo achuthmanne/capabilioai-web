@@ -1777,8 +1777,9 @@ function App() {
             .cap-nav-dropdown-wrapper::before {
               content: '';
               position: fixed;
-              top: 0; left: 0; width: 100vw; height: 100vh;
-              background: rgba(0, 0, 0, 0.4);
+              top: 76px; left: 0; width: 100vw; height: calc(100vh - 76px);
+              background: rgba(0, 0, 0, 0.3);
+              backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
               opacity: 0; visibility: hidden;
               transition: all 0.2s ease;
               z-index: -1;
