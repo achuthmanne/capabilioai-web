@@ -1781,8 +1781,7 @@ function App() {
               opacity: 0; visibility: hidden; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
               z-index: 100; margin-top: 4px; pointer-events: none;
             }
-            .cap-nav-dropdown-wrapper:hover .cap-nav-dropdown-menu,
-            .cap-nav-dropdown-wrapper:focus-within .cap-nav-dropdown-menu {
+            .cap-nav-dropdown-wrapper:hover .cap-nav-dropdown-menu {
               opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); pointer-events: auto;
             }
             .cap-nav-dropdown-item {
@@ -1812,7 +1811,7 @@ function App() {
           {(navPath === "student" || navPath === "authority" || navPath === "professional") && (
             <nav style={{ 
                 display: "inline-flex", alignItems: "center", gap: 4, 
-                overflowX: "auto", flexShrink: 0 
+                overflowX: "visible", flexShrink: 0 
               }}>
                 {({ student: STUDENT_HEADER_NAV, authority: AUTHORITY_HEADER_NAV, professional: PROFESSIONAL_HEADER_NAV }[navPath]).map(item => {
                     const active = activeNavItem === item.id || (currentPage === item.page && (!item.tab || activeTab === item.tab))
