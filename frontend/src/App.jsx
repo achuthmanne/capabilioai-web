@@ -1775,19 +1775,32 @@ function App() {
           .cap-nav-item:hover { background: #F4F5F7 !important; color: #14161A !important; }
             .cap-nav-dropdown-wrapper { position: relative; display: inline-flex; }
             .cap-nav-dropdown-menu {
-              position: absolute; top: calc(100% + 4px); left: 0;
-              background: rgba(255, 255, 255, 0.98);
-              backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+              position: absolute; top: calc(100% + 12px); left: 50%;
+              background: rgba(255, 255, 255, 1);
               border: 1px solid rgba(226, 232, 240, 0.8);
               border-radius: 14px;
               box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.08), 0 4px 12px -4px rgba(0, 0, 0, 0.04);
               padding: 8px; min-width: 280px;
-              opacity: 0; visibility: hidden; transform: translateY(6px);
+              opacity: 0; visibility: hidden; transform: translateX(-50%) translateY(6px);
               transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s;
               z-index: 100; pointer-events: none;
             }
+            .cap-nav-dropdown-menu::before {
+              content: '';
+              position: absolute;
+              top: -7px;
+              left: 50%;
+              margin-left: -7px;
+              width: 14px;
+              height: 14px;
+              background: #FFFFFF;
+              border-left: 1px solid rgba(226, 232, 240, 0.8);
+              border-top: 1px solid rgba(226, 232, 240, 0.8);
+              transform: rotate(45deg);
+              border-radius: 2px 0 0 0;
+            }
             .cap-nav-dropdown-wrapper:hover .cap-nav-dropdown-menu {
-              opacity: 1; visibility: visible; transform: translateY(0); pointer-events: auto;
+              opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); pointer-events: auto;
             }
             .cap-nav-dropdown-item {
               display: flex; align-items: center; gap: 14px; width: 100%; text-align: left;
