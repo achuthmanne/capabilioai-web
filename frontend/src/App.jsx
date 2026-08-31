@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import {
   Eye, EyeOff, Check, Circle, X, AlertCircle, Lock, Sparkles, Mail,
+ChevronDown,
 } from "lucide-react"
 import { PAGE_TO_PATH, PATH_TO_PAGE, isReservedPath } from "./lib/pageRoutes"
 import { Analytics } from "@vercel/analytics/react"
@@ -1832,7 +1833,7 @@ function App() {
                               fontFamily: '"Inter", sans-serif', transition: "all 0.2s"
                             }}>
                             {item.label}
-                            <span style={{ fontSize: "16px", marginLeft: "4px", lineHeight: 1 }}>▾</span>
+                            <ChevronDown size={22} strokeWidth={3} style={{ marginLeft: "4px" }} />
                           </button>
                           <div className="cap-nav-dropdown-menu">
                             {item.items.map(subItem => (
@@ -2165,6 +2166,7 @@ function App() {
 }
 
 export default App
+
 
 
 
