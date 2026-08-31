@@ -1,134 +1,124 @@
-import 'dotenv/config';
-import { createClient } from '@supabase/supabase-js';
+import 'dotenv/config'
+import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
-  process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL, 
-  process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.VITE_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY
 );
 
-const branches = [
-  { name: 'CSE', focus: 'Algorithms, Data Structures, System Design, Web Development' },
-  { name: 'ECE', focus: 'Embedded Systems, Microcontrollers, Digital Logic, IoT' },
-  { name: 'MECH', focus: 'Thermodynamics, Kinematics, CAD, Material Science' },
-  { name: 'CIVIL', focus: 'Structural Engineering, Fluid Mechanics, Geotechnical' },
-  { name: 'BBA', focus: 'Financial Analysis, Marketing Strategy, Data Analytics' },
-];
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
-async function generateWithAnthropicFetch(prompt) {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
+const BRANCH_FOCUS = {
+  "CSE": "Algorithms, Data Structures, System Design, Web Development",
+  "IT": "Networking, Cloud Computing, Database Administration, Web Development",
+  "MCA": "Advanced Software Engineering, Database Management, Application Development",
+  "AI_DS": "Machine Learning, Data Mining, Statistics, Python, Deep Learning",
+  "AI_ML": "Neural Networks, Natural Language Processing, Computer Vision",
+  "ECE": "Embedded Systems, Microcontrollers, Digital Logic, Signal Processing",
+  "EEE": "Power Systems, Control Systems, Circuit Analysis, Electrical Machines",
+  "Mechanical": "Thermodynamics, Fluid Mechanics, Kinematics, CAD/CAM",
+  "Civil": "Structural Analysis, Concrete Technology, Transportation, Geotech",
+  "IoT": "Sensors, Actuators, Microcontrollers, Network Protocols",
+  "Pharmacy": "Pharmacology, Pharmaceutics, Medicinal Chemistry, Clinical Trials",
+  "MBA": "Marketing, Financial Accounting, Business Strategy, Operations Management",
+  "Other": "General logical reasoning, basic computer literacy, project management"
+};
+
+async function getActiveBranches() {
+  // Free database query to find branches that actually have registered users
+  const { data, error } = await supabase.from('profiles').select('branch, stream');
+  if (error) {
+    console.error("Error fetching profiles:", error);
+    return ['CSE'];
+  }
+  
+  const activeBranches = new Set();
+  for (const row of data) {
+    if (row.branch) activeBranches.add(row.branch);
+    if (row.stream) activeBranches.add(row.stream);
+  }
+  
+  // Ensure we at least have CSE as fallback
+  if (activeBranches.size === 0) activeBranches.add('CSE');
+  
+  return Array.from(activeBranches);
+}
+
+async function generateQuestions(branchName) {
+  console.log(Generating AI questions for active branch:  + branchName);
+  const focus = BRANCH_FOCUS[branchName] || "General problem solving";
+  
+  const prompt = You are an expert technical interviewer. Generate 15 distinct, engaging weekly challenge tasks for students in the \ branch. 
+The focus should be on: \.
+
+Distribute them as: 5 Easy (50-80 pts), 5 Medium (80-120 pts), 5 Hard (120-150 pts).
+Workspace type MUST be one of: 'code', 'sql', 'terminal', 'design', 'jupyter'.
+
+Return ONLY a valid JSON array of objects with keys: title, difficulty, points, workspace_type, test_cases.
+The test_cases should be an array of { input, expected_output }. If not a coding task, provide an empty array for test_cases.
+Do not wrap in markdown tags like \\\json.;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
       headers: {
-        "x-api-key": process.env.ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json"
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: "claude-sonnet-5", // EXACTLY AS IN DAILY MISSION
+        model: 'claude-sonnet-5', 
         max_tokens: 4000,
-        system: "You are an API that strictly returns only JSON objects. No markdown formatting, no explanation.",
-        messages: [
-          { role: "user", content: prompt }
-        ]
+        messages: [{ role: 'user', content: prompt }]
       })
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Anthropic API Error: ${response.status} - ${errorText}`);
-    }
-
     const data = await response.json();
-    const textBlock = data.content && data.content.find ? data.content.find(b => b.type === "text") : null;
-    let text = textBlock ? textBlock.text : "";
-    
-    if (!text) {
-        throw new Error("No text content returned from Anthropic");
+    if (data.error) throw new Error(data.error.message);
+
+    let content = data.content[0].text.trim();
+    if (content.startsWith('\\\json')) {
+      content = content.replace(/^\\\json/, '').replace(/\\\$/, '').trim();
     }
     
-    return text;
-}
-
-async function generateForBranch(branch) {
-  console.log(`\n⏳ Generating challenges for ${branch.name} using claude-sonnet-5...`);
-  
-  const prompt = `You are an expert curriculum designer for ${branch.name} engineering/management students.
-The focus areas for this branch are: ${branch.focus}.
-
-Generate exactly 15 practical, industry-relevant tasks for this week's challenges:
-- 5 EASY tasks (Focus: Fundamentals, Points: 50)
-- 5 MEDIUM tasks (Focus: Integration & Logic, Points: 70)
-- 5 HARD tasks (Focus: System Design / Optimization, Points: 100)
-
-Workspace Mapping Rules:
-- General Coding / Algorithms / Logic -> workspace_type: "ide"
-- Data Analysis / Machine Learning -> workspace_type: "jupyter"
-- SQL / Backend API / Scenario Design -> workspace_type: "arena"
-- Hardware / Circuits -> workspace_type: "hardware_hdl"
-- CAD / Design -> workspace_type: "autocad"
-
-Output a valid JSON object with a single key "tasks" which is an array of objects.
-Each object in the array MUST have: title (string), description (string), difficulty (Easy/Medium/Hard), workspace_type (string), points (number), and test_cases (array of objects with 'input' and 'expected_output').
-DO NOT output any markdown blocks, explanations, or text outside the JSON. Output ONLY the raw JSON object.`;
-
-  let jsonStr = "";
-  
-  try {
-    jsonStr = await generateWithAnthropicFetch(prompt);
-
-    jsonStr = jsonStr.trim();
-    const jsonMatch = jsonStr.match(/```json\n([\s\S]*?)\n```/) || jsonStr.match(/{[\s\S]*}/);
-    if (jsonMatch) {
-        jsonStr = jsonMatch[1] || jsonMatch[0];
-    }
-    
-    let tasks;
-    try {
-      const parsed = JSON.parse(jsonStr);
-      if (Array.isArray(parsed)) {
-        tasks = parsed;
-      } else if (parsed.tasks && Array.isArray(parsed.tasks)) {
-        tasks = parsed.tasks;
-      } else {
-        throw new Error("JSON structure is not an array");
-      }
-    } catch(e) {
-      console.error("Parse error, raw response:", jsonStr);
-      throw e;
-    }
-
-    // Get current Monday
-    const today = new Date();
-    const day = today.getDay();
-    const diff = today.getDate() - day + (day === 0 ? -6 : 1);
-    const monday = new Date(today.setDate(diff));
-    const weekStartDate = monday.toISOString().split('T')[0];
-
-    const records = tasks.map(task => ({
-      branch: branch.name,
-      week_start_date: weekStartDate,
-      title: task.title,
-      description: task.description,
-      difficulty: task.difficulty,
-      workspace_type: task.workspace_type,
-      points: task.points,
-      test_cases: task.test_cases || []
-    }));
-
-    const { error } = await supabase.from('challenge_questions').insert(records);
-    if (error) throw error;
-    
-    console.log(`✅ Successfully stored 15 challenges for ${branch.name} (Generated via claude-sonnet-5).`);
-  } catch (err) {
-    console.error(`❌ Failed to generate for ${branch.name}:`, err.message || err);
+    return JSON.parse(content);
+  } catch (error) {
+    console.error(Failed to generate for \:, error);
+    return [];
   }
 }
 
 async function run() {
-  console.log("🚀 Starting Weekly Challenge AI Generation (Anthropic EXACT MATCH)...");
-  for (const branch of branches) {
-    await generateForBranch(branch);
+  console.log("Starting Capabilio Smart AI Challenge Generation...");
+  const activeBranches = await getActiveBranches();
+  console.log(Found \ active branches with users:, activeBranches);
+  
+  const today = new Date();
+  const day = today.getDay();
+  const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+  const weekStart = new Date(today.setDate(diff));
+  weekStart.setHours(0, 0, 0, 0);
+  const weekStartStr = weekStart.toISOString().split('T')[0];
+
+  for (const branchName of activeBranches) {
+    const questions = await generateQuestions(branchName);
+    
+    for (const q of questions) {
+      const { error } = await supabase.from('challenge_questions').insert({
+        title: q.title,
+        branch: branchName,
+        difficulty: q.difficulty,
+        points: q.points,
+        workspace_type: q.workspace_type,
+        test_cases: q.test_cases || [],
+        week_start_date: weekStartStr
+      });
+      if (error) console.error(Error saving \:, error);
+    }
+    console.log(Successfully generated and saved \ questions for \);
   }
-  console.log("🎉 All branches generated successfully!");
+  
+  console.log("Weekly generation complete!");
 }
 
 run();
