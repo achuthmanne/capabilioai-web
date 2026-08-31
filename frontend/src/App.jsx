@@ -1833,7 +1833,7 @@ function App() {
                               fontFamily: '"Inter", sans-serif', transition: "all 0.2s"
                             }}>
                             {item.label}
-                            <ChevronDown size={22} strokeWidth={3} style={{ marginLeft: "4px" }} />
+                            <span style={{ fontSize: "26px", marginLeft: "6px", lineHeight: 0.8, transform: "translateY(2px)" }}>▾</span>
                           </button>
                           <div className="cap-nav-dropdown-menu">
                             {item.items.map(subItem => (
@@ -2166,6 +2166,7 @@ function App() {
 }
 
 export default App
+
 
 
 
