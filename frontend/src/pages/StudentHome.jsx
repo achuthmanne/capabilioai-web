@@ -715,8 +715,10 @@ export default function StudentHome({ user, userData, onNavigate }) {
                           if (promo.id === 'arena') {
                             if (localStorage.getItem('arena_rules_accepted') !== 'true') setShowRulesModal(true);
                             else onNavigate('arenaWorkspace');
-                          } else if (promo.id === 'resume' || promo.id === 'vault') {
+                          } else if (promo.id === 'resume') {
                             onNavigate('studentResume');
+                          } else if (promo.id === 'vault') {
+                            onNavigate('codeVault');
                           } else {
                             // eslint-disable-next-line no-undef
                             setShowProSheet(true);
