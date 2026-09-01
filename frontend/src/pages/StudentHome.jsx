@@ -43,6 +43,8 @@ export default function StudentHome({ user, userData, onNavigate }) {
   const domain = userData?.domain || userData?.keyword || "Software Engineer"
   
     const [completionPercentage, setCompletionPercentage] = useState(10); // Base 10%
+  const [showRulesModal, setShowRulesModal] = useState(false);
+  const [rulesChecked, setRulesChecked] = useState(false);
   const [showMiniNav, setShowMiniNav] = useState(true);
 
   useEffect(() => {
@@ -807,8 +809,14 @@ export default function StudentHome({ user, userData, onNavigate }) {
                     gap: "8px",
                     transition: "all 0.2s ease"
                   }}
-                  onClick={() => onNavigate("arenaWorkspace")}
-                  onMouseOver={(e) => {
+                  onClick={() => {
+                      if (localStorage.getItem('arena_rules_accepted') !== 'true') {
+                        setShowRulesModal(true);
+                      } else {
+                        onNavigate("arenaWorkspace");
+                      }
+                    }}
+                    onMouseOver={(e) => {
                     e.currentTarget.style.transform = "translateY(-2px)"
                     e.currentTarget.style.boxShadow = "0 4px 12px rgba(255, 87, 1, 0.25)"
                   }}
@@ -824,6 +832,126 @@ export default function StudentHome({ user, userData, onNavigate }) {
           </>
         )}
       </AnimatePresence>
+
+      {/* Google-level Arena Protocol Modal */}
+      <AnimatePresence>
+        {showRulesModal && (
+          <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }}
+              style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", backgroundColor: "rgba(0, 0, 0, 0.4)", backdropFilter: "blur(4px)" }}
+              onClick={() => setShowRulesModal(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              style={{
+                position: "relative",
+                width: "90%",
+                maxWidth: "520px",
+                backgroundColor: "#FFFFFF",
+                borderRadius: "24px",
+                padding: "36px",
+                boxShadow: "0 24px 48px rgba(0, 0, 0, 0.12)",
+                fontFamily: "system-ui, -apple-system, sans-serif"
+              }}
+            >
+              <button 
+                onClick={() => setShowRulesModal(false)}
+                style={{ position: "absolute", top: "24px", right: "24px", background: "none", border: "none", cursor: "pointer", color: "#5F6368", padding: "4px" }}
+              >
+                <X size={24} />
+              </button>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "32px" }}>
+                <div style={{ width: "48px", height: "48px", borderRadius: "16px", backgroundColor: "#FFF0ED", display: "flex", alignItems: "center", justifyContent: "center", color: "#FF5701" }}>
+                  <ShieldCheck size={28} strokeWidth={2} />
+                </div>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: "24px", fontWeight: 700, color: "#1F2937", letterSpacing: "-0.02em" }}>Arena Protocol</h2>
+                  <p style={{ margin: "4px 0 0 0", color: "#6B7280", fontSize: "15px" }}>Please review before entering your first mission.</p>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "24px", marginBottom: "32px" }}>
+                
+                <div style={{ display: "flex", gap: "16px" }}>
+                  <div style={{ color: "#3B82F6", marginTop: "2px" }}><Clock size={22} strokeWidth={2} /></div>
+                  <div>
+                    <h4 style={{ margin: "0 0 4px 0", fontSize: "16px", fontWeight: 600, color: "#111827" }}>10-Minute Time Limit</h4>
+                    <p style={{ margin: 0, color: "#4B5563", fontSize: "14px", lineHeight: "1.5" }}>Once you start, you have exactly 10 minutes to complete the mission. The timer auto-submits at zero.</p>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: "16px" }}>
+                  <div style={{ color: "#EF4444", marginTop: "2px" }}><XCircle size={22} strokeWidth={2} /></div>
+                  <div>
+                    <h4 style={{ margin: "0 0 4px 0", fontSize: "16px", fontWeight: 600, color: "#111827" }}>Zero-Tolerance Anti-Cheat</h4>
+                    <p style={{ margin: 0, color: "#4B5563", fontSize: "14px", lineHeight: "1.5" }}>Copy-pasting or switching tabs is monitored. If caught cheating, your ELO rating drops to <strong style={{ color: "#EF4444" }}>ZERO</strong>.</p>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: "16px" }}>
+                  <div style={{ color: "#10B981", marginTop: "2px" }}><CheckCircle size={22} strokeWidth={2} /></div>
+                  <div>
+                    <h4 style={{ margin: "0 0 4px 0", fontSize: "16px", fontWeight: 600, color: "#111827" }}>Strictly Self-Learning</h4>
+                    <p style={{ margin: 0, color: "#4B5563", fontSize: "14px", lineHeight: "1.5" }}>Do not solely depend on completing these missions expecting guaranteed jobs. Learn from everywhere, and use the Arena purely for practice and growth.</p>
+                  </div>
+                </div>
+
+              </div>
+
+              <div style={{ backgroundColor: "#F9FAFB", padding: "16px 20px", borderRadius: "16px", display: "flex", gap: "12px", alignItems: "flex-start", marginBottom: "32px", border: "1px solid #E5E7EB" }}>
+                <input 
+                  type="checkbox" 
+                  id="google-rules-check" 
+                  checked={rulesChecked} 
+                  onChange={(e) => setRulesChecked(e.target.checked)}
+                  style={{ width: "20px", height: "20px", marginTop: "2px", cursor: "pointer", accentColor: "#FF5701" }}
+                />
+                <label htmlFor="google-rules-check" style={{ color: "#374151", fontSize: "14px", lineHeight: "1.5", cursor: "pointer", userSelect: "none", fontWeight: 500 }}>
+                  I have read the rules and acknowledge that the Arena is strictly for my personal learning and practice.
+                </label>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+                <button 
+                  onClick={() => setShowRulesModal(false)}
+                  style={{
+                    padding: "12px 24px", borderRadius: "999px", border: "none",
+                    backgroundColor: "transparent", color: "#4B5563", fontWeight: 600, fontSize: "15px", cursor: "pointer"
+                  }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  disabled={!rulesChecked}
+                  onClick={() => {
+                    localStorage.setItem('arena_rules_accepted', 'true');
+                    setShowRulesModal(false);
+                    onNavigate('arenaWorkspace');
+                  }}
+                  style={{
+                    padding: "12px 28px", borderRadius: "999px", border: "none",
+                    backgroundColor: rulesChecked ? "#FF5701" : "#F3F4F6", 
+                    color: rulesChecked ? "#FFFFFF" : "#9CA3AF", 
+                    fontWeight: 600, fontSize: "15px", cursor: rulesChecked ? "pointer" : "not-allowed",
+                    transition: "all 0.2s",
+                    boxShadow: rulesChecked ? "0 4px 12px rgba(255, 87, 1, 0.2)" : "none"
+                  }}
+                >
+                  Confirm & Enter
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
 
 
       
