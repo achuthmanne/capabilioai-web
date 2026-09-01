@@ -473,7 +473,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
                 alignItems: "center",
                 gap: 8,
                 transition: "background 0.2s ease"
-              }} onClick={() => onNavigate("arenaWorkspace")}>
+              }} onClick={() => setShowRulesModal(true)}>
                 {taskData?.completed ? (
                   <>Review Solution <CheckCircle size={18} strokeWidth={2} /></>
                 ) : (
@@ -810,11 +810,8 @@ export default function StudentHome({ user, userData, onNavigate }) {
                     transition: "all 0.2s ease"
                   }}
                   onClick={() => {
-                      if (localStorage.getItem('arena_rules_accepted') !== 'true') {
-                        setShowRulesModal(true);
-                      } else {
-                        onNavigate("arenaWorkspace");
-                      }
+                      // Temporarily showing every time for testing
+                      setShowRulesModal(true);
                     }}
                     onMouseOver={(e) => {
                     e.currentTarget.style.transform = "translateY(-2px)"
