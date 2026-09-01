@@ -9,8 +9,6 @@ import { SandpackProvider, SandpackPreview, SandpackLayout } from "@codesandbox/
 
 export default function ArenaWorkspace({ user, userData, setUserData, onNavigate }) {
   
-  const [rulesAccepted, setRulesAccepted] = useState(() => localStorage.getItem('arena_rules_accepted') === 'true');
-  const [rulesChecked, setRulesChecked] = useState(false);
   const [taskData, setTaskData] = useState(null);
   const [activeConsoleTab, setActiveConsoleTab] = useState('output');
   
@@ -313,7 +311,7 @@ Review the test cases and feedback, then try again.`;
       const saved = localStorage.getItem('arena_timer');
       return saved !== null ? parseInt(saved, 10) : 600;
     });
-    const [isTimerActive, setIsTimerActive] = useState(() => localStorage.getItem('arena_rules_accepted') === 'true');
+    const [isTimerActive, setIsTimerActive] = useState(true);
     const [isPaused, setIsPaused] = useState(false);
     const [showExitPopup, setShowExitPopup] = useState(false);
     const hasAutoSubmitted = useRef(false);
@@ -354,92 +352,6 @@ Review the test cases and feedback, then try again.`;
     // -----------------------------
 
     const isMissionPassed = taskData?.completed && !hasFailed;
-
-  if (!rulesAccepted) {
-    return (
-      <div style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-        
-        {/* Back Button */}
-        <button 
-          onClick={() => onNavigate('studentHome')} 
-          style={{ position: 'absolute', top: 32, left: 32, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#4B5563', gap: 8, fontWeight: 600, fontSize: 16 }}
-        >
-          <ArrowLeft size={20} /> Back to Dashboard
-        </button>
-
-        <div style={{ backgroundColor: '#FFFFFF', padding: '40px', borderRadius: '24px', width: '560px', maxWidth: '90%', boxShadow: '0 20px 40px -15px rgba(0,0,0,0.1)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 32 }}>
-            <div style={{ backgroundColor: '#FFF0ED', padding: '12px', borderRadius: '16px', color: '#FF5701' }}>
-              <Zap size={28} />
-            </div>
-            <div>
-              <h2 style={{ margin: 0, fontSize: '26px', fontWeight: 800, color: '#111827', letterSpacing: '-0.02em' }}>Arena Protocol</h2>
-              <p style={{ margin: '4px 0 0 0', color: '#6B7280', fontSize: '15px' }}>Please review the rules before entering the workspace.</p>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginBottom: '32px' }}>
-            
-            <div style={{ display: 'flex', gap: 16 }}>
-              <Clock size={24} color="#3B82F6" style={{ flexShrink: 0, marginTop: 2 }} />
-              <div>
-                <h4 style={{ margin: '0 0 6px 0', fontSize: '17px', fontWeight: 700, color: '#1F2937' }}>10-Minute Time Limit</h4>
-                <p style={{ margin: 0, color: '#4B5563', fontSize: '15px', lineHeight: '1.5' }}>Once you enter, you have exactly 10 minutes to complete the mission. The timer will auto-submit when it reaches zero.</p>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 16 }}>
-              <XCircle size={24} color="#EF4444" style={{ flexShrink: 0, marginTop: 2 }} />
-              <div>
-                <h4 style={{ margin: '0 0 6px 0', fontSize: '17px', fontWeight: 700, color: '#1F2937' }}>Zero-Tolerance Anti-Cheat</h4>
-                <p style={{ margin: 0, color: '#4B5563', fontSize: '15px', lineHeight: '1.5' }}>Copy-pasting, right-clicking, or switching tabs is monitored. If caught cheating, your ELO rating will permanently drop to <strong style={{color:'#EF4444'}}>ZERO</strong>.</p>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 16 }}>
-              <CheckCircle size={24} color="#10B981" style={{ flexShrink: 0, marginTop: 2 }} />
-              <div>
-                <h4 style={{ margin: '0 0 6px 0', fontSize: '17px', fontWeight: 700, color: '#1F2937' }}>Self-Learning First</h4>
-                <p style={{ margin: 0, color: '#4B5563', fontSize: '15px', lineHeight: '1.5' }}>This platform is for your personal skill growth. Do not solely depend on completing these missions expecting guaranteed jobs. Learn from everywhere, and use the Arena to practice.</p>
-              </div>
-            </div>
-
-          </div>
-
-          <div style={{ backgroundColor: '#F9FAFB', padding: '16px', borderRadius: '12px', display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 24, border: '1px solid #E5E7EB' }}>
-            <input 
-              type="checkbox" 
-              id="rules-check" 
-              checked={rulesChecked} 
-              onChange={(e) => setRulesChecked(e.target.checked)}
-              style={{ width: 20, height: 20, marginTop: 2, cursor: 'pointer', accentColor: '#FF5701' }}
-            />
-            <label htmlFor="rules-check" style={{ color: '#374151', fontSize: '15px', lineHeight: '1.5', cursor: 'pointer', userSelect: 'none', fontWeight: 500 }}>
-              I have read and understand the rules, and acknowledge that the Arena is primarily for self-learning and practice.
-            </label>
-          </div>
-
-          <button 
-            disabled={!rulesChecked}
-            onClick={() => {
-              localStorage.setItem('arena_rules_accepted', 'true');
-              setRulesAccepted(true);
-              setIsTimerActive(true);
-            }}
-            style={{
-              width: '100%', padding: '16px', borderRadius: '14px', border: 'none',
-              backgroundColor: rulesChecked ? '#FF5701' : '#F3F4F6', 
-              color: rulesChecked ? '#FFFFFF' : '#9CA3AF', 
-              fontWeight: 700, fontSize: '17px', cursor: rulesChecked ? 'pointer' : 'not-allowed',
-              transition: 'all 0.2s', boxShadow: rulesChecked ? '0 4px 12px rgba(255, 87, 1, 0.2)' : 'none'
-            }}
-          >
-            Enter Workspace
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#F8F9FA', overflow: 'hidden' }}>
