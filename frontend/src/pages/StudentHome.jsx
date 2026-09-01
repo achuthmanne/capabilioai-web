@@ -47,7 +47,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
     const interval = setInterval(() => {
       if (promoCarouselRef.current) {
         const { scrollLeft, scrollWidth, clientWidth } = promoCarouselRef.current;
-        const cardWidth = 240 + 16; // width + gap
+        const cardWidth = 216 + 16; // width + gap
         if (scrollLeft + clientWidth >= scrollWidth - 10) {
            promoCarouselRef.current.scrollTo({ left: 0, behavior: 'smooth' });
         } else {
@@ -696,8 +696,8 @@ export default function StudentHome({ user, userData, onNavigate }) {
                     src={promo.img}
                     alt={`promo-${promo.id}`}
                     style={{
-                      width: 240,
-                      height: 426,
+                      width: 216,
+                      height: 384,
                       borderRadius: 16,
                       objectFit: "cover",
                       scrollSnapAlign: "start",
