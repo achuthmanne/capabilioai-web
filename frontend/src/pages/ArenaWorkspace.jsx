@@ -313,6 +313,7 @@ Review the test cases and feedback, then try again.`;
     });
     const [isTimerActive, setIsTimerActive] = useState(true);
     const [isPaused, setIsPaused] = useState(false);
+    const [showExitPopup, setShowExitPopup] = useState(false);
     const hasAutoSubmitted = useRef(false);
 
     useEffect(() => {
@@ -354,6 +355,49 @@ Review the test cases and feedback, then try again.`;
 
   return (
     <div style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#F8F9FA', overflow: 'hidden' }}>
+      {/* Exit Confirmation Popup */}
+      {showExitPopup && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 10000, backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{
+            backgroundColor: '#FFFFFF', padding: '28px', borderRadius: '20px',
+            width: '420px', maxWidth: '90%', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+          }}>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '20px', color: '#111827', fontWeight: 700 }}>Pause Mission?</h3>
+            <p style={{ margin: '0 0 24px 0', color: '#4B5563', lineHeight: '1.6', fontSize: '15px' }}>
+              Are you sure you want to exit the workspace? Your timer will be paused automatically, and you can resume this mission later from the dashboard.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button 
+                onClick={() => {
+                  setIsPaused(false);
+                  setShowExitPopup(false);
+                }}
+                style={{
+                  padding: '10px 20px', borderRadius: '999px', border: '1px solid #E5E7EB',
+                  backgroundColor: '#FFFFFF', color: '#374151', fontWeight: 600, cursor: 'pointer',
+                  transition: 'background 0.2s'
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => onNavigate('studentHome')}
+                style={{
+                  padding: '10px 20px', borderRadius: '999px', border: 'none',
+                  backgroundColor: '#FF5701', color: '#FFFFFF', fontWeight: 600, cursor: 'pointer',
+                  boxShadow: '0 4px 6px -1px rgba(255, 87, 1, 0.2)', transition: 'opacity 0.2s'
+                }}
+              >
+                Pause & Exit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Success Redirect Overlay */}
       {redirectSeconds !== null && (
@@ -387,7 +431,17 @@ Review the test cases and feedback, then try again.`;
       {/* Top Navbar */}
       <div style={{ height: '60px', backgroundColor: '#FFFFFF', borderBottom: '1px solid #E0E0E0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button onClick={() => onNavigate('studentHome')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#5F6368' }}>
+          <button 
+              onClick={() => {
+                if (!isMissionPassed && timeLeft > 0) {
+                  setIsPaused(true);
+                  setShowExitPopup(true);
+                } else {
+                  onNavigate('studentHome');
+                }
+              }} 
+              style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#5F6368' }}
+            >
             <ArrowLeft size={20} />
           </button>
           <div style={{ fontSize: '18px', fontWeight: 600, color: '#202124', display: 'flex', alignItems: 'center', gap: '8px' }}>
