@@ -7,6 +7,8 @@ import { userDoc } from "../lib/db";
 import { supabase } from "../lib/supabase";
 import { SandpackProvider, SandpackPreview, SandpackLayout } from "@codesandbox/sandpack-react";
 
+const API = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com";
+
 export default function ArenaWorkspace({ user, userData, setUserData, onNavigate }) {
   
   const [taskData, setTaskData] = useState(null);
@@ -145,10 +147,10 @@ export default function ArenaWorkspace({ user, userData, setUserData, onNavigate
     setConsoleOutput("Analyzing code structure...\nRunning unit tests with AI Evaluator...\n");
     
           try {
-        const res = await fetch('/api/tasks/evaluate', {
+        const res = await fetch(`${API}/api/tasks/evaluate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ taskData, code, language })
+          body: JSON.stringify({ userId: user?.id, taskData, code, language })
         });
         
         const result = await res.json();

@@ -43,7 +43,8 @@ router.post("/generate-daily", async (req, res) => {
             .from('daily_tasks')
             .select('task_data')
             .eq('user_id', userId)
-            .order('created_at', { ascending: true }) // Get older tasks to revisit
+            .in('status', ['failed', 'failed_second_attempt']) // Only retry failed tasks
+            .order('created_at', { ascending: true })
             .limit(10);
             
          if (pastTasks && pastTasks.length > 0) {
@@ -81,12 +82,40 @@ router.post("/generate-daily", async (req, res) => {
 
 router.post("/evaluate", async (req, res) => {
   try {
-    const { taskData, code, language = 'javascript' } = req.body;
+    const { userId, taskData, code, language = 'javascript' } = req.body;
     if (!taskData || !code) {
       return res.status(400).json({ error: "Missing required fields" });
     }
     
     const result = await evaluateCode(taskData, code, language);
+    
+    // DB Update Logic for pass/fail tracking
+    if (userId) {
+       // Fetch the latest task for this user
+       const { data: latestTasks } = await supabaseAdmin
+          .from('daily_tasks')
+          .select('id, status')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(1);
+          
+       if (latestTasks && latestTasks.length > 0) {
+          const currentTask = latestTasks[0];
+          const passed = result.passed === true;
+          
+          let newStatus = passed ? 'passed' : 'failed';
+          
+          if (currentTask.status === 'fallback_retry' || currentTask.status === 'failed_second_attempt') {
+             newStatus = passed ? 'passed_second_attempt' : 'failed_second_attempt';
+          }
+          
+          await supabaseAdmin
+             .from('daily_tasks')
+             .update({ status: newStatus })
+             .eq('id', currentTask.id);
+       }
+    }
+    
     res.json(result);
   } catch (error) {
     console.error("Evaluation route error:", error);
