@@ -173,7 +173,9 @@ ${result.feedback}`;
         let finalReward = 0;
         let finalOutput = baseOutput;
         
-        if (result.passed) {
+        const isPass = result.passed;
+        
+        if (isPass) {
           let earned = taskData.eloReward || 25;
           let penalty = violations * 10;
           if (penalty > earned) penalty = earned;
@@ -181,7 +183,7 @@ ${result.feedback}`;
           
           let outputMessage = `
 
-🌟 MISSION ACCOMPLISHED! 🌟`;
+? MISSION ACCOMPLISHED! ?`;
           if (violations > 0) {
               outputMessage += `
 Task Reward: +${earned} ELO`;
@@ -198,19 +200,89 @@ Total ELO Deducted: ${finalReward} Points!`;
           }
           
           finalOutput = baseOutput + outputMessage;
-          setConsoleOutput(finalOutput.replace(/\\n/g, '\n'));
-          setRedirectSeconds(10); // auto-redirect on pass
+          setConsoleOutput(finalOutput.replace(/
+/g, '
+'));
         } else {
           let outputMessage = `
 
-❌ MISSION FAILED ❌
+? MISSION FAILED ?
 Review the test cases and feedback, then try again.`;
           finalOutput = baseOutput + outputMessage;
-          setConsoleOutput(finalOutput.replace(/\\n/g, '\n'));
-          // Wait 10 seconds and redirect even on fail so they don't get stuck forever
-          setRedirectSeconds(10);
+          setConsoleOutput(finalOutput.replace(/
+/g, '
+'));
+        }
+
+        let dbFinalOutput = finalOutput;
+        if (isPass && violations === 0 && result.graphSkills && result.graphSkills.length > 0) {
+            dbFinalOutput += `
+
+<!--SKILLS_DATA:${JSON.stringify(result.graphSkills)}-->`;
+        }
+
+        // --- Only complete the mission if they PASSED or TIME RAN OUT ---
+        if (isPass || timeLeft === 0) {
+          setRedirectSeconds(10); // auto-redirect on finish
+
+          const cached = localStorage.getItem("capabilio_daily_mission");
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            parsed.completed = true;
+            parsed.passed = isPass;
+            parsed.completedAt = Date.now();
+            parsed.savedCode = code;
+            parsed.savedOutput = dbFinalOutput.replace(/
+/g, '
+');
+            if (isPass) parsed.taskData.finalReward = finalReward;
+            localStorage.setItem("capabilio_daily_mission", JSON.stringify(parsed));
+          }
           
-          // Reset violations for their next attempt since this one failed
+          try {
+            const vaultStr = localStorage.getItem("capabilio_task_vault");
+            const vault = vaultStr ? JSON.parse(vaultStr) : [];
+            vault.unshift({
+              id: Date.now().toString(),
+              company: taskData.company,
+              title: taskData.title,
+              context: taskData.context,
+              taskDescription: taskData.taskDescription,
+              status: (taskData.dbStatus === 'fallback_retry' || taskData.dbStatus === 'failed_second_attempt') ? (isPass ? 'passed_second_attempt' : 'failed_second_attempt') : (isPass ? 'passed' : 'failed'),
+              savedCode: code,
+              aiReview: dbFinalOutput,
+              reward: isPass ? finalReward : 0,
+              timestamp: new Date().toISOString()
+            });
+            localStorage.setItem("capabilio_task_vault", JSON.stringify(vault));
+          } catch(e) {}
+          
+          if (user?.id) {
+            let vaultStatus = isPass ? 'passed' : 'failed';
+            if (taskData.dbStatus === 'fallback_retry' || taskData.dbStatus === 'failed_second_attempt') {
+              vaultStatus = isPass ? 'passed_second_attempt' : 'failed_second_attempt';
+            }
+            
+            supabase.from('student_tasks').insert({
+              user_id: user.id,
+              company_name: taskData.company || "Unknown Company",
+              task_title: taskData.title || "Daily Mission",
+              task_context: taskData.context || "",
+              task_description: taskData.taskDescription || "",
+              status: vaultStatus,
+              saved_code: code,
+              ai_review: dbFinalOutput.replace(/
+/g, '
+'),
+              elo_reward: isPass ? finalReward : 0
+            }).then(({ error }) => {
+              if (error) console.error("Failed to save to Supabase vault:", error);
+            });
+          }
+          
+          setTaskData(prev => ({ ...prev, completed: true, passed: isPass, finalReward }));
+        } else {
+          // Failed but timer is still going. Let them try again!
           setViolations(0);
           const cached = localStorage.getItem("capabilio_daily_mission");
           if (cached) {
@@ -221,63 +293,6 @@ Review the test cases and feedback, then try again.`;
             } catch(e) {}
           }
         }
-
-        // Append hidden graph skills ONLY if passed AND no proctoring violations
-        let dbFinalOutput = finalOutput;
-        if (result.passed && violations === 0 && result.graphSkills && result.graphSkills.length > 0) {
-            dbFinalOutput += `\n\n<!--SKILLS_DATA:${JSON.stringify(result.graphSkills)}-->`;
-        }
-
-        // Save to cache
-        const cached = localStorage.getItem("capabilio_daily_mission");
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          parsed.completed = true;
-          parsed.completedAt = Date.now();
-          parsed.savedCode = code;
-          parsed.savedOutput = dbFinalOutput.replace(/\\n/g, '\n');
-          parsed.taskData.finalReward = finalReward;
-          localStorage.setItem("capabilio_daily_mission", JSON.stringify(parsed));
-        }
-        
-        // Save to permanent Code Vault (Supabase)
-        const isPass = result.passed;
-        
-        try {
-          const vaultStr = localStorage.getItem("capabilio_task_vault");
-          const vault = vaultStr ? JSON.parse(vaultStr) : [];
-          vault.unshift({
-            id: Date.now().toString(),
-            company: taskData.company,
-            title: taskData.title,
-            context: taskData.context,
-            taskDescription: taskData.taskDescription,
-            status: (taskData.dbStatus === 'fallback_retry' || taskData.dbStatus === 'failed_second_attempt') ? (isPass ? 'passed_second_attempt' : 'failed_second_attempt') : (isPass ? 'passed' : 'failed'),
-            savedCode: code,
-            aiReview: dbFinalOutput,
-            reward: isPass ? finalReward : 0,
-            timestamp: new Date().toISOString()
-          });
-          localStorage.setItem("capabilio_task_vault", JSON.stringify(vault));
-        } catch(e) {}
-        
-        if (user?.id) {
-          supabase.from('student_tasks').insert({
-            user_id: user.id,
-            company_name: taskData.company || "Unknown Company",
-            task_title: taskData.title || "Daily Mission",
-            task_context: taskData.context || "",
-            task_description: taskData.taskDescription || "",
-            status: (taskData.dbStatus === 'fallback_retry' || taskData.dbStatus === 'failed_second_attempt') ? (isPass ? 'passed_second_attempt' : 'failed_second_attempt') : (isPass ? 'passed' : 'failed'),
-            saved_code: code,
-            ai_review: dbFinalOutput.replace(/\\n/g, '\n'),
-            elo_reward: isPass ? finalReward : 0
-          }).then(({ error }) => {
-            if (error) console.error("Failed to save to Supabase vault:", error);
-          });
-        }
-        
-        setTaskData(prev => ({ ...prev, completed: true, passed: isPass, finalReward }));
 
         // Update ELO only if passed
         if (result.passed && setUserData && userData) {
