@@ -28,14 +28,46 @@ router.post("/generate-daily", async (req, res) => {
     }
 
     // Generate task from Direct Anthropic API
-    const task = await generateRealCompanyTask(role, elo || 400, company);
+    let task;
+    let isFallback = false;
+    
+    try {
+      task = await generateRealCompanyTask(role, elo || 400, company);
+    } catch (aiError) {
+      console.warn("AI Generation Failed, attempting historical DB fallback:", aiError.message);
+      
+      let fallbackFound = false;
+      if (userId) {
+         // Fetch historical tasks for this user to use as fallback (e.g., failed or old tasks)
+         const { data: pastTasks } = await supabaseAdmin
+            .from('daily_tasks')
+            .select('task_data')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: true }) // Get older tasks to revisit
+            .limit(10);
+            
+         if (pastTasks && pastTasks.length > 0) {
+            // Pick a random historical task from their vault
+            const randomIdx = Math.floor(Math.random() * pastTasks.length);
+            task = pastTasks[randomIdx].task_data;
+            fallbackFound = true;
+            isFallback = true;
+         }
+      }
+      
+      if (!fallbackFound) {
+         // If no user history, throw to outer catch to trigger the 500 error & frontend Swiggy fallback
+         throw aiError;
+      }
+    }
     
     // Save to DB if user is logged in
+    // Even if it's a fallback, we insert it so it registers as "today's" active task
     if (userId) {
        await supabaseAdmin.from('daily_tasks').insert({
           user_id: userId,
           task_data: task,
-          status: 'pending'
+          status: isFallback ? 'fallback_retry' : 'pending'
        });
     }
     
