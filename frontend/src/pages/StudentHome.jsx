@@ -41,19 +41,18 @@ export default function StudentHome({ user, userData, onNavigate }) {
   const elo = userData?.eloRating || 400
   const streak = userData?.arenaStreak || userData?.streak || 0
   const domain = userData?.domain || userData?.keyword || "Software Engineer"
-  const promoCarouselRef = useRef(null);
-  
+  const [activePromo, setActivePromo] = useState(0);
+  const promos = [
+    { id: 'arena', img: '/promos/arena.png' },
+    { id: 'resume', img: '/promos/resume.png' },
+    { id: 'vault', img: '/promos/vault.png' },
+    { id: 'mock', img: '/promos/mock.png' },
+    { id: 'notice', img: '/promos/notice.png' }
+  ];
+
   useEffect(() => {
     const interval = setInterval(() => {
-      if (promoCarouselRef.current) {
-        const { scrollLeft, scrollWidth, clientWidth } = promoCarouselRef.current;
-        const cardWidth = 216 + 16; // width + gap
-        if (scrollLeft + clientWidth >= scrollWidth - 10) {
-           promoCarouselRef.current.scrollTo({ left: 0, behavior: 'smooth' });
-        } else {
-           promoCarouselRef.current.scrollBy({ left: cardWidth, behavior: 'smooth' });
-        }
-      }
+      setActivePromo(prev => (prev + 1) % promos.length);
     }, 3500);
     return () => clearInterval(interval);
   }, []);
@@ -665,60 +664,89 @@ export default function StudentHome({ user, userData, onNavigate }) {
             </button>
           </div>
 
-          {/* Promo Carousel */}
-            <div style={{ width: "100%", marginBottom: 24, minWidth: 0 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          {/* 3D Coverflow Promo Carousel */}
+            <div style={{ width: "100%", marginBottom: 32, minWidth: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                 <h3 style={{ fontSize: 16, fontWeight: 500, color: "#202124", margin: 0 }}>Explore Capabilio</h3>
               </div>
-              <div 
-                className="hide-scrollbar"
-                ref={promoCarouselRef}
-                style={{
-                  display: "flex",
-                  gap: 16,
-                  overflowX: "auto",
-                  paddingBottom: 8,
-                  scrollSnapType: "x mandatory",
-                  scrollbarWidth: "none", 
-                  msOverflowStyle: "none"
-                }}
-              >
-                <style>{`.hide-scrollbar::-webkit-scrollbar { display: none; }`}</style>
-                {[
-                  { id: 'arena', img: '/promos/arena.png' },
-                  { id: 'resume', img: '/promos/resume.png' },
-                  { id: 'vault', img: '/promos/vault.png' },
-                  { id: 'mock', img: '/promos/mock.png' },
-                  { id: 'notice', img: '/promos/notice.png' }
-                ].map((promo) => (
-                  <img 
-                    key={promo.id}
-                    src={promo.img}
-                    alt={`promo-${promo.id}`}
-                    style={{
-                      width: 216,
-                      height: 384,
-                      borderRadius: 16,
-                      objectFit: "cover",
-                      scrollSnapAlign: "start",
-                      flexShrink: 0,
-                      boxShadow: "0 8px 24px rgba(0,0,0,0.06)",
-                      cursor: "pointer",
-                      transition: "transform 0.2s ease"
-                    }}
-                    onMouseOver={(e) => { e.currentTarget.style.transform = "translateY(-4px)" }}
-                    onMouseOut={(e) => { e.currentTarget.style.transform = "translateY(0)" }}
-                    onClick={() => {
-                      if (promo.id === 'arena') {
-                        if (localStorage.getItem('arena_rules_accepted') !== 'true') setShowRulesModal(true);
-                        else onNavigate('arenaWorkspace');
-                      } else if (promo.id === 'resume' || promo.id === 'vault') {
-                        onNavigate('studentResume');
-                      } else {
-                        // eslint-disable-next-line no-undef
-                        setShowProSheet(true);
-                      }
-                    }}
+              <div style={{ 
+                position: "relative", 
+                width: "100%", 
+                height: 360, 
+                display: "flex", 
+                justifyContent: "center", 
+                alignItems: "center",
+                perspective: "1000px" 
+              }}>
+                {promos.map((promo, index) => {
+                  const offset = index - activePromo;
+                  const absOffset = Math.abs(offset);
+                  
+                  // Hide elements completely if they are more than 1 step away, to avoid layout overflow issues
+                  if (absOffset > 1) return null;
+                  
+                  const isActive = absOffset === 0;
+                  const translateX = offset * 130; 
+                  const scale = isActive ? 1 : 0.85;
+                  const zIndex = 10 - absOffset;
+                  const rotateY = offset * -15; // slightly turn inward
+                  const opacity = isActive ? 1 : 0.5;
+
+                  return (
+                    <div
+                      key={promo.id}
+                      style={{
+                        position: "absolute",
+                        width: 200,
+                        height: 355, // 9:16 aspect ratio
+                        transition: "all 0.6s cubic-bezier(0.25, 0.1, 0.25, 1)",
+                        transform: `translateX(${translateX}px) scale(${scale}) rotateY(${rotateY}deg)`,
+                        zIndex: zIndex,
+                        opacity: opacity,
+                        cursor: isActive ? "pointer" : "pointer",
+                        borderRadius: 16,
+                        boxShadow: isActive ? "0 20px 40px rgba(0,0,0,0.15)" : "0 8px 16px rgba(0,0,0,0.05)"
+                      }}
+                      onClick={() => {
+                        if (!isActive) {
+                          setActivePromo(index);
+                        } else {
+                          if (promo.id === 'arena') {
+                            if (localStorage.getItem('arena_rules_accepted') !== 'true') setShowRulesModal(true);
+                            else onNavigate('arenaWorkspace');
+                          } else if (promo.id === 'resume' || promo.id === 'vault') {
+                            onNavigate('studentResume');
+                          } else {
+                            // eslint-disable-next-line no-undef
+                            setShowProSheet(true);
+                          }
+                        }
+                      }}
+                    >
+                      <img src={promo.img} alt={`promo-${promo.id}`} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 16 }} />
+                      {!isActive && (
+                        <div style={{ 
+                          position: "absolute", top: 0, left: 0, width: "100%", height: "100%", 
+                          backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 16, pointerEvents: "none", backdropFilter: "blur(1px)" 
+                        }} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 16 }}>
+                {promos.map((_, idx) => (
+                  <div 
+                    key={idx} 
+                    onClick={() => setActivePromo(idx)}
+                    style={{ 
+                      width: activePromo === idx ? 20 : 6, 
+                      height: 6, 
+                      borderRadius: 999, 
+                      backgroundColor: activePromo === idx ? "#FF5701" : "#D1D5DB",
+                      transition: "all 0.3s ease",
+                      cursor: "pointer"
+                    }} 
                   />
                 ))}
               </div>
