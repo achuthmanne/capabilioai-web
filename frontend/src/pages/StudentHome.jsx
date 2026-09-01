@@ -594,7 +594,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
         </div>
 
         {/* RIGHT COLUMN */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 40, minWidth: 0 }}>
           
           {/* Career Target */}
           <div style={{
@@ -648,7 +648,65 @@ export default function StudentHome({ user, userData, onNavigate }) {
             </button>
           </div>
 
-          {/* Upsell */}
+          {/* Promo Carousel */}
+            <div style={{ width: "100%", marginBottom: 24, minWidth: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 500, color: "#202124", margin: 0 }}>Explore Capabilio</h3>
+              </div>
+              <div 
+                className="hide-scrollbar"
+                style={{
+                  display: "flex",
+                  gap: 16,
+                  overflowX: "auto",
+                  paddingBottom: 8,
+                  scrollSnapType: "x mandatory",
+                  scrollbarWidth: "none", 
+                  msOverflowStyle: "none"
+                }}
+              >
+                <style>{`.hide-scrollbar::-webkit-scrollbar { display: none; }`}</style>
+                {[
+                  { id: 'arena', img: '/promos/arena.png' },
+                  { id: 'resume', img: '/promos/resume.png' },
+                  { id: 'vault', img: '/promos/vault.png' },
+                  { id: 'mock', img: '/promos/mock.png' },
+                  { id: 'notice', img: '/promos/notice.png' }
+                ].map((promo) => (
+                  <img 
+                    key={promo.id}
+                    src={promo.img}
+                    alt={`promo-${promo.id}`}
+                    style={{
+                      width: 140,
+                      height: 248,
+                      borderRadius: 16,
+                      objectFit: "cover",
+                      scrollSnapAlign: "start",
+                      flexShrink: 0,
+                      boxShadow: "0 8px 24px rgba(0,0,0,0.06)",
+                      cursor: "pointer",
+                      transition: "transform 0.2s ease"
+                    }}
+                    onMouseOver={(e) => { e.currentTarget.style.transform = "translateY(-4px)" }}
+                    onMouseOut={(e) => { e.currentTarget.style.transform = "translateY(0)" }}
+                    onClick={() => {
+                      if (promo.id === 'arena') {
+                        if (localStorage.getItem('arena_rules_accepted') !== 'true') setShowRulesModal(true);
+                        else onNavigate('arenaWorkspace');
+                      } else if (promo.id === 'resume' || promo.id === 'vault') {
+                        onNavigate('studentResume');
+                      } else {
+                        // eslint-disable-next-line no-undef
+                        setShowProSheet(true);
+                      }
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Upsell */}
           <div style={{
             background: "#FFFFFF",
             border: "1px solid #E0E0E0",
