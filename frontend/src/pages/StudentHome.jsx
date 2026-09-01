@@ -864,14 +864,9 @@ export default function StudentHome({ user, userData, onNavigate }) {
                 <X size={24} />
               </button>
 
-              <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "32px" }}>
-                <div style={{ width: "48px", height: "48px", borderRadius: "16px", backgroundColor: "#FFF0ED", display: "flex", alignItems: "center", justifyContent: "center", color: "#FF5701" }}>
-                  <ShieldCheck size={28} strokeWidth={2} />
-                </div>
-                <div>
-                  <h2 style={{ margin: 0, fontSize: "24px", fontWeight: 700, color: "#1F2937", letterSpacing: "-0.02em" }}>Arena Protocol</h2>
-                  <p style={{ margin: "4px 0 0 0", color: "#6B7280", fontSize: "15px" }}>Please review before entering your first mission.</p>
-                </div>
+              <div style={{ marginBottom: "32px" }}>
+                <h2 style={{ margin: 0, fontSize: "24px", fontWeight: 700, color: "#1F2937", letterSpacing: "-0.02em" }}>Arena Protocol</h2>
+                <p style={{ margin: "4px 0 0 0", color: "#6B7280", fontSize: "15px" }}>Please review before entering your first mission.</p>
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "24px", marginBottom: "32px" }}>
