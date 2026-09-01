@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Flame, Target, BookOpen, Briefcase, ChevronRight, Lock, Code2, Rocket, ArrowRight, Zap, Trophy, X, Lightbulb, LayoutDashboard, CheckCircle, ShieldCheck, ChevronUp, ChevronDown } from "lucide-react"
+import { Play, Flame, Target, BookOpen, Briefcase, ChevronRight, Lock, Code2, Rocket, ArrowRight, Zap, Trophy, X, Clock, XCircle, Lightbulb, LayoutDashboard, CheckCircle, ShieldCheck, ChevronUp, ChevronDown } from "lucide-react"
 import { supabase } from "../lib/supabase";
 
 
