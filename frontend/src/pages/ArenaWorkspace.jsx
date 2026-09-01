@@ -341,7 +341,7 @@ Review the test cases and feedback, then try again.`;
         });
       }, 1000);
       return () => clearInterval(interval);
-    }, [isTimerActive, timeLeft, taskData, consoleOutput]);
+    }, [isTimerActive, timeLeft, taskData, consoleOutput, isPaused]);
 
     useEffect(() => {
       const missionPassed = taskData?.completed && taskData?.passed !== false && !consoleOutput?.includes('MISSION FAILED');
