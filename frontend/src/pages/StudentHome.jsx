@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Flame, Target, BookOpen, Briefcase, ChevronRight, Lock, Code2, Rocket, ArrowRight, Zap, Trophy, X, Clock, XCircle, Lightbulb, LayoutDashboard, CheckCircle, ShieldCheck, ChevronUp, ChevronDown } from "lucide-react"
 import { supabase } from "../lib/supabase";
@@ -41,6 +41,23 @@ export default function StudentHome({ user, userData, onNavigate }) {
   const elo = userData?.eloRating || 400
   const streak = userData?.arenaStreak || userData?.streak || 0
   const domain = userData?.domain || userData?.keyword || "Software Engineer"
+  const promoCarouselRef = useRef(null);
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (promoCarouselRef.current) {
+        const { scrollLeft, scrollWidth, clientWidth } = promoCarouselRef.current;
+        const cardWidth = 240 + 16; // width + gap
+        if (scrollLeft + clientWidth >= scrollWidth - 10) {
+           promoCarouselRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+        } else {
+           promoCarouselRef.current.scrollBy({ left: cardWidth, behavior: 'smooth' });
+        }
+      }
+    }, 3500);
+    return () => clearInterval(interval);
+  }, []);
+
   
     const [completionPercentage, setCompletionPercentage] = useState(10); // Base 10%
   const [showRulesModal, setShowRulesModal] = useState(false);
@@ -655,6 +672,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
               </div>
               <div 
                 className="hide-scrollbar"
+                ref={promoCarouselRef}
                 style={{
                   display: "flex",
                   gap: 16,
@@ -678,8 +696,8 @@ export default function StudentHome({ user, userData, onNavigate }) {
                     src={promo.img}
                     alt={`promo-${promo.id}`}
                     style={{
-                      width: 140,
-                      height: 248,
+                      width: 240,
+                      height: 426,
                       borderRadius: 16,
                       objectFit: "cover",
                       scrollSnapAlign: "start",
