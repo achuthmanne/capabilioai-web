@@ -200,18 +200,14 @@ Total ELO Deducted: ${finalReward} Points!`;
           }
           
           finalOutput = baseOutput + outputMessage;
-          setConsoleOutput(finalOutput.replace(/
-/g, '
-'));
+          setConsoleOutput(finalOutput.replace(/\\n/g, '\n'));
         } else {
           let outputMessage = `
 
 ? MISSION FAILED ?
 Review the test cases and feedback, then try again.`;
           finalOutput = baseOutput + outputMessage;
-          setConsoleOutput(finalOutput.replace(/
-/g, '
-'));
+          setConsoleOutput(finalOutput.replace(/\\n/g, '\n'));
         }
 
         let dbFinalOutput = finalOutput;
@@ -232,9 +228,7 @@ Review the test cases and feedback, then try again.`;
             parsed.passed = isPass;
             parsed.completedAt = Date.now();
             parsed.savedCode = code;
-            parsed.savedOutput = dbFinalOutput.replace(/
-/g, '
-');
+            parsed.savedOutput = dbFinalOutput.replace(/\\n/g, '\n');
             if (isPass) parsed.taskData.finalReward = finalReward;
             localStorage.setItem("capabilio_daily_mission", JSON.stringify(parsed));
           }
@@ -271,9 +265,7 @@ Review the test cases and feedback, then try again.`;
               task_description: taskData.taskDescription || "",
               status: vaultStatus,
               saved_code: code,
-              ai_review: dbFinalOutput.replace(/
-/g, '
-'),
+              ai_review: dbFinalOutput.replace(/\\n/g, '\n'),
               elo_reward: isPass ? finalReward : 0
             }).then(({ error }) => {
               if (error) console.error("Failed to save to Supabase vault:", error);
