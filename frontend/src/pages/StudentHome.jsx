@@ -47,6 +47,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
     { id: 'resume', img: '/promos/resume.png' },
     { id: 'vault', img: '/promos/vault.png' },
     { id: 'mock', img: '/promos/mock.png' },
+    { id: 'analytics', img: '/promos/analytics.png' },
     { id: 'notice', img: '/promos/notice.png' }
   ];
 
