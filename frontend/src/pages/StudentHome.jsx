@@ -719,6 +719,8 @@ export default function StudentHome({ user, userData, onNavigate }) {
                             onNavigate('studentResume');
                           } else if (promo.id === 'vault') {
                             onNavigate('codeVault');
+                          } else if (promo.id === 'mock') {
+                            onNavigate('aiInterview');
                           } else {
                             // eslint-disable-next-line no-undef
                             setShowProSheet(true);
