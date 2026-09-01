@@ -673,7 +673,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
               <div style={{ 
                 position: "relative", 
                 width: "100%", 
-                height: 360, 
+                height: 330, 
                 display: "flex", 
                 justifyContent: "center", 
                 alignItems: "center",
@@ -687,7 +687,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
                   if (absOffset > 1) return null;
                   
                   const isActive = absOffset === 0;
-                  const translateX = offset * 130; 
+                  const translateX = offset * 115; 
                   const scale = isActive ? 1 : 0.85;
                   const zIndex = 10 - absOffset;
                   const rotateY = offset * -15; // slightly turn inward
@@ -698,8 +698,8 @@ export default function StudentHome({ user, userData, onNavigate }) {
                       key={promo.id}
                       style={{
                         position: "absolute",
-                        width: 200,
-                        height: 355, // 9:16 aspect ratio
+                        width: 180,
+                        height: 320, // 9:16 aspect ratio
                         transition: "all 0.6s cubic-bezier(0.25, 0.1, 0.25, 1)",
                         transform: `translateX(${translateX}px) scale(${scale}) rotateY(${rotateY}deg)`,
                         zIndex: zIndex,
