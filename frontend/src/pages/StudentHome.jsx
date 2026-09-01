@@ -859,9 +859,23 @@ export default function StudentHome({ user, userData, onNavigate }) {
             >
               <button 
                 onClick={() => setShowRulesModal(false)}
-                style={{ position: "absolute", top: "24px", right: "24px", background: "none", border: "none", cursor: "pointer", color: "#5F6368", padding: "4px" }}
+                style={{ 
+                  position: "absolute", top: "20px", right: "20px",
+                  background: "transparent",
+                  border: "none",
+                  color: "#5F6368",
+                  cursor: "pointer",
+                  padding: "8px",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "background 0.2s"
+                }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#F1F3F4"}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = "transparent"}
               >
-                <X size={24} />
+                <X size={20} />
               </button>
 
               <div style={{ marginBottom: "32px" }}>
