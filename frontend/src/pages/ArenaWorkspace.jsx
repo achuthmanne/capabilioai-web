@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 import Editor from '@monaco-editor/react';
-import { ArrowLeft, Play, Terminal, CheckCircle, Zap, Layout, Box, Activity, XCircle, Clock } from 'lucide-react';
+import { ArrowLeft, Play, Terminal, CheckCircle, Zap, Layout, Box, Activity, XCircle, Clock, Pause, Lock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { userDoc } from "../lib/db";
 import { supabase } from "../lib/supabase";
@@ -307,17 +307,26 @@ Review the test cases and feedback, then try again.`;
     const hasFailed = taskData?.passed === false || consoleOutput?.includes('MISSION FAILED');
   
     // --- 10-Minute Timer Logic ---
-    const [timeLeft, setTimeLeft] = useState(600);
+    const [timeLeft, setTimeLeft] = useState(() => {
+      const saved = localStorage.getItem('arena_timer');
+      return saved !== null ? parseInt(saved, 10) : 600;
+    });
     const [isTimerActive, setIsTimerActive] = useState(true);
+    const [isPaused, setIsPaused] = useState(false);
     const hasAutoSubmitted = useRef(false);
+
+    useEffect(() => {
+      if (timeLeft < 600) localStorage.setItem('arena_timer', timeLeft.toString());
+    }, [timeLeft]);
 
     useEffect(() => {
       const missionPassed = taskData?.completed && taskData?.passed !== false && !consoleOutput?.includes('MISSION FAILED');
       if (missionPassed) {
+        localStorage.removeItem('arena_timer');
         setIsTimerActive(false);
         return;
       }
-      if (!isTimerActive || timeLeft <= 0) return;
+      if (!isTimerActive || timeLeft <= 0 || isPaused) return;
       
       const interval = setInterval(() => {
         setTimeLeft(prev => {
@@ -392,18 +401,34 @@ Review the test cases and feedback, then try again.`;
             </div>
             
             {/* Timer UI */}
-            <div style={{ 
-              display: "flex", alignItems: "center", gap: 6, padding: "6px 16px", 
-              backgroundColor: timeLeft === 0 ? "#FEE2E2" : (timeLeft < 60 ? "#FEF08A" : "#FFFFFF"), 
-              border: `1px solid ${timeLeft === 0 ? "#EF4444" : (timeLeft < 60 ? "#F59E0B" : "#E5E7EB")}`,
-              borderRadius: "16px", 
-              color: timeLeft === 0 ? "#B91C1C" : (timeLeft < 60 ? "#B45309" : "#374151"), 
-              fontWeight: 700, fontSize: "14px",
-              boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-              transition: "all 0.3s ease"
-            }}>
-              <Clock size={16} className={timeLeft > 0 && timeLeft <= 60 ? "animate-pulse" : ""} />
-              {Math.floor(timeLeft / 60).toString().padStart(2, '0')}:{(timeLeft % 60).toString().padStart(2, '0')}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ 
+                display: "flex", alignItems: "center", gap: 6, padding: "6px 16px", 
+                backgroundColor: timeLeft === 0 ? "#FEE2E2" : (timeLeft < 60 ? "#FEF08A" : (isPaused ? "#F3F4F6" : "#FFFFFF")), 
+                border: `1px solid ${timeLeft === 0 ? "#EF4444" : (timeLeft < 60 ? "#F59E0B" : (isPaused ? "#D1D5DB" : "#E5E7EB"))}`,
+                borderRadius: "16px", 
+                color: timeLeft === 0 ? "#B91C1C" : (timeLeft < 60 ? "#B45309" : (isPaused ? "#6B7280" : "#374151")), 
+                fontWeight: 700, fontSize: "14px",
+                boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                transition: "all 0.3s ease"
+              }}>
+                <Clock size={16} className={timeLeft > 0 && timeLeft <= 60 && !isPaused ? "animate-pulse" : ""} />
+                {Math.floor(timeLeft / 60).toString().padStart(2, '0')}:{(timeLeft % 60).toString().padStart(2, '0')}
+              </div>
+              <button 
+                onClick={() => setIsPaused(!isPaused)}
+                disabled={timeLeft === 0 || isMissionPassed}
+                title={isPaused ? "Resume Timer" : "Pause Timer"}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: '34px', height: '34px', borderRadius: '50%',
+                  border: '1px solid #E5E7EB', backgroundColor: '#FFFFFF',
+                  color: '#374151', cursor: (timeLeft === 0 || isMissionPassed) ? 'not-allowed' : 'pointer',
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
+                }}
+              >
+                {isPaused ? <Play size={16} fill="currentColor" /> : <Pause size={16} fill="currentColor" />}
+              </button>
             </div>
           <button 
             onClick={handleSubmit}
@@ -506,7 +531,31 @@ Review the test cases and feedback, then try again.`;
           </div>
 
           {/* Monaco Editor */}
-          <div style={{ flex: 1, padding: '16px 0' }}>
+          <div style={{ flex: 1, padding: '16px 0', position: 'relative' }}>
+            {isPaused && (
+              <div style={{
+                position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+                backgroundColor: 'rgba(30, 30, 30, 0.95)', backdropFilter: 'blur(8px)',
+                zIndex: 10, display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center', color: '#FFFFFF', gap: 16
+              }}>
+                <Lock size={48} style={{ opacity: 0.5 }} />
+                <div style={{ fontSize: 20, fontWeight: 600 }}>Timer Paused</div>
+                <div style={{ fontSize: 14, color: '#A0A0A0', maxWidth: 300, textAlign: 'center', lineHeight: 1.5 }}>
+                  Your code is hidden while the timer is paused to prevent unfair advantages.
+                </div>
+                <button
+                  onClick={() => setIsPaused(false)}
+                  style={{
+                    marginTop: 8, backgroundColor: '#FF5701', color: 'white',
+                    border: 'none', padding: '10px 32px', borderRadius: 999,
+                    fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8
+                  }}
+                >
+                  <Play size={16} fill="currentColor" /> Resume Mission
+                </button>
+              </div>
+            )}
             <Editor
               height="100%"
               language={language}
