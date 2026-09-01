@@ -56,7 +56,7 @@ export default function CodeVault({ user, userData, onNavigate }) {
       acc[task.company] = { total: 0, passed: 0, failed: 0, tasks: [] };
     }
     acc[task.company].total++;
-    if (task.status === 'passed') acc[task.company].passed++;
+    if (task.status.startsWith('passed')) acc[task.company].passed++;
     else acc[task.company].failed++;
     acc[task.company].tasks.push(task);
     return acc;
@@ -119,7 +119,7 @@ export default function CodeVault({ user, userData, onNavigate }) {
                   <div style={{ borderTop: "1px solid #E5E7EB", background: "#FFF" }}>
                     {data.tasks.map((task) => {
                       const isTaskExpanded = expandedTask === task.id;
-                      const isPass = task.status === 'passed';
+                      const isPass = task.status.startsWith('passed');
                       return (
                         <div key={task.id} style={{ borderBottom: "1px solid #F3F4F6", padding: "24px 32px" }}>
                           
@@ -131,6 +131,11 @@ export default function CodeVault({ user, userData, onNavigate }) {
                               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
                                 {isPass ? <CheckCircle size={18} color="#10B981" /> : <XCircle size={18} color="#EF4444" />}
                                 <span style={{ fontSize: 18, fontWeight: 600, color: "#1F2937" }}>{task.title}</span>
+                                  {task.status.includes('_second_attempt') && (
+                                    <span style={{ fontSize: 11, fontWeight: 700, color: "#4B5563", background: "#E5E7EB", padding: "4px 8px", borderRadius: 6, letterSpacing: "0.02em" }}>
+                                      Retry Attempt
+                                    </span>
+                                  )}
                               </div>
                               <div style={{ fontSize: 13, color: "#6B7280" }}>
                                 Submitted on {new Date(task.timestamp).toLocaleDateString()} at {new Date(task.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
