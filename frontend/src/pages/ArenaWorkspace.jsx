@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 import Editor from '@monaco-editor/react';
-import { ArrowLeft, Play, Terminal, CheckCircle, Zap, Layout, Box, Activity, XCircle } from 'lucide-react';
+import { ArrowLeft, Play, Terminal, CheckCircle, Zap, Layout, Box, Activity, XCircle, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { userDoc } from "../lib/db";
 import { supabase } from "../lib/supabase";
@@ -305,7 +305,43 @@ Review the test cases and feedback, then try again.`;
   };
 
     const hasFailed = taskData?.passed === false || consoleOutput?.includes('MISSION FAILED');
-  const isMissionPassed = taskData?.completed && !hasFailed;
+  
+    // --- 10-Minute Timer Logic ---
+    const [timeLeft, setTimeLeft] = useState(600);
+    const [isTimerActive, setIsTimerActive] = useState(true);
+    const hasAutoSubmitted = useRef(false);
+
+    useEffect(() => {
+      const missionPassed = taskData?.completed && taskData?.passed !== false && !consoleOutput?.includes('MISSION FAILED');
+      if (missionPassed) {
+        setIsTimerActive(false);
+        return;
+      }
+      if (!isTimerActive || timeLeft <= 0) return;
+      
+      const interval = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    }, [isTimerActive, timeLeft, taskData, consoleOutput]);
+
+    useEffect(() => {
+      const missionPassed = taskData?.completed && taskData?.passed !== false && !consoleOutput?.includes('MISSION FAILED');
+      if (timeLeft === 0 && !isEvaluating && !missionPassed && !hasAutoSubmitted.current) {
+        hasAutoSubmitted.current = true;
+        setIsTimerActive(false);
+        handleSubmit();
+      }
+    }, [timeLeft, isEvaluating, taskData, consoleOutput]);
+    // -----------------------------
+
+    const isMissionPassed = taskData?.completed && !hasFailed;
 
   return (
     <div style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#F8F9FA', overflow: 'hidden' }}>
@@ -352,19 +388,34 @@ Review the test cases and feedback, then try again.`;
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", backgroundColor: "#F1F3F4", borderRadius: "16px", color: "#202124", fontWeight: 600, fontSize: "13px" }}>
-            {taskData?.company || "Swiggy"}
-          </div>
+              {taskData?.company || "Swiggy"}
+            </div>
+            
+            {/* Timer UI */}
+            <div style={{ 
+              display: "flex", alignItems: "center", gap: 6, padding: "6px 16px", 
+              backgroundColor: timeLeft === 0 ? "#FEE2E2" : (timeLeft < 60 ? "#FEF08A" : "#FFFFFF"), 
+              border: `1px solid ${timeLeft === 0 ? "#EF4444" : (timeLeft < 60 ? "#F59E0B" : "#E5E7EB")}`,
+              borderRadius: "16px", 
+              color: timeLeft === 0 ? "#B91C1C" : (timeLeft < 60 ? "#B45309" : "#374151"), 
+              fontWeight: 700, fontSize: "14px",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+              transition: "all 0.3s ease"
+            }}>
+              <Clock size={16} className={timeLeft > 0 && timeLeft <= 60 ? "animate-pulse" : ""} />
+              {Math.floor(timeLeft / 60).toString().padStart(2, '0')}:{(timeLeft % 60).toString().padStart(2, '0')}
+            </div>
           <button 
             onClick={handleSubmit}
-            disabled={isEvaluating || isMissionPassed}
+            disabled={isEvaluating || isMissionPassed || timeLeft === 0}
             style={{ 
               backgroundColor: isMissionPassed ? '#10B981' : (hasFailed ? '#EF4444' : '#FF5701'), color: 'white', border: 'none', padding: '8px 24px', borderRadius: '999px',
-              fontWeight: 600, cursor: (isEvaluating || isMissionPassed) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
+              fontWeight: 600, cursor: (isEvaluating || isMissionPassed || timeLeft === 0) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
               opacity: isEvaluating ? 0.7 : 1
             }}
           >
             {isMissionPassed ? <CheckCircle size={16} /> : (hasFailed ? <XCircle size={16} /> : (isEvaluating ? <Zap size={16} className="animate-pulse" /> : <Play size={16} />))}
-            {isMissionPassed ? 'Mission Passed' : (hasFailed ? 'Mission Failed' : (isEvaluating ? 'Evaluating...' : 'Run Code'))}
+            {isMissionPassed ? 'Mission Passed' : (timeLeft === 0 && hasFailed ? 'Time Up - Failed' : (hasFailed ? 'Mission Failed' : (isEvaluating ? 'Evaluating...' : (timeLeft === 0 ? 'Time Up' : 'Run Code'))))}
           </button>
         </div>
       </div>
