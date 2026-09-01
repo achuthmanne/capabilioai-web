@@ -177,7 +177,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
         const fetchPromise = fetch(`${API}/api/tasks/generate-daily`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ role: domain, elo: parseInt(elo), company: selectedCompany })
+          body: JSON.stringify({ userId: user?.id, role: domain, elo: parseInt(elo), company: selectedCompany })
         });
         
         // Wait for both the fetch AND the 5-second animation timer
