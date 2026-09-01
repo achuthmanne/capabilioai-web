@@ -35,6 +35,8 @@ const TypewriterText = ({ text, delay = 0, speed = 30, cursor = true }) => {
   );
 };
 
+const API = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com";
+
 export default function StudentHome({ user, userData, onNavigate }) {
   const name = userData?.displayName || userData?.name || user?.user_metadata?.full_name || "Student"
   const firstName = name.split(" ")[0]
@@ -172,7 +174,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
       const t2 = setTimeout(() => { if (isMounted) setLoadingStep(2) }, 4000);
       
       try {
-        const fetchPromise = fetch('/api/tasks/generate-daily', {
+        const fetchPromise = fetch(`${API}/api/tasks/generate-daily`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ role: domain, elo: parseInt(elo), company: selectedCompany })
