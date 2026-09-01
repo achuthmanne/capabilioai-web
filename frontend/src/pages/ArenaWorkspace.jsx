@@ -252,7 +252,7 @@ Review the test cases and feedback, then try again.`;
             title: taskData.title,
             context: taskData.context,
             taskDescription: taskData.taskDescription,
-            status: isPass ? 'passed' : 'failed',
+            status: (taskData.dbStatus === 'fallback_retry' || taskData.dbStatus === 'failed_second_attempt') ? (isPass ? 'passed_second_attempt' : 'failed_second_attempt') : (isPass ? 'passed' : 'failed'),
             savedCode: code,
             aiReview: dbFinalOutput,
             reward: isPass ? finalReward : 0,
@@ -268,7 +268,7 @@ Review the test cases and feedback, then try again.`;
             task_title: taskData.title || "Daily Mission",
             task_context: taskData.context || "",
             task_description: taskData.taskDescription || "",
-            status: isPass ? 'passed' : 'failed',
+            status: (taskData.dbStatus === 'fallback_retry' || taskData.dbStatus === 'failed_second_attempt') ? (isPass ? 'passed_second_attempt' : 'failed_second_attempt') : (isPass ? 'passed' : 'failed'),
             saved_code: code,
             ai_review: dbFinalOutput.replace(/\\n/g, '\n'),
             elo_reward: isPass ? finalReward : 0
