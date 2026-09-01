@@ -234,17 +234,12 @@ const PORT = process.env.PORT || 4000
 // the very first middleware means it always attaches headers first, on
 // every response this server ever sends, 429 or not.
 app.use(cors({
-  origin: [
-      process.env.FRONTEND_URL || "https://capabilio.online",
-      "https://capabilio.online",
-      "https://www.capabilio.online",
-      "https://capabilioai-web.vercel.app",
-      "http://localhost:3000",
-    "http://localhost:5173",
-    "http://localhost:4173",
-  ],
-  credentials: true,
-}))
+    origin: function (origin, callback) {
+      // Allow all origins for now to prevent Vercel preview/production URL mismatch CORS issues
+      callback(null, true);
+    },
+    credentials: true,
+  }))
 
 // ─── Rate limiters ────────────────────────────────────────────────────────────
 // Instances now imported from server/lib/rateLimiters.js (see that file's
