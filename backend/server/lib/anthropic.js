@@ -142,7 +142,8 @@ EVALUATION RULES:
 2. Did they solve the problem described in the task requirements? If it's code, check for logic flaws. If it's a terminal command, SQL query, or log analysis, verify it achieves the exact requested outcome.
 3. If they didn't fulfill the requirements, they fail.
 
-Return ONLY a valid JSON response in this exact structure. YOU MUST ESCAPE ALL NEWLINES (\\n) AND QUOTES INSIDE THE STRINGS.
+Return ONLY a valid JSON response in this exact structure. 
+CRITICAL: DO NOT use actual literal line breaks inside your JSON strings! If you want to insert a newline in the feedback or consoleOutput, use the literal characters '\\n' (a backslash followed by an n).
 DO NOT use <thinking> tags. DO NOT include any markdown or text outside the JSON:
 {
   "passed": true,

@@ -184,7 +184,21 @@ export default function StudentHome({ user, userData, onNavigate }) {
               
               if (isCompletedInDb) {
                  setTaskData({...data, completed: true, lockedUntil: localCompletedAt ? localCompletedAt + (24*60*60*1000) : Date.now() + (24*60*60*1000)});
-                 localStorage.setItem("capabilio_daily_mission", JSON.stringify({ generatedAt: Date.now(), taskData: data, completed: true, completedAt: localCompletedAt || Date.now() }));
+                 const existingCacheStr = localStorage.getItem("capabilio_daily_mission");
+                 let existingCache = {};
+                 try { existingCache = JSON.parse(existingCacheStr) || {}; } catch(e) {}
+                 
+                 localStorage.setItem("capabilio_daily_mission", JSON.stringify({ 
+                     ...existingCache,
+                     generatedAt: Date.now(), 
+                     taskData: data, 
+                     completed: true, 
+                     passed: data.dbStatus?.startsWith('passed') || false,
+                     completedAt: localCompletedAt || Date.now(),
+                     savedCode: data.saved_code || existingCache.savedCode,
+                     savedOutput: data.ai_review || existingCache.savedOutput,
+                     violations: data.violations || existingCache.violations || 0
+                 }));
               } else {
                  setTaskData({...data, completed: false});
                  localStorage.setItem("capabilio_daily_mission", JSON.stringify({ generatedAt: Date.now(), taskData: data, completed: false }));
@@ -223,7 +237,21 @@ export default function StudentHome({ user, userData, onNavigate }) {
           
           if (isCompletedInDb) {
              setTaskData({...data, completed: true, lockedUntil: generationTime + (24*60*60*1000)});
-             localStorage.setItem("capabilio_daily_mission", JSON.stringify({ generatedAt: generationTime, taskData: data, completed: true, completedAt: generationTime }));
+             const existingCacheStr = localStorage.getItem("capabilio_daily_mission");
+             let existingCache = {};
+             try { existingCache = JSON.parse(existingCacheStr) || {}; } catch(e) {}
+
+             localStorage.setItem("capabilio_daily_mission", JSON.stringify({ 
+                 ...existingCache,
+                 generatedAt: generationTime, 
+                 taskData: data, 
+                 completed: true, 
+                 passed: data.dbStatus?.startsWith('passed') || false,
+                 completedAt: generationTime,
+                 savedCode: data.saved_code || existingCache.savedCode,
+                 savedOutput: data.ai_review || existingCache.savedOutput,
+                 violations: data.violations || existingCache.violations || 0
+             }));
           } else {
              setTaskData({...data, completed: false});
              localStorage.setItem("capabilio_daily_mission", JSON.stringify({ generatedAt: generationTime, taskData: data, completed: false }));
