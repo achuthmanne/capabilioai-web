@@ -1382,7 +1382,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
       </nav>
 
       {/* ── HERO ────────────────────────────────────────────────────── */}
-      <section className="w-full px-6 md:px-12 pt-4 pb-12 md:pb-16 bg-white overflow-hidden">
+      <section className="w-full px-6 md:px-12 pt-12 md:pt-24 pb-12 md:pb-24 bg-white overflow-hidden">
         <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
           
           {/* Left Side: Typography & Buttons */}
