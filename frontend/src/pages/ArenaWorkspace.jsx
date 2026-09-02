@@ -30,7 +30,9 @@ export default function ArenaWorkspace({ user, userData, setUserData, onNavigate
           else if (parsed.taskData.workspaceType === 'code') setActiveConsoleTab('preview');
         }
         if (parsed.violations) setViolations(parsed.violations);
+        const draft = localStorage.getItem('arena_draft_code');
         if (parsed.savedCode) setCode(parsed.savedCode);
+        else if (draft) setCode(draft);
         else if (parsed.taskData?.startingCode) setCode(parsed.taskData.startingCode);
         if (parsed.savedOutput) setConsoleOutput(parsed.savedOutput);
       } catch (e) {}
