@@ -134,33 +134,33 @@ export default function StudentHome({ user, userData, onNavigate }) {
     const checkAndFetchTask = async () => {
       const cached = localStorage.getItem("capabilio_daily_mission");
       let shouldGenerateNew = true;
+      let localTaskData = null;
+      let localCompletedAt = null;
       
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
           if (parsed.taskData) {
+            localTaskData = parsed.taskData;
             if (!parsed.completed) {
-              // Task exists but is NOT completed. Keep it forever!
               shouldGenerateNew = false;
               if (isMounted) {
                 setTaskData({...parsed.taskData, completed: false});
                 setIsGenerating(false);
               }
             } else {
-              // Task IS completed. Enforce 24 hour cooldown before giving a new one.
-              const completedAt = parsed.completedAt || Date.now(); // Fallback for old cache
+              const completedAt = parsed.completedAt || Date.now();
+              localCompletedAt = completedAt;
               const msPassed = Date.now() - completedAt;
               const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
               
               if (msPassed < TWENTY_FOUR_HOURS) {
-                // Still in cooldown. Show the completed task.
                 shouldGenerateNew = false;
                 if (isMounted) {
                   setTaskData({...parsed.taskData, completed: true, lockedUntil: completedAt + TWENTY_FOUR_HOURS});
                   setIsGenerating(false);
                 }
               } else {
-                // Cooldown finished! We can generate a new task.
                 shouldGenerateNew = true;
               }
             }
@@ -168,7 +168,33 @@ export default function StudentHome({ user, userData, onNavigate }) {
         } catch(e) {}
       }
 
-      if (!shouldGenerateNew) return;
+      // If we don't need to generate a new task, we should STILL silently sync with the backend 
+      // in case they solved it on another device (like Vercel production vs Localhost).
+      if (!shouldGenerateNew) {
+        if (user?.id) {
+          fetch(`${API}/api/tasks/generate-daily`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.id, role: domain, elo: parseInt(elo), company: selectedCompany })
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (isMounted && data && data.title) {
+              const isCompletedInDb = (data.dbStatus === 'passed' || data.dbStatus === 'passed_second_attempt' || data.dbStatus === 'failed' || data.dbStatus === 'failed_second_attempt');
+              
+              if (isCompletedInDb) {
+                 setTaskData({...data, completed: true, lockedUntil: localCompletedAt ? localCompletedAt + (24*60*60*1000) : Date.now() + (24*60*60*1000)});
+                 localStorage.setItem("capabilio_daily_mission", JSON.stringify({ generatedAt: Date.now(), taskData: data, completed: true, completedAt: localCompletedAt || Date.now() }));
+              } else {
+                 setTaskData({...data, completed: false});
+                 localStorage.setItem("capabilio_daily_mission", JSON.stringify({ generatedAt: Date.now(), taskData: data, completed: false }));
+              }
+            }
+          })
+          .catch(() => {});
+        }
+        return;
+      }
 
       const t1 = setTimeout(() => { if (isMounted) setLoadingStep(1) }, 2000);
       const t2 = setTimeout(() => { if (isMounted) setLoadingStep(2) }, 4000);
@@ -192,9 +218,17 @@ export default function StudentHome({ user, userData, onNavigate }) {
         const data = await response.json();
         
         if (isMounted) {
-          setTaskData(data);
+          const isCompletedInDb = (data.dbStatus === 'passed' || data.dbStatus === 'passed_second_attempt' || data.dbStatus === 'failed' || data.dbStatus === 'failed_second_attempt');
+          const generationTime = data.dbCreatedAt ? new Date(data.dbCreatedAt).getTime() : Date.now();
+          
+          if (isCompletedInDb) {
+             setTaskData({...data, completed: true, lockedUntil: generationTime + (24*60*60*1000)});
+             localStorage.setItem("capabilio_daily_mission", JSON.stringify({ generatedAt: generationTime, taskData: data, completed: true, completedAt: generationTime }));
+          } else {
+             setTaskData({...data, completed: false});
+             localStorage.setItem("capabilio_daily_mission", JSON.stringify({ generatedAt: generationTime, taskData: data, completed: false }));
+          }
           setIsGenerating(false);
-          localStorage.setItem("capabilio_daily_mission", JSON.stringify({ generatedAt: Date.now(), taskData: data, completed: false }));
         }
       } catch (err) {
         console.error("Failed to fetch task:", err);

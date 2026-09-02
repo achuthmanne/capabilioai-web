@@ -40,6 +40,14 @@ export default function ArenaWorkspace({ user, userData, setUserData, onNavigate
   const [code, setCode] = useState('// Write your solution here\n// Await system instructions...');
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [redirectSeconds, setRedirectSeconds] = useState(null);
+  const [showRetryCountdown, setShowRetryCountdown] = useState(0);
+
+  useEffect(() => {
+    if (showRetryCountdown > 0) {
+      const timer = setTimeout(() => setShowRetryCountdown(prev => prev - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [showRetryCountdown]);
 
   useEffect(() => {
     if (redirectSeconds !== null && redirectSeconds > 0) {
@@ -202,12 +210,10 @@ Total ELO Deducted: ${finalReward} Points!`;
           finalOutput = baseOutput + outputMessage;
           setConsoleOutput(finalOutput.replace(/\\n/g, '\n'));
         } else {
-          let outputMessage = `
-
-? MISSION FAILED ?
-Review the test cases and feedback, then try again.`;
+          let outputMessage = `\n\n? MISSION FAILED ?\nReview the test cases and feedback, then try again.`;
           finalOutput = baseOutput + outputMessage;
           setConsoleOutput(finalOutput.replace(/\\n/g, '\n'));
+          if (timeLeft > 0) setShowRetryCountdown(3);
         }
 
         let dbFinalOutput = finalOutput;
@@ -222,16 +228,15 @@ Review the test cases and feedback, then try again.`;
           setRedirectSeconds(10); // auto-redirect on finish
 
           const cached = localStorage.getItem("capabilio_daily_mission");
-          if (cached) {
-            const parsed = JSON.parse(cached);
-            parsed.completed = true;
-            parsed.passed = isPass;
-            parsed.completedAt = Date.now();
-            parsed.savedCode = code;
-            parsed.savedOutput = dbFinalOutput.replace(/\\n/g, '\n');
-            if (isPass) parsed.taskData.finalReward = finalReward;
-            localStorage.setItem("capabilio_daily_mission", JSON.stringify(parsed));
-          }
+          let parsed = cached ? JSON.parse(cached) : { generatedAt: Date.now(), taskData: taskData };
+          parsed.completed = true;
+          parsed.passed = isPass;
+          parsed.completedAt = Date.now();
+          parsed.savedCode = code;
+          parsed.savedOutput = dbFinalOutput.replace(/\\n/g, '\n');
+          if (!parsed.taskData) parsed.taskData = taskData;
+          if (isPass) parsed.taskData.finalReward = finalReward;
+          localStorage.setItem("capabilio_daily_mission", JSON.stringify(parsed));
           
           try {
             const vaultStr = localStorage.getItem("capabilio_task_vault");
@@ -313,7 +318,7 @@ Review the test cases and feedback, then try again.`;
     }
   };
 
-    const hasFailed = taskData?.passed === false || consoleOutput?.includes('MISSION FAILED');
+    const hasFailed = taskData?.passed === false;
   
     // --- 10-Minute Timer Logic ---
     const [timeLeft, setTimeLeft] = useState(() => {
@@ -494,17 +499,17 @@ Review the test cases and feedback, then try again.`;
               </button>
             </div>
           <button 
-            onClick={handleSubmit}
-            disabled={isEvaluating || isMissionPassed || timeLeft === 0}
-            style={{ 
-              backgroundColor: isMissionPassed ? '#10B981' : (hasFailed ? '#EF4444' : '#FF5701'), color: 'white', border: 'none', padding: '8px 24px', borderRadius: '999px',
-              fontWeight: 600, cursor: (isEvaluating || isMissionPassed || timeLeft === 0) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
-              opacity: isEvaluating ? 0.7 : 1
-            }}
-          >
-            {isMissionPassed ? <CheckCircle size={16} /> : (hasFailed ? <XCircle size={16} /> : (isEvaluating ? <Zap size={16} className="animate-pulse" /> : <Play size={16} />))}
-            {isMissionPassed ? 'Mission Passed' : (timeLeft === 0 && hasFailed ? 'Time Up - Failed' : (hasFailed ? 'Mission Failed' : (isEvaluating ? 'Evaluating...' : (timeLeft === 0 ? 'Time Up' : 'Run Code'))))}
-          </button>
+              onClick={handleSubmit}
+              disabled={isEvaluating || isMissionPassed || timeLeft === 0 || showRetryCountdown > 0}
+              style={{ 
+                backgroundColor: isMissionPassed ? '#10B981' : ((hasFailed || showRetryCountdown > 0) ? '#EF4444' : '#FF5701'), color: 'white', border: 'none', padding: '8px 24px', borderRadius: '999px',
+                fontWeight: 600, cursor: (isEvaluating || isMissionPassed || timeLeft === 0 || showRetryCountdown > 0) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
+                opacity: isEvaluating ? 0.7 : 1, transition: 'all 0.3s ease'
+              }}
+            >
+              {isMissionPassed ? <CheckCircle size={16} /> : ((hasFailed || showRetryCountdown > 0) ? <XCircle size={16} /> : (isEvaluating ? <Zap size={16} className="animate-pulse" /> : <Play size={16} />))}
+              {isMissionPassed ? 'Mission Passed' : (timeLeft === 0 && hasFailed ? 'Time Up - Failed' : (hasFailed ? 'Mission Failed' : (showRetryCountdown > 0 ? `Failed - Retry in ${showRetryCountdown}s` : (isEvaluating ? 'Evaluating...' : (timeLeft === 0 ? 'Time Up' : 'Run Code')))))}
+            </button>
         </div>
       </div>
 

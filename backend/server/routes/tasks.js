@@ -16,14 +16,16 @@ router.post("/generate-daily", async (req, res) => {
       const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { data: existingTasks, error } = await supabaseAdmin
         .from('daily_tasks')
-        .select('task_data')
+        .select('task_data, status, created_at')
         .eq('user_id', userId)
         .gte('created_at', twentyFourHoursAgo)
         .order('created_at', { ascending: false })
         .limit(1);
         
       if (!error && existingTasks && existingTasks.length > 0) {
-         return res.json(existingTasks[0].task_data);
+         const taskToReturn = existingTasks[0].task_data;
+         taskToReturn.dbStatus = existingTasks[0].status;
+         return res.json(taskToReturn);
       }
     }
 
@@ -41,7 +43,7 @@ router.post("/generate-daily", async (req, res) => {
          // Fetch historical tasks for this user to use as fallback (e.g., failed or old tasks)
          const { data: pastTasks } = await supabaseAdmin
             .from('daily_tasks')
-            .select('task_data')
+            .select('task_data, status, created_at')
             .eq('user_id', userId)
             .in('status', ['failed', 'failed_second_attempt']) // Only retry failed tasks
             .order('created_at', { ascending: true })
@@ -65,10 +67,12 @@ router.post("/generate-daily", async (req, res) => {
     // Save to DB if user is logged in
     // Even if it's a fallback, we insert it so it registers as "today's" active task
     if (userId) {
+       const initialStatus = isFallback ? 'fallback_retry' : 'pending';
+       task.dbStatus = initialStatus;
        await supabaseAdmin.from('daily_tasks').insert({
           user_id: userId,
           task_data: task,
-          status: isFallback ? 'fallback_retry' : 'pending'
+          status: initialStatus
        });
     }
     
