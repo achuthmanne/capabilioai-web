@@ -220,6 +220,16 @@ Total ELO Deducted: ${finalReward} Points!`;
           setConsoleOutput(finalOutput.replace(/\\n/g, '\n'));
         } else {
           let outputMessage = `\n\n? MISSION FAILED ?\nReview the test cases and feedback, then try again.`;
+          if (timeLeft === 0) {
+             const potentialElo = taskData.eloReward || 25;
+             if (violations === 0) {
+                 const penalty = Math.round(potentialElo * 0.25);
+                 outputMessage += `\n\nTime is up! Genuine Attempt recorded.\nIndisciplinary Penalty: -0 ELO\nFailure Penalty (25%): -${penalty} ELO`;
+             } else {
+                 const cheatPenalty = violations * 10;
+                 outputMessage += `\n\nTime is up!\nIndisciplinary Penalty: -${cheatPenalty} ELO (${violations} violations detected)`;
+             }
+          }
           finalOutput = baseOutput + outputMessage;
           setConsoleOutput(finalOutput.replace(/\\n/g, '\n'));
           if (timeLeft > 0) setShowRetryCountdown(3);
@@ -300,11 +310,30 @@ Total ELO Deducted: ${finalReward} Points!`;
           }
         }
 
-        // Update ELO only if passed
-        if (result.passed && setUserData && userData) {
-          const updatedElo = parseInt(userData.eloRating || 400) + parseInt(finalReward || 0);
-          const updatedStreak = parseInt(userData.streak || userData.arenaStreak || 0) + 1;
+        // --- DB STATE UPDATES (ELO & STREAKS) ---
+        if ((isPass || timeLeft === 0) && setUserData && userData) {
+          let updatedElo = parseInt(userData.eloRating || 400);
+          let updatedStreak = parseInt(userData.streak || userData.arenaStreak || 0);
+
+          if (isPass) {
+            updatedElo += parseInt(finalReward || 0);
+            updatedStreak += 1;
+          } else {
+            updatedStreak = 0; // Streak breaks on fail
             
+            if (violations === 0) {
+              // Genuine Fail: 25% deduction
+              const potentialElo = taskData.eloReward || 25;
+              const penalty = Math.round(potentialElo * 0.25);
+              updatedElo -= penalty;
+            } else {
+              // Cheat Fail: Severe deduction based on violations
+              const cheatPenalty = violations * 10;
+              updatedElo -= cheatPenalty;
+            }
+            if (updatedElo < 0) updatedElo = 0;
+          }
+
           setUserData(prev => ({
             ...prev,
             eloRating: updatedElo,
