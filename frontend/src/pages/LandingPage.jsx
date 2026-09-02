@@ -1388,14 +1388,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
           {/* Left Side: Typography & Buttons */}
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}>
             
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1, ease: EASE }}
-              className="text-[#FF5701] font-extrabold text-[13px] md:text-[15px] tracking-[0.2em] uppercase mb-4"
-            >
-              Verified Career OS
-            </motion.div>
+            
 
             <h1 className="text-4xl md:text-5xl lg:text-[56px] font-extrabold text-[#14161A] leading-[1.1] tracking-tight mb-6">
               Your Career Needs <br className="hidden lg:block" />
