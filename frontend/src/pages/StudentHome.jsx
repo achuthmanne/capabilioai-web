@@ -37,6 +37,34 @@ const TypewriterText = ({ text, delay = 0, speed = 30, cursor = true }) => {
 
 const API = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com";
 
+const CountdownTimer = ({ targetDate }) => {
+  const [timeLeft, setTimeLeft] = useState("");
+
+  useEffect(() => {
+    const updateTimer = () => {
+      const now = new Date().getTime();
+      const distance = targetDate - now;
+
+      if (distance <= 0) {
+        setTimeLeft("Available Now! Refresh the page.");
+        return;
+      }
+
+      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+      setTimeLeft(`in ${hours}h ${minutes}m ${seconds}s`);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [targetDate]);
+
+  return <span>{timeLeft}</span>;
+};
+
 export default function StudentHome({ user, userData, onNavigate }) {
   const name = userData?.displayName || userData?.name || user?.user_metadata?.full_name || "Student"
   const firstName = name.split(" ")[0]
@@ -519,7 +547,7 @@ export default function StudentHome({ user, userData, onNavigate }) {
                   alignItems: "center",
                   letterSpacing: "0.3px"
                 }}>
-                  Next mission unlocks {new Date(taskData.lockedUntil).toLocaleDateString('en-US', { month: 'short', day: 'numeric'})} at {new Date(taskData.lockedUntil).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} IST
+                  Next mission unlocks <CountdownTimer targetDate={taskData.lockedUntil} />
                 </div>
               )}
 
