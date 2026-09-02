@@ -1383,7 +1383,7 @@ export default function LandingPage({ onGetStarted, onLogin }) {
 
       {/* ── HERO ────────────────────────────────────────────────────── */}
       <section className="w-full px-6 md:px-12 pt-12 md:pt-24 pb-12 md:pb-24 bg-white overflow-hidden">
-        <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+        <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-end">
           
           {/* Left Side: Typography & Buttons */}
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}>
