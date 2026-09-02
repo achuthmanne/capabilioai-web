@@ -37,7 +37,14 @@ export default function ArenaWorkspace({ user, userData, setUserData, onNavigate
     }
   }, []);
 
-  const [code, setCode] = useState('// Write your solution here\n// Await system instructions...');
+  const [code, setCode] = useState(() => {
+    const saved = localStorage.getItem('arena_draft_code');
+    return saved || '// Write your solution here\n// Await system instructions...';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('arena_draft_code', code);
+  }, [code]);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [redirectSeconds, setRedirectSeconds] = useState(null);
   const [showRetryCountdown, setShowRetryCountdown] = useState(0);
@@ -320,10 +327,10 @@ Total ELO Deducted: ${finalReward} Points!`;
 
     const hasFailed = taskData?.passed === false;
   
-    // --- 10-Minute Timer Logic ---
+    // --- 15-Minute Timer Logic ---
     const [timeLeft, setTimeLeft] = useState(() => {
       const saved = localStorage.getItem('arena_timer');
-      return saved !== null ? parseInt(saved, 10) : 600;
+      return saved !== null ? parseInt(saved, 10) : 900;
     });
     const [isTimerActive, setIsTimerActive] = useState(true);
     const [isPaused, setIsPaused] = useState(false);
@@ -331,14 +338,15 @@ Total ELO Deducted: ${finalReward} Points!`;
     const hasAutoSubmitted = useRef(false);
 
     useEffect(() => {
-      if (timeLeft < 600) localStorage.setItem('arena_timer', timeLeft.toString());
+      if (timeLeft <= 900) localStorage.setItem('arena_timer', timeLeft.toString());
     }, [timeLeft]);
 
     useEffect(() => {
       const missionPassed = taskData?.completed && taskData?.passed !== false && !consoleOutput?.includes('MISSION FAILED');
       if (missionPassed) {
-        localStorage.removeItem('arena_timer');
-        setIsTimerActive(false);
+          localStorage.removeItem('arena_timer');
+          localStorage.removeItem('arena_draft_code');
+          setIsTimerActive(false);
         return;
       }
       if (!isTimerActive || timeLeft <= 0 || isPaused) return;
