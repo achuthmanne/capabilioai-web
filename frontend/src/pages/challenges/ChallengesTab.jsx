@@ -76,6 +76,7 @@ export default function ChallengesTab({ onOpenWorkspace, onScratchedStateChange,
       } else {
          setStage('wheel')
          if (onScratchedStateChange) onScratchedStateChange(false)
+         if (res.card.locked_mid_week && onThemeChange) onThemeChange('plain')
          setLoading(false)
       }
     } catch (e) {

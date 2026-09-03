@@ -34,6 +34,7 @@ export default function ChallengesLayout({ onNavigate }) {
   }
 
   const getBgBase = () => {
+    if (activeTab !== 'challenges') return isDark ? '#14161A' : '#FFFFFF';
     if (winningTheme === 'plain') return isDark ? '#14161A' : '#FFFFFF';
     if (isDark) return '#14161A';
     if (winningTheme) return getHexOpacity(winningTheme.color || winningTheme, 0.08);
@@ -41,6 +42,7 @@ export default function ChallengesLayout({ onNavigate }) {
   }
 
   const getRayColor = () => {
+    if (activeTab !== 'challenges') return 'transparent';
     if (winningTheme === 'plain') return 'transparent';
     if (isDark) return 'transparent';
     if (winningTheme) return getHexOpacity(winningTheme.color || winningTheme, 0.15);
