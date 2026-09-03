@@ -341,13 +341,7 @@ export default function ChallengesTab({ onOpenWorkspace, onScratchedStateChange,
                     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)'
                   }}
                 >
-                  <div style={{ 
-                    width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#F8F9FA', 
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px auto',
-                    border: '1px solid #F1F3F4'
-                  }}>
-                    <Lock size={28} style={{ color: '#5F6368' }} />
-                  </div>
+                  <Lock size={48} color="#FF5701" opacity={0.5} style={{ display: 'block', margin: '0 auto 24px auto' }} />
                   <h3 style={{ fontSize: '20px', fontWeight: 500, margin: '0 0 12px 0', letterSpacing: '-0.3px', color: '#202124', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
                     Mid-Week Joiner
                   </h3>
