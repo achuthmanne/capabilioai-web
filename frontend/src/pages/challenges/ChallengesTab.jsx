@@ -327,26 +327,36 @@ export default function ChallengesTab({ onOpenWorkspace, onScratchedStateChange,
           
             {cardState?.locked_mid_week && !cardState?.is_scratched ? (
               <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                style={{
-                  background: 'linear-gradient(135deg, #FF7A00 0%, #FF3D00 100%)',
-                  borderRadius: '24px',
-                  padding: '40px 30px',
-                  textAlign: 'center',
-                  color: 'white',
-                  width: '320px',
-                  boxShadow: '0 25px 50px -12px rgba(255, 61, 0, 0.4)'
-                }}
-              >
-                <Lock size={48} style={{ color: 'white', margin: '0 auto 20px auto' }} />
-                <h3 style={{ fontSize: '22px', fontWeight: 'bold', margin: '0 0 12px 0', letterSpacing: '0.5px' }}>Mid-Week Joiner!</h3>
-                <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: '15px', lineHeight: '1.6', margin: 0, fontWeight: 500 }}>
-                  AI is actively curating challenges for your branch ({cardState?.user_branch || "your branch"}).
-                  <br /><br />
-                  Come back on <strong>Monday</strong> to unlock your first set of challenges!
-                </p>
-              </motion.div>
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E0E0E0',
+                    borderRadius: '12px',
+                    padding: '48px 40px',
+                    textAlign: 'center',
+                    width: '380px',
+                    maxWidth: '90%',
+                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)'
+                  }}
+                >
+                  <div style={{ 
+                    width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#F8F9FA', 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px auto',
+                    border: '1px solid #F1F3F4'
+                  }}>
+                    <Lock size={28} style={{ color: '#5F6368' }} />
+                  </div>
+                  <h3 style={{ fontSize: '20px', fontWeight: 500, margin: '0 0 12px 0', letterSpacing: '-0.3px', color: '#202124', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                    Mid-Week Joiner
+                  </h3>
+                  <p style={{ color: '#5F6368', fontSize: '15px', lineHeight: '1.6', margin: 0, fontWeight: 400 }}>
+                    AI is actively curating challenges for your branch ({cardState?.user_branch || "your branch"}).
+                    <br /><br />
+                    Come back on <strong style={{ color: '#202124', fontWeight: 500 }}>Monday</strong> to unlock your first set of challenges.
+                  </p>
+                </motion.div>
             ) : (
               <>
             {/* --- 1. THE SPINNING WHEEL --- */}
