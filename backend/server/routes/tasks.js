@@ -127,4 +127,33 @@ router.post("/evaluate", async (req, res) => {
   }
 });
 
+router.post("/sync-arena-state", async (req, res) => {
+  try {
+    const { userId, eloRating, arenaStreak } = req.body;
+    if (!userId || eloRating === undefined) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const { error } = await supabaseAdmin
+      .from('profiles')
+      .update({
+        elo_rating: eloRating,
+        arena_streak: arenaStreak,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId);
+
+    if (error) {
+      console.error("Failed to sync arena state via admin:", error);
+      return res.status(500).json({ error: "Failed to update profile" });
+    }
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Sync error:", err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+
 export default router;

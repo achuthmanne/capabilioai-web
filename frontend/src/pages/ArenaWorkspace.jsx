@@ -342,10 +342,11 @@ Total ELO Deducted: ${finalReward} Points!`;
           }));
 
           if (user?.id) {
-            userDoc.update(user.id, {
-              eloRating: updatedElo,
-              arenaStreak: updatedStreak
-            }).catch(err => console.error("Failed to update ELO in DB:", err));
+            fetch(`${API}/api/tasks/sync-arena-state`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId: user.id, eloRating: updatedElo, arenaStreak: updatedStreak })
+            }).catch(err => console.error("Failed to securely sync ELO to DB:", err));
           }
         }
 
