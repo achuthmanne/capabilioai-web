@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Briefcase, GraduationCap, CheckCircle2, LogOut } from 'lucide-react';
+import { X, User, Briefcase, GraduationCap, CheckCircle2, LogOut, Camera } from 'lucide-react';
+import { profileApi } from '../lib/api';
 import { supabase } from '../lib/supabase';
 
 export default function MyProfilePanel({ isOpen, onClose, user, userData, onSignOut }) {
@@ -17,6 +18,33 @@ export default function MyProfilePanel({ isOpen, onClose, user, userData, onSign
   
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [previewPhoto, setPreviewPhoto] = useState(null);
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    try {
+      setUploadingPhoto(true);
+      
+      const reader = new FileReader();
+      reader.onload = (e) => setPreviewPhoto(e.target.result);
+      reader.readAsDataURL(file);
+
+      const res = await profileApi.uploadPhoto(file, 'profile');
+      if (res && res.url) {
+        if (typeof window !== 'undefined' && window.updateUserContext) {
+          window.updateUserContext({ ...userData, profilePhotoURL: res.url });
+        }
+      }
+    } catch (err) {
+      console.error("Failed to upload photo:", err);
+      alert("Failed to upload photo. Please try again.");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   const f = (field) => (e) => setForm({ ...form, [field]: e.target.value });
 
@@ -107,15 +135,36 @@ export default function MyProfilePanel({ isOpen, onClose, user, userData, onSign
               }}>
                 <div style={{ 
                   width: 100, height: 100, borderRadius: '50%', background: '#F3F4F6', 
-                  overflow: 'hidden', flexShrink: 0, marginBottom: 16
+                  flexShrink: 0, marginBottom: 16, position: 'relative', overflow: 'hidden'
                 }}>
-                  {userData?.profilePhotoURL ? (
-                    <img src={userData.profilePhotoURL} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handlePhotoUpload}
+                    disabled={uploadingPhoto}
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: uploadingPhoto ? 'not-allowed' : 'pointer', zIndex: 10 }} 
+                  />
+                  
+                  {previewPhoto || userData?.profilePhotoURL ? (
+                    <img src={previewPhoto || userData.profilePhotoURL} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
                     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: '#9CA3AF', fontWeight: 700, fontFamily: '"Inter", sans-serif' }}>
                       {(userData?.full_name || userData?.display_name || userData?.displayName || userData?.name || user?.user_metadata?.full_name || user?.email || "U").charAt(0).toUpperCase()}
                     </div>
                   )}
+
+                  <div style={{
+                    position: 'absolute', bottom: 0, left: 0, right: 0, height: '32px',
+                    background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    pointerEvents: 'none'
+                  }}>
+                    {uploadingPhoto ? (
+                      <span style={{ width: 14, height: 14, border: '2px solid #FFF', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                    ) : (
+                      <Camera size={16} color="#FFFFFF" />
+                    )}
+                  </div>
+                  <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
                 </div>
                 
                 <h3 style={{ fontSize: 20, fontWeight: 800, color: '#111827', margin: '0 0 4px 0', fontFamily: '"Inter", sans-serif', letterSpacing: '-0.5px' }}>
