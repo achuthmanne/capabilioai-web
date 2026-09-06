@@ -2003,10 +2003,10 @@ function App() {
                   <div style={{ padding: "16px 12px", display: "flex", alignItems: "center", gap: 16, marginBottom: 4 }}>
                     <div style={{ 
                       width: 44, height: 44, borderRadius: "50%", 
-                      background: "linear-gradient(135deg, #1A73E8 0%, #1557B0 100%)", 
+                      background: "linear-gradient(135deg, #FF5701 0%, #E64A00 100%)", 
                       color: "white", display: "flex", alignItems: "center", justifyContent: "center", 
                       fontSize: 18, fontWeight: 700, flexShrink: 0,
-                      boxShadow: "0 2px 4px rgba(26,115,232,0.3)"
+                      boxShadow: "0 2px 4px rgba(255,87,1,0.3)"
                     }}>
                       {avatarUrl ? <img src={avatarUrl} alt="User" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initials}
                     </div>
@@ -2040,7 +2040,7 @@ function App() {
                       fontSize: 14, fontWeight: 500, color: "#3C4043",
                       textAlign: "left", transition: "all 0.1s ease",
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "#F8F9FA"; e.currentTarget.style.color = "#1A73E8" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "#F8F9FA"; e.currentTarget.style.color = "#FF5701" }}
                     onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#3C4043" }}
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -2056,7 +2056,7 @@ function App() {
                       fontSize: 14, fontWeight: 500, color: "#3C4043",
                       textAlign: "left", transition: "all 0.1s ease",
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "#F8F9FA"; e.currentTarget.style.color = "#1A73E8" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "#F8F9FA"; e.currentTarget.style.color = "#FF5701" }}
                     onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#3C4043" }}
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
