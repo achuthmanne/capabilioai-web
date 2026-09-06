@@ -2008,7 +2008,7 @@ function App() {
                       fontSize: 18, fontWeight: 700, flexShrink: 0,
                       boxShadow: "0 2px 4px rgba(26,115,232,0.3)"
                     }}>
-                      {avatarInitial}
+                      {avatarUrl ? <img src={avatarUrl} alt="User" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initials}
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 2, overflow: "hidden" }}>
                       <div style={{ fontSize: 15, fontWeight: 600, color: "#202124", fontFamily: '"Inter", sans-serif', textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
