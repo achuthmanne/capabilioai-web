@@ -45,17 +45,33 @@ router.get("/current", requireAuth, async (req, res) => {
     const { data: profile } = await supabaseAdmin.from("profiles").select("branch, stream").eq("id", userId).single();
     const userBranch = profile?.branch || profile?.stream || 'CSE';
     
-    const { data: qCheck } = await supabaseAdmin
-      .from("challenge_questions")
-      .select("id")
-      .eq("branch", userBranch)
-      .eq("week_start_date", weekStartStr)
-      .limit(1);
-
-    if (!qCheck || qCheck.length === 0) {
-      card.locked_mid_week = true;
-      card.user_branch = userBranch;
-    }
+    let { data: qCheck } = await supabaseAdmin
+        .from("challenge_questions")
+        .select("id")
+        .eq("branch", userBranch)
+        .eq("week_start_date", weekStartStr)
+        .limit(1);
+        
+      if (!qCheck || qCheck.length === 0) {
+        // FALLBACK LIBRARY CHECK
+        const { data: pastCards } = await supabaseAdmin
+            .from("user_weekly_cards")
+            .select("completed_questions")
+            .eq("user_id", userId);
+            
+        const completedIds = pastCards ? pastCards.flatMap(c => c.completed_questions || []) : [];
+        
+        let query = supabaseAdmin.from("challenge_questions").select("id").eq("branch", userBranch).limit(1);
+        if (completedIds.length > 0) {
+            query = query.not('id', 'in', `(${completedIds.join(',')})`);
+        }
+        
+        const { data: fallbackCheck } = await query;
+        if (!fallbackCheck || fallbackCheck.length === 0) {
+            card.locked_mid_week = true; // Literally zero questions in the entire library for this branch
+            card.user_branch = userBranch;
+        }
+      }
     
     res.json({ card })
   } catch (error) {
@@ -89,14 +105,32 @@ router.post("/scratch", requireAuth, async (req, res) => {
     const branch = profile?.branch || profile?.stream || 'CSE'
 
     let { data: questions, error: qError } = await supabaseAdmin
-      .from("challenge_questions")
-      .select("id")
-      .eq("branch", branch)
-      .eq("week_start_date", card.week_start_date)
-      
-    if (qError || !questions || questions.length === 0) {
-       return res.status(400).json({ error: "You joined mid-week! AI has not generated tasks for your branch yet. Please come back on Monday!" })
-    }
+        .from("challenge_questions")
+        .select("id")
+        .eq("branch", branch)
+        .eq("week_start_date", card.week_start_date)
+        
+      if (qError || !questions || questions.length === 0) {
+         // FALLBACK TO PROBLEM LIBRARY
+         console.log("No questions for this week. Falling back to Problem Library...");
+         const { data: pastCards } = await supabaseAdmin
+            .from("user_weekly_cards")
+            .select("completed_questions")
+            .eq("user_id", userId);
+            
+         const completedIds = pastCards ? pastCards.flatMap(c => c.completed_questions || []) : [];
+         
+         let query = supabaseAdmin.from("challenge_questions").select("id").eq("branch", branch).limit(15);
+         if (completedIds.length > 0) {
+             query = query.not('id', 'in', `(${completedIds.join(',')})`);
+         }
+         
+         const { data: fallbackQuestions } = await query;
+         if (!fallbackQuestions || fallbackQuestions.length === 0) {
+             return res.status(400).json({ error: "No tasks available in the Problem Library for your branch. Please check back later!" })
+         }
+         questions = fallbackQuestions;
+      }
 
     const numQuestions = req.body.wheelResult || (Math.floor(Math.random() * (10 - 5 + 1)) + 5)
     const shuffled = questions.sort(() => 0.5 - Math.random())
