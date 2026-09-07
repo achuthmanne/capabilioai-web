@@ -665,7 +665,7 @@ function AuthModal({ show, onClose, mode, setMode }) {
     if (selectedPath === "executive")    return !!(base && orgName && execTitle)
     if (selectedPath === "institution")  return !!(base && instName && instCity)
     if (isJobSeeker) return !!base
-    return !!(base && college && branch)
+    return !!(base && college)
   })() : !!(email && password)
 
   // Path-specific form fields (signup only)
