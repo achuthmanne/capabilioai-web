@@ -45,6 +45,10 @@
 // throttle individual IPs effectively without needing Redis. For strict
 // global limits, swap the store for an Upstash Redis client (see SCALE.md).
 export function createRateLimiter(windowMs, max, message) {
+  // DISABLE RATE LIMITS IN LOCAL DEV TO PREVENT HMR/RELOAD 429s
+  if (process.env.NODE_ENV !== "production") {
+    return (req, res, next) => next()
+  }
   // Map<ip, { count, windowStart }>
   const store = new Map()
 
