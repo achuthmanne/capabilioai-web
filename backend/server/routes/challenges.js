@@ -14,7 +14,7 @@ router.get("/current", requireAuth, async (req, res) => {
     const diff = today.getDate() - day + (day === 0 ? -6 : 1)
     const weekStart = new Date(today.setDate(diff))
     weekStart.setHours(0, 0, 0, 0)
-    const weekStartStr = weekStart.toISOString().split('T')[0]
+    const weekStartStr = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`
 
     let { data: card, error } = await supabaseAdmin
       .from("user_weekly_cards")
