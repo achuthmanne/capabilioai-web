@@ -776,33 +776,25 @@ function AuthModal({ show, onClose, mode, setMode }) {
           onFocus={e=>{ if (!branchLocked) { e.target.style.borderColor=accent; e.target.style.boxShadow=`0 0 0 3px ${withAlpha(accent, 0.15)}` } }}
           onBlur={e=>{ e.target.style.borderColor=T.border; e.target.style.boxShadow="0 1px 2px rgba(20,22,26,0.02)" }}
           groups={[
-            {label: "IT / CS Streams", options: [
-              {value: "CSE", label: "Computer Science Engineering (CSE)"},
-              {value: "IT", label: "Information Technology (IT)"},
-              {value: "MCA", label: "MCA / Computer Applications"},
-              {value: "AI_DS", label: "AI & Data Science (AI/DS)"},
-              {value: "AI_ML", label: "AI & Machine Learning (AI/ML)"}
-            ]},
-            {label: "Core Engineering", options: [
-              {value: "ECE", label: "Electronics & Communication (ECE)"},
-              {value: "EEE", label: "Electrical & Electronics (EEE)"},
-              {value: "Mechanical", label: "Mechanical Engineering"},
-              {value: "Civil", label: "Civil Engineering"},
-              {value: "IoT", label: "Internet of Things (IoT)"}
-            ]},
-            {label: "Management / Science", options: [
-              {value: "MBA", label: "MBA / Business Administration"},
-              {value: "BBA", label: "BBA / Business Management"},
-              {value: "BCom", label: "B.Com / Commerce"},
-              {value: "BSc", label: "B.Sc / Science"}
-            ]},
-            {label: "Other", options: [
-              {value: "Pharmacy", label: "Pharmacy / Pharma"},
-              {value: "Law", label: "Law (LLB / LLM)"},
-              {value: "Arts", label: "Arts / Humanities"},
-              {value: "Other", label: "Other"}
+              {label: "IT / CS Streams", options: [
+                {value: "CSE", label: "Computer Science Engineering (CSE)"},
+                {value: "IT", label: "Information Technology (IT)"},
+                {value: "MCA", label: "MCA / Computer Applications"},
+                {value: "AI_DS", label: "AI & Data Science (AI/DS)"},
+                {value: "AI_ML", label: "AI & Machine Learning (AI/ML)"}
+              ]},
+              {label: "Core Engineering", options: [
+                {value: "ECE", label: "Electronics & Communication (ECE)"},
+                {value: "EEE", label: "Electrical & Electronics (EEE)"},
+                {value: "Mechanical", label: "Mechanical Engineering"},
+                {value: "Civil", label: "Civil Engineering"},
+                {value: "IoT", label: "Internet of Things (IoT)"}
+              ]},
+              {label: "Management & Pharma", options: [
+                {value: "MBA", label: "MBA / Business Administration"},
+                {value: "Pharmacy", label: "Pharmacy / Pharma"}
+              ]}
             ]}
-          ]}
         />
         {collegeLocked && (
           <div style={{ display:"flex", alignItems:"flex-start", gap:8, fontSize:12.5, color: T.ink2, background: T.accentDim, border: `1px solid ${T.accent}30`, borderRadius:10, padding:"7px 10px", marginTop:-4 }}>
