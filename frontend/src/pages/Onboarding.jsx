@@ -3302,35 +3302,12 @@ export default function Onboarding({ user, onComplete, onBack }) {
                 <FieldRow label={studentStage === "job_seeker" ? "College (optional)" : "College"}>
                   <CollegeSearchPicker value={college} onChange={setCollege} placeholder="e.g. VIT Vellore" disabled={collegeLocked} />
                 </FieldRow>
-                <FieldRow label="Branch / Stream">
-                  <FieldSelect value={branch} onChange={e=>setBranch(e.target.value)} disabled={branchLocked}>
-                    <option value="">Select branch</option>
-                    <optgroup label="IT / CS">
-                      <option value="CSE">CSE</option>
-                      <option value="IT">IT</option>
-                      <option value="MCA">MCA</option>
-                      <option value="AI_DS">AI &amp; Data Science</option>
-                      <option value="AI_ML">AI &amp; ML</option>
-                    </optgroup>
-                    <optgroup label="Core Engineering">
-                      <option value="ECE">ECE</option>
-                      <option value="EEE">EEE</option>
-                      <option value="Mechanical">Mechanical</option>
-                      <option value="Civil">Civil</option>
-                      <option value="IoT">IoT</option>
-                    </optgroup>
-                    <optgroup label="Other">
-                      <option value="Pharmacy">Pharmacy</option>
-                      <option value="MBA">MBA</option>
-                      <option value="Other">Other</option>
-                    </optgroup>
-                  </FieldSelect>
-                </FieldRow>
+                
               </div>
               
               {collegeLocked && (
                 <div style={{ fontSize: 12, color: "#6B7280", marginTop: -12 }}>
-                  Set by your college's invite link{branchLocked ? "" : " - please select your branch"}. Contact your placement cell if incorrect.
+                  Set by your college's invite link. Contact your placement cell if incorrect.
                 </div>
               )}
 
