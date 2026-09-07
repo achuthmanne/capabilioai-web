@@ -10,6 +10,42 @@ import { ROLE_REGISTRY } from "../config/roleConfig"
 const SERVER = import.meta.env.VITE_API_URL || "https://capabilio-web.onrender.com"
 
 // ─── CSS injected once ─────────────────────────────────────────────
+
+const BRANCH_DOMAINS = {
+  "CSE": [
+    "Software Development", "Web Development", "App Development", "Data Science", 
+    "Artificial Intelligence", "Machine Learning", "Cyber Security", "Cloud Computing", 
+    "DevOps", "Database / DBMS", "Computer Networks", "Blockchain", "IoT", 
+    "Computer Architecture", "Operating Systems", "Software Testing / QA"
+  ],
+  "ECE": [
+    "VLSI Design", "Embedded Systems", "Digital Electronics", "Analog Electronics", 
+    "Communication Systems", "RF & Microwave", "Antenna Design", "Signal Processing", 
+    "Wireless Communication", "Optical Communication", "PCB Design", "Semiconductor Technology", 
+    "FPGA Design", "Robotics & Automation", "Embedded AI / Edge Computing", "Instrumentation"
+  ],
+  "EEE": [
+    "Power Systems", "Power Electronics", "Electrical Machines", "Control Systems", 
+    "Renewable Energy", "Solar Energy", "Wind Energy", "Smart Grid", "Electrical Drives", 
+    "High Voltage Engineering", "Industrial Automation", "Protection & Switchgear", 
+    "Energy Management", "Electric Vehicles", "Battery Systems", "Electrical Design"
+  ],
+  "Mechanical": [
+    "Design Engineering", "Manufacturing", "Production Engineering", "Automobile Engineering", 
+    "Robotics & Automation", "CAD / CAM", "CNC / Machining", "Thermal Engineering", "HVAC", 
+    "Fluid Mechanics", "Aerospace Applications", "Mechatronics", "Industrial Engineering", 
+    "3D Printing / Additive Manufacturing", "Materials Engineering", "Maintenance Engineering", 
+    "Quality Engineering"
+  ],
+  "Civil": [
+    "Structural Engineering", "Construction Management", "Geotechnical Engineering", 
+    "Transportation Engineering", "Highway Engineering", "Environmental Engineering", 
+    "Water Resources Engineering", "Hydraulics", "Surveying & Geomatics", "Urban Planning", 
+    "Building Information Modeling (BIM)", "Quantity Surveying", "Architecture & Building Design", 
+    "Remote Sensing & GIS", "Disaster Management", "Coastal Engineering"
+  ]
+};
+
 const ONBOARDING_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400\&family=DM+Mono:wght@400;500;600\&display=swap');
   * { box-sizing: border-box; }
@@ -2083,6 +2119,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
   // link's college/department (invite takes precedence: it's the source of
   // truth for who this student actually belongs to), editable unless locked.
   const [college, setCollege] = useState(orgJoinContext?.college || user?.user_metadata?.college || "")
+  const [branch, setBranch] = useState(user?.user_metadata?.branch || "")
   const [branch,  setBranch]  = useState(lockedBranchCode || user?.user_metadata?.branch  || "")
   const [resumeFile, setResumeFile] = useState(null)
   const [resumeText, setResumeText] = useState("")
@@ -3191,7 +3228,7 @@ export default function Onboarding({ user, onComplete, onBack }) {
 
   // ══ SCREEN: STUDENT SEARCH ════════════════════════════════════════
   if (step === "search") {
-    const canGo = selectedRole !== null || keyword.trim().length > 1;
+    const canGo = branch && (selectedRole !== null || keyword.trim().length > 1);
     const pt = getPathTheme("student");
     return (
       <div style={{ display: "flex", width: "100%", minHeight: "100vh", background: "#FFFFFF", fontFamily: T.body }}>
@@ -3289,14 +3326,38 @@ export default function Onboarding({ user, onComplete, onBack }) {
             {apiError && <div style={{ background: `${T.red}10`, border: `1px solid ${T.red}30`, borderRadius: 12, padding: "12px 14px", color: "#F87171", fontSize: 13, marginBottom: 24 }}>{apiError}</div>}
             
             <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-              <FieldRow label="Target role">
-                <RoleSearchPicker
-                  value={keyword}
-                  onChange={setKeyword}
-                  onRoleSelect={handleRoleSelect}
-                  selectedRole={selectedRole}
-                />
-              </FieldRow>
+              <FieldRow label="Engineering Branch">
+                  <FieldSelect value={branch} onChange={e => { setBranch(e.target.value); setKeyword(""); setSelectedRole(null); }}>
+                    <option value="">Select your core branch</option>
+                    <option value="CSE">Computer Science & Engineering (CSE)</option>
+                    <option value="ECE">Electronics & Communication (ECE)</option>
+                    <option value="EEE">Electrical & Electronics (EEE)</option>
+                    <option value="Mechanical">Mechanical Engineering</option>
+                    <option value="Civil">Civil Engineering</option>
+                  </FieldSelect>
+                  {branch && (
+                    <div style={{ marginTop: 8, fontSize: 13, color: pt.accent, fontWeight: 600, display: "flex", alignItems: "center", gap: 6, background: `${pt.accent}10`, padding: "8px 12px", borderRadius: 8 }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                      {BRANCH_DOMAINS[branch].length} specialized domains available for {branch}
+                    </div>
+                  )}
+                </FieldRow>
+
+                <FieldRow label="Target Domain / Role">
+                  <FieldSelect 
+                    value={keyword} 
+                    onChange={e => {
+                      setKeyword(e.target.value);
+                      setSelectedRole({ label: e.target.value, stream: branch });
+                    }} 
+                    disabled={!branch}
+                  >
+                    <option value="">{branch ? "Select your target domain" : "Please select a branch first"}</option>
+                    {branch && BRANCH_DOMAINS[branch].map(domain => (
+                      <option key={domain} value={domain}>{domain}</option>
+                    ))}
+                  </FieldSelect>
+                </FieldRow>
               
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                 <FieldRow label={studentStage === "job_seeker" ? "College (optional)" : "College"}>
